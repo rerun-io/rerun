@@ -15,6 +15,9 @@ enum AxisDirection {
     NegX,
     NegY,
     NegZ,
+
+    /// Not along any axis.
+    Other,
 }
 
 impl AxisDirection {
@@ -37,35 +40,37 @@ impl std::fmt::Display for AxisDirection {
             Self::NegX => write!(f, "-X"),
             Self::NegY => write!(f, "-Y"),
             Self::NegZ => write!(f, "-Z"),
+            Self::Other => write!(f, "-"),
         }
     }
 }
 
-impl TryFrom<glam::Vec3> for AxisDirection {
+impl From<glam::Vec3> for AxisDirection {
+    fn from(value: glam::Vec3) -> Self {
+        match value {
+            glam::Vec3::X => Self::PosX,
+            glam::Vec3::Y => Self::PosY,
+            glam::Vec3::Z => Self::PosZ,
+            glam::Vec3::NEG_X => Self::NegX,
+            glam::Vec3::NEG_Y => Self::NegY,
+            glam::Vec3::NEG_Z => Self::NegZ,
+            _ => Self::Other,
+        }
+    }
+}
+
+impl TryFrom<AxisDirection> for glam::Vec3 {
     type Error = ();
 
-    fn try_from(value: glam::Vec3) -> Result<Self, Self::Error> {
+    fn try_from(value: AxisDirection) -> Result<Self, Self::Error> {
         match value {
-            glam::Vec3::X => Ok(Self::PosX),
-            glam::Vec3::Y => Ok(Self::PosY),
-            glam::Vec3::Z => Ok(Self::PosZ),
-            glam::Vec3::NEG_X => Ok(Self::NegX),
-            glam::Vec3::NEG_Y => Ok(Self::NegY),
-            glam::Vec3::NEG_Z => Ok(Self::NegZ),
-            _ => Err(()),
-        }
-    }
-}
-
-impl From<AxisDirection> for glam::Vec3 {
-    fn from(value: AxisDirection) -> Self {
-        match value {
-            AxisDirection::PosX => Self::X,
-            AxisDirection::PosY => Self::Y,
-            AxisDirection::PosZ => Self::Z,
-            AxisDirection::NegX => Self::NEG_X,
-            AxisDirection::NegY => Self::NEG_Y,
-            AxisDirection::NegZ => Self::NEG_Z,
+            AxisDirection::PosX => Ok(Self::X),
+            AxisDirection::PosY => Ok(Self::Y),
+            AxisDirection::PosZ => Ok(Self::Z),
+            AxisDirection::NegX => Ok(Self::NEG_X),
+            AxisDirection::NegY => Ok(Self::NEG_Y),
+            AxisDirection::NegZ => Ok(Self::NEG_Z),
+            AxisDirection::Other => Err(()),
         }
     }
 }
@@ -79,35 +84,36 @@ pub fn edit_or_view_plane3d(
 
     ui.label("n");
     // Show simplified combobox if this is axis aligned.
-    let normal_response = if let Ok(mut axis_dir) =
-        AxisDirection::try_from(glam::Vec3::from(value.normal()))
-    {
-        response_with_changes_of_inner(
-            egui::ComboBox::from_id_salt("plane_normal")
-                .selected_text(format!("{axis_dir}"))
-                .height(250.0)
-                .show_ui(ui, |ui| {
-                    let mut variants = AxisDirection::VARIANTS.iter();
-                    #[allow(clippy::unwrap_used)] // We know there's more than zero variants.
-                    let variant = variants.next().unwrap();
+    let mut axis_dir = AxisDirection::from(glam::Vec3::from(value.normal()));
+    let normal_response = response_with_changes_of_inner(
+        egui::ComboBox::from_id_salt("plane_normal")
+            .selected_text(format!("{axis_dir}"))
+            .height(250.0)
+            .show_ui(ui, |ui| {
+                let mut variants = AxisDirection::VARIANTS.iter();
+                #[allow(clippy::unwrap_used)] // We know there's more than zero variants.
+                let variant = variants.next().unwrap();
 
-                    let mut response =
-                        ui.selectable_value(&mut axis_dir, *variant, variant.to_string());
-                    for variant in variants {
-                        response |=
-                            ui.selectable_value(&mut axis_dir, *variant, variant.to_string());
-                    }
+                let mut response =
+                    ui.selectable_value(&mut axis_dir, *variant, variant.to_string());
+                for variant in variants {
+                    response |= ui.selectable_value(&mut axis_dir, *variant, variant.to_string());
+                }
 
-                    if let MaybeMutRef::MutRef(value) = value {
-                        **value = components::Plane3D::new(glam::Vec3::from(axis_dir), distance);
+                if let MaybeMutRef::MutRef(value) = value {
+                    if let Ok(new_dir) = glam::Vec3::try_from(axis_dir) {
+                        **value = components::Plane3D::new(new_dir, distance);
                     }
-                    response
-                }),
-        )
-    } else {
-        // Editing for arbitrary normals takes too much space here.
-        edit_or_view_vec3d_raw(ui, &mut MaybeMutRef::Ref(&value.normal()))
-    };
+                }
+                response
+            }),
+    )
+    .on_hover_text(format!(
+        "{} {} {}",
+        re_format::format_f32(value.normal().x()),
+        re_format::format_f32(value.normal().y()),
+        re_format::format_f32(value.normal().z()),
+    ));
 
     ui.label("d");
     let mut maybe_mut_distance = match value {
