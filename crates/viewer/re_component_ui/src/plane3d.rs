@@ -127,7 +127,8 @@ pub fn multiline_edit_or_view_plane3d(
 ) -> egui::Response {
     let mut any_edit = false;
 
-    let response_normal = ui.list_item_flat_noninteractive(
+    let response_normal = ui.list_item().interactive(false).show_hierarchical(
+        ui,
         re_ui::list_item::PropertyContent::new("Normal").value_fn(|ui, _| {
             let mut normal = value.normal();
             let mut maybe_mut_normal = match value {
@@ -143,7 +144,8 @@ pub fn multiline_edit_or_view_plane3d(
         }),
     );
 
-    let response_distance = ui.list_item_flat_noninteractive(
+    let response_distance = ui.list_item().interactive(false).show_hierarchical(
+        ui,
         re_ui::list_item::PropertyContent::new("Distance").value_fn(|ui, _| {
             let mut maybe_mut_distance = match value {
                 MaybeMutRef::Ref(value) => MaybeMutRef::Ref(&value.0 .0[3]),
