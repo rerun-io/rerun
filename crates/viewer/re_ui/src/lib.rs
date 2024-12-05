@@ -5,6 +5,7 @@ mod command_palette;
 mod design_tokens;
 mod syntax_highlighting;
 
+mod color_table;
 mod context_ext;
 pub mod drag_and_drop;
 pub mod icons;

@@ -50,6 +50,7 @@ sublime_fuzzy.workspace = true
 
 eframe = { workspace = true, default-features = false, features = ["wgpu"] }
 egui_tiles.workspace = true
+nohash-hasher.workspace = true
 rand.workspace = true
 
 

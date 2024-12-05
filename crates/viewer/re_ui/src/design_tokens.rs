@@ -1,17 +1,23 @@
-#![allow(clippy::unwrap_used)] // fixed json file
+#![allow(clippy::unwrap_used)]
 
+use crate::color_table::Shade::{S100, S1000, S150, S200, S250, S300, S325, S350, S550, S775};
+use crate::color_table::{ColorTable, ColorToken, Hue, Shade};
 use crate::{design_tokens, CUSTOM_WINDOW_DECORATIONS};
 
 /// The look and feel of the UI.
 ///
 /// Not everything is covered by this.
 /// A lot of other design tokens are put straight into the [`egui::Style`]
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct DesignTokens {
     pub json: serde_json::Value,
-    // TODO(ab): some colors, etc. are defined here, and some others are defined as functions. This
-    //           should be unified, in a way that minimize the number of json->Color32 conversions
-    //           at runtime.
+
+    /// Color table for all colors used in the UI.
+    ///
+    /// Loaded at startup from `design_tokens.json`.
+    color_table: ColorTable,
+
+    // TODO(ab): get rid of these, they should be function calls like the rest.
     pub top_bar_color: egui::Color32,
     pub bottom_bar_color: egui::Color32,
     pub bottom_bar_stroke: egui::Stroke,
@@ -28,26 +34,23 @@ impl DesignTokens {
             serde_json::from_str(include_str!("../data/design_tokens.json"))
                 .expect("Failed to parse data/design_tokens.json");
 
+        let color_table = load_color_table(&json);
+
         Self {
-            top_bar_color: get_aliased_color(&json, "{Alias.Color.Surface.Default.value}"),
-            bottom_bar_color: get_global_color(&json, "{Global.Color.Grey.150}"),
-            bottom_bar_stroke: egui::Stroke::new(
-                1.0,
-                get_global_color(&json, "{Global.Color.Grey.250}"),
-            ),
+            top_bar_color: color_table.grey(S100),
+            bottom_bar_color: color_table.grey(S150),
+            bottom_bar_stroke: egui::Stroke::new(1.0, color_table.grey(S250)),
             bottom_bar_rounding: egui::Rounding {
                 nw: 6.0,
                 ne: 6.0,
                 sw: 0.0,
                 se: 0.0,
             }, // copied from figma, should be top only
-            shadow_gradient_dark_start: egui::Color32::from_black_alpha(77),
-            tab_bar_color: get_global_color(&json, "{Global.Color.Grey.200}"),
-            native_frame_stroke: egui::Stroke::new(
-                1.0,
-                get_global_color(&json, "{Global.Color.Grey.250}"),
-            ),
+            shadow_gradient_dark_start: egui::Color32::from_black_alpha(77), //TODO(ab): use ColorToken!
+            tab_bar_color: color_table.grey(S200),
+            native_frame_stroke: egui::Stroke::new(1.0, color_table.grey(S250)),
             json,
+            color_table,
         }
     }
 
@@ -128,12 +131,12 @@ impl DesignTokens {
             .text_styles
             .insert(Self::welcome_screen_tag(), egui::FontId::proportional(10.5));
 
-        let panel_bg_color = get_aliased_color(&self.json, "{Alias.Color.Surface.Default.value}");
+        let panel_bg_color = self.color(ColorToken::grey(S100));
         // let floating_color = get_aliased_color(&json, "{Alias.Color.Surface.Floating.value}");
-        let floating_color = get_global_color(&self.json, "{Global.Color.Grey.250}");
+        let floating_color = self.color(ColorToken::grey(S250));
 
         // For table zebra stripes.
-        egui_style.visuals.faint_bg_color = get_global_color(&self.json, "{Global.Color.Grey.150}");
+        egui_style.visuals.faint_bg_color = self.color(ColorToken::grey(S150));
 
         // Used as the background of text edits, scroll bars and others things
         // that needs to look different from other interactive stuff.
@@ -147,12 +150,11 @@ impl DesignTokens {
         egui_style.visuals.widgets.inactive.weak_bg_fill = Default::default(); // Buttons have no background color when inactive
 
         // Fill of unchecked radio buttons, checkboxes, etc. Must be brighter than the background floating_color.
-        egui_style.visuals.widgets.inactive.bg_fill =
-            get_global_color(&self.json, "{Global.Color.Grey.300}");
+        egui_style.visuals.widgets.inactive.bg_fill = self.color(ColorToken::grey(S300));
 
         {
             // Background colors for buttons (menu buttons, blueprint buttons, etc) when hovered or clicked:
-            let hovered_color = get_global_color(&self.json, "{Global.Color.Grey.325}");
+            let hovered_color = self.color(ColorToken::grey(S325));
             egui_style.visuals.widgets.hovered.weak_bg_fill = hovered_color;
             egui_style.visuals.widgets.hovered.bg_fill = hovered_color;
             egui_style.visuals.widgets.active.weak_bg_fill = hovered_color;
@@ -175,17 +177,18 @@ impl DesignTokens {
             egui_style.visuals.widgets.open.expansion = 2.0;
         }
 
-        egui_style.visuals.selection.bg_fill =
-            get_aliased_color(&self.json, "{Alias.Color.Highlight.Default.value}");
+        egui_style.visuals.selection.bg_fill = self.color(ColorToken::blue(S350));
+
+        //TODO(ab): use ColorToken!
         egui_style.visuals.selection.stroke.color = egui::Color32::from_rgb(173, 184, 255); // Brighter version of the above
 
         // separator lines, panel lines, etc
         egui_style.visuals.widgets.noninteractive.bg_stroke.color =
-            get_global_color(&self.json, "{Global.Color.Grey.250}");
+            self.color(ColorToken::grey(S250));
 
-        let subdued = get_aliased_color(&self.json, "{Alias.Color.Text.Subdued.value}");
-        let default = get_aliased_color(&self.json, "{Alias.Color.Text.Default.value}");
-        let strong = get_aliased_color(&self.json, "{Alias.Color.Text.Strong.value}");
+        let subdued = self.color(ColorToken::grey(S550));
+        let default = self.color(ColorToken::grey(S775));
+        let strong = self.color(ColorToken::grey(S1000));
 
         egui_style.visuals.widgets.noninteractive.fg_stroke.color = subdued; // non-interactive text
         egui_style.visuals.widgets.inactive.fg_stroke.color = default; // button text
@@ -244,10 +247,16 @@ impl DesignTokens {
 
         egui_style.visuals.image_loading_spinners = false;
 
+        //TODO(ab): use ColorToken!
         egui_style.visuals.error_fg_color = egui::Color32::from_rgb(0xAB, 0x01, 0x16);
         egui_style.visuals.warn_fg_color = egui::Color32::from_rgb(0xFF, 0x7A, 0x0C);
 
         ctx.set_style(egui_style);
+    }
+
+    #[inline]
+    pub fn color(&self, token: ColorToken) -> egui::Color32 {
+        self.color_table.get(token)
     }
 
     #[inline]
@@ -403,7 +412,7 @@ impl DesignTokens {
     /// The color for the background of [`crate::SectionCollapsingHeader`].
     pub fn section_collapsing_header_color(&self) -> egui::Color32 {
         // same as visuals.widgets.inactive.bg_fill
-        get_global_color(&self.json, "{Global.Color.Grey.200}")
+        self.color(ColorToken::grey(S200))
     }
 
     /// The color we use to mean "loop this selection"
@@ -418,23 +427,36 @@ impl DesignTokens {
 
     /// Used by the "add view or container" modal.
     pub fn thumbnail_background_color(&self) -> egui::Color32 {
-        get_global_color(&self.json, "{Global.Color.Grey.250}")
+        self.color(ColorToken::grey(S250))
     }
 }
 
 // ----------------------------------------------------------------------------
 
-fn get_aliased_color(json: &serde_json::Value, alias_path: &str) -> egui::Color32 {
-    parse_color(get_alias_str(json, alias_path))
-}
+/// Build the [`ColorTable`] based on the content of `design_token.json`
+fn load_color_table(json: &serde_json::Value) -> ColorTable {
+    fn get_color_from_json(json: &serde_json::Value, global_path: &str) -> egui::Color32 {
+        parse_color(global_path_value(json, global_path).as_str().unwrap())
+    }
 
-fn get_global_color(json: &serde_json::Value, global_path: &str) -> egui::Color32 {
-    parse_color(global_path_value(json, global_path).as_str().unwrap())
-}
-
-fn get_alias_str<'json>(json: &'json serde_json::Value, alias_path: &str) -> &'json str {
-    let global_path = follow_path_or_panic(json, alias_path).as_str().unwrap();
-    global_path_value(json, global_path).as_str().unwrap()
+    ColorTable {
+        color_table: Hue::all()
+            .iter()
+            .map(|hue| {
+                let shade_map = Shade::all()
+                    .iter()
+                    .map(|shade| {
+                        let color = get_color_from_json(
+                            json,
+                            &format!("{{Global.Color.{hue}.{}}}", shade.as_u16()),
+                        );
+                        (*shade, color)
+                    })
+                    .collect();
+                (*hue, shade_map)
+            })
+            .collect(),
+    }
 }
 
 fn get_alias<T: serde::de::DeserializeOwned>(json: &serde_json::Value, alias_path: &str) -> T {
