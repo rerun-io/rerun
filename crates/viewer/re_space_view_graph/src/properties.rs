@@ -1,4 +1,10 @@
-use re_types::blueprint::components::VisualBounds2D;
+use re_types::{
+    blueprint::{
+        archetypes,
+        components::{Enabled, ForceDistance, VisualBounds2D},
+    },
+    Archetype as _,
+};
 use re_viewer_context::{SpaceViewStateExt as _, TypedComponentFallbackProvider};
 
 use crate::{ui::GraphSpaceViewState, GraphSpaceView};
@@ -20,4 +26,19 @@ impl TypedComponentFallbackProvider<VisualBounds2D> for GraphSpaceView {
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(GraphSpaceView => [VisualBounds2D]);
+impl TypedComponentFallbackProvider<Enabled> for GraphSpaceView {
+    fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> Enabled {
+        match ctx.archetype_name {
+            Some(name) if name == archetypes::ForceLink::name() => true.into(),
+            _ => false.into(),
+        }
+    }
+}
+
+impl TypedComponentFallbackProvider<ForceDistance> for GraphSpaceView {
+    fn fallback_for(&self, _ctx: &re_viewer_context::QueryContext<'_>) -> ForceDistance {
+        (50.).into()
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(GraphSpaceView => [VisualBounds2D, Enabled, ForceDistance]);

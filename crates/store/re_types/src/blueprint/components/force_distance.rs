@@ -21,7 +21,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Component**: The target distance between two nodes.
 ///
 /// This is helpful to scale the layout, for example if long labels are involved.
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, Copy, PartialEq)]
 #[repr(transparent)]
 pub struct ForceDistance(pub crate::datatypes::Float64);
 

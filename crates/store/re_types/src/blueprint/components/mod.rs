@@ -9,6 +9,7 @@ mod component_column_selector_ext;
 mod corner2d;
 mod corner2d_ext;
 mod enabled;
+mod enabled_ext;
 mod filter_by_range;
 mod filter_by_range_ext;
 mod filter_is_not_null;
