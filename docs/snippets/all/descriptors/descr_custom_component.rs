@@ -37,7 +37,7 @@ impl Component for CustomPosition3D {
     fn descriptor() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("user.CustomArchetype".into()),
-            archetype_field_name: Some("user.CustomArchetypeField".into()),
+            archetype_field_name: Some("custom_positions".into()),
             component_name: "user.CustomPosition3D".into(),
         }
     }
@@ -84,7 +84,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let expected = vec![
             ComponentDescriptor {
                 archetype_name: Some("user.CustomArchetype".into()),
-                archetype_field_name: Some("user.CustomArchetypeField".into()),
+                archetype_field_name: Some("custom_positions".into()),
                 component_name: "user.CustomPosition3D".into(),
             }, //
         ];
