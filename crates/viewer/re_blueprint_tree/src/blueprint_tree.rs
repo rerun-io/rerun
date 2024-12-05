@@ -17,6 +17,7 @@ use re_viewer_context::{
 };
 use re_viewport_blueprint::ui::show_add_space_view_or_container_modal;
 use re_viewport_blueprint::{SpaceViewBlueprint, ViewportBlueprint};
+
 /// Holds the state of the blueprint tree UI.
 #[derive(Default)]
 pub struct BlueprintTree {

@@ -2,7 +2,7 @@ use re_chunk::EntityPath;
 
 use crate::{DataResultNode, DataResultTree};
 
-// TODO(@Wumpf): document this
+// TODO(wumpf): document this
 pub enum DataResultNodeOrPath<'a> {
     Path(&'a EntityPath),
     DataResultNode(&'a DataResultNode),
