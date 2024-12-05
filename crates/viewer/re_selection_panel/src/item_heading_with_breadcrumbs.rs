@@ -229,7 +229,7 @@ fn viewport_breadcrumbs(
     }
     cursor_interact_with_selectable(ctx, response, item);
 
-    separator_icon_ui(ui, icons::BREADCRUMBS_SEPARATOR_BLUEPRINT);
+    separator_icon_ui(ui, icons::BREADCRUMBS_SEPARATOR);
 }
 
 fn separator_icon_ui(ui: &mut egui::Ui, icon: re_ui::Icon) {
@@ -293,5 +293,5 @@ fn entity_path_breadcrumbs(
     };
     cursor_interact_with_selectable(ctx, response, item);
 
-    separator_icon_ui(ui, icons::BREADCRUMBS_SEPARATOR_ENTITY);
+    separator_icon_ui(ui, icons::BREADCRUMBS_SEPARATOR);
 }

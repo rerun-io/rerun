@@ -120,9 +120,10 @@ pub const GITHUB: Icon = icon_from_path!("../data/icons/github.png");
 pub const VIDEO_ERROR: Icon = icon_from_path!("../data/icons/video_error.png");
 
 /// `>`
-pub const BREADCRUMBS_SEPARATOR_BLUEPRINT: Icon =
+pub const BREADCRUMBS_SEPARATOR: Icon =
     icon_from_path!("../data/icons/breadcrumbs_separator_blueprint.png");
 
-/// `/`
-pub const BREADCRUMBS_SEPARATOR_ENTITY: Icon =
-    icon_from_path!("../data/icons/breadcrumbs_separator_entity.png");
+// TODO: remove icon?
+// /// `/`
+// pub const BREADCRUMBS_SEPARATOR_ENTITY: Icon =
+//     icon_from_path!("../data/icons/breadcrumbs_separator_entity.png");
