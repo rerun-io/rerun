@@ -1,7 +1,6 @@
+use crate::FileContents;
 use re_log_types::LogMsg;
 use re_smart_channel::{Receiver, SmartChannelSource, SmartMessageSource};
-
-use crate::FileContents;
 
 #[cfg(not(target_arch = "wasm32"))]
 use anyhow::Context as _;
@@ -35,6 +34,10 @@ pub enum DataSource {
     /// A file on a Rerun Data Platform server, over `rerun://` gRPC interface.
     #[cfg(feature = "grpc")]
     RerunGrpcUrl { url: String },
+
+    /// A catalog containing metadata information about recordings stored on Rerun Data Platform.
+    #[cfg(feature = "grpc")]
+    RerunGrpcCatalog { url: String },
 }
 
 impl DataSource {
@@ -92,6 +95,9 @@ impl DataSource {
 
         #[cfg(feature = "grpc")]
         if uri.starts_with("rerun://") {
+            if uri.ends_with("/catalog") {
+                return Self::RerunGrpcCatalog { url: uri };
+            }
             return Self::RerunGrpcUrl { url: uri };
         }
 
@@ -137,7 +143,7 @@ impl DataSource {
             #[cfg(not(target_arch = "wasm32"))]
             Self::Stdin => None,
             #[cfg(feature = "grpc")]
-            Self::RerunGrpcUrl { .. } => None, // TODO(jleibs): This needs to come from the server.
+            Self::RerunGrpcUrl { .. } | Self::RerunGrpcCatalog { .. } => None, // TODO(jleibs): This needs to come from the server.
         }
     }
 
@@ -247,7 +253,16 @@ impl DataSource {
 
             #[cfg(feature = "grpc")]
             Self::RerunGrpcUrl { url } => {
+                let url =
+                    url::Url::parse(&url).with_context(|| format!("Invalid gRPC URL: {url}"))?;
                 re_grpc_client::stream_recording(url, on_msg).map_err(|err| err.into())
+            }
+
+            #[cfg(feature = "grpc")]
+            Self::RerunGrpcCatalog { url } => {
+                let url =
+                    url::Url::parse(&url).with_context(|| format!("Invalid gRPC URL: {url}"))?;
+                re_grpc_client::stream_catalog(url, on_msg).map_err(|err| err.into())
             }
         }
     }
