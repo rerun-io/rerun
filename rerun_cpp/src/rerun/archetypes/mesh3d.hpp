@@ -6,7 +6,6 @@
 #include "../collection.hpp"
 #include "../compiler_utils.hpp"
 #include "../component_batch.hpp"
-#include "../component_descriptor.hpp"
 #include "../components/albedo_factor.hpp"
 #include "../components/class_id.hpp"
 #include "../components/color.hpp"

@@ -6,7 +6,6 @@
 #include "../../blueprint/components/visible_time_range.hpp"
 #include "../../collection.hpp"
 #include "../../component_batch.hpp"
-#include "../../component_descriptor.hpp"
 #include "../../indicator_component.hpp"
 #include "../../result.hpp"
 

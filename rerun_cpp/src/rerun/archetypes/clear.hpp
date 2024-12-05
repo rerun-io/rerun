@@ -5,7 +5,6 @@
 
 #include "../collection.hpp"
 #include "../component_batch.hpp"
-#include "../component_descriptor.hpp"
 #include "../components/clear_is_recursive.hpp"
 #include "../indicator_component.hpp"
 #include "../rerun_sdk_export.hpp"

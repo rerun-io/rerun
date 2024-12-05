@@ -5,7 +5,6 @@
 
 #include "../collection.hpp"
 #include "../component_batch.hpp"
-#include "../component_descriptor.hpp"
 #include "../components/disconnected_space.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"

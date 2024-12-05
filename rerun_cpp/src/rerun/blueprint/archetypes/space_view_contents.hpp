@@ -6,7 +6,6 @@
 #include "../../blueprint/components/query_expression.hpp"
 #include "../../collection.hpp"
 #include "../../component_batch.hpp"
-#include "../../component_descriptor.hpp"
 #include "../../indicator_component.hpp"
 #include "../../result.hpp"
 

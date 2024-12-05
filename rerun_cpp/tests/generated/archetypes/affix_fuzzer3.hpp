@@ -27,7 +27,6 @@
 #include <rerun/collection.hpp>
 #include <rerun/compiler_utils.hpp>
 #include <rerun/component_batch.hpp>
-#include <rerun/component_descriptor.hpp>
 #include <rerun/indicator_component.hpp>
 #include <rerun/result.hpp>
 #include <utility>
