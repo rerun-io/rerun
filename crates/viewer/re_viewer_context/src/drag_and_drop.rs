@@ -7,7 +7,7 @@ use itertools::Itertools;
 
 use re_ui::{
     ColorToken, Hue,
-    Shade::{S325, S375},
+    Scale::{S325, S375},
     UiExt,
 };
 
