@@ -39,7 +39,7 @@ message RegisterRecordingRequest {
     RecordingType typ = 3;
     // (optional) any additional metadata that should be associated with the recording
     // You can associate any arbtrirary number of columns with a specific recording
-    DataframePart additional_metadata = 4;
+    DataframePart metadata = 4;
 }
 
 // ---------------- UpdateCatalog  -----------------

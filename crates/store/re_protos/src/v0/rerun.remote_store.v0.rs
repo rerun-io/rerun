@@ -270,7 +270,7 @@ pub struct RegisterRecordingRequest {
     /// (optional) any additional metadata that should be associated with the recording
     /// You can associate any arbtrirary number of columns with a specific recording
     #[prost(message, optional, tag = "4")]
-    pub additional_metadata: ::core::option::Option<DataframePart>,
+    pub metadata: ::core::option::Option<DataframePart>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UpdateCatalogRequest {
