@@ -1025,28 +1025,6 @@ impl RecordingStream {
 
         let components: ChunkComponents = components?.into_iter().collect();
 
-        {
-            let mut all_lengths =
-                timelines
-                    .values()
-                    .map(|timeline| (timeline.name(), timeline.num_rows()))
-                    .chain(components.iter_flattened().map(|(descr, list_array)| {
-                        (descr.component_name.as_str(), list_array.len())
-                    }));
-
-            if let Some((_, expected)) = all_lengths.next() {
-                for (name, len) in all_lengths {
-                    if len != expected {
-                        return Err(RecordingStreamError::Chunk(ChunkError::Malformed {
-                            reason: format!(
-                                "Mismatched lengths: '{name}' has length {len} but expected {expected}",
-                            ),
-                        }));
-                    }
-                }
-            }
-        }
-
         let chunk = Chunk::from_auto_row_ids(id, ent_path.into(), timelines, components)?;
 
         self.send_chunk(chunk);
