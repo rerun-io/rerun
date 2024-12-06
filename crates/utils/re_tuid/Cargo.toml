@@ -27,6 +27,8 @@ serde = ["dep:serde"]
 
 
 [dependencies]
+re_protos.workspace = true
+
 document-features.workspace = true
 getrandom.workspace = true
 once_cell.workspace = true

@@ -8,6 +8,8 @@ pub use decoder::VersionPolicy;
 #[cfg(feature = "encoder")]
 pub mod encoder;
 
+mod protobuf;
+
 pub mod codec;
 
 #[cfg(feature = "encoder")]
@@ -26,7 +28,7 @@ pub use file_sink::{FileSink, FileSinkError};
 // ----------------------------------------------------------------------------
 
 #[cfg(any(feature = "encoder", feature = "decoder"))]
-const RRD_HEADER: &[u8; 4] = b"RRF3";
+const RRD_HEADER: &[u8; 4] = b"RRIO";
 
 #[cfg(feature = "decoder")]
 const OLD_RRD_HEADERS: &[[u8; 4]] = &[*b"RRF0", *b"RRF1", *b"RRF2"];
@@ -67,7 +69,7 @@ impl EncodingOptions {
         serializer: Serializer::MsgPack,
     };
     pub const PROTOBUF: Self = Self {
-        compression: Compression::Off,
+        compression: Compression::LZ4,
         serializer: Serializer::Protobuf,
     };
 

@@ -450,14 +450,19 @@ impl std::str::FromStr for PythonVersion {
 pub enum PythonVersionParseError {
     #[error("missing major version")]
     MissingMajor,
+
     #[error("missing minor version")]
     MissingMinor,
+
     #[error("missing patch version")]
     MissingPatch,
+
     #[error("invalid major version")]
     InvalidMajor,
+
     #[error("invalid minor version")]
     InvalidMinor,
+
     #[error("invalid patch version")]
     InvalidPatch,
 }

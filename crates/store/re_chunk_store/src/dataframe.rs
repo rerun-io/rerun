@@ -477,17 +477,33 @@ impl std::fmt::Display for SparseFillStrategy {
 #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ViewContentsSelector(pub BTreeMap<EntityPath, Option<BTreeSet<ComponentName>>>);
 
+impl ViewContentsSelector {
+    pub fn into_inner(self) -> BTreeMap<EntityPath, Option<BTreeSet<ComponentName>>> {
+        self.0
+    }
+}
+
 impl Deref for ViewContentsSelector {
     type Target = BTreeMap<EntityPath, Option<BTreeSet<ComponentName>>>;
 
+    #[inline]
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
 impl DerefMut for ViewContentsSelector {
+    #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
+    }
+}
+
+impl FromIterator<(EntityPath, Option<BTreeSet<ComponentName>>)> for ViewContentsSelector {
+    fn from_iter<T: IntoIterator<Item = (EntityPath, Option<BTreeSet<ComponentName>>)>>(
+        iter: T,
+    ) -> Self {
+        Self(iter.into_iter().collect())
     }
 }
 

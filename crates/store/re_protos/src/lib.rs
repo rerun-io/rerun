@@ -62,6 +62,13 @@ pub enum TypeConversionError {
         field_name: &'static str,
     },
 
+    #[error("invalid value for field {type_name}.{field_name}: {reason}")]
+    InvalidField {
+        type_name: &'static str,
+        field_name: &'static str,
+        reason: String,
+    },
+
     #[error("failed to decode: {0}")]
     DecodeError(#[from] prost::DecodeError),
 

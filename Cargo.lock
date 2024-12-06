@@ -5780,6 +5780,7 @@ dependencies = [
 name = "re_grpc_client"
 version = "0.21.0-alpha.1+dev"
 dependencies = [
+ "re_arrow2",
  "re_chunk",
  "re_error",
  "re_log",
@@ -6467,6 +6468,7 @@ dependencies = [
  "document-features",
  "getrandom",
  "once_cell",
+ "re_protos",
  "serde",
  "web-time",
 ]

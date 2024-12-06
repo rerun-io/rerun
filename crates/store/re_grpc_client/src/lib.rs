@@ -9,7 +9,7 @@ pub use address::{Address, InvalidAddressError};
 use std::{error::Error, str::FromStr};
 
 use re_chunk::Chunk;
-use re_log_encoding::codec::{decode, CodecError};
+use re_log_encoding::codec::{self, CodecError};
 use re_log_types::{
     ApplicationId, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource, Time,
 };
@@ -193,7 +193,7 @@ async fn stream_recording_async(
     re_log::info!("Starting to read...");
     while let Some(result) = resp.next().await {
         let response = result.map_err(TonicStatusError)?;
-        let tc = decode(EncoderVersion::V0, &response.payload)?;
+        let tc = codec::wire::decode(EncoderVersion::V0, &response.payload)?;
 
         let Some(tc) = tc else {
             return Err(StreamError::MissingTransportChunk);

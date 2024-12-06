@@ -9,13 +9,14 @@ use pyo3::{exceptions::PyRuntimeError, prelude::*, types::PyDict, Bound, PyResul
 use re_chunk::{Chunk, TransportChunk};
 use re_chunk_store::ChunkStore;
 use re_dataframe::ChunkStoreHandle;
+use re_log_encoding::codec;
+use re_log_encoding::codec::wire::chunk_to_recording_metadata;
 use re_log_types::{StoreInfo, StoreSource};
 use re_protos::{
-    codec::decode,
-    v0::{
-        storage_node_client::StorageNodeClient, EncoderVersion, FetchRecordingRequest,
-        ListRecordingsRequest, RecordingId, RecordingMetadata, RecordingType,
-        RegisterRecordingRequest, UpdateRecordingMetadataRequest,
+    common::v0::{EncoderVersion, RecordingId},
+    remote_store::v0::{
+        storage_node_client::StorageNodeClient, FetchRecordingRequest, ListRecordingsRequest,
+        RecordingType, RegisterRecordingRequest, UpdateRecordingMetadataRequest,
     },
 };
 use re_sdk::{ApplicationId, StoreId, StoreKind, Time};
@@ -98,7 +99,7 @@ impl PyStorageNodeClient {
                 .into_inner()
                 .recordings
                 .into_iter()
-                .map(|recording| recording.data())
+                .map(|recording| codec::wire::recording_metadata_to_chunk(&recording))
                 .collect::<Result<Vec<_>, _>>()
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
@@ -178,7 +179,7 @@ impl PyStorageNodeClient {
                         data,
                     };
 
-                    RecordingMetadata::try_from(EncoderVersion::V0, &metadata_tc)
+                    chunk_to_recording_metadata(EncoderVersion::V0, &metadata_tc)
                         .map_err(|err| PyRuntimeError::new_err(err.to_string()))
                 })
                 .transpose()?;
@@ -244,7 +245,7 @@ impl PyStorageNodeClient {
                 data,
             };
 
-            let metadata = RecordingMetadata::try_from(EncoderVersion::V0, &metadata_tc)
+            let metadata = chunk_to_recording_metadata(EncoderVersion::V0, &metadata_tc)
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
             let request = UpdateRecordingMetadataRequest {
@@ -307,7 +308,7 @@ impl PyStorageNodeClient {
 
             while let Some(result) = resp.next().await {
                 let response = result.map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
-                let tc = decode(EncoderVersion::V0, &response.payload)
+                let tc = codec::wire::decode(EncoderVersion::V0, &response.payload)
                     .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
                 let Some(tc) = tc else {
