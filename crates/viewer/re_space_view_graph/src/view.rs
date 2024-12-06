@@ -6,7 +6,10 @@ use re_space_view::{
 use re_types::{
     blueprint::{
         self,
-        archetypes::{ForceLink, VisualBounds2D},
+        archetypes::{
+            ForceCenter, ForceCollisionRadius, ForceLink, ForceManyBody, ForcePosition,
+            VisualBounds2D,
+        },
     },
     SpaceViewClassIdentifier,
 };
@@ -16,11 +19,10 @@ use re_ui::{
     ModifiersMarkdown, MouseButtonMarkdown, UiExt as _,
 };
 use re_viewer_context::{
-    ComponentFallbackProvider, IdentifiedViewSystem as _, RecommendedSpaceView, SpaceViewClass,
-    SpaceViewClassLayoutPriority, SpaceViewClassRegistryError, SpaceViewId,
-    SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
-    SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery,
-    ViewerContext,
+    IdentifiedViewSystem as _, RecommendedSpaceView, SpaceViewClass, SpaceViewClassLayoutPriority,
+    SpaceViewClassRegistryError, SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState,
+    SpaceViewStateExt as _, SpaceViewSystemExecutionError, SpaceViewSystemRegistrator,
+    SystemExecutionOutput, ViewQuery, ViewerContext,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -136,6 +138,10 @@ Display a graph of nodes and edges.
         re_ui::list_item::list_item_scope(ui, "graph_selection_ui", |ui| {
             view_property_ui::<VisualBounds2D>(ctx, ui, space_view_id, self, state);
             view_property_ui::<ForceLink>(ctx, ui, space_view_id, self, state);
+            view_property_ui::<ForceManyBody>(ctx, ui, space_view_id, self, state);
+            view_property_ui::<ForcePosition>(ctx, ui, space_view_id, self, state);
+            view_property_ui::<ForceCenter>(ctx, ui, space_view_id, self, state);
+            view_property_ui::<ForceCollisionRadius>(ctx, ui, space_view_id, self, state);
         });
 
         Ok(())

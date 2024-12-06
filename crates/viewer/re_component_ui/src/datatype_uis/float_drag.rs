@@ -102,6 +102,19 @@ pub fn edit_f64_zero_to_max(
     edit_f64_float_raw_impl(ui, &mut value, 0.0..=f64::MAX)
 }
 
+/// Generic editor for a [`re_types::datatypes::Float64`] value from min to max float.
+pub fn edit_f64_min_to_max_float(
+    _ctx: &re_viewer_context::ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    value: &mut MaybeMutRef<'_, impl std::ops::DerefMut<Target = datatypes::Float64>>,
+) -> egui::Response {
+    let mut value: MaybeMutRef<'_, f64> = match value {
+        MaybeMutRef::Ref(value) => MaybeMutRef::Ref(value),
+        MaybeMutRef::MutRef(value) => MaybeMutRef::MutRef(&mut value.deref_mut().0),
+    };
+    edit_f64_float_raw_impl(ui, &mut value, f64::MIN..=f64::MAX)
+}
+
 /// Non monomorphized implementation for f64 float editing.
 pub fn edit_f64_float_raw_impl(
     ui: &mut egui::Ui,

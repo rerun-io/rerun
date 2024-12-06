@@ -99,43 +99,47 @@ impl LayoutState {
     }
 
     /// A simple state machine that keeps track of the different stages and if the layout needs to be recomputed.
-    fn update(self, new_request: LayoutRequest, params: ForceLayoutParams) -> Self {
+    fn update(self, new_request: LayoutRequest, new_params: ForceLayoutParams) -> Self {
         match self {
             // Layout is up to date, nothing to do here.
-            Self::Finished { ref provider, .. } if provider.request == new_request => {
+            Self::Finished {
+                ref provider,
+                ref params,
+                ..
+            } if (provider.request == new_request) && (params == &new_params) => {
                 self // no op
             }
             // We need to recompute the layout.
             Self::None => {
-                let mut provider = ForceLayoutProvider::new(new_request, &params);
+                let mut provider = ForceLayoutProvider::new(new_request, &new_params);
                 let layout = provider.tick();
                 Self::InProgress {
                     layout,
                     provider,
-                    params,
+                    params: new_params,
                 }
             }
             Self::Finished { layout, .. } => {
                 let mut provider =
-                    ForceLayoutProvider::new_with_previous(new_request, &layout, &params);
+                    ForceLayoutProvider::new_with_previous(new_request, &layout, &new_params);
                 let layout = provider.tick();
                 Self::InProgress {
                     layout,
                     provider,
-                    params,
+                    params: new_params,
                 }
             }
             Self::InProgress {
                 layout, provider, ..
             } if provider.request != new_request => {
                 let mut provider =
-                    ForceLayoutProvider::new_with_previous(new_request, &layout, &params);
+                    ForceLayoutProvider::new_with_previous(new_request, &layout, &new_params);
                 let layout = provider.tick();
 
                 Self::InProgress {
                     layout,
                     provider,
-                    params,
+                    params: new_params,
                 }
             }
             // We keep iterating on the layout until it is stable.
@@ -143,26 +147,26 @@ impl LayoutState {
                 mut provider,
                 layout,
                 params: old_params,
-            } => match (provider.is_finished(), params == old_params) {
+            } => match (provider.is_finished(), new_params == old_params) {
                 (true, true) => Self::Finished {
                     layout,
                     provider,
-                    params,
+                    params: new_params,
                 },
                 (false, true) => Self::InProgress {
                     layout: provider.tick(),
                     provider,
-                    params,
+                    params: new_params,
                 },
                 _ => {
                     let mut provider =
-                        ForceLayoutProvider::new_with_previous(new_request, &layout, &params);
+                        ForceLayoutProvider::new_with_previous(new_request, &layout, &new_params);
                     let layout = provider.tick();
 
                     Self::InProgress {
                         layout,
                         provider,
-                        params,
+                        params: new_params,
                     }
                 }
             },

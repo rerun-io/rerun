@@ -27,9 +27,9 @@ mod zoom_level;
 
 use datatype_uis::{
     display_name_ui, display_text_ui, edit_bool, edit_f32_min_to_max_float, edit_f32_zero_to_max,
-    edit_f32_zero_to_one, edit_f64_zero_to_max, edit_multiline_string, edit_or_view_vec3d,
-    edit_singleline_string, edit_view_enum, edit_view_enum_with_variant_available,
-    edit_view_range1d, view_uuid, view_view_id,
+    edit_f32_zero_to_one, edit_f64_min_to_max_float, edit_f64_zero_to_max, edit_multiline_string,
+    edit_or_view_vec3d, edit_singleline_string, edit_view_enum,
+    edit_view_enum_with_variant_available, edit_view_range1d, view_uuid, view_view_id,
 };
 
 use re_types::{
@@ -72,7 +72,6 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     registry.add_singleline_edit_or_view::<DepthMeter>(edit_f32_zero_to_max);
     registry.add_singleline_edit_or_view::<FillRatio>(edit_f32_zero_to_max);
     registry.add_singleline_edit_or_view::<ForceDistance>(edit_f64_zero_to_max);
-    registry.add_singleline_edit_or_view::<ForceStrength>(edit_f64_zero_to_max);
     registry.add_singleline_edit_or_view::<GammaCorrection>(edit_f32_zero_to_max);
     registry.add_singleline_edit_or_view::<ImagePlaneDistance>(edit_f32_zero_to_max);
     registry.add_singleline_edit_or_view::<MarkerSize>(edit_f32_zero_to_max);
@@ -81,6 +80,7 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
 
     // float min-max components:
     registry.add_singleline_edit_or_view::<DrawOrder>(edit_f32_min_to_max_float);
+    registry.add_singleline_edit_or_view::<ForceStrength>(edit_f64_min_to_max_float);
 
     // float 0-1 components:
     registry.add_singleline_edit_or_view::<Opacity>(edit_f32_zero_to_one);
