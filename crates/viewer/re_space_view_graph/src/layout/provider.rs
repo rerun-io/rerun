@@ -92,19 +92,19 @@ impl ForceLayoutProvider {
     }
 
     fn layout(&self) -> Layout {
+        let mut layout = Layout::empty();
+
         // We make use of the fact here that the simulation is stable, i.e. the
         // order of the nodes is the same as in the request.
-        let mut i = 0..;
         let positions = self.simulation.positions().collect::<Vec<_>>();
-
-        let mut layout = Layout::empty();
+        let mut graph_offset = 0;
 
         for (entity, graph) in &self.request.graphs {
             let mut current_rect = Rect::NOTHING;
 
-            for (node, template) in &graph.nodes {
-                let i = i.next().expect("can never happen");
-                let [x, y] = positions[i];
+            for ((node, template), &[x, y]) in
+                graph.nodes.iter().zip(positions[graph_offset..].iter())
+            {
                 let pos = Pos2::new(x as f32, y as f32);
                 let extent = Rect::from_center_size(pos, template.size);
                 current_rect = current_rect.union(extent);
@@ -219,6 +219,7 @@ impl ForceLayoutProvider {
                     }
                 }
             }
+            graph_offset += graph.nodes.len();
         }
 
         layout
