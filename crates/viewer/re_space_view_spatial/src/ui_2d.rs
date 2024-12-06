@@ -184,11 +184,14 @@ impl SpatialSpaceView2D {
             fov_y: None,
         };
 
+        // Don't let clipping plane become zero
+        let clipping_plane = f32::max(f32::MIN_POSITIVE, *clipping_plane.0);
+
         let scene_bounds = *scene_from_ui.to();
         let Ok(target_config) = setup_target_config(
             &painter,
             scene_bounds,
-            *clipping_plane.0,
+            clipping_plane,
             &query.space_origin.to_string(),
             query.highlights.any_outlines(),
             &state.pinhole_at_origin,
