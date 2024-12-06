@@ -19,6 +19,15 @@ fn bounding_rect_from_iter(rectangles: impl Iterator<Item = egui::Rect>) -> egui
 }
 
 impl Layout {
+    /// Creates an empty layout
+    pub fn empty() -> Self {
+        Self {
+            nodes: ahash::HashMap::default(),
+            edges: ahash::HashMap::default(),
+            entities: Vec::new(),
+        }
+    }
+
     /// Returns the bounding rectangle of the layout.
     pub fn bounding_rect(&self) -> Rect {
         // TODO(grtlr): We mostly use this for debugging, but we should probably
