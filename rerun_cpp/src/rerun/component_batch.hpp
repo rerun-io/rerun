@@ -2,6 +2,7 @@
 
 #include <memory> // shared_ptr
 #include <optional>
+#include <unordered_map>
 
 #include "collection.hpp"
 #include "component_descriptor.hpp"
@@ -48,10 +49,27 @@ namespace rerun {
                 "The given type does not implement the rerun::Loggable trait."
             );
 
-            // Register type, only done once per type (but error check happens every time).
-            static const Result<ComponentTypeHandle> component_type =
-                ComponentType(descriptor, Loggable<T>::arrow_datatype()).register_component();
-            RR_RETURN_NOT_OK(component_type.error);
+            // The template is over the `Loggable` itself, but a single `Loggable` might have any number of
+            // descriptors/tags associated with it, therefore a static `ComponentTypeHandle` is not enough,
+            // we need a map.
+            static std::unordered_map<ComponentDescriptorHash, ComponentTypeHandle>
+                comp_types_per_descr;
+
+            ComponentTypeHandle comp_type_handle;
+
+            auto search = comp_types_per_descr.find(2);
+            if (search != comp_types_per_descr.end()) {
+                comp_type_handle = search->second;
+            } else {
+                auto comp_type = ComponentType(descriptor, Loggable<T>::arrow_datatype());
+
+                const Result<ComponentTypeHandle> comp_type_handle_result =
+                    comp_type.register_component();
+                RR_RETURN_NOT_OK(comp_type_handle_result.error);
+
+                comp_type_handle = comp_type_handle_result.value;
+                comp_types_per_descr.insert({descriptor.hashed(), comp_type_handle});
+            }
 
             /// TODO(#4257) should take a rerun::Collection instead of pointer and size.
             auto array = Loggable<T>::to_arrow(components.data(), components.size());
@@ -59,7 +77,7 @@ namespace rerun {
 
             ComponentBatch component_batch;
             component_batch.array = std::move(array.value);
-            component_batch.component_type = component_type.value;
+            component_batch.component_type = comp_type_handle;
             return component_batch;
         }
 
