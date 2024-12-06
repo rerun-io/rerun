@@ -9,7 +9,6 @@ mod space_view_space_origin_ui;
 mod visible_time_range_ui;
 mod visualizer_ui;
 
-pub use item_title::ItemTitle;
 pub use selection_panel::SelectionPanel;
 
 #[cfg(test)]

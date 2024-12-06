@@ -20,7 +20,7 @@ use re_ui::{icons, list_item, DesignTokens, SyntaxHighlighting, UiExt as _};
 use re_viewer_context::{Contents, Item, SpaceViewId, ViewerContext};
 use re_viewport_blueprint::ViewportBlueprint;
 
-use crate::ItemTitle;
+use crate::item_title::ItemTitle;
 
 const ICON_SCALE: f32 = 0.5; // Because we save all icons as 2x
 
