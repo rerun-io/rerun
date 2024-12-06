@@ -51,6 +51,7 @@ sublime_fuzzy.workspace = true
 eframe = { workspace = true, default-features = false, features = ["wgpu"] }
 egui_tiles.workspace = true
 rand.workspace = true
+smallvec.workspace = true
 
 
 [dev-dependencies]

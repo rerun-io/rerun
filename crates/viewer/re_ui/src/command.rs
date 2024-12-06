@@ -1,4 +1,5 @@
 use egui::{os::OperatingSystem, Key, KeyboardShortcut, Modifiers};
+use smallvec::{smallvec, SmallVec};
 
 /// Interface for sending [`UICommand`] messages.
 pub trait UICommandSender {
@@ -260,7 +261,7 @@ impl UICommand {
     }
 
     /// All keyboard shortcuts, with the primary first.
-    pub fn kb_shortcuts(self, os: OperatingSystem) -> Vec<KeyboardShortcut> {
+    pub fn kb_shortcuts(self, os: OperatingSystem) -> SmallVec<[KeyboardShortcut; 2]> {
         fn key(key: Key) -> KeyboardShortcut {
             KeyboardShortcut::new(Modifiers::NONE, key)
         }
@@ -286,91 +287,91 @@ impl UICommand {
         }
 
         match self {
-            Self::SaveRecording => vec![cmd(Key::S)],
-            Self::SaveRecordingSelection => vec![cmd_alt(Key::S)],
-            Self::SaveBlueprint => vec![],
-            Self::Open => vec![cmd(Key::O)],
-            Self::Import => vec![cmd_shift(Key::O)],
-            Self::CloseCurrentRecording => vec![],
-            Self::CloseAllRecordings => vec![],
+            Self::SaveRecording => smallvec![cmd(Key::S)],
+            Self::SaveRecordingSelection => smallvec![cmd_alt(Key::S)],
+            Self::SaveBlueprint => smallvec![],
+            Self::Open => smallvec![cmd(Key::O)],
+            Self::Import => smallvec![cmd_shift(Key::O)],
+            Self::CloseCurrentRecording => smallvec![],
+            Self::CloseAllRecordings => smallvec![],
 
-            Self::Undo => vec![cmd(Key::Z)],
+            Self::Undo => smallvec![cmd(Key::Z)],
             Self::Redo => {
                 if os == OperatingSystem::Mac {
-                    vec![cmd_shift(Key::Z), cmd(Key::Y)]
+                    smallvec![cmd_shift(Key::Z), cmd(Key::Y)]
                 } else {
-                    vec![ctrl(Key::Y), ctrl_shift(Key::Z)]
+                    smallvec![ctrl(Key::Y), ctrl_shift(Key::Z)]
                 }
             }
 
             #[cfg(all(not(target_arch = "wasm32"), target_os = "windows"))]
-            Self::Quit => vec![KeyboardShortcut::new(Modifiers::ALT, Key::F4)],
+            Self::Quit => smallvec![KeyboardShortcut::new(Modifiers::ALT, Key::F4)],
 
-            Self::OpenWebHelp => vec![],
-            Self::OpenRerunDiscord => vec![],
+            Self::OpenWebHelp => smallvec![],
+            Self::OpenRerunDiscord => smallvec![],
 
             #[cfg(all(not(target_arch = "wasm32"), not(target_os = "windows")))]
-            Self::Quit => vec![cmd(Key::Q)],
+            Self::Quit => smallvec![cmd(Key::Q)],
 
-            Self::ResetViewer => vec![ctrl_shift(Key::R)],
-            Self::ClearAndGenerateBlueprint => vec![],
+            Self::ResetViewer => smallvec![ctrl_shift(Key::R)],
+            Self::ClearAndGenerateBlueprint => smallvec![],
 
             #[cfg(not(target_arch = "wasm32"))]
-            Self::OpenProfiler => vec![ctrl_shift(Key::P)],
-            Self::ToggleMemoryPanel => vec![ctrl_shift(Key::M)],
-            Self::TogglePanelStateOverrides => vec![],
-            Self::ToggleTopPanel => vec![],
-            Self::ToggleBlueprintPanel => vec![ctrl_shift(Key::B)],
-            Self::ToggleSelectionPanel => vec![ctrl_shift(Key::S)],
-            Self::ToggleTimePanel => vec![ctrl_shift(Key::T)],
-            Self::ToggleChunkStoreBrowser => vec![ctrl_shift(Key::D)],
-            Self::Settings => vec![cmd(Key::Comma)],
+            Self::OpenProfiler => smallvec![ctrl_shift(Key::P)],
+            Self::ToggleMemoryPanel => smallvec![ctrl_shift(Key::M)],
+            Self::TogglePanelStateOverrides => smallvec![],
+            Self::ToggleTopPanel => smallvec![],
+            Self::ToggleBlueprintPanel => smallvec![ctrl_shift(Key::B)],
+            Self::ToggleSelectionPanel => smallvec![ctrl_shift(Key::S)],
+            Self::ToggleTimePanel => smallvec![ctrl_shift(Key::T)],
+            Self::ToggleChunkStoreBrowser => smallvec![ctrl_shift(Key::D)],
+            Self::Settings => smallvec![cmd(Key::Comma)],
 
             #[cfg(debug_assertions)]
-            Self::ToggleBlueprintInspectionPanel => vec![ctrl_shift(Key::I)],
+            Self::ToggleBlueprintInspectionPanel => smallvec![ctrl_shift(Key::I)],
 
             #[cfg(debug_assertions)]
-            Self::ToggleEguiDebugPanel => vec![ctrl_shift(Key::U)],
+            Self::ToggleEguiDebugPanel => smallvec![ctrl_shift(Key::U)],
 
             #[cfg(not(target_arch = "wasm32"))]
-            Self::ToggleFullscreen => vec![key(Key::F11)],
+            Self::ToggleFullscreen => smallvec![key(Key::F11)],
             #[cfg(target_arch = "wasm32")]
-            Self::ToggleFullscreen => vec![],
+            Self::ToggleFullscreen => smallvec![],
 
             #[cfg(not(target_arch = "wasm32"))]
-            Self::ZoomIn => vec![egui::gui_zoom::kb_shortcuts::ZOOM_IN],
+            Self::ZoomIn => smallvec![egui::gui_zoom::kb_shortcuts::ZOOM_IN],
             #[cfg(not(target_arch = "wasm32"))]
-            Self::ZoomOut => vec![egui::gui_zoom::kb_shortcuts::ZOOM_OUT],
+            Self::ZoomOut => smallvec![egui::gui_zoom::kb_shortcuts::ZOOM_OUT],
             #[cfg(not(target_arch = "wasm32"))]
-            Self::ZoomReset => vec![egui::gui_zoom::kb_shortcuts::ZOOM_RESET],
+            Self::ZoomReset => smallvec![egui::gui_zoom::kb_shortcuts::ZOOM_RESET],
 
-            Self::ToggleCommandPalette => vec![cmd(Key::P)],
+            Self::ToggleCommandPalette => smallvec![cmd(Key::P)],
 
-            Self::PlaybackTogglePlayPause => vec![key(Key::Space)],
-            Self::PlaybackFollow => vec![cmd(Key::ArrowRight)],
-            Self::PlaybackStepBack => vec![key(Key::ArrowLeft)],
-            Self::PlaybackStepForward => vec![key(Key::ArrowRight)],
-            Self::PlaybackRestart => vec![cmd(Key::ArrowLeft)],
+            Self::PlaybackTogglePlayPause => smallvec![key(Key::Space)],
+            Self::PlaybackFollow => smallvec![cmd(Key::ArrowRight)],
+            Self::PlaybackStepBack => smallvec![key(Key::ArrowLeft)],
+            Self::PlaybackStepForward => smallvec![key(Key::ArrowRight)],
+            Self::PlaybackRestart => smallvec![cmd(Key::ArrowLeft)],
 
             #[cfg(not(target_arch = "wasm32"))]
-            Self::ScreenshotWholeApp => vec![],
+            Self::ScreenshotWholeApp => smallvec![],
             #[cfg(not(target_arch = "wasm32"))]
-            Self::PrintChunkStore => vec![],
+            Self::PrintChunkStore => smallvec![],
             #[cfg(not(target_arch = "wasm32"))]
-            Self::PrintBlueprintStore => vec![],
+            Self::PrintBlueprintStore => smallvec![],
             #[cfg(not(target_arch = "wasm32"))]
-            Self::PrintPrimaryCache => vec![],
+            Self::PrintPrimaryCache => smallvec![],
 
             #[cfg(debug_assertions)]
-            Self::ResetEguiMemory => vec![],
+            Self::ResetEguiMemory => smallvec![],
 
             #[cfg(target_arch = "wasm32")]
-            Self::CopyDirectLink => vec![],
+            Self::CopyDirectLink => smallvec![],
 
             #[cfg(target_arch = "wasm32")]
-            Self::RestartWithWebGl => vec![],
+            Self::RestartWithWebGl => smallvec![],
             #[cfg(target_arch = "wasm32")]
-            Self::RestartWithWebGpu => vec![],
+            Self::RestartWithWebGpu => smallvec![],
         }
     }
 
