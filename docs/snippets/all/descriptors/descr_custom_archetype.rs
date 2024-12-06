@@ -62,15 +62,15 @@ impl CustomPoints3D {
 }
 
 impl rerun::AsComponents for CustomPoints3D {
-    fn as_component_batches(&self) -> Vec<rerun::MaybeOwnedComponentBatch<'_>> {
+    fn as_component_batches(&self) -> Vec<rerun::ComponentBatchCowWithDescriptor<'_>> {
         [
             Some(Self::indicator().to_batch()),
             Some(
-                rerun::MaybeOwnedComponentBatch::new(&self.positions as &dyn rerun::ComponentBatch)
+                rerun::ComponentBatchCowWithDescriptor::new(&self.positions as &dyn rerun::ComponentBatch)
                     .with_descriptor_override(Self::overridden_position_descriptor()),
             ),
             self.colors.as_ref().map(|colors| {
-                rerun::MaybeOwnedComponentBatch::new(colors as &dyn rerun::ComponentBatch)
+                rerun::ComponentBatchCowWithDescriptor::new(colors as &dyn rerun::ComponentBatch)
                     .with_descriptor_override(Self::overridden_color_descriptor())
             }),
         ]

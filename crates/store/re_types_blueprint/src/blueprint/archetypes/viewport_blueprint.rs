@@ -14,7 +14,7 @@
 
 use ::re_types_core::external::arrow2;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
@@ -151,9 +151,9 @@ impl ::re_types_core::Archetype for ViewportBlueprint {
     }
 
     #[inline]
-    fn indicator() -> MaybeOwnedComponentBatch<'static> {
+    fn indicator() -> ComponentBatchCowWithDescriptor<'static> {
         static INDICATOR: ViewportBlueprintIndicator = ViewportBlueprintIndicator::DEFAULT;
-        MaybeOwnedComponentBatch::new(&INDICATOR as &dyn ::re_types_core::ComponentBatch)
+        ComponentBatchCowWithDescriptor::new(&INDICATOR as &dyn ::re_types_core::ComponentBatch)
     }
 
     #[inline]
@@ -256,7 +256,7 @@ impl ::re_types_core::Archetype for ViewportBlueprint {
 }
 
 impl ::re_types_core::AsComponents for ViewportBlueprint {
-    fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>> {
+    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
         re_tracing::profile_function!();
         use ::re_types_core::Archetype as _;
         [
@@ -265,7 +265,7 @@ impl ::re_types_core::AsComponents for ViewportBlueprint {
                 .root_container
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
                 descriptor_override: Some(ComponentDescriptor {
                     archetype_name: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
@@ -277,7 +277,7 @@ impl ::re_types_core::AsComponents for ViewportBlueprint {
                 .maximized
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
                 descriptor_override: Some(ComponentDescriptor {
                     archetype_name: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
@@ -289,7 +289,7 @@ impl ::re_types_core::AsComponents for ViewportBlueprint {
                 .auto_layout
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
                 descriptor_override: Some(ComponentDescriptor {
                     archetype_name: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
@@ -301,7 +301,7 @@ impl ::re_types_core::AsComponents for ViewportBlueprint {
                 .auto_space_views
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
                 descriptor_override: Some(ComponentDescriptor {
                     archetype_name: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
@@ -313,7 +313,7 @@ impl ::re_types_core::AsComponents for ViewportBlueprint {
                 .past_viewer_recommendations
                 .as_ref()
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
                 descriptor_override: Some(ComponentDescriptor {
                     archetype_name: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),

@@ -14,7 +14,7 @@
 
 use ::re_types_core::external::arrow2;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
@@ -209,9 +209,9 @@ impl ::re_types_core::Archetype for InstancePoses3D {
     }
 
     #[inline]
-    fn indicator() -> MaybeOwnedComponentBatch<'static> {
+    fn indicator() -> ComponentBatchCowWithDescriptor<'static> {
         static INDICATOR: InstancePoses3DIndicator = InstancePoses3DIndicator::DEFAULT;
-        MaybeOwnedComponentBatch::new(&INDICATOR as &dyn ::re_types_core::ComponentBatch)
+        ComponentBatchCowWithDescriptor::new(&INDICATOR as &dyn ::re_types_core::ComponentBatch)
     }
 
     #[inline]
@@ -319,7 +319,7 @@ impl ::re_types_core::Archetype for InstancePoses3D {
 }
 
 impl ::re_types_core::AsComponents for InstancePoses3D {
-    fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>> {
+    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
         re_tracing::profile_function!();
         use ::re_types_core::Archetype as _;
         [
@@ -328,7 +328,7 @@ impl ::re_types_core::AsComponents for InstancePoses3D {
                 .translations
                 .as_ref()
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
                 descriptor_override: Some(ComponentDescriptor {
                     archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
@@ -340,7 +340,7 @@ impl ::re_types_core::AsComponents for InstancePoses3D {
                 .rotation_axis_angles
                 .as_ref()
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
                 descriptor_override: Some(ComponentDescriptor {
                     archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
@@ -352,7 +352,7 @@ impl ::re_types_core::AsComponents for InstancePoses3D {
                 .quaternions
                 .as_ref()
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
                 descriptor_override: Some(ComponentDescriptor {
                     archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
@@ -364,7 +364,7 @@ impl ::re_types_core::AsComponents for InstancePoses3D {
                 .scales
                 .as_ref()
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
                 descriptor_override: Some(ComponentDescriptor {
                     archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
@@ -376,7 +376,7 @@ impl ::re_types_core::AsComponents for InstancePoses3D {
                 .mat3x3
                 .as_ref()
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
                 descriptor_override: Some(ComponentDescriptor {
                     archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),

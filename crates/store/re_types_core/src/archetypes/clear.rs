@@ -14,7 +14,7 @@
 
 use crate::external::arrow2;
 use crate::SerializationResult;
-use crate::{ComponentBatch, MaybeOwnedComponentBatch};
+use crate::{ComponentBatch, ComponentBatchCowWithDescriptor};
 use crate::{ComponentDescriptor, ComponentName};
 use crate::{DeserializationError, DeserializationResult};
 
@@ -137,9 +137,9 @@ impl crate::Archetype for Clear {
     }
 
     #[inline]
-    fn indicator() -> MaybeOwnedComponentBatch<'static> {
+    fn indicator() -> ComponentBatchCowWithDescriptor<'static> {
         static INDICATOR: ClearIndicator = ClearIndicator::DEFAULT;
-        MaybeOwnedComponentBatch::new(&INDICATOR as &dyn crate::ComponentBatch)
+        ComponentBatchCowWithDescriptor::new(&INDICATOR as &dyn crate::ComponentBatch)
     }
 
     #[inline]
@@ -190,13 +190,13 @@ impl crate::Archetype for Clear {
 }
 
 impl crate::AsComponents for Clear {
-    fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>> {
+    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
         re_tracing::profile_function!();
         use crate::Archetype as _;
         [
             Some(Self::indicator()),
             (Some(&self.is_recursive as &dyn ComponentBatch)).map(|batch| {
-                crate::MaybeOwnedComponentBatch {
+                crate::ComponentBatchCowWithDescriptor {
                     batch: batch.into(),
                     descriptor_override: Some(ComponentDescriptor {
                         archetype_name: Some("rerun.archetypes.Clear".into()),

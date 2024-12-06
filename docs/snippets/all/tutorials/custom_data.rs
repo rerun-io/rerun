@@ -18,7 +18,7 @@ struct CustomPoints3D {
 }
 
 impl rerun::AsComponents for CustomPoints3D {
-    fn as_component_batches(&self) -> Vec<rerun::MaybeOwnedComponentBatch<'_>> {
+    fn as_component_batches(&self) -> Vec<rerun::ComponentBatchCowWithDescriptor<'_>> {
         let indicator = rerun::NamedIndicatorComponent("user.CustomPoints3DIndicator".into());
         self.points3d
             .as_component_batches()
@@ -27,7 +27,7 @@ impl rerun::AsComponents for CustomPoints3D {
                 [
                     Some(indicator.to_batch()),
                     self.confidences.as_ref().map(|batch| {
-                        rerun::MaybeOwnedComponentBatch::new(batch as &dyn rerun::ComponentBatch)
+                        rerun::ComponentBatchCowWithDescriptor::new(batch as &dyn rerun::ComponentBatch)
                             // Optionally override the descriptor with extra information.
                             .with_descriptor_override(
                                 batch

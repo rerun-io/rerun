@@ -14,7 +14,7 @@
 
 use ::re_types_core::external::arrow2;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
@@ -271,9 +271,9 @@ impl ::re_types_core::Archetype for AffixFuzzer3 {
     }
 
     #[inline]
-    fn indicator() -> MaybeOwnedComponentBatch<'static> {
+    fn indicator() -> ComponentBatchCowWithDescriptor<'static> {
         static INDICATOR: AffixFuzzer3Indicator = AffixFuzzer3Indicator::DEFAULT;
-        MaybeOwnedComponentBatch::new(&INDICATOR as &dyn ::re_types_core::ComponentBatch)
+        ComponentBatchCowWithDescriptor::new(&INDICATOR as &dyn ::re_types_core::ComponentBatch)
     }
 
     #[inline]
@@ -510,7 +510,7 @@ impl ::re_types_core::Archetype for AffixFuzzer3 {
 }
 
 impl ::re_types_core::AsComponents for AffixFuzzer3 {
-    fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>> {
+    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
         re_tracing::profile_function!();
         use ::re_types_core::Archetype as _;
         [
@@ -519,7 +519,7 @@ impl ::re_types_core::AsComponents for AffixFuzzer3 {
                 .fuzz2001
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
                 descriptor_override: Some(ComponentDescriptor {
                     archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
@@ -531,7 +531,7 @@ impl ::re_types_core::AsComponents for AffixFuzzer3 {
                 .fuzz2002
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
                 descriptor_override: Some(ComponentDescriptor {
                     archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
@@ -543,7 +543,7 @@ impl ::re_types_core::AsComponents for AffixFuzzer3 {
                 .fuzz2003
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
                 descriptor_override: Some(ComponentDescriptor {
                     archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
@@ -555,7 +555,7 @@ impl ::re_types_core::AsComponents for AffixFuzzer3 {
                 .fuzz2004
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
                 descriptor_override: Some(ComponentDescriptor {
                     archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
@@ -567,7 +567,7 @@ impl ::re_types_core::AsComponents for AffixFuzzer3 {
                 .fuzz2005
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
                 descriptor_override: Some(ComponentDescriptor {
                     archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
@@ -579,7 +579,7 @@ impl ::re_types_core::AsComponents for AffixFuzzer3 {
                 .fuzz2006
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
                 descriptor_override: Some(ComponentDescriptor {
                     archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
@@ -591,7 +591,7 @@ impl ::re_types_core::AsComponents for AffixFuzzer3 {
                 .fuzz2007
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
                 descriptor_override: Some(ComponentDescriptor {
                     archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
@@ -603,7 +603,7 @@ impl ::re_types_core::AsComponents for AffixFuzzer3 {
                 .fuzz2008
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
                 descriptor_override: Some(ComponentDescriptor {
                     archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
@@ -615,7 +615,7 @@ impl ::re_types_core::AsComponents for AffixFuzzer3 {
                 .fuzz2009
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
                 descriptor_override: Some(ComponentDescriptor {
                     archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
@@ -627,7 +627,7 @@ impl ::re_types_core::AsComponents for AffixFuzzer3 {
                 .fuzz2010
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
                 descriptor_override: Some(ComponentDescriptor {
                     archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
@@ -639,7 +639,7 @@ impl ::re_types_core::AsComponents for AffixFuzzer3 {
                 .fuzz2011
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
                 descriptor_override: Some(ComponentDescriptor {
                     archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
@@ -651,7 +651,7 @@ impl ::re_types_core::AsComponents for AffixFuzzer3 {
                 .fuzz2012
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
                 descriptor_override: Some(ComponentDescriptor {
                     archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
@@ -663,7 +663,7 @@ impl ::re_types_core::AsComponents for AffixFuzzer3 {
                 .fuzz2013
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
                 descriptor_override: Some(ComponentDescriptor {
                     archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
@@ -675,7 +675,7 @@ impl ::re_types_core::AsComponents for AffixFuzzer3 {
                 .fuzz2014
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
                 descriptor_override: Some(ComponentDescriptor {
                     archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
@@ -687,7 +687,7 @@ impl ::re_types_core::AsComponents for AffixFuzzer3 {
                 .fuzz2015
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
                 descriptor_override: Some(ComponentDescriptor {
                     archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
@@ -699,7 +699,7 @@ impl ::re_types_core::AsComponents for AffixFuzzer3 {
                 .fuzz2016
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
                 descriptor_override: Some(ComponentDescriptor {
                     archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
@@ -711,7 +711,7 @@ impl ::re_types_core::AsComponents for AffixFuzzer3 {
                 .fuzz2017
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
                 descriptor_override: Some(ComponentDescriptor {
                     archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
@@ -723,7 +723,7 @@ impl ::re_types_core::AsComponents for AffixFuzzer3 {
                 .fuzz2018
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
                 descriptor_override: Some(ComponentDescriptor {
                     archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),

@@ -185,7 +185,7 @@ fn generate_object_file(
     code.push_str("use ::re_types_core::SerializationResult;\n");
     code.push_str("use ::re_types_core::{DeserializationResult, DeserializationError};\n");
     code.push_str("use ::re_types_core::{ComponentDescriptor, ComponentName};\n");
-    code.push_str("use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};\n");
+    code.push_str("use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};\n");
 
     // NOTE: `TokenStream`s discard whitespacing information by definition, so we need to
     // inject some of our own when writing to file… while making sure that don't inject
@@ -1172,7 +1172,7 @@ fn quote_trait_impls_for_archetype(obj: &Object) -> TokenStream {
 
             quote! {
                 (#batch).map(|batch| {
-                    ::re_types_core::MaybeOwnedComponentBatch {
+                    ::re_types_core::ComponentBatchCowWithDescriptor {
                         batch: batch.into(),
                         descriptor_override: Some(ComponentDescriptor {
                             archetype_name: Some(#archetype_name.into()),
@@ -1299,9 +1299,9 @@ fn quote_trait_impls_for_archetype(obj: &Object) -> TokenStream {
             }
 
             #[inline]
-            fn indicator() -> MaybeOwnedComponentBatch<'static> {
+            fn indicator() -> ComponentBatchCowWithDescriptor<'static> {
                 static INDICATOR: #quoted_indicator_name = #quoted_indicator_name::DEFAULT;
-                MaybeOwnedComponentBatch::new(&INDICATOR as &dyn ::re_types_core::ComponentBatch)
+                ComponentBatchCowWithDescriptor::new(&INDICATOR as &dyn ::re_types_core::ComponentBatch)
             }
 
             #[inline]
@@ -1352,7 +1352,7 @@ fn quote_trait_impls_for_archetype(obj: &Object) -> TokenStream {
         }
 
         impl ::re_types_core::AsComponents for #name {
-            fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>> {
+            fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
                 re_tracing::profile_function!();
 
                 use ::re_types_core::Archetype as _;
