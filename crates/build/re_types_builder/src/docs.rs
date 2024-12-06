@@ -464,7 +464,7 @@ mod doclink_translation {
 
         fn test_objects() -> Objects {
             Objects {
-                objects: [(
+                objects: std::iter::once((
                     "rerun.views.Spatial2DView".to_owned(),
                     Object {
                         virtpath: "path".to_owned(),
@@ -479,8 +479,7 @@ mod doclink_translation {
                         class: crate::ObjectClass::Struct,
                         datatype: None,
                     },
-                )]
-                .into_iter()
+                ))
                 .collect(),
             }
         }
