@@ -19,6 +19,7 @@ include "./datatypes/keypoint_pair.fbs";
 include "./datatypes/mat3x3.fbs";
 include "./datatypes/mat4x4.fbs";
 include "./datatypes/pixel_format.fbs";
+include "./datatypes/plane3d.fbs";
 include "./datatypes/quaternion.fbs";
 include "./datatypes/range1d.fbs";
 include "./datatypes/range2d.fbs";

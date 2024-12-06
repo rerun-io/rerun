@@ -20,6 +20,7 @@ keypoint_pair.md linguist-generated=true
 mat3x3.md linguist-generated=true
 mat4x4.md linguist-generated=true
 pixel_format.md linguist-generated=true
+plane3d.md linguist-generated=true
 quaternion.md linguist-generated=true
 range1d.md linguist-generated=true
 range2d.md linguist-generated=true

@@ -5,6 +5,7 @@
 #include "blueprint/archetypes/background.hpp"
 #include "blueprint/archetypes/container_blueprint.hpp"
 #include "blueprint/archetypes/dataframe_query.hpp"
+#include "blueprint/archetypes/line_grid3d.hpp"
 #include "blueprint/archetypes/map_background.hpp"
 #include "blueprint/archetypes/map_zoom.hpp"
 #include "blueprint/archetypes/panel_blueprint.hpp"

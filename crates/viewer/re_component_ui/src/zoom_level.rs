@@ -1,4 +1,4 @@
-use re_types::datatypes;
+use re_types::blueprint::components::ZoomLevel;
 use re_viewer_context::MaybeMutRef;
 
 // TODO(#7876): move this to `re_space_view_map` when the crate is no longer behind a Cargo feature.
@@ -11,11 +11,11 @@ const MAX_ZOOM_LEVEL: f64 = 19.0;
 pub fn edit_zoom_level(
     _ctx: &re_viewer_context::ViewerContext<'_>,
     ui: &mut egui::Ui,
-    value: &mut MaybeMutRef<'_, impl std::ops::DerefMut<Target = datatypes::Float64>>,
+    value: &mut MaybeMutRef<'_, ZoomLevel>,
 ) -> egui::Response {
     let mut value: MaybeMutRef<'_, f64> = match value {
         MaybeMutRef::Ref(value) => MaybeMutRef::Ref(value),
-        MaybeMutRef::MutRef(value) => MaybeMutRef::MutRef(&mut value.deref_mut().0),
+        MaybeMutRef::MutRef(value) => MaybeMutRef::MutRef(&mut value.0),
     };
 
     super::datatype_uis::edit_f64_float_raw_with_speed_impl(
