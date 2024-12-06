@@ -5,7 +5,7 @@ use re_types::blueprint::{
 use re_viewer_context::{ComponentFallbackProvider, SpaceViewState, ViewQuery, ViewerContext};
 use re_viewport_blueprint::{ViewProperty, ViewPropertyQueryError};
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct ForceLayoutParams {
     pub(super) force_link_enabled: Enabled,
     pub(super) force_link_distance: ForceDistance,
