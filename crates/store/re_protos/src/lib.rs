@@ -7,7 +7,7 @@
 //!
 
 // This extra module is needed, because of how imports from different packages are resolved.
-// For example, `rerun.common.v0.EncoderVersion` is resolved to `super::super::common::v0::EncoderVersion`.
+// For example, `rerun.remote_store.v0.EncoderVersion` is resolved to `super::super::remote_store::v0::EncoderVersion`.
 // We need an extra module in the path to `common` to make that work.
 // Additionally, the `common` module itself has to exist with a `v0` module inside of it,
 // which is the reason for the `common`, `log_msg`, `remote_store`, etc. modules below.

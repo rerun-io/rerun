@@ -12,7 +12,7 @@ use itertools::Itertools;
 
 use re_chunk::TimelineName;
 use re_log_types::{ComponentPath, EntityPath, ResolvedTimeRange, TimeInt, Timeline};
-use re_types_core::{ArchetypeName, ComponentName, ComponentNameSet};
+use re_types_core::{ArchetypeName, ComponentName};
 
 use crate::{ChunkStore, ColumnMetadata};
 

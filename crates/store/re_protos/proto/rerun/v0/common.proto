@@ -193,10 +193,6 @@ message Time {
     int64 nanos_since_epoch = 1;
 }
 
-enum EncoderVersion {
-    V0 = 0;
-}
-
 message Tuid {
     // Approximate nanoseconds since epoch.
     fixed64 time_ns = 1;

@@ -9,13 +9,13 @@ use pyo3::{exceptions::PyRuntimeError, prelude::*, types::PyDict, Bound, PyResul
 use re_chunk::{Chunk, TransportChunk};
 use re_chunk_store::ChunkStore;
 use re_dataframe::ChunkStoreHandle;
+use re_log_encoding::codec::wire::{self, decode};
 use re_log_types::{StoreInfo, StoreSource};
 use re_protos::{
-    codec::decode,
-    v0::{
+    common::v0::RecordingId,
+    remote_store::v0::{
         storage_node_client::StorageNodeClient, EncoderVersion, FetchRecordingRequest,
-        QueryCatalogRequest, RecordingId, RecordingMetadata, RecordingType,
-        RegisterRecordingRequest, UpdateCatalogRequest,
+        QueryCatalogRequest, RecordingType, RegisterRecordingRequest, UpdateCatalogRequest,
     },
 };
 use re_sdk::{ApplicationId, StoreId, StoreKind, Time};
@@ -183,7 +183,7 @@ impl PyStorageNodeClient {
                         data,
                     };
 
-                    RecordingMetadata::try_from(EncoderVersion::V0, &metadata_tc)
+                    wire::chunk_to_recording_metadata(EncoderVersion::V0, &metadata_tc)
                         .map_err(|err| PyRuntimeError::new_err(err.to_string()))
                 })
                 .transpose()?;
@@ -249,7 +249,7 @@ impl PyStorageNodeClient {
                 data,
             };
 
-            let metadata = RecordingMetadata::try_from(EncoderVersion::V0, &metadata_tc)
+            let metadata = wire::chunk_to_recording_metadata(EncoderVersion::V0, &metadata_tc)
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
             let request = UpdateCatalogRequest {

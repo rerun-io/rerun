@@ -87,11 +87,11 @@ impl TransportMessageV0 {
 // to become stateful and keep track if schema was sent / received.
 /// Encode a transport chunk into a byte stream.
 pub fn encode(
-    version: re_protos::common::v0::EncoderVersion,
+    version: re_protos::remote_store::v0::EncoderVersion,
     chunk: TransportChunk,
 ) -> Result<Vec<u8>, CodecError> {
     match version {
-        re_protos::common::v0::EncoderVersion::V0 => {
+        re_protos::remote_store::v0::EncoderVersion::V0 => {
             TransportMessageV0::RecordBatch(chunk).to_bytes()
         }
     }
@@ -100,7 +100,7 @@ pub fn encode(
 /// Create `RecordingMetadata` from `TransportChunk`. We rely on `TransportChunk` until
 /// we migrate from arrow2 to arrow.
 pub fn chunk_to_recording_metadata(
-    version: re_protos::common::v0::EncoderVersion,
+    version: re_protos::remote_store::v0::EncoderVersion,
     metadata: &TransportChunk,
 ) -> Result<re_protos::remote_store::v0::RecordingMetadata, CodecError> {
     if metadata.data.len() != 1 {
@@ -111,7 +111,7 @@ pub fn chunk_to_recording_metadata(
     };
 
     match version {
-        re_protos::common::v0::EncoderVersion::V0 => {
+        re_protos::remote_store::v0::EncoderVersion::V0 => {
             let mut data: Vec<u8> = Vec::new();
             write_arrow_to_bytes(&mut data, &metadata.schema, &metadata.data)?;
 
@@ -129,11 +129,12 @@ pub fn recording_metadata_to_chunk(
 ) -> Result<TransportChunk, CodecError> {
     let mut reader = std::io::Cursor::new(metadata.payload.clone());
 
-    let encoder_version = re_protos::common::v0::EncoderVersion::try_from(metadata.encoder_version)
-        .map_err(|err| CodecError::InvalidArgument(err.to_string()))?;
+    let encoder_version =
+        re_protos::remote_store::v0::EncoderVersion::try_from(metadata.encoder_version)
+            .map_err(|err| CodecError::InvalidArgument(err.to_string()))?;
 
     match encoder_version {
-        re_protos::common::v0::EncoderVersion::V0 => {
+        re_protos::remote_store::v0::EncoderVersion::V0 => {
             let (schema, data) = read_arrow_from_bytes(&mut reader)?;
             Ok(TransportChunk { schema, data })
         }
@@ -174,19 +175,21 @@ pub fn recording_id(
 
 /// Encode a `NoData` message into a byte stream. This can be used by the remote store
 /// (i.e. data producer) to signal back to the client that there's no data available.
-pub fn no_data(version: re_protos::common::v0::EncoderVersion) -> Result<Vec<u8>, CodecError> {
+pub fn no_data(
+    version: re_protos::remote_store::v0::EncoderVersion,
+) -> Result<Vec<u8>, CodecError> {
     match version {
-        re_protos::common::v0::EncoderVersion::V0 => TransportMessageV0::NoData.to_bytes(),
+        re_protos::remote_store::v0::EncoderVersion::V0 => TransportMessageV0::NoData.to_bytes(),
     }
 }
 
 /// Decode transport data from a byte stream - if there's a record batch present, return it, otherwise return `None`.
 pub fn decode(
-    version: re_protos::common::v0::EncoderVersion,
+    version: re_protos::remote_store::v0::EncoderVersion,
     data: &[u8],
 ) -> Result<Option<TransportChunk>, CodecError> {
     match version {
-        re_protos::common::v0::EncoderVersion::V0 => {
+        re_protos::remote_store::v0::EncoderVersion::V0 => {
             let msg = TransportMessageV0::from_bytes(data)?;
             match msg {
                 TransportMessageV0::RecordBatch(chunk) => Ok(Some(chunk)),
@@ -255,7 +258,7 @@ mod tests {
     use crate::codec::wire::recording_metadata_to_chunk;
     use crate::codec::wire::{decode, encode, TransportMessageV0};
     use crate::codec::CodecError;
-    use re_protos::common::v0::EncoderVersion;
+    use re_protos::remote_store::v0::EncoderVersion;
 
     fn get_test_chunk() -> Chunk {
         let row_id1 = RowId::new();
