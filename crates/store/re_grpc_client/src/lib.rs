@@ -143,7 +143,23 @@ async fn stream_recording_async(
 ) -> Result<(), StreamError> {
     use tokio_stream::StreamExt as _;
 
-    let mut client = connect(redap_endpoint).await?;
+    re_log::debug!("Connecting to {redap_endpoint}…");
+    let mut client = {
+        #[cfg(target_arch = "wasm32")]
+        let tonic_client = tonic_web_wasm_client::Client::new_with_options(
+            http_addr,
+            tonic_web_wasm_client::options::FetchOptions::new()
+                .mode(tonic_web_wasm_client::options::Mode::Cors), // I'm not 100% sure this is needed, but it felt right.
+        );
+
+        #[cfg(not(target_arch = "wasm32"))]
+        let tonic_client = tonic::transport::Endpoint::new(redap_endpoint.to_string())?
+            .connect()
+            .await?;
+
+        StorageNodeClient::new(tonic_client)
+    };
+
     re_log::debug!("Fetching {recording_id}…");
 
     let mut resp = client
@@ -221,7 +237,23 @@ async fn stream_catalog_async(
 ) -> Result<(), StreamError> {
     use tokio_stream::StreamExt as _;
 
-    let mut client = connect(redap_endpoint).await?;
+    re_log::debug!("Connecting to {redap_endpoint}…");
+    let mut client = {
+        #[cfg(target_arch = "wasm32")]
+        let tonic_client = tonic_web_wasm_client::Client::new_with_options(
+            http_addr,
+            tonic_web_wasm_client::options::FetchOptions::new()
+                .mode(tonic_web_wasm_client::options::Mode::Cors), // I'm not 100% sure this is needed, but it felt right.
+        );
+
+        #[cfg(not(target_arch = "wasm32"))]
+        let tonic_client = tonic::transport::Endpoint::new(redap_endpoint.to_string())?
+            .connect()
+            .await?;
+
+        StorageNodeClient::new(tonic_client)
+    };
+
     re_log::debug!("Fetching catalog…");
 
     let mut resp = client
@@ -286,30 +318,4 @@ async fn stream_catalog_async(
     }
 
     Ok(())
-}
-
-/// Connect to a Rerun Data Platform gRPC server. We use different gRPC clients depending on the
-/// platform (web vs native).
-async fn connect(
-    redap_endpoint: Url,
-) -> Result<StorageNodeClient<tonic::transport::Channel>, StreamError> {
-    re_log::debug!("Connecting to {redap_endpoint}…");
-
-    let client = {
-        #[cfg(target_arch = "wasm32")]
-        let tonic_client = tonic_web_wasm_client::Client::new_with_options(
-            http_addr,
-            tonic_web_wasm_client::options::FetchOptions::new()
-                .mode(tonic_web_wasm_client::options::Mode::Cors), // I'm not 100% sure this is needed, but it felt right.
-        );
-
-        #[cfg(not(target_arch = "wasm32"))]
-        let tonic_client = tonic::transport::Endpoint::new(redap_endpoint.to_string())?
-            .connect()
-            .await?;
-
-        StorageNodeClient::new(tonic_client)
-    };
-
-    Ok(client)
 }
