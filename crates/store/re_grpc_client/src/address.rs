@@ -9,6 +9,7 @@ pub struct InvalidRedapAddress {
 }
 
 /// Parsed from `rerun://addr:port/recording/12345` or `rerun://addr:port/catalog`
+#[derive(PartialEq, Eq, Debug)]
 pub enum RedapAddress {
     Recording {
         redap_endpoint: Url,
@@ -43,12 +44,12 @@ impl std::fmt::Display for RedapAddress {
     }
 }
 
-impl TryFrom<String> for RedapAddress {
+impl TryFrom<&str> for RedapAddress {
     type Error = InvalidRedapAddress;
 
-    fn try_from(value: String) -> Result<Self, Self::Error> {
-        let url = Url::parse(&value).map_err(|err| InvalidRedapAddress {
-            url: value.clone(),
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        let url = Url::parse(value).map_err(|err| InvalidRedapAddress {
+            url: value.to_owned(),
             msg: err.to_string(),
         })?;
 
@@ -103,5 +104,59 @@ impl TryFrom<String> for RedapAddress {
                 recording_id: path_segments[1].to_owned(),
             })
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::RedapAddress;
+    use url::Url;
+
+    #[test]
+    fn test_recording_url_to_address() {
+        let url = "rerun://0.0.0.0:1234/recording/12345";
+        let address: RedapAddress = url.try_into().unwrap();
+        assert_eq!(
+            address,
+            RedapAddress::Recording {
+                redap_endpoint: Url::parse("http://0.0.0.0:1234").unwrap(),
+                recording_id: "12345".to_owned()
+            }
+        );
+    }
+
+    #[test]
+    fn test_catalog_url_to_address() {
+        let url = "rerun://127.0.0.1:50051/catalog";
+        let address: RedapAddress = url.try_into().unwrap();
+        assert_eq!(
+            address,
+            RedapAddress::Catalog {
+                redap_endpoint: Url::parse("http://127.0.0.1:50051").unwrap(),
+            }
+        );
+    }
+
+    #[test]
+    fn test_invalid_url() {
+        let url = "http://wrong-scheme:1234/recording/12345";
+        let address: Result<RedapAddress, _> = url.try_into();
+
+        assert!(matches!(
+            address.unwrap_err(),
+            super::InvalidRedapAddress { .. }
+        ));
+    }
+
+    #[test]
+    fn test_invalid_path() {
+        let url = "rerun://0.0.0.0:51234/redap/recordings/12345";
+        let address: Result<RedapAddress, _> = url.try_into();
+
+        assert!(matches!(
+            address.unwrap_err(),
+            super::InvalidRedapAddress { .. }
+        ));
     }
 }

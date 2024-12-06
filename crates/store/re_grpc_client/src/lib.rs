@@ -79,7 +79,7 @@ pub fn stream_from_redap(
 ) -> Result<re_smart_channel::Receiver<LogMsg>, InvalidRedapAddress> {
     re_log::debug!("Loading {url}…");
 
-    let address = url.clone().try_into()?;
+    let address = url.as_str().try_into()?;
 
     let (tx, rx) = re_smart_channel::smart_channel(
         re_smart_channel::SmartMessageSource::RerunGrpcStream { url: url.clone() },
