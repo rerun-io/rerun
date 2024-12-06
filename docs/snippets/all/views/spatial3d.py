@@ -27,7 +27,7 @@ blueprint = rrb.Blueprint(
             visible=True,  # The grid is enabled by default, but you can hide it with this property.
             spacing=0.1,  # Makes the grid more fine-grained.
             # By default, the plane is inferred from view coordinates setup, but you can set arbitrary planes.
-            plane=rr.components.Plane3D((0, 0, 1), -5.0),
+            plane=rr.components.Plane3D.XY.with_distance(-5.0),
             stroke_width=2.0,  # Makes the grid lines twice as thick as usual.
             color=[255, 255, 255, 128],  # Colors the grid a half-transparent white.
         ),
