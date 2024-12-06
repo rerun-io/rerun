@@ -105,36 +105,33 @@ impl LayoutState {
             }
             // We need to recompute the layout.
             Self::None => {
-                let provider = ForceLayoutProvider::new(new_request, params);
-                let layout = provider.init();
-
+                let mut provider = ForceLayoutProvider::new(new_request);
+                let layout = provider.tick();
                 Self::InProgress { layout, provider }
             }
             Self::Finished { layout, .. } => {
-                let mut provider =
-                    ForceLayoutProvider::new_with_previous(new_request, &layout, params);
-                let mut layout = provider.init();
-                provider.tick(&mut layout);
-
+                let mut provider = ForceLayoutProvider::new_with_previous(new_request, &layout);
+                let layout = provider.tick();
                 Self::InProgress { layout, provider }
             }
             Self::InProgress {
                 layout, provider, ..
             } if provider.request != new_request => {
-                let mut provider =
-                    ForceLayoutProvider::new_with_previous(new_request, &layout, params);
-                let mut layout = provider.init();
-                provider.tick(&mut layout);
+                let mut provider = ForceLayoutProvider::new_with_previous(new_request, &layout);
+                let layout = provider.tick();
 
                 Self::InProgress { layout, provider }
             }
             // We keep iterating on the layout until it is stable.
             Self::InProgress {
-                mut layout,
                 mut provider,
-            } => match provider.tick(&mut layout) {
+                layout,
+            } => match provider.is_finished() {
                 true => Self::Finished { layout, provider },
-                false => Self::InProgress { layout, provider },
+                false => Self::InProgress {
+                    layout: provider.tick(),
+                    provider,
+                },
             },
         }
     }

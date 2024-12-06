@@ -25,7 +25,7 @@ if __name__ == "__main__":
     # Register the new rrd
     conn = rr.remote.connect("http://0.0.0.0:51234")
 
-    catalog = pl.from_arrow(conn.list_recordings())
+    catalog = pl.from_arrow(conn.query_catalog())
 
     if args.subcommand == "print":
         print(catalog)
@@ -38,4 +38,4 @@ if __name__ == "__main__":
             exit(1)
         print(f"Updating metadata for {id}")
 
-        conn.update_metadata(id, {args.key: pa.array([args.value])})
+        conn.update_catalog(id, {args.key: pa.array([args.value])})

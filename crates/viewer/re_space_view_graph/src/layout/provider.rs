@@ -28,130 +28,86 @@ impl<'a> From<&'a NodeTemplate> for fj::Node {
 
 pub struct ForceLayoutProvider {
     simulation: fj::Simulation,
-    node_index: ahash::HashMap<NodeId, usize>,
     pub request: LayoutRequest,
 }
 
+fn considered_edges(request: &LayoutRequest) -> Vec<(usize, usize)> {
+    let node_index: ahash::HashMap<NodeId, usize> = request
+        .all_nodes()
+        .enumerate()
+        .map(|(i, (id, _))| (id, i))
+        .collect();
+    request
+        .all_edges()
+        .filter(|(id, _)| !id.is_self_edge())
+        .map(|(id, _)| (node_index[&id.source], node_index[&id.target]))
+        .collect()
+}
+
 impl ForceLayoutProvider {
-    pub fn new(request: LayoutRequest, parameters: ForceLayoutParams) -> Self {
-        Self::new_impl(request, None, parameters)
-    }
-
-    pub fn new_with_previous(
-        request: LayoutRequest,
-        layout: &Layout,
-        parameters: ForceLayoutParams,
-    ) -> Self {
-        Self::new_impl(request, Some(layout), parameters)
-    }
-
-    // TODO(grtlr): Consider consuming the old layout to avoid re-allocating the extents.
-    // That logic has to be revised when adding the blueprints anyways.
-    fn new_impl(
-        request: LayoutRequest,
-        layout: Option<&Layout>,
-        parameters: ForceLayoutParams,
-    ) -> Self {
-        let nodes = request.graphs.iter().flat_map(|(_, graph_template)| {
-            graph_template.nodes.iter().map(|n| {
-                let mut fj_node = fj::Node::from(n.1);
-                if let Some(rect) = layout.and_then(|l| l.get_node(n.0)) {
-                    let pos = rect.center();
-                    fj_node = fj_node.position(pos.x as f64, pos.y as f64);
-                }
-
-                (n.0, fj_node)
-            })
-        });
-
-        let mut node_index = ahash::HashMap::default();
-        let all_nodes: Vec<fj::Node> = nodes
-            .enumerate()
-            .map(|(i, n)| {
-                node_index.insert(*n.0, i);
-                n.1
-            })
-            .collect();
-
-        let all_edges_iter = request
-            .graphs
-            .iter()
-            .flat_map(|(_, graph_template)| graph_template.edges.iter());
+    pub fn new(request: LayoutRequest) -> Self {
+        let nodes = request.all_nodes().map(|(_, v)| fj::Node::from(v));
+        let edges = considered_edges(&request);
 
         // TODO(grtlr): Currently we guesstimate good forces. Eventually these should be exposed as blueprints.
         let mut simulation = fj::SimulationBuilder::default()
             .with_alpha_decay(0.01) // TODO(grtlr): slows down the simulation for demo
-            .build(all_nodes);
-
-        simulation = if **parameters.force_link_enabled {
-            // Looking at self-edges does not make sense in a force-based layout, so we filter those out.
-            let considered_edges = all_edges_iter
-                .clone()
-                .filter(|(id, _)| !id.is_self_edge())
-                .map(|(id, _)| (node_index[&id.source], node_index[&id.target]));
-
-            simulation.add_force(
-                "link",
-                fj::Link::new(considered_edges)
-                    .distance(parameters.force_link_distance.0 .0)
-                    .iterations(2),
-            )
-        } else {
-            simulation
-        }
-        .add_force("charge", fj::ManyBody::new())
-        // TODO(grtlr): This is a small stop-gap until we have blueprints to prevent nodes from flying away.
-        .add_force("x", fj::PositionX::new().strength(0.01))
-        .add_force("y", fj::PositionY::new().strength(0.01));
+            .build(nodes)
+            .add_force("link", fj::Link::new(edges).distance(50.0).iterations(2))
+            .add_force("charge", fj::ManyBody::new())
+            // TODO(grtlr): This is a small stop-gap until we have blueprints to prevent nodes from flying away.
+            .add_force("x", fj::PositionX::new().strength(0.01))
+            .add_force("y", fj::PositionY::new().strength(0.01));
 
         Self {
             simulation,
-            node_index,
             request,
         }
     }
 
-    pub fn init(&self) -> Layout {
-        let positions = self.simulation.positions().collect::<Vec<_>>();
-        let mut extents = ahash::HashMap::default();
-
-        for graph in self.request.graphs.values() {
-            for (id, node) in &graph.nodes {
-                let i = self.node_index[id];
-                let [x, y] = positions[i];
-                let pos = Pos2::new(x as f32, y as f32);
-                extents.insert(*id, Rect::from_center_size(pos, node.size));
+    pub fn new_with_previous(request: LayoutRequest, layout: &Layout) -> Self {
+        let nodes = request.all_nodes().map(|(id, v)| {
+            if let Some(rect) = layout.get_node(&id) {
+                let pos = rect.center();
+                fj::Node::from(v).position(pos.x as f64, pos.y as f64)
+            } else {
+                fj::Node::from(v)
             }
-        }
+        });
+        let edges = considered_edges(&request);
 
-        Layout {
-            nodes: extents,
-            // Without any real node positions, we probably don't want to draw edges either.
-            edges: ahash::HashMap::default(),
-            entities: Vec::new(),
+        // TODO(grtlr): Currently we guesstimate good forces. Eventually these should be exposed as blueprints.
+        let simulation = fj::SimulationBuilder::default()
+            .with_alpha_decay(0.01) // TODO(grtlr): slows down the simulation for demo
+            .build(nodes)
+            .add_force("link", fj::Link::new(edges).distance(50.0).iterations(2))
+            .add_force("charge", fj::ManyBody::new())
+            // TODO(grtlr): This is a small stop-gap until we have blueprints to prevent nodes from flying away.
+            .add_force("x", fj::PositionX::new().strength(0.01))
+            .add_force("y", fj::PositionY::new().strength(0.01));
+
+        Self {
+            simulation,
+            request,
         }
     }
 
-    /// Returns `true` if finished.
-    pub fn tick(&mut self, layout: &mut Layout) -> bool {
-        self.simulation.tick(1);
+    fn layout(&self) -> Layout {
+        // We make use of the fact here that the simulation is stable, i.e. the
+        // order of the nodes is the same as in the `request`.
+        let mut positions = self.simulation.positions();
 
-        let positions = self.simulation.positions().collect::<Vec<_>>();
-
-        // We clear all unnecessary data from the previous layout, but keep its space allocated.
-        layout.entities.clear();
-        layout.edges.clear();
+        let mut layout = Layout::empty();
 
         for (entity, graph) in &self.request.graphs {
             let mut current_rect = Rect::NOTHING;
 
-            for node in graph.nodes.keys() {
-                let extent = layout.nodes.get_mut(node).expect("node has to be present");
-                let i = self.node_index[node];
-                let [x, y] = positions[i];
+            for (node, template) in &graph.nodes {
+                let [x, y] = positions.next().expect("positions has to match the layout");
                 let pos = Pos2::new(x as f32, y as f32);
-                extent.set_center(pos);
-                current_rect = current_rect.union(*extent);
+                let extent = Rect::from_center_size(pos, template.size);
+                current_rect = current_rect.union(extent);
+                layout.nodes.insert(*node, extent);
             }
 
             layout.entities.push((entity.clone(), current_rect));
@@ -264,6 +220,16 @@ impl ForceLayoutProvider {
             }
         }
 
+        layout
+    }
+
+    /// Returns `true` if finished.
+    pub fn tick(&mut self) -> Layout {
+        self.simulation.tick(1);
+        self.layout()
+    }
+
+    pub fn is_finished(&self) -> bool {
         self.simulation.finished()
     }
 }
