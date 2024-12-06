@@ -1,8 +1,8 @@
 use std::borrow::Cow;
 
 use crate::{
-    ComponentBatch, ComponentDescriptor, ComponentName, DeserializationResult,
-    MaybeOwnedComponentBatch, SerializationResult, _Backtrace,
+    ComponentBatch, ComponentBatchCowWithDescriptor, ComponentDescriptor, ComponentName,
+    DeserializationResult, SerializationResult, _Backtrace,
 };
 
 #[allow(unused_imports)] // used in docstrings
@@ -52,8 +52,8 @@ pub trait Archetype {
     /// This allows for associating arbitrary indicator components with arbitrary data.
     /// Check out the `manual_indicator` API example to see what's possible.
     #[inline]
-    fn indicator() -> MaybeOwnedComponentBatch<'static> {
-        MaybeOwnedComponentBatch::new(
+    fn indicator() -> ComponentBatchCowWithDescriptor<'static> {
+        ComponentBatchCowWithDescriptor::new(
             Box::<<Self as Archetype>::Indicator>::default() as Box<dyn ComponentBatch>
         )
     }
@@ -290,13 +290,13 @@ pub struct NamedIndicatorComponent(pub ComponentName);
 
 impl NamedIndicatorComponent {
     #[inline]
-    pub fn as_batch(&self) -> MaybeOwnedComponentBatch<'_> {
-        MaybeOwnedComponentBatch::new(self as &dyn crate::ComponentBatch)
+    pub fn as_batch(&self) -> ComponentBatchCowWithDescriptor<'_> {
+        ComponentBatchCowWithDescriptor::new(self as &dyn crate::ComponentBatch)
     }
 
     #[inline]
-    pub fn to_batch(self) -> MaybeOwnedComponentBatch<'static> {
-        MaybeOwnedComponentBatch::new(Box::new(self) as Box<dyn crate::ComponentBatch>)
+    pub fn to_batch(self) -> ComponentBatchCowWithDescriptor<'static> {
+        ComponentBatchCowWithDescriptor::new(Box::new(self) as Box<dyn crate::ComponentBatch>)
     }
 }
 

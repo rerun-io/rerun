@@ -14,7 +14,7 @@
 
 use ::re_types_core::external::arrow2;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
@@ -238,9 +238,9 @@ impl ::re_types_core::Archetype for LineStrips3D {
     }
 
     #[inline]
-    fn indicator() -> MaybeOwnedComponentBatch<'static> {
+    fn indicator() -> ComponentBatchCowWithDescriptor<'static> {
         static INDICATOR: LineStrips3DIndicator = LineStrips3DIndicator::DEFAULT;
-        MaybeOwnedComponentBatch::new(&INDICATOR as &dyn ::re_types_core::ComponentBatch)
+        ComponentBatchCowWithDescriptor::new(&INDICATOR as &dyn ::re_types_core::ComponentBatch)
     }
 
     #[inline]
@@ -354,13 +354,13 @@ impl ::re_types_core::Archetype for LineStrips3D {
 }
 
 impl ::re_types_core::AsComponents for LineStrips3D {
-    fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>> {
+    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
         re_tracing::profile_function!();
         use ::re_types_core::Archetype as _;
         [
             Some(Self::indicator()),
             (Some(&self.strips as &dyn ComponentBatch)).map(|batch| {
-                ::re_types_core::MaybeOwnedComponentBatch {
+                ::re_types_core::ComponentBatchCowWithDescriptor {
                     batch: batch.into(),
                     descriptor_override: Some(ComponentDescriptor {
                         archetype_name: Some("rerun.archetypes.LineStrips3D".into()),
@@ -373,7 +373,7 @@ impl ::re_types_core::AsComponents for LineStrips3D {
                 .radii
                 .as_ref()
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
                 descriptor_override: Some(ComponentDescriptor {
                     archetype_name: Some("rerun.archetypes.LineStrips3D".into()),
@@ -385,7 +385,7 @@ impl ::re_types_core::AsComponents for LineStrips3D {
                 .colors
                 .as_ref()
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
                 descriptor_override: Some(ComponentDescriptor {
                     archetype_name: Some("rerun.archetypes.LineStrips3D".into()),
@@ -397,7 +397,7 @@ impl ::re_types_core::AsComponents for LineStrips3D {
                 .labels
                 .as_ref()
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
                 descriptor_override: Some(ComponentDescriptor {
                     archetype_name: Some("rerun.archetypes.LineStrips3D".into()),
@@ -409,7 +409,7 @@ impl ::re_types_core::AsComponents for LineStrips3D {
                 .show_labels
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
                 descriptor_override: Some(ComponentDescriptor {
                     archetype_name: Some("rerun.archetypes.LineStrips3D".into()),
@@ -421,7 +421,7 @@ impl ::re_types_core::AsComponents for LineStrips3D {
                 .class_ids
                 .as_ref()
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
                 descriptor_override: Some(ComponentDescriptor {
                     archetype_name: Some("rerun.archetypes.LineStrips3D".into()),

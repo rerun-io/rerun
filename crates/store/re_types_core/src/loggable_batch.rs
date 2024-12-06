@@ -62,7 +62,7 @@ pub trait ComponentBatch: LoggableBatch {
 ///
 /// Used by implementers of [`crate::AsComponents`] to both efficiently expose their component data
 /// and assign the right tags given the surrounding context.
-pub struct MaybeOwnedComponentBatch<'a> {
+pub struct ComponentBatchCowWithDescriptor<'a> {
     /// The component data.
     pub batch: ComponentBatchCow<'a>,
 
@@ -70,14 +70,14 @@ pub struct MaybeOwnedComponentBatch<'a> {
     pub descriptor_override: Option<ComponentDescriptor>,
 }
 
-impl<'a> From<ComponentBatchCow<'a>> for MaybeOwnedComponentBatch<'a> {
+impl<'a> From<ComponentBatchCow<'a>> for ComponentBatchCowWithDescriptor<'a> {
     #[inline]
     fn from(batch: ComponentBatchCow<'a>) -> Self {
         Self::new(batch)
     }
 }
 
-impl<'a> MaybeOwnedComponentBatch<'a> {
+impl<'a> ComponentBatchCowWithDescriptor<'a> {
     #[inline]
     pub fn new(batch: impl Into<ComponentBatchCow<'a>>) -> Self {
         Self {
@@ -95,14 +95,14 @@ impl<'a> MaybeOwnedComponentBatch<'a> {
     }
 }
 
-impl LoggableBatch for MaybeOwnedComponentBatch<'_> {
+impl LoggableBatch for ComponentBatchCowWithDescriptor<'_> {
     #[inline]
     fn to_arrow2(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>> {
         self.batch.to_arrow2()
     }
 }
 
-impl<'a> ComponentBatch for MaybeOwnedComponentBatch<'a> {
+impl<'a> ComponentBatch for ComponentBatchCowWithDescriptor<'a> {
     #[inline]
     fn descriptor(&self) -> Cow<'_, ComponentDescriptor> {
         self.descriptor_override

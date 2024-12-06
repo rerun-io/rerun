@@ -91,10 +91,10 @@ pub mod time {
 pub use time::{Time, TimePoint, Timeline};
 
 pub use re_types_core::{
-    Archetype, ArchetypeName, AsComponents, Component, ComponentBatch, ComponentDescriptor,
-    ComponentName, DatatypeName, DeserializationError, DeserializationResult,
-    GenericIndicatorComponent, Loggable, LoggableBatch, MaybeOwnedComponentBatch,
-    NamedIndicatorComponent, SerializationError, SerializationResult, SizeBytes,
+    Archetype, ArchetypeName, AsComponents, Component, ComponentBatch,
+    ComponentBatchCowWithDescriptor, ComponentDescriptor, ComponentName, DatatypeName,
+    DeserializationError, DeserializationResult, GenericIndicatorComponent, Loggable,
+    LoggableBatch, NamedIndicatorComponent, SerializationError, SerializationResult, SizeBytes,
 };
 
 #[cfg(feature = "data_loaders")]

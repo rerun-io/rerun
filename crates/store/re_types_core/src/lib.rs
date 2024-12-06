@@ -46,13 +46,13 @@ pub trait AsComponents {
     /// Have a look at our [Custom Data Loader] example to learn more about extending archetypes.
     ///
     /// Implementers of [`AsComponents`] get one last chance to override the tags in the
-    /// [`ComponentDescriptor`], see [`MaybeOwnedComponentBatch::descriptor_override`].
+    /// [`ComponentDescriptor`], see [`ComponentBatchCowWithDescriptor::descriptor_override`].
     ///
     /// [Custom Data Loader]: https://github.com/rerun-io/rerun/tree/latest/examples/rust/custom_data_loader
     //
     // NOTE: Don't bother returning a CoW here: we need to dynamically discard optional components
     // depending on their presence (or lack thereof) at runtime anyway.
-    fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>>;
+    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>>;
 
     // ---
 
@@ -86,41 +86,43 @@ pub trait AsComponents {
 
 impl<C: Component> AsComponents for C {
     #[inline]
-    fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>> {
-        vec![MaybeOwnedComponentBatch::new(self as &dyn ComponentBatch)]
+    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
+        vec![ComponentBatchCowWithDescriptor::new(
+            self as &dyn ComponentBatch,
+        )]
     }
 }
 
 impl AsComponents for dyn ComponentBatch {
     #[inline]
-    fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>> {
-        vec![MaybeOwnedComponentBatch::new(self)]
+    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
+        vec![ComponentBatchCowWithDescriptor::new(self)]
     }
 }
 
 impl<const N: usize> AsComponents for [&dyn ComponentBatch; N] {
     #[inline]
-    fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>> {
+    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
         self.iter()
-            .map(|batch| MaybeOwnedComponentBatch::new(*batch))
+            .map(|batch| ComponentBatchCowWithDescriptor::new(*batch))
             .collect()
     }
 }
 
 impl AsComponents for &[&dyn ComponentBatch] {
     #[inline]
-    fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>> {
+    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
         self.iter()
-            .map(|batch| MaybeOwnedComponentBatch::new(*batch))
+            .map(|batch| ComponentBatchCowWithDescriptor::new(*batch))
             .collect()
     }
 }
 
 impl AsComponents for Vec<&dyn ComponentBatch> {
     #[inline]
-    fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>> {
+    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
         self.iter()
-            .map(|batch| MaybeOwnedComponentBatch::new(*batch))
+            .map(|batch| ComponentBatchCowWithDescriptor::new(*batch))
             .collect()
     }
 }
@@ -151,7 +153,9 @@ pub use self::{
         Component, ComponentName, ComponentNameSet, DatatypeName, Loggable,
         UnorderedComponentNameSet,
     },
-    loggable_batch::{ComponentBatch, ComponentBatchCow, LoggableBatch, MaybeOwnedComponentBatch},
+    loggable_batch::{
+        ComponentBatch, ComponentBatchCow, ComponentBatchCowWithDescriptor, LoggableBatch,
+    },
     result::{
         DeserializationError, DeserializationResult, ResultExt, SerializationError,
         SerializationResult, _Backtrace,
