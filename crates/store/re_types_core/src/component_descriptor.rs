@@ -43,6 +43,8 @@ impl std::hash::Hash for ComponentDescriptor {
         let archetype_field_name = archetype_field_name.map_or(0, |v| v.hash());
         let component_name = component_name.hash();
 
+        // NOTE: This is a NoHash type, so we must respect the invariant that `write_XX` is only
+        // called one, see <https://docs.rs/nohash-hasher/0.2.0/nohash_hasher/trait.IsEnabled.html>.
         state.write_u64(archetype_name ^ archetype_field_name ^ component_name);
     }
 }

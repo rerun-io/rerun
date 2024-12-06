@@ -74,7 +74,7 @@ impl ChunkComponents {
     }
 
     #[inline]
-    pub fn get_descriptor(
+    pub fn get_by_descriptor(
         &self,
         component_desc: &ComponentDescriptor,
     ) -> Option<&Arrow2ListArray<i32>> {
@@ -83,7 +83,7 @@ impl ChunkComponents {
     }
 
     #[inline]
-    pub fn get_descriptor_mut(
+    pub fn get_by_descriptor_mut(
         &mut self,
         component_desc: &ComponentDescriptor,
     ) -> Option<&mut Arrow2ListArray<i32>> {

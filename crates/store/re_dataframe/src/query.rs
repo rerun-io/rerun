@@ -516,7 +516,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         fn chunk_filter_recursive_only(chunk: &Chunk) -> Option<Chunk> {
             let list_array = chunk
                 .components()
-                .get_descriptor(&ClearIsRecursive::descriptor())?;
+                .get_by_descriptor(&ClearIsRecursive::descriptor())?;
 
             let values = list_array
                 .values()
@@ -1186,7 +1186,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                                 }),
                                 ColumnDescriptor::Time(_) => None,
                             })?;
-                            unit.components().get_descriptor(&component_desc).map(|list_array| list_array.to_boxed())
+                            unit.components().get_by_descriptor(&component_desc).map(|list_array| list_array.to_boxed())
                         }
                     };
 

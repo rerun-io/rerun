@@ -53,8 +53,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             continue;
         }
 
-        // engine.engine.read().store().iter_chunks()
-
         let query = QueryExpression {
             filtered_index: Some(timeline),
             view_contents: Some(
