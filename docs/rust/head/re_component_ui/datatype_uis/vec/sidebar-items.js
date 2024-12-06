@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["edit_or_view_vec3d","edit_or_view_vec3d_raw","edit_or_view_vec3d_raw_immutable","edit_or_view_vector_component","edit_or_view_vector_component_immutable"]};

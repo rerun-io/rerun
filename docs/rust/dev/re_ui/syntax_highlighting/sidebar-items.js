@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["faint_text_format","text_format"],"trait":["SyntaxHighlighting"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["layout_self_edges","line_segment"],"struct":["ForceLayoutProvider"]};

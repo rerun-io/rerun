@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["view_property_ui_grid3d"],"struct":["SpatialSpaceView3D","VisualizableFilterContext3D"],"type":["ViewType"]};

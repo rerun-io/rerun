@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["TextureScaling"],"fn":["dimension_name","paint_axis_names","paint_tensor_slice","selected_tensor_slice","selectors_ui","tensor_slice_ui","view_tensor"],"struct":["ColorMapping","PerTensorState","SliceSelection","TensorSpaceView","TextureSettings","ViewTensorState"]};

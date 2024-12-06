@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["process_annotation_and_keypoint_slices","process_annotation_slices","process_color_slice"],"type":["Keypoints"]};

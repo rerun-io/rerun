@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["DefaultColor"],"fn":["auto_color"]};

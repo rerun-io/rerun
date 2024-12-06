@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["space_view_class","visualizer_system"],"struct":["TextDocumentSpaceView"]};

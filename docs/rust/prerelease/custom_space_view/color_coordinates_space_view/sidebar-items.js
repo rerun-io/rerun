@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["ColorCoordinatesMode"],"fn":["color_space_ui"],"struct":["ColorCoordinatesSpaceView","ColorCoordinatesSpaceViewState"]};

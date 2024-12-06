@@ -1,0 +1,3 @@
+(function() {var implementors = {
+"re_space_view_dataframe":[["impl TableDelegate for <a class=\"struct\" href=\"re_space_view_dataframe/dataframe_ui/struct.DataframeTableDelegate.html\" title=\"struct re_space_view_dataframe::dataframe_ui::DataframeTableDelegate\">DataframeTableDelegate</a>&lt;'_&gt;"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()
