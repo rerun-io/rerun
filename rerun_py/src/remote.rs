@@ -14,8 +14,8 @@ use re_protos::{
     codec::decode,
     v0::{
         storage_node_client::StorageNodeClient, EncoderVersion, FetchRecordingRequest,
-        QueryCatalogRequest, RecordingId, RecordingMetadata, RecordingType,
-        RegisterRecordingRequest, UpdateCatalogRequest,
+        QueryCatalogRequest, RecordingId, RecordingType, RegisterRecordingRequest,
+        UpdateCatalogRequest,
     },
 };
 use re_sdk::{ApplicationId, StoreId, StoreKind, Time};

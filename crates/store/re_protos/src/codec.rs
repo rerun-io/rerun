@@ -5,7 +5,7 @@ use arrow2::error::Error as Arrow2Error;
 use arrow2::io::ipc::{read, write};
 use re_dataframe::TransportChunk;
 
-use crate::v0::{EncoderVersion, RecordingMetadata};
+use crate::v0::EncoderVersion;
 
 #[derive(Debug, thiserror::Error)]
 pub enum CodecError {
@@ -138,79 +138,6 @@ pub fn decode(version: EncoderVersion, data: &[u8]) -> Result<Option<TransportCh
     }
 }
 
-impl RecordingMetadata {
-    /// Create `RecordingMetadata` from `TransportChunk`. We rely on `TransportChunk` until
-    /// we migrate from arrow2 to arrow.
-    pub fn try_from(
-        version: EncoderVersion,
-        metadata: &TransportChunk,
-    ) -> Result<Self, CodecError> {
-        if metadata.data.len() != 1 {
-            return Err(CodecError::InvalidArgument(format!(
-                "metadata record batch can only have a single row, batch with {} rows given",
-                metadata.data.len()
-            )));
-        };
-
-        match version {
-            EncoderVersion::V0 => {
-                let mut data: Vec<u8> = Vec::new();
-                write_arrow_to_bytes(&mut data, &metadata.schema, &metadata.data)?;
-
-                Ok(Self {
-                    encoder_version: version as i32,
-                    payload: data,
-                })
-            }
-        }
-    }
-
-    /// Get metadata as arrow data
-    pub fn data(&self) -> Result<TransportChunk, CodecError> {
-        let mut reader = std::io::Cursor::new(self.payload.clone());
-
-        let encoder_version = EncoderVersion::try_from(self.encoder_version)
-            .map_err(|err| CodecError::InvalidArgument(err.to_string()))?;
-
-        match encoder_version {
-            EncoderVersion::V0 => {
-                let (schema, data) = read_arrow_from_bytes(&mut reader)?;
-                Ok(TransportChunk { schema, data })
-            }
-        }
-    }
-
-    /// Returns unique id of the recording
-    pub fn id(&self) -> Result<re_log_types::StoreId, CodecError> {
-        let metadata = self.data()?;
-        let id_pos = metadata
-            .schema
-            .fields
-            .iter()
-            // TODO(zehiko) we need to figure out where mandatory fields live
-            .position(|field| field.name == "id")
-            .ok_or_else(|| CodecError::InvalidArgument("missing id field in schema".to_owned()))?;
-
-        use arrow2::array::Utf8Array as Arrow2Utf8Array;
-
-        let id = metadata.data.columns()[id_pos]
-            .as_any()
-            .downcast_ref::<Arrow2Utf8Array<i32>>()
-            .ok_or_else(|| {
-                CodecError::InvalidArgument(format!(
-                    "Unexpected type for id with position {id_pos} in schema: {:?}",
-                    metadata.schema
-                ))
-            })?
-            .value(0);
-
-        Ok(re_log_types::StoreId::from_string(
-            re_log_types::StoreKind::Recording,
-            id.to_owned(),
-        ))
-    }
-}
-
 /// Helper function that serializes given arrow schema and record batch into bytes
 /// using Arrow IPC format.
 fn write_arrow_to_bytes<W: std::io::Write>(
@@ -264,7 +191,6 @@ mod tests {
     use re_log_types::StoreId;
     use re_log_types::{example_components::MyPoint, Timeline};
 
-    use crate::v0::RecordingMetadata;
     use crate::{
         codec::{decode, encode, CodecError, TransportMessageV0},
         v0::EncoderVersion,
@@ -355,56 +281,5 @@ mod tests {
         let decoded_chunk = Chunk::from_transport(&decoded).unwrap();
 
         assert_eq!(expected_chunk, decoded_chunk);
-    }
-
-    #[test]
-    fn test_recording_metadata_serialization() {
-        let expected_schema = Arrow2Schema::from(vec![
-            Arrow2Field::new("id", arrow2::datatypes::DataType::Utf8, false),
-            Arrow2Field::new("my_int", arrow2::datatypes::DataType::Int32, false),
-        ]);
-
-        let id = Arrow2Utf8Array::<i32>::from_slice(["some_id"]);
-        let my_ints = Arrow2Int32Array::from_slice([42]);
-        let expected_chunk = Arrow2Chunk::new(vec![Box::new(id) as _, Box::new(my_ints) as _]);
-        let metadata_tc = TransportChunk {
-            schema: expected_schema.clone(),
-            data: expected_chunk.clone(),
-        };
-
-        let metadata = RecordingMetadata::try_from(EncoderVersion::V0, &metadata_tc).unwrap();
-        assert_eq!(
-            StoreId::from_string(re_log_types::StoreKind::Recording, "some_id".to_owned()),
-            metadata.id().unwrap()
-        );
-
-        let tc = metadata.data().unwrap();
-
-        assert_eq!(expected_schema, tc.schema);
-        assert_eq!(expected_chunk, tc.data);
-    }
-
-    #[test]
-    fn test_recording_metadata_fails_with_non_unit_batch() {
-        let expected_schema = Arrow2Schema::from(vec![Arrow2Field::new(
-            "my_int",
-            arrow2::datatypes::DataType::Int32,
-            false,
-        )]);
-        // more than 1 row in the batch
-        let my_ints = Arrow2Int32Array::from_slice([41, 42]);
-
-        let expected_chunk = Arrow2Chunk::new(vec![Box::new(my_ints) as _]);
-        let metadata_tc = TransportChunk {
-            schema: expected_schema.clone(),
-            data: expected_chunk,
-        };
-
-        let metadata = RecordingMetadata::try_from(EncoderVersion::V0, &metadata_tc);
-
-        assert!(matches!(
-            metadata.err().unwrap(),
-            CodecError::InvalidArgument(_)
-        ));
     }
 }
