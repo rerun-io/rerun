@@ -307,7 +307,7 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
 
         let msg = match self.options.serializer {
             Serializer::Protobuf => {
-                match crate::protobuf::decode(&mut self.read, self.options.compression) {
+                match crate::protobuf::decoder::decode(&mut self.read, self.options.compression) {
                     Ok((read_bytes, msg)) => {
                         self.size_bytes += read_bytes;
                         msg

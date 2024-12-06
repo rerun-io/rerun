@@ -155,7 +155,11 @@ impl<W: std::io::Write> Encoder<W> {
         self.uncompressed.clear();
         match self.serializer {
             Serializer::Protobuf => {
-                crate::protobuf::encode(&mut self.uncompressed, message, self.compression)?;
+                crate::protobuf::encoder::encode(
+                    &mut self.uncompressed,
+                    message,
+                    self.compression,
+                )?;
 
                 self.write
                     .write_all(&self.uncompressed)
