@@ -9,4 +9,7 @@ struct ForceLink (
 
     /// The target distance between two nodes.
     distance: rerun.blueprint.components.ForceDistance ("attr.rerun.component_optional", nullable, order: 200);
+
+    /// The number of iterations to run the force.
+    //iterations: rerun.blueprint.components.ForceIterations ("attr.rerun.component_optional", nullable, order: 400);
 }

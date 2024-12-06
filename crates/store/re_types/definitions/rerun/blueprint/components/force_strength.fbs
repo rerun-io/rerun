@@ -1,0 +1,16 @@
+
+namespace rerun.blueprint.components;
+
+// TODO
+
+/// The target distance between two nodes.
+///
+/// This is helpful to scale the layout, for example if long labels are involved.
+struct ForceStrength (
+  "attr.arrow.transparent",
+  "attr.rust.derive": "Default, Copy, PartialEq",
+  "attr.rust.repr": "transparent",
+  "attr.rerun.scope": "blueprint"
+) {
+    distance: rerun.datatypes.Float64 (order: 100);
+}

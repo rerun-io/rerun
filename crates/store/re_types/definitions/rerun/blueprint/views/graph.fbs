@@ -14,4 +14,16 @@ table GraphView (
 
     /// A link force between nodes in the graph.
     force_link: rerun.blueprint.archetypes.ForceLink (order: 2000);
+
+    /// TODO
+    force_many_body: rerun.blueprint.archetypes.ForceManyBody (order: 3000);
+
+    /// TODO
+    force_position: rerun.blueprint.archetypes.ForcePosition (order: 4000);
+
+    /// TODO
+    force_collision_radius: rerun.blueprint.archetypes.ForceCollisionRadius (order: 5000);
+
+    /// TODO
+    force_center: rerun.blueprint.archetypes.ForceCenter (order: 6000);
 }

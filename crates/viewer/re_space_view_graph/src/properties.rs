@@ -1,8 +1,9 @@
 use re_types::{
     blueprint::{
         archetypes,
-        components::{Enabled, ForceDistance, VisualBounds2D},
+        components::{Enabled, ForceDistance, ForceStrength, VisualBounds2D},
     },
+    components::Position2D,
     Archetype as _,
 };
 use re_viewer_context::{SpaceViewStateExt as _, TypedComponentFallbackProvider};
@@ -30,6 +31,8 @@ impl TypedComponentFallbackProvider<Enabled> for GraphSpaceView {
     fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> Enabled {
         match ctx.archetype_name {
             Some(name) if name == archetypes::ForceLink::name() => true.into(),
+            Some(name) if name == archetypes::ForceManyBody::name() => true.into(),
+            Some(name) if name == archetypes::ForcePosition::name() => true.into(),
             _ => false.into(),
         }
     }
@@ -41,4 +44,21 @@ impl TypedComponentFallbackProvider<ForceDistance> for GraphSpaceView {
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(GraphSpaceView => [VisualBounds2D, Enabled, ForceDistance]);
+impl TypedComponentFallbackProvider<ForceStrength> for GraphSpaceView {
+    fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> ForceStrength {
+        match ctx.archetype_name {
+            Some(name) if name == archetypes::ForceManyBody::name() => (-30.).into(),
+            Some(name) if name == archetypes::ForcePosition::name() => (0.01).into(),
+            Some(name) if name == archetypes::ForceCenter::name() => (1.0).into(),
+            _ => Default::default(),
+        }
+    }
+}
+
+impl TypedComponentFallbackProvider<Position2D> for GraphSpaceView {
+    fn fallback_for(&self, _ctx: &re_viewer_context::QueryContext<'_>) -> Position2D {
+        Default::default()
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(GraphSpaceView => [VisualBounds2D, Enabled, ForceDistance, ForceStrength, Position2D]);

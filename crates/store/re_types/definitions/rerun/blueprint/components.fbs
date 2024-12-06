@@ -13,6 +13,8 @@ include "./components/enabled.fbs";
 include "./components/filter_by_range.fbs";
 include "./components/filter_is_not_null.fbs";
 include "./components/force_distance.fbs";
+include "./components/force_iterations.fbs";
+include "./components/force_strength.fbs";
 include "./components/grid_columns.fbs";
 include "./components/included_content.fbs";
 include "./components/interactive.fbs";

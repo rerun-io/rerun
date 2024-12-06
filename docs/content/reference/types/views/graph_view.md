@@ -16,6 +16,27 @@ A link force between nodes in the graph.
 
 * `enabled`: Whether the force is enabled.
 * `distance`: The target distance between two nodes.
+### `force_many_body`
+TODO
+
+* `enabled`: Whether the force is enabled.
+* `strength`: The strength of the force.
+### `force_position`
+TODO
+
+* `enabled`: Whether the force is enabled.
+* `strength`: The strength of the force.
+* `position`: The position where the nodes should bepulled towards.
+### `force_collision_radius`
+TODO
+
+* `enabled`: Whether the force is enabled.
+* `strength`: The strength of the force.
+### `force_center`
+TODO
+
+* `enabled`: Whether the force is enabled.
+* `strength`: The strength of the force.
 
 ## API reference links
  * 🐍 [Python API docs for `GraphView`](https://ref.rerun.io/docs/python/stable/common/blueprint_views?speculative-link#rerun.blueprint.views.GraphView)

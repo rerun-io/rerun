@@ -28,18 +28,39 @@ pub struct GraphView {
 
     /// A link force between nodes in the graph.
     pub force_link: crate::blueprint::archetypes::ForceLink,
+
+    /// TODO
+    pub force_many_body: crate::blueprint::archetypes::ForceManyBody,
+
+    /// TODO
+    pub force_position: crate::blueprint::archetypes::ForcePosition,
+
+    /// TODO
+    pub force_collision_radius: crate::blueprint::archetypes::ForceCollisionRadius,
+
+    /// TODO
+    pub force_center: crate::blueprint::archetypes::ForceCenter,
 }
 
 impl ::re_types_core::SizeBytes for GraphView {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.visual_bounds.heap_size_bytes() + self.force_link.heap_size_bytes()
+        self.visual_bounds.heap_size_bytes()
+            + self.force_link.heap_size_bytes()
+            + self.force_many_body.heap_size_bytes()
+            + self.force_position.heap_size_bytes()
+            + self.force_collision_radius.heap_size_bytes()
+            + self.force_center.heap_size_bytes()
     }
 
     #[inline]
     fn is_pod() -> bool {
         <crate::blueprint::archetypes::VisualBounds2D>::is_pod()
             && <crate::blueprint::archetypes::ForceLink>::is_pod()
+            && <crate::blueprint::archetypes::ForceManyBody>::is_pod()
+            && <crate::blueprint::archetypes::ForcePosition>::is_pod()
+            && <crate::blueprint::archetypes::ForceCollisionRadius>::is_pod()
+            && <crate::blueprint::archetypes::ForceCenter>::is_pod()
     }
 }
 

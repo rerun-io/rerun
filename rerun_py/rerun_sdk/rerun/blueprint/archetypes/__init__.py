@@ -5,7 +5,11 @@ from __future__ import annotations
 from .background import Background
 from .container_blueprint import ContainerBlueprint
 from .dataframe_query import DataframeQuery
+from .force_center import ForceCenter
+from .force_collision_radius import ForceCollisionRadius
 from .force_link import ForceLink
+from .force_many_body import ForceManyBody
+from .force_position import ForcePosition
 from .map_background import MapBackground
 from .map_zoom import MapZoom
 from .panel_blueprint import PanelBlueprint
@@ -24,7 +28,11 @@ __all__ = [
     "Background",
     "ContainerBlueprint",
     "DataframeQuery",
+    "ForceCenter",
+    "ForceCollisionRadius",
     "ForceLink",
+    "ForceManyBody",
+    "ForcePosition",
     "MapBackground",
     "MapZoom",
     "PanelBlueprint",

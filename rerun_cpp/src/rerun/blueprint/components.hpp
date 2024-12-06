@@ -15,6 +15,8 @@
 #include "blueprint/components/filter_by_range.hpp"
 #include "blueprint/components/filter_is_not_null.hpp"
 #include "blueprint/components/force_distance.hpp"
+#include "blueprint/components/force_iterations.hpp"
+#include "blueprint/components/force_strength.hpp"
 #include "blueprint/components/grid_columns.hpp"
 #include "blueprint/components/included_content.hpp"
 #include "blueprint/components/interactive.hpp"

@@ -71,6 +71,10 @@ class GraphView(SpaceView):
         overrides: dict[EntityPathLike, list[ComponentBatchLike]] = {},
         visual_bounds: blueprint_archetypes.VisualBounds2D | None = None,
         force_link: blueprint_archetypes.ForceLink | None = None,
+        force_many_body: blueprint_archetypes.ForceManyBody | None = None,
+        force_position: blueprint_archetypes.ForcePosition | None = None,
+        force_collision_radius: blueprint_archetypes.ForceCollisionRadius | None = None,
+        force_center: blueprint_archetypes.ForceCenter | None = None,
     ) -> None:
         """
         Construct a blueprint for a new GraphView view.
@@ -107,6 +111,14 @@ class GraphView(SpaceView):
             Somethings outside of these bounds may also be visible due to letterboxing.
         force_link:
             A link force between nodes in the graph.
+        force_many_body:
+            TODO
+        force_position:
+            TODO
+        force_collision_radius:
+            TODO
+        force_center:
+            TODO
 
         """
 
@@ -120,6 +132,26 @@ class GraphView(SpaceView):
             if not isinstance(force_link, blueprint_archetypes.ForceLink):
                 force_link = blueprint_archetypes.ForceLink(force_link)
             properties["ForceLink"] = force_link
+
+        if force_many_body is not None:
+            if not isinstance(force_many_body, blueprint_archetypes.ForceManyBody):
+                force_many_body = blueprint_archetypes.ForceManyBody(force_many_body)
+            properties["ForceManyBody"] = force_many_body
+
+        if force_position is not None:
+            if not isinstance(force_position, blueprint_archetypes.ForcePosition):
+                force_position = blueprint_archetypes.ForcePosition(force_position)
+            properties["ForcePosition"] = force_position
+
+        if force_collision_radius is not None:
+            if not isinstance(force_collision_radius, blueprint_archetypes.ForceCollisionRadius):
+                force_collision_radius = blueprint_archetypes.ForceCollisionRadius(force_collision_radius)
+            properties["ForceCollisionRadius"] = force_collision_radius
+
+        if force_center is not None:
+            if not isinstance(force_center, blueprint_archetypes.ForceCenter):
+                force_center = blueprint_archetypes.ForceCenter(force_center)
+            properties["ForceCenter"] = force_center
 
         super().__init__(
             class_identifier="Graph",

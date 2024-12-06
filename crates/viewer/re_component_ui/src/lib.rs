@@ -34,8 +34,8 @@ use datatype_uis::{
 
 use re_types::{
     blueprint::components::{
-        BackgroundKind, Corner2D, Enabled, ForceDistance, LockRangeDuringZoom, MapProvider,
-        ViewFit, Visible, ZoomLevel,
+        BackgroundKind, Corner2D, Enabled, ForceDistance, ForceStrength, LockRangeDuringZoom,
+        MapProvider, ViewFit, Visible, ZoomLevel,
     },
     components::{
         AggregationPolicy, AlbedoFactor, AxisLength, Color, DepthMeter, DrawOrder, FillMode,
@@ -72,6 +72,7 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     registry.add_singleline_edit_or_view::<DepthMeter>(edit_f32_zero_to_max);
     registry.add_singleline_edit_or_view::<FillRatio>(edit_f32_zero_to_max);
     registry.add_singleline_edit_or_view::<ForceDistance>(edit_f64_zero_to_max);
+    registry.add_singleline_edit_or_view::<ForceStrength>(edit_f64_zero_to_max);
     registry.add_singleline_edit_or_view::<GammaCorrection>(edit_f32_zero_to_max);
     registry.add_singleline_edit_or_view::<ImagePlaneDistance>(edit_f32_zero_to_max);
     registry.add_singleline_edit_or_view::<MarkerSize>(edit_f32_zero_to_max);
