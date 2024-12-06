@@ -160,7 +160,7 @@ pub trait Component: Loggable {
     // `ComponentDescriptor` might seem overkill.
     // It's not:
     // * Users might still want to register Components with specific tags.
-    // * In the future, `ComponentDescriptor`s will very likely cover than Archetype-related tags
+    // * In the future, `ComponentDescriptor`s will very likely cover more than Archetype-related tags
     //   (e.g. generics, metric units, etc).
     fn descriptor() -> ComponentDescriptor;
 
