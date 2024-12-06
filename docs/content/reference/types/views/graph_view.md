@@ -11,6 +11,11 @@ A graph view to display time-variying, directed or undirected graph visualizatio
 Everything within these bounds is guaranteed to be visible.
 
 Somethings outside of these bounds may also be visible due to letterboxing.
+### `force_link`
+A link force between nodes in the graph.
+
+* `enabled`: Whether the force is enabled.
+* `distance`: The target distance between two nodes.
 
 ## API reference links
  * 🐍 [Python API docs for `GraphView`](https://ref.rerun.io/docs/python/stable/common/blueprint_views?speculative-link#rerun.blueprint.views.GraphView)

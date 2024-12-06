@@ -4,7 +4,10 @@ use re_space_view::{
     view_property_ui,
 };
 use re_types::{
-    blueprint::{self, archetypes::VisualBounds2D},
+    blueprint::{
+        self,
+        archetypes::{ForceLink, VisualBounds2D},
+    },
     SpaceViewClassIdentifier,
 };
 use re_ui::{
@@ -13,10 +16,11 @@ use re_ui::{
     ModifiersMarkdown, MouseButtonMarkdown, UiExt as _,
 };
 use re_viewer_context::{
-    IdentifiedViewSystem as _, RecommendedSpaceView, SpaceViewClass, SpaceViewClassLayoutPriority,
-    SpaceViewClassRegistryError, SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState,
-    SpaceViewStateExt as _, SpaceViewSystemExecutionError, SpaceViewSystemRegistrator,
-    SystemExecutionOutput, ViewQuery, ViewerContext,
+    ComponentFallbackProvider, IdentifiedViewSystem as _, RecommendedSpaceView, SpaceViewClass,
+    SpaceViewClassLayoutPriority, SpaceViewClassRegistryError, SpaceViewId,
+    SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
+    SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery,
+    ViewerContext,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -129,7 +133,10 @@ Display a graph of nodes and edges.
             state.debug_ui(ui);
         });
 
-        view_property_ui::<VisualBounds2D>(ctx, ui, space_view_id, self, state);
+        re_ui::list_item::list_item_scope(ui, "graph_selection_ui", |ui| {
+            view_property_ui::<VisualBounds2D>(ctx, ui, space_view_id, self, state);
+            view_property_ui::<ForceLink>(ctx, ui, space_view_id, self, state);
+        });
 
         Ok(())
     }
@@ -163,6 +170,15 @@ Display a graph of nodes and edges.
         );
         let rect_in_scene: blueprint::components::VisualBounds2D =
             bounds_property.component_or_fallback(ctx, self, state)?;
+
+        let force_link_property = ViewProperty::from_archetype::<ForceLink>(
+            ctx.blueprint_db(),
+            ctx.blueprint_query,
+            query.space_view_id,
+        );
+        let force_enabled: Result<Option<blueprint::components::Enabled>, _> =
+            force_link_property.component_or_empty();
+        dbg!(force_enabled);
 
         let rect_in_ui = ui.max_rect();
 

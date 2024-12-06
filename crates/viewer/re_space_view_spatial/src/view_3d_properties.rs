@@ -1,7 +1,7 @@
 use re_types::{
     blueprint::{archetypes::Background, components::BackgroundKind},
     components::Color,
-    Archetype,
+    Archetype as _,
 };
 use re_viewer_context::TypedComponentFallbackProvider;
 

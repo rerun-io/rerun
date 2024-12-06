@@ -14,7 +14,7 @@ pub use enum_combobox::{
 };
 pub use float_drag::{
     edit_f32_min_to_max_float, edit_f32_zero_to_max, edit_f32_zero_to_one,
-    edit_f64_float_raw_with_speed_impl,
+    edit_f64_float_raw_with_speed_impl, edit_f64_zero_to_max,
 };
 pub use range1d::edit_view_range1d;
 pub use singleline_string::{
