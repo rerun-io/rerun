@@ -2,6 +2,13 @@
 
 ## [Unreleased](https://github.com/rerun-io/rerun/compare/latest...HEAD)
 
+## [0.20.3](https://github.com/rerun-io/rerun/compare/0.20.2...0.20.3) - Web viewer fix
+
+### 🔎 Details
+
+#### 🪳 Bug fixes
+- Fix web viewer feature flags [#8295](https://github.com/rerun-io/rerun/pull/8295)
+
 ## [0.20.2](https://github.com/rerun-io/rerun/compare/0.20.1...0.20.2) - Build fix
 
 ### 🔎 Details

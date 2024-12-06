@@ -5,6 +5,7 @@ __init__.py linguist-generated=true
 background.py linguist-generated=true
 container_blueprint.py linguist-generated=true
 dataframe_query.py linguist-generated=true
+line_grid3d.py linguist-generated=true
 map_background.py linguist-generated=true
 map_zoom.py linguist-generated=true
 panel_blueprint.py linguist-generated=true

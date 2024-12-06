@@ -72,6 +72,15 @@ impl InstancePath {
             instance: self.instance,
         }
     }
+
+    /// Human-readable description of the kind
+    pub fn kind(&self) -> &'static str {
+        if self.instance.is_specific() {
+            "Entity instance"
+        } else {
+            "Entity"
+        }
+    }
 }
 
 impl std::fmt::Display for InstancePath {

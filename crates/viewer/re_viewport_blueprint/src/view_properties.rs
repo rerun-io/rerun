@@ -33,10 +33,17 @@ pub struct ViewProperty {
     /// stored.
     pub blueprint_store_path: EntityPath,
 
-    archetype_name: ArchetypeName,
-    component_names: Vec<ComponentName>,
-    query_results: LatestAtResults,
-    blueprint_query: LatestAtQuery,
+    /// Name of the property archetype.
+    pub archetype_name: ArchetypeName,
+
+    /// List of all components in this property.
+    pub component_names: Vec<ComponentName>,
+
+    /// Query results for all queries of this property.
+    pub query_results: LatestAtResults,
+
+    /// Blueprint query used for querying.
+    pub blueprint_query: LatestAtQuery,
 }
 
 impl ViewProperty {
@@ -83,7 +90,7 @@ impl ViewProperty {
     /// Get the value of a specific component or its fallback if the component is not present.
     // TODO(andreas): Unfortunately we can't use TypedComponentFallbackProvider here because it may not be implemented for all components of interest.
     // This sadly means that there's a bit of unnecessary back and forth between arrow array and untyped that could be avoided otherwise.
-    pub fn component_or_fallback<C: re_types::Component + Default>(
+    pub fn component_or_fallback<C: re_types::Component>(
         &self,
         ctx: &ViewerContext<'_>,
         fallback_provider: &dyn ComponentFallbackProvider,
@@ -96,7 +103,7 @@ impl ViewProperty {
     }
 
     /// Get the component array for a given type or its fallback if the component is not present or empty.
-    pub fn component_array_or_fallback<C: re_types::Component + Default>(
+    pub fn component_array_or_fallback<C: re_types::Component>(
         &self,
         ctx: &ViewerContext<'_>,
         fallback_provider: &dyn ComponentFallbackProvider,

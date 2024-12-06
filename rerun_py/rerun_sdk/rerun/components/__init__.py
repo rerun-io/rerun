@@ -54,6 +54,7 @@ from .media_type import MediaType, MediaTypeBatch
 from .name import Name, NameBatch
 from .opacity import Opacity, OpacityBatch
 from .pinhole_projection import PinholeProjection, PinholeProjectionBatch
+from .plane3d import Plane3D, Plane3DBatch
 from .pose_rotation_axis_angle import PoseRotationAxisAngle, PoseRotationAxisAngleBatch
 from .pose_rotation_quat import PoseRotationQuat, PoseRotationQuatBatch
 from .pose_scale3d import PoseScale3D, PoseScale3DBatch
@@ -188,6 +189,8 @@ __all__ = [
     "OpacityBatch",
     "PinholeProjection",
     "PinholeProjectionBatch",
+    "Plane3D",
+    "Plane3DBatch",
     "PoseRotationAxisAngle",
     "PoseRotationAxisAngleBatch",
     "PoseRotationQuat",

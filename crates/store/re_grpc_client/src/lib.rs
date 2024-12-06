@@ -2,20 +2,23 @@
 
 mod address;
 
-pub use address::{Address, InvalidAddressError};
+pub use address::{InvalidRedapAddress, RedapAddress};
+use url::Url;
 
 // ----------------------------------------------------------------------------
 
-use std::{error::Error, str::FromStr};
+use std::error::Error;
 
 use re_chunk::Chunk;
-use re_log_encoding::codec::{self, CodecError};
 use re_log_types::{
     ApplicationId, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource, Time,
 };
 use re_protos::{
-    common::v0::{EncoderVersion, RecordingId},
-    remote_store::v0::{storage_node_client::StorageNodeClient, FetchRecordingRequest},
+    codec::{decode, CodecError},
+    v0::{
+        storage_node_client::StorageNodeClient, FetchRecordingRequest, QueryCatalogRequest,
+        RecordingId,
+    },
 };
 
 // ----------------------------------------------------------------------------
@@ -58,9 +61,6 @@ enum StreamError {
     #[error(transparent)]
     TonicStatus(#[from] TonicStatusError),
 
-    #[error("Missing TransportChunk")]
-    MissingTransportChunk,
-
     #[error(transparent)]
     CodecError(#[from] CodecError),
 
@@ -70,16 +70,16 @@ enum StreamError {
 
 // ----------------------------------------------------------------------------
 
-/// Stream an rrd file over gRPC from a Rerun Data Platform server.
+/// Stream an rrd file or metadsasta catalog over gRPC from a Rerun Data Platform server.
 ///
 /// `on_msg` can be used to wake up the UI thread on Wasm.
-pub fn stream_recording(
+pub fn stream_from_redap(
     url: String,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
-) -> Result<re_smart_channel::Receiver<LogMsg>, InvalidAddressError> {
+) -> Result<re_smart_channel::Receiver<LogMsg>, InvalidRedapAddress> {
     re_log::debug!("Loading {url}…");
 
-    let address = Address::from_str(&url)?;
+    let address = url.as_str().try_into()?;
 
     let (tx, rx) = re_smart_channel::smart_channel(
         re_smart_channel::SmartMessageSource::RerunGrpcStream { url: url.clone() },
@@ -87,11 +87,28 @@ pub fn stream_recording(
     );
 
     spawn_future(async move {
-        if let Err(err) = stream_recording_async(tx, address, on_msg).await {
-            re_log::warn!(
-                "Error while streaming {url}: {}",
-                re_error::format_ref(&err)
-            );
+        match address {
+            RedapAddress::Recording {
+                redap_endpoint,
+                recording_id,
+            } => {
+                if let Err(err) =
+                    stream_recording_async(tx, redap_endpoint, recording_id, on_msg).await
+                {
+                    re_log::warn!(
+                        "Error while streaming {url}: {}",
+                        re_error::format_ref(&err)
+                    );
+                }
+            }
+            RedapAddress::Catalog { redap_endpoint } => {
+                if let Err(err) = stream_catalog_async(tx, redap_endpoint, on_msg).await {
+                    re_log::warn!(
+                        "Error while streaming {url}: {}",
+                        re_error::format_ref(&err)
+                    );
+                }
+            }
         }
     });
 
@@ -116,40 +133,28 @@ where
 
 async fn stream_recording_async(
     tx: re_smart_channel::Sender<LogMsg>,
-    address: Address,
+    redap_endpoint: Url,
+    recording_id: String,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
 ) -> Result<(), StreamError> {
     use tokio_stream::StreamExt as _;
 
-    let Address {
-        addr_port,
-        recording_id,
-    } = address;
-
-    if addr_port.starts_with("0.0.0.0:") {
-        re_log::warn!("Attempting to connect to IP 0.0.0.0. This will often fail. You likely you want connect to 127.0.0.1 instead.");
-    }
-
-    let http_addr = format!("http://{addr_port}");
-    re_log::debug!("Connecting to {http_addr}…");
-
+    re_log::debug!("Connecting to {redap_endpoint}…");
     let mut client = {
         #[cfg(target_arch = "wasm32")]
         let tonic_client = tonic_web_wasm_client::Client::new_with_options(
-            http_addr,
+            redap_endpoint.to_string(),
             tonic_web_wasm_client::options::FetchOptions::new()
                 .mode(tonic_web_wasm_client::options::Mode::Cors), // I'm not 100% sure this is needed, but it felt right.
         );
 
         #[cfg(not(target_arch = "wasm32"))]
-        let tonic_client = tonic::transport::Endpoint::new(http_addr)?
+        let tonic_client = tonic::transport::Endpoint::new(redap_endpoint.to_string())?
             .connect()
             .await?;
 
         StorageNodeClient::new(tonic_client)
     };
-
-    client = client.max_decoding_message_size(1024 * 1024 * 1024);
 
     re_log::debug!("Fetching {recording_id}…");
 
@@ -161,11 +166,18 @@ async fn stream_recording_async(
         })
         .await
         .map_err(TonicStatusError)?
-        .into_inner();
+        .into_inner()
+        .filter_map(|resp| {
+            resp.and_then(|r| {
+                decode(r.encoder_version(), &r.payload)
+                    .map_err(|err| tonic::Status::internal(err.to_string()))
+            })
+            .transpose()
+        });
 
     drop(client);
 
-    // TODO(jleibs): Does this come from RDP?
+    // TODO(zehiko) - we need a separate gRPC endpoint for fetching Store info REDAP #85
     let store_id = StoreId::from_string(StoreKind::Recording, recording_id.clone());
 
     let store_info = StoreInfo {
@@ -192,13 +204,100 @@ async fn stream_recording_async(
 
     re_log::info!("Starting to read...");
     while let Some(result) = resp.next().await {
-        let response = result.map_err(TonicStatusError)?;
-        let tc = codec::wire::decode(EncoderVersion::V0, &response.payload)?;
+        let tc = result.map_err(TonicStatusError)?;
+        let chunk = Chunk::from_transport(&tc)?;
 
-        let Some(tc) = tc else {
-            return Err(StreamError::MissingTransportChunk);
-        };
+        if tx
+            .send(LogMsg::ArrowMsg(store_id.clone(), chunk.to_arrow_msg()?))
+            .is_err()
+        {
+            re_log::debug!("Receiver disconnected");
+            return Ok(());
+        }
 
+        if let Some(on_msg) = &on_msg {
+            on_msg();
+        }
+    }
+
+    Ok(())
+}
+
+/// TODO(zehiko) - this is a copy of `stream_recording_async` with a different gRPC call,
+/// this will go away as we tackle unification of data and metadata streams REDAP #74, hence
+/// avoiding refactoring right now
+async fn stream_catalog_async(
+    tx: re_smart_channel::Sender<LogMsg>,
+    redap_endpoint: Url,
+    on_msg: Option<Box<dyn Fn() + Send + Sync>>,
+) -> Result<(), StreamError> {
+    use tokio_stream::StreamExt as _;
+
+    re_log::debug!("Connecting to {redap_endpoint}…");
+    let mut client = {
+        #[cfg(target_arch = "wasm32")]
+        let tonic_client = tonic_web_wasm_client::Client::new_with_options(
+            redap_endpoint.to_string(),
+            tonic_web_wasm_client::options::FetchOptions::new()
+                .mode(tonic_web_wasm_client::options::Mode::Cors), // I'm not 100% sure this is needed, but it felt right.
+        );
+
+        #[cfg(not(target_arch = "wasm32"))]
+        let tonic_client = tonic::transport::Endpoint::new(redap_endpoint.to_string())?
+            .connect()
+            .await?;
+
+        StorageNodeClient::new(tonic_client)
+    };
+
+    re_log::debug!("Fetching catalog…");
+
+    let mut resp = client
+        // TODO(zehiko) add support for fetching specific columns and rows
+        .query_catalog(QueryCatalogRequest {
+            column_projection: None, // fetch all columns
+            filter: None,            // fetch all rows
+        })
+        .await
+        .map_err(TonicStatusError)?
+        .into_inner()
+        .filter_map(|resp| {
+            resp.and_then(|r| {
+                decode(r.encoder_version(), &r.payload)
+                    .map_err(|err| tonic::Status::internal(err.to_string()))
+            })
+            .transpose()
+        });
+
+    drop(client);
+
+    // We need a whole StoreInfo here.
+    let store_id = StoreId::from_string(StoreKind::Recording, "catalog".to_owned());
+
+    let store_info = StoreInfo {
+        application_id: ApplicationId::from("rerun_data_platform"),
+        store_id: store_id.clone(),
+        cloned_from: None,
+        is_official_example: false,
+        started: Time::now(),
+        store_source: StoreSource::Unknown,
+        store_version: None,
+    };
+
+    if tx
+        .send(LogMsg::SetStoreInfo(SetStoreInfo {
+            row_id: *re_chunk::RowId::new(),
+            info: store_info,
+        }))
+        .is_err()
+    {
+        re_log::debug!("Receiver disconnected");
+        return Ok(());
+    }
+
+    re_log::info!("Starting to read...");
+    while let Some(result) = resp.next().await {
+        let tc = result.map_err(TonicStatusError)?;
         let chunk = Chunk::from_transport(&tc)?;
 
         if tx

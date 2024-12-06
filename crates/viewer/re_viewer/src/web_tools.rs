@@ -140,7 +140,7 @@ pub fn url_to_receiver(
 
         #[cfg(feature = "grpc")]
         EndpointCategory::RerunGrpc(url) => {
-            re_grpc_client::stream_recording(url, Some(ui_waker)).map_err(|err| err.into())
+            re_grpc_client::stream_from_redap(url, Some(ui_waker)).map_err(|err| err.into())
         }
         #[cfg(not(feature = "grpc"))]
         EndpointCategory::RerunGrpc(_url) => {

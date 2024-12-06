@@ -31,6 +31,7 @@ re_smart_channel.workspace = true
 arrow2.workspace = true
 thiserror.workspace = true
 tokio-stream.workspace = true
+url.workspace = true
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

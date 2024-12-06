@@ -412,6 +412,8 @@ impl ListItem {
                     } else {
                         None
                     }
+                } else if selected {
+                    Some(visuals.weak_bg_fill)
                 } else {
                     None
                 }

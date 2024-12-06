@@ -2,9 +2,12 @@ use egui::NumExt as _;
 use egui_tiles::ContainerKind;
 
 use re_context_menu::{context_menu_ui_for_item, SelectionUpdateBehavior};
-use re_data_ui::{item_ui, item_ui::guess_query_and_db_for_selected_entity, DataUi};
+use re_data_ui::{
+    item_ui::{self, cursor_interact_with_selectable, guess_query_and_db_for_selected_entity},
+    DataUi,
+};
 use re_entity_db::{EntityPath, InstancePath};
-use re_log_types::EntityPathFilter;
+use re_log_types::{ComponentPath, EntityPathFilter};
 use re_types::blueprint::components::Interactive;
 use re_ui::{
     icons,
@@ -18,13 +21,15 @@ use re_viewer_context::{
 };
 use re_viewport_blueprint::{ui::show_add_space_view_or_container_modal, ViewportBlueprint};
 
-use crate::{defaults_ui::view_components_defaults_section_ui, visualizer_ui::visualizer_ui};
 use crate::{
-    selection_history_ui::SelectionHistoryUi,
-    visible_time_range_ui::visible_time_range_ui_for_data_result,
-    visible_time_range_ui::visible_time_range_ui_for_view,
+    defaults_ui::view_components_defaults_section_ui,
+    item_heading_with_breadcrumbs::item_heading_with_breadcrumbs,
+    space_view_entity_picker::SpaceViewEntityPicker,
+    visible_time_range_ui::{
+        visible_time_range_ui_for_data_result, visible_time_range_ui_for_view,
+    },
+    visualizer_ui::visualizer_ui,
 };
-use crate::{space_view_entity_picker::SpaceViewEntityPicker, ItemTitle};
 
 // ---
 fn default_selection_panel_width(screen_width: f32) -> f32 {
@@ -35,8 +40,6 @@ fn default_selection_panel_width(screen_width: f32) -> f32 {
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub struct SelectionPanel {
-    selection_state_ui: SelectionHistoryUi,
-
     #[serde(skip)]
     /// State for the "Add entity" modal.
     space_view_entity_modal: SpaceViewEntityPicker,
@@ -70,15 +73,7 @@ impl SelectionPanel {
             ui.panel_content(|ui| {
                 let hover = "The selection view contains information and options about \
                     the currently selected object(s)";
-                ui.panel_title_bar_with_buttons("Selection", Some(hover), |ui| {
-                    let mut history = ctx.selection_state().history.lock();
-                    if let Some(selection) =
-                        self.selection_state_ui
-                            .selection_ui(ui, viewport, &mut history)
-                    {
-                        ctx.selection_state().set_selection(selection);
-                    }
-                });
+                ui.panel_title_bar("Selection", Some(hover));
             });
 
             // move the vertical spacing between the title and the content to _inside_ the scroll
@@ -124,12 +119,7 @@ impl SelectionPanel {
         };
         for (i, item) in selection.iter_items().enumerate() {
             list_item::list_item_scope(ui, item, |ui| {
-                if let Some(item_title) = ItemTitle::from_item(ctx, viewport, ui.style(), item) {
-                    item_title.ui(ctx, ui, item);
-                } else {
-                    re_log::warn_once!("Failed to create item title for {item:?}");
-                    return; // WEIRD
-                }
+                item_heading_with_breadcrumbs(ctx, viewport, ui, item);
                 self.item_ui(ctx, viewport, view_states, ui, item, ui_layout);
             });
 
@@ -151,14 +141,22 @@ impl SelectionPanel {
     ) {
         match item {
             Item::ComponentPath(component_path) => {
-                let entity_path = &component_path.entity_path;
-                let component_name = &component_path.component_name;
+                let ComponentPath {
+                    entity_path,
+                    component_name,
+                } = component_path;
 
                 let (query, db) = guess_query_and_db_for_selected_entity(ctx, entity_path);
                 let is_static = db
                     .storage_engine()
                     .store()
                     .entity_has_static_component(entity_path, component_name);
+
+                ui.list_item_flat_noninteractive(PropertyContent::new("Parent entity").value_fn(
+                    |ui, _| {
+                        item_ui::entity_path_parts_buttons(ctx, &query, db, ui, None, entity_path);
+                    },
+                ));
 
                 ui.list_item_flat_noninteractive(
                     PropertyContent::new("Component type").value_text(if is_static {
@@ -168,35 +166,31 @@ impl SelectionPanel {
                     }),
                 );
 
-                ui.list_item_flat_noninteractive(PropertyContent::new("Parent entity").value_fn(
-                    |ui, _| {
-                        item_ui::entity_path_button(ctx, &query, db, ui, None, entity_path);
-                    },
-                ));
-
                 list_existing_data_blueprints(ctx, viewport, ui, &entity_path.clone().into());
             }
 
             Item::InstancePath(instance_path) => {
-                let is_instance = !instance_path.instance.is_all();
-                let parent = if is_instance {
-                    Some(instance_path.entity_path.clone())
-                } else {
-                    instance_path.entity_path.parent()
-                };
-                if let Some(parent) = parent {
-                    if !parent.is_root() {
-                        let (query, db) =
-                            guess_query_and_db_for_selected_entity(ctx, &instance_path.entity_path);
+                let (query, db) =
+                    guess_query_and_db_for_selected_entity(ctx, &instance_path.entity_path);
 
-                        ui.list_item_flat_noninteractive(PropertyContent::new("Parent").value_fn(
-                            |ui, _| {
-                                item_ui::entity_path_parts_buttons(
-                                    ctx, &query, db, ui, None, &parent,
-                                );
-                            },
-                        ));
-                    }
+                ui.list_item_flat_noninteractive(PropertyContent::new("Entity path").value_fn(
+                    |ui, _| {
+                        item_ui::entity_path_parts_buttons(
+                            ctx,
+                            &query,
+                            db,
+                            ui,
+                            None,
+                            &instance_path.entity_path,
+                        );
+                    },
+                ));
+
+                if instance_path.instance.is_specific() {
+                    ui.list_item_flat_noninteractive(
+                        PropertyContent::new("Instance")
+                            .value_text(instance_path.instance.to_string()),
+                    );
                 }
 
                 list_existing_data_blueprints(ctx, viewport, ui, instance_path);
@@ -214,61 +208,36 @@ impl SelectionPanel {
             }
 
             Item::DataResult(view_id, instance_path) => {
-                if let Some(view) = viewport.view(view_id) {
-                    let is_instance = !instance_path.instance.is_all();
-                    let parent = if is_instance {
-                        Some(instance_path.entity_path.clone())
-                    } else {
-                        instance_path.entity_path.parent()
-                    };
-                    if let Some(parent) = parent {
-                        if !parent.is_root() {
-                            ui.list_item_flat_noninteractive(
-                                PropertyContent::new("Parent").value_fn(|ui, _| {
-                                    let (query, db) = guess_query_and_db_for_selected_entity(
-                                        ctx,
-                                        &instance_path.entity_path,
-                                    );
+                ui.list_item_flat_noninteractive(PropertyContent::new("Stream entity").value_fn(
+                    |ui, _| {
+                        let (query, db) =
+                            guess_query_and_db_for_selected_entity(ctx, &instance_path.entity_path);
 
-                                    item_ui::entity_path_parts_buttons(
-                                        ctx,
-                                        &query,
-                                        db,
-                                        ui,
-                                        Some(*view_id),
-                                        &parent,
-                                    );
-                                }),
-                            );
-                        }
-                    }
+                        item_ui::entity_path_parts_buttons(
+                            ctx,
+                            &query,
+                            db,
+                            ui,
+                            None,
+                            &instance_path.entity_path,
+                        );
+                    },
+                ));
 
-                    ui.list_item_flat_noninteractive(PropertyContent::new("In view").value_fn(
+                if instance_path.instance.is_specific() {
+                    ui.list_item_flat_noninteractive(PropertyContent::new("Instance").value_fn(
                         |ui, _| {
-                            space_view_button(ctx, ui, view);
+                            let response = ui.button(instance_path.instance.to_string());
+                            cursor_interact_with_selectable(
+                                ctx,
+                                response,
+                                Item::from(instance_path.clone()),
+                            );
                         },
                     ));
                 }
 
                 if instance_path.is_all() {
-                    ui.list_item_flat_noninteractive(PropertyContent::new("Entity").value_fn(
-                        |ui, _| {
-                            let (query, db) = guess_query_and_db_for_selected_entity(
-                                ctx,
-                                &instance_path.entity_path,
-                            );
-
-                            item_ui::entity_path_button(
-                                ctx,
-                                &query,
-                                db,
-                                ui,
-                                None,
-                                &instance_path.entity_path,
-                            );
-                        },
-                    ));
-
                     let entity_path = &instance_path.entity_path;
                     let query_result = ctx.lookup_query_result(*view_id);
                     let data_result = query_result
