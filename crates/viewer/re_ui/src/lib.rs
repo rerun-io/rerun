@@ -1,10 +1,10 @@
 //! Rerun GUI theme and helpers, built around [`egui`](https://www.egui.rs/).
 
+mod color_table;
 mod command;
 mod command_palette;
-mod design_tokens;
-mod color_table;
 mod context_ext;
+mod design_tokens;
 pub mod drag_and_drop;
 pub mod icons;
 pub mod list_item;
