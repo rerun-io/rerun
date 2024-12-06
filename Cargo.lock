@@ -5789,6 +5789,7 @@ dependencies = [
  "tokio-stream",
  "tonic",
  "tonic-web-wasm-client",
+ "url",
  "wasm-bindgen-futures",
 ]
 
