@@ -16,4 +16,7 @@ table VisualBounds2D (
     ///
     /// Use this to control pan & zoom of the view.
     range: rerun.blueprint.components.VisualBounds2D ("attr.rerun.component_required", order: 1000);
+
+    /// Controls the distance to the clipping plane
+    clipping_plane: rerun.blueprint.components.ClippingPlane ("attr.rerun.component_optional", order: 2000);
 }
