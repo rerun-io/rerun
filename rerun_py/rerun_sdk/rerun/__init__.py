@@ -34,6 +34,8 @@ from . import (
 )
 from ._baseclasses import (
     ComponentColumn as ComponentColumn,
+    ComponentDescriptor as ComponentDescriptor,
+    DescribedComponentBatch as DescribedComponentBatch,
 )
 from ._image_encoded import (
     ImageEncoded as ImageEncoded,

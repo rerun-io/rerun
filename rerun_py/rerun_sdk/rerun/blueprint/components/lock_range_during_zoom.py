@@ -8,6 +8,7 @@ from __future__ import annotations
 from ... import datatypes
 from ..._baseclasses import (
     ComponentBatchMixin,
+    ComponentDescriptor,
     ComponentMixin,
 )
 
@@ -29,7 +30,7 @@ class LockRangeDuringZoom(datatypes.Bool, ComponentMixin):
 
 
 class LockRangeDuringZoomBatch(datatypes.BoolBatch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.blueprint.components.LockRangeDuringZoom"
+    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.blueprint.components.LockRangeDuringZoom")
 
 
 # This is patched in late to avoid circular dependencies.

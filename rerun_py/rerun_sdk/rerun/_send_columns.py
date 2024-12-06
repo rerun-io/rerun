@@ -5,7 +5,7 @@ from typing import Iterable, Protocol, TypeVar, Union
 import pyarrow as pa
 import rerun_bindings as bindings
 
-from ._baseclasses import Archetype, ComponentBatchLike, ComponentBatchMixin, ComponentColumn
+from ._baseclasses import Archetype, ComponentBatchLike, ComponentBatchMixin, ComponentColumn, ComponentDescriptor
 from ._log import IndicatorComponentBatch
 from .any_value import AnyBatchValue
 from .error_utils import catch_and_log_exceptions
@@ -217,12 +217,12 @@ def send_columns(
 
     indicators = []
 
-    components_args = {}
+    components_args: dict[ComponentDescriptor, pa.Array] = {}
     for c in components:
         if isinstance(c, IndicatorComponentBatch):
             indicators.append(c)
             continue
-        component_name = c.component_name()
+        component_descr = c.component_descriptor()
 
         if isinstance(c, ComponentColumn):
             component_column = c
@@ -231,7 +231,7 @@ def send_columns(
         elif isinstance(c, AnyBatchValue):
             array = c.as_arrow_array()
             if array is None:
-                raise ValueError(f"Expected a non-null value for component: {component_name}")
+                raise ValueError(f"Expected a non-null value for component: {component_descr}")
             component_column = c.partition([1] * len(c.as_arrow_array()))  # type: ignore[arg-type]
         else:
             raise TypeError(
@@ -243,16 +243,16 @@ def send_columns(
             expected_length = len(arrow_list_array)
         elif len(arrow_list_array) != expected_length:
             raise ValueError(
-                f"All times and components in a batch must have the same length. Expected length: {expected_length} but got: {len(arrow_list_array)} for component: {component_name}"
+                f"All times and components in a batch must have the same length. Expected length: {expected_length} but got: {len(arrow_list_array)} for component: {component_descr}"
             )
 
-        components_args[component_name] = arrow_list_array
+        components_args[component_descr] = arrow_list_array
 
     for i in indicators:
         if expected_length is None:
             expected_length = 1
 
-        components_args[i.component_name()] = pa.nulls(expected_length, type=pa.null())
+        components_args[i.component_descriptor()] = pa.nulls(expected_length, type=pa.null())
 
     bindings.send_arrow_chunk(
         entity_path,

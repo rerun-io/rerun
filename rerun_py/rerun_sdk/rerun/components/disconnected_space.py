@@ -8,6 +8,7 @@ from __future__ import annotations
 from .. import datatypes
 from .._baseclasses import (
     ComponentBatchMixin,
+    ComponentDescriptor,
     ComponentMixin,
 )
 from .disconnected_space_ext import DisconnectedSpaceExt
@@ -33,7 +34,7 @@ class DisconnectedSpace(DisconnectedSpaceExt, datatypes.Bool, ComponentMixin):
 
 
 class DisconnectedSpaceBatch(datatypes.BoolBatch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.components.DisconnectedSpace"
+    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.components.DisconnectedSpace")
 
 
 # This is patched in late to avoid circular dependencies.

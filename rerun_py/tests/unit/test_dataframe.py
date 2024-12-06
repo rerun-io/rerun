@@ -108,10 +108,10 @@ class TestDataframe:
         assert schema.index_columns()[1].name == "log_time"
         assert schema.index_columns()[2].name == "my_index"
         assert schema.component_columns()[0].entity_path == "/points"
-        assert schema.component_columns()[0].component_name == "rerun.components.Color"
+        assert schema.component_columns()[0].component_name == "rerun.components.Points3DIndicator"
         assert schema.component_columns()[0].is_static is False
         assert schema.component_columns()[1].entity_path == "/points"
-        assert schema.component_columns()[1].component_name == "rerun.components.Points3DIndicator"
+        assert schema.component_columns()[1].component_name == "rerun.components.Color"
         assert schema.component_columns()[1].is_static is False
         assert schema.component_columns()[2].entity_path == "/points"
         assert schema.component_columns()[2].component_name == "rerun.components.Position3D"
@@ -120,8 +120,11 @@ class TestDataframe:
         assert schema.component_columns()[3].component_name == "rerun.components.Radius"
         assert schema.component_columns()[3].is_static is False
         assert schema.component_columns()[4].entity_path == "/static_text"
-        assert schema.component_columns()[4].component_name == "rerun.components.Text"
+        assert schema.component_columns()[4].component_name == "rerun.components.TextLogIndicator"
         assert schema.component_columns()[4].is_static is True
+        assert schema.component_columns()[5].entity_path == "/static_text"
+        assert schema.component_columns()[5].component_name == "rerun.components.Text"
+        assert schema.component_columns()[5].is_static is True
 
     def test_schema_view(self) -> None:
         schema = self.recording.view(index="my_index", contents="points").schema()

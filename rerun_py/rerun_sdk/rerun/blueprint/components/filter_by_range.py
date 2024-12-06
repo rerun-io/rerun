@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from ..._baseclasses import (
     ComponentBatchMixin,
+    ComponentDescriptor,
     ComponentMixin,
 )
 from ...blueprint import datatypes as blueprint_datatypes
@@ -25,7 +26,7 @@ class FilterByRange(blueprint_datatypes.FilterByRange, ComponentMixin):
 
 
 class FilterByRangeBatch(blueprint_datatypes.FilterByRangeBatch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.blueprint.components.FilterByRange"
+    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.blueprint.components.FilterByRange")
 
 
 # This is patched in late to avoid circular dependencies.

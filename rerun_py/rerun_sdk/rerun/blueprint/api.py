@@ -136,7 +136,7 @@ class SpaceView:
         for default in self.defaults:
             if hasattr(default, "as_component_batches"):
                 stream.log(f"{self.blueprint_path()}/defaults", default, recording=stream)  # type: ignore[attr-defined]
-            elif hasattr(default, "component_name"):
+            elif hasattr(default, "component_descriptor"):
                 stream.log(f"{self.blueprint_path()}/defaults", [default], recording=stream)  # type: ignore[attr-defined]
             else:
                 raise ValueError(f"Provided default: {default} is neither a component nor a component batch.")

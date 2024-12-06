@@ -8,6 +8,7 @@ from __future__ import annotations
 from .. import datatypes
 from .._baseclasses import (
     ComponentBatchMixin,
+    ComponentDescriptor,
     ComponentMixin,
 )
 
@@ -30,7 +31,7 @@ class PoseRotationQuat(datatypes.Quaternion, ComponentMixin):
 
 
 class PoseRotationQuatBatch(datatypes.QuaternionBatch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.components.PoseRotationQuat"
+    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.components.PoseRotationQuat")
 
 
 # This is patched in late to avoid circular dependencies.

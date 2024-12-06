@@ -8,6 +8,7 @@ from __future__ import annotations
 from .. import datatypes
 from .._baseclasses import (
     ComponentBatchMixin,
+    ComponentDescriptor,
     ComponentMixin,
 )
 from .text_log_level_ext import TextLogLevelExt
@@ -36,7 +37,7 @@ class TextLogLevel(TextLogLevelExt, datatypes.Utf8, ComponentMixin):
 
 
 class TextLogLevelBatch(datatypes.Utf8Batch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.components.TextLogLevel"
+    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.components.TextLogLevel")
 
 
 # This is patched in late to avoid circular dependencies.

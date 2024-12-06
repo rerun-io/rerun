@@ -149,9 +149,11 @@ class Schema:
     def index_columns(self) -> list[IndexColumnDescriptor]:
         """Return a list of all the index columns in the schema."""
         ...
+
     def component_columns(self) -> list[ComponentColumnDescriptor]:
         """Return a list of all the component columns in the schema."""
         ...
+
     def column_for(self, entity_path: str, component: ComponentLike) -> Optional[ComponentColumnDescriptor]:
         """
         Look up the column descriptor for a specific entity path and component.

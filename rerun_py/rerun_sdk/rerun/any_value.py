@@ -6,11 +6,13 @@ import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
 
+from rerun._baseclasses import ComponentDescriptor
+
 from . import ComponentColumn
 from ._log import AsComponents, ComponentBatchLike
 from .error_utils import catch_and_log_exceptions
 
-ANY_VALUE_TYPE_REGISTRY: dict[str, Any] = {}
+ANY_VALUE_TYPE_REGISTRY: dict[ComponentDescriptor, Any] = {}
 
 
 class AnyBatchValue(ComponentBatchLike):
@@ -23,7 +25,7 @@ class AnyBatchValue(ComponentBatchLike):
     See also [rerun.AnyValues][].
     """
 
-    def __init__(self, name: str, value: Any, drop_untyped_nones: bool = True) -> None:
+    def __init__(self, descriptor: str | ComponentDescriptor, value: Any, drop_untyped_nones: bool = True) -> None:
         """
         Construct a new AnyBatchValue.
 
@@ -51,8 +53,8 @@ class AnyBatchValue(ComponentBatchLike):
 
         Parameters
         ----------
-        name:
-            The name of the component.
+        descriptor:
+            Either the name or the full descriptor of the component.
         value:
             The data to be logged as a component.
         drop_untyped_nones:
@@ -60,12 +62,17 @@ class AnyBatchValue(ComponentBatchLike):
             previously logged with a type.
 
         """
-        np_type, pa_type = ANY_VALUE_TYPE_REGISTRY.get(name, (None, None))
+        if isinstance(descriptor, str):
+            descriptor = ComponentDescriptor(descriptor)
+        elif isinstance(descriptor, ComponentDescriptor):
+            descriptor = descriptor
 
-        self.name = name
+        np_type, pa_type = ANY_VALUE_TYPE_REGISTRY.get(descriptor, (None, None))
+
+        self.descriptor = descriptor
         self.pa_array = None
 
-        with catch_and_log_exceptions(f"Converting data for '{name}'"):
+        with catch_and_log_exceptions(f"Converting data for '{descriptor}'"):
             if isinstance(value, pa.Array):
                 self.pa_array = value
             elif hasattr(value, "as_arrow_array"):
@@ -83,13 +90,13 @@ class AnyBatchValue(ComponentBatchLike):
                     else:
                         np_value = np.atleast_1d(np.array(value, copy=False))
                         self.pa_array = pa.array(np_value)
-                        ANY_VALUE_TYPE_REGISTRY[name] = (np_value.dtype, self.pa_array.type)
+                        ANY_VALUE_TYPE_REGISTRY[descriptor] = (np_value.dtype, self.pa_array.type)
 
     def is_valid(self) -> bool:
         return self.pa_array is not None
 
-    def component_name(self) -> str:
-        return self.name
+    def component_descriptor(self) -> ComponentDescriptor:
+        return self.descriptor
 
     def as_arrow_array(self) -> pa.Array | None:
         return self.pa_array
