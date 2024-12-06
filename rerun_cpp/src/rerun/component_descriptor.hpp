@@ -1,9 +1,18 @@
 #pragma once
 
+#include <cstdint>
+#include <functional>
 #include <optional>
 #include <string_view>
 
+#include <cstddef>
+#include <functional>
+#include <string>
+
 namespace rerun {
+    /// See `ComponentDescriptor::hashed`.
+    using ComponentDescriptorHash = uint64_t;
+
     /// A `ComponentDescriptor` fully describes the semantics of a column of data.
     ///
     /// Every component is uniquely identified by its `ComponentDescriptor`.
@@ -51,6 +60,15 @@ namespace rerun {
 
         constexpr ComponentDescriptor(const char* component_name_)
             : component_name(component_name_) {}
+
+        ComponentDescriptorHash hashed() const {
+            std::size_t archetype_name_h =
+                std::hash<std::optional<std::string_view>>{}(this->archetype_name);
+            std::size_t component_name_h = std::hash<std::string_view>{}(this->component_name);
+            std::size_t archetype_field_name_h =
+                std::hash<std::optional<std::string_view>>{}(this->archetype_field_name);
+            return archetype_name_h ^ component_name_h ^ archetype_field_name_h;
+        }
 
         /// Unconditionally sets `archetype_name` to the given one.
         ComponentDescriptor with_archetype_name(std::optional<std::string_view> archetype_name_
