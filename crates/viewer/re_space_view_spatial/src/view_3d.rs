@@ -422,7 +422,6 @@ impl SpaceViewClass for SpatialSpaceView3D {
 
         re_ui::list_item::list_item_scope(ui, "spatial_view3d_selection_ui", |ui| {
             view_property_ui::<Background>(ctx, ui, view_id, self, state);
-            //view_property_ui::<LineGrid3D>(ctx, ui, view_id, self, state);
             view_property_ui_grid3d(ctx, ui, view_id, self, state);
         });
 
@@ -447,6 +446,9 @@ impl SpaceViewClass for SpatialSpaceView3D {
     }
 }
 
+// The generic ui (via `view_property_ui::<Background>(ctx, ui, view_id, self, state);`)
+// is suitable for the most part. However, as of writing the alpha color picker doesn't handle alpha
+// which we need here.
 fn view_property_ui_grid3d(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
