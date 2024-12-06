@@ -4,6 +4,7 @@ mod active_tab;
 mod apply_latest_at;
 mod background_kind;
 mod clipping_plane;
+mod clipping_plane_ext;
 mod column_share;
 mod component_column_selector;
 mod component_column_selector_ext;

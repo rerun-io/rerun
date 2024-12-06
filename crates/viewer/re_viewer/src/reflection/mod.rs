@@ -78,7 +78,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <ClippingPlane as Component>::name(),
             ComponentReflection {
                 docstring_md: "Distance to the clipping plane in used for `Spatial2DView`.",
-                custom_placeholder: None,
+                custom_placeholder: Some(ClippingPlane::default().to_arrow2()?),
                 datatype: ClippingPlane::arrow2_datatype(),
             },
         ),
