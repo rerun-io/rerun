@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["layout_self_edges","line_segment"],"struct":["ForceLayoutProvider"]};
+window.SIDEBAR_ITEMS = {"fn":["considered_edges","layout_self_edges","line_segment"],"struct":["ForceLayoutProvider"]};

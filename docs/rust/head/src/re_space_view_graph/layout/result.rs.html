@@ -51,6 +51,15 @@
 <a href="#51" id="51">51</a>
 <a href="#52" id="52">52</a>
 <a href="#53" id="53">53</a>
+<a href="#54" id="54">54</a>
+<a href="#55" id="55">55</a>
+<a href="#56" id="56">56</a>
+<a href="#57" id="57">57</a>
+<a href="#58" id="58">58</a>
+<a href="#59" id="59">59</a>
+<a href="#60" id="60">60</a>
+<a href="#61" id="61">61</a>
+<a href="#62" id="62">62</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Defines the output of a layout algorithm, i.e. everything that we need to render the graph.
 
 </span><span class="kw">use </span>egui::Rect;
@@ -72,6 +81,15 @@
 }
 
 <span class="kw">impl </span>Layout {
+    <span class="doccomment">/// Creates an empty layout
+    </span><span class="kw">pub fn </span>empty() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            nodes: ahash::HashMap::default(),
+            edges: ahash::HashMap::default(),
+            entities: Vec::new(),
+        }
+    }
+
     <span class="doccomment">/// Returns the bounding rectangle of the layout.
     </span><span class="kw">pub fn </span>bounding_rect(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Rect {
         <span class="comment">// TODO(grtlr): We mostly use this for debugging, but we should probably

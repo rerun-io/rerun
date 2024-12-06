@@ -275,25 +275,6 @@
 <a href="#275" id="275">275</a>
 <a href="#276" id="276">276</a>
 <a href="#277" id="277">277</a>
-<a href="#278" id="278">278</a>
-<a href="#279" id="279">279</a>
-<a href="#280" id="280">280</a>
-<a href="#281" id="281">281</a>
-<a href="#282" id="282">282</a>
-<a href="#283" id="283">283</a>
-<a href="#284" id="284">284</a>
-<a href="#285" id="285">285</a>
-<a href="#286" id="286">286</a>
-<a href="#287" id="287">287</a>
-<a href="#288" id="288">288</a>
-<a href="#289" id="289">289</a>
-<a href="#290" id="290">290</a>
-<a href="#291" id="291">291</a>
-<a href="#292" id="292">292</a>
-<a href="#293" id="293">293</a>
-<a href="#294" id="294">294</a>
-<a href="#295" id="295">295</a>
-<a href="#296" id="296">296</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Performs the layout of the graph, i.e. converting an [`LayoutRequest`] into a [`Layout`].
 
 </span><span class="comment">// For now we have only a single layout provider that is based on a force-directed model.
@@ -323,62 +304,32 @@
 
 <span class="kw">pub struct </span>ForceLayoutProvider {
     simulation: fj::Simulation,
-    node_index: ahash::HashMap&lt;NodeId, usize&gt;,
     <span class="kw">pub </span>request: LayoutRequest,
+}
+
+<span class="kw">fn </span>considered_edges(request: <span class="kw-2">&amp;</span>LayoutRequest) -&gt; Vec&lt;(usize, usize)&gt; {
+    <span class="kw">let </span>node_index: ahash::HashMap&lt;NodeId, usize&gt; = request
+        .all_nodes()
+        .enumerate()
+        .map(|(i, (id, <span class="kw">_</span>))| (id, i))
+        .collect();
+    request
+        .all_edges()
+        .filter(|(id, <span class="kw">_</span>)| !id.is_self_edge())
+        .map(|(id, <span class="kw">_</span>)| (node_index[<span class="kw-2">&amp;</span>id.source], node_index[<span class="kw-2">&amp;</span>id.target]))
+        .collect()
 }
 
 <span class="kw">impl </span>ForceLayoutProvider {
     <span class="kw">pub fn </span>new(request: LayoutRequest) -&gt; <span class="self">Self </span>{
-        <span class="self">Self</span>::new_impl(request, <span class="prelude-val">None</span>)
-    }
-
-    <span class="kw">pub fn </span>new_with_previous(request: LayoutRequest, layout: <span class="kw-2">&amp;</span>Layout) -&gt; <span class="self">Self </span>{
-        <span class="self">Self</span>::new_impl(request, <span class="prelude-val">Some</span>(layout))
-    }
-
-    <span class="comment">// TODO(grtlr): Consider consuming the old layout to avoid re-allocating the extents.
-    // That logic has to be revised when adding the blueprints anyways.
-    </span><span class="kw">fn </span>new_impl(request: LayoutRequest, layout: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Layout&gt;) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span>nodes = request.graphs.iter().flat_map(|(<span class="kw">_</span>, graph_template)| {
-            graph_template.nodes.iter().map(|n| {
-                <span class="kw">let </span><span class="kw-2">mut </span>fj_node = fj::Node::from(n.<span class="number">1</span>);
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(rect) = layout.and_then(|l| l.get_node(n.<span class="number">0</span>)) {
-                    <span class="kw">let </span>pos = rect.center();
-                    fj_node = fj_node.position(pos.x <span class="kw">as </span>f64, pos.y <span class="kw">as </span>f64);
-                }
-
-                (n.<span class="number">0</span>, fj_node)
-            })
-        });
-
-        <span class="kw">let </span><span class="kw-2">mut </span>node_index = ahash::HashMap::default();
-        <span class="kw">let </span>all_nodes: Vec&lt;fj::Node&gt; = nodes
-            .enumerate()
-            .map(|(i, n)| {
-                node_index.insert(<span class="kw-2">*</span>n.<span class="number">0</span>, i);
-                n.<span class="number">1
-            </span>})
-            .collect();
-
-        <span class="kw">let </span>all_edges_iter = request
-            .graphs
-            .iter()
-            .flat_map(|(<span class="kw">_</span>, graph_template)| graph_template.edges.iter());
-
-        <span class="comment">// Looking at self-edges does not make sense in a force-based layout, so we filter those out.
-        </span><span class="kw">let </span>considered_edges = all_edges_iter
-            .clone()
-            .filter(|(id, <span class="kw">_</span>)| !id.is_self_edge())
-            .map(|(id, <span class="kw">_</span>)| (node_index[<span class="kw-2">&amp;</span>id.source], node_index[<span class="kw-2">&amp;</span>id.target]));
+        <span class="kw">let </span>nodes = request.all_nodes().map(|(<span class="kw">_</span>, v)| fj::Node::from(v));
+        <span class="kw">let </span>edges = considered_edges(<span class="kw-2">&amp;</span>request);
 
         <span class="comment">// TODO(grtlr): Currently we guesstimate good forces. Eventually these should be exposed as blueprints.
         </span><span class="kw">let </span>simulation = fj::SimulationBuilder::default()
             .with_alpha_decay(<span class="number">0.01</span>) <span class="comment">// TODO(grtlr): slows down the simulation for demo
-            </span>.build(all_nodes)
-            .add_force(
-                <span class="string">"link"</span>,
-                fj::Link::new(considered_edges).distance(<span class="number">50.0</span>).iterations(<span class="number">2</span>),
-            )
+            </span>.build(nodes)
+            .add_force(<span class="string">"link"</span>, fj::Link::new(edges).distance(<span class="number">50.0</span>).iterations(<span class="number">2</span>))
             .add_force(<span class="string">"charge"</span>, fj::ManyBody::new())
             <span class="comment">// TODO(grtlr): This is a small stop-gap until we have blueprints to prevent nodes from flying away.
             </span>.add_force(<span class="string">"x"</span>, fj::PositionX::new().strength(<span class="number">0.01</span>))
@@ -386,52 +337,53 @@
 
         <span class="self">Self </span>{
             simulation,
-            node_index,
             request,
         }
     }
 
-    <span class="kw">pub fn </span>init(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Layout {
-        <span class="kw">let </span>positions = <span class="self">self</span>.simulation.positions().collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
-        <span class="kw">let </span><span class="kw-2">mut </span>extents = ahash::HashMap::default();
-
-        <span class="kw">for </span>graph <span class="kw">in </span><span class="self">self</span>.request.graphs.values() {
-            <span class="kw">for </span>(id, node) <span class="kw">in </span><span class="kw-2">&amp;</span>graph.nodes {
-                <span class="kw">let </span>i = <span class="self">self</span>.node_index[id];
-                <span class="kw">let </span>[x, y] = positions[i];
-                <span class="kw">let </span>pos = Pos2::new(x <span class="kw">as </span>f32, y <span class="kw">as </span>f32);
-                extents.insert(<span class="kw-2">*</span>id, Rect::from_center_size(pos, node.size));
+    <span class="kw">pub fn </span>new_with_previous(request: LayoutRequest, layout: <span class="kw-2">&amp;</span>Layout) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>nodes = request.all_nodes().map(|(id, v)| {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(rect) = layout.get_node(<span class="kw-2">&amp;</span>id) {
+                <span class="kw">let </span>pos = rect.center();
+                fj::Node::from(v).position(pos.x <span class="kw">as </span>f64, pos.y <span class="kw">as </span>f64)
+            } <span class="kw">else </span>{
+                fj::Node::from(v)
             }
-        }
+        });
+        <span class="kw">let </span>edges = considered_edges(<span class="kw-2">&amp;</span>request);
 
-        Layout {
-            nodes: extents,
-            <span class="comment">// Without any real node positions, we probably don't want to draw edges either.
-            </span>edges: ahash::HashMap::default(),
-            entities: Vec::new(),
+        <span class="comment">// TODO(grtlr): Currently we guesstimate good forces. Eventually these should be exposed as blueprints.
+        </span><span class="kw">let </span>simulation = fj::SimulationBuilder::default()
+            .with_alpha_decay(<span class="number">0.01</span>) <span class="comment">// TODO(grtlr): slows down the simulation for demo
+            </span>.build(nodes)
+            .add_force(<span class="string">"link"</span>, fj::Link::new(edges).distance(<span class="number">50.0</span>).iterations(<span class="number">2</span>))
+            .add_force(<span class="string">"charge"</span>, fj::ManyBody::new())
+            <span class="comment">// TODO(grtlr): This is a small stop-gap until we have blueprints to prevent nodes from flying away.
+            </span>.add_force(<span class="string">"x"</span>, fj::PositionX::new().strength(<span class="number">0.01</span>))
+            .add_force(<span class="string">"y"</span>, fj::PositionY::new().strength(<span class="number">0.01</span>));
+
+        <span class="self">Self </span>{
+            simulation,
+            request,
         }
     }
 
-    <span class="doccomment">/// Returns `true` if finished.
-    </span><span class="kw">pub fn </span>tick(<span class="kw-2">&amp;mut </span><span class="self">self</span>, layout: <span class="kw-2">&amp;mut </span>Layout) -&gt; bool {
-        <span class="self">self</span>.simulation.tick(<span class="number">1</span>);
+    <span class="kw">fn </span>layout(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Layout {
+        <span class="comment">// We make use of the fact here that the simulation is stable, i.e. the
+        // order of the nodes is the same as in the `request`.
+        </span><span class="kw">let </span><span class="kw-2">mut </span>positions = <span class="self">self</span>.simulation.positions();
 
-        <span class="kw">let </span>positions = <span class="self">self</span>.simulation.positions().collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
-
-        <span class="comment">// We clear all unnecessary data from the previous layout, but keep its space allocated.
-        </span>layout.entities.clear();
-        layout.edges.clear();
+        <span class="kw">let </span><span class="kw-2">mut </span>layout = Layout::empty();
 
         <span class="kw">for </span>(entity, graph) <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.request.graphs {
             <span class="kw">let </span><span class="kw-2">mut </span>current_rect = Rect::NOTHING;
 
-            <span class="kw">for </span>node <span class="kw">in </span>graph.nodes.keys() {
-                <span class="kw">let </span>extent = layout.nodes.get_mut(node).expect(<span class="string">"node has to be present"</span>);
-                <span class="kw">let </span>i = <span class="self">self</span>.node_index[node];
-                <span class="kw">let </span>[x, y] = positions[i];
+            <span class="kw">for </span>(node, template) <span class="kw">in </span><span class="kw-2">&amp;</span>graph.nodes {
+                <span class="kw">let </span>[x, y] = positions.next().expect(<span class="string">"positions has to match the layout"</span>);
                 <span class="kw">let </span>pos = Pos2::new(x <span class="kw">as </span>f32, y <span class="kw">as </span>f32);
-                extent.set_center(pos);
-                current_rect = current_rect.union(<span class="kw-2">*</span>extent);
+                <span class="kw">let </span>extent = Rect::from_center_size(pos, template.size);
+                current_rect = current_rect.union(extent);
+                layout.nodes.insert(<span class="kw-2">*</span>node, extent);
             }
 
             layout.entities.push((entity.clone(), current_rect));
@@ -544,6 +496,16 @@
             }
         }
 
+        layout
+    }
+
+    <span class="doccomment">/// Returns `true` if finished.
+    </span><span class="kw">pub fn </span>tick(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; Layout {
+        <span class="self">self</span>.simulation.tick(<span class="number">1</span>);
+        <span class="self">self</span>.layout()
+    }
+
+    <span class="kw">pub fn </span>is_finished(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
         <span class="self">self</span>.simulation.finished()
     }
 }
