@@ -15,10 +15,15 @@ namespace rerun {
         ) {
         using namespace blueprint::archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(2);
+        cells.reserve(3);
 
         {
             auto result = ComponentBatch::from_loggable(archetype.range);
+            RR_RETURN_NOT_OK(result.error);
+            cells.push_back(std::move(result.value));
+        }
+        {
+            auto result = ComponentBatch::from_loggable(archetype.clipping_plane);
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

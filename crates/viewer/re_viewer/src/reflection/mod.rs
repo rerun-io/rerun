@@ -75,6 +75,14 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <ClippingPlane as Component>::name(),
+            ComponentReflection {
+                docstring_md: "Distance to the clipping plane in used for `Spatial2DView`.",
+                custom_placeholder: None,
+                datatype: ClippingPlane::arrow2_datatype(),
+            },
+        ),
+        (
             <ColumnShare as Component>::name(),
             ComponentReflection {
                 docstring_md: "The layout share of a column in the container.",
@@ -2202,7 +2210,11 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "rerun.blueprint.components.VisualBounds2D".into(), display_name :
                     "Range", docstring_md :
                     "Controls the visible range of a 2D view.\n\nUse this to control pan & zoom of the view.",
-                    is_required : true, },
+                    is_required : true, }, ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.ClippingPlane".into(), display_name :
+                    "Clipping plane", docstring_md :
+                    "Controls the distance to the clipping plane", is_required : false,
+                    },
                 ],
             },
         ),

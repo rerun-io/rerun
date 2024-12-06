@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../../blueprint/components/clipping_plane.hpp"
 #include "../../blueprint/components/visual_bounds2d.hpp"
 #include "../../collection.hpp"
 #include "../../component_batch.hpp"
@@ -27,6 +28,9 @@ namespace rerun::blueprint::archetypes {
         /// Use this to control pan & zoom of the view.
         rerun::blueprint::components::VisualBounds2D range;
 
+        /// Controls the distance to the clipping plane
+        rerun::blueprint::components::ClippingPlane clipping_plane;
+
       public:
         static constexpr const char IndicatorComponentName[] =
             "rerun.blueprint.components.VisualBounds2DIndicator";
@@ -38,8 +42,11 @@ namespace rerun::blueprint::archetypes {
         VisualBounds2D() = default;
         VisualBounds2D(VisualBounds2D&& other) = default;
 
-        explicit VisualBounds2D(rerun::blueprint::components::VisualBounds2D _range)
-            : range(std::move(_range)) {}
+        explicit VisualBounds2D(
+            rerun::blueprint::components::VisualBounds2D _range,
+            rerun::blueprint::components::ClippingPlane _clipping_plane
+        )
+            : range(std::move(_range)), clipping_plane(std::move(_clipping_plane)) {}
     };
 
 } // namespace rerun::blueprint::archetypes

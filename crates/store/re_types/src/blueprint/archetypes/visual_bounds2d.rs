@@ -31,17 +31,21 @@ pub struct VisualBounds2D {
     ///
     /// Use this to control pan & zoom of the view.
     pub range: crate::blueprint::components::VisualBounds2D,
+
+    /// Controls the distance to the clipping plane
+    pub clipping_plane: crate::blueprint::components::ClippingPlane,
 }
 
 impl ::re_types_core::SizeBytes for VisualBounds2D {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.range.heap_size_bytes()
+        self.range.heap_size_bytes() + self.clipping_plane.heap_size_bytes()
     }
 
     #[inline]
     fn is_pod() -> bool {
         <crate::blueprint::components::VisualBounds2D>::is_pod()
+            && <crate::blueprint::components::ClippingPlane>::is_pod()
     }
 }
 
@@ -51,20 +55,21 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.blueprint.components.VisualBounds2DIndicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 0usize]> =
-    once_cell::sync::Lazy::new(|| []);
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
+    once_cell::sync::Lazy::new(|| ["rerun.blueprint.components.ClippingPlane".into()]);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.blueprint.components.VisualBounds2D".into(),
             "rerun.blueprint.components.VisualBounds2DIndicator".into(),
+            "rerun.blueprint.components.ClippingPlane".into(),
         ]
     });
 
 impl VisualBounds2D {
-    /// The total number of components in the archetype: 1 required, 1 recommended, 0 optional
-    pub const NUM_COMPONENTS: usize = 2usize;
+    /// The total number of components in the archetype: 1 required, 1 recommended, 1 optional
+    pub const NUM_COMPONENTS: usize = 3usize;
 }
 
 /// Indicator component for the [`VisualBounds2D`] [`::re_types_core::Archetype`]
@@ -132,7 +137,23 @@ impl ::re_types_core::Archetype for VisualBounds2D {
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.blueprint.archetypes.VisualBounds2D#range")?
         };
-        Ok(Self { range })
+        let clipping_plane = {
+            let array = arrays_by_name
+                .get("rerun.blueprint.components.ClippingPlane")
+                .ok_or_else(DeserializationError::missing_data)
+                .with_context("rerun.blueprint.archetypes.VisualBounds2D#clipping_plane")?;
+            <crate::blueprint::components::ClippingPlane>::from_arrow2_opt(&**array)
+                .with_context("rerun.blueprint.archetypes.VisualBounds2D#clipping_plane")?
+                .into_iter()
+                .next()
+                .flatten()
+                .ok_or_else(DeserializationError::missing_data)
+                .with_context("rerun.blueprint.archetypes.VisualBounds2D#clipping_plane")?
+        };
+        Ok(Self {
+            range,
+            clipping_plane,
+        })
     }
 }
 
@@ -143,6 +164,7 @@ impl ::re_types_core::AsComponents for VisualBounds2D {
         [
             Some(Self::indicator()),
             Some((&self.range as &dyn ComponentBatch).into()),
+            Some((&self.clipping_plane as &dyn ComponentBatch).into()),
         ]
         .into_iter()
         .flatten()
@@ -155,9 +177,13 @@ impl ::re_types_core::ArchetypeReflectionMarker for VisualBounds2D {}
 impl VisualBounds2D {
     /// Create a new `VisualBounds2D`.
     #[inline]
-    pub fn new(range: impl Into<crate::blueprint::components::VisualBounds2D>) -> Self {
+    pub fn new(
+        range: impl Into<crate::blueprint::components::VisualBounds2D>,
+        clipping_plane: impl Into<crate::blueprint::components::ClippingPlane>,
+    ) -> Self {
         Self {
             range: range.into(),
+            clipping_plane: clipping_plane.into(),
         }
     }
 }

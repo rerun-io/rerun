@@ -7,6 +7,7 @@ from .apply_latest_at import ApplyLatestAt, ApplyLatestAtBatch
 from .auto_layout import AutoLayout, AutoLayoutBatch
 from .auto_space_views import AutoSpaceViews, AutoSpaceViewsBatch
 from .background_kind import BackgroundKind, BackgroundKindArrayLike, BackgroundKindBatch, BackgroundKindLike
+from .clipping_plane import ClippingPlane, ClippingPlaneBatch
 from .column_share import ColumnShare, ColumnShareBatch
 from .component_column_selector import ComponentColumnSelector, ComponentColumnSelectorBatch
 from .container_kind import ContainerKind, ContainerKindArrayLike, ContainerKindBatch, ContainerKindLike
@@ -50,6 +51,8 @@ __all__ = [
     "BackgroundKindArrayLike",
     "BackgroundKindBatch",
     "BackgroundKindLike",
+    "ClippingPlane",
+    "ClippingPlaneBatch",
     "ColumnShare",
     "ColumnShareBatch",
     "ComponentColumnSelector",
