@@ -69,6 +69,8 @@ pub fn drag_and_drop_payload_cursor_ui(ui: &mut egui::Ui) {
             );
             let response = ui
                 .scope_builder(egui::UiBuilder::new().layer_id(layer_id), |ui| {
+                    ui.set_opacity(0.7);
+
                     drag_pill_frame(matches!(
                         payload.as_ref(),
                         &DragAndDropPayload::Invalid { .. }
