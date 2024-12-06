@@ -107,10 +107,6 @@ impl PyStorageNodeClient {
                 .await
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
-            for tc in &transport_chunks {
-                eprintln!("{tc:#?}");
-            }
-
             let record_batches: Vec<Result<RecordBatch, arrow::error::ArrowError>> =
                 transport_chunks
                     .into_iter()
@@ -190,6 +186,7 @@ impl PyStorageNodeClient {
                         .map_err(|err| PyRuntimeError::new_err(err.to_string()))
                 })
                 .transpose()?
+                // TODO(zehiko) this is going away soon
                 .ok_or(PyRuntimeError::new_err("No metadata"))?;
 
             let request = RegisterRecordingRequest {

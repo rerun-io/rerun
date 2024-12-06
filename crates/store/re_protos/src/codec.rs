@@ -180,15 +180,7 @@ fn read_arrow_from_bytes<R: std::io::Read>(
 
 #[cfg(test)]
 mod tests {
-    use arrow2::array::Utf8Array as Arrow2Utf8Array;
-    use arrow2::chunk::Chunk as Arrow2Chunk;
-    use arrow2::{
-        array::Int32Array as Arrow2Int32Array, datatypes::Field as Arrow2Field,
-        datatypes::Schema as Arrow2Schema,
-    };
     use re_dataframe::external::re_chunk::{Chunk, RowId};
-    use re_dataframe::TransportChunk;
-    use re_log_types::StoreId;
     use re_log_types::{example_components::MyPoint, Timeline};
 
     use crate::{
