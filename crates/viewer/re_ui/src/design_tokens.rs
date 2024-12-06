@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used)]
 
-use crate::color_table::Shade::{S100, S1000, S150, S200, S250, S300, S325, S350, S550, S775};
-use crate::color_table::{ColorTable, ColorToken, Hue, Shade};
+use crate::color_table::Scale::{S100, S1000, S150, S200, S250, S300, S325, S350, S550, S775};
+use crate::color_table::{ColorTable, ColorToken};
 use crate::{design_tokens, CUSTOM_WINDOW_DECORATIONS};
 
 /// The look and feel of the UI.
@@ -440,24 +440,12 @@ fn load_color_table(json: &serde_json::Value) -> ColorTable {
         parse_color(global_path_value(json, global_path).as_str().unwrap())
     }
 
-    ColorTable {
-        color_table: Hue::all()
-            .iter()
-            .map(|hue| {
-                let shade_map = Shade::all()
-                    .iter()
-                    .map(|shade| {
-                        let color = get_color_from_json(
-                            json,
-                            &format!("{{Global.Color.{hue}.{}}}", shade.as_u16()),
-                        );
-                        (*shade, color)
-                    })
-                    .collect();
-                (*hue, shade_map)
-            })
-            .collect(),
-    }
+    ColorTable::new(|color_token| {
+        get_color_from_json(
+            json,
+            &format!("{{Global.Color.{}.{}}}", color_token.hue, color_token.scale),
+        )
+    })
 }
 
 fn get_alias<T: serde::de::DeserializeOwned>(json: &serde_json::Value, alias_path: &str) -> T {
