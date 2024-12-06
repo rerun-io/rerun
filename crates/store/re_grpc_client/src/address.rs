@@ -4,7 +4,7 @@ use url::Url;
 #[derive(thiserror::Error, Debug)]
 #[error("URL {url:?} should follow rerun://addr:port/recording/12345 for recording or rerun://addr:port/catalog for catalog")]
 pub struct InvalidRedapAddress {
-    url: Url,
+    url: String,
     msg: String,
 }
 
@@ -43,19 +43,24 @@ impl std::fmt::Display for RedapAddress {
     }
 }
 
-impl TryFrom<Url> for RedapAddress {
+impl TryFrom<String> for RedapAddress {
     type Error = InvalidRedapAddress;
 
-    fn try_from(url: Url) -> Result<Self, Self::Error> {
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        let url = Url::parse(&value).map_err(|e| InvalidRedapAddress {
+            url: value.clone(),
+            msg: e.to_string(),
+        })?;
+
         if url.scheme() != "rerun" {
             return Err(InvalidRedapAddress {
-                url: url.clone(),
+                url: url.to_string(),
                 msg: "Invalid scheme, expected 'rerun'".to_owned(),
             });
         }
 
         let host = url.host_str().ok_or_else(|| InvalidRedapAddress {
-            url: url.clone(),
+            url: url.to_string(),
             msg: "Missing host".to_owned(),
         })?;
 
@@ -64,7 +69,7 @@ impl TryFrom<Url> for RedapAddress {
         }
 
         let port = url.port().ok_or_else(|| InvalidRedapAddress {
-            url: url.clone(),
+            url: url.to_string(),
             msg: "Missing port".to_owned(),
         })?;
 
@@ -77,7 +82,7 @@ impl TryFrom<Url> for RedapAddress {
                 url.path_segments().map(|s| s.collect()).unwrap_or_default();
             if path_segments.len() != 1 || path_segments[0] != "catalog" {
                 return Err(InvalidRedapAddress {
-                    url: url.clone(),
+                    url: url.to_string(),
                     msg: "Invalid path, expected '/catalog'".to_owned(),
                 });
             }
@@ -88,7 +93,7 @@ impl TryFrom<Url> for RedapAddress {
                 url.path_segments().map(|s| s.collect()).unwrap_or_default();
             if path_segments.len() != 2 || path_segments[0] != "recording" {
                 return Err(InvalidRedapAddress {
-                    url: url.clone(),
+                    url: url.to_string(),
                     msg: "Invalid path, expected '/recording/{id}'".to_owned(),
                 });
             }

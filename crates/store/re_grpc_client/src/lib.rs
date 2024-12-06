@@ -74,20 +74,16 @@ enum StreamError {
 ///
 /// `on_msg` can be used to wake up the UI thread on Wasm.
 pub fn stream_from_redap(
-    redap_url: Url,
+    url: String,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
 ) -> Result<re_smart_channel::Receiver<LogMsg>, InvalidRedapAddress> {
-    re_log::debug!("Loading {redap_url}…");
+    re_log::debug!("Loading {url}…");
 
-    let address = redap_url.clone().try_into()?;
+    let address = url.clone().try_into()?;
 
     let (tx, rx) = re_smart_channel::smart_channel(
-        re_smart_channel::SmartMessageSource::RerunGrpcStream {
-            url: redap_url.clone().to_string(),
-        },
-        re_smart_channel::SmartChannelSource::RerunGrpcStream {
-            url: redap_url.clone().to_string(),
-        },
+        re_smart_channel::SmartMessageSource::RerunGrpcStream { url: url.clone() },
+        re_smart_channel::SmartChannelSource::RerunGrpcStream { url: url.clone() },
     );
 
     spawn_future(async move {
@@ -100,7 +96,7 @@ pub fn stream_from_redap(
                     stream_recording_async(tx, redap_endpoint, recording_id, on_msg).await
                 {
                     re_log::warn!(
-                        "Error while streaming {redap_url}: {}",
+                        "Error while streaming {url}: {}",
                         re_error::format_ref(&err)
                     );
                 }
@@ -108,7 +104,7 @@ pub fn stream_from_redap(
             RedapAddress::Catalog { redap_endpoint } => {
                 if let Err(err) = stream_catalog_async(tx, redap_endpoint, on_msg).await {
                     re_log::warn!(
-                        "Error while streaming {redap_url}: {}",
+                        "Error while streaming {url}: {}",
                         re_error::format_ref(&err)
                     );
                 }

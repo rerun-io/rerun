@@ -247,8 +247,6 @@ impl DataSource {
 
             #[cfg(feature = "grpc")]
             Self::RerunGrpcUrl { url } => {
-                let url =
-                    url::Url::parse(&url).with_context(|| format!("Invalid gRPC URL: {url}"))?;
                 re_grpc_client::stream_from_redap(url, on_msg).map_err(|err| err.into())
             }
         }
