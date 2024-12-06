@@ -147,7 +147,6 @@ pub use re_entity_db::external::re_chunk_store::{
     ChunkStore, ChunkStoreConfig, ChunkStoreDiff, ChunkStoreDiffKind, ChunkStoreEvent,
     ChunkStoreGeneration, ChunkStoreHandle, ChunkStoreSubscriber,
 };
-pub use re_log_encoding::VersionPolicy;
 pub use re_log_types::StoreKind;
 
 /// To register a new external data loader, simply add an executable in your $PATH whose name
