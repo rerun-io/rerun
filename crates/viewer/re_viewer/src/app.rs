@@ -825,12 +825,6 @@ impl App {
                 egui_ctx.set_zoom_factor(1.0);
             }
 
-            UICommand::SelectionPrevious => {
-                self.state.selection_state.select_previous();
-            }
-            UICommand::SelectionNext => {
-                self.state.selection_state.select_next();
-            }
             UICommand::ToggleCommandPalette => {
                 self.cmd_palette.toggle();
             }

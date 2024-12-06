@@ -18,7 +18,6 @@ mod item;
 mod maybe_mut_ref;
 mod query_context;
 mod query_range;
-mod selection_history;
 mod selection_state;
 mod space_view;
 mod store_context;
@@ -59,7 +58,6 @@ pub use self::{
         DataQueryResult, DataResultHandle, DataResultNode, DataResultTree, QueryContext,
     },
     query_range::QueryRange,
-    selection_history::SelectionHistory,
     selection_state::{
         ApplicationSelectionState, HoverHighlight, InteractionHighlight, ItemCollection,
         ItemSpaceContext, SelectionHighlight,

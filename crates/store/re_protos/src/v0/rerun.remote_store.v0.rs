@@ -292,12 +292,11 @@ pub struct QueryRequest {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct QueryCatalogRequest {
-    /// define which columns should be returned / projected
-    /// we define a separate message to make it optional.
-    /// If not provided, all columns should be returned
+    /// Column projection - define which columns should be returned.
+    /// Providing it is optional, if not provided, all columns should be returned
     #[prost(message, optional, tag = "1")]
     pub column_projection: ::core::option::Option<ColumnProjection>,
-    /// filter out specific recordings metadata
+    /// Filter specific recordings that match the criteria (selection)
     #[prost(message, optional, tag = "2")]
     pub filter: ::core::option::Option<CatalogFilter>,
 }
@@ -308,7 +307,8 @@ pub struct ColumnProjection {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CatalogFilter {
-    /// filter out specific recordings
+    /// Filtering is very simple right now, we can only select
+    /// recordings by their ids.
     #[prost(message, repeated, tag = "1")]
     pub recording_ids: ::prost::alloc::vec::Vec<RecordingId>,
 }

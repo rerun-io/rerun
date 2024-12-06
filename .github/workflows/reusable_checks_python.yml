@@ -35,7 +35,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.8.1
         with:
-          pixi-version: v0.34.0
+          pixi-version: v0.39.0
 
       - name: Python format check
         run: pixi run py-fmt-check
@@ -55,7 +55,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.8.1
         with:
-          pixi-version: v0.34.0
+          pixi-version: v0.39.0
           environments: py-docs
 
       - name: Build via mkdocs

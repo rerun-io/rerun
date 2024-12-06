@@ -59,9 +59,6 @@ pub enum UICommand {
     #[cfg(not(target_arch = "wasm32"))]
     ZoomReset,
 
-    SelectionPrevious,
-    SelectionNext,
-
     ToggleCommandPalette,
 
     // Playback:
@@ -199,8 +196,6 @@ impl UICommand {
                 "Resets the UI zoom level to the operating system's default value",
             ),
 
-            Self::SelectionPrevious => ("Previous selection", "Go to previous selection"),
-            Self::SelectionNext => ("Next selection", "Go to next selection"),
             Self::ToggleCommandPalette => ("Command palette…", "Toggle the Command Palette"),
 
             Self::PlaybackTogglePlayPause => {
@@ -346,8 +341,6 @@ impl UICommand {
             #[cfg(not(target_arch = "wasm32"))]
             Self::ZoomReset => Some(egui::gui_zoom::kb_shortcuts::ZOOM_RESET),
 
-            Self::SelectionPrevious => Some(ctrl_shift(Key::ArrowLeft)),
-            Self::SelectionNext => Some(ctrl_shift(Key::ArrowRight)),
             Self::ToggleCommandPalette => Some(cmd(Key::P)),
 
             Self::PlaybackTogglePlayPause => Some(key(Key::Space)),
