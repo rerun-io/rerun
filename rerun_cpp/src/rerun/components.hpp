@@ -39,6 +39,7 @@
 #include "components/name.hpp"
 #include "components/opacity.hpp"
 #include "components/pinhole_projection.hpp"
+#include "components/plane3d.hpp"
 #include "components/pose_rotation_axis_angle.hpp"
 #include "components/pose_rotation_quat.hpp"
 #include "components/pose_scale3d.hpp"

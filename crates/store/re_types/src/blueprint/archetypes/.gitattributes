@@ -3,6 +3,7 @@
 .gitattributes linguist-generated=true
 background.rs linguist-generated=true
 dataframe_query.rs linguist-generated=true
+line_grid3d.rs linguist-generated=true
 map_background.rs linguist-generated=true
 map_zoom.rs linguist-generated=true
 mod.rs linguist-generated=true

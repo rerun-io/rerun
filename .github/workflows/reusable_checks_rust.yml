@@ -63,7 +63,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.8.1
         with:
-          pixi-version: v0.34.0
+          pixi-version: v0.39.0
 
       - name: Rust checks & tests
         if: ${{ inputs.CHANNEL == 'pr' }}
@@ -107,7 +107,7 @@ jobs:
       # Building with `--all-features` requires extra build tools like `nasm`.
       - uses: prefix-dev/setup-pixi@v0.8.1
         with:
-          pixi-version: v0.34.0
+          pixi-version: v0.39.0
 
       - name: Download test assets
         run: pixi run python ./tests/assets/download_test_assets.py

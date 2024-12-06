@@ -5,6 +5,7 @@ from __future__ import annotations
 from .background import Background
 from .container_blueprint import ContainerBlueprint
 from .dataframe_query import DataframeQuery
+from .line_grid3d import LineGrid3D
 from .map_background import MapBackground
 from .map_zoom import MapZoom
 from .panel_blueprint import PanelBlueprint
@@ -23,6 +24,7 @@ __all__ = [
     "Background",
     "ContainerBlueprint",
     "DataframeQuery",
+    "LineGrid3D",
     "MapBackground",
     "MapZoom",
     "PanelBlueprint",

@@ -12,13 +12,13 @@ mod command_sender;
 mod component_fallbacks;
 mod component_ui_registry;
 mod contents;
+mod data_result_node_or_path;
 mod file_dialog;
 mod image_info;
 mod item;
 mod maybe_mut_ref;
 mod query_context;
 mod query_range;
-mod selection_history;
 mod selection_state;
 mod space_view;
 mod store_context;
@@ -51,6 +51,7 @@ pub use self::{
     },
     component_ui_registry::{ComponentUiRegistry, ComponentUiTypes, UiLayout},
     contents::{blueprint_id_to_tile_id, Contents, ContentsName},
+    data_result_node_or_path::DataResultNodeOrPath,
     file_dialog::santitize_file_name,
     image_info::{ColormapWithRange, ImageInfo},
     item::Item,
@@ -59,7 +60,6 @@ pub use self::{
         DataQueryResult, DataResultHandle, DataResultNode, DataResultTree, QueryContext,
     },
     query_range::QueryRange,
-    selection_history::SelectionHistory,
     selection_state::{
         ApplicationSelectionState, HoverHighlight, InteractionHighlight, ItemCollection,
         ItemSpaceContext, SelectionHighlight,
