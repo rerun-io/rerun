@@ -62,30 +62,43 @@ pub fn entity_path_parts_buttons(
     space_view_id: Option<SpaceViewId>,
     entity_path: &EntityPath,
 ) -> egui::Response {
-    let with_icon = false; // too much noise with icons in a path
+    let with_individual_icons = false; // too much noise with icons in a path
 
     ui.horizontal(|ui| {
-        ui.spacing_mut().item_spacing.x = 2.0;
+        {
+            ui.spacing_mut().item_spacing.x = 2.0;
 
-        // Show one single icon up-front instead:
-        let instance_path = InstancePath::entity_all(entity_path.clone());
-        ui.add(instance_path_icon(&query.timeline(), db, &instance_path).as_image());
+            // The last part points to the selected entity, but that's ugly, so remove the highlight:
+            let visuals = ui.visuals_mut();
+            visuals.selection.bg_fill = egui::Color32::TRANSPARENT;
+            visuals.selection.stroke = visuals.widgets.inactive.fg_stroke;
+        }
 
-        let mut accumulated = Vec::new();
-        for part in entity_path.iter() {
-            accumulated.push(part.clone());
+        if !with_individual_icons {
+            // Show one single icon up-front instead:
+            let instance_path = InstancePath::entity_all(entity_path.clone());
+            ui.add(instance_path_icon(&query.timeline(), db, &instance_path).as_image());
+        }
 
+        if entity_path.is_root() {
             ui.strong("/");
-            instance_path_button_to_ex(
-                ctx,
-                query,
-                db,
-                ui,
-                space_view_id,
-                &InstancePath::entity_all(accumulated.clone().into()),
-                part.syntax_highlighted(ui.style()),
-                with_icon,
-            );
+        } else {
+            let mut accumulated = Vec::new();
+            for part in entity_path.iter() {
+                accumulated.push(part.clone());
+
+                ui.strong("/");
+                instance_path_button_to_ex(
+                    ctx,
+                    query,
+                    db,
+                    ui,
+                    space_view_id,
+                    &InstancePath::entity_all(accumulated.clone().into()),
+                    part.syntax_highlighted(ui.style()),
+                    with_individual_icons,
+                );
+            }
         }
     })
     .response
