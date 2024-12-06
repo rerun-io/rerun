@@ -533,11 +533,11 @@ fn check_for_clashing_command_shortcuts() {
                     }
                     for b_shortcut in b_cmd.kb_shortcuts(os) {
                         assert!(
-                        !clashes(a_shortcut, b_shortcut),
-                        "Command '{a_cmd:?}' and '{b_cmd:?}' have overlapping keyboard shortcuts: {:?} vs {:?}",
-                        a_shortcut.format(&egui::ModifierNames::NAMES, true),
-                        b_shortcut.format(&egui::ModifierNames::NAMES, true),
-                    );
+                            !clashes(a_shortcut, b_shortcut),
+                            "Command '{a_cmd:?}' and '{b_cmd:?}' have overlapping keyboard shortcuts: {:?} vs {:?}",
+                            a_shortcut.format(&egui::ModifierNames::NAMES, true),
+                            b_shortcut.format(&egui::ModifierNames::NAMES, true),
+                        );
                     }
                 }
             }
