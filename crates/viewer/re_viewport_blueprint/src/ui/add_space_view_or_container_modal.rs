@@ -28,7 +28,7 @@ impl AddSpaceViewOrContainerModal {
         self.modal_handler.ui(
             egui_ctx,
             || {
-                re_ui::modal::Modal::new("Add space view or container")
+                re_ui::modal::ModalWrapper::new("Add space view or container")
                     .min_width(500.0)
                     .full_span_content(true)
             },

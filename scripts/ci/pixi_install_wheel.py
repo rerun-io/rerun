@@ -19,6 +19,12 @@ import platform
 import subprocess
 import sys
 from pathlib import Path
+from urllib.parse import urljoin
+from urllib.request import pathname2url
+
+
+def path_to_file_url(path: Path) -> str:
+    return urljoin("file:", pathname2url(str(path.absolute())))
 
 
 def run_pixi_install(feature: str, dir: str, pkg: str, platform_independent: bool = False) -> None:
@@ -72,7 +78,7 @@ def run_pixi_install(feature: str, dir: str, pkg: str, platform_independent: boo
     wheel = Path(dir) / wheels[0]
 
     # Install the wheel
-    cmd = ["pixi", "add", "--feature", feature, "--pypi", f"{pkg} @ {wheel}"]
+    cmd = ["pixi", "add", "--feature", feature, "--pypi", f"{pkg} @ {path_to_file_url(wheel)}"]
     print(f"Running: {' '.join(cmd)}")
     returncode = subprocess.Popen(cmd).wait()
     assert returncode == 0, f"process exited with error code {returncode}"
