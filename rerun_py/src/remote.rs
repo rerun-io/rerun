@@ -14,11 +14,12 @@ use re_protos::{
     codec::decode,
     v0::{
         storage_node_client::StorageNodeClient, EncoderVersion, FetchRecordingRequest,
-        ListRecordingsRequest, RecordingId, RecordingMetadata, RecordingType,
-        RegisterRecordingRequest, UpdateRecordingMetadataRequest,
+        QueryCatalogRequest, RecordingId, RecordingMetadata, RecordingType,
+        RegisterRecordingRequest, UpdateCatalogRequest,
     },
 };
 use re_sdk::{ApplicationId, StoreId, StoreKind, Time};
+use tokio_stream::StreamExt;
 
 use crate::dataframe::PyRecording;
 
@@ -80,26 +81,30 @@ pub struct PyStorageNodeClient {
 
 #[pymethods]
 impl PyStorageNodeClient {
-    /// Get the metadata for all recordings in the storage node.
-    fn list_recordings(&mut self) -> PyResult<PyArrowType<Box<dyn RecordBatchReader + Send>>> {
+    /// Query the recordings metadata catalog.
+    fn query_catalog(&mut self) -> PyResult<PyArrowType<Box<dyn RecordBatchReader + Send>>> {
         let reader = self.runtime.block_on(async {
-            // TODO(jleibs): Support column projection
-            let request = ListRecordingsRequest {
+            // TODO(jleibs): Support column projection and filtering
+            let request = QueryCatalogRequest {
                 column_projection: None,
+                filter: None,
             };
 
-            let resp = self
+            let transport_chunks = self
                 .client
-                .list_recordings(request)
+                .query_catalog(request)
                 .await
-                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
-
-            let transport_chunks = resp
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
                 .into_inner()
-                .recordings
-                .into_iter()
-                .map(|recording| recording.data())
+                .filter_map(|resp| {
+                    resp.and_then(|r| {
+                        decode(r.encoder_version(), &r.payload)
+                            .map_err(|err| tonic::Status::internal(err.to_string()))
+                    })
+                    .transpose()
+                })
                 .collect::<Result<Vec<_>, _>>()
+                .await
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
             let record_batches: Vec<Result<RecordBatch, arrow::error::ArrowError>> =
@@ -216,7 +221,7 @@ impl PyStorageNodeClient {
         id,
         metadata
     ))]
-    fn update_metadata(&mut self, id: &str, metadata: &Bound<'_, PyDict>) -> PyResult<()> {
+    fn update_catalog(&mut self, id: &str, metadata: &Bound<'_, PyDict>) -> PyResult<()> {
         self.runtime.block_on(async {
             let (schema, data): (
                 Vec<arrow2::datatypes::Field>,
@@ -247,13 +252,13 @@ impl PyStorageNodeClient {
             let metadata = RecordingMetadata::try_from(EncoderVersion::V0, &metadata_tc)
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
-            let request = UpdateRecordingMetadataRequest {
+            let request = UpdateCatalogRequest {
                 recording_id: Some(RecordingId { id: id.to_owned() }),
                 metadata: Some(metadata),
             };
 
             self.client
-                .update_recording_metadata(request)
+                .update_catalog(request)
                 .await
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 

@@ -245,33 +245,14 @@ pub struct RegisterRecordingResponse {
     pub metadata: ::core::option::Option<RecordingMetadata>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct GetRecordingMetadataRequest {
-    #[prost(message, optional, tag = "1")]
-    pub recording_id: ::core::option::Option<RecordingId>,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct GetRecordingMetadataResponse {
-    #[prost(message, optional, tag = "1")]
-    pub id: ::core::option::Option<RecordingId>,
-    #[prost(message, optional, tag = "2")]
-    pub metadata: ::core::option::Option<RecordingMetadata>,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct TimeMetadata {
-    #[prost(message, optional, tag = "1")]
-    pub timeline: ::core::option::Option<Timeline>,
-    #[prost(message, optional, tag = "2")]
-    pub time_range: ::core::option::Option<TimeRange>,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct UpdateRecordingMetadataRequest {
+pub struct UpdateCatalogRequest {
     #[prost(message, optional, tag = "1")]
     pub recording_id: ::core::option::Option<RecordingId>,
     #[prost(message, optional, tag = "2")]
     pub metadata: ::core::option::Option<RecordingMetadata>,
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct UpdateRecordingMetadataResponse {}
+pub struct UpdateCatalogResponse {}
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct QueryRequest {
     /// unique identifier of the recording
@@ -293,12 +274,14 @@ pub struct QueryResponse {
     pub payload: ::prost::alloc::vec::Vec<u8>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ListRecordingsRequest {
-    /// define which columns should be returned / projected
-    /// we define a separate message to make it optional.
-    /// If not provided, all columns should be returned
+pub struct QueryCatalogRequest {
+    /// Column projection - define which columns should be returned.
+    /// Providing it is optional, if not provided, all columns should be returned
     #[prost(message, optional, tag = "1")]
     pub column_projection: ::core::option::Option<ColumnProjection>,
+    /// Filter specific recordings that match the criteria (selection)
+    #[prost(message, optional, tag = "2")]
+    pub filter: ::core::option::Option<CatalogFilter>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ColumnProjection {
@@ -306,9 +289,19 @@ pub struct ColumnProjection {
     pub columns: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ListRecordingsResponse {
+pub struct CatalogFilter {
+    /// Filtering is very simple right now, we can only select
+    /// recordings by their ids.
     #[prost(message, repeated, tag = "1")]
-    pub recordings: ::prost::alloc::vec::Vec<RecordingMetadata>,
+    pub recording_ids: ::prost::alloc::vec::Vec<RecordingId>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct QueryCatalogResponse {
+    #[prost(enumeration = "EncoderVersion", tag = "1")]
+    pub encoder_version: i32,
+    /// raw bytes are TransportChunks (i.e. RecordBatches) encoded with the relevant codec
+    #[prost(bytes = "vec", tag = "2")]
+    pub payload: ::prost::alloc::vec::Vec<u8>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct FetchRecordingRequest {
@@ -328,7 +321,7 @@ pub struct FetchRecordingResponse {
     #[prost(bytes = "vec", tag = "2")]
     pub payload: ::prost::alloc::vec::Vec<u8>,
 }
-/// Application level error - use as `details` in the `google.rpc.Status` message
+/// Application level error - used as `details` in the `google.rpc.Status` message
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RemoteStoreError {
     /// error code
@@ -546,49 +539,11 @@ pub mod storage_node_client {
             self.inner.server_streaming(req, path, codec).await
         }
         /// metadata API calls
-        pub async fn list_recordings(
+        pub async fn query_catalog(
             &mut self,
-            request: impl tonic::IntoRequest<super::ListRecordingsRequest>,
-        ) -> std::result::Result<tonic::Response<super::ListRecordingsResponse>, tonic::Status>
-        {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/rerun.remote_store.v0.StorageNode/ListRecordings",
-            );
-            let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.remote_store.v0.StorageNode",
-                "ListRecordings",
-            ));
-            self.inner.unary(req, path, codec).await
-        }
-        pub async fn get_recording_metadata(
-            &mut self,
-            request: impl tonic::IntoRequest<super::GetRecordingMetadataRequest>,
-        ) -> std::result::Result<tonic::Response<super::GetRecordingMetadataResponse>, tonic::Status>
-        {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/rerun.remote_store.v0.StorageNode/GetRecordingMetadata",
-            );
-            let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.remote_store.v0.StorageNode",
-                "GetRecordingMetadata",
-            ));
-            self.inner.unary(req, path, codec).await
-        }
-        pub async fn update_recording_metadata(
-            &mut self,
-            request: impl tonic::IntoRequest<super::UpdateRecordingMetadataRequest>,
+            request: impl tonic::IntoRequest<super::QueryCatalogRequest>,
         ) -> std::result::Result<
-            tonic::Response<super::UpdateRecordingMetadataResponse>,
+            tonic::Response<tonic::codec::Streaming<super::QueryCatalogResponse>>,
             tonic::Status,
         > {
             self.inner.ready().await.map_err(|e| {
@@ -596,12 +551,31 @@ pub mod storage_node_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.remote_store.v0.StorageNode/UpdateRecordingMetadata",
+                "/rerun.remote_store.v0.StorageNode/QueryCatalog",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
                 "rerun.remote_store.v0.StorageNode",
-                "UpdateRecordingMetadata",
+                "QueryCatalog",
+            ));
+            self.inner.server_streaming(req, path, codec).await
+        }
+        pub async fn update_catalog(
+            &mut self,
+            request: impl tonic::IntoRequest<super::UpdateCatalogRequest>,
+        ) -> std::result::Result<tonic::Response<super::UpdateCatalogResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.remote_store.v0.StorageNode/UpdateCatalog",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.remote_store.v0.StorageNode",
+                "UpdateCatalog",
             ));
             self.inner.unary(req, path, codec).await
         }
@@ -658,22 +632,20 @@ pub mod storage_node_server {
             &self,
             request: tonic::Request<super::FetchRecordingRequest>,
         ) -> std::result::Result<tonic::Response<Self::FetchRecordingStream>, tonic::Status>;
+        /// Server streaming response type for the QueryCatalog method.
+        type QueryCatalogStream: tonic::codegen::tokio_stream::Stream<
+                Item = std::result::Result<super::QueryCatalogResponse, tonic::Status>,
+            > + std::marker::Send
+            + 'static;
         /// metadata API calls
-        async fn list_recordings(
+        async fn query_catalog(
             &self,
-            request: tonic::Request<super::ListRecordingsRequest>,
-        ) -> std::result::Result<tonic::Response<super::ListRecordingsResponse>, tonic::Status>;
-        async fn get_recording_metadata(
+            request: tonic::Request<super::QueryCatalogRequest>,
+        ) -> std::result::Result<tonic::Response<Self::QueryCatalogStream>, tonic::Status>;
+        async fn update_catalog(
             &self,
-            request: tonic::Request<super::GetRecordingMetadataRequest>,
-        ) -> std::result::Result<tonic::Response<super::GetRecordingMetadataResponse>, tonic::Status>;
-        async fn update_recording_metadata(
-            &self,
-            request: tonic::Request<super::UpdateRecordingMetadataRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::UpdateRecordingMetadataResponse>,
-            tonic::Status,
-        >;
+            request: tonic::Request<super::UpdateCatalogRequest>,
+        ) -> std::result::Result<tonic::Response<super::UpdateCatalogResponse>, tonic::Status>;
         async fn register_recording(
             &self,
             request: tonic::Request<super::RegisterRecordingRequest>,
@@ -836,21 +808,24 @@ pub mod storage_node_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.remote_store.v0.StorageNode/ListRecordings" => {
+                "/rerun.remote_store.v0.StorageNode/QueryCatalog" => {
                     #[allow(non_camel_case_types)]
-                    struct ListRecordingsSvc<T: StorageNode>(pub Arc<T>);
-                    impl<T: StorageNode> tonic::server::UnaryService<super::ListRecordingsRequest>
-                        for ListRecordingsSvc<T>
+                    struct QueryCatalogSvc<T: StorageNode>(pub Arc<T>);
+                    impl<T: StorageNode>
+                        tonic::server::ServerStreamingService<super::QueryCatalogRequest>
+                        for QueryCatalogSvc<T>
                     {
-                        type Response = super::ListRecordingsResponse;
-                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        type Response = super::QueryCatalogResponse;
+                        type ResponseStream = T::QueryCatalogStream;
+                        type Future =
+                            BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::ListRecordingsRequest>,
+                            request: tonic::Request<super::QueryCatalogRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as StorageNode>::list_recordings(&inner, request).await
+                                <T as StorageNode>::query_catalog(&inner, request).await
                             };
                             Box::pin(fut)
                         }
@@ -861,7 +836,7 @@ pub mod storage_node_server {
                     let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
-                        let method = ListRecordingsSvc(inner);
+                        let method = QueryCatalogSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
@@ -872,27 +847,26 @@ pub mod storage_node_server {
                                 max_decoding_message_size,
                                 max_encoding_message_size,
                             );
-                        let res = grpc.unary(method, req).await;
+                        let res = grpc.server_streaming(method, req).await;
                         Ok(res)
                     };
                     Box::pin(fut)
                 }
-                "/rerun.remote_store.v0.StorageNode/GetRecordingMetadata" => {
+                "/rerun.remote_store.v0.StorageNode/UpdateCatalog" => {
                     #[allow(non_camel_case_types)]
-                    struct GetRecordingMetadataSvc<T: StorageNode>(pub Arc<T>);
-                    impl<T: StorageNode>
-                        tonic::server::UnaryService<super::GetRecordingMetadataRequest>
-                        for GetRecordingMetadataSvc<T>
+                    struct UpdateCatalogSvc<T: StorageNode>(pub Arc<T>);
+                    impl<T: StorageNode> tonic::server::UnaryService<super::UpdateCatalogRequest>
+                        for UpdateCatalogSvc<T>
                     {
-                        type Response = super::GetRecordingMetadataResponse;
+                        type Response = super::UpdateCatalogResponse;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::GetRecordingMetadataRequest>,
+                            request: tonic::Request<super::UpdateCatalogRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as StorageNode>::get_recording_metadata(&inner, request).await
+                                <T as StorageNode>::update_catalog(&inner, request).await
                             };
                             Box::pin(fut)
                         }
@@ -903,49 +877,7 @@ pub mod storage_node_server {
                     let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
-                        let method = GetRecordingMetadataSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/rerun.remote_store.v0.StorageNode/UpdateRecordingMetadata" => {
-                    #[allow(non_camel_case_types)]
-                    struct UpdateRecordingMetadataSvc<T: StorageNode>(pub Arc<T>);
-                    impl<T: StorageNode>
-                        tonic::server::UnaryService<super::UpdateRecordingMetadataRequest>
-                        for UpdateRecordingMetadataSvc<T>
-                    {
-                        type Response = super::UpdateRecordingMetadataResponse;
-                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::UpdateRecordingMetadataRequest>,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as StorageNode>::update_recording_metadata(&inner, request).await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let method = UpdateRecordingMetadataSvc(inner);
+                        let method = UpdateCatalogSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
