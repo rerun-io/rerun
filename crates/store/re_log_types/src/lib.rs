@@ -431,16 +431,17 @@ impl std::str::FromStr for PythonVersion {
         if patch.is_empty() {
             return Err(PythonVersionParseError::MissingPatch);
         }
+
         Ok(Self {
             major: major
                 .parse()
-                .map_err(|_| PythonVersionParseError::InvalidMajor)?,
+                .map_err(PythonVersionParseError::InvalidMajor)?,
             minor: minor
                 .parse()
-                .map_err(|_| PythonVersionParseError::InvalidMinor)?,
+                .map_err(PythonVersionParseError::InvalidMinor)?,
             patch: patch
                 .parse()
-                .map_err(|_| PythonVersionParseError::InvalidPatch)?,
+                .map_err(PythonVersionParseError::InvalidPatch)?,
             suffix: suffix.into(),
         })
     }
@@ -457,27 +458,14 @@ pub enum PythonVersionParseError {
     #[error("missing patch version")]
     MissingPatch,
 
-    #[error("invalid major version")]
-    InvalidMajor,
+    #[error("invalid major version: {0}")]
+    InvalidMajor(std::num::ParseIntError),
 
-    #[error("invalid minor version")]
-    InvalidMinor,
+    #[error("invalid minor version: {0}")]
+    InvalidMinor(std::num::ParseIntError),
 
-    #[error("invalid patch version")]
-    InvalidPatch,
-}
-
-impl PythonVersionParseError {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            Self::MissingMajor => "missing major version",
-            Self::MissingMinor => "missing minor version",
-            Self::MissingPatch => "missing patch version",
-            Self::InvalidMajor => "invalid major version",
-            Self::InvalidMinor => "invalid minor version",
-            Self::InvalidPatch => "invalid patch version",
-        }
-    }
+    #[error("invalid patch version: {0}")]
+    InvalidPatch(std::num::ParseIntError),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
