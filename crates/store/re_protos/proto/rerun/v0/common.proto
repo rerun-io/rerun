@@ -2,6 +2,23 @@ syntax = "proto3";
 
 package rerun.remote_store.v0;
 
+// supported encoder versions for encoding data
+// See `RerunData` and `RerunChunkData` for its usage
+enum EncoderVersion {
+    V0 = 0;
+}
+
+// RerunChunk is arrow IPC encoded RecordBatch that has
+// rerun-specific semantic constraints and can be directly
+// converted to a Rerun Chunk (`re_chunk::Chunk`)
+message RerunChunk {
+    // encoder version used to encode the data
+    EncoderVersion encoder_version = 1;
+
+    // Data payload is Arrow IPC encoded RecordBatch
+    bytes payload = 1000;
+}
+
 // unique recording identifier. At this point in time it is the same id as the ChunkStore's StoreId
 message RecordingId {
     string id = 1;
