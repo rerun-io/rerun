@@ -404,11 +404,14 @@ mod doclink_translation {
                 }
             }
             Target::Python => {
-                if let Some(field_or_enum_name) = field_or_enum_name {
-                    format!("[`{kind}.{type_name}.{field_or_enum_name}`][rerun.{kind}.{type_name}.{field_or_enum_name}]")
-                } else {
-                    format!("[`{kind}.{type_name}`][rerun.{kind}.{type_name}]")
+                let mut path = format!("{kind}.{type_name}");
+                if !scope.is_empty() {
+                    path = format!("{scope}.{path}");
                 }
+                if let Some(field_or_enum_name) = field_or_enum_name {
+                    path.push_str(&format!(".{field_or_enum_name}"));
+                }
+                format!("[`{path}`][rerun.{path}]")
             }
             Target::WebDocsMarkdown => {
                 // For instance, https://rerun.io/docs/reference/types/views/spatial2d_view
@@ -530,7 +533,7 @@ mod doclink_translation {
                     input,
                     Target::Python
                 ),
-                "A vector `[1, 2, 3]` and a doclink [`views.Spatial2DView`][rerun.views.Spatial2DView] and a [url](www.rerun.io)."
+                "A vector `[1, 2, 3]` and a doclink [`blueprint.views.Spatial2DView`][rerun.blueprint.views.Spatial2DView] and a [url](www.rerun.io)."
             );
 
             assert_eq!(
@@ -579,7 +582,7 @@ mod doclink_translation {
                     input,
                     Target::Python
                 ),
-                "A vector `[1, 2, 3]` and a doclink [`views.Spatial2DView.position`][rerun.views.Spatial2DView.position] and a [url](www.rerun.io)."
+                "A vector `[1, 2, 3]` and a doclink [`blueprint.views.Spatial2DView.position`][rerun.blueprint.views.Spatial2DView.position] and a [url](www.rerun.io)."
             );
 
             assert_eq!(
