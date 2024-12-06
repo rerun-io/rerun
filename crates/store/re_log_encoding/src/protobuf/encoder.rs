@@ -1,5 +1,8 @@
-use super::*;
+use super::{MessageHeader, MessageKind};
+use crate::codec::CodecError;
 use crate::encoder::EncodeError;
+use crate::Compression;
+use re_log_types::LogMsg;
 
 impl MessageKind {
     pub(crate) fn encode(&self, buf: &mut impl std::io::Write) -> Result<(), EncodeError> {

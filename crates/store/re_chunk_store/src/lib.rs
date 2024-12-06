@@ -50,7 +50,7 @@ pub use re_chunk::{
     UnitChunkShared,
 };
 // #[doc(no_inline)]
-// pub use re_log_encoding::decoder::VersionPolicy;
+// pub use re_log_encoding::VersionPolicy;
 #[doc(no_inline)]
 pub use re_log_types::{ResolvedTimeRange, TimeInt, TimeType, Timeline};
 

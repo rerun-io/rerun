@@ -1,5 +1,8 @@
-use super::*;
+use super::{MessageHeader, MessageKind};
 use crate::decoder::DecodeError;
+use crate::{codec::CodecError, Compression};
+use re_log_types::LogMsg;
+use re_protos::TypeConversionError;
 
 impl MessageKind {
     pub(crate) fn decode(data: &mut impl std::io::Read) -> Result<Self, DecodeError> {

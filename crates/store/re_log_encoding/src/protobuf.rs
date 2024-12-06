@@ -1,9 +1,4 @@
-use re_log_types::LogMsg;
-use re_protos::TypeConversionError;
-
-use crate::codec::CodecError;
-use crate::Compression;
-
+#[allow(dead_code)] // used in encoder/decoder behind feature flag
 #[derive(Debug, Clone, Copy)]
 #[repr(u32)]
 pub(crate) enum MessageKind {
@@ -13,6 +8,7 @@ pub(crate) enum MessageKind {
     End = 255,
 }
 
+#[allow(dead_code)] // used in encoder/decoder behind feature flag
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct MessageHeader {
     pub(crate) kind: MessageKind,
