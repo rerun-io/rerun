@@ -15,8 +15,7 @@ use re_types::{
 };
 use re_ui::{ContextExt as _, ModifiersMarkdown, MouseButtonMarkdown};
 use re_viewer_context::{
-    gpu_bridge, ItemSpaceContext, SpaceViewId, SpaceViewSystemExecutionError, ViewQuery,
-    ViewerContext,
+    gpu_bridge, ItemSpaceContext, SpaceViewSystemExecutionError, ViewQuery, ViewerContext,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -31,16 +30,11 @@ use crate::{
 /// Pan and zoom, and return the current transform.
 fn ui_from_scene(
     ctx: &ViewerContext<'_>,
-    view_id: SpaceViewId,
     response: &egui::Response,
     view_class: &SpatialSpaceView2D,
     view_state: &mut SpatialSpaceViewState,
+    bounds_property: &ViewProperty,
 ) -> RectTransform {
-    let bounds_property = ViewProperty::from_archetype::<VisualBounds2D>(
-        ctx.blueprint_db(),
-        ctx.blueprint_query,
-        view_id,
-    );
     let bounds: blueprint_components::VisualBounds2D = bounds_property
         .component_or_fallback(ctx, view_class, view_state)
         .ok_or_log_error()
@@ -169,9 +163,20 @@ impl SpatialSpaceView2D {
         let (response, painter) =
             ui.allocate_painter(ui.available_size(), egui::Sense::click_and_drag());
 
+        let bounds_property = ViewProperty::from_archetype::<VisualBounds2D>(
+            ctx.blueprint_db(),
+            ctx.blueprint_query,
+            query.space_view_id,
+        );
+
         // Convert ui coordinates to/from scene coordinates.
-        let ui_from_scene = ui_from_scene(ctx, query.space_view_id, &response, self, state);
+        let ui_from_scene = ui_from_scene(ctx, &response, self, state, &bounds_property);
         let scene_from_ui = ui_from_scene.inverse();
+
+        let clipping_plane: blueprint_components::ClippingPlane = bounds_property
+            .component_or_fallback(ctx, self, state)
+            .ok_or_log_error()
+            .unwrap_or_default();
 
         // TODO(andreas): Use the same eye & transformations as in `setup_target_config`.
         let eye = Eye {
@@ -183,6 +188,7 @@ impl SpatialSpaceView2D {
         let Ok(target_config) = setup_target_config(
             &painter,
             scene_bounds,
+            *clipping_plane.0,
             &query.space_origin.to_string(),
             query.highlights.any_outlines(),
             &state.pinhole_at_origin,
@@ -287,6 +293,7 @@ impl SpatialSpaceView2D {
 fn setup_target_config(
     egui_painter: &egui::Painter,
     scene_bounds: Rect,
+    clipping_plane: f32,
     space_name: &str,
     any_outlines: bool,
     scene_pinhole: &Option<Pinhole>,
@@ -350,7 +357,7 @@ fn setup_target_config(
 
     let projection_from_view = re_renderer::view_builder::Projection::Perspective {
         vertical_fov: pinhole.fov_y().unwrap_or(Eye::DEFAULT_FOV_Y),
-        near_plane_distance: 0.1,
+        near_plane_distance: clipping_plane,
         aspect_ratio: pinhole
             .aspect_ratio()
             .unwrap_or(scene_bounds_size.x / scene_bounds_size.y), // only happens if the pinhole lacks resolution
