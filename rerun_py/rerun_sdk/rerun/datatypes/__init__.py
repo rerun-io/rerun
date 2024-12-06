@@ -26,6 +26,7 @@ from .keypoint_pair import KeypointPair, KeypointPairArrayLike, KeypointPairBatc
 from .mat3x3 import Mat3x3, Mat3x3ArrayLike, Mat3x3Batch, Mat3x3Like
 from .mat4x4 import Mat4x4, Mat4x4ArrayLike, Mat4x4Batch, Mat4x4Like
 from .pixel_format import PixelFormat, PixelFormatArrayLike, PixelFormatBatch, PixelFormatLike
+from .plane3d import Plane3D, Plane3DArrayLike, Plane3DBatch, Plane3DLike
 from .quaternion import Quaternion, QuaternionArrayLike, QuaternionBatch, QuaternionLike
 from .range1d import Range1D, Range1DArrayLike, Range1DBatch, Range1DLike
 from .range2d import Range2D, Range2DArrayLike, Range2DBatch, Range2DLike
@@ -152,6 +153,10 @@ __all__ = [
     "PixelFormatArrayLike",
     "PixelFormatBatch",
     "PixelFormatLike",
+    "Plane3D",
+    "Plane3DArrayLike",
+    "Plane3DBatch",
+    "Plane3DLike",
     "Quaternion",
     "QuaternionArrayLike",
     "QuaternionBatch",

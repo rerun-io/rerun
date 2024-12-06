@@ -50,6 +50,7 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`Name`](components/name.md): A display name, typically for an entity or a item like a plot series.
 * [`Opacity`](components/opacity.md): Degree of transparency ranging from 0.0 (fully transparent) to 1.0 (fully opaque).
 * [`PinholeProjection`](components/pinhole_projection.md): Camera projection, from image coordinates to view coordinates.
+* [`Plane3D`](components/plane3d.md): An infinite 3D plane represented by a unit normal vector and a distance.
 * [`PoseRotationAxisAngle`](components/pose_rotation_axis_angle.md): 3D rotation represented by a rotation around a given axis that doesn't propagate in the transform hierarchy.
 * [`PoseRotationQuat`](components/pose_rotation_quat.md): A 3D rotation expressed as a quaternion that doesn't propagate in the transform hierarchy.
 * [`PoseScale3D`](components/pose_scale3d.md): A 3D scale factor that doesn't propagate in the transform hierarchy.

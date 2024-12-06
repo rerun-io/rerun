@@ -21,6 +21,7 @@
 #include "datatypes/mat3x3.hpp"
 #include "datatypes/mat4x4.hpp"
 #include "datatypes/pixel_format.hpp"
+#include "datatypes/plane3d.hpp"
 #include "datatypes/quaternion.hpp"
 #include "datatypes/range1d.hpp"
 #include "datatypes/range2d.hpp"

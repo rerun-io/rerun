@@ -109,6 +109,12 @@ pub enum ContentsName {
     Placeholder(String),
 }
 
+impl std::fmt::Display for ContentsName {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_ref())
+    }
+}
+
 impl AsRef<str> for ContentsName {
     #[inline]
     fn as_ref(&self) -> &str {

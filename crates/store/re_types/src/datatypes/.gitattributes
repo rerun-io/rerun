@@ -17,6 +17,7 @@ mat3x3.rs linguist-generated=true
 mat4x4.rs linguist-generated=true
 mod.rs linguist-generated=true
 pixel_format.rs linguist-generated=true
+plane3d.rs linguist-generated=true
 quaternion.rs linguist-generated=true
 range1d.rs linguist-generated=true
 range2d.rs linguist-generated=true

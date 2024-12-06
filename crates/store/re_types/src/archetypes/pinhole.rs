@@ -103,7 +103,7 @@ pub struct Pinhole {
 
     /// Sets the view coordinates for the camera.
     ///
-    /// All common values are available as constants on the `components.ViewCoordinates` class.
+    /// All common values are available as constants on the [`components::ViewCoordinates`][crate::components::ViewCoordinates] class.
     ///
     /// The default is `ViewCoordinates::RDF`, i.e. X=Right, Y=Down, Z=Forward, and this is also the recommended setting.
     /// This means that the camera frustum will point along the positive Z axis of the parent space,
@@ -345,7 +345,7 @@ impl Pinhole {
 
     /// Sets the view coordinates for the camera.
     ///
-    /// All common values are available as constants on the `components.ViewCoordinates` class.
+    /// All common values are available as constants on the [`components::ViewCoordinates`][crate::components::ViewCoordinates] class.
     ///
     /// The default is `ViewCoordinates::RDF`, i.e. X=Right, Y=Down, Z=Forward, and this is also the recommended setting.
     /// This means that the camera frustum will point along the positive Z axis of the parent space,
