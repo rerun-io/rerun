@@ -6,7 +6,7 @@ use re_smart_channel::Sender;
 /// This fails synchronously iff the standard input stream could not be opened, otherwise errors
 /// are handled asynchronously (as in: they're logged).
 pub fn load_stdin(tx: Sender<LogMsg>) -> anyhow::Result<()> {
-    let version_policy = re_log_encoding::decoder::VersionPolicy::Warn;
+    let version_policy = re_log_encoding::VersionPolicy::Warn;
 
     let stdin = std::io::BufReader::new(std::io::stdin());
     let decoder = re_log_encoding::decoder::Decoder::new_concatenated(version_policy, stdin)?;

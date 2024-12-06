@@ -67,6 +67,7 @@ exclude_path = [
   "scripts/lint.py",                               # Contains url-matching regexes that aren't actual urls
   "scripts/screenshot_compare/assets/templates/",
   "crates/viewer/re_viewer/src/reflection/mod.rs", # Checker struggles how links from examples are escaped here. They are all checked elsewhere, so not an issue.
+  "crates/store/re_grpc_client/src/address.rs",    # Contains some malformed URLs, but they are not actual links.
 ]
 
 # Exclude URLs and mail addresses from checking (supports regex).

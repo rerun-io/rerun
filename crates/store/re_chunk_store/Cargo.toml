@@ -25,7 +25,6 @@ default = []
 ## Enables `parking_lot`'s deadlock detection background thread.
 deadlock_detection = ["parking_lot/deadlock_detection"]
 
-
 [dependencies]
 # Rerun dependencies:
 re_chunk.workspace = true
@@ -33,8 +32,10 @@ re_format.workspace = true
 re_log = { workspace = true, features = ["setup"] }
 re_log_encoding = { workspace = true, features = ["decoder"] }
 re_log_types.workspace = true
+re_protos.workspace = true
 re_tracing.workspace = true
 re_types_core.workspace = true
+
 
 # External dependencies:
 ahash.workspace = true

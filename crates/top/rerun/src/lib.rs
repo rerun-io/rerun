@@ -133,6 +133,8 @@ pub use log_integration::Logger;
 #[cfg(feature = "run")]
 pub use commands::{run, CallSource};
 
+pub use re_log_encoding::VersionPolicy;
+
 #[cfg(feature = "sdk")]
 pub use sdk::*;
 
@@ -145,7 +147,7 @@ pub mod dataframe {
 /// Everything needed to build custom `ChunkStoreSubscriber`s.
 pub use re_entity_db::external::re_chunk_store::{
     ChunkStore, ChunkStoreConfig, ChunkStoreDiff, ChunkStoreDiffKind, ChunkStoreEvent,
-    ChunkStoreGeneration, ChunkStoreHandle, ChunkStoreSubscriber, VersionPolicy,
+    ChunkStoreGeneration, ChunkStoreHandle, ChunkStoreSubscriber,
 };
 pub use re_log_types::StoreKind;
 

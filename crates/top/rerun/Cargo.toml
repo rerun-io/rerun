@@ -99,7 +99,8 @@ run = [
   "unindent",
   "dep:re_chunk_store",
   "dep:re_data_source",
-  "dep:re_log_encoding",
+  "re_log_encoding/encoder",
+  "re_log_encoding/decoder",
   "dep:re_sdk_comms",
   "dep:re_ws_comms",
 ]
@@ -128,6 +129,7 @@ re_crash_handler.workspace = true
 re_entity_db.workspace = true
 re_error.workspace = true
 re_format.workspace = true
+re_log_encoding.workspace = true
 re_log_types.workspace = true
 re_video.workspace = true
 re_log.workspace = true
@@ -145,10 +147,6 @@ re_analytics = { workspace = true, optional = true }
 re_chunk_store = { workspace = true, optional = true }
 re_data_source = { workspace = true, optional = true }
 re_dataframe = { workspace = true, optional = true }
-re_log_encoding = { workspace = true, optional = true, features = [
-  "decoder",
-  "encoder",
-] }
 re_sdk = { workspace = true, optional = true }
 re_sdk_comms = { workspace = true, optional = true }
 re_types = { workspace = true, optional = true }

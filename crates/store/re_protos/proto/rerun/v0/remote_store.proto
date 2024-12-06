@@ -36,7 +36,7 @@ message RecordingMetadata {
 }
 
 message RegisterRecordingResponse {
-    RecordingId id = 1;
+    rerun.common.v0.RecordingId id = 1;
     // Note / TODO(zehiko): this implies we read the record (for example go through entire .rrd file
     // chunk by chunk) and extract the metadata. So we might want to 1/ not do this i.e.
     // only do it as part of explicit GetMetadata request or 2/ do it if Request has "include_metadata=true"
@@ -47,7 +47,7 @@ message RegisterRecordingResponse {
 // ---------------- UpdateCatalog  -----------------
 
 message UpdateCatalogRequest {
-    RecordingId recording_id = 1;
+    rerun.common.v0.RecordingId recording_id = 1;
     RecordingMetadata metadata = 2;
 }
 
@@ -57,9 +57,9 @@ message UpdateCatalogResponse {}
 
 message QueryRequest {
     // unique identifier of the recording
-    RecordingId recording_id = 1;
+    rerun.common.v0.RecordingId recording_id = 1;
     // query to execute
-    Query query = 3;
+    rerun.common.v0.Query query = 3;
 }
 
 message QueryResponse {
@@ -71,11 +71,9 @@ message QueryResponse {
     bytes payload = 2;
 }
 
-
 enum EncoderVersion {
     V0 = 0;
 }
-
 
 // ----------------- QueryCatalog -----------------
 
@@ -94,7 +92,7 @@ message ColumnProjection {
 message CatalogFilter {
     // Filtering is very simple right now, we can only select
     // recordings by their ids.
-    repeated RecordingId recording_ids = 1;
+    repeated rerun.common.v0.RecordingId recording_ids = 1;
 }
 
 message QueryCatalogResponse {
@@ -110,7 +108,7 @@ enum RecordingType {
 // ----------------- FetchRecording -----------------
 
 message FetchRecordingRequest {
-    RecordingId recording_id = 1;
+    rerun.common.v0.RecordingId recording_id = 1;
 }
 
 // TODO(jleibs): Eventually this becomes either query-mediated in some way, but for now

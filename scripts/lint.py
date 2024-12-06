@@ -1223,7 +1223,7 @@ def main() -> None:
         "./.pytest_cache",
         "./CODE_STYLE.md",
         "./crates/build/re_types_builder/src/reflection.rs",  # auto-generated
-        "./crates/store/re_protos/src/v0/rerun.remote_store.v0.rs",  # auto-generated
+        "./crates/store/re_protos/src/v0",  # auto-generated
         "./docs/content/concepts/app-model.md",  # this really needs custom letter casing
         "./docs/content/reference/cli.md",  # auto-generated
         "./docs/snippets/all/tutorials/custom-application-id.cpp",  # nuh-uh, I don't want rerun_example_ here

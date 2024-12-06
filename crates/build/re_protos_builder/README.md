@@ -9,4 +9,4 @@ Part of the [`rerun`](https://github.com/rerun-io/rerun) family of crates.
 
 Code generation for Rerun's Protobuf and gRPC definitions.
 
-You can generate the code with `pixi run codegen-rstore`.
+You can generate the code with `pixi run codegen-protos`.

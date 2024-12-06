@@ -13,8 +13,7 @@ pub use self::external::re_chunk::{util::concatenate_record_batches, TransportCh
 #[doc(no_inline)]
 pub use self::external::re_chunk_store::{
     ChunkStoreConfig, ChunkStoreHandle, ColumnSelector, ComponentColumnSelector, Index, IndexRange,
-    IndexValue, QueryExpression, SparseFillStrategy, TimeColumnSelector, VersionPolicy,
-    ViewContentsSelector,
+    IndexValue, QueryExpression, SparseFillStrategy, TimeColumnSelector, ViewContentsSelector,
 };
 #[doc(no_inline)]
 pub use self::external::re_log_types::{

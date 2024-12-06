@@ -21,9 +21,10 @@ use pyo3::{
 use re_chunk_store::{
     ChunkStore, ChunkStoreConfig, ChunkStoreHandle, ColumnDescriptor, ColumnSelector,
     ComponentColumnDescriptor, ComponentColumnSelector, QueryExpression, SparseFillStrategy,
-    TimeColumnDescriptor, TimeColumnSelector, VersionPolicy, ViewContentsSelector,
+    TimeColumnDescriptor, TimeColumnSelector, ViewContentsSelector,
 };
 use re_dataframe::{QueryEngine, StorageEngine};
+use re_log_encoding::VersionPolicy;
 use re_log_types::{EntityPathFilter, ResolvedTimeRange, TimeType};
 use re_sdk::{ComponentName, EntityPath, StoreId, StoreKind};
 

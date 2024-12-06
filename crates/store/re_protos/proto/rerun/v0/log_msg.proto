@@ -1,0 +1,105 @@
+syntax = "proto3";
+
+package rerun.log_msg.v0;
+
+import "rerun/v0/common.proto";
+
+// TODO(jan): documentation here
+
+message SetStoreInfo {
+    rerun.common.v0.Tuid row_id = 1;
+
+    StoreInfo info = 2;
+}
+
+enum Compression {
+    NONE = 0;
+    LZ4 = 1;
+}
+
+enum Encoding {
+    UNKNOWN = 0;
+    ARROW_IPC = 1;
+}
+
+message ArrowMsg {
+    rerun.common.v0.StoreId store_id = 1;
+    Compression compression = 2;
+    Encoding encoding = 3;
+
+    // Arrow-IPC encoded schema and chunk,
+    // compressed according to `compression`
+    bytes payload = 1000;
+}
+
+message BlueprintActivationCommand {
+    rerun.common.v0.StoreId blueprint_id = 1;
+    bool make_active = 2;
+    bool make_default = 3;
+}
+
+message StoreInfo {
+    // User-chosen name of the application doing the logging.
+    rerun.common.v0.ApplicationId application_id = 1;
+
+    // Unique ID of the recording.
+    rerun.common.v0.StoreId store_id = 2;
+
+    /// True if the recording is one of the official Rerun examples.
+    bool is_official_example = 3;
+
+    // When the recording started.
+    rerun.common.v0.Time started = 4;
+
+    StoreSource store_source = 5;
+}
+
+message StoreSource {
+    // Determines what is encoded in `extra`.
+    StoreSourceKind kind = 1;
+    StoreSourceExtra extra = 2;
+}
+
+enum StoreSourceKind {
+    // `extra` is unused.
+    UNKNOWN_KIND = 0;
+    // `extra` is unused.
+    C_SDK = 1;
+    // `extra` is `PythonVersion`.
+    PYTHON_SDK = 2;
+    // `extra` is `CrateInfo`.
+    RUST_SDK = 3;
+    // `extra` is `FileSource`.
+    FILE = 4;
+    // `extra` is unused.
+    VIEWER = 5;
+    // `extra` is a string.
+    OTHER = 6;
+}
+
+message StoreSourceExtra {
+    bytes payload = 1;
+}
+
+message PythonVersion {
+    // [u8; major, minor, patch, ..suffix]
+    bytes version = 1;
+}
+
+message CrateInfo {
+    string rustc_version = 1;
+    string llvm_version = 2;
+}
+
+message FileSource {
+    FileSourceKind kind = 1;
+}
+
+enum FileSourceKind {
+    UNKNOWN_SOURCE = 0;
+    CLI = 1;
+    URI = 2;
+    DRAG_AND_DROP = 3;
+    FILE_DIALOG = 4;
+    SDK = 5;
+}

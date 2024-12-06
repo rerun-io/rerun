@@ -2,8 +2,13 @@
 
 #[cfg(feature = "decoder")]
 pub mod decoder;
+
 #[cfg(feature = "encoder")]
 pub mod encoder;
+
+mod protobuf;
+
+pub mod codec;
 
 #[cfg(feature = "encoder")]
 #[cfg(not(target_arch = "wasm32"))]
@@ -11,6 +16,20 @@ mod file_sink;
 
 #[cfg(feature = "stream_from_http")]
 pub mod stream_rrd_from_http;
+
+/// How to handle version mismatches during decoding.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum VersionPolicy {
+    /// Warn if the versions don't match, but continue loading.
+    ///
+    /// We usually use this for loading `.rrd` recordings.
+    Warn,
+
+    /// Return an error if the versions aren't compatible.
+    ///
+    /// We usually use this for tests, and for loading `.rbl` blueprint files.
+    Error,
+}
 
 // ---------------------------------------------------------------------
 
@@ -21,10 +40,10 @@ pub use file_sink::{FileSink, FileSinkError};
 // ----------------------------------------------------------------------------
 
 #[cfg(any(feature = "encoder", feature = "decoder"))]
-const RRD_HEADER: &[u8; 4] = b"RRF2";
+const RRD_HEADER: &[u8; 4] = b"RRIO";
 
 #[cfg(feature = "decoder")]
-const OLD_RRD_HEADERS: &[[u8; 4]] = &[*b"RRF0", *b"RRF1"];
+const OLD_RRD_HEADERS: &[[u8; 4]] = &[*b"RRF0", *b"RRF1", *b"RRF2"];
 
 // ----------------------------------------------------------------------------
 
@@ -43,6 +62,7 @@ pub enum Compression {
 #[repr(u8)]
 pub enum Serializer {
     MsgPack = 1,
+    Protobuf = 2,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -60,6 +80,10 @@ impl EncodingOptions {
         compression: Compression::LZ4,
         serializer: Serializer::MsgPack,
     };
+    pub const PROTOBUF: Self = Self {
+        compression: Compression::LZ4,
+        serializer: Serializer::Protobuf,
+    };
 
     pub fn from_bytes(bytes: [u8; 4]) -> Result<Self, OptionsError> {
         match bytes {
@@ -71,6 +95,7 @@ impl EncodingOptions {
                 };
                 let serializer = match serializer {
                     1 => Serializer::MsgPack,
+                    2 => Serializer::Protobuf,
                     _ => return Err(OptionsError::UnknownSerializer(serializer)),
                 };
                 Ok(Self {
