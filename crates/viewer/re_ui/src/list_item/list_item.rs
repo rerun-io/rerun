@@ -87,9 +87,6 @@ impl ListItem {
     #[inline]
     pub fn selected(mut self, selected: bool) -> Self {
         self.selected = selected;
-        if selected {
-            self.interactive = true; // Hack needed, or the item is not shown as selected. TODO(emilk): why?
-        }
         self
     }
 
@@ -415,6 +412,8 @@ impl ListItem {
                     } else {
                         None
                     }
+                } else if selected {
+                    Some(visuals.weak_bg_fill)
                 } else {
                     None
                 }
