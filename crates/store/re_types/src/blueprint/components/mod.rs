@@ -3,6 +3,8 @@
 mod active_tab;
 mod apply_latest_at;
 mod background_kind;
+mod clipping_plane;
+mod clipping_plane_ext;
 mod column_share;
 mod component_column_selector;
 mod component_column_selector_ext;
@@ -45,6 +47,7 @@ mod zoom_level;
 pub use self::active_tab::ActiveTab;
 pub use self::apply_latest_at::ApplyLatestAt;
 pub use self::background_kind::BackgroundKind;
+pub use self::clipping_plane::ClippingPlane;
 pub use self::column_share::ColumnShare;
 pub use self::component_column_selector::ComponentColumnSelector;
 pub use self::corner2d::Corner2D;
