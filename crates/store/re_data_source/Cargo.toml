@@ -41,7 +41,6 @@ re_ws_comms = { workspace = true, features = ["client"] }
 anyhow.workspace = true
 itertools.workspace = true
 rayon.workspace = true
-url.workspace = true
 
 # Optional dependencies:
 re_grpc_client = { workspace = true, optional = true }

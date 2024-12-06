@@ -47,9 +47,9 @@ impl TryFrom<String> for RedapAddress {
     type Error = InvalidRedapAddress;
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
-        let url = Url::parse(&value).map_err(|e| InvalidRedapAddress {
+        let url = Url::parse(&value).map_err(|err| InvalidRedapAddress {
             url: value.clone(),
-            msg: e.to_string(),
+            msg: err.to_string(),
         })?;
 
         if url.scheme() != "rerun" {
