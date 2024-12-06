@@ -144,7 +144,7 @@ do not yet support `$origin` relative paths or glob expressions.
 This will be addressed in <https://github.com/rerun-io/rerun/issues/6673>.".to_owned(),)
     ];
     for field in &obj.fields {
-        let doc_content = field.docs.lines_for(objects, Target::Python);
+        let doc_content = field.docs.lines_for(reporter, objects, Target::Python);
         if doc_content.is_empty() {
             reporter.error(
                 &field.virtpath,

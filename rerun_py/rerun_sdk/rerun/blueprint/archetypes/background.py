@@ -50,7 +50,7 @@ class Background(BackgroundExt, Archetype):
         default=None,
         converter=components.ColorBatch._optional,  # type: ignore[misc]
     )
-    # Color used for the `SolidColor` background type.
+    # Color if the background color is set to solid color.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

@@ -52,7 +52,7 @@ pub enum PixelFormat {
     #[allow(clippy::upper_case_acronyms)]
     NV12 = 26,
 
-    /// `YUY2` (aka `YUYV`, `YUYV16` or `NV21`), is a YUV 4:2:2 chroma downsampled format with 16 bits per pixel and 8 bits per channel.
+    /// `YUY2` (aka 'YUYV', 'YUYV16' or 'NV21'), is a YUV 4:2:2 chroma downsampled format with 16 bits per pixel and 8 bits per channel.
     ///
     /// This uses limited range YUV, i.e. Y is expected to be within [16, 235] and U/V within [16, 240].
     ///
@@ -152,7 +152,7 @@ impl ::re_types_core::reflection::Enum for PixelFormat {
                 "`NV12` (aka `Y_UV12`) is a YUV 4:2:0 chroma downsampled form at with 12 bits per pixel and 8 bits per channel.\n\nThis uses limited range YUV, i.e. Y is expected to be within [16, 235] and U/V within [16, 240].\n\nFirst comes entire image in Y in one plane,\nfollowed by a plane with interleaved lines ordered as U0, V0, U1, V1, etc."
             }
             Self::YUY2 => {
-                "`YUY2` (aka `YUYV`, `YUYV16` or `NV21`), is a YUV 4:2:2 chroma downsampled format with 16 bits per pixel and 8 bits per channel.\n\nThis uses limited range YUV, i.e. Y is expected to be within [16, 235] and U/V within [16, 240].\n\nThe order of the channels is Y0, U0, Y1, V0, all in the same plane."
+                "`YUY2` (aka 'YUYV', 'YUYV16' or 'NV21'), is a YUV 4:2:2 chroma downsampled format with 16 bits per pixel and 8 bits per channel.\n\nThis uses limited range YUV, i.e. Y is expected to be within [16, 235] and U/V within [16, 240].\n\nThe order of the channels is Y0, U0, Y1, V0, all in the same plane."
             }
             Self::Y8_FullRange => {
                 "Monochrome Y plane only, essentially a YUV 4:0:0 planar format.\n\nAlso known as just \"gray\". This is virtually identical to a 8bit luminance/grayscale (see [`datatypes::ColorModel`][crate::datatypes::ColorModel]).\n\nThis uses entire range YUV, i.e. Y is expected to be within [0, 255].\n(as opposed to \"limited range\" YUV as used e.g. in NV12)."

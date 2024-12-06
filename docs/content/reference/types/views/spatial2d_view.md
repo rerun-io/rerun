@@ -11,7 +11,7 @@ For viewing spatial 2D data.
 Configuration for the background of the view.
 
 * `kind`: The type of the background.
-* `color`: Color used for the `SolidColor` background type.
+* `color`: Color if the background color is set to solid color.
 ### `visual_bounds`
 The visible parts of the scene, in the coordinate space of the scene.
 

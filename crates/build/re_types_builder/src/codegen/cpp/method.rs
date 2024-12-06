@@ -1,7 +1,7 @@
 use proc_macro2::TokenStream;
 use quote::quote;
 
-use crate::{Docs, Objects};
+use crate::{Docs, Objects, Reporter};
 
 use super::{lines_from_docs, quote_doc_comment, quote_doc_lines, NEWLINE_TOKEN};
 
@@ -78,14 +78,14 @@ impl From<&str> for MethodDocumentation {
 }
 
 impl MethodDocumentation {
-    fn quoted(&self, objects: &Objects) -> TokenStream {
+    fn quoted(&self, reporter: &Reporter, objects: &Objects) -> TokenStream {
         match self {
             Self::None => {
                 quote!()
             }
             Self::String(s) => quote_doc_comment(s),
             Self::Docs(docs) => {
-                let lines = lines_from_docs(objects, docs);
+                let lines = lines_from_docs(reporter, objects, docs);
                 quote_doc_lines(&lines)
             }
         }
@@ -112,7 +112,7 @@ impl Default for Method {
 }
 
 impl Method {
-    pub fn to_hpp_tokens(&self, objects: &Objects) -> TokenStream {
+    pub fn to_hpp_tokens(&self, reporter: &Reporter, objects: &Objects) -> TokenStream {
         let Self {
             docs,
             declaration,
@@ -120,7 +120,7 @@ impl Method {
             inline: is_inline,
         } = self;
 
-        let docs = docs.quoted(objects);
+        let docs = docs.quoted(reporter, objects);
         let declaration = declaration.to_hpp_tokens();
         if *is_inline {
             quote! {
