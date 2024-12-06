@@ -10,9 +10,9 @@
 #include <memory>
 
 namespace rerun::blueprint::components {
-    /// **Component**: Distance to the clipping plane in used for `Spatial2DView`.
+    /// **Component**: Distance to the near clipping plane in used for `Spatial2DView`.
     struct ClippingPlane {
-        /// Z distance to the clipping plane
+        /// Z distance to the near clipping plane
         rerun::datatypes::Float32 clipping_plane;
 
       public:

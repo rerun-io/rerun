@@ -32,7 +32,7 @@ pub struct VisualBounds2D {
     /// Use this to control pan & zoom of the view.
     pub range: crate::blueprint::components::VisualBounds2D,
 
-    /// Controls the distance to the clipping plane
+    /// Controls the distance to the near clipping plane
     pub clipping_plane: crate::blueprint::components::ClippingPlane,
 }
 

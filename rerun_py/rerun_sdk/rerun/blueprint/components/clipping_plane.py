@@ -15,7 +15,7 @@ __all__ = ["ClippingPlane", "ClippingPlaneBatch"]
 
 
 class ClippingPlane(datatypes.Float32, ComponentMixin):
-    """**Component**: Distance to the clipping plane in used for `Spatial2DView`."""
+    """**Component**: Distance to the near clipping plane in used for `Spatial2DView`."""
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of ClippingPlaneExt in clipping_plane_ext.py

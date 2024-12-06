@@ -2,12 +2,13 @@ namespace rerun.blueprint.components;
 
 // ---
 
-/// Distance to the clipping plane in used for `Spatial2DView`.
+/// Distance to the near clipping plane in used for `Spatial2DView`.
 struct ClippingPlane (
   "attr.rerun.scope": "blueprint",
   "attr.rust.derive": "Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable",
-  "attr.rust.repr": "transparent"
+  "attr.rust.repr": "transparent",
+  "attr.docs.unreleased"
 ) {
-  /// Z distance to the clipping plane
+  /// Z distance to the near clipping plane
   clipping_plane: rerun.datatypes.Float32 (order: 100);
 }

@@ -58,7 +58,7 @@ class VisualBounds2D(VisualBounds2DExt, Archetype):
         metadata={"component": "required"},
         converter=blueprint_components.ClippingPlaneBatch._required,  # type: ignore[misc]
     )
-    # Controls the distance to the clipping plane
+    # Controls the distance to the near clipping plane
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

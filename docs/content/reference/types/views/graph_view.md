@@ -13,7 +13,7 @@ Everything within these bounds is guaranteed to be visible.
 Somethings outside of these bounds may also be visible due to letterboxing.
 
 * `range`: Controls the visible range of a 2D view.
-* `clipping_plane`: Controls the distance to the clipping plane
+* `clipping_plane`: Controls the distance to the near clipping plane
 
 ## API reference links
  * 🐍 [Python API docs for `GraphView`](https://ref.rerun.io/docs/python/stable/common/blueprint_views?speculative-link#rerun.blueprint.views.GraphView)

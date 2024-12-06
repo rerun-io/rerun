@@ -28,7 +28,7 @@ namespace rerun::blueprint::archetypes {
         /// Use this to control pan & zoom of the view.
         rerun::blueprint::components::VisualBounds2D range;
 
-        /// Controls the distance to the clipping plane
+        /// Controls the distance to the near clipping plane
         rerun::blueprint::components::ClippingPlane clipping_plane;
 
       public:

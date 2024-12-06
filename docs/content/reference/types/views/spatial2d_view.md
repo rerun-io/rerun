@@ -19,7 +19,7 @@ Everything within these bounds are guaranteed to be visible.
 Somethings outside of these bounds may also be visible due to letterboxing.
 
 * `range`: Controls the visible range of a 2D view.
-* `clipping_plane`: Controls the distance to the clipping plane
+* `clipping_plane`: Controls the distance to the near clipping plane
 ### `time_ranges`
 Configures which range on each timeline is shown by this view (unless specified differently per entity).
 

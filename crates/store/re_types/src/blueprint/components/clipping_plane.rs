@@ -18,11 +18,11 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Component**: Distance to the clipping plane in used for `Spatial2DView`.
+/// **Component**: Distance to the near clipping plane in used for `Spatial2DView`.
 #[derive(Clone, Debug, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(transparent)]
 pub struct ClippingPlane(
-    /// Z distance to the clipping plane
+    /// Z distance to the near clipping plane
     pub crate::datatypes::Float32,
 );
 

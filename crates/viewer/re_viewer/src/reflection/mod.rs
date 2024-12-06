@@ -77,7 +77,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <ClippingPlane as Component>::name(),
             ComponentReflection {
-                docstring_md: "Distance to the clipping plane in used for `Spatial2DView`.",
+                docstring_md: "Distance to the near clipping plane in used for `Spatial2DView`.",
                 custom_placeholder: Some(ClippingPlane::default().to_arrow2()?),
                 datatype: ClippingPlane::arrow2_datatype(),
             },
@@ -2213,8 +2213,8 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     is_required : true, }, ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.ClippingPlane".into(), display_name :
                     "Clipping plane", docstring_md :
-                    "Controls the distance to the clipping plane", is_required : false,
-                    },
+                    "Controls the distance to the near clipping plane", is_required :
+                    false, },
                 ],
             },
         ),
