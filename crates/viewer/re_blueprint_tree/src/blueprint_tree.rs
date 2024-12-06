@@ -189,7 +189,7 @@ impl BlueprintTree {
             SelectionUpdateBehavior::UseSelection,
         );
         self.scroll_to_me_if_needed(ui, &item, &item_response);
-        ctx.select_hovered_on_click(&item_response, item, true);
+        ctx.handle_select_hover_drag_interactions(&item_response, item, true);
 
         self.handle_root_container_drag_and_drop_interaction(
             viewport,
@@ -270,7 +270,7 @@ impl BlueprintTree {
             SelectionUpdateBehavior::UseSelection,
         );
         self.scroll_to_me_if_needed(ui, &item, &response);
-        ctx.select_hovered_on_click(&response, item, true);
+        ctx.handle_select_hover_drag_interactions(&response, item, true);
 
         viewport.set_content_visibility(ctx, &content, visible);
 
@@ -409,7 +409,7 @@ impl BlueprintTree {
             SelectionUpdateBehavior::UseSelection,
         );
         self.scroll_to_me_if_needed(ui, &item, &response);
-        ctx.select_hovered_on_click(&response, item, true);
+        ctx.handle_select_hover_drag_interactions(&response, item, true);
 
         let content = Contents::SpaceView(*space_view_id);
 
@@ -602,7 +602,7 @@ impl BlueprintTree {
             SelectionUpdateBehavior::UseSelection,
         );
         self.scroll_to_me_if_needed(ui, &item, &response);
-        ctx.select_hovered_on_click(&response, item, true);
+        ctx.handle_select_hover_drag_interactions(&response, item, true);
     }
 
     /// Add a button to trigger the addition of a new space view or container.

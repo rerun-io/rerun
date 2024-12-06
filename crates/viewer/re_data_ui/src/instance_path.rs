@@ -243,7 +243,7 @@ fn component_list_ui(
             });
 
             if interactive {
-                ctx.select_hovered_on_click(&response, item, false);
+                ctx.handle_select_hover_drag_interactions(&response, item, false);
             }
         }
     });

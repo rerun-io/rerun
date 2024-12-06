@@ -287,7 +287,7 @@ pub fn draw_graph(
 
                 let instance_path =
                     InstancePath::instance(entity_path.clone(), instance.instance_index);
-                ctx.select_hovered_on_click(
+                ctx.handle_select_hover_drag_interactions(
                     &response,
                     Item::DataResult(query.space_view_id, instance_path.clone()),
                     false,
@@ -335,7 +335,7 @@ pub fn draw_graph(
             let resp = draw_entity_rect(ui, *rect, entity_path, &query.highlights);
             current_rect = current_rect.union(resp.rect);
             let instance_path = InstancePath::entity_all(entity_path.clone());
-            ctx.select_hovered_on_click(
+            ctx.handle_select_hover_drag_interactions(
                 &resp,
                 Item::DataResult(query.space_view_id, instance_path),
                 false,

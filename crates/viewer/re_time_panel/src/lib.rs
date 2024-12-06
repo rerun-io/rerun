@@ -726,7 +726,7 @@ impl TimePanel {
             &response,
             SelectionUpdateBehavior::UseSelection,
         );
-        ctx.select_hovered_on_click(&response, item.to_item(), false);
+        ctx.handle_select_hover_drag_interactions(&response, item.to_item(), false);
 
         let is_closed = body_response.is_none();
         let response_rect = response.rect;
@@ -854,7 +854,7 @@ impl TimePanel {
                     &response,
                     SelectionUpdateBehavior::UseSelection,
                 );
-                ctx.select_hovered_on_click(&response, item.to_item(), false);
+                ctx.handle_select_hover_drag_interactions(&response, item.to_item(), false);
 
                 let response_rect = response.rect;
 

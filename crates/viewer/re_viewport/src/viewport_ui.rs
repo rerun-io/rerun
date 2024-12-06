@@ -597,7 +597,8 @@ impl<'a> egui_tiles::Behavior<SpaceViewId> for TilesDelegate<'a, '_> {
                 &response,
                 SelectionUpdateBehavior::OverrideSelection,
             );
-            self.ctx.select_hovered_on_click(&response, item, false);
+            self.ctx
+                .handle_select_hover_drag_interactions(&response, item, false);
         }
 
         response

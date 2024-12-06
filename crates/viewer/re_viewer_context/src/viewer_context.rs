@@ -135,13 +135,14 @@ impl ViewerContext<'_> {
         self.rec_cfg.time_ctrl.read().current_query()
     }
 
-    //TODO: rename this method
-    /// Set hover/select/focus for a given selection based on an egui response.
-    pub fn select_hovered_on_click(
+    /// Consistently handle the selection, hover, drag start interactions for a given set of items.
+    ///
+    /// The drag start interaction is optional and controlled by the `draggable` parameter.
+    pub fn handle_select_hover_drag_interactions(
         &self,
         response: &egui::Response,
         selection: impl Into<ItemCollection>,
-        can_be_dragged: bool,
+        draggable: bool,
     ) {
         re_tracing::profile_function!();
 
@@ -152,7 +153,7 @@ impl ViewerContext<'_> {
             selection_state.set_hovered(selection.clone());
         }
 
-        if can_be_dragged && response.drag_started() {
+        if draggable && response.drag_started() {
             let mut selected_items = selection_state.selected_items().clone();
             let is_already_selected = selection
                 .iter()

@@ -279,7 +279,7 @@ fn color_space_ui(
                     ctx.recording(),
                 );
             });
-            ctx.select_hovered_on_click(
+            ctx.handle_select_hover_drag_interactions(
                 &interact,
                 Item::DataResult(query.space_view_id, instance),
                 false,

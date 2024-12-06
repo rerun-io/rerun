@@ -261,7 +261,8 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
                             egui::Rect::from_min_size(pos, size),
                             egui::SelectableLabel::new(is_selected, galley),
                         );
-                        self.ctx.select_hovered_on_click(&response, item, false);
+                        self.ctx
+                            .handle_select_hover_drag_interactions(&response, item, false);
 
                         // TODO(emilk): expand column(s) to make sure the text fits (requires egui_table fix).
                     }
@@ -319,7 +320,7 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
                                 }
                             }
                             ColumnDescriptor::Component(component_column_descriptor) => {
-                                self.ctx.select_hovered_on_click(
+                                self.ctx.handle_select_hover_drag_interactions(
                                     &response,
                                     re_viewer_context::Item::ComponentPath(
                                         component_column_descriptor.component_path(),

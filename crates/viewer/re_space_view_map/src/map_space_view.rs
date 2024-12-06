@@ -481,7 +481,7 @@ fn handle_ui_interactions(
             });
         });
 
-        ctx.select_hovered_on_click(
+        ctx.handle_select_hover_drag_interactions(
             &map_response,
             Item::DataResult(query.space_view_id, instance_path.clone()),
             false,
