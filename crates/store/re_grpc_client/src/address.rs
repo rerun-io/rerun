@@ -77,7 +77,7 @@ impl TryFrom<&str> for RedapAddress {
         #[allow(clippy::unwrap_used)]
         let redap_endpoint = Url::parse(&format!("http://{host}:{port}")).unwrap();
 
-        // we got the ReDap endpoint, now figur out from the URL path if it's a recording or catalog
+        // we got the ReDap endpoint, now figure out from the URL path if it's a recording or catalog
         if url.path().ends_with("/catalog") {
             let path_segments: Vec<&str> =
                 url.path_segments().map(|s| s.collect()).unwrap_or_default();
