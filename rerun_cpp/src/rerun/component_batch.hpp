@@ -57,7 +57,9 @@ namespace rerun {
 
             ComponentTypeHandle comp_type_handle;
 
-            auto search = comp_types_per_descr.find(2);
+            auto descr_hash = descriptor.hashed();
+
+            auto search = comp_types_per_descr.find(descr_hash);
             if (search != comp_types_per_descr.end()) {
                 comp_type_handle = search->second;
             } else {
@@ -68,7 +70,7 @@ namespace rerun {
                 RR_RETURN_NOT_OK(comp_type_handle_result.error);
 
                 comp_type_handle = comp_type_handle_result.value;
-                comp_types_per_descr.insert({descriptor.hashed(), comp_type_handle});
+                comp_types_per_descr.insert({descr_hash, comp_type_handle});
             }
 
             /// TODO(#4257) should take a rerun::Collection instead of pointer and size.
