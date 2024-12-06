@@ -26,7 +26,7 @@ use re_viewport_blueprint::ViewProperty;
 
 use crate::{
     graph::Graph,
-    layout::LayoutRequest,
+    layout::{ForceLayoutParams, LayoutRequest},
     ui::{draw_debug, draw_graph, GraphSpaceViewState},
     visualizers::{merge, EdgesVisualizer, NodeVisualizer},
 };
@@ -171,20 +171,13 @@ Display a graph of nodes and edges.
         let rect_in_scene: blueprint::components::VisualBounds2D =
             bounds_property.component_or_fallback(ctx, self, state)?;
 
-        let force_link_property = ViewProperty::from_archetype::<ForceLink>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query,
-            query.space_view_id,
-        );
-        let force_enabled: Result<Option<blueprint::components::Enabled>, _> =
-            force_link_property.component_or_empty();
-        dbg!(force_enabled);
+        let params = ForceLayoutParams::get(ctx, query, self, state)?;
 
         let rect_in_ui = ui.max_rect();
 
         let request = LayoutRequest::from_graphs(graphs.iter());
         let layout_was_empty = state.layout_state.is_none();
-        let layout = state.layout_state.get(request);
+        let layout = state.layout_state.get(request, params);
 
         let mut ui_from_world = fit_to_rect_in_scene(rect_in_ui, rect_in_scene.into());
 

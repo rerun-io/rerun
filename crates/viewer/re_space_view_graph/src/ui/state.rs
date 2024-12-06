@@ -4,7 +4,7 @@ use re_types::blueprint::{self, components::VisualBounds2D};
 use re_ui::UiExt;
 use re_viewer_context::SpaceViewState;
 
-use crate::layout::{ForceLayoutProvider, Layout, LayoutRequest};
+use crate::layout::{ForceLayoutParams, ForceLayoutProvider, Layout, LayoutRequest};
 
 /// Space view state for the custom space view.
 ///
@@ -97,7 +97,7 @@ impl LayoutState {
     }
 
     /// A simple state machine that keeps track of the different stages and if the layout needs to be recomputed.
-    fn update(self, new_request: LayoutRequest) -> Self {
+    fn update(self, new_request: LayoutRequest, params: ForceLayoutParams) -> Self {
         match self {
             // Layout is up to date, nothing to do here.
             Self::Finished { ref provider, .. } if provider.request == new_request => {
@@ -105,13 +105,14 @@ impl LayoutState {
             }
             // We need to recompute the layout.
             Self::None => {
-                let provider = ForceLayoutProvider::new(new_request);
+                let provider = ForceLayoutProvider::new(new_request, params);
                 let layout = provider.init();
 
                 Self::InProgress { layout, provider }
             }
             Self::Finished { layout, .. } => {
-                let mut provider = ForceLayoutProvider::new_with_previous(new_request, &layout);
+                let mut provider =
+                    ForceLayoutProvider::new_with_previous(new_request, &layout, params);
                 let mut layout = provider.init();
                 provider.tick(&mut layout);
 
@@ -120,7 +121,8 @@ impl LayoutState {
             Self::InProgress {
                 layout, provider, ..
             } if provider.request != new_request => {
-                let mut provider = ForceLayoutProvider::new_with_previous(new_request, &layout);
+                let mut provider =
+                    ForceLayoutProvider::new_with_previous(new_request, &layout, params);
                 let mut layout = provider.init();
                 provider.tick(&mut layout);
 
@@ -138,8 +140,8 @@ impl LayoutState {
     }
 
     /// This method is lazy. A new layout is only computed if the current timestamp requires it.
-    pub fn get(&mut self, request: LayoutRequest) -> &mut Layout {
-        *self = std::mem::take(self).update(request);
+    pub fn get(&mut self, request: LayoutRequest, params: ForceLayoutParams) -> &mut Layout {
+        *self = std::mem::take(self).update(request, params);
 
         match self {
             Self::Finished { layout, .. } | Self::InProgress { layout, .. } => layout,

@@ -11,7 +11,8 @@ use fjadra::{self as fj};
 use crate::graph::{EdgeId, NodeId};
 
 use super::{
-    request::NodeTemplate,
+    params::{self, ForceLayoutParams},
+    request::{self, NodeTemplate},
     slots::{slotted_edges, Slot, SlotKind},
     EdgeGeometry, EdgeTemplate, Layout, LayoutRequest, PathGeometry,
 };
@@ -32,17 +33,25 @@ pub struct ForceLayoutProvider {
 }
 
 impl ForceLayoutProvider {
-    pub fn new(request: LayoutRequest) -> Self {
-        Self::new_impl(request, None)
+    pub fn new(request: LayoutRequest, parameters: ForceLayoutParams) -> Self {
+        Self::new_impl(request, None, parameters)
     }
 
-    pub fn new_with_previous(request: LayoutRequest, layout: &Layout) -> Self {
-        Self::new_impl(request, Some(layout))
+    pub fn new_with_previous(
+        request: LayoutRequest,
+        layout: &Layout,
+        parameters: ForceLayoutParams,
+    ) -> Self {
+        Self::new_impl(request, Some(layout), parameters)
     }
 
     // TODO(grtlr): Consider consuming the old layout to avoid re-allocating the extents.
     // That logic has to be revised when adding the blueprints anyways.
-    fn new_impl(request: LayoutRequest, layout: Option<&Layout>) -> Self {
+    fn new_impl(
+        request: LayoutRequest,
+        layout: Option<&Layout>,
+        parameters: ForceLayoutParams,
+    ) -> Self {
         let nodes = request.graphs.iter().flat_map(|(_, graph_template)| {
             graph_template.nodes.iter().map(|n| {
                 let mut fj_node = fj::Node::from(n.1);
@@ -69,24 +78,31 @@ impl ForceLayoutProvider {
             .iter()
             .flat_map(|(_, graph_template)| graph_template.edges.iter());
 
-        // Looking at self-edges does not make sense in a force-based layout, so we filter those out.
-        let considered_edges = all_edges_iter
-            .clone()
-            .filter(|(id, _)| !id.is_self_edge())
-            .map(|(id, _)| (node_index[&id.source], node_index[&id.target]));
-
         // TODO(grtlr): Currently we guesstimate good forces. Eventually these should be exposed as blueprints.
-        let simulation = fj::SimulationBuilder::default()
+        let mut simulation = fj::SimulationBuilder::default()
             .with_alpha_decay(0.01) // TODO(grtlr): slows down the simulation for demo
-            .build(all_nodes)
-            .add_force(
+            .build(all_nodes);
+
+        simulation = if **parameters.force_link_enabled {
+            // Looking at self-edges does not make sense in a force-based layout, so we filter those out.
+            let considered_edges = all_edges_iter
+                .clone()
+                .filter(|(id, _)| !id.is_self_edge())
+                .map(|(id, _)| (node_index[&id.source], node_index[&id.target]));
+
+            simulation.add_force(
                 "link",
-                fj::Link::new(considered_edges).distance(50.0).iterations(2),
+                fj::Link::new(considered_edges)
+                    .distance(parameters.force_link_distance.0 .0)
+                    .iterations(2),
             )
-            .add_force("charge", fj::ManyBody::new())
-            // TODO(grtlr): This is a small stop-gap until we have blueprints to prevent nodes from flying away.
-            .add_force("x", fj::PositionX::new().strength(0.01))
-            .add_force("y", fj::PositionY::new().strength(0.01));
+        } else {
+            simulation
+        }
+        .add_force("charge", fj::ManyBody::new())
+        // TODO(grtlr): This is a small stop-gap until we have blueprints to prevent nodes from flying away.
+        .add_force("x", fj::PositionX::new().strength(0.01))
+        .add_force("y", fj::PositionY::new().strength(0.01));
 
         Self {
             simulation,
