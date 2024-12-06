@@ -2,8 +2,7 @@
 
 mod address;
 
-use address::CatalogAddress;
-pub use address::{InvalidRedapAddress, RecordingAddress};
+pub use address::{InvalidRedapAddress, RedapAddress};
 use url::Url;
 
 // ----------------------------------------------------------------------------
@@ -71,42 +70,10 @@ enum StreamError {
 
 // ----------------------------------------------------------------------------
 
-/// Stream recordings catalog over gRPC from Rerun Data Platform.
+/// Stream an rrd file or metadsasta catalog over gRPC from a Rerun Data Platform server.
 ///
 /// `on_msg` can be used to wake up the UI thread on Wasm.
-pub fn stream_catalog(
-    redap_url: url::Url,
-    on_msg: Option<Box<dyn Fn() + Send + Sync>>,
-) -> Result<re_smart_channel::Receiver<LogMsg>, InvalidRedapAddress> {
-    re_log::debug!("Loading {redap_url}…");
-
-    let address = redap_url.clone().try_into()?;
-
-    let (tx, rx) = re_smart_channel::smart_channel(
-        re_smart_channel::SmartMessageSource::RerunGrpcStream {
-            url: redap_url.clone().to_string(),
-        },
-        re_smart_channel::SmartChannelSource::RerunGrpcStream {
-            url: redap_url.clone().to_string(),
-        },
-    );
-
-    spawn_future(async move {
-        if let Err(err) = stream_catalog_async(tx, address, on_msg).await {
-            re_log::warn!(
-                "Error while streaming {redap_url}: {}",
-                re_error::format_ref(&err)
-            );
-        }
-    });
-
-    Ok(rx)
-}
-
-/// Stream an rrd file over gRPC from a Rerun Data Platform server.
-///
-/// `on_msg` can be used to wake up the UI thread on Wasm.
-pub fn stream_recording(
+pub fn stream_from_redap(
     redap_url: Url,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
 ) -> Result<re_smart_channel::Receiver<LogMsg>, InvalidRedapAddress> {
@@ -124,11 +91,28 @@ pub fn stream_recording(
     );
 
     spawn_future(async move {
-        if let Err(err) = stream_recording_async(tx, address, on_msg).await {
-            re_log::warn!(
-                "Error while streaming {redap_url}: {}",
-                re_error::format_ref(&err)
-            );
+        match address {
+            RedapAddress::Recording {
+                redap_endpoint,
+                recording_id,
+            } => {
+                if let Err(err) =
+                    stream_recording_async(tx, redap_endpoint, recording_id, on_msg).await
+                {
+                    re_log::warn!(
+                        "Error while streaming {redap_url}: {}",
+                        re_error::format_ref(&err)
+                    );
+                }
+            }
+            RedapAddress::Catalog { redap_endpoint } => {
+                if let Err(err) = stream_catalog_async(tx, redap_endpoint, on_msg).await {
+                    re_log::warn!(
+                        "Error while streaming {redap_url}: {}",
+                        re_error::format_ref(&err)
+                    );
+                }
+            }
         }
     });
 
@@ -153,15 +137,11 @@ where
 
 async fn stream_recording_async(
     tx: re_smart_channel::Sender<LogMsg>,
-    address: RecordingAddress,
+    redap_endpoint: Url,
+    recording_id: String,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
 ) -> Result<(), StreamError> {
     use tokio_stream::StreamExt as _;
-
-    let RecordingAddress {
-        redap_endpoint,
-        recording_id,
-    } = address;
 
     let mut client = connect(redap_endpoint).await?;
     re_log::debug!("Fetching {recording_id}…");
@@ -236,12 +216,12 @@ async fn stream_recording_async(
 /// avoiding refactoring right now
 async fn stream_catalog_async(
     tx: re_smart_channel::Sender<LogMsg>,
-    address: CatalogAddress,
+    redap_endpoint: Url,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
 ) -> Result<(), StreamError> {
     use tokio_stream::StreamExt as _;
 
-    let mut client = connect(address.redap_endpoint).await?;
+    let mut client = connect(redap_endpoint).await?;
     re_log::debug!("Fetching catalog…");
 
     let mut resp = client

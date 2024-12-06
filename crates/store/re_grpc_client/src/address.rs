@@ -8,23 +8,42 @@ pub struct InvalidRedapAddress {
     msg: String,
 }
 
-/// Parsed `rerun://addr:port/recording/12345`
-pub struct RecordingAddress {
-    pub redap_endpoint: Url,
-    pub recording_id: String,
+/// Parsed from `rerun://addr:port/recording/12345` or `rerun://addr:port/catalog`
+pub enum RedapAddress {
+    Recording {
+        redap_endpoint: Url,
+        recording_id: String,
+    },
+    Catalog {
+        redap_endpoint: Url,
+    },
 }
 
-impl std::fmt::Display for RecordingAddress {
+impl std::fmt::Display for RedapAddress {
+    #[allow(clippy::unwrap_used)] // host and port have already been verified during conversion
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "RecordingAddress {{ redap_endpoint: {}, recording_id: {} }}",
-            self.redap_endpoint, self.recording_id
-        )
+        match self {
+            Self::Recording {
+                redap_endpoint,
+                recording_id,
+            } => write!(
+                f,
+                "rerun://{}:{}/recording/{}",
+                redap_endpoint.host().unwrap(),
+                redap_endpoint.port().unwrap(),
+                recording_id
+            ),
+            Self::Catalog { redap_endpoint } => write!(
+                f,
+                "rerun://{}:{}/catalog",
+                redap_endpoint.host().unwrap(),
+                redap_endpoint.port().unwrap(),
+            ),
+        }
     }
 }
 
-impl TryFrom<Url> for RecordingAddress {
+impl TryFrom<Url> for RedapAddress {
     type Error = InvalidRedapAddress;
 
     fn try_from(url: Url) -> Result<Self, Self::Error> {
@@ -35,77 +54,49 @@ impl TryFrom<Url> for RecordingAddress {
             });
         }
 
-        let redap_endpoint = get_redap_endpoint(&url)?;
+        let host = url.host_str().ok_or_else(|| InvalidRedapAddress {
+            url: url.clone(),
+            msg: "Missing host".to_owned(),
+        })?;
 
-        let path_segments: Vec<&str> = url.path_segments().map(|s| s.collect()).unwrap_or_default();
-        if path_segments.len() != 2 || path_segments[0] != "recording" {
-            return Err(InvalidRedapAddress {
-                url: url.clone(),
-                msg: "Invalid path, expected '/recording/{id}'".to_owned(),
-            });
+        if host == "0.0.0.0" {
+            re_log::warn!("Using 0.0.0.0 as Rerun Data Platform host will often fail. You might want to try using 127.0.0.0.");
         }
 
-        Ok(Self {
-            redap_endpoint,
-            recording_id: path_segments[1].to_owned(),
-        })
-    }
-}
+        let port = url.port().ok_or_else(|| InvalidRedapAddress {
+            url: url.clone(),
+            msg: "Missing port".to_owned(),
+        })?;
 
-/// Parsed `rerun://addr:port/catalog`
-pub struct CatalogAddress {
-    pub redap_endpoint: Url,
-}
+        #[allow(clippy::unwrap_used)]
+        let redap_endpoint = Url::parse(&format!("http://{host}:{port}")).unwrap();
 
-impl std::fmt::Display for CatalogAddress {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "ReDap endpoint {}", self.redap_endpoint)
-    }
-}
+        // we got the ReDap endpoint, now figur out from the URL path if it's a recording or catalog
+        if url.path().ends_with("/catalog") {
+            let path_segments: Vec<&str> =
+                url.path_segments().map(|s| s.collect()).unwrap_or_default();
+            if path_segments.len() != 1 || path_segments[0] != "catalog" {
+                return Err(InvalidRedapAddress {
+                    url: url.clone(),
+                    msg: "Invalid path, expected '/catalog'".to_owned(),
+                });
+            }
 
-impl TryFrom<Url> for CatalogAddress {
-    type Error = InvalidRedapAddress;
+            Ok(Self::Catalog { redap_endpoint })
+        } else {
+            let path_segments: Vec<&str> =
+                url.path_segments().map(|s| s.collect()).unwrap_or_default();
+            if path_segments.len() != 2 || path_segments[0] != "recording" {
+                return Err(InvalidRedapAddress {
+                    url: url.clone(),
+                    msg: "Invalid path, expected '/recording/{id}'".to_owned(),
+                });
+            }
 
-    fn try_from(url: Url) -> Result<Self, Self::Error> {
-        if url.scheme() != "rerun" {
-            return Err(InvalidRedapAddress {
-                url: url.clone(),
-                msg: "Invalid scheme, expected 'rerun'".to_owned(),
-            });
+            Ok(Self::Recording {
+                redap_endpoint,
+                recording_id: path_segments[1].to_owned(),
+            })
         }
-
-        let redap_endpoint = get_redap_endpoint(&url)?;
-
-        let path_segments: Vec<&str> = url.path_segments().map(|s| s.collect()).unwrap_or_default();
-        if path_segments.len() != 1 || path_segments[0] != "catalog" {
-            return Err(InvalidRedapAddress {
-                url: url.clone(),
-                msg: "Invalid path, expected '/catalog'".to_owned(),
-            });
-        }
-
-        Ok(Self { redap_endpoint })
     }
-}
-
-/// Small helper to extract host and port from the Rerun Data Platform URL.
-fn get_redap_endpoint(url: &Url) -> Result<Url, InvalidRedapAddress> {
-    let host = url.host_str().ok_or_else(|| InvalidRedapAddress {
-        url: url.clone(),
-        msg: "Missing host".to_owned(),
-    })?;
-
-    if host == "0.0.0.0" {
-        re_log::warn!("Using 0.0.0.0 as Rerun Data Platform host will often fail. You might want to try using 127.0.0.0.");
-    }
-
-    let port = url.port().ok_or_else(|| InvalidRedapAddress {
-        url: url.clone(),
-        msg: "Missing port".to_owned(),
-    })?;
-
-    #[allow(clippy::unwrap_used)]
-    let redap_endpoint = Url::parse(&format!("http://{host}:{port}")).unwrap();
-
-    Ok(redap_endpoint)
 }
