@@ -17,27 +17,62 @@ namespace rerun {
         cells.reserve(6);
 
         if (archetype.translations.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.translations.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.translations.value(),
+                ComponentDescriptor(
+                    "rerun.archetypes.InstancePoses3D",
+                    "translations",
+                    "rerun.components.PoseTranslation3D"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.rotation_axis_angles.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.rotation_axis_angles.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.rotation_axis_angles.value(),
+                ComponentDescriptor(
+                    "rerun.archetypes.InstancePoses3D",
+                    "rotation_axis_angles",
+                    "rerun.components.PoseRotationAxisAngle"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.quaternions.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.quaternions.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.quaternions.value(),
+                ComponentDescriptor(
+                    "rerun.archetypes.InstancePoses3D",
+                    "quaternions",
+                    "rerun.components.PoseRotationQuat"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.scales.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.scales.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.scales.value(),
+                ComponentDescriptor(
+                    "rerun.archetypes.InstancePoses3D",
+                    "scales",
+                    "rerun.components.PoseScale3D"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.mat3x3.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.mat3x3.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.mat3x3.value(),
+                ComponentDescriptor(
+                    "rerun.archetypes.InstancePoses3D",
+                    "mat3x3",
+                    "rerun.components.PoseTransformMat3x3"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

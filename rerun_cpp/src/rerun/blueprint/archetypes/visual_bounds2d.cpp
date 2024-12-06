@@ -18,7 +18,14 @@ namespace rerun {
         cells.reserve(2);
 
         {
-            auto result = ComponentBatch::from_loggable(archetype.range);
+            auto result = ComponentBatch::from_loggable(
+                archetype.range,
+                ComponentDescriptor(
+                    "rerun.blueprint.archetypes.VisualBounds2D",
+                    "range",
+                    "rerun.blueprint.components.VisualBounds2D"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

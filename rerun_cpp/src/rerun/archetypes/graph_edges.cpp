@@ -17,12 +17,26 @@ namespace rerun {
         cells.reserve(3);
 
         {
-            auto result = ComponentBatch::from_loggable(archetype.edges);
+            auto result = ComponentBatch::from_loggable(
+                archetype.edges,
+                ComponentDescriptor(
+                    "rerun.archetypes.GraphEdges",
+                    "edges",
+                    "rerun.components.GraphEdge"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.graph_type.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.graph_type.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.graph_type.value(),
+                ComponentDescriptor(
+                    "rerun.archetypes.GraphEdges",
+                    "graph_type",
+                    "rerun.components.GraphType"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

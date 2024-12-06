@@ -1,6 +1,8 @@
 #pragma once
 
 #include <memory> // std::shared_ptr
+#include <optional>
+#include "component_descriptor.hpp"
 #include "loggable.hpp"
 #include "result.hpp"
 
@@ -26,16 +28,16 @@ namespace rerun::components {
     /// Indicator component used by archetypes when converting them to component lists.
     ///
     /// This is done in order to track how a collection of component was logged.
-    template <const char Name[]>
+    template <const char ComponentName[]>
     struct IndicatorComponent {};
 } // namespace rerun::components
 
 namespace rerun {
     /// \private
-    template <const char Name_[]>
-    struct Loggable<components::IndicatorComponent<Name_>> {
+    template <const char ComponentName_[]>
+    struct Loggable<components::IndicatorComponent<ComponentName_>> {
         /// Returns the name of this type.
-        static constexpr const char* Name = Name_;
+        static constexpr ComponentDescriptor Descriptor = ComponentDescriptor(ComponentName_);
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
@@ -44,7 +46,7 @@ namespace rerun {
 
         /// Creates an arrow ComponentBatch from an array of IndicatorComponent components.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
-            const components::IndicatorComponent<Name_>*, size_t num_instances
+            const components::IndicatorComponent<ComponentName_>*, size_t num_instances
         ) {
             // If possible, use the statically allocated shared pointer returned by the parameterless version.
             if (num_instances == 1) {

@@ -4,6 +4,7 @@
 #pragma once
 
 #include "../collection.hpp"
+#include "../component_descriptor.hpp"
 #include "../result.hpp"
 #include "annotation_info.hpp"
 #include "keypoint_pair.hpp"
@@ -72,7 +73,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<datatypes::ClassDescription> {
-        static constexpr const char Name[] = "rerun.datatypes.ClassDescription";
+        static constexpr ComponentDescriptor Descriptor = "rerun.datatypes.ClassDescription";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();

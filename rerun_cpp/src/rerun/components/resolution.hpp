@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../component_descriptor.hpp"
 #include "../datatypes/vec2d.hpp"
 #include "../rerun_sdk_export.hpp"
 #include "../result.hpp"
@@ -60,7 +61,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<components::Resolution> {
-        static constexpr const char Name[] = "rerun.components.Resolution";
+        static constexpr ComponentDescriptor Descriptor = "rerun.components.Resolution";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {

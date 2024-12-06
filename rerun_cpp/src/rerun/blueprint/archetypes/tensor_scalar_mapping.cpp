@@ -18,17 +18,38 @@ namespace rerun {
         cells.reserve(4);
 
         if (archetype.mag_filter.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.mag_filter.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.mag_filter.value(),
+                ComponentDescriptor(
+                    "rerun.blueprint.archetypes.TensorScalarMapping",
+                    "mag_filter",
+                    "rerun.components.MagnificationFilter"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.colormap.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.colormap.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.colormap.value(),
+                ComponentDescriptor(
+                    "rerun.blueprint.archetypes.TensorScalarMapping",
+                    "colormap",
+                    "rerun.components.Colormap"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.gamma.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.gamma.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.gamma.value(),
+                ComponentDescriptor(
+                    "rerun.blueprint.archetypes.TensorScalarMapping",
+                    "gamma",
+                    "rerun.components.GammaCorrection"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

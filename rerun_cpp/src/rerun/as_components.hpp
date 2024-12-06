@@ -90,14 +90,13 @@ namespace rerun {
     };
 
     /// `AsComponents` for single indicator components.
-    template <const char Name[]>
-    struct AsComponents<components::IndicatorComponent<Name>> {
+    template <const char ComponentName[]>
+    struct AsComponents<components::IndicatorComponent<ComponentName>> {
         static Result<std::vector<ComponentBatch>> serialize(
-            const components::IndicatorComponent<Name>& indicator
+            const components::IndicatorComponent<ComponentName>& indicator
         ) {
-            return AsComponents<Collection<components::IndicatorComponent<Name>>>::serialize(
-                indicator
-            );
+            return AsComponents<
+                Collection<components::IndicatorComponent<ComponentName>>>::serialize(indicator);
         }
     };
 

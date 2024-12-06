@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../../component_descriptor.hpp"
 #include "../../datatypes/utf8.hpp"
 #include "../../result.hpp"
 
@@ -46,7 +47,8 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<blueprint::components::SpaceViewClass> {
-        static constexpr const char Name[] = "rerun.blueprint.components.SpaceViewClass";
+        static constexpr ComponentDescriptor Descriptor =
+            "rerun.blueprint.components.SpaceViewClass";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {

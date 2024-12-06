@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../../component_descriptor.hpp"
 #include "../../datatypes/bool.hpp"
 #include "../../result.hpp"
 
@@ -46,7 +47,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<blueprint::components::Interactive> {
-        static constexpr const char Name[] = "rerun.blueprint.components.Interactive";
+        static constexpr ComponentDescriptor Descriptor = "rerun.blueprint.components.Interactive";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {

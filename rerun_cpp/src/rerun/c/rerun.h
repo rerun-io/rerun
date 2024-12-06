@@ -182,10 +182,35 @@ typedef struct rr_store_info {
     rr_store_kind store_kind;
 } rr_store_info;
 
+/// Definition of a component descriptor that can be registered.
+typedef struct rr_component_descriptor {
+    /// Optional name of the `Archetype` associated with this data.
+    ///
+    /// Null if the data wasn't logged through an archetype.
+    ///
+    /// Example: `rerun.archetypes.Points3D`.
+    rr_string archetype_name;
+
+    /// Optional name of the field within `Archetype` associated with this data.
+    ///
+    /// Null if the data wasn't logged through an archetype.
+    ///
+    /// Example: `positions`.
+    rr_string archetype_field_name;
+
+    /// Semantic name associated with this data.
+    ///
+    /// This is fully implied by `archetype_name` and `archetype_field`, but
+    /// included for semantic convenience.
+    ///
+    /// Example: `rerun.components.Position3D`.
+    rr_string component_name;
+} rr_component_descriptor;
+
 /// Definition of a component type that can be registered.
 typedef struct rr_component_type {
-    /// The name of the component, e.g. `position`.
-    rr_string name;
+    /// The complete descriptor for this component.
+    rr_component_descriptor descriptor;
 
     /// The arrow schema used for arrow arrays of instances of this component.
     struct ArrowSchema schema;

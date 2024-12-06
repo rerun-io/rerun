@@ -20,10 +20,10 @@ use once_cell::sync::Lazy;
 use arrow_utils::arrow_array_from_c_ffi;
 use re_sdk::{
     external::nohash_hasher::IntMap,
-    log::{Chunk, ChunkComponents, ChunkId, PendingRow, TimeColumn},
+    log::{Chunk, ChunkId, PendingRow, TimeColumn},
     time::TimeType,
-    ComponentDescriptor, ComponentName, EntityPath, RecordingStream, RecordingStreamBuilder,
-    StoreKind, TimePoint, Timeline,
+    ComponentDescriptor, EntityPath, RecordingStream, RecordingStreamBuilder, StoreKind, TimePoint,
+    Timeline,
 };
 use recording_streams::{recording_stream, RECORDING_STREAMS};
 
@@ -161,10 +161,18 @@ pub struct CStoreInfo {
     pub store_kind: CStoreKind,
 }
 
+/// See `rr_component_descriptor` in the C header.
+#[repr(C)]
+pub struct CComponentDescriptor {
+    pub archetype_name: CStringView,
+    pub archetype_field_name: CStringView,
+    pub component_name: CStringView,
+}
+
 /// See `rr_component_type` in the C header.
 #[repr(C)]
 pub struct CComponentType {
-    pub name: CStringView,
+    pub descriptor: CComponentDescriptor,
     pub schema: arrow2::ffi::ArrowSchema,
 }
 
@@ -341,8 +349,30 @@ pub extern "C" fn rr_spawn(spawn_opts: *const CSpawnOptions, error: *mut CError)
 fn rr_register_component_type_impl(
     component_type: &CComponentType,
 ) -> Result<CComponentTypeHandle, CError> {
-    let component_name = component_type.name.as_str("component_type.name")?;
-    let component_name = ComponentName::from(component_name);
+    let CComponentDescriptor {
+        archetype_name,
+        archetype_field_name,
+        component_name,
+    } = &component_type.descriptor;
+
+    let archetype_name = if !archetype_name.is_null() {
+        Some(archetype_name.as_str("component_type.descriptor.archetype_name")?)
+    } else {
+        None
+    };
+    let archetype_field_name = if !archetype_field_name.is_null() {
+        Some(archetype_field_name.as_str("component_type.descriptor.archetype_field_name")?)
+    } else {
+        None
+    };
+    let component_name = component_name.as_str("component_type.descriptor.component_name")?;
+
+    let component_descr = ComponentDescriptor {
+        archetype_name: archetype_name.map(Into::into),
+        archetype_field_name: archetype_field_name.map(Into::into),
+        component_name: component_name.into(),
+    };
+
     let schema =
         unsafe { arrow2::ffi::import_field_from_c(&component_type.schema) }.map_err(|err| {
             CError::new(
@@ -353,7 +383,7 @@ fn rr_register_component_type_impl(
 
     Ok(COMPONENT_TYPES
         .write()
-        .register(component_name, schema.data_type))
+        .register(component_descr, schema.data_type))
 }
 
 #[allow(unsafe_code)]
@@ -790,7 +820,7 @@ fn rr_recording_stream_log_impl(
             let component_type = component_type_registry.get(*component_type)?;
             let datatype = component_type.datatype.clone();
             let values = unsafe { arrow_array_from_c_ffi(array, datatype) }?;
-            components.insert(ComponentDescriptor::new(component_type.name), values);
+            components.insert(component_type.descriptor.clone(), values);
         }
     }
 
@@ -978,20 +1008,23 @@ fn rr_recording_stream_send_columns_impl(
                         )
                     })?;
 
-                Ok((ComponentDescriptor::new(component_type.name), component_values.clone()))
+                Ok((component_type.descriptor.clone(), component_values.clone()))
             })
             .collect::<Result<_, CError>>()?
     };
 
-    let components: ChunkComponents = components.into_iter().collect();
-
-    let chunk = Chunk::from_auto_row_ids(id, entity_path.into(), time_columns, components)
-        .map_err(|err| {
-            CError::new(
-                CErrorCode::RecordingStreamChunkValidationFailure,
-                &format!("Failed to create chunk: {err}"),
-            )
-        })?;
+    let chunk = Chunk::from_auto_row_ids(
+        id,
+        entity_path.into(),
+        time_columns,
+        components.into_iter().collect(),
+    )
+    .map_err(|err| {
+        CError::new(
+            CErrorCode::RecordingStreamChunkValidationFailure,
+            &format!("Failed to create chunk: {err}"),
+        )
+    })?;
 
     stream.send_chunk(chunk);
 

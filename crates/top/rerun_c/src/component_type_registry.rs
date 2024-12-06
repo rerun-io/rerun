@@ -1,11 +1,11 @@
 use once_cell::sync::Lazy;
 use parking_lot::RwLock;
-use re_sdk::ComponentName;
+use re_sdk::ComponentDescriptor;
 
 use crate::{CComponentTypeHandle, CError, CErrorCode};
 
 pub struct ComponentType {
-    pub name: ComponentName,
+    pub descriptor: ComponentDescriptor,
     pub datatype: arrow2::datatypes::DataType,
 }
 
@@ -18,22 +18,25 @@ pub struct ComponentTypeRegistry {
 impl ComponentTypeRegistry {
     pub fn register(
         &mut self,
-        name: ComponentName,
+        descriptor: ComponentDescriptor,
         datatype: arrow2::datatypes::DataType,
     ) -> CComponentTypeHandle {
         #[cfg(debug_assertions)]
         {
             for ty in &self.types {
                 assert_ne!(
-                    ty.name, name,
-                    "Component type with the same name already registered"
+                    ty.descriptor, descriptor,
+                    "Component type with the same descriptor already registered"
                 );
             }
         }
 
         let id = self.next_id;
         self.next_id += 1;
-        self.types.push(ComponentType { name, datatype });
+        self.types.push(ComponentType {
+            descriptor,
+            datatype,
+        });
         id
     }
 

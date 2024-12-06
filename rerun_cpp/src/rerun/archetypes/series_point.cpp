@@ -17,22 +17,46 @@ namespace rerun {
         cells.reserve(5);
 
         if (archetype.color.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.color.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.color.value(),
+                ComponentDescriptor(
+                    "rerun.archetypes.SeriesPoint",
+                    "color",
+                    "rerun.components.Color"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.marker.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.marker.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.marker.value(),
+                ComponentDescriptor(
+                    "rerun.archetypes.SeriesPoint",
+                    "marker",
+                    "rerun.components.MarkerShape"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.name.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.name.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.name.value(),
+                ComponentDescriptor("rerun.archetypes.SeriesPoint", "name", "rerun.components.Name")
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.marker_size.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.marker_size.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.marker_size.value(),
+                ComponentDescriptor(
+                    "rerun.archetypes.SeriesPoint",
+                    "marker_size",
+                    "rerun.components.MarkerSize"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

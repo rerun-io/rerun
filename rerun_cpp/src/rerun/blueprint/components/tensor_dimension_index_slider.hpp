@@ -4,6 +4,7 @@
 #pragma once
 
 #include "../../blueprint/datatypes/tensor_dimension_index_slider.hpp"
+#include "../../component_descriptor.hpp"
 #include "../../result.hpp"
 
 #include <cstdint>
@@ -52,7 +53,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<blueprint::components::TensorDimensionIndexSlider> {
-        static constexpr const char Name[] =
+        static constexpr ComponentDescriptor Descriptor =
             "rerun.blueprint.components.TensorDimensionIndexSlider";
 
         /// Returns the arrow data type this type corresponds to.

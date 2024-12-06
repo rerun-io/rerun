@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../component_descriptor.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
@@ -62,7 +63,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<components::MarkerShape> {
-        static constexpr const char Name[] = "rerun.components.MarkerShape";
+        static constexpr ComponentDescriptor Descriptor = "rerun.components.MarkerShape";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();

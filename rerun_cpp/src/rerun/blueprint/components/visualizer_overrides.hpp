@@ -5,6 +5,7 @@
 
 #include "../../blueprint/datatypes/utf8list.hpp"
 #include "../../collection.hpp"
+#include "../../component_descriptor.hpp"
 #include "../../result.hpp"
 
 #include <cstdint>
@@ -85,7 +86,8 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<blueprint::components::VisualizerOverrides> {
-        static constexpr const char Name[] = "rerun.blueprint.components.VisualizerOverrides";
+        static constexpr ComponentDescriptor Descriptor =
+            "rerun.blueprint.components.VisualizerOverrides";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {

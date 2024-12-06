@@ -18,7 +18,14 @@ namespace rerun {
         cells.reserve(2);
 
         if (archetype.state.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.state.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.state.value(),
+                ComponentDescriptor(
+                    "rerun.blueprint.archetypes.PanelBlueprint",
+                    "state",
+                    "rerun.blueprint.components.PanelState"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

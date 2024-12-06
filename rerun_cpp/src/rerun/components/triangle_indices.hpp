@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../component_descriptor.hpp"
 #include "../datatypes/uvec3d.hpp"
 #include "../result.hpp"
 
@@ -55,7 +56,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<components::TriangleIndices> {
-        static constexpr const char Name[] = "rerun.components.TriangleIndices";
+        static constexpr ComponentDescriptor Descriptor = "rerun.components.TriangleIndices";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {

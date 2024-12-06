@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../component_descriptor.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
@@ -122,7 +123,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<datatypes::PixelFormat> {
-        static constexpr const char Name[] = "rerun.datatypes.PixelFormat";
+        static constexpr ComponentDescriptor Descriptor = "rerun.datatypes.PixelFormat";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();

@@ -7,6 +7,7 @@
 #include <memory>
 #include <optional>
 #include <rerun/collection.hpp>
+#include <rerun/component_descriptor.hpp>
 #include <rerun/result.hpp>
 #include <string>
 #include <utility>
@@ -43,7 +44,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<components::AffixFuzzer13> {
-        static constexpr const char Name[] = "rerun.testing.components.AffixFuzzer13";
+        static constexpr ComponentDescriptor Descriptor = "rerun.testing.components.AffixFuzzer13";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();

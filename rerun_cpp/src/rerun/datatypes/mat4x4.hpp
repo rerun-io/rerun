@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../component_descriptor.hpp"
 #include "../rerun_sdk_export.hpp"
 #include "../result.hpp"
 #include "vec4d.hpp"
@@ -99,7 +100,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<datatypes::Mat4x4> {
-        static constexpr const char Name[] = "rerun.datatypes.Mat4x4";
+        static constexpr ComponentDescriptor Descriptor = "rerun.datatypes.Mat4x4";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();

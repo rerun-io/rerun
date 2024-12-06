@@ -1,8 +1,8 @@
 #pragma once
 
 #include <memory>
-#include <string_view>
 
+#include "component_descriptor.hpp"
 #include "result.hpp"
 
 namespace arrow {
@@ -17,13 +17,14 @@ namespace rerun {
     ///
     /// All built-in components automatically register their types lazily upon first serialization.
     struct ComponentType {
-        std::string_view name;
+        ComponentDescriptor descriptor;
         const std::shared_ptr<arrow::DataType>& arrow_datatype;
 
         ComponentType(
-            std::string_view name_, const std::shared_ptr<arrow::DataType>& arrow_datatype_
+            const ComponentDescriptor& descriptor_,
+            const std::shared_ptr<arrow::DataType>& arrow_datatype_
         )
-            : name(name_), arrow_datatype(arrow_datatype_) {}
+            : descriptor(descriptor_), arrow_datatype(arrow_datatype_) {}
 
         /// Registers a component type with the SDK.
         ///

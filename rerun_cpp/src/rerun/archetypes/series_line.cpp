@@ -17,22 +17,46 @@ namespace rerun {
         cells.reserve(5);
 
         if (archetype.color.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.color.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.color.value(),
+                ComponentDescriptor(
+                    "rerun.archetypes.SeriesLine",
+                    "color",
+                    "rerun.components.Color"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.width.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.width.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.width.value(),
+                ComponentDescriptor(
+                    "rerun.archetypes.SeriesLine",
+                    "width",
+                    "rerun.components.StrokeWidth"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.name.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.name.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.name.value(),
+                ComponentDescriptor("rerun.archetypes.SeriesLine", "name", "rerun.components.Name")
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.aggregation_policy.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.aggregation_policy.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.aggregation_policy.value(),
+                ComponentDescriptor(
+                    "rerun.archetypes.SeriesLine",
+                    "aggregation_policy",
+                    "rerun.components.AggregationPolicy"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

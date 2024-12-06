@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../component_descriptor.hpp"
 #include "../datatypes/rotation_axis_angle.hpp"
 #include "../result.hpp"
 
@@ -39,7 +40,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<components::RotationAxisAngle> {
-        static constexpr const char Name[] = "rerun.components.RotationAxisAngle";
+        static constexpr ComponentDescriptor Descriptor = "rerun.components.RotationAxisAngle";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {

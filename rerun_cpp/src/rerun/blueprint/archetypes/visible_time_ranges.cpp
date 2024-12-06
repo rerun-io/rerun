@@ -18,7 +18,14 @@ namespace rerun {
         cells.reserve(2);
 
         {
-            auto result = ComponentBatch::from_loggable(archetype.ranges);
+            auto result = ComponentBatch::from_loggable(
+                archetype.ranges,
+                ComponentDescriptor(
+                    "rerun.blueprint.archetypes.VisibleTimeRanges",
+                    "ranges",
+                    "rerun.blueprint.components.VisibleTimeRange"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

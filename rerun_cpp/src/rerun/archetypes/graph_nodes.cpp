@@ -17,32 +17,74 @@ namespace rerun {
         cells.reserve(7);
 
         {
-            auto result = ComponentBatch::from_loggable(archetype.node_ids);
+            auto result = ComponentBatch::from_loggable(
+                archetype.node_ids,
+                ComponentDescriptor(
+                    "rerun.archetypes.GraphNodes",
+                    "node_ids",
+                    "rerun.components.GraphNode"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.positions.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.positions.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.positions.value(),
+                ComponentDescriptor(
+                    "rerun.archetypes.GraphNodes",
+                    "positions",
+                    "rerun.components.Position2D"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.colors.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.colors.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.colors.value(),
+                ComponentDescriptor(
+                    "rerun.archetypes.GraphNodes",
+                    "colors",
+                    "rerun.components.Color"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.labels.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.labels.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.labels.value(),
+                ComponentDescriptor(
+                    "rerun.archetypes.GraphNodes",
+                    "labels",
+                    "rerun.components.Text"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.show_labels.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.show_labels.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.show_labels.value(),
+                ComponentDescriptor(
+                    "rerun.archetypes.GraphNodes",
+                    "show_labels",
+                    "rerun.components.ShowLabels"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.radii.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.radii.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.radii.value(),
+                ComponentDescriptor(
+                    "rerun.archetypes.GraphNodes",
+                    "radii",
+                    "rerun.components.Radius"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

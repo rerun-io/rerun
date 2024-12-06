@@ -17,17 +17,38 @@ namespace rerun {
         cells.reserve(4);
 
         {
-            auto result = ComponentBatch::from_loggable(archetype.line_strings);
+            auto result = ComponentBatch::from_loggable(
+                archetype.line_strings,
+                ComponentDescriptor(
+                    "rerun.archetypes.GeoLineStrings",
+                    "line_strings",
+                    "rerun.components.GeoLineString"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.radii.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.radii.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.radii.value(),
+                ComponentDescriptor(
+                    "rerun.archetypes.GeoLineStrings",
+                    "radii",
+                    "rerun.components.Radius"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.colors.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.colors.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.colors.value(),
+                ComponentDescriptor(
+                    "rerun.archetypes.GeoLineStrings",
+                    "colors",
+                    "rerun.components.Color"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
