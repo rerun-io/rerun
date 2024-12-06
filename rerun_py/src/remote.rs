@@ -11,11 +11,11 @@ use re_chunk_store::ChunkStore;
 use re_dataframe::ChunkStoreHandle;
 use re_log_types::{StoreInfo, StoreSource};
 use re_protos::{
-    codec::decode,
+    codec::{decode, encode},
     v0::{
-        storage_node_client::StorageNodeClient, EncoderVersion, FetchRecordingRequest,
-        QueryCatalogRequest, RecordingId, RecordingType, RegisterRecordingRequest,
-        UpdateCatalogRequest,
+        storage_node_client::StorageNodeClient, DataframePart, EncoderVersion,
+        FetchRecordingRequest, QueryCatalogRequest, RecordingId, RecordingType,
+        RegisterRecordingRequest, UpdateCatalogRequest,
     },
 };
 use re_sdk::{ApplicationId, StoreId, StoreKind, Time};
@@ -107,6 +107,10 @@ impl PyStorageNodeClient {
                 .await
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
+            for tc in &transport_chunks {
+                eprintln!("{tc:#?}");
+            }
+
             let record_batches: Vec<Result<RecordBatch, arrow::error::ArrowError>> =
                 transport_chunks
                     .into_iter()
@@ -152,7 +156,7 @@ impl PyStorageNodeClient {
             let _obj = object_store::ObjectStoreScheme::parse(&storage_url)
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
-            let metadata = metadata
+            let payload = metadata
                 .map(|metadata| {
                     let (schema, data): (
                         Vec<arrow2::datatypes::Field>,
@@ -175,7 +179,6 @@ impl PyStorageNodeClient {
                         .unzip();
 
                     let schema = arrow2::datatypes::Schema::from(schema);
-
                     let data = arrow2::chunk::Chunk::new(data);
 
                     let metadata_tc = TransportChunk {
@@ -183,16 +186,20 @@ impl PyStorageNodeClient {
                         data,
                     };
 
-                    RecordingMetadata::try_from(EncoderVersion::V0, &metadata_tc)
+                    encode(EncoderVersion::V0, metadata_tc)
                         .map_err(|err| PyRuntimeError::new_err(err.to_string()))
                 })
-                .transpose()?;
+                .transpose()?
+                .ok_or(PyRuntimeError::new_err("No metadata"))?;
 
             let request = RegisterRecordingRequest {
                 // TODO(jleibs): Description should really just be in the metadata
                 description: Default::default(),
                 storage_url: storage_url.to_string(),
-                metadata,
+                metadata: Some(DataframePart {
+                    encoder_version: EncoderVersion::V0 as i32,
+                    payload,
+                }),
                 typ: RecordingType::Rrd.into(),
             };
 
@@ -202,8 +209,21 @@ impl PyStorageNodeClient {
                 .await
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
                 .into_inner();
+            let metadata = decode(resp.encoder_version(), &resp.payload)
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
+                // TODO(zehiko) this is going away soon
+                .ok_or(PyRuntimeError::new_err("No metadata"))?;
 
-            let recording_id: String = resp.id.map_or("Unknown".to_owned(), |id| id.id);
+            let recording_id = metadata
+                .all_columns()
+                .find(|(field, _data)| field.name == "id")
+                .map(|(_field, data)| data)
+                .ok_or(PyRuntimeError::new_err("No id"))?
+                .as_any()
+                .downcast_ref::<arrow2::array::Utf8Array<i32>>()
+                .ok_or(PyRuntimeError::new_err("Id is not a string"))?
+                .value(0)
+                .to_owned();
 
             Ok(recording_id)
         })
@@ -249,12 +269,13 @@ impl PyStorageNodeClient {
                 data,
             };
 
-            let metadata = RecordingMetadata::try_from(EncoderVersion::V0, &metadata_tc)
-                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
-
             let request = UpdateCatalogRequest {
                 recording_id: Some(RecordingId { id: id.to_owned() }),
-                metadata: Some(metadata),
+                metadata: Some(DataframePart {
+                    encoder_version: EncoderVersion::V0 as i32,
+                    payload: encode(EncoderVersion::V0, metadata_tc)
+                        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?,
+                }),
             };
 
             self.client
