@@ -237,8 +237,10 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
 }
 
 fn toggle_playback_text(egui_ctx: &egui::Context) -> String {
-    if let Some(shortcut) = re_ui::UICommand::PlaybackTogglePlayPause.kb_shortcut() {
-        format!(" Toggle with {}", egui_ctx.format_shortcut(&shortcut))
+    if let Some(shortcut_text) =
+        re_ui::UICommand::PlaybackTogglePlayPause.formatted_kb_shortcut(egui_ctx)
+    {
+        format!(" Toggle with {shortcut_text}")
     } else {
         Default::default()
     }
