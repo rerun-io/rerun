@@ -8,7 +8,7 @@ pub struct RerunChunk {
     #[prost(enumeration = "EncoderVersion", tag = "1")]
     pub encoder_version: i32,
     /// Data payload is Arrow IPC encoded RecordBatch
-    #[prost(bytes = "vec", tag = "2")]
+    #[prost(bytes = "vec", tag = "1000")]
     pub payload: ::prost::alloc::vec::Vec<u8>,
 }
 /// unique recording identifier. At this point in time it is the same id as the ChunkStore's StoreId
@@ -253,7 +253,7 @@ pub struct DataframePart {
     #[prost(enumeration = "EncoderVersion", tag = "1")]
     pub encoder_version: i32,
     /// Data payload is Arrow IPC encoded RecordBatch
-    #[prost(bytes = "vec", tag = "2")]
+    #[prost(bytes = "vec", tag = "1000")]
     pub payload: ::prost::alloc::vec::Vec<u8>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]

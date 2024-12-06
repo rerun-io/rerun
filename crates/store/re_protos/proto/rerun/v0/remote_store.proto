@@ -25,7 +25,7 @@ message DataframePart {
     EncoderVersion encoder_version = 1;
 
     // Data payload is Arrow IPC encoded RecordBatch
-    bytes payload = 2;
+    bytes payload = 1000;
 }
 
 // ---------------- RegisterRecording ------------------

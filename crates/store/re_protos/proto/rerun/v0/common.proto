@@ -16,7 +16,7 @@ message RerunChunk {
     EncoderVersion encoder_version = 1;
 
     // Data payload is Arrow IPC encoded RecordBatch
-    bytes payload = 2;
+    bytes payload = 1000;
 }
 
 // unique recording identifier. At this point in time it is the same id as the ChunkStore's StoreId
