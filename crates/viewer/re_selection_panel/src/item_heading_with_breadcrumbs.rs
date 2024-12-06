@@ -61,7 +61,7 @@ pub fn item_heading_with_breadcrumbs(
                             let previous_style = ui.style().clone();
                             // Dimmer colors for breadcrumbs
                             let visuals = ui.visuals_mut();
-                            visuals.widgets.inactive.fg_stroke.color = egui::hex_color!("#6A8CD0");
+                            visuals.widgets.inactive.fg_stroke.color = egui::hex_color!("#6A8CD0"); // TODO(#3133): use design tokens
                             item_bread_crumbs_ui(ctx, viewport, ui, item);
                             ui.set_style(previous_style);
                         }
