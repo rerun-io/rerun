@@ -1,7 +1,6 @@
+use crate::FileContents;
 use re_log_types::LogMsg;
 use re_smart_channel::{Receiver, SmartChannelSource, SmartMessageSource};
-
-use crate::FileContents;
 
 #[cfg(not(target_arch = "wasm32"))]
 use anyhow::Context as _;
@@ -32,7 +31,8 @@ pub enum DataSource {
     #[cfg(not(target_arch = "wasm32"))]
     Stdin,
 
-    /// A file on a Rerun Data Platform server, over `rerun://` gRPC interface.
+    /// A file or a metadata catalog on a Rerun Data Platform server,
+    /// over `rerun://` gRPC interface.
     #[cfg(feature = "grpc")]
     RerunGrpcUrl { url: String },
 }
@@ -247,7 +247,7 @@ impl DataSource {
 
             #[cfg(feature = "grpc")]
             Self::RerunGrpcUrl { url } => {
-                re_grpc_client::stream_recording(url, on_msg).map_err(|err| err.into())
+                re_grpc_client::stream_from_redap(url, on_msg).map_err(|err| err.into())
             }
         }
     }

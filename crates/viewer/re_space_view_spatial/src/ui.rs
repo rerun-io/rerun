@@ -251,7 +251,7 @@ pub fn create_labels(
                     if is_error {
                         parent_ui.error_label_background_color()
                     } else {
-                        parent_ui.style().visuals.panel_fill
+                        parent_ui.style().visuals.widgets.inactive.bg_fill
                     }
                 }
                 SelectionHighlight::SiblingSelection => {

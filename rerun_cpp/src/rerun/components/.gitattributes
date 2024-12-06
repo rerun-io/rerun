@@ -48,6 +48,7 @@ media_type.hpp linguist-generated=true
 name.hpp linguist-generated=true
 opacity.hpp linguist-generated=true
 pinhole_projection.hpp linguist-generated=true
+plane3d.hpp linguist-generated=true
 pose_rotation_axis_angle.hpp linguist-generated=true
 pose_rotation_quat.hpp linguist-generated=true
 pose_scale3d.hpp linguist-generated=true

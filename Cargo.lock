@@ -5789,6 +5789,7 @@ dependencies = [
  "tokio-stream",
  "tonic",
  "tonic-web-wasm-client",
+ "url",
  "wasm-bindgen-futures",
 ]
 
@@ -6499,6 +6500,7 @@ dependencies = [
  "re_format",
  "re_log",
  "re_log_types",
+ "re_math",
  "re_tracing",
  "re_types_builder",
  "re_types_core",

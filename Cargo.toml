@@ -63,7 +63,6 @@ re_sdk_comms = { path = "crates/store/re_sdk_comms", version = "=0.21.0-alpha.1"
 re_types = { path = "crates/store/re_types", version = "=0.21.0-alpha.1", default-features = false }
 re_types_blueprint = { path = "crates/store/re_types_blueprint", version = "=0.21.0-alpha.1", default-features = false }
 re_types_core = { path = "crates/store/re_types_core", version = "=0.21.0-alpha.1", default-features = false }
-re_video = { path = "crates/store/re_video", version = "=0.21.0-alpha.1", default-features = false }
 re_ws_comms = { path = "crates/store/re_ws_comms", version = "=0.21.0-alpha.1", default-features = false }
 
 # crates/top:
@@ -85,6 +84,7 @@ re_smart_channel = { path = "crates/utils/re_smart_channel", version = "=0.21.0-
 re_string_interner = { path = "crates/utils/re_string_interner", version = "=0.21.0-alpha.1", default-features = false }
 re_tracing = { path = "crates/utils/re_tracing", version = "=0.21.0-alpha.1", default-features = false }
 re_tuid = { path = "crates/utils/re_tuid", version = "=0.21.0-alpha.1", default-features = false }
+re_video = { path = "crates/utils/re_video", version = "=0.21.0-alpha.1", default-features = false }
 
 # crates/viewer:
 re_blueprint_tree = { path = "crates/viewer/re_blueprint_tree", version = "=0.21.0-alpha.1", default-features = false }

@@ -575,7 +575,7 @@ class StorageNodeClient:
     Required-feature: `remote`
     """
 
-    def list_recordings(self) -> pa.RecordBatchReader:
+    def query_catalog(self) -> pa.RecordBatchReader:
         """Get the metadata for all recordings in the storage node."""
         ...
 
@@ -593,7 +593,7 @@ class StorageNodeClient:
         """
         ...
 
-    def update_metadata(self, id: str, metadata: dict[str, MetadataLike]) -> None:
+    def update_catalog(self, id: str, metadata: dict[str, MetadataLike]) -> None:
         """
         Update the metadata for the recording with the given id.
 

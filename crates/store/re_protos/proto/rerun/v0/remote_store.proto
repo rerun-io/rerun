@@ -10,9 +10,8 @@ service StorageNode {
     rpc FetchRecording(FetchRecordingRequest) returns (stream FetchRecordingResponse) {}
 
     // metadata API calls
-    rpc ListRecordings(ListRecordingsRequest) returns (ListRecordingsResponse) {}
-    rpc GetRecordingMetadata(GetRecordingMetadataRequest) returns (GetRecordingMetadataResponse) {}
-    rpc UpdateRecordingMetadata(UpdateRecordingMetadataRequest) returns (UpdateRecordingMetadataResponse) {}
+    rpc QueryCatalog(QueryCatalogRequest) returns (stream QueryCatalogResponse) {}
+    rpc UpdateCatalog(UpdateCatalogRequest) returns (UpdateCatalogResponse) {}
     rpc RegisterRecording(RegisterRecordingRequest) returns (RegisterRecordingResponse) {}
 }
 
@@ -45,30 +44,14 @@ message RegisterRecordingResponse {
     RecordingMetadata metadata = 2;
 }
 
-// ---------------- GetRecordingMetadata  -----------------
+// ---------------- UpdateCatalog  -----------------
 
-message GetRecordingMetadataRequest {
-    RecordingId recording_id = 1;
-}
-
-message GetRecordingMetadataResponse {
-    RecordingId id = 1;
-    RecordingMetadata metadata = 2;
-}
-
-message TimeMetadata {
-    Timeline timeline = 1;
-    TimeRange time_range = 2;
-}
-
-// ---------------- UpdateRecordingMetadata  -----------------
-
-message UpdateRecordingMetadataRequest {
+message UpdateCatalogRequest {
     RecordingId recording_id = 1;
     RecordingMetadata metadata = 2;
 }
 
-message UpdateRecordingMetadataResponse {}
+message UpdateCatalogResponse {}
 
 // ---------------- Query -----------------
 
@@ -94,21 +77,30 @@ enum EncoderVersion {
 }
 
 
-// ----------------- ListRecordings -----------------
+// ----------------- QueryCatalog -----------------
 
-message ListRecordingsRequest {
-    // define which columns should be returned / projected
-    // we define a separate message to make it optional.
-    // If not provided, all columns should be returned
+message QueryCatalogRequest {
+    // Column projection - define which columns should be returned.
+    // Providing it is optional, if not provided, all columns should be returned
     ColumnProjection column_projection = 1;
+    // Filter specific recordings that match the criteria (selection)
+    CatalogFilter filter = 2;
 }
 
 message ColumnProjection {
     repeated string columns = 1;
 }
 
-message ListRecordingsResponse {
-    repeated RecordingMetadata recordings = 1;
+message CatalogFilter {
+    // Filtering is very simple right now, we can only select
+    // recordings by their ids.
+    repeated RecordingId recording_ids = 1;
+}
+
+message QueryCatalogResponse {
+    EncoderVersion encoder_version = 1;
+    // raw bytes are TransportChunks (i.e. RecordBatches) encoded with the relevant codec
+    bytes payload = 2;
 }
 
 enum RecordingType {
@@ -132,7 +124,9 @@ message FetchRecordingResponse {
     bytes payload = 2;
 }
 
-// Application level error - use as `details` in the `google.rpc.Status` message
+// ----------------- Error handling -----------------
+
+// Application level error - used as `details` in the `google.rpc.Status` message
 message RemoteStoreError {
     // error code
     ErrorCode code = 1;

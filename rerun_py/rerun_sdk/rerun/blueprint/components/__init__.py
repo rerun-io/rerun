@@ -14,6 +14,7 @@ from .corner2d import Corner2D, Corner2DArrayLike, Corner2DBatch, Corner2DLike
 from .filter_by_range import FilterByRange, FilterByRangeBatch
 from .filter_is_not_null import FilterIsNotNull, FilterIsNotNullBatch
 from .grid_columns import GridColumns, GridColumnsBatch
+from .grid_spacing import GridSpacing, GridSpacingBatch
 from .included_content import IncludedContent, IncludedContentBatch
 from .interactive import Interactive, InteractiveBatch
 from .lock_range_during_zoom import LockRangeDuringZoom, LockRangeDuringZoomBatch
@@ -67,6 +68,8 @@ __all__ = [
     "FilterIsNotNullBatch",
     "GridColumns",
     "GridColumnsBatch",
+    "GridSpacing",
+    "GridSpacingBatch",
     "IncludedContent",
     "IncludedContentBatch",
     "Interactive",
