@@ -4,22 +4,7 @@ package rerun.log_msg.v0;
 
 import "rerun/v0/common.proto";
 
-/*
-// not actually protobuf
-message MessageHeader {
-    enum MessageKind {
-        UNKNOWN_KIND = 0;
-        ARROW_MSG = 1;
-        SET_STORE_INFO = 2;
-        BLUEPRINT_ACTIVATION_COMMAND = 3;
-    }
-
-    MessageKind kind = 1;
-
-    // len-prefixed
-    bytes payload = 1000;
-}
-*/
+// TODO(jan): documentation here
 
 message SetStoreInfo {
     rerun.common.v0.Tuid row_id = 1;
