@@ -24,7 +24,7 @@ fn multiline_view_geo_line_string(
     // TODO(andreas): Editing this would be nice!
     let value = value.as_ref();
 
-    UiLayout::SelectionPanelFull
+    UiLayout::SelectionPanel
         .table(ui)
         .resizable(true)
         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))

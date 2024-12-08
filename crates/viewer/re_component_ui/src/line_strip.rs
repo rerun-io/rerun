@@ -27,7 +27,7 @@ fn multiline_view_line_strip_3d(
 
     // TODO(andreas): Is it really a good idea to always have the full table here?
     // Can we use the ui stack to know where we are and do the right thing instead?
-    UiLayout::SelectionPanelFull
+    UiLayout::SelectionPanel
         .table(ui)
         .resizable(true)
         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
@@ -89,7 +89,7 @@ fn multiline_view_line_strip_2d(
 
     // TODO(andreas): Is it really a good idea to always have the full table here?
     // Can we use the ui stack to know where we are and do the right thing instead?
-    UiLayout::SelectionPanelFull
+    UiLayout::SelectionPanel
         .table(ui)
         .resizable(true)
         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))

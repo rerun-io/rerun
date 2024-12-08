@@ -6143,6 +6143,7 @@ dependencies = [
  "re_context_menu",
  "re_data_ui",
  "re_entity_db",
+ "re_format",
  "re_log",
  "re_log_types",
  "re_space_view",
