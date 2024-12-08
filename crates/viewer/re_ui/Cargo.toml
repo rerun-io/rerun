@@ -36,22 +36,20 @@ re_log.workspace = true
 re_log_types.workspace = true # syntax-highlighting for EntityPath
 re_tracing.workspace = true
 
-egui.workspace = true
+eframe = { workspace = true, default-features = false, features = ["wgpu"] }
 egui_commonmark = { workspace = true, features = ["pulldown_cmark"] }
 egui_extras.workspace = true
+egui_tiles.workspace = true
+egui.workspace = true
 once_cell.workspace = true
 parking_lot.workspace = true
+rand.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
-strum.workspace = true
-strum_macros.workspace = true
-sublime_fuzzy.workspace = true
-
-
-eframe = { workspace = true, default-features = false, features = ["wgpu"] }
-egui_tiles.workspace = true
-rand.workspace = true
 smallvec.workspace = true
+strum_macros.workspace = true
+strum.workspace = true
+sublime_fuzzy.workspace = true
 
 
 [dev-dependencies]

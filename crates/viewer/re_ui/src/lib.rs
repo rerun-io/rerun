@@ -1,5 +1,6 @@
 //! Rerun GUI theme and helpers, built around [`egui`](https://www.egui.rs/).
 
+mod color_table;
 mod command;
 mod command_palette;
 mod context_ext;
@@ -18,6 +19,7 @@ pub mod zoom_pan_area;
 use egui::NumExt as _;
 
 pub use self::{
+    color_table::{ColorToken, Hue, Scale},
     command::{UICommand, UICommandSender},
     command_palette::CommandPalette,
     context_ext::ContextExt,

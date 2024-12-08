@@ -555,8 +555,14 @@ fn query_and_resolve_tree_transform_at_entity(
     if let Some(mat3x3) = result.component_instance::<TransformMat3x3>(0) {
         transform *= glam::Affine3A::from(mat3x3);
     }
+
     if result.component_instance::<TransformRelation>(0) == Some(TransformRelation::ChildFromParent)
     {
+        if transform.matrix3.determinant() != 0.0 {
+            // TODO(andreas): Should we warn? This might be intentionally caused by zero scale.
+            transform = transform.inverse();
+        }
+
         transform = transform.inverse();
     }
 

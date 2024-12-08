@@ -220,8 +220,15 @@ impl MeshDrawData {
                     count_with_outlines += instance.outline_mask_ids.is_some() as u32;
 
                     let world_from_mesh_mat3 = instance.world_from_mesh.matrix3;
+                    // If the matrix is not invertible the draw result is likely invalid as well.
+                    // However, at this point it's really hard to bail out!
+                    // Also, by skipping drawing here, we'd make the result worse as there would be no mesh draw calls that could be debugged.
                     let world_from_mesh_normal =
-                        instance.world_from_mesh.matrix3.inverse().transpose();
+                        if instance.world_from_mesh.matrix3.determinant() != 0.0 {
+                            instance.world_from_mesh.matrix3.inverse().transpose()
+                        } else {
+                            glam::Mat3A::ZERO
+                        };
                     instance_buffer_staging.push(gpu_data::InstanceData {
                         world_from_mesh_row_0: world_from_mesh_mat3
                             .row(0)
