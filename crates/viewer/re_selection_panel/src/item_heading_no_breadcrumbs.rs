@@ -1,4 +1,5 @@
 use egui::WidgetText;
+
 use re_data_ui::item_ui::guess_instance_path_icon;
 use re_log_types::ComponentPath;
 use re_ui::{icons, Icon, SyntaxHighlighting};
@@ -45,30 +46,30 @@ pub fn item_heading_no_breadcrumbs(
             let is_component_static = is_component_static(ctx, component_path);
 
             // Break up into entity path and component name:
+            let ComponentPath {
+                entity_path,
+                component_name,
+            } = component_path;
 
-            item_heading_no_breadcrumbs(
-                ctx,
-                viewport,
-                ui,
-                &Item::from(component_path.entity_path.clone()),
-            );
+            item_heading_no_breadcrumbs(ctx, viewport, ui, &Item::from(entity_path.clone()));
 
-            separator_icon_ui(ui, icons::BREADCRUMBS_SEPARATOR);
+            separator_icon_ui(ui);
 
+            let component_icon = if is_component_static {
+                &icons::COMPONENT_STATIC
+            } else {
+                &icons::COMPONENT_TEMPORAL
+            };
             icon_and_title(
                 ui,
-                if is_component_static {
-                    &icons::COMPONENT_STATIC
-                } else {
-                    &icons::COMPONENT_TEMPORAL
-                },
-                component_path.syntax_highlighted(ui.style()),
+                component_icon,
+                component_name.syntax_highlighted(ui.style()),
             );
         }
         Item::DataResult(view_id, instance_path) => {
             // Break up into view and instance path:
             item_heading_no_breadcrumbs(ctx, viewport, ui, &Item::SpaceView(*view_id));
-            separator_icon_ui(ui, icons::BREADCRUMBS_SEPARATOR);
+            separator_icon_ui(ui);
             item_heading_no_breadcrumbs(
                 ctx,
                 viewport,

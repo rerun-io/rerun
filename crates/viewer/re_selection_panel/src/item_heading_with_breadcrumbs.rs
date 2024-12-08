@@ -249,12 +249,13 @@ fn viewport_breadcrumbs(
     }
     cursor_interact_with_selectable(ctx, response, item);
 
-    separator_icon_ui(ui, icons::BREADCRUMBS_SEPARATOR);
+    separator_icon_ui(ui);
 }
 
-pub fn separator_icon_ui(ui: &mut egui::Ui, icon: re_ui::Icon) {
+pub fn separator_icon_ui(ui: &mut egui::Ui) {
     ui.add(
-        icon.as_image()
+        icons::BREADCRUMBS_SEPARATOR
+            .as_image()
             .fit_to_original_size(ICON_SCALE)
             .tint(ui.visuals().text_color().gamma_multiply(0.65)),
     );
@@ -313,5 +314,5 @@ fn entity_path_breadcrumbs(
     };
     cursor_interact_with_selectable(ctx, response, item);
 
-    separator_icon_ui(ui, icons::BREADCRUMBS_SEPARATOR);
+    separator_icon_ui(ui);
 }
