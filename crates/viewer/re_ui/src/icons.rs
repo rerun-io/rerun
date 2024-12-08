@@ -28,6 +28,13 @@ impl Icon {
     }
 }
 
+impl From<&'static Icon> for Image<'static> {
+    #[inline]
+    fn from(icon: &'static Icon) -> Self {
+        icon.as_image()
+    }
+}
+
 /// Macro to create an [`Icon`], using the file path as the id.
 ///
 /// This avoids specifying the id manually, which is error-prone (duplicate IDs lead to silent
