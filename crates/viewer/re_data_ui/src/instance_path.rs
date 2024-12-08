@@ -162,7 +162,7 @@ fn component_list_ui(
             // types of components).
             indicator_count == components.len()
         }
-        UiLayout::SelectionPanelFull => true,
+        UiLayout::SelectionPanel => true,
         UiLayout::List => false, // unreachable
     };
 

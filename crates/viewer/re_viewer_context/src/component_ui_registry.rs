@@ -26,15 +26,15 @@ pub enum UiLayout {
     /// Display as much information as possible in a compact way. Used for hovering/tooltips.
     ///
     /// Keep it under a half-dozen lines. Text may wrap. Avoid interactive UI. When using a table,
-    /// use the `re_data_ui::table_for_ui_layout` function.
+    /// use the [`Self::table`] function.
     Tooltip,
 
     /// Display everything as wide as available, without height restriction. Used in the selection
     /// panel when a single item is selected.
     ///
     /// The UI will be wrapped in a [`egui::ScrollArea`], so data should be fully displayed with no
-    /// restriction. When using a table, use the `re_data_ui::table_for_ui_layout` function.
-    SelectionPanelFull,
+    /// restriction. When using a table, use the [`Self::table`] function.
+    SelectionPanel,
 }
 
 impl UiLayout {
@@ -43,7 +43,7 @@ impl UiLayout {
     pub fn is_single_line(&self) -> bool {
         match self {
             Self::List => true,
-            Self::Tooltip | Self::SelectionPanelFull => false,
+            Self::Tooltip | Self::SelectionPanel => false,
         }
     }
 
@@ -52,7 +52,7 @@ impl UiLayout {
     pub fn is_selection_panel(self) -> bool {
         match self {
             Self::List | Self::Tooltip => false,
-            Self::SelectionPanelFull => true,
+            Self::SelectionPanel => true,
         }
     }
 
@@ -68,7 +68,7 @@ impl UiLayout {
                 // the content itself must be limited (scrolling is not possible in tooltips).
                 table.auto_shrink([true, true])
             }
-            Self::SelectionPanelFull => {
+            Self::SelectionPanel => {
                 // We're alone in the selection panel. Let the outer ScrollArea do the work.
                 table.auto_shrink([false, true]).vscroll(false)
             }
@@ -93,7 +93,7 @@ impl UiLayout {
                         label = label.truncate();
                     }
                 }
-                Self::Tooltip | Self::SelectionPanelFull => {
+                Self::Tooltip | Self::SelectionPanel => {
                     label = label.wrap();
                 }
             }
@@ -133,7 +133,7 @@ impl UiLayout {
             Self::Tooltip => {
                 layout_job.wrap.max_rows = 3;
             }
-            Self::SelectionPanelFull => {
+            Self::SelectionPanel => {
                 needs_scroll_area = false;
             }
         }
@@ -465,7 +465,7 @@ impl ComponentUiRegistry {
         }
 
         // Fallback to the more specialized UI callbacks.
-        let edit_or_view_ui = if ui_layout == UiLayout::SelectionPanelFull {
+        let edit_or_view_ui = if ui_layout == UiLayout::SelectionPanel {
             self.component_multiline_edit_or_view
                 .get(&component_name)
                 .or_else(|| self.component_singleline_edit_or_view.get(&component_name))

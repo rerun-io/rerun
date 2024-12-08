@@ -126,7 +126,7 @@ impl DataUi for AnnotationContext {
                 };
                 ui_layout.label(ui, text);
             }
-            UiLayout::SelectionPanelFull => {
+            UiLayout::SelectionPanel => {
                 ui.vertical(|ui| {
                     ui.maybe_collapsing_header(true, "Classes", true, |ui| {
                         let annotation_infos = self
@@ -163,7 +163,7 @@ fn class_description_ui(
 
     re_tracing::profile_function!();
 
-    let use_collapsible = ui_layout == UiLayout::SelectionPanelFull;
+    let use_collapsible = ui_layout == UiLayout::SelectionPanel;
 
     let row_height = DesignTokens::table_line_height();
     if !class.keypoint_annotations.is_empty() {
