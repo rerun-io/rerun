@@ -1,4 +1,5 @@
-use egui::{Key, KeyboardShortcut, Modifiers};
+use egui::{os::OperatingSystem, Key, KeyboardShortcut, Modifiers};
+use smallvec::{smallvec, SmallVec};
 
 /// Interface for sending [`UICommand`] messages.
 pub trait UICommandSender {
@@ -259,10 +260,14 @@ impl UICommand {
         }
     }
 
-    #[allow(clippy::unnecessary_wraps)] // Only on some platforms
-    pub fn kb_shortcut(self) -> Option<KeyboardShortcut> {
+    /// All keyboard shortcuts, with the primary first.
+    pub fn kb_shortcuts(self, os: OperatingSystem) -> SmallVec<[KeyboardShortcut; 2]> {
         fn key(key: Key) -> KeyboardShortcut {
             KeyboardShortcut::new(Modifiers::NONE, key)
+        }
+
+        fn ctrl(key: Key) -> KeyboardShortcut {
+            KeyboardShortcut::new(Modifiers::CTRL, key)
         }
 
         fn cmd(key: Key) -> KeyboardShortcut {
@@ -282,92 +287,113 @@ impl UICommand {
         }
 
         match self {
-            Self::SaveRecording => Some(cmd(Key::S)),
-            Self::SaveRecordingSelection => Some(cmd_alt(Key::S)),
-            Self::SaveBlueprint => None,
-            Self::Open => Some(cmd(Key::O)),
-            Self::Import => Some(cmd_shift(Key::O)),
-            Self::CloseCurrentRecording => None,
-            Self::CloseAllRecordings => None,
+            Self::SaveRecording => smallvec![cmd(Key::S)],
+            Self::SaveRecordingSelection => smallvec![cmd_alt(Key::S)],
+            Self::SaveBlueprint => smallvec![],
+            Self::Open => smallvec![cmd(Key::O)],
+            Self::Import => smallvec![cmd_shift(Key::O)],
+            Self::CloseCurrentRecording => smallvec![],
+            Self::CloseAllRecordings => smallvec![],
 
-            Self::Undo => Some(cmd(Key::Z)),
-            Self::Redo => Some(cmd_shift(Key::Z)),
-
-            #[cfg(all(not(target_arch = "wasm32"), target_os = "windows"))]
-            Self::Quit => Some(KeyboardShortcut::new(Modifiers::ALT, Key::F4)),
-
-            Self::OpenWebHelp => None,
-            Self::OpenRerunDiscord => None,
-
-            #[cfg(all(not(target_arch = "wasm32"), not(target_os = "windows")))]
-            Self::Quit => Some(cmd(Key::Q)),
-
-            Self::ResetViewer => Some(ctrl_shift(Key::R)),
-            Self::ClearAndGenerateBlueprint => None,
-
-            #[cfg(not(target_arch = "wasm32"))]
-            Self::OpenProfiler => Some(ctrl_shift(Key::P)),
-            Self::ToggleMemoryPanel => Some(ctrl_shift(Key::M)),
-            Self::TogglePanelStateOverrides => None,
-            Self::ToggleTopPanel => None,
-            Self::ToggleBlueprintPanel => Some(ctrl_shift(Key::B)),
-            Self::ToggleSelectionPanel => Some(ctrl_shift(Key::S)),
-            Self::ToggleTimePanel => Some(ctrl_shift(Key::T)),
-            Self::ToggleChunkStoreBrowser => Some(ctrl_shift(Key::D)),
-            Self::Settings => {
-                if cfg!(target_os = "macos") {
-                    Some(KeyboardShortcut::new(Modifiers::MAC_CMD, Key::Comma))
+            Self::Undo => smallvec![cmd(Key::Z)],
+            Self::Redo => {
+                if os == OperatingSystem::Mac {
+                    smallvec![cmd_shift(Key::Z), cmd(Key::Y)]
                 } else {
-                    // TODO(emilk): shortcut for web and non-mac too
-                    None
+                    smallvec![ctrl(Key::Y), ctrl_shift(Key::Z)]
                 }
             }
 
-            #[cfg(debug_assertions)]
-            Self::ToggleBlueprintInspectionPanel => Some(ctrl_shift(Key::I)),
+            #[cfg(all(not(target_arch = "wasm32"), target_os = "windows"))]
+            Self::Quit => smallvec![KeyboardShortcut::new(Modifiers::ALT, Key::F4)],
 
-            #[cfg(debug_assertions)]
-            Self::ToggleEguiDebugPanel => Some(ctrl_shift(Key::U)),
+            Self::OpenWebHelp => smallvec![],
+            Self::OpenRerunDiscord => smallvec![],
 
-            #[cfg(not(target_arch = "wasm32"))]
-            Self::ToggleFullscreen => Some(key(Key::F11)),
-            #[cfg(target_arch = "wasm32")]
-            Self::ToggleFullscreen => None,
+            #[cfg(all(not(target_arch = "wasm32"), not(target_os = "windows")))]
+            Self::Quit => smallvec![cmd(Key::Q)],
 
-            #[cfg(not(target_arch = "wasm32"))]
-            Self::ZoomIn => Some(egui::gui_zoom::kb_shortcuts::ZOOM_IN),
-            #[cfg(not(target_arch = "wasm32"))]
-            Self::ZoomOut => Some(egui::gui_zoom::kb_shortcuts::ZOOM_OUT),
-            #[cfg(not(target_arch = "wasm32"))]
-            Self::ZoomReset => Some(egui::gui_zoom::kb_shortcuts::ZOOM_RESET),
-
-            Self::ToggleCommandPalette => Some(cmd(Key::P)),
-
-            Self::PlaybackTogglePlayPause => Some(key(Key::Space)),
-            Self::PlaybackFollow => Some(cmd(Key::ArrowRight)),
-            Self::PlaybackStepBack => Some(key(Key::ArrowLeft)),
-            Self::PlaybackStepForward => Some(key(Key::ArrowRight)),
-            Self::PlaybackRestart => Some(cmd(Key::ArrowLeft)),
+            Self::ResetViewer => smallvec![ctrl_shift(Key::R)],
+            Self::ClearAndGenerateBlueprint => smallvec![],
 
             #[cfg(not(target_arch = "wasm32"))]
-            Self::ScreenshotWholeApp => None,
-            #[cfg(not(target_arch = "wasm32"))]
-            Self::PrintChunkStore => None,
-            #[cfg(not(target_arch = "wasm32"))]
-            Self::PrintBlueprintStore => None,
-            #[cfg(not(target_arch = "wasm32"))]
-            Self::PrintPrimaryCache => None,
+            Self::OpenProfiler => smallvec![ctrl_shift(Key::P)],
+            Self::ToggleMemoryPanel => smallvec![ctrl_shift(Key::M)],
+            Self::TogglePanelStateOverrides => smallvec![],
+            Self::ToggleTopPanel => smallvec![],
+            Self::ToggleBlueprintPanel => smallvec![ctrl_shift(Key::B)],
+            Self::ToggleSelectionPanel => smallvec![ctrl_shift(Key::S)],
+            Self::ToggleTimePanel => smallvec![ctrl_shift(Key::T)],
+            Self::ToggleChunkStoreBrowser => smallvec![ctrl_shift(Key::D)],
+            Self::Settings => smallvec![cmd(Key::Comma)],
 
             #[cfg(debug_assertions)]
-            Self::ResetEguiMemory => None,
+            Self::ToggleBlueprintInspectionPanel => smallvec![ctrl_shift(Key::I)],
+
+            #[cfg(debug_assertions)]
+            Self::ToggleEguiDebugPanel => smallvec![ctrl_shift(Key::U)],
+
+            #[cfg(not(target_arch = "wasm32"))]
+            Self::ToggleFullscreen => smallvec![key(Key::F11)],
+            #[cfg(target_arch = "wasm32")]
+            Self::ToggleFullscreen => smallvec![],
+
+            #[cfg(not(target_arch = "wasm32"))]
+            Self::ZoomIn => smallvec![egui::gui_zoom::kb_shortcuts::ZOOM_IN],
+            #[cfg(not(target_arch = "wasm32"))]
+            Self::ZoomOut => smallvec![egui::gui_zoom::kb_shortcuts::ZOOM_OUT],
+            #[cfg(not(target_arch = "wasm32"))]
+            Self::ZoomReset => smallvec![egui::gui_zoom::kb_shortcuts::ZOOM_RESET],
+
+            Self::ToggleCommandPalette => smallvec![cmd(Key::P)],
+
+            Self::PlaybackTogglePlayPause => smallvec![key(Key::Space)],
+            Self::PlaybackFollow => smallvec![cmd(Key::ArrowRight)],
+            Self::PlaybackStepBack => smallvec![key(Key::ArrowLeft)],
+            Self::PlaybackStepForward => smallvec![key(Key::ArrowRight)],
+            Self::PlaybackRestart => smallvec![cmd(Key::ArrowLeft)],
+
+            #[cfg(not(target_arch = "wasm32"))]
+            Self::ScreenshotWholeApp => smallvec![],
+            #[cfg(not(target_arch = "wasm32"))]
+            Self::PrintChunkStore => smallvec![],
+            #[cfg(not(target_arch = "wasm32"))]
+            Self::PrintBlueprintStore => smallvec![],
+            #[cfg(not(target_arch = "wasm32"))]
+            Self::PrintPrimaryCache => smallvec![],
+
+            #[cfg(debug_assertions)]
+            Self::ResetEguiMemory => smallvec![],
 
             #[cfg(target_arch = "wasm32")]
-            Self::CopyDirectLink => None,
+            Self::CopyDirectLink => smallvec![],
 
             #[cfg(target_arch = "wasm32")]
-            Self::RestartWithWebGl => None,
+            Self::RestartWithWebGl => smallvec![],
             #[cfg(target_arch = "wasm32")]
-            Self::RestartWithWebGpu => None,
+            Self::RestartWithWebGpu => smallvec![],
+        }
+    }
+
+    /// Primary keyboard shortcut
+    fn primary_kb_shortcut(self, os: OperatingSystem) -> Option<KeyboardShortcut> {
+        self.kb_shortcuts(os).first().copied()
+    }
+
+    /// Return the keyboard shortcut for this command, nicely formatted
+    pub fn formatted_kb_shortcut(self, egui_ctx: &egui::Context) -> Option<String> {
+        // Note: we only show the primary shortcut to the user.
+        // The fallbacks are there for people who have muscle memory for the other shortcuts.
+        self.primary_kb_shortcut(egui_ctx.os())
+            .map(|shortcut| egui_ctx.format_shortcut(&shortcut))
+    }
+
+    /// Add e.g. " (Ctrl+F11)" as a suffix
+    pub fn format_shortcut_tooltip_suffix(self, egui_ctx: &egui::Context) -> String {
+        if let Some(shortcut_text) = self.formatted_kb_shortcut(egui_ctx) {
+            format!(" ({shortcut_text})")
+        } else {
+            Default::default()
         }
     }
 
@@ -393,14 +419,18 @@ impl UICommand {
         }
 
         let mut commands: Vec<(KeyboardShortcut, Self)> = Self::iter()
-            .filter_map(|cmd| cmd.kb_shortcut().map(|kb_shortcut| (kb_shortcut, cmd)))
+            .flat_map(|cmd| {
+                cmd.kb_shortcuts(egui_ctx.os())
+                    .into_iter()
+                    .map(move |kb_shortcut| (kb_shortcut, cmd))
+            })
             .collect();
 
         // If the user pressed `Cmd-Shift-S` then egui will match that
         // with both `Cmd-Shift-S` and `Cmd-S`.
         // The reason is that `Shift` (and `Alt`) are sometimes required to produce certain keys,
         // such as `+` (`Shift =` on an american keyboard).
-        // The result of this is that we bust check for `Cmd-Shift-S` before `Cmd-S`, etc.
+        // The result of this is that we must check for `Cmd-Shift-S` before `Cmd-S`, etc.
         // So we order the commands here so that the commands with `Shift` and `Alt` in them
         // are checked first.
         commands.sort_by_key(|(kb_shortcut, _cmd)| {
@@ -453,20 +483,11 @@ impl UICommand {
             egui::Button::new(self.text())
         };
 
-        if let Some(shortcut) = self.kb_shortcut() {
-            button = button.shortcut_text(egui_ctx.format_shortcut(&shortcut));
+        if let Some(shortcut_text) = self.formatted_kb_shortcut(egui_ctx) {
+            button = button.shortcut_text(shortcut_text);
         }
 
         button
-    }
-
-    /// Add e.g. " (Ctrl+F11)" as a suffix
-    pub fn format_shortcut_tooltip_suffix(self, egui_ctx: &egui::Context) -> String {
-        if let Some(kb_shortcut) = self.kb_shortcut() {
-            format!(" ({})", egui_ctx.format_shortcut(&kb_shortcut))
-        } else {
-            Default::default()
-        }
     }
 
     pub fn tooltip_with_shortcut(self, egui_ctx: &egui::Context) -> String {
@@ -499,19 +520,25 @@ fn check_for_clashing_command_shortcuts() {
 
     use strum::IntoEnumIterator as _;
 
-    for a_cmd in UICommand::iter() {
-        if let Some(a_shortcut) = a_cmd.kb_shortcut() {
-            for b_cmd in UICommand::iter() {
-                if a_cmd == b_cmd {
-                    continue;
-                }
-                if let Some(b_shortcut) = b_cmd.kb_shortcut() {
-                    assert!(
-                        !clashes(a_shortcut, b_shortcut),
-                        "Command '{a_cmd:?}' and '{b_cmd:?}' have overlapping keyboard shortcuts: {:?} vs {:?}",
-                        a_shortcut.format(&egui::ModifierNames::NAMES, true),
-                        b_shortcut.format(&egui::ModifierNames::NAMES, true),
-                    );
+    for os in [
+        OperatingSystem::Mac,
+        OperatingSystem::Windows,
+        OperatingSystem::Nix,
+    ] {
+        for a_cmd in UICommand::iter() {
+            for a_shortcut in a_cmd.kb_shortcuts(os) {
+                for b_cmd in UICommand::iter() {
+                    if a_cmd == b_cmd {
+                        continue;
+                    }
+                    for b_shortcut in b_cmd.kb_shortcuts(os) {
+                        assert!(
+                            !clashes(a_shortcut, b_shortcut),
+                            "Command '{a_cmd:?}' and '{b_cmd:?}' have overlapping keyboard shortcuts: {:?} vs {:?}",
+                            a_shortcut.format(&egui::ModifierNames::NAMES, true),
+                            b_shortcut.format(&egui::ModifierNames::NAMES, true),
+                        );
+                    }
                 }
             }
         }

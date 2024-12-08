@@ -99,10 +99,7 @@ impl CommandPalette {
 
         for (i, fuzzy_match) in commands_that_match(&query).iter().enumerate() {
             let command = fuzzy_match.command;
-            let kb_shortcut = command
-                .kb_shortcut()
-                .map(|shortcut| ui.ctx().format_shortcut(&shortcut))
-                .unwrap_or_default();
+            let kb_shortcut_text = command.formatted_kb_shortcut(ui.ctx()).unwrap_or_default();
 
             let (rect, response) = ui.allocate_at_least(
                 egui::vec2(ui.available_width(), item_height),
@@ -148,7 +145,7 @@ impl CommandPalette {
             ui.painter().text(
                 rect.right_center(),
                 Align2::RIGHT_CENTER,
-                kb_shortcut,
+                kb_shortcut_text,
                 font_id.clone(),
                 if selected {
                     style.text_color()
