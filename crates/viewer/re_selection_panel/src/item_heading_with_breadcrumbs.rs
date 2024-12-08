@@ -252,7 +252,7 @@ fn viewport_breadcrumbs(
     separator_icon_ui(ui, icons::BREADCRUMBS_SEPARATOR);
 }
 
-fn separator_icon_ui(ui: &mut egui::Ui, icon: re_ui::Icon) {
+pub fn separator_icon_ui(ui: &mut egui::Ui, icon: re_ui::Icon) {
     ui.add(
         icon.as_image()
             .fit_to_original_size(ICON_SCALE)

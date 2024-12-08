@@ -23,6 +23,7 @@ use re_viewport_blueprint::{ui::show_add_space_view_or_container_modal, Viewport
 
 use crate::{
     defaults_ui::view_components_defaults_section_ui,
+    item_heading_no_breadcrumbs::item_heading_no_breadcrumbs,
     item_heading_with_breadcrumbs::item_heading_with_breadcrumbs,
     space_view_entity_picker::SpaceViewEntityPicker,
     visible_time_range_ui::{
@@ -104,28 +105,73 @@ impl SelectionPanel {
     ) {
         re_tracing::profile_function!();
 
-        if ctx.selection().is_empty() {
+        let selection = ctx.selection();
+
+        if selection.is_empty() {
             return;
         }
 
         // no gap before the first item title
         ui.add_space(-ui.spacing().item_spacing.y);
 
-        let selection = ctx.selection();
-        let ui_layout = UiLayout::SelectionPanel;
-        for (i, item) in selection.iter_items().enumerate() {
-            list_item::list_item_scope(ui, item, |ui| {
-                item_heading_with_breadcrumbs(ctx, viewport, ui, item);
-                self.item_ui(ctx, viewport, view_states, ui, item, ui_layout);
-            });
+        if selection.len() == 1 {
+            for item in selection.iter_items() {
+                list_item::list_item_scope(ui, item, |ui| {
+                    item_heading_with_breadcrumbs(ctx, viewport, ui, item);
 
-            if i < selection.len() - 1 {
-                // Add space some space between selections
-                ui.add_space(8.);
+                    self.item_ui(
+                        ctx,
+                        viewport,
+                        view_states,
+                        ui,
+                        item,
+                        UiLayout::SelectionPanel,
+                    );
+                });
             }
+        } else {
+            list_item::list_item_scope(ui, "selections_panel", |ui| {
+                ui.list_item()
+                    .with_height(re_ui::DesignTokens::title_bar_height())
+                    .interactive(false)
+                    .selected(true)
+                    .show_flat(
+                        ui,
+                        list_item::LabelContent::new(format!(
+                            "{} selected items",
+                            re_format::format_uint(selection.len())
+                        )),
+                    );
+
+                for item in selection.iter_items() {
+                    ui.add_space(4.0);
+
+                    let response = ui
+                        .list_item()
+                        .with_height(re_ui::DesignTokens::list_item_height())
+                        .interactive(true)
+                        .show_flat(
+                            ui,
+                            list_item::CustomContent::new(|ui, context| {
+                                ui.allocate_new_ui(
+                                    egui::UiBuilder::new()
+                                        .max_rect(context.rect)
+                                        .layout(egui::Layout::left_to_right(egui::Align::Center)),
+                                    |ui| {
+                                        ui.spacing_mut().item_spacing.x = 4.0;
+                                        ui.style_mut().interaction.selectable_labels = false;
+                                        item_heading_no_breadcrumbs(ctx, viewport, ui, item);
+                                    },
+                                );
+                            }),
+                        );
+                    cursor_interact_with_selectable(ctx, response, item.clone());
+                }
+            });
         }
     }
 
+    // TODO(emilk): this should probably be `impl DataUi for Item`
     fn item_ui(
         &mut self,
         ctx: &ViewerContext<'_>,

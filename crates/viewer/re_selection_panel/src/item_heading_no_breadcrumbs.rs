@@ -1,12 +1,15 @@
+use egui::WidgetText;
 use re_data_ui::item_ui::guess_instance_path_icon;
-use re_ui::{icons, SyntaxHighlighting};
+use re_ui::{icons, Icon, SyntaxHighlighting};
 use re_viewer_context::{Item, ViewerContext};
-use re_viewport_blueprint::ViewportBlueprint;
+use re_viewport_blueprint::{ui, ViewportBlueprint};
 
 use crate::{
     item_heading_with_breadcrumbs::separator_icon_ui,
     item_title::{is_component_static, ItemTitle},
 };
+
+const ICON_SCALE: f32 = 0.5; // Because we save all icons as 2x
 
 /// Fully descriptive heading for an item, without any breadcrumbs.
 pub fn item_heading_no_breadcrumbs(
@@ -25,30 +28,29 @@ pub fn item_heading_no_breadcrumbs(
                 icon,
                 label,
                 label_style: _, // no label
-                tooltip,
+                tooltip: _,
             } = ItemTitle::from_item(ctx, viewport, ui.style(), item);
 
-            let response = ui.add(egui::Button::image_and_text(icon.as_image(), label));
-            if let Some(tooltip) = tooltip {
-                response.on_hover_text(tooltip);
-            }
+            icon_and_title(ui, icon, label);
         }
         Item::InstancePath(instance_path) => {
-            ui.add(egui::Button::image_and_text(
+            icon_and_title(
+                ui,
                 guess_instance_path_icon(ctx, instance_path),
                 instance_path.syntax_highlighted(ui.style()),
-            ));
+            );
         }
         Item::ComponentPath(component_path) => {
             let is_static = is_component_static(ctx, component_path);
-            ui.add(egui::Button::image_and_text(
+            icon_and_title(
+                ui,
                 if is_static {
                     &icons::COMPONENT_STATIC
                 } else {
                     &icons::COMPONENT_TEMPORAL
                 },
                 component_path.syntax_highlighted(ui.style()),
-            ));
+            );
         }
         Item::DataResult(view_id, instance_path) => {
             // Break up in two:
@@ -62,4 +64,9 @@ pub fn item_heading_no_breadcrumbs(
             );
         }
     }
+}
+
+fn icon_and_title(ui: &mut egui::Ui, icon: &Icon, title: impl Into<WidgetText>) {
+    ui.add(icon.as_image().fit_to_original_size(ICON_SCALE));
+    ui.label(title);
 }
