@@ -126,7 +126,7 @@ impl DataUi for AnnotationContext {
                 };
                 ui_layout.label(ui, text);
             }
-            UiLayout::SelectionPanelLimitHeight | UiLayout::SelectionPanelFull => {
+            UiLayout::SelectionPanelFull => {
                 ui.vertical(|ui| {
                     ui.maybe_collapsing_header(true, "Classes", true, |ui| {
                         let annotation_infos = self
@@ -153,7 +153,7 @@ impl DataUi for AnnotationContext {
 
 fn class_description_ui(
     ui: &mut egui::Ui,
-    mut ui_layout: UiLayout,
+    ui_layout: UiLayout,
     class: &ClassDescription,
     id: re_types::datatypes::ClassId,
 ) {
@@ -163,14 +163,7 @@ fn class_description_ui(
 
     re_tracing::profile_function!();
 
-    let use_collapsible = ui_layout == UiLayout::SelectionPanelLimitHeight
-        || ui_layout == UiLayout::SelectionPanelFull;
-
-    // We use collapsible header as a means for the user to limit the height, so the annotation info
-    // tables can be fully unrolled.
-    if ui_layout == UiLayout::SelectionPanelLimitHeight {
-        ui_layout = UiLayout::SelectionPanelFull;
-    }
+    let use_collapsible = ui_layout == UiLayout::SelectionPanelFull;
 
     let row_height = DesignTokens::table_line_height();
     if !class.keypoint_annotations.is_empty() {

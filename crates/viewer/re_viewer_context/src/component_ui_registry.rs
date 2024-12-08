@@ -29,13 +29,6 @@ pub enum UiLayout {
     /// use the `re_data_ui::table_for_ui_layout` function.
     Tooltip,
 
-    /// Display everything as wide as available but limit height. Used in the selection panel when
-    /// multiple items are selected.
-    ///
-    /// When displaying lists, wrap them in a height-limited [`egui::ScrollArea`]. When using a
-    /// table, use the `re_data_ui::table_for_ui_layout` function.
-    SelectionPanelLimitHeight,
-
     /// Display everything as wide as available, without height restriction. Used in the selection
     /// panel when a single item is selected.
     ///
@@ -50,7 +43,7 @@ impl UiLayout {
     pub fn is_single_line(&self) -> bool {
         match self {
             Self::List => true,
-            Self::Tooltip | Self::SelectionPanelLimitHeight | Self::SelectionPanelFull => false,
+            Self::Tooltip | Self::SelectionPanelFull => false,
         }
     }
 
@@ -59,7 +52,7 @@ impl UiLayout {
     pub fn is_selection_panel(self) -> bool {
         match self {
             Self::List | Self::Tooltip => false,
-            Self::SelectionPanelLimitHeight | Self::SelectionPanelFull => true,
+            Self::SelectionPanelFull => true,
         }
     }
 
@@ -74,13 +67,6 @@ impl UiLayout {
                 // Be as small as possible in the hover tooltips. No scrolling related configuration, as
                 // the content itself must be limited (scrolling is not possible in tooltips).
                 table.auto_shrink([true, true])
-            }
-            Self::SelectionPanelLimitHeight => {
-                // Don't take too much vertical space to leave room for other selected items.
-                table
-                    .auto_shrink([false, true])
-                    .vscroll(true)
-                    .max_scroll_height(100.0)
             }
             Self::SelectionPanelFull => {
                 // We're alone in the selection panel. Let the outer ScrollArea do the work.
@@ -107,7 +93,7 @@ impl UiLayout {
                         label = label.truncate();
                     }
                 }
-                Self::Tooltip | Self::SelectionPanelLimitHeight | Self::SelectionPanelFull => {
+                Self::Tooltip | Self::SelectionPanelFull => {
                     label = label.wrap();
                 }
             }
@@ -146,10 +132,6 @@ impl UiLayout {
             }
             Self::Tooltip => {
                 layout_job.wrap.max_rows = 3;
-            }
-            Self::SelectionPanelLimitHeight => {
-                let num_newlines = string.chars().filter(|&c| c == '\n').count();
-                needs_scroll_area = 10 < num_newlines || 300 < string.len();
             }
             Self::SelectionPanelFull => {
                 needs_scroll_area = false;

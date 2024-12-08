@@ -112,11 +112,7 @@ impl SelectionPanel {
         ui.add_space(-ui.spacing().item_spacing.y);
 
         let selection = ctx.selection();
-        let ui_layout = if selection.len() > 1 {
-            UiLayout::SelectionPanelLimitHeight
-        } else {
-            UiLayout::SelectionPanelFull
-        };
+        let ui_layout = UiLayout::SelectionPanelFull;
         for (i, item) in selection.iter_items().enumerate() {
             list_item::list_item_scope(ui, item, |ui| {
                 item_heading_with_breadcrumbs(ctx, viewport, ui, item);

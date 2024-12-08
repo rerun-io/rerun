@@ -162,7 +162,7 @@ fn component_list_ui(
             // types of components).
             indicator_count == components.len()
         }
-        UiLayout::SelectionPanelLimitHeight | UiLayout::SelectionPanelFull => true,
+        UiLayout::SelectionPanelFull => true,
         UiLayout::List => false, // unreachable
     };
 

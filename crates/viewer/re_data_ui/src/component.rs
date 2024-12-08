@@ -44,7 +44,7 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
         let max_row = match ui_layout {
             UiLayout::List => 0,
             UiLayout::Tooltip => num_instances.at_most(4), // includes "…x more" if any
-            UiLayout::SelectionPanelLimitHeight | UiLayout::SelectionPanelFull => num_instances,
+            UiLayout::SelectionPanelFull => num_instances,
         };
 
         let engine = db.storage_engine();
