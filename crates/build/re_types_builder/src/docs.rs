@@ -438,7 +438,7 @@ mod doclink_translation {
         })
     }
 
-    fn tokenize(input: &str) -> Vec<&str> {
+    pub(super) fn tokenize(input: &str) -> Vec<&str> {
         tokenize_with(input, &['[', ']', '`', '.'])
     }
 
@@ -458,166 +458,157 @@ mod doclink_translation {
         }
         tokens
     }
-
-    #[cfg(test)]
-    mod tests {
-        use crate::{Attributes, Docs, Object, Objects};
-
-        use super::*;
-
-        fn test_objects() -> Objects {
-            Objects {
-                objects: std::iter::once((
-                    "rerun.views.Spatial2DView".to_owned(),
-                    Object {
-                        virtpath: "path".to_owned(),
-                        filepath: "path".into(),
-                        fqname: "rerun.views.Spatial2DView".to_owned(),
-                        pkg_name: "test".to_owned(),
-                        name: "Spatial2DView".to_owned(),
-                        docs: Docs::default(),
-                        kind: ObjectKind::View,
-                        attrs: Attributes::default(),
-                        fields: Vec::new(),
-                        class: crate::ObjectClass::Struct,
-                        datatype: None,
-                    },
-                ))
-                .collect(),
-            }
-        }
-
-        #[test]
-        fn test_tokenize() {
-            assert_eq!(tokenize("This is a comment"), vec!["This is a comment"]);
-            assert_eq!(
-                tokenize("A vector `[1, 2, 3]` and a doclink [archetype.Image]."),
-                vec![
-                    "A vector ",
-                    "`",
-                    "[",
-                    "1, 2, 3",
-                    "]",
-                    "`",
-                    " and a doclink ",
-                    "[",
-                    "archetype",
-                    ".",
-                    "Image",
-                    "]",
-                    "."
-                ]
-            );
-        }
-
-        #[test]
-        fn test_translate_doclinks() {
-            let objects = test_objects();
-            let (_report, reporter) = crate::report::init();
-
-            let input =
-                "A vector `[1, 2, 3]` and a doclink [views.Spatial2DView] and a [url](www.rerun.io).";
-
-            assert_eq!(
-                translate_doc_line(
-                    &reporter,
-                    &objects,
-                    input,
-                    Target::Cpp
-                ),
-                "A vector `[1, 2, 3]` and a doclink `views::Spatial2DView` and a [url](www.rerun.io)."
-            );
-
-            assert_eq!(
-                translate_doc_line(
-                    &reporter,
-                    &objects,
-                    input,
-                    Target::Python
-                ),
-                "A vector `[1, 2, 3]` and a doclink [`views.Spatial2DView`][rerun.blueprint.views.Spatial2DView] and a [url](www.rerun.io)."
-            );
-
-            assert_eq!(
-                translate_doc_line(
-                    &reporter,
-                    &objects,
-                    input,
-                    Target::Rust
-                ),
-                "A vector `[1, 2, 3]` and a doclink [`views::Spatial2DView`][crate::blueprint::views::Spatial2DView] and a [url](www.rerun.io)."
-            );
-
-            assert_eq!(
-                translate_doc_line(
-                    &reporter,
-                    &objects,
-                    input,
-                    Target::WebDocsMarkdown
-                ),
-                "A vector `[1, 2, 3]` and a doclink [`views.Spatial2DView`](https://rerun.io/docs/reference/types/views/spatial2d_view) and a [url](www.rerun.io)."
-            );
-        }
-
-        #[test]
-        fn test_translate_doclinks_with_field() {
-            let objects = test_objects();
-            let (_report, reporter) = crate::report::init();
-
-            let input =
-                "A vector `[1, 2, 3]` and a doclink [views.Spatial2DView.position] and a [url](www.rerun.io).";
-
-            assert_eq!(
-                translate_doc_line(
-                    &reporter,
-                    &objects,
-                    input,
-                    Target::Cpp
-                ),
-                "A vector `[1, 2, 3]` and a doclink `views::Spatial2DView::position` and a [url](www.rerun.io)."
-            );
-
-            assert_eq!(
-                translate_doc_line(
-                    &reporter,
-                    &objects,
-                    input,
-                    Target::Python
-                ),
-                "A vector `[1, 2, 3]` and a doclink [`views.Spatial2DView.position`][rerun.blueprint.views.Spatial2DView.position] and a [url](www.rerun.io)."
-            );
-
-            assert_eq!(
-                translate_doc_line(
-                    &reporter,
-                    &objects,
-                    input,
-                    Target::Rust
-                ),
-                "A vector `[1, 2, 3]` and a doclink [`views::Spatial2DView::position`][crate::blueprint::views::Spatial2DView::position] and a [url](www.rerun.io)."
-            );
-
-            assert_eq!(
-                translate_doc_line(
-                    &reporter,
-                    &objects,
-                    input,
-                    Target::WebDocsMarkdown
-                ),
-                "A vector `[1, 2, 3]` and a doclink [`views.Spatial2DView#position`](https://rerun.io/docs/reference/types/views/spatial2d_view) and a [url](www.rerun.io)."
-            );
-        }
-    }
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::{
+        codegen::Target,
+        docs::doclink_translation::{tokenize, translate_doc_line},
+        Attributes, Docs, Object, ObjectKind, Objects,
+    };
 
-    use super::*;
+    fn test_objects() -> Objects {
+        Objects {
+            objects: std::iter::once((
+                "rerun.views.Spatial2DView".to_owned(),
+                Object {
+                    virtpath: "path".to_owned(),
+                    filepath: "path".into(),
+                    fqname: "rerun.views.Spatial2DView".to_owned(),
+                    pkg_name: "test".to_owned(),
+                    name: "Spatial2DView".to_owned(),
+                    docs: Docs::default(),
+                    kind: ObjectKind::View,
+                    attrs: Attributes::default(),
+                    fields: Vec::new(),
+                    class: crate::ObjectClass::Struct,
+                    datatype: None,
+                },
+            ))
+            .collect(),
+        }
+    }
+
+    #[test]
+    fn test_tokenize() {
+        assert_eq!(tokenize("This is a comment"), vec!["This is a comment"]);
+        assert_eq!(
+            tokenize("A vector `[1, 2, 3]` and a doclink [archetype.Image]."),
+            vec![
+                "A vector ",
+                "`",
+                "[",
+                "1, 2, 3",
+                "]",
+                "`",
+                " and a doclink ",
+                "[",
+                "archetype",
+                ".",
+                "Image",
+                "]",
+                "."
+            ]
+        );
+    }
+
+    #[test]
+    fn test_translate_doclinks() {
+        let objects = test_objects();
+        let (_report, reporter) = crate::report::init();
+
+        let input =
+            "A vector `[1, 2, 3]` and a doclink [views.Spatial2DView] and a [url](www.rerun.io).";
+
+        assert_eq!(
+            translate_doc_line(&reporter, &objects, input, Target::Cpp),
+            "A vector `[1, 2, 3]` and a doclink `views::Spatial2DView` and a [url](www.rerun.io)."
+        );
+
+        assert_eq!(
+            translate_doc_line(
+                &reporter,
+                &objects,
+                input,
+                Target::Python
+            ),
+            "A vector `[1, 2, 3]` and a doclink [`views.Spatial2DView`][rerun.blueprint.views.Spatial2DView] and a [url](www.rerun.io)."
+        );
+
+        assert_eq!(
+            translate_doc_line(
+                &reporter,
+                &objects,
+                input,
+                Target::Rust
+            ),
+            "A vector `[1, 2, 3]` and a doclink [`views::Spatial2DView`][crate::blueprint::views::Spatial2DView] and a [url](www.rerun.io)."
+        );
+
+        assert_eq!(
+            translate_doc_line(
+                &reporter,
+                &objects,
+                input,
+                Target::WebDocsMarkdown
+            ),
+            "A vector `[1, 2, 3]` and a doclink [`views.Spatial2DView`](https://rerun.io/docs/reference/types/views/spatial2d_view) and a [url](www.rerun.io)."
+        );
+    }
+
+    #[test]
+    fn test_translate_doclinks_with_field() {
+        let objects = test_objects();
+        let (_report, reporter) = crate::report::init();
+
+        let input =
+            "A vector `[1, 2, 3]` and a doclink [views.Spatial2DView.position] and a [url](www.rerun.io).";
+
+        assert_eq!(
+            translate_doc_line(
+                &reporter,
+                &objects,
+                input,
+                Target::Cpp
+            ),
+            "A vector `[1, 2, 3]` and a doclink `views::Spatial2DView::position` and a [url](www.rerun.io)."
+        );
+
+        assert_eq!(
+            translate_doc_line(
+                &reporter,
+                &objects,
+                input,
+                Target::Python
+            ),
+            "A vector `[1, 2, 3]` and a doclink [`views.Spatial2DView.position`][rerun.blueprint.views.Spatial2DView.position] and a [url](www.rerun.io)."
+        );
+
+        assert_eq!(
+            translate_doc_line(
+                &reporter,
+                &objects,
+                input,
+                Target::Rust
+            ),
+            "A vector `[1, 2, 3]` and a doclink [`views::Spatial2DView::position`][crate::blueprint::views::Spatial2DView::position] and a [url](www.rerun.io)."
+        );
+
+        assert_eq!(
+            translate_doc_line(
+                &reporter,
+                &objects,
+                input,
+                Target::WebDocsMarkdown
+            ),
+            "A vector `[1, 2, 3]` and a doclink [`views.Spatial2DView#position`](https://rerun.io/docs/reference/types/views/spatial2d_view) and a [url](www.rerun.io)."
+        );
+    }
 
     #[test]
     fn test_docs() {
-        let objects = Objects::default();
+        let objects = test_objects();
         let (_report, reporter) = crate::report::init();
 
         let docs = Docs::from_lines(
@@ -645,7 +636,7 @@ mod tests {
         assert_eq!(
             docs.lines_for(&reporter, &objects, Target::Python),
             vec![
-                "Doclink to [`views.Spatial2DView`][rerun.views.Spatial2DView].",
+                "Doclink to [`views.Spatial2DView`][rerun.blueprint.views.Spatial2DView].",
                 "",
                 "The second line.",
                 "",
@@ -670,7 +661,10 @@ mod tests {
 
         assert_eq!(
             docs.first_line(&reporter, &objects, Target::Rust),
-            Some("Doclink to [`views::Spatial2DView`][crate::views::Spatial2DView].".to_owned())
+            Some(
+                "Doclink to [`views::Spatial2DView`][crate::blueprint::views::Spatial2DView]."
+                    .to_owned()
+            )
         );
     }
 }
