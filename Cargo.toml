@@ -190,7 +190,7 @@ enumset = "1.0.12"
 env_logger = { version = "0.10", default-features = false }
 ffmpeg-sidecar = { version = "2.0.2", default-features = false }
 fixed = { version = "1.28", default-features = false }
-fjadra = "0.1"
+fjadra = "0.2"
 flatbuffers = "23.0"
 futures-channel = "0.3"
 futures-util = { version = "0.3", default-features = false }

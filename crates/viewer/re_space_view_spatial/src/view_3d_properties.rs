@@ -4,7 +4,7 @@ use re_types::{
         components::BackgroundKind,
     },
     components::{Color, Plane3D, StrokeWidth},
-    Archetype,
+    Archetype as _,
 };
 use re_viewer_context::{SpaceViewStateExt as _, TypedComponentFallbackProvider};
 

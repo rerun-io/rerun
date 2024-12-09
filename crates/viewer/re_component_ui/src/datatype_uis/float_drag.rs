@@ -111,6 +111,42 @@ fn edit_f32_zero_to_one_raw(ui: &mut egui::Ui, value: &mut MaybeMutRef<'_, f32>)
 
 // ---
 
+/// Generic editor for a [`re_types::datatypes::Float64`] value from zero to max float.
+pub fn edit_f64_zero_to_max(
+    _ctx: &re_viewer_context::ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    value: &mut MaybeMutRef<'_, impl std::ops::DerefMut<Target = datatypes::Float64>>,
+) -> egui::Response {
+    let mut value: MaybeMutRef<'_, f64> = match value {
+        MaybeMutRef::Ref(value) => MaybeMutRef::Ref(value),
+        MaybeMutRef::MutRef(value) => MaybeMutRef::MutRef(&mut value.deref_mut().0),
+    };
+    edit_f64_float_raw_impl(ui, &mut value, 0.0..=f64::MAX)
+}
+
+/// Generic editor for a [`re_types::datatypes::Float64`] value from min to max float.
+pub fn edit_f64_min_to_max_float(
+    _ctx: &re_viewer_context::ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    value: &mut MaybeMutRef<'_, impl std::ops::DerefMut<Target = datatypes::Float64>>,
+) -> egui::Response {
+    let mut value: MaybeMutRef<'_, f64> = match value {
+        MaybeMutRef::Ref(value) => MaybeMutRef::Ref(value),
+        MaybeMutRef::MutRef(value) => MaybeMutRef::MutRef(&mut value.deref_mut().0),
+    };
+    edit_f64_float_raw_impl(ui, &mut value, f64::MIN..=f64::MAX)
+}
+
+/// Non monomorphized implementation for f64 float editing.
+pub fn edit_f64_float_raw_impl(
+    ui: &mut egui::Ui,
+    value: &mut MaybeMutRef<'_, f64>,
+    range: RangeInclusive<f64>,
+) -> egui::Response {
+    let speed = (value.abs() * 0.01).at_least(0.001);
+    edit_f64_float_raw_with_speed_impl(ui, value, range, speed)
+}
+
 /// Non monomorphized implementation for f64 float editing with a given speed.
 pub fn edit_f64_float_raw_with_speed_impl(
     ui: &mut egui::Ui,
