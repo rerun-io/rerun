@@ -1042,23 +1042,6 @@ fn quote_trait_impls_for_archetype(obj: &Object) -> TokenStream {
 
     assert_eq!(kind, &ObjectKind::Archetype);
 
-    // sanity check that each field has one of the rerun component type attributes
-    for field in &obj.fields {
-        assert!(
-            [
-                ATTR_RERUN_COMPONENT_OPTIONAL,
-                ATTR_RERUN_COMPONENT_RECOMMENDED,
-                ATTR_RERUN_COMPONENT_REQUIRED
-            ]
-            .iter()
-            .any(|attr| field.try_get_attr::<String>(attr).is_some()),
-            "archetype `{}` must add one of the \"attr.rerun.component_{{required|recommended|\
-            optional}}\" attributes to field `{}`",
-            obj.name,
-            field.name
-        );
-    }
-
     let display_name = re_case::to_human_case(name);
     let archetype_name = &obj.fqname;
     let name = format_ident!("{name}");

@@ -1,6 +1,6 @@
 namespace rerun.blueprint.archetypes;
 
-/// Resolves collisons between the bounding spheres, according to the radius of the nodes.
+/// Resolves collisions between the bounding spheres, according to the radius of the nodes.
 struct ForceCollisionRadius (
     "attr.rerun.scope": "blueprint"
 ) {

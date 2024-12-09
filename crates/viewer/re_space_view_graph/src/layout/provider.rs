@@ -153,9 +153,7 @@ impl ForceLayoutProvider {
             .collect::<Vec<_>>();
         let edges = considered_edges(&request);
 
-        // TODO(grtlr): Currently we guesstimate good forces. Eventually these should be exposed as blueprints.
         let simulation = fj::SimulationBuilder::default().build(nodes);
-
         let simulation = update_simulation(simulation, params, edges, radii);
 
         Self {
