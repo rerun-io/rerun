@@ -15,7 +15,6 @@ mod map_provider;
 mod marker_shape;
 mod pinhole;
 mod plane3d;
-mod position2d;
 mod radius;
 mod recording_uri;
 mod resolution;
@@ -29,9 +28,9 @@ mod zoom_level;
 
 use datatype_uis::{
     display_name_ui, display_text_ui, edit_bool, edit_f32_min_to_max_float, edit_f32_zero_to_max,
-    edit_f32_zero_to_one, edit_multiline_string, edit_or_view_vec3d, edit_singleline_string,
-    edit_ui_points, edit_view_enum, edit_view_enum_with_variant_available, edit_view_range1d,
-    view_uuid, view_view_id,
+    edit_f32_zero_to_one, edit_multiline_string, edit_or_view_vec2d, edit_or_view_vec3d,
+    edit_singleline_string, edit_ui_points, edit_view_enum, edit_view_enum_with_variant_available,
+    edit_view_range1d, view_uuid, view_view_id,
 };
 
 use re_types::{
@@ -41,8 +40,8 @@ use re_types::{
     components::{
         AggregationPolicy, AlbedoFactor, AxisLength, Color, DepthMeter, DrawOrder, FillMode,
         FillRatio, GammaCorrection, GraphType, ImagePlaneDistance, MagnificationFilter, MarkerSize,
-        Name, Opacity, Range1D, Scale3D, ShowLabels, StrokeWidth, Text, TransformRelation,
-        Translation3D, ValueRange,
+        Name, Opacity, Position2D, Range1D, Scale3D, ShowLabels, StrokeWidth, Text,
+        TransformRelation, Translation3D, ValueRange,
     },
     Component as _,
 };
@@ -115,6 +114,9 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     registry.add_singleline_edit_or_view::<TransformRelation>(edit_view_enum);
     registry.add_singleline_edit_or_view::<ViewFit>(edit_view_enum);
 
+    // Vec2 components:
+    registry.add_singleline_edit_or_view::<Position2D>(edit_or_view_vec2d);
+
     // Vec3 components:
     registry.add_singleline_edit_or_view::<Translation3D>(edit_or_view_vec3d);
     registry.add_singleline_edit_or_view::<Scale3D>(edit_or_view_vec3d);
@@ -139,8 +141,6 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
 
     registry.add_multiline_edit_or_view(visual_bounds2d::multiline_edit_visual_bounds2d);
     registry.add_singleline_edit_or_view(visual_bounds2d::singleline_edit_visual_bounds2d);
-
-    registry.add_singleline_edit_or_view(position2d::singleline_edit_position2d);
 
     registry.add_multiline_edit_or_view(transforms::multiline_view_transform_mat3x3);
     registry.add_singleline_edit_or_view(transforms::singleline_view_transform_mat3x3);
