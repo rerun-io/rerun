@@ -32,29 +32,6 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct VisualizerOverrides(
     /// Names of the visualizers that should be active.
-    ///
-    /// The built-in visualizers are:
-    /// - 'BarChart'
-    /// - 'Arrows2D'
-    /// - 'Arrows3D'
-    /// - 'Asset3D'
-    /// - 'Boxes2D'
-    /// - 'Boxes3D'
-    /// - 'Cameras'
-    /// - 'DepthImage'
-    /// - 'Image'
-    /// - 'Lines2D'
-    /// - 'Lines3D'
-    /// - 'Mesh3D'
-    /// - 'Points2D'
-    /// - 'Points3D'
-    /// - 'Transform3DArrows'
-    /// - 'Tensor'
-    /// - 'TextDocument'
-    /// - 'TextLog'
-    /// - 'SegmentationImage'
-    /// - 'SeriesLine'
-    /// - 'SeriesPoint'
     pub crate::blueprint::datatypes::Utf8List,
 );
 
