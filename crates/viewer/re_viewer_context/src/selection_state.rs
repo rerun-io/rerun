@@ -104,6 +104,15 @@ where
     }
 }
 
+impl IntoIterator for ItemCollection {
+    type Item = (Item, Option<ItemSpaceContext>);
+    type IntoIter = indexmap::map::IntoIter<Item, Option<ItemSpaceContext>>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
+
 impl ItemCollection {
     /// For each item in this selection, if it refers to the first element of an instance with a
     /// single element, resolve it to a unindexed entity path.
@@ -259,6 +268,11 @@ impl ApplicationSelectionState {
     /// Clears the selected space context if none was specified.
     pub fn set_selection(&self, items: impl Into<ItemCollection>) {
         *self.selection_this_frame.lock() = items.into();
+    }
+
+    /// Extend the selection with the provided items.
+    pub fn extend_selection(&self, items: impl Into<ItemCollection>) {
+        self.selection_this_frame.lock().extend(items.into());
     }
 
     /// Returns the current selection.

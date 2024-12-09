@@ -209,7 +209,7 @@ pub fn picking(
         });
     };
 
-    ctx.select_hovered_on_click(&response, hovered_items.into_iter());
+    ctx.handle_select_hover_drag_interactions(&response, hovered_items.into_iter(), false);
 
     Ok(response)
 }
