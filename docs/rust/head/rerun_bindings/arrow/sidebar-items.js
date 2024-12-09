@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["array_to_rust","build_chunk_from_components","build_row_from_components","descriptor_to_rust"]};

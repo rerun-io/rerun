@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["pinhole_resolution_rect","valid_bound"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["is_tuple_struct_from_obj","iter_archetype_components","string_from_quoted"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["VariantAvailable"],"fn":["edit_view_enum","edit_view_enum_impl","edit_view_enum_with_variant_available","variant_ui"],"struct":["AllEnumVariantAvailable"],"trait":["VariantAvailableProvider"]};

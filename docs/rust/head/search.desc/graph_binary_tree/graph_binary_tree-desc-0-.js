@@ -1,0 +1,1 @@
+searchState.loadedDescShard("graph_binary_tree", 0, "Shows how to draw a graph that varies over time. Please …\nReturns the argument unchanged.\nCalls <code>U::from(self)</code>.")

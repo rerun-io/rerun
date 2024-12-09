@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["MetadataLike"],"fn":["__pyfunction_connect","connect","connect_async","register"],"struct":["PyConnection","PyRecordingMetadata"]};

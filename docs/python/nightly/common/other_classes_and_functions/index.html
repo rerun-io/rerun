@@ -1,0 +1,2088 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://ref.rerun.io/docs/python/nightly/common/other_classes_and_functions/">
+      
+      
+        <link rel="prev" href="../script_helpers/">
+      
+      
+        <link rel="next" href="../utilities/">
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.5.3, mkdocs-material-9.4.7">
+    
+    
+      
+        <title>Other classes and functions - Rerun Python APIs</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.4b4a2bd9.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../css/mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&"object"==typeof palette.color)for(var key of Object.keys(palette.color))document.body.setAttribute("data-md-color-"+key,palette.color[key])</script>
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#rerun" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Rerun Python APIs" class="md-header__button md-logo" aria-label="Rerun Python APIs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Rerun Python APIs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Other classes and functions
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/rerun-io/rerun/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.4.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2023 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
+          
+  
+    
+  
+  Common APIs
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../writing_docs/" class="md-tabs__link">
+        
+  
+    
+  
+  Writing Docs
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Rerun Python APIs" class="md-nav__button md-logo" aria-label="Rerun Python APIs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    Rerun Python APIs
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/rerun-io/rerun/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.4.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2023 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+    
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+      
+      
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" checked>
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Common APIs
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            Common APIs
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../initialization_functions/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Initialization functions
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../logging_functions/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Logging functions
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../archetypes/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Archetypes
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../components/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Components
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../datatypes/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Datatypes
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../custom_data/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Custom Data
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../image_helpers/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Image Helpers
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../enums/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Enums
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../interfaces/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Interfaces
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../script_helpers/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Script Helpers
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Other classes and functions
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    Other classes and functions
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#rerun" class="md-nav__link">
+    rerun
+  </a>
+  
+    <nav class="md-nav" aria-label="rerun">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#rerun.RecordingStream" class="md-nav__link">
+    RecordingStream
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.LoggingHandler" class="md-nav__link">
+    LoggingHandler
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.MemoryRecording" class="md-nav__link">
+    MemoryRecording
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.get_data_recording" class="md-nav__link">
+    get_data_recording()
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.get_global_data_recording" class="md-nav__link">
+    get_global_data_recording()
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.get_recording_id" class="md-nav__link">
+    get_recording_id()
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.get_thread_local_data_recording" class="md-nav__link">
+    get_thread_local_data_recording()
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.is_enabled" class="md-nav__link">
+    is_enabled()
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.log_components" class="md-nav__link">
+    log_components()
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.new_recording" class="md-nav__link">
+    new_recording()
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.set_global_data_recording" class="md-nav__link">
+    set_global_data_recording()
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.set_thread_local_data_recording" class="md-nav__link">
+    set_thread_local_data_recording()
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.start_web_viewer_server" class="md-nav__link">
+    start_web_viewer_server()
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../utilities/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Utilities
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../experimental/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Experimental
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../writing_docs/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Writing Docs
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#rerun" class="md-nav__link">
+    rerun
+  </a>
+  
+    <nav class="md-nav" aria-label="rerun">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#rerun.RecordingStream" class="md-nav__link">
+    RecordingStream
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.LoggingHandler" class="md-nav__link">
+    LoggingHandler
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.MemoryRecording" class="md-nav__link">
+    MemoryRecording
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.get_data_recording" class="md-nav__link">
+    get_data_recording()
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.get_global_data_recording" class="md-nav__link">
+    get_global_data_recording()
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.get_recording_id" class="md-nav__link">
+    get_recording_id()
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.get_thread_local_data_recording" class="md-nav__link">
+    get_thread_local_data_recording()
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.is_enabled" class="md-nav__link">
+    is_enabled()
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.log_components" class="md-nav__link">
+    log_components()
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.new_recording" class="md-nav__link">
+    new_recording()
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.set_global_data_recording" class="md-nav__link">
+    set_global_data_recording()
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.set_thread_local_data_recording" class="md-nav__link">
+    set_thread_local_data_recording()
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.start_web_viewer_server" class="md-nav__link">
+    start_web_viewer_server()
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  <h1>Other classes and functions</h1>
+
+<div class="doc doc-object doc-module">
+
+
+
+
+<h3 id="rerun" class="doc doc-heading">
+          <code>rerun</code>
+
+
+</h3>
+
+  <div class="doc doc-contents first">
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+ 
+
+<div class="doc doc-object doc-class">
+      <h4 id="rerun.RecordingStream" class="doc doc-heading">  <code class="highlight language-python"><span class="k">class</span> <span class="nc">RecordingStream</span></code>   </h4>         <div class="doc doc-contents">
+    
+      <p>A RecordingStream is used to send data to Rerun.</p>
+<p>You can instantiate a RecordingStream by calling either <a class="autorefs autorefs-internal" href="../initialization_functions/#rerun.init"><code>rerun.init</code></a> (to create a global
+recording) or <a class="autorefs autorefs-internal" href="#rerun.new_recording"><code>rerun.new_recording</code></a> (for more advanced use cases).</p>
+<h6 id="rerun.RecordingStream--multithreading">Multithreading</h6>
+<p>A RecordingStream can safely be copied and sent to other threads.
+You can also set a recording as the global active one for all threads (<a class="autorefs autorefs-internal" href="#rerun.set_global_data_recording"><code>rerun.set_global_data_recording</code></a>)
+or just for the current thread (<a class="autorefs autorefs-internal" href="#rerun.set_thread_local_data_recording"><code>rerun.set_thread_local_data_recording</code></a>).</p>
+<p>Similarly, the <code>with</code> keyword can be used to temporarily set the active recording for the
+current thread, e.g.:
+<div class="highlight"><pre><span></span><code>with rec:
+    rr.log(...)
+</code></pre></div></p>
+<p>See also: <a class="autorefs autorefs-internal" href="#rerun.get_data_recording"><code>rerun.get_data_recording</code></a>, <a class="autorefs autorefs-internal" href="#rerun.get_global_data_recording"><code>rerun.get_global_data_recording</code></a>,
+<a class="autorefs autorefs-internal" href="#rerun.get_thread_local_data_recording"><code>rerun.get_thread_local_data_recording</code></a>.</p>
+<h6 id="rerun.RecordingStream--available-methods">Available methods</h6>
+<p>Every function in the Rerun SDK that takes an optional RecordingStream as a parameter can also
+be called as a method on RecordingStream itself.</p>
+<p>This includes, but isn't limited to:</p>
+<ul>
+<li>Metadata-related functions:
+    <a class="autorefs autorefs-internal" href="#rerun.is_enabled"><code>rerun.is_enabled</code></a>, <a class="autorefs autorefs-internal" href="#rerun.get_recording_id"><code>rerun.get_recording_id</code></a>, …</li>
+<li>Sink-related functions:
+    <a class="autorefs autorefs-internal" href="../initialization_functions/#rerun.connect"><code>rerun.connect</code></a>, <a class="autorefs autorefs-internal" href="../initialization_functions/#rerun.spawn"><code>rerun.spawn</code></a>, …</li>
+<li>Time-related functions:
+    <a class="autorefs autorefs-internal" href="../logging_functions/#rerun.set_time_seconds"><code>rerun.set_time_seconds</code></a>, <a class="autorefs autorefs-internal" href="../logging_functions/#rerun.set_time_sequence"><code>rerun.set_time_sequence</code></a>, …</li>
+<li>Log-related functions:
+    <a class="autorefs autorefs-internal" href="../logging_functions/#rerun.log"><code>rerun.log</code></a>, <a class="autorefs autorefs-internal" href="#rerun.log_components"><code>rerun.log_components</code></a>, …</li>
+</ul>
+<p>For an exhaustive list, see <code>help(rerun.RecordingStream)</code>.</p>
+<h6 id="rerun.RecordingStream--micro-batching">Micro-batching</h6>
+<p>Micro-batching using both space and time triggers (whichever comes first) is done automatically
+in a dedicated background thread.</p>
+<p>You can configure the frequency of the batches using the following environment variables:</p>
+<ul>
+<li><code>RERUN_FLUSH_TICK_SECS</code>:
+    Flush frequency in seconds (default: <code>0.05</code> (50ms)).</li>
+<li><code>RERUN_FLUSH_NUM_BYTES</code>:
+    Flush threshold in bytes (default: <code>1048576</code> (1MiB)).</li>
+<li><code>RERUN_FLUSH_NUM_ROWS</code>:
+    Flush threshold in number of rows (default: <code>18446744073709551615</code> (u64::MAX)).</li>
+</ul>
+         
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+     </div>
+
+  </div>
+</div> 
+
+<div class="doc doc-object doc-class">
+      <h4 id="rerun.LoggingHandler" class="doc doc-heading">  <code class="highlight language-python"><span class="k">class</span> <span class="nc">LoggingHandler</span></code>   </h4>         <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><a class="autorefs autorefs-external" title="logging.Handler" href="https://docs.python.org/3/library/logging.html#logging.Handler">Handler</a></code> </p>
+    
+      <p>Provides a logging handler that forwards all events to the Rerun SDK.</p>
+<p><a href="https://docs.python.org/3/howto/logging.html#handlers">Read more about logging handlers</a>.</p>
+         
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+ 
+
+<div class="doc doc-object doc-function">
+     <h5 id="rerun.LoggingHandler.__init__" class="doc doc-heading">  <code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span> <span class="p">(</span><span class="n">path_prefix</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>     </h5>        <div class="doc doc-contents">
+   
+      <p>Initializes the logging handler with an optional path prefix.</p>
+
+
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b> DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>path_prefix</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>A common prefix for all logged entity paths.
+Defaults to no prefix.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a> | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+      </div>
+
+  </div>
+</div> 
+
+<div class="doc doc-object doc-function">
+     <h5 id="rerun.LoggingHandler.emit" class="doc doc-heading">  <code class="highlight language-python"><span class="k">def</span> <span class="nf">emit</span> <span class="p">(</span><span class="n">record</span><span class="p">)</span></code>     </h5>        <div class="doc doc-contents">
+   
+      <p>Emits a record to the Rerun SDK.</p>
+      </div>
+
+  </div>
+</div>
+
+
+
+  </div>
+
+     </div>
+
+  </div>
+</div> 
+
+<div class="doc doc-object doc-class">
+      <h4 id="rerun.MemoryRecording" class="doc doc-heading">  <code class="highlight language-python"><span class="k">class</span> <span class="nc">MemoryRecording</span></code>   </h4>         <div class="doc doc-contents">
+    
+      <p>A recording that stores data in memory.</p>
+         
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+ 
+
+<div class="doc doc-object doc-function">
+     <h5 id="rerun.MemoryRecording.as_html" class="doc doc-heading">  <code class="highlight language-python"><span class="k">def</span> <span class="nf">as_html</span> <span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="n">DEFAULT_WIDTH</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="n">DEFAULT_HEIGHT</span><span class="p">,</span> <span class="n">app_url</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">timeout_ms</span><span class="o">=</span><span class="n">DEFAULT_TIMEOUT</span><span class="p">,</span> <span class="n">other</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>     </h5>        <div class="doc doc-contents">
+   
+      <p>Generate an HTML snippet that displays the recording in an IFrame.</p>
+<p>For use in contexts such as Jupyter notebooks.</p>
+<p>⚠️ This will do a blocking flush of the current sink before returning!</p>
+
+
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b> DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>width</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The width of the viewer in pixels.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code><span title="rerun.recording.DEFAULT_WIDTH">DEFAULT_WIDTH</span></code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>height</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The height of the viewer in pixels.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code><span title="rerun.recording.DEFAULT_HEIGHT">DEFAULT_HEIGHT</span></code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>app_url</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>Alternative HTTP url to find the Rerun web viewer. This will default to using https://app.rerun.io
+or localhost if <a class="autorefs autorefs-internal" href="#rerun.start_web_viewer_server">rerun.start_web_viewer_server</a> has been called.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>timeout_ms</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The number of milliseconds to wait for the Rerun web viewer to load.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code><span title="rerun.recording.DEFAULT_TIMEOUT">DEFAULT_TIMEOUT</span></code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>other</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>An optional MemoryRecording to merge with this one.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-internal" title="rerun.recording.MemoryRecording" href="#rerun.MemoryRecording">MemoryRecording</a> | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+      </div>
+
+  </div>
+</div> 
+
+<div class="doc doc-object doc-function">
+     <h5 id="rerun.MemoryRecording.num_msgs" class="doc doc-heading">  <code class="highlight language-python"><span class="k">def</span> <span class="nf">num_msgs</span> <span class="p">()</span></code>     </h5>        <div class="doc doc-contents">
+   
+      <p>The number of pending messages in the MemoryRecording.</p>
+<p>Note: counting the messages will flush the batcher in order to get a deterministic count.</p>
+      </div>
+
+  </div>
+</div> 
+
+<div class="doc doc-object doc-function">
+     <h5 id="rerun.MemoryRecording.reset_blueprint" class="doc doc-heading">  <code class="highlight language-python"><span class="k">def</span> <span class="nf">reset_blueprint</span> <span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">add_to_app_default_blueprint</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></code>     </h5>        <div class="doc doc-contents">
+   
+      <p>Reset the blueprint in the MemoryRecording.</p>
+      </div>
+
+  </div>
+</div> 
+
+<div class="doc doc-object doc-function">
+     <h5 id="rerun.MemoryRecording.reset_data" class="doc doc-heading">  <code class="highlight language-python"><span class="k">def</span> <span class="nf">reset_data</span> <span class="p">()</span></code>     </h5>        <div class="doc doc-contents">
+   
+      <p>Reset the data in the MemoryRecording.</p>
+      </div>
+
+  </div>
+</div> 
+
+<div class="doc doc-object doc-function">
+     <h5 id="rerun.MemoryRecording.show" class="doc doc-heading">  <code class="highlight language-python"><span class="k">def</span> <span class="nf">show</span> <span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">other</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="n">DEFAULT_WIDTH</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="n">DEFAULT_HEIGHT</span><span class="p">,</span> <span class="n">app_url</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">timeout_ms</span><span class="o">=</span><span class="n">DEFAULT_TIMEOUT</span><span class="p">)</span></code>     </h5>        <div class="doc doc-contents">
+   
+      <p>Output the Rerun viewer using IPython <a class="autorefs autorefs-external" href="https://ipython.readthedocs.io/en/stable/api/generated/IPython.display.html#IPython.display.HTML">IPython.core.display.HTML</a>.</p>
+
+
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b> DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>width</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The width of the viewer in pixels.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code><span title="rerun.recording.DEFAULT_WIDTH">DEFAULT_WIDTH</span></code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>height</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The height of the viewer in pixels.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code><span title="rerun.recording.DEFAULT_HEIGHT">DEFAULT_HEIGHT</span></code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>app_url</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>Alternative HTTP url to find the Rerun web viewer. This will default to using https://app.rerun.io
+or localhost if <a class="autorefs autorefs-internal" href="#rerun.start_web_viewer_server">rerun.start_web_viewer_server</a> has been called.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>timeout_ms</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The number of milliseconds to wait for the Rerun web viewer to load.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code><span title="rerun.recording.DEFAULT_TIMEOUT">DEFAULT_TIMEOUT</span></code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>other</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>An optional MemoryRecording to merge with this one.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-internal" title="rerun.recording.MemoryRecording" href="#rerun.MemoryRecording">MemoryRecording</a> | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+      </div>
+
+  </div>
+</div>
+
+
+
+  </div>
+
+     </div>
+
+  </div>
+</div>
+ 
+
+<div class="doc doc-object doc-function">
+      <h4 id="rerun.get_data_recording" class="doc doc-heading">  <code class="highlight language-python"><span class="k">def</span> <span class="nf">get_data_recording</span> <span class="p">(</span><span class="n">recording</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>     </h4>        <div class="doc doc-contents">
+   
+      <p>Returns the most appropriate recording to log data to, in the current context, if any.</p>
+<ul>
+<li>If <code>recording</code> is specified, returns that one;</li>
+<li>Otherwise, falls back to the currently active thread-local recording, if there is one;</li>
+<li>Otherwise, falls back to the currently active global recording, if there is one;</li>
+<li>Otherwise, returns None.</li>
+</ul>
+
+
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b> DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>recording</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>Specifies the <a class="autorefs autorefs-internal" href="#rerun.RecordingStream"><code>rerun.RecordingStream</code></a> to use.
+If left unspecified, defaults to the current active data recording, if there is one.
+See also: <a class="autorefs autorefs-internal" href="../initialization_functions/#rerun.init"><code>rerun.init</code></a>, <a class="autorefs autorefs-internal" href="#rerun.set_global_data_recording"><code>rerun.set_global_data_recording</code></a>.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-internal" title="rerun.recording_stream.RecordingStream" href="#rerun.RecordingStream">RecordingStream</a> | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>RETURNS</b></th>
+        <th><b>DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td>
+              <span class="doc-returns-annotation">
+                  <code>Optional[<a class="autorefs autorefs-internal" title="rerun.recording_stream.RecordingStream" href="#rerun.RecordingStream">RecordingStream</a>]</code>
+              </span>
+          </td>
+          <td class="doc-returns-details">
+            <div class="doc-md-description">
+              <p>The most appropriate recording to log data to, in the current context, if any.</p>
+            </div>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+      </div>
+
+  </div>
+</div> 
+
+<div class="doc doc-object doc-function">
+      <h4 id="rerun.get_global_data_recording" class="doc doc-heading">  <code class="highlight language-python"><span class="k">def</span> <span class="nf">get_global_data_recording</span> <span class="p">()</span></code>     </h4>        <div class="doc doc-contents">
+   
+      <p>Returns the currently active global recording, if any.</p>
+
+
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>RETURNS</b></th>
+        <th><b>DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td>
+              <span class="doc-returns-annotation">
+                  <code>Optional[<a class="autorefs autorefs-internal" title="rerun.recording_stream.RecordingStream" href="#rerun.RecordingStream">RecordingStream</a>]</code>
+              </span>
+          </td>
+          <td class="doc-returns-details">
+            <div class="doc-md-description">
+              <p>The currently active global recording, if any.</p>
+            </div>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+      </div>
+
+  </div>
+</div> 
+
+<div class="doc doc-object doc-function">
+      <h4 id="rerun.get_recording_id" class="doc doc-heading">  <code class="highlight language-python"><span class="k">def</span> <span class="nf">get_recording_id</span> <span class="p">(</span><span class="n">recording</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>     </h4>        <div class="doc doc-contents">
+   
+      <p>Get the recording ID that this recording is logging to, as a UUIDv4, if any.</p>
+<p>The default recording_id is based on <code>multiprocessing.current_process().authkey</code>
+which means that all processes spawned with <code>multiprocessing</code>
+will have the same default recording_id.</p>
+<p>If you are not using <code>multiprocessing</code> and still want several different Python
+processes to log to the same Rerun instance (and be part of the same recording),
+you will need to manually assign them all the same recording_id.
+Any random UUIDv4 will work, or copy the recording id for the parent process.</p>
+
+
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b> DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>recording</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>Specifies the <a class="autorefs autorefs-internal" href="#rerun.RecordingStream"><code>rerun.RecordingStream</code></a> to use.
+If left unspecified, defaults to the current active data recording, if there is one.
+See also: <a class="autorefs autorefs-internal" href="../initialization_functions/#rerun.init"><code>rerun.init</code></a>, <a class="autorefs autorefs-internal" href="#rerun.set_global_data_recording"><code>rerun.set_global_data_recording</code></a>.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-internal" title="rerun.recording_stream.RecordingStream" href="#rerun.RecordingStream">RecordingStream</a> | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>RETURNS</b></th>
+        <th><b>DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td>
+              <span class="doc-returns-annotation">
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+              </span>
+          </td>
+          <td class="doc-returns-details">
+            <div class="doc-md-description">
+              <p>The recording ID that this recording is logging to.</p>
+            </div>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+      </div>
+
+  </div>
+</div> 
+
+<div class="doc doc-object doc-function">
+      <h4 id="rerun.get_thread_local_data_recording" class="doc doc-heading">  <code class="highlight language-python"><span class="k">def</span> <span class="nf">get_thread_local_data_recording</span> <span class="p">()</span></code>     </h4>        <div class="doc doc-contents">
+   
+      <p>Returns the currently active thread-local recording, if any.</p>
+
+
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>RETURNS</b></th>
+        <th><b>DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td>
+              <span class="doc-returns-annotation">
+                  <code>Optional[<a class="autorefs autorefs-internal" title="rerun.recording_stream.RecordingStream" href="#rerun.RecordingStream">RecordingStream</a>]</code>
+              </span>
+          </td>
+          <td class="doc-returns-details">
+            <div class="doc-md-description">
+              <p>The currently active thread-local recording, if any.</p>
+            </div>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+      </div>
+
+  </div>
+</div> 
+
+<div class="doc doc-object doc-function">
+      <h4 id="rerun.is_enabled" class="doc doc-heading">  <code class="highlight language-python"><span class="k">def</span> <span class="nf">is_enabled</span> <span class="p">(</span><span class="n">recording</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>     </h4>        <div class="doc doc-contents">
+   
+      <p>Is this Rerun recording enabled.</p>
+<p>If false, all calls to the recording are ignored.</p>
+<p>The default can be set in <a class="autorefs autorefs-internal" href="../initialization_functions/#rerun.init"><code>rerun.init</code></a>, but is otherwise <code>True</code>.</p>
+<p>This can be controlled with the environment variable <code>RERUN</code> (e.g. <code>RERUN=on</code> or <code>RERUN=off</code>).</p>
+      </div>
+
+  </div>
+</div> 
+
+<div class="doc doc-object doc-function">
+      <h4 id="rerun.log_components" class="doc doc-heading">  <code class="highlight language-python"><span class="k">def</span> <span class="nf">log_components</span> <span class="p">(</span><span class="n">entity_path</span><span class="p">,</span> <span class="n">components</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">num_instances</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">timeless</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">recording</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">strict</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>     </h4>        <div class="doc doc-contents">
+   
+      <p>Log an entity from a collection of <code>ComponentBatchLike</code> objects.</p>
+<p>All of the batches should have the same length as the value of
+<code>num_instances</code>, or length 1 if the component is a splat., or 0 if the
+component is being cleared.</p>
+
+
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b> DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>entity_path</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>Path to the entity in the space hierarchy.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>components</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>A collection of <code>ComponentBatchLike</code> objects that</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" title="typing.Iterable" href="https://docs.python.org/3/library/typing.html#typing.Iterable">Iterable</a>[<a class="autorefs autorefs-internal" title="rerun._baseclasses.ComponentBatchLike" href="../interfaces/#rerun.ComponentBatchLike">ComponentBatchLike</a>]</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>num_instances</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>Optional. The number of instances in each batch. If not provided, the max of all
+components will be used instead.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a> | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>timeless</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>If true, the entity will be timeless (default: False).</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#bool">bool</a></code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>False</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>recording</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>Specifies the <a class="autorefs autorefs-internal" href="#rerun.RecordingStream"><code>rerun.RecordingStream</code></a> to use. If left unspecified,
+defaults to the current active data recording, if there is one. See
+also: <a class="autorefs autorefs-internal" href="../initialization_functions/#rerun.init"><code>rerun.init</code></a>, <a class="autorefs autorefs-internal" href="#rerun.set_global_data_recording"><code>rerun.set_global_data_recording</code></a>.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-internal" title="rerun.recording_stream.RecordingStream" href="#rerun.RecordingStream">RecordingStream</a> | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>strict</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>If True, raise exceptions on non-loggable data.
+If False, warn on non-loggable data.
+if None, use the global default from <code>rerun.strict_mode()</code></p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#bool">bool</a> | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+      <p>See also: <a class="autorefs autorefs-internal" href="../logging_functions/#rerun.log"><code>rerun.log</code></a>.</p>
+      </div>
+
+  </div>
+</div> 
+
+<div class="doc doc-object doc-function">
+      <h4 id="rerun.new_recording" class="doc doc-heading">  <code class="highlight language-python"><span class="k">def</span> <span class="nf">new_recording</span> <span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">application_id</span><span class="p">,</span> <span class="n">recording_id</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">make_default</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">make_thread_default</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">spawn</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default_enabled</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></code>     </h4>        <div class="doc doc-contents">
+   
+      <p>Creates a new recording with a user-chosen application id (name) that can be used to log data.</p>
+<p>If you only need a single global recording, <a class="autorefs autorefs-internal" href="../initialization_functions/#rerun.init"><code>rerun.init</code></a> might be simpler.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>If you don't specify a <code>recording_id</code>, it will default to a random value that is generated once
+at the start of the process.
+That value will be kept around for the whole lifetime of the process, and even inherited by all
+its subprocesses, if any.</p>
+<p>This makes it trivial to log data to the same recording in a multiprocess setup, but it also means
+that the following code will <em>not</em> create two distinct recordings:
+<div class="highlight"><pre><span></span><code>rr.init(&quot;my_app&quot;)
+rr.init(&quot;my_app&quot;)
+</code></pre></div></p>
+<p>To create distinct recordings from the same process, specify distinct recording IDs:
+<div class="highlight"><pre><span></span><code>from uuid import uuid4
+rec = rr.new_recording(application_id=&quot;test&quot;, recording_id=uuid4())
+rec = rr.new_recording(application_id=&quot;test&quot;, recording_id=uuid4())
+</code></pre></div></p>
+</div>
+
+
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b> DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>application_id</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>Your Rerun recordings will be categorized by this application id, so
+try to pick a unique one for each application that uses the Rerun SDK.</p>
+<p>For example, if you have one application doing object detection
+and another doing camera calibration, you could have
+<code>rerun.init("object_detector")</code> and <code>rerun.init("calibrator")</code>.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>recording_id</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>Set the recording ID that this process is logging to, as a UUIDv4.</p>
+<p>The default recording_id is based on <code>multiprocessing.current_process().authkey</code>
+which means that all processes spawned with <code>multiprocessing</code>
+will have the same default recording_id.</p>
+<p>If you are not using <code>multiprocessing</code> and still want several different Python
+processes to log to the same Rerun instance (and be part of the same recording),
+you will need to manually assign them all the same recording_id.
+Any random UUIDv4 will work, or copy the recording id for the parent process.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code>Optional[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a>]</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>make_default</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>If true (<em>not</em> the default), the newly initialized recording will replace the current
+active one (if any) in the global scope.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#bool">bool</a></code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>False</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>make_thread_default</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>If true (<em>not</em> the default), the newly initialized recording will replace the current
+active one (if any) in the thread-local scope.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#bool">bool</a></code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>False</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>spawn</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>Spawn a Rerun Viewer and stream logging data to it.
+Short for calling <code>spawn</code> separately.
+If you don't call this, log events will be buffered indefinitely until
+you call either <code>connect</code>, <code>show</code>, or <code>save</code></p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#bool">bool</a></code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>False</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>default_enabled</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>Should Rerun logging be on by default?
+Can be overridden with the RERUN env-var, e.g. <code>RERUN=on</code> or <code>RERUN=off</code>.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#bool">bool</a></code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>True</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>RETURNS</b></th>
+        <th><b>DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td>
+              <span class="doc-returns-annotation">
+                  <code><a class="autorefs autorefs-internal" title="rerun.recording_stream.RecordingStream" href="#rerun.RecordingStream">RecordingStream</a></code>
+              </span>
+          </td>
+          <td class="doc-returns-details">
+            <div class="doc-md-description">
+              <p>A handle to the <a class="autorefs autorefs-internal" href="#rerun.RecordingStream"><code>rerun.RecordingStream</code></a>. Use it to log data to Rerun.</p>
+            </div>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+      </div>
+
+  </div>
+</div> 
+
+<div class="doc doc-object doc-function">
+      <h4 id="rerun.set_global_data_recording" class="doc doc-heading">  <code class="highlight language-python"><span class="k">def</span> <span class="nf">set_global_data_recording</span> <span class="p">(</span><span class="n">recording</span><span class="p">)</span></code>     </h4>        <div class="doc doc-contents">
+   
+      <p>Replaces the currently active global recording with the specified one.</p>
+
+
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b> DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>recording</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The newly active global recording.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-internal" title="rerun.recording_stream.RecordingStream" href="#rerun.RecordingStream">RecordingStream</a></code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+      </div>
+
+  </div>
+</div> 
+
+<div class="doc doc-object doc-function">
+      <h4 id="rerun.set_thread_local_data_recording" class="doc doc-heading">  <code class="highlight language-python"><span class="k">def</span> <span class="nf">set_thread_local_data_recording</span> <span class="p">(</span><span class="n">recording</span><span class="p">)</span></code>     </h4>        <div class="doc doc-contents">
+   
+      <p>Replaces the currently active thread-local recording with the specified one.</p>
+
+
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b> DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>recording</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The newly active thread-local recording.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-internal" title="rerun.recording_stream.RecordingStream" href="#rerun.RecordingStream">RecordingStream</a></code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+      </div>
+
+  </div>
+</div> 
+
+<div class="doc doc-object doc-function">
+      <h4 id="rerun.start_web_viewer_server" class="doc doc-heading">  <code class="highlight language-python"><span class="k">def</span> <span class="nf">start_web_viewer_server</span> <span class="p">(</span><span class="n">port</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span></code>     </h4>        <div class="doc doc-contents">
+   
+      <p>Start an HTTP server that hosts the rerun web viewer.</p>
+<p>This only provides the web-server that makes the viewer available and
+does not otherwise provide a rerun websocket server or facilitate any routing of
+data.</p>
+<p>This is generally only necessary for application such as running a jupyter notebook
+in a context where app.rerun.io is unavailable, or does not have the matching
+resources for your build (such as when running from source.)</p>
+
+
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b> DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>port</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>Port to serve assets on. Defaults to 0 (random port).</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>0</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+      </div>
+
+  </div>
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.indexes", "navigation.instant", "navigation.tabs", "navigation.tabs.sticky", "navigation.tracking"], "search": "../../assets/javascripts/workers/search.f886a092.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"default": "latest", "provider": "mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.aecac24b.min.js"></script>
+      
+    
+  </body>
+</html>
