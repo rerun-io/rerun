@@ -24,8 +24,8 @@ pub enum DragAndDropPayload {
 }
 
 impl DragAndDropPayload {
-    pub fn from_items(selected_items: ItemCollection) -> Self {
-        if let Ok(contents) = (&selected_items).try_into() {
+    pub fn from_items(selected_items: &ItemCollection) -> Self {
+        if let Ok(contents) = selected_items.try_into() {
             Self::Contents { contents }
         } else {
             Self::Invalid

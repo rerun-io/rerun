@@ -173,7 +173,7 @@ impl ViewerContext<'_> {
                 .all(|item| !selected_items.contains_item(item));
 
             let payload = if selection_contains_undraggable_items {
-                DragAndDropPayload::from_items(selected_items)
+                DragAndDropPayload::from_items(&selected_items)
             } else {
                 DragAndDropPayload::Invalid
             };

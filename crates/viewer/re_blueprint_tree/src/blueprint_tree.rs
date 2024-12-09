@@ -837,17 +837,11 @@ impl BlueprintTree {
         };
 
         if ui.input(|i| i.pointer.any_released()) {
-            for (idx, content) in dragged_contents.iter().enumerate() {
-                // TODO: this is not strictly correct when dragging multiple items inside the same
-                // container, as the position are all over the place when moving items incrementally.
-                // We probably need a `viewport.move_multiple_contents()` method which handles this
-                // correctly.
-                viewport.move_contents(
-                    *content,
-                    target_container_id,
-                    drop_target.target_position_index + idx,
-                );
-            }
+            viewport.move_contents(
+                dragged_contents,
+                target_container_id,
+                drop_target.target_position_index,
+            );
 
             egui::DragAndDrop::clear_payload(ui.ctx());
         } else {

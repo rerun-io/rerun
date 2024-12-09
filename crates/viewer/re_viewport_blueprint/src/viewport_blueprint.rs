@@ -583,12 +583,12 @@ impl ViewportBlueprint {
     /// Move the `contents` container or space view to the specified target container and position.
     pub fn move_contents(
         &self,
-        contents: Contents,
+        contents: &[Contents],
         target_container: ContainerId,
         target_position_in_container: usize,
     ) {
         self.enqueue_command(ViewportCommand::MoveContents {
-            contents_to_move: contents,
+            contents_to_move: contents.to_vec(),
             target_container,
             target_position_in_container,
         });
