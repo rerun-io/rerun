@@ -95,7 +95,7 @@ pub fn edit_or_view_vec3d_raw(
         response
     } else {
         ui.label(format!(
-            "[ {} , {}, {} ]",
+            "[ {} , {} , {} ]",
             re_format::format_f32(x),
             re_format::format_f32(y),
             re_format::format_f32(z),
