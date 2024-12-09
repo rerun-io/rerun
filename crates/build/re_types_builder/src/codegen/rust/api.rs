@@ -580,7 +580,7 @@ fn quote_enum(
             &field.virtpath,
             &field.fqname,
             &field.docs,
-            Target::Rust,
+            Target::WebDocsMarkdown,
             false,
         )
         .join("\n");

@@ -6680,6 +6680,7 @@ dependencies = [
  "arrow",
  "camino",
  "clang-format",
+ "colored",
  "flatbuffers",
  "indent",
  "itertools 0.13.0",

@@ -146,10 +146,10 @@ impl ::re_types_core::reflection::Enum for TransformRelation {
     fn docstring_md(self) -> &'static str {
         match self {
             Self::ParentFromChild => {
-                "The transform describes how to transform into the parent entity's space.\n\nE.g. a translation of (0, 1, 0) with this [`components::TransformRelation`][crate::components::TransformRelation] logged at `parent/child` means\nthat from the point of view of `parent`, `parent/child` is translated 1 unit along `parent`'s Y axis.\nFrom perspective of `parent/child`, the `parent` entity is translated -1 unit along `parent/child`'s Y axis."
+                "The transform describes how to transform into the parent entity's space.\n\nE.g. a translation of (0, 1, 0) with this [`components.TransformRelation`](https://rerun.io/docs/reference/types/components/transform_relation) logged at `parent/child` means\nthat from the point of view of `parent`, `parent/child` is translated 1 unit along `parent`'s Y axis.\nFrom perspective of `parent/child`, the `parent` entity is translated -1 unit along `parent/child`'s Y axis."
             }
             Self::ChildFromParent => {
-                "The transform describes how to transform into the child entity's space.\n\nE.g. a translation of (0, 1, 0) with this [`components::TransformRelation`][crate::components::TransformRelation] logged at `parent/child` means\nthat from the point of view of `parent`, `parent/child` is translated -1 unit along `parent`'s Y axis.\nFrom perspective of `parent/child`, the `parent` entity is translated 1 unit along `parent/child`'s Y axis."
+                "The transform describes how to transform into the child entity's space.\n\nE.g. a translation of (0, 1, 0) with this [`components.TransformRelation`](https://rerun.io/docs/reference/types/components/transform_relation) logged at `parent/child` means\nthat from the point of view of `parent`, `parent/child` is translated -1 unit along `parent`'s Y axis.\nFrom perspective of `parent/child`, the `parent` entity is translated 1 unit along `parent/child`'s Y axis."
             }
         }
     }

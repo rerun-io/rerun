@@ -123,7 +123,7 @@ on [Entities and Components](../../concepts/entity-component.md).",
                 &views,
             ),
         ] {
-            let page = index_page(objects, kind, order, prelude, kind_objects);
+            let page = index_page(reporter, objects, kind, order, prelude, kind_objects);
             let path = self
                 .docs_dir
                 .join(format!("{}.md", kind.plural_snake_case()));
@@ -146,6 +146,7 @@ fn collect_view_types_per_archetype(objects: &Objects) -> ViewsPerArchetype {
 }
 
 fn index_page(
+    reporter: &Reporter,
     all_objects: &Objects,
     kind: ObjectKind,
     order: u64,
@@ -203,7 +204,7 @@ fn index_page(
                 object.snake_case_name(),
                 object
                     .docs
-                    .first_line(all_objects, Target::WebDocsMarkdown)
+                    .first_line(reporter, all_objects, Target::WebDocsMarkdown)
                     .unwrap_or_default(),
             );
         }
@@ -223,7 +224,9 @@ fn object_page(
     let is_unreleased = object.is_attr_set(crate::ATTR_DOCS_UNRELEASED);
     let is_experimental = object.is_experimental();
 
-    let top_level_docs = object.docs.lines_for(objects, Target::WebDocsMarkdown);
+    let top_level_docs = object
+        .docs
+        .lines_for(reporter, objects, Target::WebDocsMarkdown);
 
     if top_level_docs.is_empty() {
         reporter.error(&object.virtpath, &object.fqname, "Undocumented object");
@@ -271,7 +274,7 @@ fn object_page(
 
     match object.kind {
         ObjectKind::Datatype | ObjectKind::Component => {
-            write_fields(objects, &mut page, object);
+            write_fields(reporter, objects, &mut page, object);
         }
         ObjectKind::Archetype => {
             write_archetype_fields(objects, &mut page, object, views_per_archetype);
@@ -402,7 +405,7 @@ fn write_frontmatter(o: &mut String, title: &str, order: Option<u64>) {
     putln!(o, "<!-- {} -->", autogen_warning!());
 }
 
-fn write_fields(objects: &Objects, o: &mut String, object: &Object) {
+fn write_fields(reporter: &Reporter, objects: &Objects, o: &mut String, object: &Object) {
     if object.fields.is_empty() {
         return;
     }
@@ -491,7 +494,10 @@ fn write_fields(objects: &Objects, o: &mut String, object: &Object) {
             field_string.push('\n');
         }
 
-        for line in field.docs.lines_for(objects, Target::WebDocsMarkdown) {
+        for line in field
+            .docs
+            .lines_for(reporter, objects, Target::WebDocsMarkdown)
+        {
             field_string.push_str(&line);
             field_string.push('\n');
         }
@@ -705,7 +711,9 @@ fn write_view_property(
 ) {
     putln!(o, "### `{}`", field.name);
 
-    let top_level_docs = field.docs.lines_for(objects, Target::WebDocsMarkdown);
+    let top_level_docs = field
+        .docs
+        .lines_for(reporter, objects, Target::WebDocsMarkdown);
 
     if top_level_docs.is_empty() {
         reporter.error(&field.virtpath, &field.fqname, "Undocumented view property");
@@ -728,7 +736,7 @@ fn write_view_property(
             field.name,
             field
                 .docs
-                .first_line(objects, Target::WebDocsMarkdown)
+                .first_line(reporter, objects, Target::WebDocsMarkdown)
                 .unwrap_or_default()
         ));
     }

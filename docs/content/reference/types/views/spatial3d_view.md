@@ -11,7 +11,7 @@ For viewing spatial 3D data.
 Configuration for the background of the view.
 
 * `kind`: The type of the background.
-* `color`: Color used for the `SolidColor` background type.
+* `color`: Color used for the solid background type.
 ### `line_grid`
 Configuration for the 3D line grid.
 

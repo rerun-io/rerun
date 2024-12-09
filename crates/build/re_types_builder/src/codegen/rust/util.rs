@@ -300,7 +300,7 @@ pub fn doc_as_lines(
     target: Target,
     is_experimental: bool,
 ) -> Vec<String> {
-    let mut lines = docs.lines_for(objects, target);
+    let mut lines = docs.lines_for(reporter, objects, target);
 
     if is_experimental {
         lines.push(String::new());
