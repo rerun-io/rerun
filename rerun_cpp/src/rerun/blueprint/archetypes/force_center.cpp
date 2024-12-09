@@ -17,12 +17,26 @@ namespace rerun {
         cells.reserve(3);
 
         if (archetype.enabled.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.enabled.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.enabled.value(),
+                ComponentDescriptor(
+                    "rerun.blueprint.archetypes.ForceCenter",
+                    "enabled",
+                    "rerun.blueprint.components.Enabled"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.strength.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.strength.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.strength.value(),
+                ComponentDescriptor(
+                    "rerun.blueprint.archetypes.ForceCenter",
+                    "strength",
+                    "rerun.blueprint.components.ForceStrength"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

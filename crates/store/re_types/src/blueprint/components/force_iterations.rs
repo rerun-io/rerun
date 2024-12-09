@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: The target distance between two nodes.
@@ -25,44 +25,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct ForceIterations(pub crate::datatypes::UInt64);
 
-impl ::re_types_core::SizeBytes for ForceIterations {
+impl ::re_types_core::Component for ForceIterations {
     #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::UInt64>::is_pod()
-    }
-}
-
-impl<T: Into<crate::datatypes::UInt64>> From<T> for ForceIterations {
-    fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::UInt64> for ForceIterations {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::UInt64 {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for ForceIterations {
-    type Target = crate::datatypes::UInt64;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::UInt64 {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for ForceIterations {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::UInt64 {
-        &mut self.0
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.blueprint.components.ForceIterations")
     }
 }
 
@@ -107,9 +73,43 @@ impl ::re_types_core::Loggable for ForceIterations {
     }
 }
 
-impl ::re_types_core::Component for ForceIterations {
+impl<T: Into<crate::datatypes::UInt64>> From<T> for ForceIterations {
+    fn from(v: T) -> Self {
+        Self(v.into())
+    }
+}
+
+impl std::borrow::Borrow<crate::datatypes::UInt64> for ForceIterations {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.blueprint.components.ForceIterations".into()
+    fn borrow(&self) -> &crate::datatypes::UInt64 {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for ForceIterations {
+    type Target = crate::datatypes::UInt64;
+
+    #[inline]
+    fn deref(&self) -> &crate::datatypes::UInt64 {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for ForceIterations {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::UInt64 {
+        &mut self.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for ForceIterations {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::UInt64>::is_pod()
     }
 }

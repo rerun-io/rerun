@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: The link force pushes linked nodes together or apart according to a desired distance.
@@ -31,46 +31,62 @@ pub struct ForceCollisionRadius {
     pub iterations: Option<crate::blueprint::components::ForceIterations>,
 }
 
-impl ::re_types_core::SizeBytes for ForceCollisionRadius {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.enabled.heap_size_bytes()
-            + self.strength.heap_size_bytes()
-            + self.iterations.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <Option<crate::blueprint::components::Enabled>>::is_pod()
-            && <Option<crate::blueprint::components::ForceStrength>>::is_pod()
-            && <Option<crate::blueprint::components::ForceIterations>>::is_pod()
-    }
-}
-
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 0usize]> =
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| {
-        ["rerun.blueprint.components.ForceCollisionRadiusIndicator".into()]
+        [ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ForceCollisionRadius".into()),
+            component_name: "ForceCollisionRadiusIndicator".into(),
+            archetype_field_name: None,
+        }]
     });
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.blueprint.components.Enabled".into(),
-            "rerun.blueprint.components.ForceStrength".into(),
-            "rerun.blueprint.components.ForceIterations".into(),
+            ComponentDescriptor {
+                archetype_name: Some("rerun.blueprint.archetypes.ForceCollisionRadius".into()),
+                component_name: "rerun.blueprint.components.Enabled".into(),
+                archetype_field_name: Some("enabled".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.blueprint.archetypes.ForceCollisionRadius".into()),
+                component_name: "rerun.blueprint.components.ForceStrength".into(),
+                archetype_field_name: Some("strength".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.blueprint.archetypes.ForceCollisionRadius".into()),
+                component_name: "rerun.blueprint.components.ForceIterations".into(),
+                archetype_field_name: Some("iterations".into()),
+            },
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.blueprint.components.ForceCollisionRadiusIndicator".into(),
-            "rerun.blueprint.components.Enabled".into(),
-            "rerun.blueprint.components.ForceStrength".into(),
-            "rerun.blueprint.components.ForceIterations".into(),
+            ComponentDescriptor {
+                archetype_name: Some("rerun.blueprint.archetypes.ForceCollisionRadius".into()),
+                component_name: "ForceCollisionRadiusIndicator".into(),
+                archetype_field_name: None,
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.blueprint.archetypes.ForceCollisionRadius".into()),
+                component_name: "rerun.blueprint.components.Enabled".into(),
+                archetype_field_name: Some("enabled".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.blueprint.archetypes.ForceCollisionRadius".into()),
+                component_name: "rerun.blueprint.components.ForceStrength".into(),
+                archetype_field_name: Some("strength".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.blueprint.archetypes.ForceCollisionRadius".into()),
+                component_name: "rerun.blueprint.components.ForceIterations".into(),
+                archetype_field_name: Some("iterations".into()),
+            },
         ]
     });
 
@@ -97,28 +113,28 @@ impl ::re_types_core::Archetype for ForceCollisionRadius {
     }
 
     #[inline]
-    fn indicator() -> MaybeOwnedComponentBatch<'static> {
+    fn indicator() -> ComponentBatchCowWithDescriptor<'static> {
         static INDICATOR: ForceCollisionRadiusIndicator = ForceCollisionRadiusIndicator::DEFAULT;
-        MaybeOwnedComponentBatch::Ref(&INDICATOR)
+        ComponentBatchCowWithDescriptor::new(&INDICATOR as &dyn ::re_types_core::ComponentBatch)
     }
 
     #[inline]
-    fn required_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn required_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         REQUIRED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn recommended_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn recommended_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         RECOMMENDED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn optional_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn optional_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         OPTIONAL_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn all_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         ALL_COMPONENTS.as_slice().into()
     }
 
@@ -171,20 +187,47 @@ impl ::re_types_core::Archetype for ForceCollisionRadius {
 }
 
 impl ::re_types_core::AsComponents for ForceCollisionRadius {
-    fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>> {
+    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
         re_tracing::profile_function!();
         use ::re_types_core::Archetype as _;
         [
             Some(Self::indicator()),
-            self.enabled
+            (self
+                .enabled
                 .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.strength
+                .map(|comp| (comp as &dyn ComponentBatch)))
+            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
+                batch: batch.into(),
+                descriptor_override: Some(ComponentDescriptor {
+                    archetype_name: Some("rerun.blueprint.archetypes.ForceCollisionRadius".into()),
+                    archetype_field_name: Some(("enabled").into()),
+                    component_name: ("rerun.blueprint.components.Enabled").into(),
+                }),
+            }),
+            (self
+                .strength
                 .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.iterations
+                .map(|comp| (comp as &dyn ComponentBatch)))
+            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
+                batch: batch.into(),
+                descriptor_override: Some(ComponentDescriptor {
+                    archetype_name: Some("rerun.blueprint.archetypes.ForceCollisionRadius".into()),
+                    archetype_field_name: Some(("strength").into()),
+                    component_name: ("rerun.blueprint.components.ForceStrength").into(),
+                }),
+            }),
+            (self
+                .iterations
                 .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
+                .map(|comp| (comp as &dyn ComponentBatch)))
+            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
+                batch: batch.into(),
+                descriptor_override: Some(ComponentDescriptor {
+                    archetype_name: Some("rerun.blueprint.archetypes.ForceCollisionRadius".into()),
+                    archetype_field_name: Some(("iterations").into()),
+                    component_name: ("rerun.blueprint.components.ForceIterations").into(),
+                }),
+            }),
         ]
         .into_iter()
         .flatten()
@@ -233,5 +276,21 @@ impl ForceCollisionRadius {
     ) -> Self {
         self.iterations = Some(iterations.into());
         self
+    }
+}
+
+impl ::re_types_core::SizeBytes for ForceCollisionRadius {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.enabled.heap_size_bytes()
+            + self.strength.heap_size_bytes()
+            + self.iterations.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <Option<crate::blueprint::components::Enabled>>::is_pod()
+            && <Option<crate::blueprint::components::ForceStrength>>::is_pod()
+            && <Option<crate::blueprint::components::ForceIterations>>::is_pod()
     }
 }

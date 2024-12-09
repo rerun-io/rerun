@@ -18,17 +18,38 @@ namespace rerun {
         cells.reserve(4);
 
         if (archetype.enabled.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.enabled.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.enabled.value(),
+                ComponentDescriptor(
+                    "rerun.blueprint.archetypes.ForceCollisionRadius",
+                    "enabled",
+                    "rerun.blueprint.components.Enabled"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.strength.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.strength.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.strength.value(),
+                ComponentDescriptor(
+                    "rerun.blueprint.archetypes.ForceCollisionRadius",
+                    "strength",
+                    "rerun.blueprint.components.ForceStrength"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.iterations.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.iterations.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.iterations.value(),
+                ComponentDescriptor(
+                    "rerun.blueprint.archetypes.ForceCollisionRadius",
+                    "iterations",
+                    "rerun.blueprint.components.ForceIterations"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
