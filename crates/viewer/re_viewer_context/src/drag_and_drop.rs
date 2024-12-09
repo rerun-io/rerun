@@ -20,7 +20,7 @@ pub enum DragAndDropPayload {
     Contents { contents: Vec<Contents> },
 
     /// The dragged content is made of a collection of [`Item`]s we do know how to handle.
-    Invalid { items: crate::ItemCollection },
+    Invalid,
 }
 
 impl DragAndDropPayload {
@@ -28,9 +28,7 @@ impl DragAndDropPayload {
         if let Ok(contents) = (&selected_items).try_into() {
             Self::Contents { contents }
         } else {
-            Self::Invalid {
-                items: selected_items,
-            }
+            Self::Invalid
         }
     }
 }
@@ -47,7 +45,8 @@ impl std::fmt::Display for DragAndDropPayload {
             )
             .fmt(f),
 
-            Self::Invalid { items } => items_to_string(items.iter_items()).fmt(f),
+            // this is not used in the UI
+            Self::Invalid => "invalid selection".fmt(f),
         }
     }
 }
@@ -60,7 +59,8 @@ pub fn drag_and_drop_payload_cursor_ui(ui: &mut egui::Ui) {
         if let Some(pointer_pos) = ui.ctx().pointer_interact_pos() {
             let icon = match payload.as_ref() {
                 DragAndDropPayload::Contents { .. } => &re_ui::icons::DND_MOVE,
-                DragAndDropPayload::Invalid { .. } => &re_ui::icons::DND_CANNOT_USE,
+                // don't draw anything for invalid selection
+                DragAndDropPayload::Invalid => return,
             };
 
             let layer_id = egui::LayerId::new(

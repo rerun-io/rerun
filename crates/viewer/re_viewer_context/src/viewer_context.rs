@@ -167,17 +167,15 @@ impl ViewerContext<'_> {
                 selection_state.set_selection(selected_items.clone());
             }
 
-            let is_selection_draggable = self
+            let selection_contains_undraggable_items = self
                 .undraggable_items
                 .iter_items()
                 .all(|item| !selected_items.contains_item(item));
 
-            let payload = if is_selection_draggable {
+            let payload = if selection_contains_undraggable_items {
                 DragAndDropPayload::from_items(selected_items)
             } else {
-                DragAndDropPayload::Invalid {
-                    items: selected_items,
-                }
+                DragAndDropPayload::Invalid
             };
 
             egui::DragAndDrop::set_payload(&response.ctx, payload);
