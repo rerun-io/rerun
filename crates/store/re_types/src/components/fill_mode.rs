@@ -160,10 +160,10 @@ impl ::re_types_core::reflection::Enum for FillMode {
     fn docstring_md(self) -> &'static str {
         match self {
             Self::MajorWireframe => {
-                "Lines are drawn around the parts of the shape which directly correspond to the logged data.\n\nExamples of what this means:\n\n* An [`archetypes::Ellipsoids3D`][crate::archetypes::Ellipsoids3D] will draw three axis-aligned ellipses that are cross-sections\n  of each ellipsoid, each of which displays two out of three of the sizes of the ellipsoid.\n* For [`archetypes::Boxes3D`][crate::archetypes::Boxes3D], it is the edges of the box, identical to [`components::FillMode::DenseWireframe`][crate::components::FillMode::DenseWireframe]."
+                "Lines are drawn around the parts of the shape which directly correspond to the logged data.\n\nExamples of what this means:\n\n* An [`archetypes.Ellipsoids3D`](https://rerun.io/docs/reference/types/archetypes/ellipsoids3d) will draw three axis-aligned ellipses that are cross-sections\n  of each ellipsoid, each of which displays two out of three of the sizes of the ellipsoid.\n* For [`archetypes.Boxes3D`](https://rerun.io/docs/reference/types/archetypes/boxes3d), it is the edges of the box, identical to [`components.FillMode#DenseWireframe`](https://rerun.io/docs/reference/types/components/fill_mode)."
             }
             Self::DenseWireframe => {
-                "Many lines are drawn to represent the surface of the shape in a see-through fashion.\n\nExamples of what this means:\n\n* An [`archetypes::Ellipsoids3D`][crate::archetypes::Ellipsoids3D] will draw a wireframe triangle mesh that approximates each\n  ellipsoid.\n* For [`archetypes::Boxes3D`][crate::archetypes::Boxes3D], it is the edges of the box, identical to [`components::FillMode::MajorWireframe`][crate::components::FillMode::MajorWireframe]."
+                "Many lines are drawn to represent the surface of the shape in a see-through fashion.\n\nExamples of what this means:\n\n* An [`archetypes.Ellipsoids3D`](https://rerun.io/docs/reference/types/archetypes/ellipsoids3d) will draw a wireframe triangle mesh that approximates each\n  ellipsoid.\n* For [`archetypes.Boxes3D`](https://rerun.io/docs/reference/types/archetypes/boxes3d), it is the edges of the box, identical to [`components.FillMode#MajorWireframe`](https://rerun.io/docs/reference/types/components/fill_mode)."
             }
             Self::Solid => {
                 "The surface of the shape is filled in with a solid color. No lines are drawn."
