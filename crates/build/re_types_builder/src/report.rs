@@ -70,6 +70,7 @@ impl Reporter {
         self.errors.send(text.to_string()).ok();
     }
 
+    // Tries to format a virtual fbs path such that it can be clicked in the CLI.
     fn format_virtpath(virtpath: &str) -> String {
         if let Ok(path) = Utf8Path::new(virtpath).canonicalize() {
             path.display().to_string()
