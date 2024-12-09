@@ -124,7 +124,7 @@ impl ::re_types_core::Loggable for AffixFuzzer20 {
                             let inner_data: arrow::buffer::Buffer = s
                                 .into_iter()
                                 .flatten()
-                                .flat_map(|datum| datum.0 .0)
+                                .flat_map(|datum| datum.0.into_arrow2_buffer())
                                 .collect();
                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                             as_array_ref(unsafe {
@@ -239,7 +239,7 @@ impl ::re_types_core::Loggable for AffixFuzzer20 {
                             res_or_opt.map(|res_or_opt| {
                                 res_or_opt.map(|v| {
                                     crate::testing::datatypes::StringComponent(
-                                        ::re_types_core::ArrowString(v),
+                                        ::re_types_core::ArrowString::from(v),
                                     )
                                 })
                             })

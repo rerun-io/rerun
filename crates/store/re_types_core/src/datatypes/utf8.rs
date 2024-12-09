@@ -62,8 +62,11 @@ impl crate::Loggable for Utf8 {
                         .iter()
                         .map(|opt| opt.as_ref().map(|datum| datum.len()).unwrap_or_default()),
                 );
-                let inner_data: arrow::buffer::Buffer =
-                    data0.into_iter().flatten().flat_map(|s| s.0).collect();
+                let inner_data: arrow::buffer::Buffer = data0
+                    .into_iter()
+                    .flatten()
+                    .flat_map(|s| s.into_arrow2_buffer())
+                    .collect();
 
                 #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                 as_array_ref(unsafe {
@@ -117,7 +120,7 @@ impl crate::Loggable for Utf8 {
                 .transpose()
             })
             .map(|res_or_opt| {
-                res_or_opt.map(|res_or_opt| res_or_opt.map(|v| crate::ArrowString(v)))
+                res_or_opt.map(|res_or_opt| res_or_opt.map(|v| crate::ArrowString::from(v)))
             })
             .collect::<DeserializationResult<Vec<Option<_>>>>()
             .with_context("rerun.datatypes.Utf8#value")?
