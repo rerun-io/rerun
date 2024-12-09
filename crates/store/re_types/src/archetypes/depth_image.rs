@@ -134,7 +134,7 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usiz
     once_cell::sync::Lazy::new(|| {
         [ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.DepthImage".into()),
-            component_name: "DepthImageIndicator".into(),
+            component_name: DepthImageIndicator::DEFAULT.descriptor().component_name,
             archetype_field_name: None,
         }]
     });
@@ -185,7 +185,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 8usize]> =
             },
             ComponentDescriptor {
                 archetype_name: Some("rerun.archetypes.DepthImage".into()),
-                component_name: "DepthImageIndicator".into(),
+                component_name: DepthImageIndicator::DEFAULT.descriptor().component_name,
                 archetype_field_name: None,
             },
             ComponentDescriptor {

@@ -85,7 +85,7 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usiz
             },
             ComponentDescriptor {
                 archetype_name: Some("rerun.archetypes.EncodedImage".into()),
-                component_name: "EncodedImageIndicator".into(),
+                component_name: EncodedImageIndicator::DEFAULT.descriptor().component_name,
                 archetype_field_name: None,
             },
         ]
@@ -122,7 +122,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
             },
             ComponentDescriptor {
                 archetype_name: Some("rerun.archetypes.EncodedImage".into()),
-                component_name: "EncodedImageIndicator".into(),
+                component_name: EncodedImageIndicator::DEFAULT.descriptor().component_name,
                 archetype_field_name: None,
             },
             ComponentDescriptor {

@@ -1097,7 +1097,7 @@ fn quote_trait_impls_for_archetype(obj: &Object) -> TokenStream {
         #recommended_descriptors
         ComponentDescriptor {
             archetype_name: Some(#archetype_name.into()),
-            component_name: #indicator_name.into(),
+            component_name: #quoted_indicator_name::DEFAULT.descriptor().component_name,
             archetype_field_name: None,
         },
     };

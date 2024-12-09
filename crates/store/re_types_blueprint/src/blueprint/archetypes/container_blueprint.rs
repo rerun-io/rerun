@@ -75,7 +75,9 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usiz
     once_cell::sync::Lazy::new(|| {
         [ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
-            component_name: "ContainerBlueprintIndicator".into(),
+            component_name: ContainerBlueprintIndicator::DEFAULT
+                .descriptor()
+                .component_name,
             archetype_field_name: None,
         }]
     });
@@ -131,7 +133,9 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 9usize]> =
             },
             ComponentDescriptor {
                 archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
-                component_name: "ContainerBlueprintIndicator".into(),
+                component_name: ContainerBlueprintIndicator::DEFAULT
+                    .descriptor()
+                    .component_name,
                 archetype_field_name: None,
             },
             ComponentDescriptor {

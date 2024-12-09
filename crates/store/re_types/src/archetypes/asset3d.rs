@@ -97,7 +97,7 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usiz
             },
             ComponentDescriptor {
                 archetype_name: Some("rerun.archetypes.Asset3D".into()),
-                component_name: "Asset3DIndicator".into(),
+                component_name: Asset3DIndicator::DEFAULT.descriptor().component_name,
                 archetype_field_name: None,
             },
         ]
@@ -127,7 +127,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]> =
             },
             ComponentDescriptor {
                 archetype_name: Some("rerun.archetypes.Asset3D".into()),
-                component_name: "Asset3DIndicator".into(),
+                component_name: Asset3DIndicator::DEFAULT.descriptor().component_name,
                 archetype_field_name: None,
             },
             ComponentDescriptor {

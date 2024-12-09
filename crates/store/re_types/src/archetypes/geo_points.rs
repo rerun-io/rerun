@@ -89,7 +89,7 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usiz
             },
             ComponentDescriptor {
                 archetype_name: Some("rerun.archetypes.GeoPoints".into()),
-                component_name: "GeoPointsIndicator".into(),
+                component_name: GeoPointsIndicator::DEFAULT.descriptor().component_name,
                 archetype_field_name: None,
             },
         ]
@@ -124,7 +124,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
             },
             ComponentDescriptor {
                 archetype_name: Some("rerun.archetypes.GeoPoints".into()),
-                component_name: "GeoPointsIndicator".into(),
+                component_name: GeoPointsIndicator::DEFAULT.descriptor().component_name,
                 archetype_field_name: None,
             },
             ComponentDescriptor {

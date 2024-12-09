@@ -39,7 +39,7 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usiz
     once_cell::sync::Lazy::new(|| {
         [ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.PlotLegend".into()),
-            component_name: "PlotLegendIndicator".into(),
+            component_name: PlotLegendIndicator::DEFAULT.descriptor().component_name,
             archetype_field_name: None,
         }]
     });
@@ -65,7 +65,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
         [
             ComponentDescriptor {
                 archetype_name: Some("rerun.blueprint.archetypes.PlotLegend".into()),
-                component_name: "PlotLegendIndicator".into(),
+                component_name: PlotLegendIndicator::DEFAULT.descriptor().component_name,
                 archetype_field_name: None,
             },
             ComponentDescriptor {

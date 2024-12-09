@@ -55,7 +55,7 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usiz
     once_cell::sync::Lazy::new(|| {
         [ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.GraphNodes".into()),
-            component_name: "GraphNodesIndicator".into(),
+            component_name: GraphNodesIndicator::DEFAULT.descriptor().component_name,
             archetype_field_name: None,
         }]
     });
@@ -101,7 +101,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 7usize]> =
             },
             ComponentDescriptor {
                 archetype_name: Some("rerun.archetypes.GraphNodes".into()),
-                component_name: "GraphNodesIndicator".into(),
+                component_name: GraphNodesIndicator::DEFAULT.descriptor().component_name,
                 archetype_field_name: None,
             },
             ComponentDescriptor {

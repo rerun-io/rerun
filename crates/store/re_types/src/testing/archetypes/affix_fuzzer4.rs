@@ -47,7 +47,7 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usiz
     once_cell::sync::Lazy::new(|| {
         [ComponentDescriptor {
             archetype_name: Some("rerun.testing.archetypes.AffixFuzzer4".into()),
-            component_name: "AffixFuzzer4Indicator".into(),
+            component_name: AffixFuzzer4Indicator::DEFAULT.descriptor().component_name,
             archetype_field_name: None,
         }]
     });
@@ -153,7 +153,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 19usize]> =
         [
             ComponentDescriptor {
                 archetype_name: Some("rerun.testing.archetypes.AffixFuzzer4".into()),
-                component_name: "AffixFuzzer4Indicator".into(),
+                component_name: AffixFuzzer4Indicator::DEFAULT.descriptor().component_name,
                 archetype_field_name: None,
             },
             ComponentDescriptor {
