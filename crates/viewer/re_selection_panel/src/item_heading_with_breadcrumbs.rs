@@ -22,8 +22,6 @@ use re_viewport_blueprint::ViewportBlueprint;
 
 use crate::item_title::ItemTitle;
 
-const ICON_SCALE: f32 = 0.5; // Because we save all icons as 2x
-
 /// We show this above each item section
 pub fn item_heading_with_breadcrumbs(
     ctx: &ViewerContext<'_>,
@@ -207,8 +205,7 @@ fn last_part_of_item_heading(
     };
 
     let button = if with_icon {
-        egui::Button::image_and_text(icon.as_image().fit_to_original_size(ICON_SCALE), label)
-            .image_tint_follows_text_color(true)
+        egui::Button::image_and_text(icon.as_image(), label).image_tint_follows_text_color(true)
     } else {
         egui::Button::new(label)
     };
@@ -240,10 +237,8 @@ fn viewport_breadcrumbs(
         tooltip,
     } = ItemTitle::from_contents(ctx, viewport, &contents);
 
-    let mut response = ui.add(
-        egui::Button::image(icon.as_image().fit_to_original_size(ICON_SCALE))
-            .image_tint_follows_text_color(true),
-    );
+    let mut response =
+        ui.add(egui::Button::image(icon.as_image()).image_tint_follows_text_color(true));
     if let Some(tooltip) = tooltip {
         response = response.on_hover_text(tooltip);
     }
@@ -256,7 +251,6 @@ pub fn separator_icon_ui(ui: &mut egui::Ui) {
     ui.add(
         icons::BREADCRUMBS_SEPARATOR
             .as_image()
-            .fit_to_original_size(ICON_SCALE)
             .tint(ui.visuals().text_color().gamma_multiply(0.65)),
     );
 }
@@ -298,8 +292,7 @@ fn entity_path_breadcrumbs(
             // just to make it clear that this is a different kind of hierarchy.
             &icons::RECORDING // streams hierarchy
         };
-        egui::Button::image(icon.as_image().fit_to_original_size(ICON_SCALE))
-            .image_tint_follows_text_color(true)
+        egui::Button::image(icon.as_image()).image_tint_follows_text_color(true)
     };
 
     let response = ui.add(button);

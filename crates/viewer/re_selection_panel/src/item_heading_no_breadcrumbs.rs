@@ -11,8 +11,6 @@ use crate::{
     item_title::{is_component_static, ItemTitle},
 };
 
-const ICON_SCALE: f32 = 0.5; // Because we save all icons as 2x
-
 /// Fully descriptive heading for an item, without any breadcrumbs.
 pub fn item_heading_no_breadcrumbs(
     ctx: &ViewerContext<'_>,
@@ -81,6 +79,6 @@ pub fn item_heading_no_breadcrumbs(
 }
 
 fn icon_and_title(ui: &mut egui::Ui, icon: &Icon, title: impl Into<WidgetText>) {
-    ui.add(icon.as_image().fit_to_original_size(ICON_SCALE));
+    ui.add(icon.as_image());
     ui.label(title);
 }
