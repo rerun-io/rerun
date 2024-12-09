@@ -326,10 +326,11 @@ pub fn quote_arrow_deserializer(
                 let quoted_field_deserializers = obj
                     .fields
                     .iter()
-                    .filter(|obj_field|
-                        // For unit fields we don't have to collect any data.
-                        obj_field.typ != crate::Type::Unit)
                     .enumerate()
+                    .filter(|(_, obj_field)| {
+                        // For unit fields we don't have to collect any data.
+                        obj_field.typ != crate::Type::Unit
+                    })
                     .map(|(i, obj_field)| {
                         let data_dst = format_ident!("{}", obj_field.snake_case_name());
 
