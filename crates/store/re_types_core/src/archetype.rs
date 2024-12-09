@@ -119,8 +119,8 @@ pub trait Archetype {
     /// Arrow arrays that are unknown to this [`Archetype`] will simply be ignored and a warning
     /// logged to stderr.
     #[inline]
-    fn from_arrow2_components(
-        data: impl IntoIterator<Item = (ComponentName, Box<dyn ::arrow2::array::Array>)>,
+    fn from_arrow_components(
+        data: impl IntoIterator<Item = (ComponentName, ::arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self>
     where
         Self: Sized,
@@ -130,6 +130,23 @@ pub trait Archetype {
             fqname: Self::name().to_string(),
             backtrace: _Backtrace::new_unresolved(),
         })
+    }
+
+    /// Given an iterator of Arrow arrays and their respective `ComponentNames`, deserializes them
+    /// into this archetype.
+    ///
+    /// Arrow arrays that are unknown to this [`Archetype`] will simply be ignored and a warning
+    /// logged to stderr.
+    #[inline]
+    fn from_arrow2_components(
+        data: impl IntoIterator<Item = (ComponentName, Box<dyn ::arrow2::array::Array>)>,
+    ) -> DeserializationResult<Self>
+    where
+        Self: Sized,
+    {
+        Self::from_arrow_components(data.into_iter().map(|(component, arrow2_array)| {
+            (component, arrow::array::ArrayRef::from(arrow2_array))
+        }))
     }
 }
 
