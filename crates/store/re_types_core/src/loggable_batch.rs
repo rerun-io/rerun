@@ -45,11 +45,14 @@ pub trait ComponentBatch: LoggableBatch {
     fn descriptor(&self) -> Cow<'_, ComponentDescriptor>;
 
     // Wraps the current [`ComponentBatch`] with the given descriptor.
-    fn with_descriptor(&self, descriptor: ComponentDescriptor) -> MaybeOwnedComponentBatch<'_>
+    fn with_descriptor(
+        &self,
+        descriptor: ComponentDescriptor,
+    ) -> ComponentBatchCowWithDescriptor<'_>
     where
         Self: Sized,
     {
-        MaybeOwnedComponentBatch::new(ComponentBatchCow::Ref(self as &dyn ComponentBatch))
+        ComponentBatchCowWithDescriptor::new(ComponentBatchCow::Ref(self as &dyn ComponentBatch))
             .with_descriptor_override(descriptor)
     }
 

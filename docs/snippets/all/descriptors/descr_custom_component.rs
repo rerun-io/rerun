@@ -7,7 +7,7 @@ fn example(rec: &rerun::RecordingStream) -> Result<(), Box<dyn std::error::Error
         archetype_field_name: Some("custom_positions".into()),
         component_name: "user.CustomPosition3D".into(),
     });
-    rec.log_component_batches("data", true, [&position as &dyn rerun::ComponentBatch])?;
+    rec.log_component_batches("data", true, [&positions as &dyn rerun::ComponentBatch])?;
 
     Ok(())
 }
