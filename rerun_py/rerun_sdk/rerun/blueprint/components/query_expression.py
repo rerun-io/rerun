@@ -8,6 +8,7 @@ from __future__ import annotations
 from ... import datatypes
 from ..._baseclasses import (
     ComponentBatchMixin,
+    ComponentDescriptor,
     ComponentMixin,
 )
 
@@ -36,7 +37,7 @@ class QueryExpression(datatypes.Utf8, ComponentMixin):
 
 
 class QueryExpressionBatch(datatypes.Utf8Batch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.blueprint.components.QueryExpression"
+    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.blueprint.components.QueryExpression")
 
 
 # This is patched in late to avoid circular dependencies.
