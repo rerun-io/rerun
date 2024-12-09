@@ -6597,6 +6597,7 @@ dependencies = [
  "re_tracing",
  "serde",
  "serde_json",
+ "smallvec",
  "strum",
  "strum_macros",
  "sublime_fuzzy",
