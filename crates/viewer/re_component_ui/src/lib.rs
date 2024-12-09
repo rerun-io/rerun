@@ -15,6 +15,7 @@ mod map_provider;
 mod marker_shape;
 mod pinhole;
 mod plane3d;
+mod position2d;
 mod radius;
 mod recording_uri;
 mod resolution;
@@ -138,6 +139,8 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
 
     registry.add_multiline_edit_or_view(visual_bounds2d::multiline_edit_visual_bounds2d);
     registry.add_singleline_edit_or_view(visual_bounds2d::singleline_edit_visual_bounds2d);
+
+    registry.add_singleline_edit_or_view(position2d::singleline_edit_position2d);
 
     registry.add_multiline_edit_or_view(transforms::multiline_view_transform_mat3x3);
     registry.add_singleline_edit_or_view(transforms::singleline_view_transform_mat3x3);
