@@ -1,6 +1,10 @@
+use std::borrow::Cow;
+
 use nohash_hasher::IntSet;
 
-use crate::{result::_Backtrace, DeserializationResult, SerializationResult, SizeBytes};
+use crate::{
+    result::_Backtrace, ComponentDescriptor, DeserializationResult, SerializationResult, SizeBytes,
+};
 
 #[allow(unused_imports)] // used in docstrings
 use crate::{Archetype, ComponentBatch, LoggableBatch};
@@ -147,8 +151,35 @@ pub trait Loggable: 'static + Send + Sync + Clone + Sized + SizeBytes {
 /// Implementing the [`Component`] trait automatically derives the [`ComponentBatch`] implementation,
 /// which makes it possible to work with lists' worth of data in a generic fashion.
 pub trait Component: Loggable {
+    /// Returns the complete [`ComponentDescriptor`] for this [`Component`].
+    ///
+    /// Every component is uniquely identified by its [`ComponentDescriptor`].
+    //
+    // NOTE: Builtin Rerun components don't (yet) have anything but a `ComponentName` attached to
+    // them (other tags are injected at the Archetype level), therefore having a full
+    // `ComponentDescriptor` might seem overkill.
+    // It's not:
+    // * Users might still want to register Components with specific tags.
+    // * In the future, `ComponentDescriptor`s will very likely cover more than Archetype-related tags
+    //   (e.g. generics, metric units, etc).
+    fn descriptor() -> ComponentDescriptor;
+
     /// The fully-qualified name of this component, e.g. `rerun.components.Position2D`.
-    fn name() -> ComponentName;
+    ///
+    /// This is a trivial but useful helper for `Self::descriptor().component_name`.
+    ///
+    /// The default implementation already does the right thing: do not override unless you know
+    /// what you're doing.
+    /// `Self::name()` must exactly match the value returned by `Self::descriptor().component_name`,
+    /// or undefined behavior ensues.
+    //
+    // TODO(cmc): The only reason we keep this around is for convenience, and the only reason we need this
+    // convenience is because we're still in this weird half-way in-between state where some things
+    // are still indexed by name. Remove this entirely once we've ported everything to descriptors.
+    #[inline]
+    fn name() -> ComponentName {
+        Self::descriptor().component_name
+    }
 }
 
 // ---
@@ -161,6 +192,26 @@ re_string_interner::declare_new_type!(
     /// The fully-qualified name of a [`Component`], e.g. `rerun.components.Position2D`.
     pub struct ComponentName;
 );
+
+// TODO(cmc): The only reason this exists is for convenience, and the only reason we need this
+// convenience is because we're still in this weird half-way in-between state where some things
+// are still indexed by name. Remove this entirely once we've ported everything to descriptors.
+impl From<ComponentName> for Cow<'static, ComponentDescriptor> {
+    #[inline]
+    fn from(name: ComponentName) -> Self {
+        Cow::Owned(ComponentDescriptor::new(name))
+    }
+}
+
+// TODO(cmc): The only reason this exists is for convenience, and the only reason we need this
+// convenience is because we're still in this weird half-way in-between state where some things
+// are still indexed by name. Remove this entirely once we've ported everything to descriptors.
+impl From<&ComponentName> for Cow<'static, ComponentDescriptor> {
+    #[inline]
+    fn from(name: &ComponentName) -> Self {
+        Cow::Owned(ComponentDescriptor::new(*name))
+    }
+}
 
 impl ComponentName {
     /// Returns the fully-qualified name, e.g. `rerun.components.Position2D`.

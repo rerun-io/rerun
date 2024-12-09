@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: An infinite 3D plane represented by a unit normal vector and a distance.
@@ -30,32 +30,6 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Debug, Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(C)]
 pub struct Plane3D(pub [f32; 4usize]);
-
-impl ::re_types_core::SizeBytes for Plane3D {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <[f32; 4usize]>::is_pod()
-    }
-}
-
-impl From<[f32; 4usize]> for Plane3D {
-    #[inline]
-    fn from(xyzd: [f32; 4usize]) -> Self {
-        Self(xyzd)
-    }
-}
-
-impl From<Plane3D> for [f32; 4usize] {
-    #[inline]
-    fn from(value: Plane3D) -> Self {
-        value.0
-    }
-}
 
 ::re_types_core::macros::impl_into_cow!(Plane3D);
 
@@ -253,5 +227,31 @@ impl ::re_types_core::Loggable for Plane3D {
                 slice.iter().copied().map(Self).collect::<Vec<_>>()
             }
         })
+    }
+}
+
+impl From<[f32; 4usize]> for Plane3D {
+    #[inline]
+    fn from(xyzd: [f32; 4usize]) -> Self {
+        Self(xyzd)
+    }
+}
+
+impl From<Plane3D> for [f32; 4usize] {
+    #[inline]
+    fn from(value: Plane3D) -> Self {
+        value.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for Plane3D {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <[f32; 4usize]>::is_pod()
     }
 }

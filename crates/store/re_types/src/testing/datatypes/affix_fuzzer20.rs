@@ -13,28 +13,15 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct AffixFuzzer20 {
     pub p: crate::testing::datatypes::PrimitiveComponent,
     pub s: crate::testing::datatypes::StringComponent,
-}
-
-impl ::re_types_core::SizeBytes for AffixFuzzer20 {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.p.heap_size_bytes() + self.s.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::testing::datatypes::PrimitiveComponent>::is_pod()
-            && <crate::testing::datatypes::StringComponent>::is_pod()
-    }
 }
 
 ::re_types_core::macros::impl_into_cow!(AffixFuzzer20);
@@ -286,5 +273,18 @@ impl ::re_types_core::Loggable for AffixFuzzer20 {
                 .with_context("rerun.testing.datatypes.AffixFuzzer20")?
             }
         })
+    }
+}
+
+impl ::re_types_core::SizeBytes for AffixFuzzer20 {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.p.heap_size_bytes() + self.s.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::testing::datatypes::PrimitiveComponent>::is_pod()
+            && <crate::testing::datatypes::StringComponent>::is_pod()
     }
 }

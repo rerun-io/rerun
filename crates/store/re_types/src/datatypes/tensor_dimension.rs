@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: A single dimension within a multi-dimensional tensor.
@@ -26,18 +26,6 @@ pub struct TensorDimension {
 
     /// The name of this dimension, e.g. "width", "height", "channel", "batch', ….
     pub name: Option<::re_types_core::ArrowString>,
-}
-
-impl ::re_types_core::SizeBytes for TensorDimension {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.size.heap_size_bytes() + self.name.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <u64>::is_pod() && <Option<::re_types_core::ArrowString>>::is_pod()
-    }
 }
 
 ::re_types_core::macros::impl_into_cow!(TensorDimension);
@@ -263,5 +251,17 @@ impl ::re_types_core::Loggable for TensorDimension {
                 .with_context("rerun.datatypes.TensorDimension")?
             }
         })
+    }
+}
+
+impl ::re_types_core::SizeBytes for TensorDimension {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.size.heap_size_bytes() + self.name.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <u64>::is_pod() && <Option<::re_types_core::ArrowString>>::is_pod()
     }
 }

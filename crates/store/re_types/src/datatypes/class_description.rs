@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: The description of a semantic Class.
@@ -42,22 +42,6 @@ pub struct ClassDescription {
 
     /// The connections between keypoints.
     pub keypoint_connections: Vec<crate::datatypes::KeypointPair>,
-}
-
-impl ::re_types_core::SizeBytes for ClassDescription {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.info.heap_size_bytes()
-            + self.keypoint_annotations.heap_size_bytes()
-            + self.keypoint_connections.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::AnnotationInfo>::is_pod()
-            && <Vec<crate::datatypes::AnnotationInfo>>::is_pod()
-            && <Vec<crate::datatypes::KeypointPair>>::is_pod()
-    }
 }
 
 ::re_types_core::macros::impl_into_cow!(ClassDescription);
@@ -473,5 +457,21 @@ impl ::re_types_core::Loggable for ClassDescription {
                 .with_context("rerun.datatypes.ClassDescription")?
             }
         })
+    }
+}
+
+impl ::re_types_core::SizeBytes for ClassDescription {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.info.heap_size_bytes()
+            + self.keypoint_annotations.heap_size_bytes()
+            + self.keypoint_connections.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::AnnotationInfo>::is_pod()
+            && <Vec<crate::datatypes::AnnotationInfo>>::is_pod()
+            && <Vec<crate::datatypes::KeypointPair>>::is_pod()
     }
 }

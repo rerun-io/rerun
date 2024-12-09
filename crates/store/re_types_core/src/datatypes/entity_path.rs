@@ -13,41 +13,15 @@
 #![allow(clippy::too_many_lines)]
 
 use crate::external::arrow2;
-use crate::ComponentName;
 use crate::SerializationResult;
-use crate::{ComponentBatch, MaybeOwnedComponentBatch};
+use crate::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use crate::{ComponentDescriptor, ComponentName};
 use crate::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: A path to an entity in the `ChunkStore`.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Default, Hash)]
 #[repr(transparent)]
 pub struct EntityPath(pub crate::ArrowString);
-
-impl crate::SizeBytes for EntityPath {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::ArrowString>::is_pod()
-    }
-}
-
-impl From<crate::ArrowString> for EntityPath {
-    #[inline]
-    fn from(path: crate::ArrowString) -> Self {
-        Self(path)
-    }
-}
-
-impl From<EntityPath> for crate::ArrowString {
-    #[inline]
-    fn from(value: EntityPath) -> Self {
-        value.0
-    }
-}
 
 crate::macros::impl_into_cow!(EntityPath);
 
@@ -159,5 +133,31 @@ impl crate::Loggable for EntityPath {
         .collect::<DeserializationResult<Vec<Option<_>>>>()
         .with_context("rerun.datatypes.EntityPath#path")
         .with_context("rerun.datatypes.EntityPath")?)
+    }
+}
+
+impl From<crate::ArrowString> for EntityPath {
+    #[inline]
+    fn from(path: crate::ArrowString) -> Self {
+        Self(path)
+    }
+}
+
+impl From<EntityPath> for crate::ArrowString {
+    #[inline]
+    fn from(value: EntityPath) -> Self {
+        value.0
+    }
+}
+
+impl crate::SizeBytes for EntityPath {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::ArrowString>::is_pod()
     }
 }

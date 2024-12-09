@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use crate::external::arrow2;
-use crate::ComponentName;
 use crate::SerializationResult;
-use crate::{ComponentBatch, MaybeOwnedComponentBatch};
+use crate::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use crate::{ComponentDescriptor, ComponentName};
 use crate::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: Left or right boundary of a time range.
@@ -29,23 +29,6 @@ pub enum TimeRangeBoundary {
 
     /// The boundary extends to infinity.
     Infinite,
-}
-
-impl crate::SizeBytes for TimeRangeBoundary {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        #![allow(clippy::match_same_arms)]
-        match self {
-            Self::CursorRelative(v) => v.heap_size_bytes(),
-            Self::Absolute(v) => v.heap_size_bytes(),
-            Self::Infinite => 0,
-        }
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::TimeInt>::is_pod() && <crate::datatypes::TimeInt>::is_pod()
-    }
 }
 
 crate::macros::impl_into_cow!(TimeRangeBoundary);
@@ -352,5 +335,22 @@ impl crate::Loggable for TimeRangeBoundary {
                     .with_context("rerun.datatypes.TimeRangeBoundary")?
             }
         })
+    }
+}
+
+impl crate::SizeBytes for TimeRangeBoundary {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        #![allow(clippy::match_same_arms)]
+        match self {
+            Self::CursorRelative(v) => v.heap_size_bytes(),
+            Self::Absolute(v) => v.heap_size_bytes(),
+            Self::Infinite => 0,
+        }
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::TimeInt>::is_pod() && <crate::datatypes::TimeInt>::is_pod()
     }
 }

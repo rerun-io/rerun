@@ -13,53 +13,18 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct AffixFuzzer10(pub Option<::re_types_core::ArrowString>);
 
-impl ::re_types_core::SizeBytes for AffixFuzzer10 {
+impl ::re_types_core::Component for AffixFuzzer10 {
     #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <Option<::re_types_core::ArrowString>>::is_pod()
-    }
-}
-
-impl From<Option<::re_types_core::ArrowString>> for AffixFuzzer10 {
-    #[inline]
-    fn from(single_string_optional: Option<::re_types_core::ArrowString>) -> Self {
-        Self(single_string_optional)
-    }
-}
-
-impl From<AffixFuzzer10> for Option<::re_types_core::ArrowString> {
-    #[inline]
-    fn from(value: AffixFuzzer10) -> Self {
-        value.0
-    }
-}
-
-impl std::ops::Deref for AffixFuzzer10 {
-    type Target = Option<::re_types_core::ArrowString>;
-
-    #[inline]
-    fn deref(&self) -> &Option<::re_types_core::ArrowString> {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for AffixFuzzer10 {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut Option<::re_types_core::ArrowString> {
-        &mut self.0
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.testing.components.AffixFuzzer10")
     }
 }
 
@@ -176,9 +141,44 @@ impl ::re_types_core::Loggable for AffixFuzzer10 {
     }
 }
 
-impl ::re_types_core::Component for AffixFuzzer10 {
+impl From<Option<::re_types_core::ArrowString>> for AffixFuzzer10 {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.testing.components.AffixFuzzer10".into()
+    fn from(single_string_optional: Option<::re_types_core::ArrowString>) -> Self {
+        Self(single_string_optional)
+    }
+}
+
+impl From<AffixFuzzer10> for Option<::re_types_core::ArrowString> {
+    #[inline]
+    fn from(value: AffixFuzzer10) -> Self {
+        value.0
+    }
+}
+
+impl std::ops::Deref for AffixFuzzer10 {
+    type Target = Option<::re_types_core::ArrowString>;
+
+    #[inline]
+    fn deref(&self) -> &Option<::re_types_core::ArrowString> {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for AffixFuzzer10 {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Option<::re_types_core::ArrowString> {
+        &mut self.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for AffixFuzzer10 {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <Option<::re_types_core::ArrowString>>::is_pod()
     }
 }

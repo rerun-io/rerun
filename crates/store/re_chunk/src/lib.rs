@@ -24,7 +24,7 @@ mod batcher;
 mod arrow;
 
 pub use self::builder::{ChunkBuilder, TimeColumnBuilder};
-pub use self::chunk::{Chunk, ChunkError, ChunkResult, TimeColumn};
+pub use self::chunk::{Chunk, ChunkComponents, ChunkError, ChunkResult, TimeColumn};
 pub use self::helpers::{ChunkShared, UnitChunkShared};
 pub use self::id::{ChunkId, RowId};
 pub use self::iter::{ChunkComponentIter, ChunkComponentIterItem, ChunkIndicesIter};
@@ -44,7 +44,7 @@ pub use arrow2::array::Array as Arrow2Array;
 #[doc(no_inline)]
 pub use re_log_types::{EntityPath, TimeInt, TimePoint, Timeline, TimelineName};
 #[doc(no_inline)]
-pub use re_types_core::ComponentName;
+pub use re_types_core::{ArchetypeFieldName, ArchetypeName, ComponentName};
 
 pub mod external {
     pub use arrow2;

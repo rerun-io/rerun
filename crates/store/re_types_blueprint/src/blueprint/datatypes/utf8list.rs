@@ -13,41 +13,15 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: A list of strings of text, encoded as UTF-8.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Default, Hash)]
 #[repr(transparent)]
 pub struct Utf8List(pub Vec<::re_types_core::ArrowString>);
-
-impl ::re_types_core::SizeBytes for Utf8List {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <Vec<::re_types_core::ArrowString>>::is_pod()
-    }
-}
-
-impl From<Vec<::re_types_core::ArrowString>> for Utf8List {
-    #[inline]
-    fn from(value: Vec<::re_types_core::ArrowString>) -> Self {
-        Self(value)
-    }
-}
-
-impl From<Utf8List> for Vec<::re_types_core::ArrowString> {
-    #[inline]
-    fn from(value: Utf8List) -> Self {
-        value.0
-    }
-}
 
 ::re_types_core::macros::impl_into_cow!(Utf8List);
 
@@ -227,5 +201,31 @@ impl ::re_types_core::Loggable for Utf8List {
         .collect::<DeserializationResult<Vec<Option<_>>>>()
         .with_context("rerun.blueprint.datatypes.Utf8List#value")
         .with_context("rerun.blueprint.datatypes.Utf8List")?)
+    }
+}
+
+impl From<Vec<::re_types_core::ArrowString>> for Utf8List {
+    #[inline]
+    fn from(value: Vec<::re_types_core::ArrowString>) -> Self {
+        Self(value)
+    }
+}
+
+impl From<Utf8List> for Vec<::re_types_core::ArrowString> {
+    #[inline]
+    fn from(value: Utf8List) -> Self {
+        value.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for Utf8List {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <Vec<::re_types_core::ArrowString>>::is_pod()
     }
 }

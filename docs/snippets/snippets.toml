@@ -54,6 +54,22 @@
   "cpp",
   "rust",
 ]
+"descriptors/descr_builtin_archetype" = [ # Python and C++ not yet supported (next PRs)
+  "cpp",
+  "py",
+]
+"descriptors/descr_builtin_component" = [ # Python and C++ not yet supported (next PRs)
+  "cpp",
+  "py",
+]
+"descriptors/descr_custom_archetype" = [ # Python and C++ not yet supported (next PRs)
+  "cpp",
+  "py",
+]
+"descriptors/descr_custom_component" = [ # Python and C++ not yet supported (next PRs)
+  "cpp",
+  "py",
+]
 views = [
   "cpp",  # TODO(#5520): C++ views are not yet implemented
   "rust", # TODO(#5521): Rust views are not yet implemented
