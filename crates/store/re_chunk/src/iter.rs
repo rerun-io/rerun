@@ -710,7 +710,7 @@ impl Chunk {
             Err(err) => {
                 if cfg!(debug_assertions) {
                     panic!(
-                        "deserialization failed for {}, data discarded: {}",
+                        "[DEBUG-ONLY] deserialization failed for {}, data discarded: {}",
                         C::name(),
                         re_error::format_ref(&err),
                     );

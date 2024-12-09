@@ -31,7 +31,7 @@ mod prelude {
     pub use re_types::datatypes::{
         Angle, AnnotationInfo, ChannelDatatype, ClassDescription, ColorModel, Float32,
         KeypointPair, Mat3x3, PixelFormat, Quaternion, Rgba32, RotationAxisAngle, TensorBuffer,
-        TensorData, TensorDimension, Vec2D, Vec3D, Vec4D,
+        TensorData, Vec2D, Vec3D, Vec4D,
     };
 }
 pub use prelude::*;

@@ -25,7 +25,6 @@ rgba32.rs linguist-generated=true
 rotation_axis_angle.rs linguist-generated=true
 tensor_buffer.rs linguist-generated=true
 tensor_data.rs linguist-generated=true
-tensor_dimension.rs linguist-generated=true
 tensor_dimension_index_selection.rs linguist-generated=true
 tensor_dimension_selection.rs linguist-generated=true
 utf8pair.rs linguist-generated=true

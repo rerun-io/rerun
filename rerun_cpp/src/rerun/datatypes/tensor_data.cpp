@@ -4,7 +4,6 @@
 #include "tensor_data.hpp"
 
 #include "tensor_buffer.hpp"
-#include "tensor_dimension.hpp"
 
 #include <arrow/builder.h>
 #include <arrow/type_fwd.h>
@@ -14,15 +13,8 @@ namespace rerun::datatypes {}
 namespace rerun {
     const std::shared_ptr<arrow::DataType>& Loggable<datatypes::TensorData>::arrow_datatype() {
         static const auto datatype = arrow::struct_({
-            arrow::field(
-                "shape",
-                arrow::list(arrow::field(
-                    "item",
-                    Loggable<rerun::datatypes::TensorDimension>::arrow_datatype(),
-                    false
-                )),
-                false
-            ),
+            arrow::field("shape", arrow::list(arrow::field("item", arrow::uint64(), false)), false),
+            arrow::field("names", arrow::list(arrow::field("item", arrow::utf8(), false)), true),
             arrow::field(
                 "buffer",
                 Loggable<rerun::datatypes::TensorBuffer>::arrow_datatype(),
@@ -67,26 +59,41 @@ namespace rerun {
 
         {
             auto field_builder = static_cast<arrow::ListBuilder*>(builder->field_builder(0));
-            auto value_builder = static_cast<arrow::StructBuilder*>(field_builder->value_builder());
+            auto value_builder = static_cast<arrow::UInt64Builder*>(field_builder->value_builder());
             ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
             ARROW_RETURN_NOT_OK(value_builder->Reserve(static_cast<int64_t>(num_elements * 2)));
 
             for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                 const auto& element = elements[elem_idx];
                 ARROW_RETURN_NOT_OK(field_builder->Append());
-                if (element.shape.data()) {
-                    RR_RETURN_NOT_OK(
-                        Loggable<rerun::datatypes::TensorDimension>::fill_arrow_array_builder(
-                            value_builder,
-                            element.shape.data(),
-                            element.shape.size()
-                        )
-                    );
+                ARROW_RETURN_NOT_OK(value_builder->AppendValues(
+                    element.shape.data(),
+                    static_cast<int64_t>(element.shape.size()),
+                    nullptr
+                ));
+            }
+        }
+        {
+            auto field_builder = static_cast<arrow::ListBuilder*>(builder->field_builder(1));
+            auto value_builder = static_cast<arrow::StringBuilder*>(field_builder->value_builder());
+            ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
+            ARROW_RETURN_NOT_OK(value_builder->Reserve(static_cast<int64_t>(num_elements * 1)));
+
+            for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                const auto& element = elements[elem_idx];
+                if (element.names.has_value()) {
+                    ARROW_RETURN_NOT_OK(field_builder->Append());
+                    for (size_t item_idx = 0; item_idx < element.names.value().size();
+                         item_idx += 1) {
+                        ARROW_RETURN_NOT_OK(value_builder->Append(element.names.value()[item_idx]));
+                    }
+                } else {
+                    ARROW_RETURN_NOT_OK(field_builder->AppendNull());
                 }
             }
         }
         {
-            auto field_builder = static_cast<arrow::DenseUnionBuilder*>(builder->field_builder(1));
+            auto field_builder = static_cast<arrow::DenseUnionBuilder*>(builder->field_builder(2));
             ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
             for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                 RR_RETURN_NOT_OK(Loggable<rerun::datatypes::TensorBuffer>::fill_arrow_array_builder(
