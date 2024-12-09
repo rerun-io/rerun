@@ -563,12 +563,9 @@ fn query_and_resolve_tree_transform_at_entity(
     }
 
     if result.component_instance::<TransformRelation>(0) == Some(TransformRelation::ChildFromParent)
+    // TODO(andreas): Should we warn? This might be intentionally caused by zero scale.
+        && transform.matrix3.determinant() != 0.0
     {
-        if transform.matrix3.determinant() != 0.0 {
-            // TODO(andreas): Should we warn? This might be intentionally caused by zero scale.
-            transform = transform.inverse();
-        }
-
         transform = transform.inverse();
     }
 
