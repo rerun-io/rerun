@@ -173,7 +173,7 @@ impl SpatialSpaceView2D {
         let ui_from_scene = ui_from_scene(ctx, &response, self, state, &bounds_property);
         let scene_from_ui = ui_from_scene.inverse();
 
-        let clipping_plane: blueprint_components::ClippingPlane = bounds_property
+        let near_clip_plane: blueprint_components::NearClipPlane = bounds_property
             .component_or_fallback(ctx, self, state)
             .ok_or_log_error()
             .unwrap_or_default();
@@ -185,13 +185,13 @@ impl SpatialSpaceView2D {
         };
 
         // Don't let clipping plane become zero
-        let clipping_plane = f32::max(f32::MIN_POSITIVE, *clipping_plane.0);
+        let near_clip_plane = f32::max(f32::MIN_POSITIVE, *near_clip_plane.0);
 
         let scene_bounds = *scene_from_ui.to();
         let Ok(target_config) = setup_target_config(
             &painter,
             scene_bounds,
-            clipping_plane,
+            near_clip_plane,
             &query.space_origin.to_string(),
             query.highlights.any_outlines(),
             &state.pinhole_at_origin,
@@ -296,7 +296,7 @@ impl SpatialSpaceView2D {
 fn setup_target_config(
     egui_painter: &egui::Painter,
     scene_bounds: Rect,
-    clipping_plane: f32,
+    near_clip_plane: f32,
     space_name: &str,
     any_outlines: bool,
     scene_pinhole: &Option<Pinhole>,
@@ -360,7 +360,7 @@ fn setup_target_config(
 
     let projection_from_view = re_renderer::view_builder::Projection::Perspective {
         vertical_fov: pinhole.fov_y().unwrap_or(Eye::DEFAULT_FOV_Y),
-        near_plane_distance: clipping_plane,
+        near_plane_distance: near_clip_plane,
         aspect_ratio: pinhole
             .aspect_ratio()
             .unwrap_or(scene_bounds_size.x / scene_bounds_size.y), // only happens if the pinhole lacks resolution

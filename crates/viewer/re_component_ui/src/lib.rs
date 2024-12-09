@@ -35,7 +35,7 @@ use datatype_uis::{
 
 use re_types::{
     blueprint::components::{
-        BackgroundKind, ClippingPlane, Corner2D, GridSpacing, LockRangeDuringZoom, MapProvider,
+        BackgroundKind, Corner2D, GridSpacing, LockRangeDuringZoom, MapProvider, NearClipPlane,
         ViewFit, Visible,
     },
     components::{
@@ -77,7 +77,7 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     registry.add_singleline_edit_or_view::<ImagePlaneDistance>(edit_f32_zero_to_max);
     registry.add_singleline_edit_or_view::<MarkerSize>(edit_ui_points);
     registry.add_singleline_edit_or_view::<StrokeWidth>(edit_ui_points);
-    registry.add_singleline_edit_or_view::<ClippingPlane>(edit_f32_zero_to_max);
+    registry.add_singleline_edit_or_view::<NearClipPlane>(edit_f32_zero_to_max);
 
     // float min-max components:
     registry.add_singleline_edit_or_view::<DrawOrder>(edit_f32_min_to_max_float);
