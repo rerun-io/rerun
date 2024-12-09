@@ -1871,9 +1871,8 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "Kind", docstring_md : "The type of the background.", is_required :
                     true, }, ArchetypeFieldReflection { component_name :
                     "rerun.components.Color".into(), display_name : "Color", docstring_md
-                    :
-                    "Color used for the [`components.BackgroundKind#SolidColor`](https://rerun.io/docs/reference/types/components/background_kind) background type.",
-                    is_required : false, },
+                    : "Color used for the solid background type.", is_required : false,
+                    },
                 ],
             },
         ),

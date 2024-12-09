@@ -24,7 +24,7 @@ pub struct Background {
     /// The type of the background.
     pub kind: crate::blueprint::components::BackgroundKind,
 
-    /// Color used for the [`components::BackgroundKind::SolidColor`][crate::blueprint::components::BackgroundKind::SolidColor] background type.
+    /// Color used for the solid background type.
     pub color: Option<crate::components::Color>,
 }
 
@@ -206,7 +206,7 @@ impl Background {
         }
     }
 
-    /// Color used for the [`components::BackgroundKind::SolidColor`][crate::blueprint::components::BackgroundKind::SolidColor] background type.
+    /// Color used for the solid background type.
     #[inline]
     pub fn with_color(mut self, color: impl Into<crate::components::Color>) -> Self {
         self.color = Some(color.into());

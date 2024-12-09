@@ -14,6 +14,7 @@ table Background (
 
     // --- Optional ---
 
-    /// Color used for the [components.BackgroundKind.SolidColor] background type.
+    /// Color used for the solid background type.
+    // TODO(andreas): Can't link to [components.BackgroundKind.SolidColor] since blueprint components aren't part of the doc page yet.
     color: rerun.components.Color ("attr.rerun.component_optional", nullable, order: 2000);
 }

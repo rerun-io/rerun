@@ -22,7 +22,7 @@ namespace rerun::blueprint::archetypes {
         /// The type of the background.
         rerun::blueprint::components::BackgroundKind kind;
 
-        /// Color used for the `components::BackgroundKind::SolidColor` background type.
+        /// Color used for the solid background type.
         std::optional<rerun::components::Color> color;
 
       public:
@@ -39,7 +39,7 @@ namespace rerun::blueprint::archetypes {
         explicit Background(rerun::blueprint::components::BackgroundKind _kind)
             : kind(std::move(_kind)) {}
 
-        /// Color used for the `components::BackgroundKind::SolidColor` background type.
+        /// Color used for the solid background type.
         Background with_color(rerun::components::Color _color) && {
             color = std::move(_color);
             // See: https://github.com/rerun-io/rerun/issues/4027

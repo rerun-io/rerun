@@ -50,7 +50,7 @@ class Background(BackgroundExt, Archetype):
         default=None,
         converter=components.ColorBatch._optional,  # type: ignore[misc]
     )
-    # Color used for the [`components.BackgroundKind.SolidColor`][rerun.blueprint.components.BackgroundKind.SolidColor] background type.
+    # Color used for the solid background type.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
