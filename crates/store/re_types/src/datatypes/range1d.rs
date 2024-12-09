@@ -13,41 +13,15 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: A 1D range, specifying a lower and upper bound.
 #[derive(Clone, Debug, Default, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(C)]
 pub struct Range1D(pub [f64; 2usize]);
-
-impl ::re_types_core::SizeBytes for Range1D {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <[f64; 2usize]>::is_pod()
-    }
-}
-
-impl From<[f64; 2usize]> for Range1D {
-    #[inline]
-    fn from(range: [f64; 2usize]) -> Self {
-        Self(range)
-    }
-}
-
-impl From<Range1D> for [f64; 2usize] {
-    #[inline]
-    fn from(value: Range1D) -> Self {
-        value.0
-    }
-}
 
 ::re_types_core::macros::impl_into_cow!(Range1D);
 
@@ -245,5 +219,31 @@ impl ::re_types_core::Loggable for Range1D {
                 slice.iter().copied().map(Self).collect::<Vec<_>>()
             }
         })
+    }
+}
+
+impl From<[f64; 2usize]> for Range1D {
+    #[inline]
+    fn from(range: [f64; 2usize]) -> Self {
+        Self(range)
+    }
+}
+
+impl From<Range1D> for [f64; 2usize] {
+    #[inline]
+    fn from(value: Range1D) -> Self {
+        value.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for Range1D {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <[f64; 2usize]>::is_pod()
     }
 }

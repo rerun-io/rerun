@@ -17,12 +17,26 @@ namespace rerun {
         cells.reserve(3);
 
         if (archetype.corner.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.corner.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.corner.value(),
+                ComponentDescriptor(
+                    "rerun.blueprint.archetypes.PlotLegend",
+                    "corner",
+                    "rerun.blueprint.components.Corner2D"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.visible.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.visible.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.visible.value(),
+                ComponentDescriptor(
+                    "rerun.blueprint.archetypes.PlotLegend",
+                    "visible",
+                    "rerun.blueprint.components.Visible"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

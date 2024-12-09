@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../component_descriptor.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
@@ -35,7 +36,8 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<datatypes::TensorDimensionSelection> {
-        static constexpr const char Name[] = "rerun.datatypes.TensorDimensionSelection";
+        static constexpr ComponentDescriptor Descriptor =
+            "rerun.datatypes.TensorDimensionSelection";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();

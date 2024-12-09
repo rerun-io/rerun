@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: A zoom level determines how much of the world is visible on a map.
@@ -25,44 +25,10 @@ pub struct ZoomLevel(
     pub crate::datatypes::Float64,
 );
 
-impl ::re_types_core::SizeBytes for ZoomLevel {
+impl ::re_types_core::Component for ZoomLevel {
     #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Float64>::is_pod()
-    }
-}
-
-impl<T: Into<crate::datatypes::Float64>> From<T> for ZoomLevel {
-    fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Float64> for ZoomLevel {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Float64 {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for ZoomLevel {
-    type Target = crate::datatypes::Float64;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Float64 {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for ZoomLevel {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Float64 {
-        &mut self.0
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.blueprint.components.ZoomLevel")
     }
 }
 
@@ -108,9 +74,43 @@ impl ::re_types_core::Loggable for ZoomLevel {
     }
 }
 
-impl ::re_types_core::Component for ZoomLevel {
+impl<T: Into<crate::datatypes::Float64>> From<T> for ZoomLevel {
+    fn from(v: T) -> Self {
+        Self(v.into())
+    }
+}
+
+impl std::borrow::Borrow<crate::datatypes::Float64> for ZoomLevel {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.blueprint.components.ZoomLevel".into()
+    fn borrow(&self) -> &crate::datatypes::Float64 {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for ZoomLevel {
+    type Target = crate::datatypes::Float64;
+
+    #[inline]
+    fn deref(&self) -> &crate::datatypes::Float64 {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for ZoomLevel {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::Float64 {
+        &mut self.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for ZoomLevel {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::Float64>::is_pod()
     }
 }

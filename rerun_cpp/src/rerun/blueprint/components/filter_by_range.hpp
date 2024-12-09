@@ -4,6 +4,7 @@
 #pragma once
 
 #include "../../blueprint/datatypes/filter_by_range.hpp"
+#include "../../component_descriptor.hpp"
 #include "../../result.hpp"
 
 #include <cstdint>
@@ -40,7 +41,8 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<blueprint::components::FilterByRange> {
-        static constexpr const char Name[] = "rerun.blueprint.components.FilterByRange";
+        static constexpr ComponentDescriptor Descriptor =
+            "rerun.blueprint.components.FilterByRange";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {

@@ -133,6 +133,14 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <GridSpacing as Component>::name(),
+            ComponentReflection {
+                docstring_md: "Space between grid lines of one line to the next in scene units.",
+                custom_placeholder: Some(GridSpacing::default().to_arrow2()?),
+                datatype: GridSpacing::arrow2_datatype(),
+            },
+        ),
+        (
             <IncludedContent as Component>::name(),
             ComponentReflection {
                 docstring_md: "All the contents in the container.",
@@ -598,6 +606,14 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
                 docstring_md: "Camera projection, from image coordinates to view coordinates.\n\nChild from parent.\nImage coordinates from camera view coordinates.\n\nExample:\n```text\n1496.1     0.0  980.5\n   0.0  1496.1  744.5\n   0.0     0.0    1.0\n```",
                 custom_placeholder: Some(PinholeProjection::default().to_arrow2()?),
                 datatype: PinholeProjection::arrow2_datatype(),
+            },
+        ),
+        (
+            <Plane3D as Component>::name(),
+            ComponentReflection {
+                docstring_md: "An infinite 3D plane represented by a unit normal vector and a distance.\n\nAny point P on the plane fulfills the equation `dot(xyz, P) - d = 0`,\nwhere `xyz` is the plane's normal and `d` the distance of the plane from the origin.\nThis representation is also known as the Hesse normal form.\n\nNote: although the normal will be passed through to the\ndatastore as provided, when used in the Viewer, planes will always be normalized.\nI.e. the plane with xyz = (2, 0, 0), d = 1 is equivalent to xyz = (1, 0, 0), d = 0.5",
+                custom_placeholder: None,
+                datatype: Plane3D::arrow2_datatype(),
             },
         ),
         (
@@ -1559,7 +1575,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     is_required : false, }, ArchetypeFieldReflection { component_name :
                     "rerun.components.ViewCoordinates".into(), display_name :
                     "Camera xyz", docstring_md :
-                    "Sets the view coordinates for the camera.\n\nAll common values are available as constants on the `components.ViewCoordinates` class.\n\nThe default is `ViewCoordinates::RDF`, i.e. X=Right, Y=Down, Z=Forward, and this is also the recommended setting.\nThis means that the camera frustum will point along the positive Z axis of the parent space,\nand the cameras \"up\" direction will be along the negative Y axis of the parent space.\n\nThe camera frustum will point whichever axis is set to `F` (or the opposite of `B`).\nWhen logging a depth image under this entity, this is the direction the point cloud will be projected.\nWith `RDF`, the default forward is +Z.\n\nThe frustum's \"up\" direction will be whichever axis is set to `U` (or the opposite of `D`).\nThis will match the negative Y direction of pixel space (all images are assumed to have xyz=RDF).\nWith `RDF`, the default is up is -Y.\n\nThe frustum's \"right\" direction will be whichever axis is set to `R` (or the opposite of `L`).\nThis will match the positive X direction of pixel space (all images are assumed to have xyz=RDF).\nWith `RDF`, the default right is +x.\n\nOther common formats are `RUB` (X=Right, Y=Up, Z=Back) and `FLU` (X=Forward, Y=Left, Z=Up).\n\nNOTE: setting this to something else than `RDF` (the default) will change the orientation of the camera frustum,\nand make the pinhole matrix not match up with the coordinate system of the pinhole entity.\n\nThe pinhole matrix (the `image_from_camera` argument) always project along the third (Z) axis,\nbut will be re-oriented to project along the forward axis of the `camera_xyz` argument.",
+                    "Sets the view coordinates for the camera.\n\nAll common values are available as constants on the [`components.ViewCoordinates`](https://rerun.io/docs/reference/types/components/view_coordinates) class.\n\nThe default is `ViewCoordinates::RDF`, i.e. X=Right, Y=Down, Z=Forward, and this is also the recommended setting.\nThis means that the camera frustum will point along the positive Z axis of the parent space,\nand the cameras \"up\" direction will be along the negative Y axis of the parent space.\n\nThe camera frustum will point whichever axis is set to `F` (or the opposite of `B`).\nWhen logging a depth image under this entity, this is the direction the point cloud will be projected.\nWith `RDF`, the default forward is +Z.\n\nThe frustum's \"up\" direction will be whichever axis is set to `U` (or the opposite of `D`).\nThis will match the negative Y direction of pixel space (all images are assumed to have xyz=RDF).\nWith `RDF`, the default is up is -Y.\n\nThe frustum's \"right\" direction will be whichever axis is set to `R` (or the opposite of `L`).\nThis will match the positive X direction of pixel space (all images are assumed to have xyz=RDF).\nWith `RDF`, the default right is +x.\n\nOther common formats are `RUB` (X=Right, Y=Up, Z=Back) and `FLU` (X=Forward, Y=Left, Z=Up).\n\nNOTE: setting this to something else than `RDF` (the default) will change the orientation of the camera frustum,\nand make the pinhole matrix not match up with the coordinate system of the pinhole entity.\n\nThe pinhole matrix (the `image_from_camera` argument) always project along the third (Z) axis,\nbut will be re-oriented to project along the forward axis of the `camera_xyz` argument.",
                     is_required : false, }, ArchetypeFieldReflection { component_name :
                     "rerun.components.ImagePlaneDistance".into(), display_name :
                     "Image plane distance", docstring_md :
@@ -1928,6 +1944,36 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "Select", docstring_md :
                     "Selected columns. If unset, all columns are selected.", is_required
                     : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.blueprint.archetypes.LineGrid3D"),
+            ArchetypeReflection {
+                display_name: "Line grid 3D",
+                view_types: &[],
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.Visible".into(), display_name :
+                    "Visible", docstring_md :
+                    "Whether the grid is visible.\n\nDefaults to true.", is_required :
+                    false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.GridSpacing".into(), display_name :
+                    "Spacing", docstring_md :
+                    "Space between grid lines spacing of one line to the next in scene units.\n\nAs you zoom out, successively only every tenth line is shown.\nThis controls the closest zoom level.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Plane3D".into(), display_name : "Plane",
+                    docstring_md :
+                    "In what plane the grid is drawn.\n\nDefaults to whatever plane is determined as the plane at zero units up/down as defined by [`components.ViewCoordinates`](https://rerun.io/docs/reference/types/components/view_coordinates) if present.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.StrokeWidth".into(), display_name : "Stroke width",
+                    docstring_md :
+                    "How thick the lines should be in ui units.\n\nDefault is 1.0 ui unit.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Color".into(), display_name : "Color", docstring_md
+                    :
+                    "Color used for the grid.\n\nTransparency via alpha channel is supported.\nDefaults to a slightly transparent light gray.",
+                    is_required : false, },
                 ],
             },
         ),

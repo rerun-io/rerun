@@ -3,7 +3,7 @@
 use rerun::{
     demo_util::grid,
     external::{arrow2, glam, re_types},
-    ComponentName,
+    ComponentBatch,
 };
 
 // ---
@@ -18,7 +18,7 @@ struct CustomPoints3D {
 }
 
 impl rerun::AsComponents for CustomPoints3D {
-    fn as_component_batches(&self) -> Vec<rerun::MaybeOwnedComponentBatch<'_>> {
+    fn as_component_batches(&self) -> Vec<rerun::ComponentBatchCowWithDescriptor<'_>> {
         let indicator = rerun::NamedIndicatorComponent("user.CustomPoints3DIndicator".into());
         self.points3d
             .as_component_batches()
@@ -26,9 +26,19 @@ impl rerun::AsComponents for CustomPoints3D {
             .chain(
                 [
                     Some(indicator.to_batch()),
-                    self.confidences
-                        .as_ref()
-                        .map(|v| (v as &dyn rerun::ComponentBatch).into()),
+                    self.confidences.as_ref().map(|batch| {
+                        rerun::ComponentBatchCowWithDescriptor::new(
+                            batch as &dyn rerun::ComponentBatch,
+                        )
+                        // Optionally override the descriptor with extra information.
+                        .with_descriptor_override(
+                            batch
+                                .descriptor()
+                                .into_owned()
+                                .or_with_archetype_name(|| "user.CustomPoints3D".into())
+                                .or_with_archetype_field_name(|| "confidences".into()),
+                        )
+                    }),
                 ]
                 .into_iter()
                 .flatten(),
@@ -75,8 +85,8 @@ impl rerun::Loggable for Confidence {
 
 impl rerun::Component for Confidence {
     #[inline]
-    fn name() -> ComponentName {
-        "user.Confidence".into()
+    fn descriptor() -> rerun::ComponentDescriptor {
+        rerun::ComponentDescriptor::new("user.Confidence")
     }
 }
 

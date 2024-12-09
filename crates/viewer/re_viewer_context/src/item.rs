@@ -1,7 +1,8 @@
 use re_entity_db::{EntityDb, InstancePath};
 use re_log_types::{ComponentPath, DataPath, EntityPath};
+use re_types::ComponentDescriptor;
 
-use crate::{ContainerId, SpaceViewId};
+use crate::{ContainerId, Contents, SpaceViewId};
 
 /// One "thing" in the UI.
 ///
@@ -79,6 +80,16 @@ impl From<InstancePath> for Item {
     }
 }
 
+impl From<Contents> for Item {
+    #[inline]
+    fn from(contents: Contents) -> Self {
+        match contents {
+            Contents::Container(container_id) => Self::Container(container_id),
+            Contents::SpaceView(space_view_id) => Self::SpaceView(space_view_id),
+        }
+    }
+}
+
 impl std::str::FromStr for Item {
     type Err = re_log_types::PathParseError;
 
@@ -133,13 +144,7 @@ impl Item {
                 re_log_types::StoreKind::Recording => "Recording ID",
                 re_log_types::StoreKind::Blueprint => "Blueprint ID",
             },
-            Self::InstancePath(instance_path) => {
-                if instance_path.instance.is_specific() {
-                    "Entity instance"
-                } else {
-                    "Entity"
-                }
-            }
+            Self::InstancePath(instance_path) => instance_path.kind(),
             Self::ComponentPath(_) => "Entity component",
             Self::SpaceView(_) => "View",
             Self::Container(_) => "Container",
@@ -201,7 +206,11 @@ pub fn resolve_mono_instance_path(
         for component_name in component_names {
             if let Some(array) = engine
                 .cache()
-                .latest_at(query, &instance.entity_path, [component_name])
+                .latest_at(
+                    query,
+                    &instance.entity_path,
+                    [ComponentDescriptor::new(component_name)],
+                )
                 .component_batch_raw(&component_name)
             {
                 if array.len() > 1 {

@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: A 3x3 Matrix.
@@ -34,32 +34,6 @@ pub struct Mat3x3(
     /// Flat list of matrix coefficients in column-major order.
     pub [f32; 9usize],
 );
-
-impl ::re_types_core::SizeBytes for Mat3x3 {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <[f32; 9usize]>::is_pod()
-    }
-}
-
-impl From<[f32; 9usize]> for Mat3x3 {
-    #[inline]
-    fn from(flat_columns: [f32; 9usize]) -> Self {
-        Self(flat_columns)
-    }
-}
-
-impl From<Mat3x3> for [f32; 9usize] {
-    #[inline]
-    fn from(value: Mat3x3) -> Self {
-        value.0
-    }
-}
 
 ::re_types_core::macros::impl_into_cow!(Mat3x3);
 
@@ -257,5 +231,31 @@ impl ::re_types_core::Loggable for Mat3x3 {
                 slice.iter().copied().map(Self).collect::<Vec<_>>()
             }
         })
+    }
+}
+
+impl From<[f32; 9usize]> for Mat3x3 {
+    #[inline]
+    fn from(flat_columns: [f32; 9usize]) -> Self {
+        Self(flat_columns)
+    }
+}
+
+impl From<Mat3x3> for [f32; 9usize] {
+    #[inline]
+    fn from(value: Mat3x3) -> Self {
+        value.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for Mat3x3 {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <[f32; 9usize]>::is_pod()
     }
 }

@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: The underlying storage for [`archetypes::Tensor`][crate::archetypes::Tensor].
@@ -55,41 +55,6 @@ pub enum TensorBuffer {
 
     /// 64bit IEEE-754 floating point, also known as `double`.
     F64(::re_types_core::ArrowBuffer<f64>),
-}
-
-impl ::re_types_core::SizeBytes for TensorBuffer {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        #![allow(clippy::match_same_arms)]
-        match self {
-            Self::U8(v) => v.heap_size_bytes(),
-            Self::U16(v) => v.heap_size_bytes(),
-            Self::U32(v) => v.heap_size_bytes(),
-            Self::U64(v) => v.heap_size_bytes(),
-            Self::I8(v) => v.heap_size_bytes(),
-            Self::I16(v) => v.heap_size_bytes(),
-            Self::I32(v) => v.heap_size_bytes(),
-            Self::I64(v) => v.heap_size_bytes(),
-            Self::F16(v) => v.heap_size_bytes(),
-            Self::F32(v) => v.heap_size_bytes(),
-            Self::F64(v) => v.heap_size_bytes(),
-        }
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <::re_types_core::ArrowBuffer<u8>>::is_pod()
-            && <::re_types_core::ArrowBuffer<u16>>::is_pod()
-            && <::re_types_core::ArrowBuffer<u32>>::is_pod()
-            && <::re_types_core::ArrowBuffer<u64>>::is_pod()
-            && <::re_types_core::ArrowBuffer<i8>>::is_pod()
-            && <::re_types_core::ArrowBuffer<i16>>::is_pod()
-            && <::re_types_core::ArrowBuffer<i32>>::is_pod()
-            && <::re_types_core::ArrowBuffer<i64>>::is_pod()
-            && <::re_types_core::ArrowBuffer<half::f16>>::is_pod()
-            && <::re_types_core::ArrowBuffer<f32>>::is_pod()
-            && <::re_types_core::ArrowBuffer<f64>>::is_pod()
-    }
 }
 
 ::re_types_core::macros::impl_into_cow!(TensorBuffer);
@@ -1762,5 +1727,40 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     .with_context("rerun.datatypes.TensorBuffer")?
             }
         })
+    }
+}
+
+impl ::re_types_core::SizeBytes for TensorBuffer {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        #![allow(clippy::match_same_arms)]
+        match self {
+            Self::U8(v) => v.heap_size_bytes(),
+            Self::U16(v) => v.heap_size_bytes(),
+            Self::U32(v) => v.heap_size_bytes(),
+            Self::U64(v) => v.heap_size_bytes(),
+            Self::I8(v) => v.heap_size_bytes(),
+            Self::I16(v) => v.heap_size_bytes(),
+            Self::I32(v) => v.heap_size_bytes(),
+            Self::I64(v) => v.heap_size_bytes(),
+            Self::F16(v) => v.heap_size_bytes(),
+            Self::F32(v) => v.heap_size_bytes(),
+            Self::F64(v) => v.heap_size_bytes(),
+        }
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <::re_types_core::ArrowBuffer<u8>>::is_pod()
+            && <::re_types_core::ArrowBuffer<u16>>::is_pod()
+            && <::re_types_core::ArrowBuffer<u32>>::is_pod()
+            && <::re_types_core::ArrowBuffer<u64>>::is_pod()
+            && <::re_types_core::ArrowBuffer<i8>>::is_pod()
+            && <::re_types_core::ArrowBuffer<i16>>::is_pod()
+            && <::re_types_core::ArrowBuffer<i32>>::is_pod()
+            && <::re_types_core::ArrowBuffer<i64>>::is_pod()
+            && <::re_types_core::ArrowBuffer<half::f16>>::is_pod()
+            && <::re_types_core::ArrowBuffer<f32>>::is_pod()
+            && <::re_types_core::ArrowBuffer<f64>>::is_pod()
     }
 }

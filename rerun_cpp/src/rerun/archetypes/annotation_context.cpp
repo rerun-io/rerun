@@ -17,7 +17,14 @@ namespace rerun {
         cells.reserve(2);
 
         {
-            auto result = ComponentBatch::from_loggable(archetype.context);
+            auto result = ComponentBatch::from_loggable(
+                archetype.context,
+                ComponentDescriptor(
+                    "rerun.archetypes.AnnotationContext",
+                    "context",
+                    "rerun.components.AnnotationContext"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

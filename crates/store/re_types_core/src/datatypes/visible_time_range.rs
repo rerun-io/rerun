@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use crate::external::arrow2;
-use crate::ComponentName;
 use crate::SerializationResult;
-use crate::{ComponentBatch, MaybeOwnedComponentBatch};
+use crate::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use crate::{ComponentDescriptor, ComponentName};
 use crate::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: Visible time range bounds for a specific timeline.
@@ -26,18 +26,6 @@ pub struct VisibleTimeRange {
 
     /// Time range to use for this timeline.
     pub range: crate::datatypes::TimeRange,
-}
-
-impl crate::SizeBytes for VisibleTimeRange {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.timeline.heap_size_bytes() + self.range.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Utf8>::is_pod() && <crate::datatypes::TimeRange>::is_pod()
-    }
 }
 
 crate::macros::impl_into_cow!(VisibleTimeRange);
@@ -272,5 +260,17 @@ impl crate::Loggable for VisibleTimeRange {
                 .with_context("rerun.datatypes.VisibleTimeRange")?
             }
         })
+    }
+}
+
+impl crate::SizeBytes for VisibleTimeRange {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.timeline.heap_size_bytes() + self.range.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::Utf8>::is_pod() && <crate::datatypes::TimeRange>::is_pod()
     }
 }

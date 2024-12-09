@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../../component_descriptor.hpp"
 #include "../../result.hpp"
 
 #include <cstdint>
@@ -44,7 +45,8 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<blueprint::components::ContainerKind> {
-        static constexpr const char Name[] = "rerun.blueprint.components.ContainerKind";
+        static constexpr ComponentDescriptor Descriptor =
+            "rerun.blueprint.components.ContainerKind";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();

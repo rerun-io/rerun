@@ -70,7 +70,15 @@ impl LayoutStatistics {
 
     /// Read the saved accumulated value.
     fn read(ctx: &egui::Context, scope_id: egui::Id) -> Self {
-        ctx.data(|reader| reader.get_temp(scope_id).unwrap_or_default())
+        if let Some(slf) = ctx.data(|reader| reader.get_temp(scope_id)) {
+            slf
+        } else {
+            // First time we do layout in this scope.
+            // The layout will likely be weird this pass,
+            // so discard and do another pass to avoid jitter:
+            ctx.request_discard("Missing re_ui::LayoutStatistics");
+            Default::default()
+        }
     }
 
     /// Update the accumulator.

@@ -563,7 +563,7 @@ impl QuotedObject {
             .map(|m| m.to_cpp_tokens(&quote!(#type_ident)));
 
         let indicator_comment = quote_doc_comment("Indicator component, used to identify the archetype when converting to a list of components.");
-        let indicator_fqname =
+        let indicator_component_fqname =
             format!("{}Indicator", obj.fqname).replace("archetypes", "components");
         let doc_hide_comment = quote_hide_from_docs();
         let deprecation_notice = quote_deprecation_notice(obj);
@@ -590,7 +590,7 @@ impl QuotedObject {
                     #(#field_declarations;)*
 
                 public:
-                    static constexpr const char IndicatorComponentName[] = #indicator_fqname;
+                    static constexpr const char IndicatorComponentName[] = #indicator_component_fqname;
                     #NEWLINE_TOKEN
                     #NEWLINE_TOKEN
                     #indicator_comment
@@ -1602,9 +1602,12 @@ fn archetype_serialize(type_ident: &Ident, obj: &Object, hpp_includes: &mut Incl
         quote!(archetypes)
     };
 
+    let archetype_name = &obj.fqname;
+
     let num_fields = quote_integer(obj.fields.len() + 1); // Plus one for the indicator.
     let push_batches = obj.fields.iter().map(|field| {
         let field_name = field_name_identifier(field);
+        let field_fqname = &field.typ.fqname();
         let field_accessor = quote!(archetype.#field_name);
 
         let push_back = quote! {
@@ -1612,18 +1615,26 @@ fn archetype_serialize(type_ident: &Ident, obj: &Object, hpp_includes: &mut Incl
             cells.push_back(std::move(result.value));
         };
 
+        let archetype_field_name = field.snake_case_name();
+
         // TODO(andreas): Introducing MonoCollection will remove the need for distinguishing these two cases.
         if field.is_nullable && !obj.attrs.has(ATTR_RERUN_LOG_MISSING_AS_EMPTY) {
             quote! {
                 if (#field_accessor.has_value()) {
-                    auto result = ComponentBatch::from_loggable(#field_accessor.value());
+                    auto result = ComponentBatch::from_loggable(
+                        #field_accessor.value(),
+                        ComponentDescriptor(#archetype_name, #archetype_field_name, #field_fqname)
+                    );
                     #push_back
                 }
             }
         } else {
             quote! {
                 {
-                    auto result = ComponentBatch::from_loggable(#field_accessor);
+                    auto result = ComponentBatch::from_loggable(
+                        #field_accessor,
+                        ComponentDescriptor(#archetype_name, #archetype_field_name, #field_fqname)
+                    );
                     #push_back
                 }
             }
@@ -2578,6 +2589,8 @@ fn quote_loggable_hpp_and_cpp(
     let methods_cpp = methods.iter().map(|m| m.to_cpp_tokens(&loggable_type_name));
     let hide_from_docs_comment = quote_hide_from_docs();
 
+    hpp_includes.insert_rerun("component_descriptor.hpp");
+
     let hpp = quote! {
         namespace rerun {
             #predeclarations_and_static_assertions
@@ -2585,7 +2598,7 @@ fn quote_loggable_hpp_and_cpp(
             #hide_from_docs_comment
             template<>
             struct #loggable_type_name {
-                static constexpr const char Name[] = #fqname;
+                static constexpr ComponentDescriptor Descriptor = #fqname;
                 #NEWLINE_TOKEN
                 #NEWLINE_TOKEN
                 #(#methods_hpp)*

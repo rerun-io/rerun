@@ -39,6 +39,7 @@ media_type.py linguist-generated=true
 name.py linguist-generated=true
 opacity.py linguist-generated=true
 pinhole_projection.py linguist-generated=true
+plane3d.py linguist-generated=true
 pose_rotation_axis_angle.py linguist-generated=true
 pose_rotation_quat.py linguist-generated=true
 pose_scale3d.py linguist-generated=true

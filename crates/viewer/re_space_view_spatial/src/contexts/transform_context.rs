@@ -159,8 +159,14 @@ impl Default for TransformContext {
 impl ViewContextSystem for TransformContext {
     fn compatible_component_sets(&self) -> Vec<ComponentNameSet> {
         vec![
-            Transform3D::all_components().iter().copied().collect(),
-            InstancePoses3D::all_components().iter().copied().collect(),
+            Transform3D::all_components()
+                .iter()
+                .map(|descr| descr.component_name)
+                .collect(),
+            InstancePoses3D::all_components()
+                .iter()
+                .map(|descr| descr.component_name)
+                .collect(),
             std::iter::once(PinholeProjection::name()).collect(),
             std::iter::once(DisconnectedSpace::name()).collect(),
         ]
@@ -555,7 +561,10 @@ fn query_and_resolve_tree_transform_at_entity(
     if let Some(mat3x3) = result.component_instance::<TransformMat3x3>(0) {
         transform *= glam::Affine3A::from(mat3x3);
     }
+
     if result.component_instance::<TransformRelation>(0) == Some(TransformRelation::ChildFromParent)
+    // TODO(andreas): Should we warn? This might be intentionally caused by zero scale.
+        && transform.matrix3.determinant() != 0.0
     {
         transform = transform.inverse();
     }

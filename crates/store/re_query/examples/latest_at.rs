@@ -30,7 +30,7 @@ fn main() -> anyhow::Result<()> {
     let results: LatestAtResults = caches.latest_at(
         &query,
         &entity_path.into(),
-        MyPoints::all_components().iter().copied(), // no generics!
+        MyPoints::all_components().iter(), // no generics!
     );
 
     // The results can be accessed either through the low-level Chunk APIs, or the higher-level helpers.

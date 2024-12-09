@@ -14,9 +14,9 @@
 #![allow(non_camel_case_types)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: Specifieds a particular format of an [`archetypes::Image`][crate::archetypes::Image].
@@ -125,89 +125,6 @@ pub enum PixelFormat {
     Y_U_V16_FullRange = 50,
 }
 
-impl ::re_types_core::reflection::Enum for PixelFormat {
-    #[inline]
-    fn variants() -> &'static [Self] {
-        &[
-            Self::Y_U_V12_LimitedRange,
-            Self::NV12,
-            Self::YUY2,
-            Self::Y8_FullRange,
-            Self::Y_U_V24_LimitedRange,
-            Self::Y_U_V24_FullRange,
-            Self::Y8_LimitedRange,
-            Self::Y_U_V12_FullRange,
-            Self::Y_U_V16_LimitedRange,
-            Self::Y_U_V16_FullRange,
-        ]
-    }
-
-    #[inline]
-    fn docstring_md(self) -> &'static str {
-        match self {
-            Self::Y_U_V12_LimitedRange => {
-                "`Y_U_V12` is a YUV 4:2:0 fully planar YUV format without chroma downsampling, also known as `I420`.\n\nThis uses limited range YUV, i.e. Y is expected to be within [16, 235] and U/V within [16, 240].\n\nFirst comes entire image in Y in one plane, followed by the U and V planes, which each only have half\nthe resolution of the Y plane."
-            }
-            Self::NV12 => {
-                "`NV12` (aka `Y_UV12`) is a YUV 4:2:0 chroma downsampled form at with 12 bits per pixel and 8 bits per channel.\n\nThis uses limited range YUV, i.e. Y is expected to be within [16, 235] and U/V within [16, 240].\n\nFirst comes entire image in Y in one plane,\nfollowed by a plane with interleaved lines ordered as U0, V0, U1, V1, etc."
-            }
-            Self::YUY2 => {
-                "`YUY2` (aka 'YUYV', 'YUYV16' or 'NV21'), is a YUV 4:2:2 chroma downsampled format with 16 bits per pixel and 8 bits per channel.\n\nThis uses limited range YUV, i.e. Y is expected to be within [16, 235] and U/V within [16, 240].\n\nThe order of the channels is Y0, U0, Y1, V0, all in the same plane."
-            }
-            Self::Y8_FullRange => {
-                "Monochrome Y plane only, essentially a YUV 4:0:0 planar format.\n\nAlso known as just \"gray\". This is virtually identical to a 8bit luminance/grayscale (see [`datatypes::ColorModel`][crate::datatypes::ColorModel]).\n\nThis uses entire range YUV, i.e. Y is expected to be within [0, 255].\n(as opposed to \"limited range\" YUV as used e.g. in NV12)."
-            }
-            Self::Y_U_V24_LimitedRange => {
-                "`Y_U_V24` is a YUV 4:4:4 fully planar YUV format without chroma downsampling, also known as `I444`.\n\nThis uses limited range YUV, i.e. Y is expected to be within [16, 235] and U/V within [16, 240].\n\nFirst comes entire image in Y in one plane, followed by the U and V planes."
-            }
-            Self::Y_U_V24_FullRange => {
-                "`Y_U_V24` is a YUV 4:4:4 fully planar YUV format without chroma downsampling, also known as `I444`.\n\nThis uses full range YUV with all components ranging from 0 to 255\n(as opposed to \"limited range\" YUV as used e.g. in NV12).\n\nFirst comes entire image in Y in one plane, followed by the U and V planes."
-            }
-            Self::Y8_LimitedRange => {
-                "Monochrome Y plane only, essentially a YUV 4:0:0 planar format.\n\nAlso known as just \"gray\".\n\nThis uses limited range YUV, i.e. Y is expected to be within [16, 235].\nIf not for this range limitation/remapping, this is almost identical to 8bit luminace/grayscale (see [`datatypes::ColorModel`][crate::datatypes::ColorModel])."
-            }
-            Self::Y_U_V12_FullRange => {
-                "`Y_U_V12` is a YUV 4:2:0 fully planar YUV format without chroma downsampling, also known as `I420`.\n\nThis uses full range YUV with all components ranging from 0 to 255\n(as opposed to \"limited range\" YUV as used e.g. in NV12).\n\nFirst comes entire image in Y in one plane, followed by the U and V planes, which each only have half\nthe resolution of the Y plane."
-            }
-            Self::Y_U_V16_LimitedRange => {
-                "`Y_U_V16` is a YUV 4:2:2 fully planar YUV format without chroma downsampling, also known as `I422`.\n\nThis uses limited range YUV, i.e. Y is expected to be within [16, 235] and U/V within [16, 240].\n\nFirst comes entire image in Y in one plane, followed by the U and V planes, which each only have half\nthe horizontal resolution of the Y plane."
-            }
-            Self::Y_U_V16_FullRange => {
-                "`Y_U_V16` is a YUV 4:2:2 fully planar YUV format without chroma downsampling, also known as `I422`.\n\nThis uses full range YUV with all components ranging from 0 to 255\n(as opposed to \"limited range\" YUV as used e.g. in NV12).\n\nFirst comes entire image in Y in one plane, followed by the U and V planes, which each only have half\nthe horizontal resolution of the Y plane."
-            }
-        }
-    }
-}
-
-impl ::re_types_core::SizeBytes for PixelFormat {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
-    }
-}
-
-impl std::fmt::Display for PixelFormat {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Y_U_V12_LimitedRange => write!(f, "Y_U_V12_LimitedRange"),
-            Self::NV12 => write!(f, "NV12"),
-            Self::YUY2 => write!(f, "YUY2"),
-            Self::Y8_FullRange => write!(f, "Y8_FullRange"),
-            Self::Y_U_V24_LimitedRange => write!(f, "Y_U_V24_LimitedRange"),
-            Self::Y_U_V24_FullRange => write!(f, "Y_U_V24_FullRange"),
-            Self::Y8_LimitedRange => write!(f, "Y8_LimitedRange"),
-            Self::Y_U_V12_FullRange => write!(f, "Y_U_V12_FullRange"),
-            Self::Y_U_V16_LimitedRange => write!(f, "Y_U_V16_LimitedRange"),
-            Self::Y_U_V16_FullRange => write!(f, "Y_U_V16_FullRange"),
-        }
-    }
-}
-
 ::re_types_core::macros::impl_into_cow!(PixelFormat);
 
 impl ::re_types_core::Loggable for PixelFormat {
@@ -299,5 +216,88 @@ impl ::re_types_core::Loggable for PixelFormat {
             })
             .collect::<DeserializationResult<Vec<Option<_>>>>()
             .with_context("rerun.datatypes.PixelFormat")?)
+    }
+}
+
+impl std::fmt::Display for PixelFormat {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Y_U_V12_LimitedRange => write!(f, "Y_U_V12_LimitedRange"),
+            Self::NV12 => write!(f, "NV12"),
+            Self::YUY2 => write!(f, "YUY2"),
+            Self::Y8_FullRange => write!(f, "Y8_FullRange"),
+            Self::Y_U_V24_LimitedRange => write!(f, "Y_U_V24_LimitedRange"),
+            Self::Y_U_V24_FullRange => write!(f, "Y_U_V24_FullRange"),
+            Self::Y8_LimitedRange => write!(f, "Y8_LimitedRange"),
+            Self::Y_U_V12_FullRange => write!(f, "Y_U_V12_FullRange"),
+            Self::Y_U_V16_LimitedRange => write!(f, "Y_U_V16_LimitedRange"),
+            Self::Y_U_V16_FullRange => write!(f, "Y_U_V16_FullRange"),
+        }
+    }
+}
+
+impl ::re_types_core::reflection::Enum for PixelFormat {
+    #[inline]
+    fn variants() -> &'static [Self] {
+        &[
+            Self::Y_U_V12_LimitedRange,
+            Self::NV12,
+            Self::YUY2,
+            Self::Y8_FullRange,
+            Self::Y_U_V24_LimitedRange,
+            Self::Y_U_V24_FullRange,
+            Self::Y8_LimitedRange,
+            Self::Y_U_V12_FullRange,
+            Self::Y_U_V16_LimitedRange,
+            Self::Y_U_V16_FullRange,
+        ]
+    }
+
+    #[inline]
+    fn docstring_md(self) -> &'static str {
+        match self {
+            Self::Y_U_V12_LimitedRange => {
+                "`Y_U_V12` is a YUV 4:2:0 fully planar YUV format without chroma downsampling, also known as `I420`.\n\nThis uses limited range YUV, i.e. Y is expected to be within [16, 235] and U/V within [16, 240].\n\nFirst comes entire image in Y in one plane, followed by the U and V planes, which each only have half\nthe resolution of the Y plane."
+            }
+            Self::NV12 => {
+                "`NV12` (aka `Y_UV12`) is a YUV 4:2:0 chroma downsampled form at with 12 bits per pixel and 8 bits per channel.\n\nThis uses limited range YUV, i.e. Y is expected to be within [16, 235] and U/V within [16, 240].\n\nFirst comes entire image in Y in one plane,\nfollowed by a plane with interleaved lines ordered as U0, V0, U1, V1, etc."
+            }
+            Self::YUY2 => {
+                "`YUY2` (aka 'YUYV', 'YUYV16' or 'NV21'), is a YUV 4:2:2 chroma downsampled format with 16 bits per pixel and 8 bits per channel.\n\nThis uses limited range YUV, i.e. Y is expected to be within [16, 235] and U/V within [16, 240].\n\nThe order of the channels is Y0, U0, Y1, V0, all in the same plane."
+            }
+            Self::Y8_FullRange => {
+                "Monochrome Y plane only, essentially a YUV 4:0:0 planar format.\n\nAlso known as just \"gray\". This is virtually identical to a 8bit luminance/grayscale (see [`datatypes::ColorModel`][crate::datatypes::ColorModel]).\n\nThis uses entire range YUV, i.e. Y is expected to be within [0, 255].\n(as opposed to \"limited range\" YUV as used e.g. in NV12)."
+            }
+            Self::Y_U_V24_LimitedRange => {
+                "`Y_U_V24` is a YUV 4:4:4 fully planar YUV format without chroma downsampling, also known as `I444`.\n\nThis uses limited range YUV, i.e. Y is expected to be within [16, 235] and U/V within [16, 240].\n\nFirst comes entire image in Y in one plane, followed by the U and V planes."
+            }
+            Self::Y_U_V24_FullRange => {
+                "`Y_U_V24` is a YUV 4:4:4 fully planar YUV format without chroma downsampling, also known as `I444`.\n\nThis uses full range YUV with all components ranging from 0 to 255\n(as opposed to \"limited range\" YUV as used e.g. in NV12).\n\nFirst comes entire image in Y in one plane, followed by the U and V planes."
+            }
+            Self::Y8_LimitedRange => {
+                "Monochrome Y plane only, essentially a YUV 4:0:0 planar format.\n\nAlso known as just \"gray\".\n\nThis uses limited range YUV, i.e. Y is expected to be within [16, 235].\nIf not for this range limitation/remapping, this is almost identical to 8bit luminace/grayscale (see [`datatypes::ColorModel`][crate::datatypes::ColorModel])."
+            }
+            Self::Y_U_V12_FullRange => {
+                "`Y_U_V12` is a YUV 4:2:0 fully planar YUV format without chroma downsampling, also known as `I420`.\n\nThis uses full range YUV with all components ranging from 0 to 255\n(as opposed to \"limited range\" YUV as used e.g. in NV12).\n\nFirst comes entire image in Y in one plane, followed by the U and V planes, which each only have half\nthe resolution of the Y plane."
+            }
+            Self::Y_U_V16_LimitedRange => {
+                "`Y_U_V16` is a YUV 4:2:2 fully planar YUV format without chroma downsampling, also known as `I422`.\n\nThis uses limited range YUV, i.e. Y is expected to be within [16, 235] and U/V within [16, 240].\n\nFirst comes entire image in Y in one plane, followed by the U and V planes, which each only have half\nthe horizontal resolution of the Y plane."
+            }
+            Self::Y_U_V16_FullRange => {
+                "`Y_U_V16` is a YUV 4:2:2 fully planar YUV format without chroma downsampling, also known as `I422`.\n\nThis uses full range YUV with all components ranging from 0 to 255\n(as opposed to \"limited range\" YUV as used e.g. in NV12).\n\nFirst comes entire image in Y in one plane, followed by the U and V planes, which each only have half\nthe horizontal resolution of the Y plane."
+            }
+        }
+    }
+}
+
+impl ::re_types_core::SizeBytes for PixelFormat {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
     }
 }

@@ -8,6 +8,7 @@ from __future__ import annotations
 from ... import datatypes
 from ..._baseclasses import (
     ComponentBatchMixin,
+    ComponentDescriptor,
     ComponentMixin,
 )
 
@@ -25,7 +26,7 @@ class AutoSpaceViews(datatypes.Bool, ComponentMixin):
 
 
 class AutoSpaceViewsBatch(datatypes.BoolBatch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.blueprint.components.AutoSpaceViews"
+    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.blueprint.components.AutoSpaceViews")
 
 
 # This is patched in late to avoid circular dependencies.

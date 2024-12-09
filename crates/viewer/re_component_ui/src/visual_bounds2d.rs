@@ -11,7 +11,8 @@ pub fn multiline_edit_visual_bounds2d(
 ) -> egui::Response {
     let mut any_edit = false;
 
-    let response_x = ui.list_item_flat_noninteractive(
+    let response_x = ui.list_item().interactive(false).show_hierarchical(
+        ui,
         re_ui::list_item::PropertyContent::new("x").value_fn(|ui, _| {
             if let Some(value) = value.as_mut() {
                 any_edit |= range_mut_ui(ui, &mut value.x_range.0).changed();
@@ -21,7 +22,8 @@ pub fn multiline_edit_visual_bounds2d(
         }),
     );
 
-    let response_y = ui.list_item_flat_noninteractive(
+    let response_y = ui.list_item().interactive(false).show_hierarchical(
+        ui,
         re_ui::list_item::PropertyContent::new("y").value_fn(|ui, _| {
             if let Some(value) = value.as_mut() {
                 any_edit |= range_mut_ui(ui, &mut value.y_range.0).changed();

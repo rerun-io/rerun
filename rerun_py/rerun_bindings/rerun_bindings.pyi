@@ -149,9 +149,11 @@ class Schema:
     def index_columns(self) -> list[IndexColumnDescriptor]:
         """Return a list of all the index columns in the schema."""
         ...
+
     def component_columns(self) -> list[ComponentColumnDescriptor]:
         """Return a list of all the component columns in the schema."""
         ...
+
     def column_for(self, entity_path: str, component: ComponentLike) -> Optional[ComponentColumnDescriptor]:
         """
         Look up the column descriptor for a specific entity path and component.
@@ -575,7 +577,7 @@ class StorageNodeClient:
     Required-feature: `remote`
     """
 
-    def list_recordings(self) -> pa.RecordBatchReader:
+    def query_catalog(self) -> pa.RecordBatchReader:
         """Get the metadata for all recordings in the storage node."""
         ...
 
@@ -593,7 +595,7 @@ class StorageNodeClient:
         """
         ...
 
-    def update_metadata(self, id: str, metadata: dict[str, MetadataLike]) -> None:
+    def update_catalog(self, id: str, metadata: dict[str, MetadataLike]) -> None:
         """
         Update the metadata for the recording with the given id.
 

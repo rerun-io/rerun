@@ -13,41 +13,15 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: A double-precision vector in 2D space.
 #[derive(Clone, Debug, Default, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(C)]
 pub struct DVec2D(pub [f64; 2usize]);
-
-impl ::re_types_core::SizeBytes for DVec2D {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <[f64; 2usize]>::is_pod()
-    }
-}
-
-impl From<[f64; 2usize]> for DVec2D {
-    #[inline]
-    fn from(xy: [f64; 2usize]) -> Self {
-        Self(xy)
-    }
-}
-
-impl From<DVec2D> for [f64; 2usize] {
-    #[inline]
-    fn from(value: DVec2D) -> Self {
-        value.0
-    }
-}
 
 ::re_types_core::macros::impl_into_cow!(DVec2D);
 
@@ -245,5 +219,31 @@ impl ::re_types_core::Loggable for DVec2D {
                 slice.iter().copied().map(Self).collect::<Vec<_>>()
             }
         })
+    }
+}
+
+impl From<[f64; 2usize]> for DVec2D {
+    #[inline]
+    fn from(xy: [f64; 2usize]) -> Self {
+        Self(xy)
+    }
+}
+
+impl From<DVec2D> for [f64; 2usize] {
+    #[inline]
+    fn from(value: DVec2D) -> Self {
+        value.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for DVec2D {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <[f64; 2usize]>::is_pod()
     }
 }

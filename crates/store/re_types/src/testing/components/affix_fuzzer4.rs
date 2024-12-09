@@ -13,52 +13,18 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct AffixFuzzer4(pub Option<crate::testing::datatypes::AffixFuzzer1>);
 
-impl ::re_types_core::SizeBytes for AffixFuzzer4 {
+impl ::re_types_core::Component for AffixFuzzer4 {
     #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <Option<crate::testing::datatypes::AffixFuzzer1>>::is_pod()
-    }
-}
-
-impl<T: Into<Option<crate::testing::datatypes::AffixFuzzer1>>> From<T> for AffixFuzzer4 {
-    fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<Option<crate::testing::datatypes::AffixFuzzer1>> for AffixFuzzer4 {
-    #[inline]
-    fn borrow(&self) -> &Option<crate::testing::datatypes::AffixFuzzer1> {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for AffixFuzzer4 {
-    type Target = Option<crate::testing::datatypes::AffixFuzzer1>;
-
-    #[inline]
-    fn deref(&self) -> &Option<crate::testing::datatypes::AffixFuzzer1> {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for AffixFuzzer4 {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut Option<crate::testing::datatypes::AffixFuzzer1> {
-        &mut self.0
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.testing.components.AffixFuzzer4")
     }
 }
 
@@ -168,9 +134,43 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
     }
 }
 
-impl ::re_types_core::Component for AffixFuzzer4 {
+impl<T: Into<Option<crate::testing::datatypes::AffixFuzzer1>>> From<T> for AffixFuzzer4 {
+    fn from(v: T) -> Self {
+        Self(v.into())
+    }
+}
+
+impl std::borrow::Borrow<Option<crate::testing::datatypes::AffixFuzzer1>> for AffixFuzzer4 {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.testing.components.AffixFuzzer4".into()
+    fn borrow(&self) -> &Option<crate::testing::datatypes::AffixFuzzer1> {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for AffixFuzzer4 {
+    type Target = Option<crate::testing::datatypes::AffixFuzzer1>;
+
+    #[inline]
+    fn deref(&self) -> &Option<crate::testing::datatypes::AffixFuzzer1> {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for AffixFuzzer4 {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Option<crate::testing::datatypes::AffixFuzzer1> {
+        &mut self.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for AffixFuzzer4 {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <Option<crate::testing::datatypes::AffixFuzzer1>>::is_pod()
     }
 }
