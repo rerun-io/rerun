@@ -12,7 +12,7 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 
-use crate::external::arrow2;
+use crate::external::arrow;
 use crate::SerializationResult;
 use crate::{ComponentBatch, ComponentBatchCowWithDescriptor};
 use crate::{ComponentDescriptor, ComponentName};
@@ -76,20 +76,19 @@ impl crate::Loggable for Utf8 {
         })
     }
 
-    fn from_arrow2_opt(
-        arrow_data: &dyn arrow2::array::Array,
+    fn from_arrow_opt(
+        arrow_data: &dyn arrow::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
         #![allow(clippy::wildcard_imports)]
-        use crate::{Loggable as _, ResultExt as _};
-        use arrow::datatypes::*;
-        use arrow2::{array::*, buffer::*};
+        use crate::{arrow_zip_validity::ZipValidity, Loggable as _, ResultExt as _};
+        use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let arrow_data = arrow_data
                 .as_any()
-                .downcast_ref::<arrow2::array::Utf8Array<i32>>()
+                .downcast_ref::<StringArray>()
                 .ok_or_else(|| {
                     let expected = Self::arrow_datatype();
                     let actual = arrow_data.data_type().clone();
@@ -98,34 +97,31 @@ impl crate::Loggable for Utf8 {
                 .with_context("rerun.datatypes.Utf8#value")?;
             let arrow_data_buf = arrow_data.values();
             let offsets = arrow_data.offsets();
-            arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                offsets.windows(2),
-                arrow_data.validity(),
-            )
-            .map(|elem| {
-                elem.map(|window| {
-                    let start = window[0] as usize;
-                    let end = window[1] as usize;
-                    let len = end - start;
-                    if arrow_data_buf.len() < end {
-                        return Err(DeserializationError::offset_slice_oob(
-                            (start, end),
-                            arrow_data_buf.len(),
-                        ));
-                    }
+            ZipValidity::new_with_validity(offsets.windows(2), arrow_data.nulls())
+                .map(|elem| {
+                    elem.map(|window| {
+                        let start = window[0] as usize;
+                        let end = window[1] as usize;
+                        let len = end - start;
+                        if arrow_data_buf.len() < end {
+                            return Err(DeserializationError::offset_slice_oob(
+                                (start, end),
+                                arrow_data_buf.len(),
+                            ));
+                        }
 
-                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                    let data = unsafe { arrow_data_buf.clone().sliced_unchecked(start, len) };
-                    Ok(data)
+                        #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                        let data = arrow_data_buf.slice_with_length(start, len);
+                        Ok(data)
+                    })
+                    .transpose()
                 })
-                .transpose()
-            })
-            .map(|res_or_opt| {
-                res_or_opt.map(|res_or_opt| res_or_opt.map(|v| crate::ArrowString::from(v)))
-            })
-            .collect::<DeserializationResult<Vec<Option<_>>>>()
-            .with_context("rerun.datatypes.Utf8#value")?
-            .into_iter()
+                .map(|res_or_opt| {
+                    res_or_opt.map(|res_or_opt| res_or_opt.map(|v| crate::ArrowString::from(v)))
+                })
+                .collect::<DeserializationResult<Vec<Option<_>>>>()
+                .with_context("rerun.datatypes.Utf8#value")?
+                .into_iter()
         }
         .map(|v| v.ok_or_else(DeserializationError::missing_data))
         .map(|res| res.map(|v| Some(Self(v))))
