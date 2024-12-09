@@ -12,30 +12,30 @@ Everything within these bounds is guaranteed to be visible.
 
 Somethings outside of these bounds may also be visible due to letterboxing.
 ### `force_link`
-A link force between nodes in the graph.
+Allows to control the interaction between two nodes connecting throught an edge.
 
 * `enabled`: Whether the force is enabled.
 * `distance`: The target distance between two nodes.
 * `iterations`: The number of iterations to run the force.
 ### `force_many_body`
-TODO
+A force between each pair of nodes that ressembles an electrical charge.
 
 * `enabled`: Whether the force is enabled.
 * `strength`: The strength of the force.
 ### `force_position`
-TODO
+Similar to gravity, this force pulls nodes towards a specific position.
 
 * `enabled`: Whether the force is enabled.
 * `strength`: The strength of the force.
 * `position`: The position where the nodes should bepulled towards.
 ### `force_collision_radius`
-TODO
+Resolves collisons between the bounding spheres, according to the radius of the nodes.
 
 * `enabled`: Whether the force is enabled.
 * `strength`: The strength of the force.
 * `iterations`: The number of iterations to run the force.
 ### `force_center`
-TODO
+Tries to move the center of mass of the graph to the origin.
 
 * `enabled`: Whether the force is enabled.
 * `strength`: The strength of the force.

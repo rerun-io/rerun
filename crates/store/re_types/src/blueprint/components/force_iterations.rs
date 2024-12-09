@@ -18,9 +18,9 @@ use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Component**: The target distance between two nodes.
+/// **Component**: The number of internal iterations of a given force.
 ///
-/// This is helpful to scale the layout, for example if long labels are involved.
+/// Increasing this parameter can lead to better results at the cost of longer computation time.
 #[derive(Clone, Debug, Default, Copy, PartialEq, Eq)]
 #[repr(transparent)]
 pub struct ForceIterations(pub crate::datatypes::UInt64);

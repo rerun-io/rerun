@@ -26,19 +26,19 @@ pub struct GraphView {
     /// Somethings outside of these bounds may also be visible due to letterboxing.
     pub visual_bounds: crate::blueprint::archetypes::VisualBounds2D,
 
-    /// A link force between nodes in the graph.
+    /// Allows to control the interaction between two nodes connecting throught an edge.
     pub force_link: crate::blueprint::archetypes::ForceLink,
 
-    /// TODO
+    /// A force between each pair of nodes that ressembles an electrical charge.
     pub force_many_body: crate::blueprint::archetypes::ForceManyBody,
 
-    /// TODO
+    /// Similar to gravity, this force pulls nodes towards a specific position.
     pub force_position: crate::blueprint::archetypes::ForcePosition,
 
-    /// TODO
+    /// Resolves collisons between the bounding spheres, according to the radius of the nodes.
     pub force_collision_radius: crate::blueprint::archetypes::ForceCollisionRadius,
 
-    /// TODO
+    /// Tries to move the center of mass of the graph to the origin.
     pub force_center: crate::blueprint::archetypes::ForceCenter,
 }
 

@@ -21,7 +21,7 @@ __all__ = ["ForceCollisionRadius"]
 
 @define(str=False, repr=False, init=False)
 class ForceCollisionRadius(Archetype):
-    """**Archetype**: The link force pushes linked nodes together or apart according to a desired distance."""
+    """**Archetype**: Resolves collisons between the bounding spheres, according to the radius of the nodes."""
 
     def __init__(
         self: Any,

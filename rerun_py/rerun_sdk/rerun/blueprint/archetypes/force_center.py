@@ -21,7 +21,7 @@ __all__ = ["ForceCenter"]
 
 @define(str=False, repr=False, init=False)
 class ForceCenter(Archetype):
-    """**Archetype**: The link force pushes linked nodes together or apart according to a desired distance."""
+    """**Archetype**: Tries to move the center of mass of the graph to the origin."""
 
     def __init__(
         self: Any, *, enabled: datatypes.BoolLike | None = None, strength: datatypes.Float64Like | None = None

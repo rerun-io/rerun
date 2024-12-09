@@ -18,7 +18,7 @@ use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Archetype**: The link force pushes linked nodes together or apart according to a desired distance.
+/// **Archetype**: Tries to move the center of mass of the graph to the origin.
 #[derive(Clone, Debug)]
 pub struct ForceCenter {
     /// Whether the force is enabled.

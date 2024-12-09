@@ -18,9 +18,9 @@ use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Component**: The target distance between two nodes.
+/// **Component**: The strength of a given force.
 ///
-/// This is helpful to scale the layout, for example if long labels are involved.
+/// Allows to assign different weights to the individual forces, prioritizing one over the other.
 #[derive(Clone, Debug, Default, Copy, PartialEq)]
 #[repr(transparent)]
 pub struct ForceStrength(pub crate::datatypes::Float64);

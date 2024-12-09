@@ -17,7 +17,7 @@
 #include <vector>
 
 namespace rerun::blueprint::archetypes {
-    /// **Archetype**: The link force pushes linked nodes together or apart according to a desired distance.
+    /// **Archetype**: Tries to move the center of mass of the graph to the origin.
     struct ForceCenter {
         /// Whether the force is enabled.
         std::optional<rerun::blueprint::components::Enabled> enabled;

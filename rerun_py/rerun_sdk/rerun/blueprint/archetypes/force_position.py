@@ -21,7 +21,7 @@ __all__ = ["ForcePosition"]
 
 @define(str=False, repr=False, init=False)
 class ForcePosition(Archetype):
-    """**Archetype**: The link force pushes linked nodes together or apart according to a desired distance."""
+    """**Archetype**: Similar to gravity, this force pulls nodes towards a specific position."""
 
     def __init__(
         self: Any,

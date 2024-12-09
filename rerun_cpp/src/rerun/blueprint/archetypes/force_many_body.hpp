@@ -17,7 +17,9 @@
 #include <vector>
 
 namespace rerun::blueprint::archetypes {
-    /// **Archetype**: The link force pushes linked nodes together or apart according to a desired distance.
+    /// **Archetype**: A force between each pair of nodes that ressembles an electrical charge.
+    ///
+    /// If `ForceStrength` is smaller than 0, it pushes nodes apart, if it is larger than 0 it pulls them together.
     struct ForceManyBody {
         /// Whether the force is enabled.
         std::optional<rerun::blueprint::components::Enabled> enabled;

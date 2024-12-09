@@ -1,8 +1,6 @@
 namespace rerun.blueprint.archetypes;
 
-// TODO
-
-/// The link force pushes linked nodes together or apart according to a desired distance.
+/// Tries to move the center of mass of the graph to the origin.
 struct ForceCenter (
     "attr.rerun.scope": "blueprint"
 ) {

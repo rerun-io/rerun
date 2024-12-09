@@ -18,7 +18,7 @@ use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Archetype**: The link force pushes linked nodes together or apart according to a desired distance.
+/// **Archetype**: Resolves collisons between the bounding spheres, according to the radius of the nodes.
 #[derive(Clone, Debug)]
 pub struct ForceCollisionRadius {
     /// Whether the force is enabled.

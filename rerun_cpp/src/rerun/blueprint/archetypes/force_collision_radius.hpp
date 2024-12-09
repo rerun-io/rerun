@@ -18,7 +18,7 @@
 #include <vector>
 
 namespace rerun::blueprint::archetypes {
-    /// **Archetype**: The link force pushes linked nodes together or apart according to a desired distance.
+    /// **Archetype**: Resolves collisons between the bounding spheres, according to the radius of the nodes.
     struct ForceCollisionRadius {
         /// Whether the force is enabled.
         std::optional<rerun::blueprint::components::Enabled> enabled;

@@ -1,8 +1,6 @@
 namespace rerun.blueprint.archetypes;
 
-// TODO
-
-/// The link force pushes linked nodes together or apart according to a desired distance.
+/// Similar to gravity, this force pulls nodes towards a specific position.
 struct ForcePosition (
     "attr.rerun.scope": "blueprint"
 ) {

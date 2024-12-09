@@ -18,7 +18,7 @@ use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Archetype**: The link force pushes linked nodes together or apart according to a desired distance.
+/// **Archetype**: Aims to achieve a target distance between two nodes that are connected by an edge.
 #[derive(Clone, Debug)]
 pub struct ForceLink {
     /// Whether the force is enabled.

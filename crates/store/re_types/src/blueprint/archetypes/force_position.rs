@@ -18,7 +18,7 @@ use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Archetype**: The link force pushes linked nodes together or apart according to a desired distance.
+/// **Archetype**: Similar to gravity, this force pulls nodes towards a specific position.
 #[derive(Clone, Debug)]
 pub struct ForcePosition {
     /// Whether the force is enabled.

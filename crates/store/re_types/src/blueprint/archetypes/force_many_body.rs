@@ -18,7 +18,9 @@ use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Archetype**: The link force pushes linked nodes together or apart according to a desired distance.
+/// **Archetype**: A force between each pair of nodes that ressembles an electrical charge.
+///
+/// If `ForceStrength` is smaller than 0, it pushes nodes apart, if it is larger than 0 it pulls them together.
 #[derive(Clone, Debug)]
 pub struct ForceManyBody {
     /// Whether the force is enabled.

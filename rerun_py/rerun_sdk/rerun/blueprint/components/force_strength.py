@@ -17,9 +17,9 @@ __all__ = ["ForceStrength", "ForceStrengthBatch"]
 
 class ForceStrength(datatypes.Float64, ComponentMixin):
     """
-    **Component**: The target distance between two nodes.
+    **Component**: The strength of a given force.
 
-    This is helpful to scale the layout, for example if long labels are involved.
+    Allows to assign different weights to the individual forces, prioritizing one over the other.
     """
 
     _BATCH_TYPE = None

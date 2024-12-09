@@ -143,7 +143,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <ForceIterations as Component>::name(),
             ComponentReflection {
-                docstring_md: "The target distance between two nodes.\n\nThis is helpful to scale the layout, for example if long labels are involved.",
+                docstring_md: "The number of internal iterations of a given force.\n\nIncreasing this parameter can lead to better results at the cost of longer computation time.",
                 custom_placeholder: Some(ForceIterations::default().to_arrow2()?),
                 datatype: ForceIterations::arrow2_datatype(),
             },
@@ -151,7 +151,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <ForceStrength as Component>::name(),
             ComponentReflection {
-                docstring_md: "The target distance between two nodes.\n\nThis is helpful to scale the layout, for example if long labels are involved.",
+                docstring_md: "The strength of a given force.\n\nAllows to assign different weights to the individual forces, prioritizing one over the other.",
                 custom_placeholder: Some(ForceStrength::default().to_arrow2()?),
                 datatype: ForceStrength::arrow2_datatype(),
             },

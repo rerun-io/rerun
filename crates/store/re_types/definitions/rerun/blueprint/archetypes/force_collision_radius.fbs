@@ -1,6 +1,6 @@
 namespace rerun.blueprint.archetypes;
 
-/// The link force pushes linked nodes together or apart according to a desired distance.
+/// Resolves collisons between the bounding spheres, according to the radius of the nodes.
 struct ForceCollisionRadius (
     "attr.rerun.scope": "blueprint"
 ) {

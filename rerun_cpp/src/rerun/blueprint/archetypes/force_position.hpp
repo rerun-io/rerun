@@ -18,7 +18,7 @@
 #include <vector>
 
 namespace rerun::blueprint::archetypes {
-    /// **Archetype**: The link force pushes linked nodes together or apart according to a desired distance.
+    /// **Archetype**: Similar to gravity, this force pulls nodes towards a specific position.
     struct ForcePosition {
         /// Whether the force is enabled.
         std::optional<rerun::blueprint::components::Enabled> enabled;

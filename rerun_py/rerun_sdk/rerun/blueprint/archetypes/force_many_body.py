@@ -21,7 +21,11 @@ __all__ = ["ForceManyBody"]
 
 @define(str=False, repr=False, init=False)
 class ForceManyBody(Archetype):
-    """**Archetype**: The link force pushes linked nodes together or apart according to a desired distance."""
+    """
+    **Archetype**: A force between each pair of nodes that ressembles an electrical charge.
+
+    If `ForceStrength` is smaller than 0, it pushes nodes apart, if it is larger than 0 it pulls them together.
+    """
 
     def __init__(
         self: Any, *, enabled: datatypes.BoolLike | None = None, strength: datatypes.Float64Like | None = None
