@@ -59,7 +59,7 @@ impl QueryEngine<StorageEngine> {
     pub fn from_rrd_filepath(
         store_config: &ChunkStoreConfig,
         path_to_rrd: impl AsRef<std::path::Path>,
-        version_policy: VersionPolicy,
+        version_policy: re_log_encoding::VersionPolicy,
     ) -> anyhow::Result<BTreeMap<StoreId, Self>> {
         Ok(
             ChunkStore::handle_from_rrd_filepath(store_config, path_to_rrd, version_policy)?

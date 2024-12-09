@@ -45,11 +45,13 @@ stream_from_http = [
 re_build_info.workspace = true
 re_chunk.workspace = true
 re_log_types.workspace = true
+re_protos.workspace = true
 re_log.workspace = true
 re_smart_channel.workspace = true
 re_tracing.workspace = true
 
 # External:
+arrow2.workspace = true
 parking_lot.workspace = true
 thiserror.workspace = true
 
