@@ -1,0 +1,14 @@
+namespace rerun.blueprint.components;
+
+// ---
+
+/// Distance to the near clip plane used for `Spatial2DView`.
+struct NearClipPlane (
+  "attr.rerun.scope": "blueprint",
+  "attr.rust.derive": "Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable",
+  "attr.rust.repr": "transparent",
+  "attr.docs.unreleased"
+) {
+  /// Distance to the near clip plane in 3D scene units.
+  near_clip_plane: rerun.datatypes.Float32 (order: 100);
+}

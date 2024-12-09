@@ -22,6 +22,7 @@ interactive.hpp linguist-generated=true
 lock_range_during_zoom.hpp linguist-generated=true
 map_provider.cpp linguist-generated=true
 map_provider.hpp linguist-generated=true
+near_clip_plane.hpp linguist-generated=true
 panel_state.cpp linguist-generated=true
 panel_state.hpp linguist-generated=true
 query_expression.hpp linguist-generated=true

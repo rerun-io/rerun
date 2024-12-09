@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../../blueprint/components/near_clip_plane.hpp"
 #include "../../blueprint/components/visual_bounds2d.hpp"
 #include "../../collection.hpp"
 #include "../../component_batch.hpp"
@@ -27,6 +28,11 @@ namespace rerun::blueprint::archetypes {
         /// Use this to control pan & zoom of the view.
         rerun::blueprint::components::VisualBounds2D range;
 
+        /// Controls the distance to the near clip plane in 3D scene units.
+        ///
+        /// Content closer than this distance will not be visible.
+        rerun::blueprint::components::NearClipPlane near_clip_plane;
+
       public:
         static constexpr const char IndicatorComponentName[] =
             "rerun.blueprint.components.VisualBounds2DIndicator";
@@ -38,8 +44,11 @@ namespace rerun::blueprint::archetypes {
         VisualBounds2D() = default;
         VisualBounds2D(VisualBounds2D&& other) = default;
 
-        explicit VisualBounds2D(rerun::blueprint::components::VisualBounds2D _range)
-            : range(std::move(_range)) {}
+        explicit VisualBounds2D(
+            rerun::blueprint::components::VisualBounds2D _range,
+            rerun::blueprint::components::NearClipPlane _near_clip_plane
+        )
+            : range(std::move(_range)), near_clip_plane(std::move(_near_clip_plane)) {}
     };
 
 } // namespace rerun::blueprint::archetypes
