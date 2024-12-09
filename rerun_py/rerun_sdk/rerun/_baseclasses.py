@@ -437,7 +437,7 @@ class ComponentBatchMixin(ComponentBatchLike):
 
     def or_with_descriptor_overrides(
         self, *, archetype_name: str | None, archetype_field_name: str | None
-    ) -> ComponentBatchLike:
+    ) -> DescribedComponentBatch:
         """Sets `archetype_name` & `archetype_field_name` to the given one iff it's not already set."""
         descriptor = self.component_descriptor()
         component_name = descriptor.component_name
