@@ -28,7 +28,6 @@ rgba32.md linguist-generated=true
 rotation_axis_angle.md linguist-generated=true
 tensor_buffer.md linguist-generated=true
 tensor_data.md linguist-generated=true
-tensor_dimension.md linguist-generated=true
 tensor_dimension_index_selection.md linguist-generated=true
 tensor_dimension_selection.md linguist-generated=true
 time_int.md linguist-generated=true

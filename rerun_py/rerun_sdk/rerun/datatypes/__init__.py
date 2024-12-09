@@ -39,7 +39,6 @@ from .rotation_axis_angle import (
 )
 from .tensor_buffer import TensorBuffer, TensorBufferArrayLike, TensorBufferBatch, TensorBufferLike
 from .tensor_data import TensorData, TensorDataArrayLike, TensorDataBatch, TensorDataLike
-from .tensor_dimension import TensorDimension, TensorDimensionArrayLike, TensorDimensionBatch, TensorDimensionLike
 from .tensor_dimension_index_selection import (
     TensorDimensionIndexSelection,
     TensorDimensionIndexSelectionArrayLike,
@@ -185,14 +184,10 @@ __all__ = [
     "TensorDataArrayLike",
     "TensorDataBatch",
     "TensorDataLike",
-    "TensorDimension",
-    "TensorDimensionArrayLike",
-    "TensorDimensionBatch",
     "TensorDimensionIndexSelection",
     "TensorDimensionIndexSelectionArrayLike",
     "TensorDimensionIndexSelectionBatch",
     "TensorDimensionIndexSelectionLike",
-    "TensorDimensionLike",
     "TensorDimensionSelection",
     "TensorDimensionSelectionArrayLike",
     "TensorDimensionSelectionBatch",

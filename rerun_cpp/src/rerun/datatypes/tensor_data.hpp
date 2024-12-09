@@ -7,10 +7,11 @@
 #include "../component_descriptor.hpp"
 #include "../result.hpp"
 #include "tensor_buffer.hpp"
-#include "tensor_dimension.hpp"
 
 #include <cstdint>
 #include <memory>
+#include <optional>
+#include <string>
 
 namespace arrow {
     class Array;
@@ -28,8 +29,15 @@ namespace rerun::datatypes {
     /// These dimensions are combined with an index to look up values from the `buffer` field,
     /// which stores a contiguous array of typed values.
     struct TensorData {
-        /// The shape of the tensor, including optional names for each dimension.
-        rerun::Collection<rerun::datatypes::TensorDimension> shape;
+        /// The shape of the tensor, i.e. the length of each dimension.
+        rerun::Collection<uint64_t> shape;
+
+        /// The names of the dimensions of the tensor (optional).
+        ///
+        /// If set, should be the same length as `datatypes::TensorData::shape`.
+        ///
+        /// Example: `["height", "width", "channel", "batch"]`.
+        std::optional<rerun::Collection<std::string>> names;
 
         /// The content/data.
         rerun::datatypes::TensorBuffer buffer;

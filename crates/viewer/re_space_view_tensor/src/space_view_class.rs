@@ -1,16 +1,16 @@
 use egui::{epaint::TextShape, Align2, NumExt as _, Vec2};
 use ndarray::Axis;
-use re_space_view::{suggest_space_view_for_each_entity, view_property_ui};
 
 use re_data_ui::tensor_summary_ui_grid_contents;
 use re_log_types::EntityPath;
+use re_space_view::{suggest_space_view_for_each_entity, view_property_ui};
 use re_types::{
     blueprint::{
         archetypes::{TensorScalarMapping, TensorSliceSelection, TensorViewFit},
         components::ViewFit,
     },
     components::{Colormap, GammaCorrection, MagnificationFilter, TensorDimensionIndexSelection},
-    datatypes::{TensorData, TensorDimension},
+    datatypes::TensorData,
     SpaceViewClassIdentifier, View,
 };
 use re_ui::{list_item, UiExt as _};
@@ -26,6 +26,7 @@ use crate::{
     dimension_mapping::load_tensor_slice_selection_and_make_valid,
     tensor_dimension_mapper::dimension_mapping_ui,
     visualizer_system::{TensorSystem, TensorView},
+    TensorDimension,
 };
 
 #[derive(Default)]
@@ -151,12 +152,20 @@ Note: select the space view to configure which dimensions are shown."
                 ctx.blueprint_query,
                 view_id,
             );
-            let slice_selection =
-                load_tensor_slice_selection_and_make_valid(&slice_property, tensor.shape())?;
+            let slice_selection = load_tensor_slice_selection_and_make_valid(
+                &slice_property,
+                &TensorDimension::from_tensor_data(tensor),
+            )?;
 
             ui.separator();
             ui.strong("Dimension Mapping");
-            dimension_mapping_ui(ctx, ui, tensor.shape(), &slice_selection, &slice_property);
+            dimension_mapping_ui(
+                ctx,
+                ui,
+                &TensorDimension::from_tensor_data(tensor),
+                &slice_selection,
+                &slice_property,
+            );
 
             // TODO(andreas): this is a bit too inconsistent with the other UIs - we don't offer the same reset/option buttons here
             if ui
@@ -245,8 +254,10 @@ impl TensorSpaceView {
             ctx.blueprint_query,
             view_id,
         );
-        let slice_selection =
-            load_tensor_slice_selection_and_make_valid(&slice_property, tensor.shape())?;
+        let slice_selection = load_tensor_slice_selection_and_make_valid(
+            &slice_property,
+            &TensorDimension::from_tensor_data(tensor),
+        )?;
 
         let default_item_spacing = ui.spacing_mut().item_spacing;
         ui.spacing_mut().item_spacing.y = 0.0; // No extra spacing between sliders and tensor
@@ -262,17 +273,26 @@ impl TensorSpaceView {
             }
             .show(ui, |ui| {
                 ui.spacing_mut().item_spacing = default_item_spacing; // keep the default spacing between sliders
-                selectors_ui(ctx, ui, tensor.shape(), &slice_selection, &slice_property);
+                selectors_ui(
+                    ctx,
+                    ui,
+                    &TensorDimension::from_tensor_data(tensor),
+                    &slice_selection,
+                    &slice_property,
+                );
             });
         }
 
         let dimension_labels = [
-            slice_selection
-                .width
-                .map(|width| (dimension_name(&tensor.shape, width.dimension), width.invert)),
+            slice_selection.width.map(|width| {
+                (
+                    dimension_name(&TensorDimension::from_tensor_data(tensor), width.dimension),
+                    width.invert,
+                )
+            }),
             slice_selection.height.map(|height| {
                 (
-                    dimension_name(&tensor.shape, height.dimension),
+                    dimension_name(&TensorDimension::from_tensor_data(tensor), height.dimension),
                     height.invert,
                 )
             }),

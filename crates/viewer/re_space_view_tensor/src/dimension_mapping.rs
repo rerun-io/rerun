@@ -1,10 +1,13 @@
 use egui::NumExt as _;
+
 use re_types::{
     blueprint::{archetypes::TensorSliceSelection, components::TensorDimensionIndexSlider},
     components::{TensorDimensionIndexSelection, TensorHeightDimension, TensorWidthDimension},
-    datatypes::{TensorDimension, TensorDimensionSelection},
+    datatypes::TensorDimensionSelection,
 };
 use re_viewport_blueprint::ViewProperty;
+
+use crate::TensorDimension;
 
 /// Loads slice selection from blueprint and makes modifications (without writing back) such that it is valid
 /// for the given tensor shape.

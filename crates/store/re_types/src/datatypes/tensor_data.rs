@@ -28,8 +28,15 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// which stores a contiguous array of typed values.
 #[derive(Clone, Debug, PartialEq)]
 pub struct TensorData {
-    /// The shape of the tensor, including optional names for each dimension.
-    pub shape: Vec<crate::datatypes::TensorDimension>,
+    /// The shape of the tensor, i.e. the length of each dimension.
+    pub shape: ::re_types_core::ArrowBuffer<u64>,
+
+    /// The names of the dimensions of the tensor (optional).
+    ///
+    /// If set, should be the same length as [`datatypes::TensorData::shape`][crate::datatypes::TensorData::shape].
+    ///
+    /// Example: `["height", "width", "channel", "batch"]`.
+    pub names: Option<Vec<::re_types_core::ArrowString>>,
 
     /// The content/data.
     pub buffer: crate::datatypes::TensorBuffer,
@@ -47,10 +54,19 @@ impl ::re_types_core::Loggable for TensorData {
                 "shape",
                 DataType::List(std::sync::Arc::new(Field::new(
                     "item",
-                    <crate::datatypes::TensorDimension>::arrow_datatype(),
+                    DataType::UInt64,
                     false,
                 ))),
                 false,
+            ),
+            Field::new(
+                "names",
+                DataType::List(std::sync::Arc::new(Field::new(
+                    "item",
+                    DataType::Utf8,
+                    false,
+                ))),
+                true,
             ),
             Field::new(
                 "buffer",
@@ -76,10 +92,19 @@ impl ::re_types_core::Loggable for TensorData {
                     "shape",
                     DataType::List(std::sync::Arc::new(Field::new(
                         "item",
-                        <crate::datatypes::TensorDimension>::arrow_datatype(),
+                        DataType::UInt64,
                         false,
                     ))),
                     false,
+                ),
+                Field::new(
+                    "names",
+                    DataType::List(std::sync::Arc::new(Field::new(
+                        "item",
+                        DataType::Utf8,
+                        false,
+                    ))),
+                    true,
                 ),
                 Field::new(
                     "buffer",
@@ -114,28 +139,72 @@ impl ::re_types_core::Loggable for TensorData {
                             any_nones.then(|| somes.into())
                         };
                         {
+                            let offsets =
+                                arrow::buffer::OffsetBuffer::<i32>::from_lengths(shape.iter().map(
+                                    |opt| opt.as_ref().map_or(0, |datum| datum.num_instances()),
+                                ));
+                            let shape_inner_data: ScalarBuffer<_> = shape
+                                .iter()
+                                .flatten()
+                                .map(|b| b.as_slice())
+                                .collect::<Vec<_>>()
+                                .concat()
+                                .into();
+                            let shape_inner_validity: Option<arrow::buffer::NullBuffer> = None;
+                            as_array_ref(ListArray::try_new(
+                                std::sync::Arc::new(Field::new("item", DataType::UInt64, false)),
+                                offsets,
+                                as_array_ref(PrimitiveArray::<UInt64Type>::new(
+                                    shape_inner_data,
+                                    shape_inner_validity,
+                                )),
+                                shape_validity,
+                            )?)
+                        }
+                    },
+                    {
+                        let (somes, names): (Vec<_>, Vec<_>) = data
+                            .iter()
+                            .map(|datum| {
+                                let datum =
+                                    datum.as_ref().map(|datum| datum.names.clone()).flatten();
+                                (datum.is_some(), datum)
+                            })
+                            .unzip();
+                        let names_validity: Option<arrow::buffer::NullBuffer> = {
+                            let any_nones = somes.iter().any(|some| !*some);
+                            any_nones.then(|| somes.into())
+                        };
+                        {
                             let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
-                                shape
+                                names
                                     .iter()
                                     .map(|opt| opt.as_ref().map_or(0, |datum| datum.len())),
                             );
-                            let shape_inner_data: Vec<_> =
-                                shape.into_iter().flatten().flatten().collect();
-                            let shape_inner_validity: Option<arrow::buffer::NullBuffer> = None;
+                            let names_inner_data: Vec<_> =
+                                names.into_iter().flatten().flatten().collect();
+                            let names_inner_validity: Option<arrow::buffer::NullBuffer> = None;
                             as_array_ref(ListArray::try_new(
-                                std::sync::Arc::new(Field::new(
-                                    "item",
-                                    <crate::datatypes::TensorDimension>::arrow_datatype(),
-                                    false,
-                                )),
+                                std::sync::Arc::new(Field::new("item", DataType::Utf8, false)),
                                 offsets,
                                 {
-                                    _ = shape_inner_validity;
-                                    crate::datatypes::TensorDimension::to_arrow_opt(
-                                        shape_inner_data.into_iter().map(Some),
-                                    )?
+                                    let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
+                                        names_inner_data.iter().map(|datum| datum.len()),
+                                    );
+                                    let inner_data: arrow::buffer::Buffer = names_inner_data
+                                        .into_iter()
+                                        .flat_map(|s| s.into_arrow2_buffer())
+                                        .collect();
+                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                    as_array_ref(unsafe {
+                                        StringArray::new_unchecked(
+                                            offsets,
+                                            inner_data,
+                                            names_inner_validity,
+                                        )
+                                    })
                                 },
-                                shape_validity,
+                                names_validity,
                             )?)
                         }
                     },
@@ -208,7 +277,7 @@ impl ::re_types_core::Loggable for TensorData {
                             .ok_or_else(|| {
                                 let expected = DataType::List(std::sync::Arc::new(Field::new(
                                     "item",
-                                    <crate::datatypes::TensorDimension>::arrow_datatype(),
+                                    DataType::UInt64,
                                     false,
                                 )));
                                 let actual = arrow_data.data_type().clone();
@@ -220,10 +289,133 @@ impl ::re_types_core::Loggable for TensorData {
                         } else {
                             let arrow_data_inner = {
                                 let arrow_data_inner = &**arrow_data.values();
-                                crate::datatypes::TensorDimension::from_arrow2_opt(arrow_data_inner)
+                                arrow_data_inner
+                                    .as_any()
+                                    .downcast_ref::<UInt64Array>()
+                                    .ok_or_else(|| {
+                                        let expected = DataType::UInt64;
+                                        let actual = arrow_data_inner.data_type().clone();
+                                        DeserializationError::datatype_mismatch(expected, actual)
+                                    })
                                     .with_context("rerun.datatypes.TensorData#shape")?
+                                    .values()
+                            };
+                            let offsets = arrow_data.offsets();
+                            arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                                offsets.windows(2),
+                                arrow_data.validity(),
+                            )
+                            .map(|elem| {
+                                elem.map(|window| {
+                                    let start = window[0] as usize;
+                                    let end = window[1] as usize;
+                                    if arrow_data_inner.len() < end {
+                                        return Err(DeserializationError::offset_slice_oob(
+                                            (start, end),
+                                            arrow_data_inner.len(),
+                                        ));
+                                    }
+
+                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                    let data = unsafe {
+                                        arrow_data_inner
+                                            .clone()
+                                            .sliced_unchecked(start, end - start)
+                                    };
+                                    let data = ::re_types_core::ArrowBuffer::from(data);
+                                    Ok(data)
+                                })
+                                .transpose()
+                            })
+                            .collect::<DeserializationResult<Vec<Option<_>>>>()?
+                        }
+                        .into_iter()
+                    }
+                };
+                let names = {
+                    if !arrays_by_name.contains_key("names") {
+                        return Err(DeserializationError::missing_struct_field(
+                            Self::arrow_datatype(),
+                            "names",
+                        ))
+                        .with_context("rerun.datatypes.TensorData");
+                    }
+                    let arrow_data = &**arrays_by_name["names"];
+                    {
+                        let arrow_data = arrow_data
+                            .as_any()
+                            .downcast_ref::<arrow2::array::ListArray<i32>>()
+                            .ok_or_else(|| {
+                                let expected = DataType::List(std::sync::Arc::new(Field::new(
+                                    "item",
+                                    DataType::Utf8,
+                                    false,
+                                )));
+                                let actual = arrow_data.data_type().clone();
+                                DeserializationError::datatype_mismatch(expected, actual)
+                            })
+                            .with_context("rerun.datatypes.TensorData#names")?;
+                        if arrow_data.is_empty() {
+                            Vec::new()
+                        } else {
+                            let arrow_data_inner = {
+                                let arrow_data_inner = &**arrow_data.values();
+                                {
+                                    let arrow_data_inner = arrow_data_inner
+                                        .as_any()
+                                        .downcast_ref::<arrow2::array::Utf8Array<i32>>()
+                                        .ok_or_else(|| {
+                                            let expected = DataType::Utf8;
+                                            let actual = arrow_data_inner.data_type().clone();
+                                            DeserializationError::datatype_mismatch(
+                                                expected, actual,
+                                            )
+                                        })
+                                        .with_context("rerun.datatypes.TensorData#names")?;
+                                    let arrow_data_inner_buf = arrow_data_inner.values();
+                                    let offsets = arrow_data_inner.offsets();
+                                    arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                                        offsets.windows(2),
+                                        arrow_data_inner.validity(),
+                                    )
+                                    .map(|elem| {
+                                        elem.map(|window| {
+                                            let start = window[0] as usize;
+                                            let end = window[1] as usize;
+                                            let len = end - start;
+                                            if arrow_data_inner_buf.len() < end {
+                                                return Err(
+                                                    DeserializationError::offset_slice_oob(
+                                                        (start, end),
+                                                        arrow_data_inner_buf.len(),
+                                                    ),
+                                                );
+                                            }
+
+                                            #[allow(
+                                                unsafe_code,
+                                                clippy::undocumented_unsafe_blocks
+                                            )]
+                                            let data = unsafe {
+                                                arrow_data_inner_buf
+                                                    .clone()
+                                                    .sliced_unchecked(start, len)
+                                            };
+                                            Ok(data)
+                                        })
+                                        .transpose()
+                                    })
+                                    .map(|res_or_opt| {
+                                        res_or_opt.map(|res_or_opt| {
+                                            res_or_opt
+                                                .map(|v| ::re_types_core::ArrowString::from(v))
+                                        })
+                                    })
+                                    .collect::<DeserializationResult<Vec<Option<_>>>>()
+                                    .with_context("rerun.datatypes.TensorData#names")?
                                     .into_iter()
-                                    .collect::<Vec<_>>()
+                                }
+                                .collect::<Vec<_>>()
                             };
                             let offsets = arrow_data.offsets();
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
@@ -272,15 +464,16 @@ impl ::re_types_core::Loggable for TensorData {
                         .into_iter()
                 };
                 arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                    ::itertools::izip!(shape, buffer),
+                    ::itertools::izip!(shape, names, buffer),
                     arrow_data.validity(),
                 )
                 .map(|opt| {
-                    opt.map(|(shape, buffer)| {
+                    opt.map(|(shape, names, buffer)| {
                         Ok(Self {
                             shape: shape
                                 .ok_or_else(DeserializationError::missing_data)
                                 .with_context("rerun.datatypes.TensorData#shape")?,
+                            names,
                             buffer: buffer
                                 .ok_or_else(DeserializationError::missing_data)
                                 .with_context("rerun.datatypes.TensorData#buffer")?,
@@ -298,12 +491,13 @@ impl ::re_types_core::Loggable for TensorData {
 impl ::re_types_core::SizeBytes for TensorData {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.shape.heap_size_bytes() + self.buffer.heap_size_bytes()
+        self.shape.heap_size_bytes() + self.names.heap_size_bytes() + self.buffer.heap_size_bytes()
     }
 
     #[inline]
     fn is_pod() -> bool {
-        <Vec<crate::datatypes::TensorDimension>>::is_pod()
+        <::re_types_core::ArrowBuffer<u64>>::is_pod()
+            && <Option<Vec<::re_types_core::ArrowString>>>::is_pod()
             && <crate::datatypes::TensorBuffer>::is_pod()
     }
 }
