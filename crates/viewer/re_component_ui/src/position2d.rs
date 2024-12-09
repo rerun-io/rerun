@@ -6,10 +6,10 @@ pub fn singleline_edit_position2d(
     ui: &mut egui::Ui,
     value: &mut MaybeMutRef<'_, Position2D>,
 ) -> egui::Response {
-    if let Some(value) = value.as_mut() {
-        let x = value.0[0];
-        let y = value.0[1];
+    let x = value.0[0];
+    let y = value.0[1];
 
+    if let Some(value) = value.as_mut() {
         let mut x_edit = x;
         let mut y_edit = y;
 
@@ -26,8 +26,6 @@ pub fn singleline_edit_position2d(
 
         response
     } else {
-        let x = value.0[0];
-        let y = value.0[1];
         ui.label(format!(
             "[ {} , {} ]",
             re_format::format_f32(x),
