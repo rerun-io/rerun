@@ -129,14 +129,15 @@ impl ::re_types_core::Loggable for Utf8List {
                         let arrow_data_inner_buf = arrow_data_inner.values();
                         let offsets = arrow_data_inner.offsets();
                         arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                            offsets.iter().zip(offsets.lengths()),
+                            offsets.windows(2),
                             arrow_data_inner.validity(),
                         )
                         .map(|elem| {
-                            elem.map(|(start, len)| {
-                                let start = *start as usize;
-                                let end = start + len;
-                                if end > arrow_data_inner_buf.len() {
+                            elem.map(|window| {
+                                let start = window[0] as usize;
+                                let end = window[1] as usize;
+                                let len = end - start;
+                                if arrow_data_inner_buf.len() < end {
                                     return Err(DeserializationError::offset_slice_oob(
                                         (start, end),
                                         arrow_data_inner_buf.len(),
