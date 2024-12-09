@@ -11,8 +11,8 @@ use fjadra::{self as fj, Simulation};
 use crate::graph::{EdgeId, NodeId};
 
 use super::{
-    params::{self, ForceLayoutParams},
-    request::{self, NodeTemplate},
+    params::ForceLayoutParams,
+    request::NodeTemplate,
     slots::{slotted_edges, Slot, SlotKind},
     EdgeGeometry, EdgeTemplate, Layout, LayoutRequest, PathGeometry,
 };
@@ -33,34 +33,66 @@ pub fn update_simulation(
     edges: Vec<(usize, usize)>,
     radii: Vec<f64>,
 ) -> Simulation {
-    if **params.force_link_enabled {
+    // We destructure here to get compiler warnings if we add new parameters.
+    let &ForceLayoutParams {
+        force_link_enabled,
+        force_link_distance,
+        force_link_iterations,
+        force_many_body_enabled,
+        force_many_body_strength,
+        force_position_enabled,
+        force_position_strength,
+        force_position_pos,
+        force_center_enabled,
+        force_center_strength,
+        force_collision_enabled,
+        force_collision_strength,
+        force_collision_iterations,
+    } = params;
+
+    if **force_link_enabled {
         simulation = simulation.add_force(
             "link",
             fj::Link::new(edges)
-                .distance(params.force_link_distance.0 .0)
-                .iterations(2),
+                .distance(**force_link_distance)
+                .iterations(**force_link_iterations as usize),
         );
     }
-    if **params.force_many_body_enabled {
+    if **force_many_body_enabled {
         simulation = simulation.add_force(
             "charge",
-            fj::ManyBody::new().strength(params.force_many_body_strength.0 .0),
+            fj::ManyBody::new().strength(**force_many_body_strength),
         );
     }
-    if **params.force_position_enabled {
+    if **force_position_enabled {
         simulation = simulation
             .add_force(
                 "x",
-                fj::PositionX::new().strength(params.force_position_strength.0 .0),
+                fj::PositionX::new()
+                    .strength(**force_position_strength)
+                    .x(force_position_pos[0].into()),
             )
             .add_force(
                 "y",
-                fj::PositionY::new().strength(params.force_position_strength.0 .0),
+                fj::PositionY::new()
+                    .strength(**force_position_strength)
+                    .y(force_position_pos[1].into()),
             );
     }
-    if **params.force_collision_enabled {
-        simulation =
-            simulation.add_force("collision", fj::Collide::new().radius(move |i| radii[i]));
+    if **force_collision_enabled {
+        simulation = simulation.add_force(
+            "collision",
+            fj::Collide::new()
+                .radius(move |i| radii[i])
+                .iterations(**force_collision_iterations as usize)
+                .strength(**force_collision_strength),
+        );
+    }
+    if **force_center_enabled {
+        simulation = simulation.add_force(
+            "center",
+            fj::Center::new().strength(**force_center_strength),
+        );
     }
     simulation
 }
@@ -270,7 +302,7 @@ impl ForceLayoutProvider {
     }
 
     pub fn is_finished(&self) -> bool {
-        self.simulation.finished()
+        self.simulation.is_finished()
     }
 }
 

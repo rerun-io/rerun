@@ -16,6 +16,7 @@ A link force between nodes in the graph.
 
 * `enabled`: Whether the force is enabled.
 * `distance`: The target distance between two nodes.
+* `iterations`: The number of iterations to run the force.
 ### `force_many_body`
 TODO
 
@@ -32,6 +33,7 @@ TODO
 
 * `enabled`: Whether the force is enabled.
 * `strength`: The strength of the force.
+* `iterations`: The number of iterations to run the force.
 ### `force_center`
 TODO
 

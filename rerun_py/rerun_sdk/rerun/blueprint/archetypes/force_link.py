@@ -24,7 +24,11 @@ class ForceLink(Archetype):
     """**Archetype**: The link force pushes linked nodes together or apart according to a desired distance."""
 
     def __init__(
-        self: Any, *, enabled: datatypes.BoolLike | None = None, distance: datatypes.Float64Like | None = None
+        self: Any,
+        *,
+        enabled: datatypes.BoolLike | None = None,
+        distance: datatypes.Float64Like | None = None,
+        iterations: datatypes.UInt64Like | None = None,
     ):
         """
         Create a new instance of the ForceLink archetype.
@@ -35,12 +39,14 @@ class ForceLink(Archetype):
             Whether the force is enabled.
         distance:
             The target distance between two nodes.
+        iterations:
+            The number of iterations to run the force.
 
         """
 
         # You can define your own __init__ function as a member of ForceLinkExt in force_link_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(enabled=enabled, distance=distance)
+            self.__attrs_init__(enabled=enabled, distance=distance, iterations=iterations)
             return
         self.__attrs_clear__()
 
@@ -49,6 +55,7 @@ class ForceLink(Archetype):
         self.__attrs_init__(
             enabled=None,  # type: ignore[arg-type]
             distance=None,  # type: ignore[arg-type]
+            iterations=None,  # type: ignore[arg-type]
         )
 
     @classmethod
@@ -73,6 +80,15 @@ class ForceLink(Archetype):
         converter=blueprint_components.ForceDistanceBatch._optional,  # type: ignore[misc]
     )
     # The target distance between two nodes.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    iterations: blueprint_components.ForceIterationsBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=blueprint_components.ForceIterationsBatch._optional,  # type: ignore[misc]
+    )
+    # The number of iterations to run the force.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

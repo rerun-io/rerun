@@ -1,7 +1,5 @@
 namespace rerun.blueprint.archetypes;
 
-// TODO
-
 /// The link force pushes linked nodes together or apart according to a desired distance.
 struct ForceCollisionRadius (
     "attr.rerun.scope": "blueprint"
@@ -11,4 +9,7 @@ struct ForceCollisionRadius (
 
     /// The strength of the force.
     strength: rerun.blueprint.components.ForceStrength ("attr.rerun.component_optional", nullable, order: 200);
+
+    /// The number of iterations to run the force.
+    iterations: rerun.blueprint.components.ForceIterations ("attr.rerun.component_optional", nullable, order: 300);
 }

@@ -4,6 +4,7 @@
 #pragma once
 
 #include "../../blueprint/components/enabled.hpp"
+#include "../../blueprint/components/force_iterations.hpp"
 #include "../../blueprint/components/force_strength.hpp"
 #include "../../collection.hpp"
 #include "../../compiler_utils.hpp"
@@ -24,6 +25,9 @@ namespace rerun::blueprint::archetypes {
 
         /// The strength of the force.
         std::optional<rerun::blueprint::components::ForceStrength> strength;
+
+        /// The number of iterations to run the force.
+        std::optional<rerun::blueprint::components::ForceIterations> iterations;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -47,6 +51,15 @@ namespace rerun::blueprint::archetypes {
         ForceCollisionRadius with_strength(rerun::blueprint::components::ForceStrength _strength
         ) && {
             strength = std::move(_strength);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// The number of iterations to run the force.
+        ForceCollisionRadius with_iterations(
+            rerun::blueprint::components::ForceIterations _iterations
+        ) && {
+            iterations = std::move(_iterations);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

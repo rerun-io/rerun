@@ -5,6 +5,7 @@
 
 #include "../../blueprint/components/enabled.hpp"
 #include "../../blueprint/components/force_distance.hpp"
+#include "../../blueprint/components/force_iterations.hpp"
 #include "../../collection.hpp"
 #include "../../compiler_utils.hpp"
 #include "../../component_batch.hpp"
@@ -24,6 +25,9 @@ namespace rerun::blueprint::archetypes {
 
         /// The target distance between two nodes.
         std::optional<rerun::blueprint::components::ForceDistance> distance;
+
+        /// The number of iterations to run the force.
+        std::optional<rerun::blueprint::components::ForceIterations> iterations;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -46,6 +50,13 @@ namespace rerun::blueprint::archetypes {
         /// The target distance between two nodes.
         ForceLink with_distance(rerun::blueprint::components::ForceDistance _distance) && {
             distance = std::move(_distance);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// The number of iterations to run the force.
+        ForceLink with_iterations(rerun::blueprint::components::ForceIterations _iterations) && {
+            iterations = std::move(_iterations);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

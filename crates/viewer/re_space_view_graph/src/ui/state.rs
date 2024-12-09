@@ -1,6 +1,6 @@
 use egui::Rect;
 use re_format::format_f32;
-use re_types::blueprint::{self, components::VisualBounds2D};
+use re_types::blueprint::components::VisualBounds2D;
 use re_ui::UiExt;
 use re_viewer_context::SpaceViewState;
 

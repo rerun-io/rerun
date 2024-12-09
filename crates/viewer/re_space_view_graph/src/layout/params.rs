@@ -1,7 +1,7 @@
 use re_types::{
     blueprint::{
         archetypes::{ForceCenter, ForceCollisionRadius, ForceLink, ForceManyBody, ForcePosition},
-        components::{Enabled, ForceDistance, ForceStrength},
+        components::{Enabled, ForceDistance, ForceIterations, ForceStrength},
     },
     components::Position2D,
     Archetype, Component,
@@ -14,6 +14,7 @@ pub struct ForceLayoutParams {
     // Link
     pub(super) force_link_enabled: Enabled,
     pub(super) force_link_distance: ForceDistance,
+    pub(super) force_link_iterations: ForceIterations,
     // Many body
     pub(super) force_many_body_enabled: Enabled,
     pub(super) force_many_body_strength: ForceStrength,
@@ -27,6 +28,7 @@ pub struct ForceLayoutParams {
     // Collision
     pub(super) force_collision_enabled: Enabled,
     pub(super) force_collision_strength: ForceStrength,
+    pub(super) force_collision_iterations: ForceIterations,
 }
 
 /// Convenience struct for querying the components of a blueprint archetype or its fallbacks.
@@ -87,6 +89,7 @@ impl ForceLayoutParams {
             // Link
             force_link_enabled: force_link.get()?,
             force_link_distance: force_link.get()?,
+            force_link_iterations: force_link.get()?,
             // Many body
             force_many_body_enabled: force_many.get()?,
             force_many_body_strength: force_many.get()?,
@@ -100,6 +103,7 @@ impl ForceLayoutParams {
             // Collision
             force_collision_enabled: force_collision.get()?,
             force_collision_strength: force_collision.get()?,
+            force_collision_iterations: force_collision.get()?,
         })
     }
 }

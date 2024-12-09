@@ -14,8 +14,8 @@ import rerun.blueprint as rrb
 from rerun.blueprint.archetypes.force_collision_radius import ForceCollisionRadius
 from rerun.blueprint.archetypes.force_link import ForceLink
 from rerun.blueprint.archetypes.force_many_body import ForceManyBody
+from rerun.components.color import Color
 from rerun.components.show_labels import ShowLabels
-from rerun.datatypes.rgba32 import Rgba32
 
 README = """\
 # Time-varying graph view
@@ -28,15 +28,15 @@ Please check the following:
 """
 
 color_scheme = [
-    Rgba32([228, 26, 28, 255]),  # Red
-    Rgba32([55, 126, 184, 255]),  # Blue
-    Rgba32([77, 175, 74, 255]),  # Green
-    Rgba32([152, 78, 163, 255]),  # Purple
-    Rgba32([255, 127, 0, 255]),  # Orange
-    Rgba32([255, 255, 51, 255]),  # Yellow
-    Rgba32([166, 86, 40, 255]),  # Brown
-    Rgba32([247, 129, 191, 255]),  # Pink
-    Rgba32([153, 153, 153, 255]),  # Gray
+    Color([228, 26, 28]),  # Red
+    Color([55, 126, 184]),  # Blue
+    Color([77, 175, 74]),  # Green
+    Color([152, 78, 163]),  # Purple
+    Color([255, 127, 0]),  # Orange
+    Color([255, 255, 51]),  # Yellow
+    Color([166, 86, 40]),  # Brown
+    Color([247, 129, 191]),  # Pink
+    Color([153, 153, 153]),  # Gray
 ]
 
 
@@ -47,7 +47,7 @@ def log_readme() -> None:
 def log_graphs() -> None:
     nodes = ["root"]
     radii = [42]
-    colors = [Rgba32([81, 81, 81, 255])]
+    colors = [Color([81, 81, 81])]
     edges = []
 
     # We want reproducible results

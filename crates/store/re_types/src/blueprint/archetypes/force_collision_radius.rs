@@ -26,18 +26,24 @@ pub struct ForceCollisionRadius {
 
     /// The strength of the force.
     pub strength: Option<crate::blueprint::components::ForceStrength>,
+
+    /// The number of iterations to run the force.
+    pub iterations: Option<crate::blueprint::components::ForceIterations>,
 }
 
 impl ::re_types_core::SizeBytes for ForceCollisionRadius {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.enabled.heap_size_bytes() + self.strength.heap_size_bytes()
+        self.enabled.heap_size_bytes()
+            + self.strength.heap_size_bytes()
+            + self.iterations.heap_size_bytes()
     }
 
     #[inline]
     fn is_pod() -> bool {
         <Option<crate::blueprint::components::Enabled>>::is_pod()
             && <Option<crate::blueprint::components::ForceStrength>>::is_pod()
+            && <Option<crate::blueprint::components::ForceIterations>>::is_pod()
     }
 }
 
@@ -49,26 +55,28 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
         ["rerun.blueprint.components.ForceCollisionRadiusIndicator".into()]
     });
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.blueprint.components.Enabled".into(),
             "rerun.blueprint.components.ForceStrength".into(),
+            "rerun.blueprint.components.ForceIterations".into(),
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.blueprint.components.ForceCollisionRadiusIndicator".into(),
             "rerun.blueprint.components.Enabled".into(),
             "rerun.blueprint.components.ForceStrength".into(),
+            "rerun.blueprint.components.ForceIterations".into(),
         ]
     });
 
 impl ForceCollisionRadius {
-    /// The total number of components in the archetype: 0 required, 1 recommended, 2 optional
-    pub const NUM_COMPONENTS: usize = 3usize;
+    /// The total number of components in the archetype: 0 required, 1 recommended, 3 optional
+    pub const NUM_COMPONENTS: usize = 4usize;
 }
 
 /// Indicator component for the [`ForceCollisionRadius`] [`::re_types_core::Archetype`]
@@ -144,7 +152,21 @@ impl ::re_types_core::Archetype for ForceCollisionRadius {
             } else {
                 None
             };
-        Ok(Self { enabled, strength })
+        let iterations =
+            if let Some(array) = arrays_by_name.get("rerun.blueprint.components.ForceIterations") {
+                <crate::blueprint::components::ForceIterations>::from_arrow2_opt(&**array)
+                    .with_context("rerun.blueprint.archetypes.ForceCollisionRadius#iterations")?
+                    .into_iter()
+                    .next()
+                    .flatten()
+            } else {
+                None
+            };
+        Ok(Self {
+            enabled,
+            strength,
+            iterations,
+        })
     }
 }
 
@@ -158,6 +180,9 @@ impl ::re_types_core::AsComponents for ForceCollisionRadius {
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
             self.strength
+                .as_ref()
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
+            self.iterations
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
         ]
@@ -176,6 +201,7 @@ impl ForceCollisionRadius {
         Self {
             enabled: None,
             strength: None,
+            iterations: None,
         }
     }
 
@@ -196,6 +222,16 @@ impl ForceCollisionRadius {
         strength: impl Into<crate::blueprint::components::ForceStrength>,
     ) -> Self {
         self.strength = Some(strength.into());
+        self
+    }
+
+    /// The number of iterations to run the force.
+    #[inline]
+    pub fn with_iterations(
+        mut self,
+        iterations: impl Into<crate::blueprint::components::ForceIterations>,
+    ) -> Self {
+        self.iterations = Some(iterations.into());
         self
     }
 }

@@ -1990,7 +1990,10 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     is_required : false, }, ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.ForceStrength".into(), display_name :
                     "Strength", docstring_md : "The strength of the force.", is_required
-                    : false, },
+                    : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.ForceIterations".into(), display_name :
+                    "Iterations", docstring_md :
+                    "The number of iterations to run the force.", is_required : false, },
                 ],
             },
         ),
@@ -2006,7 +2009,10 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     is_required : false, }, ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.ForceDistance".into(), display_name :
                     "Distance", docstring_md : "The target distance between two nodes.",
-                    is_required : false, },
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.ForceIterations".into(), display_name :
+                    "Iterations", docstring_md :
+                    "The number of iterations to run the force.", is_required : false, },
                 ],
             },
         ),

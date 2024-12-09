@@ -24,7 +24,11 @@ class ForceCollisionRadius(Archetype):
     """**Archetype**: The link force pushes linked nodes together or apart according to a desired distance."""
 
     def __init__(
-        self: Any, *, enabled: datatypes.BoolLike | None = None, strength: datatypes.Float64Like | None = None
+        self: Any,
+        *,
+        enabled: datatypes.BoolLike | None = None,
+        strength: datatypes.Float64Like | None = None,
+        iterations: datatypes.UInt64Like | None = None,
     ):
         """
         Create a new instance of the ForceCollisionRadius archetype.
@@ -35,12 +39,14 @@ class ForceCollisionRadius(Archetype):
             Whether the force is enabled.
         strength:
             The strength of the force.
+        iterations:
+            The number of iterations to run the force.
 
         """
 
         # You can define your own __init__ function as a member of ForceCollisionRadiusExt in force_collision_radius_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(enabled=enabled, strength=strength)
+            self.__attrs_init__(enabled=enabled, strength=strength, iterations=iterations)
             return
         self.__attrs_clear__()
 
@@ -49,6 +55,7 @@ class ForceCollisionRadius(Archetype):
         self.__attrs_init__(
             enabled=None,  # type: ignore[arg-type]
             strength=None,  # type: ignore[arg-type]
+            iterations=None,  # type: ignore[arg-type]
         )
 
     @classmethod
@@ -73,6 +80,15 @@ class ForceCollisionRadius(Archetype):
         converter=blueprint_components.ForceStrengthBatch._optional,  # type: ignore[misc]
     )
     # The strength of the force.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    iterations: blueprint_components.ForceIterationsBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=blueprint_components.ForceIterationsBatch._optional,  # type: ignore[misc]
+    )
+    # The number of iterations to run the force.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
