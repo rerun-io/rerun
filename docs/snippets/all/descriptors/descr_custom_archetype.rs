@@ -1,45 +1,7 @@
-use rerun::{
-    external::arrow2, ChunkStore, ChunkStoreConfig, Component, ComponentDescriptor, VersionPolicy,
-};
-
-#[derive(Debug, Clone, Copy)]
-struct CustomPosition3D(rerun::components::Position3D);
-
-impl rerun::SizeBytes for CustomPosition3D {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-}
-
-impl rerun::Loggable for CustomPosition3D {
-    #[inline]
-    fn arrow2_datatype() -> arrow2::datatypes::DataType {
-        rerun::components::Position3D::arrow2_datatype()
-    }
-
-    #[inline]
-    fn to_arrow2_opt<'a>(
-        data: impl IntoIterator<Item = Option<impl Into<std::borrow::Cow<'a, Self>>>>,
-    ) -> rerun::SerializationResult<Box<dyn arrow2::array::Array>>
-    where
-        Self: 'a,
-    {
-        rerun::components::Position3D::to_arrow2_opt(
-            data.into_iter().map(|opt| opt.map(Into::into).map(|c| c.0)),
-        )
-    }
-}
-
-impl rerun::Component for CustomPosition3D {
-    #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("user.CustomPosition3D")
-    }
-}
+use rerun::{ChunkStore, ChunkStoreConfig, ComponentBatch, ComponentDescriptor, VersionPolicy};
 
 struct CustomPoints3D {
-    positions: Vec<CustomPosition3D>,
+    positions: Vec<rerun::components::Position3D>,
     colors: Option<Vec<rerun::components::Color>>,
 }
 
@@ -49,13 +11,15 @@ impl CustomPoints3D {
     }
 
     fn overridden_position_descriptor() -> ComponentDescriptor {
-        CustomPosition3D::descriptor()
-            .or_with_archetype_name(|| "user.CustomPoints3D".into())
-            .or_with_archetype_field_name(|| "custom_positions".into())
+        ComponentDescriptor {
+            archetype_name: Some("user.CustomPoints3D".into()),
+            archetype_field_name: Some("custom_positions".into()),
+            component_name: "user.CustomPosition3D".into(),
+        }
     }
 
     fn overridden_color_descriptor() -> ComponentDescriptor {
-        rerun::components::Color::descriptor()
+        <rerun::components::Color as rerun::Component>::descriptor()
             .or_with_archetype_name(|| "user.CustomPoints3D".into())
             .or_with_archetype_field_name(|| "colors".into())
     }
@@ -66,15 +30,12 @@ impl rerun::AsComponents for CustomPoints3D {
         [
             Some(Self::indicator().to_batch()),
             Some(
-                rerun::ComponentBatchCowWithDescriptor::new(
-                    &self.positions as &dyn rerun::ComponentBatch,
-                )
-                .with_descriptor_override(Self::overridden_position_descriptor()),
+                self.positions
+                    .with_descriptor(Self::overridden_position_descriptor()),
             ),
-            self.colors.as_ref().map(|colors| {
-                rerun::ComponentBatchCowWithDescriptor::new(colors as &dyn rerun::ComponentBatch)
-                    .with_descriptor_override(Self::overridden_color_descriptor())
-            }),
+            self.colors
+                .as_ref()
+                .map(|colors| colors.with_descriptor(Self::overridden_color_descriptor())),
         ]
         .into_iter()
         .flatten()
@@ -83,12 +44,12 @@ impl rerun::AsComponents for CustomPoints3D {
 }
 
 fn example(rec: &rerun::RecordingStream) -> Result<(), Box<dyn std::error::Error>> {
-    let position = CustomPosition3D(rerun::components::Position3D::new(1.0, 2.0, 3.0));
-    let color = rerun::components::Color::new(0xFF00FFFF);
+    let positions = rerun::components::Position3D::new(1.0, 2.0, 3.0);
+    let colors = rerun::components::Color::new(0xFF00FFFF);
 
     let points = CustomPoints3D {
-        positions: vec![position],
-        colors: Some(vec![color]),
+        positions: vec![positions],
+        colors: Some(vec![colors]),
     };
 
     rec.log_static("data", &points as _)?;
@@ -152,7 +113,7 @@ fn check_tags(rec: &rerun::RecordingStream) {
             ComponentDescriptor {
                 archetype_name: Some("user.CustomPoints3D".into()),
                 archetype_field_name: Some("colors".into()),
-                component_name: rerun::components::Color::name(),
+                component_name: "rerun.components.Color".into(),
             },
             ComponentDescriptor {
                 archetype_name: Some("user.CustomPoints3D".into()),
