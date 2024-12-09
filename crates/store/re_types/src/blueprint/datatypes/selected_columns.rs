@@ -310,15 +310,15 @@ impl ::re_types_core::Loggable for SelectedColumns {
                             };
                             let offsets = arrow_data.offsets();
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                    offsets.iter().zip(offsets.lengths()),
+                                    offsets.windows(2),
                                     arrow_data.validity(),
                                 )
                                 .map(|elem| {
                                     elem
-                                        .map(|(start, len)| {
-                                            let start = *start as usize;
-                                            let end = start + len;
-                                            if end > arrow_data_inner.len() {
+                                        .map(|window| {
+                                            let start = window[0] as usize;
+                                            let end = window[1] as usize;
+                                            if arrow_data_inner.len() < end {
                                                 return Err(
                                                     DeserializationError::offset_slice_oob(
                                                         (start, end),
@@ -390,15 +390,15 @@ impl ::re_types_core::Loggable for SelectedColumns {
                             };
                             let offsets = arrow_data.offsets();
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                    offsets.iter().zip(offsets.lengths()),
+                                    offsets.windows(2),
                                     arrow_data.validity(),
                                 )
                                 .map(|elem| {
                                     elem
-                                        .map(|(start, len)| {
-                                            let start = *start as usize;
-                                            let end = start + len;
-                                            if end > arrow_data_inner.len() {
+                                        .map(|window| {
+                                            let start = window[0] as usize;
+                                            let end = window[1] as usize;
+                                            if arrow_data_inner.len() < end {
                                                 return Err(
                                                     DeserializationError::offset_slice_oob(
                                                         (start, end),

@@ -814,19 +814,19 @@ fn quote_arrow_field_deserializer(
 
                     let offsets = #data_src.offsets();
                     arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                        offsets.iter().zip(offsets.lengths()),
+                        offsets.windows(2),
                         #data_src.validity(),
                     )
-                    .map(|elem| elem.map(|(start, len)| {
+                    .map(|elem| elem.map(|window| {
                             // NOTE: Do _not_ use `Buffer::sliced`, it panics on malformed inputs.
 
-                            let start = *start as usize;
-                            let end = start + len;
+                            let start = window[0] as usize;
+                            let end = window[1] as usize;
 
                             // NOTE: It is absolutely crucial we explicitly handle the
                             // boundchecks manually first, otherwise rustc completely chokes
                             // when slicing the data (as in: a 100x perf drop)!
-                            if end  > #data_src_inner.len() {
+                            if #data_src_inner.len() < end {
                                 // error context is appended below during final collection
                                 return Err(DeserializationError::offset_slice_oob(
                                     (start, end), #data_src_inner.len(),
