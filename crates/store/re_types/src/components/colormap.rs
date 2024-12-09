@@ -14,9 +14,9 @@
 #![allow(non_camel_case_types)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: Colormap for mapping scalar values within a given range to a color.
@@ -73,71 +73,10 @@ pub enum Colormap {
     CyanToYellow = 7,
 }
 
-impl ::re_types_core::reflection::Enum for Colormap {
+impl ::re_types_core::Component for Colormap {
     #[inline]
-    fn variants() -> &'static [Self] {
-        &[
-            Self::Grayscale,
-            Self::Inferno,
-            Self::Magma,
-            Self::Plasma,
-            Self::Turbo,
-            Self::Viridis,
-            Self::CyanToYellow,
-        ]
-    }
-
-    #[inline]
-    fn docstring_md(self) -> &'static str {
-        match self {
-            Self::Grayscale => {
-                "A simple black to white gradient.\n\nThis is a sRGB gray gradient which is perceptually uniform."
-            }
-            Self::Inferno => {
-                "The Inferno colormap from Matplotlib.\n\nThis is a perceptually uniform colormap.\nIt interpolates from black to red to bright yellow."
-            }
-            Self::Magma => {
-                "The Magma colormap from Matplotlib.\n\nThis is a perceptually uniform colormap.\nIt interpolates from black to purple to white."
-            }
-            Self::Plasma => {
-                "The Plasma colormap from Matplotlib.\n\nThis is a perceptually uniform colormap.\nIt interpolates from dark blue to purple to yellow."
-            }
-            Self::Turbo => {
-                "Google's Turbo colormap map.\n\nThis is a perceptually non-uniform rainbow colormap addressing many issues of\nmore traditional rainbow colormaps like Jet.\nIt is more perceptually uniform without sharp transitions and is more colorblind-friendly.\nDetails: <https://research.google/blog/turbo-an-improved-rainbow-colormap-for-visualization/>"
-            }
-            Self::Viridis => {
-                "The Viridis colormap from Matplotlib\n\nThis is a perceptually uniform colormap which is robust to color blindness.\nIt interpolates from dark purple to green to yellow."
-            }
-            Self::CyanToYellow => {
-                "Rasmusgo's Cyan to Yellow colormap\n\nThis is a perceptually uniform colormap which is robust to color blindness.\nIt is especially suited for visualizing signed values.\nIt interpolates from cyan to blue to dark gray to brass to yellow."
-            }
-        }
-    }
-}
-
-impl ::re_types_core::SizeBytes for Colormap {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
-    }
-}
-
-impl std::fmt::Display for Colormap {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Grayscale => write!(f, "Grayscale"),
-            Self::Inferno => write!(f, "Inferno"),
-            Self::Magma => write!(f, "Magma"),
-            Self::Plasma => write!(f, "Plasma"),
-            Self::Turbo => write!(f, "Turbo"),
-            Self::Viridis => write!(f, "Viridis"),
-            Self::CyanToYellow => write!(f, "CyanToYellow"),
-        }
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.components.Colormap")
     }
 }
 
@@ -232,9 +171,70 @@ impl ::re_types_core::Loggable for Colormap {
     }
 }
 
-impl ::re_types_core::Component for Colormap {
+impl std::fmt::Display for Colormap {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Grayscale => write!(f, "Grayscale"),
+            Self::Inferno => write!(f, "Inferno"),
+            Self::Magma => write!(f, "Magma"),
+            Self::Plasma => write!(f, "Plasma"),
+            Self::Turbo => write!(f, "Turbo"),
+            Self::Viridis => write!(f, "Viridis"),
+            Self::CyanToYellow => write!(f, "CyanToYellow"),
+        }
+    }
+}
+
+impl ::re_types_core::reflection::Enum for Colormap {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.components.Colormap".into()
+    fn variants() -> &'static [Self] {
+        &[
+            Self::Grayscale,
+            Self::Inferno,
+            Self::Magma,
+            Self::Plasma,
+            Self::Turbo,
+            Self::Viridis,
+            Self::CyanToYellow,
+        ]
+    }
+
+    #[inline]
+    fn docstring_md(self) -> &'static str {
+        match self {
+            Self::Grayscale => {
+                "A simple black to white gradient.\n\nThis is a sRGB gray gradient which is perceptually uniform."
+            }
+            Self::Inferno => {
+                "The Inferno colormap from Matplotlib.\n\nThis is a perceptually uniform colormap.\nIt interpolates from black to red to bright yellow."
+            }
+            Self::Magma => {
+                "The Magma colormap from Matplotlib.\n\nThis is a perceptually uniform colormap.\nIt interpolates from black to purple to white."
+            }
+            Self::Plasma => {
+                "The Plasma colormap from Matplotlib.\n\nThis is a perceptually uniform colormap.\nIt interpolates from dark blue to purple to yellow."
+            }
+            Self::Turbo => {
+                "Google's Turbo colormap map.\n\nThis is a perceptually non-uniform rainbow colormap addressing many issues of\nmore traditional rainbow colormaps like Jet.\nIt is more perceptually uniform without sharp transitions and is more colorblind-friendly.\nDetails: <https://research.google/blog/turbo-an-improved-rainbow-colormap-for-visualization/>"
+            }
+            Self::Viridis => {
+                "The Viridis colormap from Matplotlib\n\nThis is a perceptually uniform colormap which is robust to color blindness.\nIt interpolates from dark purple to green to yellow."
+            }
+            Self::CyanToYellow => {
+                "Rasmusgo's Cyan to Yellow colormap\n\nThis is a perceptually uniform colormap which is robust to color blindness.\nIt is especially suited for visualizing signed values.\nIt interpolates from cyan to blue to dark gray to brass to yellow."
+            }
+        }
+    }
+}
+
+impl ::re_types_core::SizeBytes for Colormap {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
     }
 }

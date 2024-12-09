@@ -9,7 +9,7 @@ from typing import Any, Iterable
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
-import rerun as rr  # pip install rerun-sdk
+import rerun as rr
 
 
 class ConfidenceBatch(rr.ComponentBatchLike):
@@ -18,9 +18,9 @@ class ConfidenceBatch(rr.ComponentBatchLike):
     def __init__(self: Any, confidence: npt.ArrayLike) -> None:
         self.confidence = confidence
 
-    def component_name(self) -> str:
-        """The name of the custom component."""
-        return "user.Confidence"
+    def component_descriptor(self) -> rr.ComponentDescriptor:
+        """The descriptor of the custom component."""
+        return rr.ComponentDescriptor("user.Confidence")
 
     def as_arrow_array(self) -> pa.Array:
         """The arrow batch representing the custom component."""
@@ -36,10 +36,18 @@ class CustomPoints3D(rr.AsComponents):
 
     def as_component_batches(self) -> Iterable[rr.ComponentBatchLike]:
         points3d = np.asarray(self.points3d)
+        confidences = ConfidenceBatch(self.confidences)
         return (
             list(rr.Points3D(points3d).as_component_batches())  # The components from Points3D
             + [rr.IndicatorComponentBatch("user.CustomPoints3D")]  # Our custom indicator
-            + [ConfidenceBatch(self.confidences)]  # Custom confidence data
+            + [
+                rr.DescribedComponentBatch(
+                    confidences,
+                    confidences.component_descriptor().or_with_overrides(
+                        archetype_name="user.CustomPoints3D", archetype_field_name="confidences"
+                    ),
+                )
+            ]  # Custom confidence data
         )
 
 

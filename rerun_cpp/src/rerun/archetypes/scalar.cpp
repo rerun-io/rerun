@@ -17,7 +17,10 @@ namespace rerun {
         cells.reserve(2);
 
         {
-            auto result = ComponentBatch::from_loggable(archetype.scalar);
+            auto result = ComponentBatch::from_loggable(
+                archetype.scalar,
+                ComponentDescriptor("rerun.archetypes.Scalar", "scalar", "rerun.components.Scalar")
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

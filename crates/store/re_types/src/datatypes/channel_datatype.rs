@@ -14,9 +14,9 @@
 #![allow(non_camel_case_types)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: The innermost datatype of an image.
@@ -58,72 +58,6 @@ pub enum ChannelDatatype {
 
     /// 64-bit IEEE-754 floating point, also known as `double`.
     F64 = 35,
-}
-
-impl ::re_types_core::reflection::Enum for ChannelDatatype {
-    #[inline]
-    fn variants() -> &'static [Self] {
-        &[
-            Self::U8,
-            Self::I8,
-            Self::U16,
-            Self::I16,
-            Self::U32,
-            Self::I32,
-            Self::U64,
-            Self::I64,
-            Self::F16,
-            Self::F32,
-            Self::F64,
-        ]
-    }
-
-    #[inline]
-    fn docstring_md(self) -> &'static str {
-        match self {
-            Self::U8 => "8-bit unsigned integer.",
-            Self::I8 => "8-bit signed integer.",
-            Self::U16 => "16-bit unsigned integer.",
-            Self::I16 => "16-bit signed integer.",
-            Self::U32 => "32-bit unsigned integer.",
-            Self::I32 => "32-bit signed integer.",
-            Self::U64 => "64-bit unsigned integer.",
-            Self::I64 => "64-bit signed integer.",
-            Self::F16 => "16-bit IEEE-754 floating point, also known as `half`.",
-            Self::F32 => "32-bit IEEE-754 floating point, also known as `float` or `single`.",
-            Self::F64 => "64-bit IEEE-754 floating point, also known as `double`.",
-        }
-    }
-}
-
-impl ::re_types_core::SizeBytes for ChannelDatatype {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
-    }
-}
-
-impl std::fmt::Display for ChannelDatatype {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::U8 => write!(f, "U8"),
-            Self::I8 => write!(f, "I8"),
-            Self::U16 => write!(f, "U16"),
-            Self::I16 => write!(f, "I16"),
-            Self::U32 => write!(f, "U32"),
-            Self::I32 => write!(f, "I32"),
-            Self::U64 => write!(f, "U64"),
-            Self::I64 => write!(f, "I64"),
-            Self::F16 => write!(f, "F16"),
-            Self::F32 => write!(f, "F32"),
-            Self::F64 => write!(f, "F64"),
-        }
-    }
 }
 
 ::re_types_core::macros::impl_into_cow!(ChannelDatatype);
@@ -218,5 +152,71 @@ impl ::re_types_core::Loggable for ChannelDatatype {
             })
             .collect::<DeserializationResult<Vec<Option<_>>>>()
             .with_context("rerun.datatypes.ChannelDatatype")?)
+    }
+}
+
+impl std::fmt::Display for ChannelDatatype {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::U8 => write!(f, "U8"),
+            Self::I8 => write!(f, "I8"),
+            Self::U16 => write!(f, "U16"),
+            Self::I16 => write!(f, "I16"),
+            Self::U32 => write!(f, "U32"),
+            Self::I32 => write!(f, "I32"),
+            Self::U64 => write!(f, "U64"),
+            Self::I64 => write!(f, "I64"),
+            Self::F16 => write!(f, "F16"),
+            Self::F32 => write!(f, "F32"),
+            Self::F64 => write!(f, "F64"),
+        }
+    }
+}
+
+impl ::re_types_core::reflection::Enum for ChannelDatatype {
+    #[inline]
+    fn variants() -> &'static [Self] {
+        &[
+            Self::U8,
+            Self::I8,
+            Self::U16,
+            Self::I16,
+            Self::U32,
+            Self::I32,
+            Self::U64,
+            Self::I64,
+            Self::F16,
+            Self::F32,
+            Self::F64,
+        ]
+    }
+
+    #[inline]
+    fn docstring_md(self) -> &'static str {
+        match self {
+            Self::U8 => "8-bit unsigned integer.",
+            Self::I8 => "8-bit signed integer.",
+            Self::U16 => "16-bit unsigned integer.",
+            Self::I16 => "16-bit signed integer.",
+            Self::U32 => "32-bit unsigned integer.",
+            Self::I32 => "32-bit signed integer.",
+            Self::U64 => "64-bit unsigned integer.",
+            Self::I64 => "64-bit signed integer.",
+            Self::F16 => "16-bit IEEE-754 floating point, also known as `half`.",
+            Self::F32 => "32-bit IEEE-754 floating point, also known as `float` or `single`.",
+            Self::F64 => "64-bit IEEE-754 floating point, also known as `double`.",
+        }
+    }
+}
+
+impl ::re_types_core::SizeBytes for ChannelDatatype {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
     }
 }

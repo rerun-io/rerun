@@ -68,9 +68,7 @@ impl ContainerBlueprint {
         let results = blueprint_db.storage_engine().cache().latest_at(
             query,
             &id.as_entity_path(),
-            blueprint_archetypes::ContainerBlueprint::all_components()
-                .iter()
-                .copied(),
+            blueprint_archetypes::ContainerBlueprint::all_components().iter(),
         );
 
         // This is a required component. Note that when loading containers we crawl the subtree and so

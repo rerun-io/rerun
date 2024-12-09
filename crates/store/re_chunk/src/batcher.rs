@@ -9,9 +9,9 @@ use crossbeam::channel::{Receiver, Sender};
 use nohash_hasher::IntMap;
 
 use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt, TimePoint, Timeline};
-use re_types_core::{ComponentName, SizeBytes as _};
+use re_types_core::{ComponentDescriptor, SizeBytes as _};
 
-use crate::{Chunk, ChunkId, ChunkResult, RowId, TimeColumn};
+use crate::{chunk::ChunkComponents, Chunk, ChunkId, ChunkResult, RowId, TimeColumn};
 
 // ---
 
@@ -678,14 +678,14 @@ pub struct PendingRow {
     /// The component data.
     ///
     /// Each array is a single component, i.e. _not_ a list array.
-    pub components: IntMap<ComponentName, Box<dyn Arrow2Array>>,
+    pub components: IntMap<ComponentDescriptor, Box<dyn Arrow2Array>>,
 }
 
 impl PendingRow {
     #[inline]
     pub fn new(
         timepoint: TimePoint,
-        components: IntMap<ComponentName, Box<dyn Arrow2Array>>,
+        components: IntMap<ComponentDescriptor, Box<dyn Arrow2Array>>,
     ) -> Self {
         Self {
             row_id: RowId::new(),
@@ -731,13 +731,16 @@ impl PendingRow {
             })
             .collect();
 
-        let components = components
-            .into_iter()
-            .filter_map(|(component_name, array)| {
-                crate::util::arrays_to_list_array_opt(&[Some(&*array as _)])
-                    .map(|array| (component_name, array))
-            })
-            .collect();
+        let mut per_name = ChunkComponents::default();
+        for (component_desc, array) in components {
+            let list_array = crate::util::arrays_to_list_array_opt(&[Some(&*array as _)]);
+            if let Some(list_array) = list_array {
+                per_name
+                    .entry(component_desc.component_name)
+                    .or_default()
+                    .insert(component_desc, list_array);
+            }
+        }
 
         Chunk::from_native_row_ids(
             ChunkId::new(),
@@ -745,7 +748,7 @@ impl PendingRow {
             Some(true),
             &[row_id],
             timelines,
-            components,
+            per_name,
         )
     }
 
@@ -825,11 +828,11 @@ impl PendingRow {
 
                 // Create all the logical list arrays that we're going to need, accounting for the
                 // possibility of sparse components in the data.
-                let mut all_components: IntMap<ComponentName, Vec<Option<&dyn Arrow2Array>>> =
+                let mut all_components: IntMap<ComponentDescriptor, Vec<Option<&dyn Arrow2Array>>> =
                     IntMap::default();
                 for row in &rows {
-                    for component_name in row.components.keys() {
-                        all_components.entry(*component_name).or_default();
+                    for component_desc in row.components.keys() {
+                        all_components.entry(component_desc.clone()).or_default();
                     }
                 }
 
@@ -864,13 +867,21 @@ impl PendingRow {
                                     .into_iter()
                                     .map(|(timeline, time_column)| (timeline, time_column.finish()))
                                     .collect(),
-                                std::mem::take(&mut components)
-                                    .into_iter()
-                                    .filter_map(|(component_name, arrays)| {
-                                        crate::util::arrays_to_list_array_opt(&arrays)
-                                            .map(|list_array| (component_name, list_array))
-                                    })
-                                    .collect(),
+                                {
+                                    let mut per_name = ChunkComponents::default();
+                                    for (component_desc, arrays) in std::mem::take(&mut components)
+                                    {
+                                        let list_array =
+                                            crate::util::arrays_to_list_array_opt(&arrays);
+                                        if let Some(list_array) = list_array {
+                                            per_name
+                                                .entry(component_desc.component_name)
+                                                .or_default()
+                                                .insert(component_desc, list_array);
+                                        }
+                                    }
+                                    per_name
+                                },
                             ));
 
                             components = all_components.clone();
@@ -886,12 +897,12 @@ impl PendingRow {
                         time_column.push(time);
                     }
 
-                    for (component_name, arrays) in &mut components {
+                    for (component_desc, arrays) in &mut components {
                         // NOTE: This will push `None` if the row doesn't actually hold a value for this
                         // component -- these are sparse list arrays!
                         arrays.push(
                             row_components
-                                .get(component_name)
+                                .get(component_desc)
                                 .map(|array| &**array as &dyn Arrow2Array),
                         );
                     }
@@ -906,13 +917,19 @@ impl PendingRow {
                         .into_iter()
                         .map(|(timeline, time_column)| (timeline, time_column.finish()))
                         .collect(),
-                    components
-                        .into_iter()
-                        .filter_map(|(component_name, arrays)| {
-                            crate::util::arrays_to_list_array_opt(&arrays)
-                                .map(|list_array| (component_name, list_array))
-                        })
-                        .collect(),
+                    {
+                        let mut per_name = ChunkComponents::default();
+                        for (component_desc, arrays) in components {
+                            let list_array = crate::util::arrays_to_list_array_opt(&arrays);
+                            if let Some(list_array) = list_array {
+                                per_name
+                                    .entry(component_desc.component_name)
+                                    .or_default()
+                                    .insert(component_desc, list_array);
+                            }
+                        }
+                        per_name
+                    },
                 ));
 
                 chunks
@@ -1003,9 +1020,9 @@ mod tests {
         let points2 = MyPoint::to_arrow2([MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)])?;
         let points3 = MyPoint::to_arrow2([MyPoint::new(100.0, 200.0), MyPoint::new(300.0, 400.0)])?;
 
-        let components1 = [(MyPoint::name(), points1.clone())];
-        let components2 = [(MyPoint::name(), points2.clone())];
-        let components3 = [(MyPoint::name(), points3.clone())];
+        let components1 = [(MyPoint::descriptor(), points1.clone())];
+        let components2 = [(MyPoint::descriptor(), points2.clone())];
+        let components3 = [(MyPoint::descriptor(), points3.clone())];
 
         let row1 = PendingRow::new(timepoint1.clone(), components1.into_iter().collect());
         let row2 = PendingRow::new(timepoint2.clone(), components2.into_iter().collect());
@@ -1050,7 +1067,7 @@ mod tests {
                 ),
             )];
             let expected_components = [(
-                MyPoint::name(),
+                MyPoint::descriptor(),
                 crate::util::arrays_to_list_array_opt(&[&*points1, &*points2, &*points3].map(Some))
                     .unwrap(),
             )];
@@ -1082,9 +1099,9 @@ mod tests {
         let points2 = MyPoint::to_arrow2([MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)])?;
         let points3 = MyPoint::to_arrow2([MyPoint::new(100.0, 200.0), MyPoint::new(300.0, 400.0)])?;
 
-        let components1 = [(MyPoint::name(), points1.clone())];
-        let components2 = [(MyPoint::name(), points2.clone())];
-        let components3 = [(MyPoint::name(), points3.clone())];
+        let components1 = [(MyPoint::descriptor(), points1.clone())];
+        let components2 = [(MyPoint::descriptor(), points2.clone())];
+        let components3 = [(MyPoint::descriptor(), points3.clone())];
 
         let row1 = PendingRow::new(timeless.clone(), components1.into_iter().collect());
         let row2 = PendingRow::new(timeless.clone(), components2.into_iter().collect());
@@ -1122,7 +1139,7 @@ mod tests {
             let expected_row_ids = vec![row1.row_id, row2.row_id, row3.row_id];
             let expected_timelines = [];
             let expected_components = [(
-                MyPoint::name(),
+                MyPoint::descriptor(),
                 crate::util::arrays_to_list_array_opt(&[&*points1, &*points2, &*points3].map(Some))
                     .unwrap(),
             )];
@@ -1158,9 +1175,9 @@ mod tests {
         let points2 = MyPoint::to_arrow2([MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)])?;
         let points3 = MyPoint::to_arrow2([MyPoint::new(100.0, 200.0), MyPoint::new(300.0, 400.0)])?;
 
-        let components1 = [(MyPoint::name(), points1.clone())];
-        let components2 = [(MyPoint::name(), points2.clone())];
-        let components3 = [(MyPoint::name(), points3.clone())];
+        let components1 = [(MyPoint::descriptor(), points1.clone())];
+        let components2 = [(MyPoint::descriptor(), points2.clone())];
+        let components3 = [(MyPoint::descriptor(), points3.clone())];
 
         let row1 = PendingRow::new(timepoint1.clone(), components1.into_iter().collect());
         let row2 = PendingRow::new(timepoint2.clone(), components2.into_iter().collect());
@@ -1206,7 +1223,7 @@ mod tests {
                 ),
             )];
             let expected_components = [(
-                MyPoint::name(),
+                MyPoint::descriptor(),
                 crate::util::arrays_to_list_array_opt(&[&*points1, &*points3].map(Some)).unwrap(),
             )];
             let expected_chunk = Chunk::from_native_row_ids(
@@ -1234,7 +1251,7 @@ mod tests {
                 ),
             )];
             let expected_components = [(
-                MyPoint::name(),
+                MyPoint::descriptor(),
                 crate::util::arrays_to_list_array_opt(&[&*points2].map(Some)).unwrap(),
             )];
             let expected_chunk = Chunk::from_native_row_ids(
@@ -1274,9 +1291,9 @@ mod tests {
         let points2 = MyPoint::to_arrow2([MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)])?;
         let points3 = MyPoint::to_arrow2([MyPoint::new(100.0, 200.0), MyPoint::new(300.0, 400.0)])?;
 
-        let components1 = [(MyPoint::name(), points1.clone())];
-        let components2 = [(MyPoint::name(), points2.clone())];
-        let components3 = [(MyPoint::name(), points3.clone())];
+        let components1 = [(MyPoint::descriptor(), points1.clone())];
+        let components2 = [(MyPoint::descriptor(), points2.clone())];
+        let components3 = [(MyPoint::descriptor(), points3.clone())];
 
         let row1 = PendingRow::new(timepoint1.clone(), components1.into_iter().collect());
         let row2 = PendingRow::new(timepoint2.clone(), components2.into_iter().collect());
@@ -1321,7 +1338,7 @@ mod tests {
                 ),
             )];
             let expected_components = [(
-                MyPoint::name(),
+                MyPoint::descriptor(),
                 crate::util::arrays_to_list_array_opt(&[&*points1].map(Some)).unwrap(),
             )];
             let expected_chunk = Chunk::from_native_row_ids(
@@ -1359,7 +1376,7 @@ mod tests {
                 ),
             ];
             let expected_components = [(
-                MyPoint::name(),
+                MyPoint::descriptor(),
                 crate::util::arrays_to_list_array_opt(&[&*points2, &*points3].map(Some)).unwrap(),
             )];
             let expected_chunk = Chunk::from_native_row_ids(
@@ -1395,9 +1412,9 @@ mod tests {
             MyPoint64::to_arrow2([MyPoint64::new(10.0, 20.0), MyPoint64::new(30.0, 40.0)])?;
         let points3 = MyPoint::to_arrow2([MyPoint::new(100.0, 200.0), MyPoint::new(300.0, 400.0)])?;
 
-        let components1 = [(MyPoint::name(), points1.clone())];
-        let components2 = [(MyPoint::name(), points2.clone())]; // same name, different datatype
-        let components3 = [(MyPoint::name(), points3.clone())];
+        let components1 = [(MyPoint::descriptor(), points1.clone())];
+        let components2 = [(MyPoint::descriptor(), points2.clone())]; // same name, different datatype
+        let components3 = [(MyPoint::descriptor(), points3.clone())];
 
         let row1 = PendingRow::new(timepoint1.clone(), components1.into_iter().collect());
         let row2 = PendingRow::new(timepoint2.clone(), components2.into_iter().collect());
@@ -1442,7 +1459,7 @@ mod tests {
                 ),
             )];
             let expected_components = [(
-                MyPoint::name(),
+                MyPoint::descriptor(),
                 crate::util::arrays_to_list_array_opt(&[&*points1, &*points3].map(Some)).unwrap(),
             )];
             let expected_chunk = Chunk::from_native_row_ids(
@@ -1470,7 +1487,7 @@ mod tests {
                 ),
             )];
             let expected_components = [(
-                MyPoint::name(),
+                MyPoint::descriptor(),
                 crate::util::arrays_to_list_array_opt(&[&*points2].map(Some)).unwrap(),
             )];
             let expected_chunk = Chunk::from_native_row_ids(
@@ -1521,10 +1538,10 @@ mod tests {
         let points4 =
             MyPoint::to_arrow2([MyPoint::new(1000.0, 2000.0), MyPoint::new(3000.0, 4000.0)])?;
 
-        let components1 = [(MyPoint::name(), points1.clone())];
-        let components2 = [(MyPoint::name(), points2.clone())];
-        let components3 = [(MyPoint::name(), points3.clone())];
-        let components4 = [(MyPoint::name(), points4.clone())];
+        let components1 = [(MyPoint::descriptor(), points1.clone())];
+        let components2 = [(MyPoint::descriptor(), points2.clone())];
+        let components3 = [(MyPoint::descriptor(), points3.clone())];
+        let components4 = [(MyPoint::descriptor(), points4.clone())];
 
         let row1 = PendingRow::new(timepoint4.clone(), components1.into_iter().collect());
         let row2 = PendingRow::new(timepoint1.clone(), components2.into_iter().collect());
@@ -1581,7 +1598,7 @@ mod tests {
                 ),
             ];
             let expected_components = [(
-                MyPoint::name(),
+                MyPoint::descriptor(),
                 crate::util::arrays_to_list_array_opt(
                     &[&*points1, &*points2, &*points3, &*points4].map(Some),
                 )
@@ -1635,10 +1652,10 @@ mod tests {
         let points4 =
             MyPoint::to_arrow2([MyPoint::new(1000.0, 2000.0), MyPoint::new(3000.0, 4000.0)])?;
 
-        let components1 = [(MyPoint::name(), points1.clone())];
-        let components2 = [(MyPoint::name(), points2.clone())];
-        let components3 = [(MyPoint::name(), points3.clone())];
-        let components4 = [(MyPoint::name(), points4.clone())];
+        let components1 = [(MyPoint::descriptor(), points1.clone())];
+        let components2 = [(MyPoint::descriptor(), points2.clone())];
+        let components3 = [(MyPoint::descriptor(), points3.clone())];
+        let components4 = [(MyPoint::descriptor(), points4.clone())];
 
         let row1 = PendingRow::new(timepoint4.clone(), components1.into_iter().collect());
         let row2 = PendingRow::new(timepoint1.clone(), components2.into_iter().collect());
@@ -1695,7 +1712,7 @@ mod tests {
                 ),
             ];
             let expected_components = [(
-                MyPoint::name(),
+                MyPoint::descriptor(),
                 crate::util::arrays_to_list_array_opt(&[&*points1, &*points2, &*points3].map(Some))
                     .unwrap(),
             )];
@@ -1734,7 +1751,7 @@ mod tests {
                 ),
             ];
             let expected_components = [(
-                MyPoint::name(),
+                MyPoint::descriptor(),
                 crate::util::arrays_to_list_array_opt(&[&*points4].map(Some)).unwrap(),
             )];
             let expected_chunk = Chunk::from_native_row_ids(

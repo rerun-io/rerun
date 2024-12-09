@@ -18,7 +18,14 @@ namespace rerun {
         cells.reserve(2);
 
         if (archetype.scaling.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.scaling.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.scaling.value(),
+                ComponentDescriptor(
+                    "rerun.blueprint.archetypes.TensorViewFit",
+                    "scaling",
+                    "rerun.blueprint.components.ViewFit"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

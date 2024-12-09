@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: Annotation info annotating a class id or key-point id.
@@ -32,20 +32,6 @@ pub struct AnnotationInfo {
 
     /// The color that will be applied to the annotated entity.
     pub color: Option<crate::datatypes::Rgba32>,
-}
-
-impl ::re_types_core::SizeBytes for AnnotationInfo {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.id.heap_size_bytes() + self.label.heap_size_bytes() + self.color.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <u16>::is_pod()
-            && <Option<crate::datatypes::Utf8>>::is_pod()
-            && <Option<crate::datatypes::Rgba32>>::is_pod()
-    }
 }
 
 ::re_types_core::macros::impl_into_cow!(AnnotationInfo);
@@ -325,5 +311,19 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                 .with_context("rerun.datatypes.AnnotationInfo")?
             }
         })
+    }
+}
+
+impl ::re_types_core::SizeBytes for AnnotationInfo {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.id.heap_size_bytes() + self.label.heap_size_bytes() + self.color.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <u16>::is_pod()
+            && <Option<crate::datatypes::Utf8>>::is_pod()
+            && <Option<crate::datatypes::Rgba32>>::is_pod()
     }
 }

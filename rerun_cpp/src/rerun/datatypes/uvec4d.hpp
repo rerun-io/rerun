@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../component_descriptor.hpp"
 #include "../result.hpp"
 
 #include <array>
@@ -39,7 +40,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<datatypes::UVec4D> {
-        static constexpr const char Name[] = "rerun.datatypes.UVec4D";
+        static constexpr ComponentDescriptor Descriptor = "rerun.datatypes.UVec4D";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();

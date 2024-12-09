@@ -17,7 +17,14 @@ namespace rerun {
         cells.reserve(2);
 
         {
-            auto result = ComponentBatch::from_loggable(archetype.zoom);
+            auto result = ComponentBatch::from_loggable(
+                archetype.zoom,
+                ComponentDescriptor(
+                    "rerun.blueprint.archetypes.MapZoom",
+                    "zoom",
+                    "rerun.blueprint.components.ZoomLevel"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

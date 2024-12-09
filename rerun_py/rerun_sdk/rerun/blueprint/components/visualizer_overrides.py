@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from ..._baseclasses import (
     ComponentBatchMixin,
+    ComponentDescriptor,
     ComponentMixin,
 )
 from ...blueprint import datatypes as blueprint_datatypes
@@ -36,7 +37,7 @@ class VisualizerOverrides(blueprint_datatypes.Utf8List, ComponentMixin):
 
 
 class VisualizerOverridesBatch(blueprint_datatypes.Utf8ListBatch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.blueprint.components.VisualizerOverrides"
+    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.blueprint.components.VisualizerOverrides")
 
 
 # This is patched in late to avoid circular dependencies.

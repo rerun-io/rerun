@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: An infinite 3D plane represented by a unit normal vector and a distance.
@@ -31,44 +31,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct Plane3D(pub crate::datatypes::Plane3D);
 
-impl ::re_types_core::SizeBytes for Plane3D {
+impl ::re_types_core::Component for Plane3D {
     #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Plane3D>::is_pod()
-    }
-}
-
-impl<T: Into<crate::datatypes::Plane3D>> From<T> for Plane3D {
-    fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Plane3D> for Plane3D {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Plane3D {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for Plane3D {
-    type Target = crate::datatypes::Plane3D;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Plane3D {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for Plane3D {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Plane3D {
-        &mut self.0
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.components.Plane3D")
     }
 }
 
@@ -113,9 +79,43 @@ impl ::re_types_core::Loggable for Plane3D {
     }
 }
 
-impl ::re_types_core::Component for Plane3D {
+impl<T: Into<crate::datatypes::Plane3D>> From<T> for Plane3D {
+    fn from(v: T) -> Self {
+        Self(v.into())
+    }
+}
+
+impl std::borrow::Borrow<crate::datatypes::Plane3D> for Plane3D {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.components.Plane3D".into()
+    fn borrow(&self) -> &crate::datatypes::Plane3D {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for Plane3D {
+    type Target = crate::datatypes::Plane3D;
+
+    #[inline]
+    fn deref(&self) -> &crate::datatypes::Plane3D {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for Plane3D {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::Plane3D {
+        &mut self.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for Plane3D {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::Plane3D>::is_pod()
     }
 }

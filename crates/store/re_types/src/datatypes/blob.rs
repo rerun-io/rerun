@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: A binary blob of data.
@@ -24,32 +24,6 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[repr(transparent)]
 pub struct Blob(pub ::re_types_core::ArrowBuffer<u8>);
-
-impl ::re_types_core::SizeBytes for Blob {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <::re_types_core::ArrowBuffer<u8>>::is_pod()
-    }
-}
-
-impl From<::re_types_core::ArrowBuffer<u8>> for Blob {
-    #[inline]
-    fn from(data: ::re_types_core::ArrowBuffer<u8>) -> Self {
-        Self(data)
-    }
-}
-
-impl From<Blob> for ::re_types_core::ArrowBuffer<u8> {
-    #[inline]
-    fn from(value: Blob) -> Self {
-        value.0
-    }
-}
 
 ::re_types_core::macros::impl_into_cow!(Blob);
 
@@ -192,5 +166,31 @@ impl ::re_types_core::Loggable for Blob {
         .collect::<DeserializationResult<Vec<Option<_>>>>()
         .with_context("rerun.datatypes.Blob#data")
         .with_context("rerun.datatypes.Blob")?)
+    }
+}
+
+impl From<::re_types_core::ArrowBuffer<u8>> for Blob {
+    #[inline]
+    fn from(data: ::re_types_core::ArrowBuffer<u8>) -> Self {
+        Self(data)
+    }
+}
+
+impl From<Blob> for ::re_types_core::ArrowBuffer<u8> {
+    #[inline]
+    fn from(value: Blob) -> Self {
+        value.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for Blob {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <::re_types_core::ArrowBuffer<u8>>::is_pod()
     }
 }

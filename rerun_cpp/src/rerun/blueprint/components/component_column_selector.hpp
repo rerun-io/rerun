@@ -4,6 +4,7 @@
 #pragma once
 
 #include "../../blueprint/datatypes/component_column_selector.hpp"
+#include "../../component_descriptor.hpp"
 #include "../../result.hpp"
 
 #include <cstdint>
@@ -44,7 +45,8 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<blueprint::components::ComponentColumnSelector> {
-        static constexpr const char Name[] = "rerun.blueprint.components.ComponentColumnSelector";
+        static constexpr ComponentDescriptor Descriptor =
+            "rerun.blueprint.components.ComponentColumnSelector";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
