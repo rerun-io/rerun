@@ -17,7 +17,14 @@ namespace rerun {
         cells.reserve(2);
 
         {
-            auto result = ComponentBatch::from_loggable(archetype.disconnected_space);
+            auto result = ComponentBatch::from_loggable(
+                archetype.disconnected_space,
+                ComponentDescriptor(
+                    "rerun.archetypes.DisconnectedSpace",
+                    "disconnected_space",
+                    "rerun.components.DisconnectedSpace"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

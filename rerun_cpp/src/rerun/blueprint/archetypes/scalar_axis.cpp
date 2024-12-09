@@ -17,12 +17,26 @@ namespace rerun {
         cells.reserve(3);
 
         if (archetype.range.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.range.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.range.value(),
+                ComponentDescriptor(
+                    "rerun.blueprint.archetypes.ScalarAxis",
+                    "range",
+                    "rerun.components.Range1D"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.zoom_lock.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.zoom_lock.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.zoom_lock.value(),
+                ComponentDescriptor(
+                    "rerun.blueprint.archetypes.ScalarAxis",
+                    "zoom_lock",
+                    "rerun.blueprint.components.LockRangeDuringZoom"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

@@ -17,37 +17,74 @@ namespace rerun {
         cells.reserve(8);
 
         {
-            auto result = ComponentBatch::from_loggable(archetype.vectors);
+            auto result = ComponentBatch::from_loggable(
+                archetype.vectors,
+                ComponentDescriptor(
+                    "rerun.archetypes.Arrows3D",
+                    "vectors",
+                    "rerun.components.Vector3D"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.origins.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.origins.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.origins.value(),
+                ComponentDescriptor(
+                    "rerun.archetypes.Arrows3D",
+                    "origins",
+                    "rerun.components.Position3D"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.radii.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.radii.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.radii.value(),
+                ComponentDescriptor("rerun.archetypes.Arrows3D", "radii", "rerun.components.Radius")
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.colors.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.colors.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.colors.value(),
+                ComponentDescriptor("rerun.archetypes.Arrows3D", "colors", "rerun.components.Color")
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.labels.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.labels.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.labels.value(),
+                ComponentDescriptor("rerun.archetypes.Arrows3D", "labels", "rerun.components.Text")
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.show_labels.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.show_labels.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.show_labels.value(),
+                ComponentDescriptor(
+                    "rerun.archetypes.Arrows3D",
+                    "show_labels",
+                    "rerun.components.ShowLabels"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.class_ids.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.class_ids.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.class_ids.value(),
+                ComponentDescriptor(
+                    "rerun.archetypes.Arrows3D",
+                    "class_ids",
+                    "rerun.components.ClassId"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
