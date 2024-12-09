@@ -6245,6 +6245,7 @@ dependencies = [
  "re_data_ui",
  "re_entity_db",
  "re_format",
+ "re_log",
  "re_log_types",
  "re_query",
  "re_renderer",

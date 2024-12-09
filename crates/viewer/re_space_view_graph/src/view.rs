@@ -29,7 +29,7 @@ use re_viewport_blueprint::ViewProperty;
 use crate::{
     graph::Graph,
     layout::{ForceLayoutParams, LayoutRequest},
-    ui::{draw_debug, draw_graph, GraphSpaceViewState},
+    ui::{draw_debug, draw_graph, view_property_force_ui, GraphSpaceViewState},
     visualizers::{merge, EdgesVisualizer, NodeVisualizer},
 };
 
@@ -137,11 +137,11 @@ Display a graph of nodes and edges.
 
         re_ui::list_item::list_item_scope(ui, "graph_selection_ui", |ui| {
             view_property_ui::<VisualBounds2D>(ctx, ui, space_view_id, self, state);
-            view_property_ui::<ForceLink>(ctx, ui, space_view_id, self, state);
-            view_property_ui::<ForceManyBody>(ctx, ui, space_view_id, self, state);
-            view_property_ui::<ForcePosition>(ctx, ui, space_view_id, self, state);
-            view_property_ui::<ForceCenter>(ctx, ui, space_view_id, self, state);
-            view_property_ui::<ForceCollisionRadius>(ctx, ui, space_view_id, self, state);
+            view_property_force_ui::<ForceLink>(ctx, ui, space_view_id, self, state);
+            view_property_force_ui::<ForceManyBody>(ctx, ui, space_view_id, self, state);
+            view_property_force_ui::<ForcePosition>(ctx, ui, space_view_id, self, state);
+            view_property_force_ui::<ForceCenter>(ctx, ui, space_view_id, self, state);
+            view_property_force_ui::<ForceCollisionRadius>(ctx, ui, space_view_id, self, state);
         });
 
         Ok(())

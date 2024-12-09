@@ -40,14 +40,14 @@ impl TypedComponentFallbackProvider<Enabled> for GraphSpaceView {
 
 impl TypedComponentFallbackProvider<ForceDistance> for GraphSpaceView {
     fn fallback_for(&self, _ctx: &re_viewer_context::QueryContext<'_>) -> ForceDistance {
-        (42.).into()
+        (60.).into()
     }
 }
 
 impl TypedComponentFallbackProvider<ForceStrength> for GraphSpaceView {
     fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> ForceStrength {
         match ctx.archetype_name {
-            Some(name) if name == archetypes::ForceManyBody::name() => (-30.).into(),
+            Some(name) if name == archetypes::ForceManyBody::name() => (-60.).into(),
             Some(name) if name == archetypes::ForcePosition::name() => (0.01).into(),
             _ => (1.0).into(),
         }
