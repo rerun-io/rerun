@@ -331,7 +331,7 @@ pub fn quote_arrow_deserializer(
                         // For unit fields we don't have to collect any data.
                         obj_field.typ != crate::Type::Unit
                     })
-                    .map(|(i, obj_field)| {
+                    .map(|(type_id, obj_field)| {
                         let data_dst = format_ident!("{}", obj_field.snake_case_name());
 
                         let field_datatype = &arrow_registry.get(&obj_field.fqname);
@@ -345,15 +345,15 @@ pub fn quote_arrow_deserializer(
                             InnerRepr::NativeIterable,
                         );
 
-                        let i = i + 1; // NOTE: +1 to account for `_null_markers` virtual arm
+                        let type_id = type_id + 1; // NOTE: +1 to account for `_null_markers` virtual arm
 
                         quote! {
                             let #data_dst = {
                                 // NOTE: `data_src_arrays` is a runtime collection of all of the
-                                // input's payload's union arms, while `#i` is our comptime union
+                                // input's payload's union arms, while `#type_id` is our comptime union
                                 // arm counter… there's no guarantee it's actually there at
                                 // runtime!
-                                if #i >= #data_src_arrays.len() {
+                                if #type_id >= #data_src_arrays.len() {
                                     // By not returning an error but rather defaulting to an empty
                                     // vector, we introduce some kind of light forwards compatibility:
                                     // old clients that don't yet know about the new arms can still
@@ -361,13 +361,13 @@ pub fn quote_arrow_deserializer(
                                     return Ok(Vec::new());
 
                                     // return Err(DeserializationError::missing_union_arm(
-                                    //     #quoted_datatype, #obj_field_fqname, #i,
+                                    //     #quoted_datatype, #obj_field_fqname, #type_id,
                                     // )).with_context(#obj_fqname);
                                 }
 
                                 // NOTE: The array indexing is safe: checked above.
-                                let #data_src = &*#data_src_arrays[#i];
-                                 #quoted_deserializer.collect::<Vec<_>>()
+                                let #data_src = &*#data_src_arrays[#type_id];
+                                #quoted_deserializer.collect::<Vec<_>>()
                             }
                         }
                     });
