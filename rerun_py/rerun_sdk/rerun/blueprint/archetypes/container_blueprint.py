@@ -61,7 +61,7 @@ class ContainerBlueprint(Archetype):
         active_tab:
             Which tab is active.
 
-            Only applies to `Tabs` containers.pixi
+            Only applies to `Tabs` containers.
         visible:
             Whether this container is visible.
 
@@ -169,7 +169,7 @@ class ContainerBlueprint(Archetype):
     )
     # Which tab is active.
     #
-    # Only applies to `Tabs` containers.pixi
+    # Only applies to `Tabs` containers.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

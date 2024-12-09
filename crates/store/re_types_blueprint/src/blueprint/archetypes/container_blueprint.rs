@@ -46,7 +46,7 @@ pub struct ContainerBlueprint {
 
     /// Which tab is active.
     ///
-    /// Only applies to `Tabs` containers.pixi
+    /// Only applies to `Tabs` containers.
     pub active_tab: Option<crate::blueprint::components::ActiveTab>,
 
     /// Whether this container is visible.
@@ -508,7 +508,7 @@ impl ContainerBlueprint {
 
     /// Which tab is active.
     ///
-    /// Only applies to `Tabs` containers.pixi
+    /// Only applies to `Tabs` containers.
     #[inline]
     pub fn with_active_tab(
         mut self,

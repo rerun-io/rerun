@@ -50,7 +50,7 @@ namespace rerun::blueprint::archetypes {
 
         /// Which tab is active.
         ///
-        /// Only applies to `Tabs` containers.pixi
+        /// Only applies to `Tabs` containers.
         std::optional<rerun::blueprint::components::ActiveTab> active_tab;
 
         /// Whether this container is visible.
@@ -123,7 +123,7 @@ namespace rerun::blueprint::archetypes {
 
         /// Which tab is active.
         ///
-        /// Only applies to `Tabs` containers.pixi
+        /// Only applies to `Tabs` containers.
         ContainerBlueprint with_active_tab(rerun::blueprint::components::ActiveTab _active_tab) && {
             active_tab = std::move(_active_tab);
             // See: https://github.com/rerun-io/rerun/issues/4027

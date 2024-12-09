@@ -1904,7 +1904,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     is_required : false, }, ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.ActiveTab".into(), display_name :
                     "Active tab", docstring_md :
-                    "Which tab is active.\n\nOnly applies to `Tabs` containers.pixi",
+                    "Which tab is active.\n\nOnly applies to `Tabs` containers.",
                     is_required : false, }, ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.Visible".into(), display_name :
                     "Visible", docstring_md :

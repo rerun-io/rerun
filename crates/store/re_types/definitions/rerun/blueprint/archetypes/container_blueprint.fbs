@@ -36,7 +36,7 @@ table ContainerBlueprint (
 
     /// Which tab is active.
     ///
-    /// Only applies to `Tabs` containers.pixi
+    /// Only applies to `Tabs` containers.
     active_tab: rerun.blueprint.components.ActiveTab ("attr.rerun.component_optional", nullable, order: 600);
 
     /// Whether this container is visible.
