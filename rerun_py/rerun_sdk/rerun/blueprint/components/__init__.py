@@ -18,6 +18,7 @@ from .force_distance import ForceDistance, ForceDistanceBatch
 from .force_iterations import ForceIterations, ForceIterationsBatch
 from .force_strength import ForceStrength, ForceStrengthBatch
 from .grid_columns import GridColumns, GridColumnsBatch
+from .grid_spacing import GridSpacing, GridSpacingBatch
 from .included_content import IncludedContent, IncludedContentBatch
 from .interactive import Interactive, InteractiveBatch
 from .lock_range_during_zoom import LockRangeDuringZoom, LockRangeDuringZoomBatch
@@ -79,6 +80,8 @@ __all__ = [
     "ForceStrengthBatch",
     "GridColumns",
     "GridColumnsBatch",
+    "GridSpacing",
+    "GridSpacingBatch",
     "IncludedContent",
     "IncludedContentBatch",
     "Interactive",

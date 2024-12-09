@@ -13,7 +13,12 @@ use re_space_view::controls::{
     ROTATE3D_BUTTON, SPEED_UP_3D_MODIFIER, TRACKED_OBJECT_RESTORE_KEY,
 };
 use re_types::{
-    blueprint::archetypes::Background, components::ViewCoordinates, view_coordinates::SignedAxis3,
+    blueprint::{
+        archetypes::{Background, LineGrid3D},
+        components::{GridSpacing, Visible},
+    },
+    components::ViewCoordinates,
+    view_coordinates::SignedAxis3,
 };
 use re_ui::{ContextExt, ModifiersMarkdown, MouseButtonMarkdown};
 use re_viewer_context::{
@@ -54,7 +59,7 @@ pub struct View3DState {
 
     /// Last known view coordinates.
     /// Used to detect changes in view coordinates, in which case we reset the camera eye.
-    scene_view_coordinates: Option<ViewCoordinates>,
+    pub scene_view_coordinates: Option<ViewCoordinates>,
 
     // options:
     spin: bool,
@@ -660,6 +665,16 @@ impl SpatialSpaceView3D {
             view_builder.queue_draw(draw_data);
         }
 
+        // Optional 3D line grid.
+        let grid_config = ViewProperty::from_archetype::<LineGrid3D>(
+            ctx.blueprint_db(),
+            ctx.blueprint_query,
+            query.space_view_id,
+        );
+        if let Some(draw_data) = self.setup_grid_3d(ctx, &grid_config, state)? {
+            view_builder.queue_draw(draw_data);
+        }
+
         // Commit ui induced lines.
         view_builder.queue_draw(line_builder.into_draw_data()?);
 
@@ -693,6 +708,40 @@ impl SpatialSpaceView3D {
         painter.extend(label_shapes);
 
         Ok(())
+    }
+
+    fn setup_grid_3d(
+        &self,
+        ctx: &ViewerContext<'_>,
+        grid_config: &ViewProperty,
+        state: &SpatialSpaceViewState,
+    ) -> Result<Option<re_renderer::renderer::WorldGridDrawData>, SpaceViewSystemExecutionError>
+    {
+        if !**grid_config.component_or_fallback::<Visible>(ctx, self, state)? {
+            return Ok(None);
+        }
+
+        let spacing = **grid_config.component_or_fallback::<GridSpacing>(ctx, self, state)?;
+        let thickness_ui = **grid_config
+            .component_or_fallback::<re_types::components::StrokeWidth>(ctx, self, state)?;
+        let color =
+            grid_config.component_or_fallback::<re_types::components::Color>(ctx, self, state)?;
+        let plane =
+            grid_config.component_or_fallback::<re_types::components::Plane3D>(ctx, self, state)?;
+
+        let Some(render_ctx) = ctx.render_ctx else {
+            return Ok(None);
+        };
+
+        Ok(Some(re_renderer::renderer::WorldGridDrawData::new(
+            render_ctx,
+            &re_renderer::renderer::WorldGridConfiguration {
+                color: color.into(),
+                plane: plane.into(),
+                spacing,
+                thickness_ui,
+            },
+        )))
     }
 }
 

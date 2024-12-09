@@ -18,6 +18,7 @@ force_distance.py linguist-generated=true
 force_iterations.py linguist-generated=true
 force_strength.py linguist-generated=true
 grid_columns.py linguist-generated=true
+grid_spacing.py linguist-generated=true
 included_content.py linguist-generated=true
 interactive.py linguist-generated=true
 lock_range_during_zoom.py linguist-generated=true

@@ -8,6 +8,7 @@ include "./archetypes/force_collision_radius.fbs";
 include "./archetypes/force_link.fbs";
 include "./archetypes/force_many_body.fbs";
 include "./archetypes/force_position.fbs";
+include "./archetypes/line_grid3d.fbs";
 include "./archetypes/map_background.fbs";
 include "./archetypes/map_zoom.fbs";
 include "./archetypes/panel_blueprint.fbs";

@@ -10,6 +10,7 @@
 #include "blueprint/archetypes/force_link.hpp"
 #include "blueprint/archetypes/force_many_body.hpp"
 #include "blueprint/archetypes/force_position.hpp"
+#include "blueprint/archetypes/line_grid3d.hpp"
 #include "blueprint/archetypes/map_background.hpp"
 #include "blueprint/archetypes/map_zoom.hpp"
 #include "blueprint/archetypes/panel_blueprint.hpp"
