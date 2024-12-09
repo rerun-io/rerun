@@ -31,11 +31,23 @@ By default, edges are undirected.
 
 snippet: archetypes/graph_undirected
 
-<img src="">
+<picture data-inline-viewer="snippets/graph_undirected">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/graph_undirected/469695b3038cc74d67d881ba318415c31de2dffb/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/graph_undirected/469695b3038cc74d67d881ba318415c31de2dffb/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/graph_undirected/469695b3038cc74d67d881ba318415c31de2dffb/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/graph_undirected/469695b3038cc74d67d881ba318415c31de2dffb/1200w.png">
+  <img src="https://static.rerun.io/graph_undirected/469695b3038cc74d67d881ba318415c31de2dffb/full.png">
+</picture>
 
 ### Simple directed graph
 
 snippet: archetypes/graph_directed
 
-<img src="">
+<picture data-inline-viewer="snippets/graph_directed">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/graph_directed/e04ef6a2a959517c70c3633c88988a2f1af75a59/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/graph_directed/e04ef6a2a959517c70c3633c88988a2f1af75a59/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/graph_directed/e04ef6a2a959517c70c3633c88988a2f1af75a59/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/graph_directed/e04ef6a2a959517c70c3633c88988a2f1af75a59/1200w.png">
+  <img src="https://static.rerun.io/graph_directed/e04ef6a2a959517c70c3633c88988a2f1af75a59/full.png">
+</picture>
 
