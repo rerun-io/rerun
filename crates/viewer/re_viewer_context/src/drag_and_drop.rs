@@ -122,6 +122,7 @@ fn items_to_string<'a>(items: impl Iterator<Item = &'a Item>) -> String {
     let mut app_cnt = 0u32;
     let mut data_source_cnt = 0u32;
     let mut store_cnt = 0u32;
+    let mut entity_cnt = 0u32;
     let mut instance_cnt = 0u32;
     let mut component_cnt = 0u32;
 
@@ -132,9 +133,14 @@ fn items_to_string<'a>(items: impl Iterator<Item = &'a Item>) -> String {
             Item::AppId(_) => app_cnt += 1,
             Item::DataSource(_) => data_source_cnt += 1,
             Item::StoreId(_) => store_cnt += 1,
-            Item::InstancePath(_) => instance_cnt += 1,
+            Item::InstancePath(instance_path) | Item::DataResult(_, instance_path) => {
+                if instance_path.is_all() {
+                    entity_cnt += 1;
+                } else {
+                    instance_cnt += 1;
+                }
+            }
             Item::ComponentPath(_) => component_cnt += 1,
-            Item::DataResult(_, _) => instance_cnt += 1,
         }
     }
 
@@ -144,18 +150,20 @@ fn items_to_string<'a>(items: impl Iterator<Item = &'a Item>) -> String {
         &app_cnt,
         &data_source_cnt,
         &store_cnt,
+        &entity_cnt,
         &instance_cnt,
         &component_cnt,
     ];
 
     let names = [
-        "container",
-        "view",
-        "app",
-        "data source",
-        "store",
-        "instance",
-        "component",
+        ("container", "containers"),
+        ("view", "views"),
+        ("app", "apps"),
+        ("data source", "data sources"),
+        ("store", "stores"),
+        ("entity", "entities"),
+        ("instance", "instances"),
+        ("component", "components"),
     ];
 
     counts
@@ -164,10 +172,9 @@ fn items_to_string<'a>(items: impl Iterator<Item = &'a Item>) -> String {
         .filter_map(|(&&cnt, &name)| {
             if cnt > 0 {
                 Some(format!(
-                    "{} {}{}",
+                    "{} {}",
                     cnt,
-                    name,
-                    if cnt > 1 { "s" } else { "" }
+                    if cnt == 1 { name.0 } else { name.1 },
                 ))
             } else {
                 None
