@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../component_descriptor.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
@@ -49,7 +50,7 @@ namespace rerun::datatypes {
         /// followed by a plane with interleaved lines ordered as U0, V0, U1, V1, etc.
         NV12 = 26,
 
-        /// `YUY2` (aka `YUYV`, `YUYV16` or `NV21`), is a YUV 4:2:2 chroma downsampled format with 16 bits per pixel and 8 bits per channel.
+        /// `YUY2` (aka 'YUYV', 'YUYV16' or 'NV21'), is a YUV 4:2:2 chroma downsampled format with 16 bits per pixel and 8 bits per channel.
         ///
         /// This uses limited range YUV, i.e. Y is expected to be within [16, 235] and U/V within [16, 240].
         ///
@@ -122,7 +123,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<datatypes::PixelFormat> {
-        static constexpr const char Name[] = "rerun.datatypes.PixelFormat";
+        static constexpr ComponentDescriptor Descriptor = "rerun.datatypes.PixelFormat";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();

@@ -1366,7 +1366,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     is_required : true, }, ArchetypeFieldReflection { component_name :
                     "rerun.components.GraphType".into(), display_name : "Graph type",
                     docstring_md :
-                    "Specifies if the graph is directed or undirected.\n\nIf no `GraphType` is provided, the graph is assumed to be undirected.\n\n⚠\u{fe0f} **This type is experimental and may be removed in future versions**",
+                    "Specifies if the graph is directed or undirected.\n\nIf no [`components.GraphType`](https://rerun.io/docs/reference/types/components/graph_type?speculative-link) is provided, the graph is assumed to be undirected.\n\n⚠\u{fe0f} **This type is experimental and may be removed in future versions**",
                     is_required : false, },
                 ],
             },
@@ -1879,8 +1879,8 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "Kind", docstring_md : "The type of the background.", is_required :
                     true, }, ArchetypeFieldReflection { component_name :
                     "rerun.components.Color".into(), display_name : "Color", docstring_md
-                    : "Color used for the `SolidColor` background type.", is_required :
-                    false, },
+                    : "Color used for the solid background type.", is_required : false,
+                    },
                 ],
             },
         ),
@@ -1903,11 +1903,11 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     is_required : false, }, ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.ColumnShare".into(), display_name :
                     "Col shares", docstring_md :
-                    "The layout shares of each column in the container.\n\nFor `Horizontal` containers, the length of this list should always match the number of contents.\n\nIgnored for `Vertical` containers.",
+                    "The layout shares of each column in the container.\n\nFor [`components.ContainerKind#Horizontal`](https://rerun.io/docs/reference/types/components/container_kind) containers, the length of this list should always match the number of contents.\n\nIgnored for [`components.ContainerKind#Vertical`](https://rerun.io/docs/reference/types/components/container_kind) containers.",
                     is_required : false, }, ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.RowShare".into(), display_name :
                     "Row shares", docstring_md :
-                    "The layout shares of each row of the container.\n\nFor `Vertical` containers, the length of this list should always match the number of contents.\n\nIgnored for `Horizontal` containers.",
+                    "The layout shares of each row of the container.\n\nFor [`components.ContainerKind#Vertical`](https://rerun.io/docs/reference/types/components/container_kind) containers, the length of this list should always match the number of contents.\n\nIgnored for [`components.ContainerKind#Horizontal`](https://rerun.io/docs/reference/types/components/container_kind) containers.",
                     is_required : false, }, ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.ActiveTab".into(), display_name :
                     "Active tab", docstring_md :
@@ -1919,7 +1919,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     is_required : false, }, ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.GridColumns".into(), display_name :
                     "Grid columns", docstring_md :
-                    "How many columns this grid should have.\n\nIf unset, the grid layout will be auto.\n\nIgnored for `Horizontal`/`Vertical` containers.",
+                    "How many columns this grid should have.\n\nIf unset, the grid layout will be auto.\n\nIgnored for [`components.ContainerKind#Horizontal`](https://rerun.io/docs/reference/types/components/container_kind)/[`components.ContainerKind#Vertical`](https://rerun.io/docs/reference/types/components/container_kind) containers.",
                     is_required : false, },
                 ],
             },

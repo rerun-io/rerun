@@ -13,41 +13,15 @@
 #![allow(clippy::too_many_lines)]
 
 use crate::external::arrow2;
-use crate::ComponentName;
 use crate::SerializationResult;
-use crate::{ComponentBatch, MaybeOwnedComponentBatch};
+use crate::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use crate::{ComponentDescriptor, ComponentName};
 use crate::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: A single-precision 32-bit IEEE 754 floating point number.
 #[derive(Clone, Debug, Default, Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(transparent)]
 pub struct Float32(pub f32);
-
-impl crate::SizeBytes for Float32 {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <f32>::is_pod()
-    }
-}
-
-impl From<f32> for Float32 {
-    #[inline]
-    fn from(value: f32) -> Self {
-        Self(value)
-    }
-}
-
-impl From<Float32> for f32 {
-    #[inline]
-    fn from(value: Float32) -> Self {
-        value.0
-    }
-}
 
 crate::macros::impl_into_cow!(Float32);
 
@@ -67,13 +41,8 @@ impl crate::Loggable for Float32 {
     {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
-        use crate::{Loggable as _, ResultExt as _};
+        use crate::{arrow_helpers::as_array_ref, Loggable as _, ResultExt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
-
-        #[allow(unused)]
-        fn as_array_ref<T: Array + 'static>(t: T) -> ArrayRef {
-            std::sync::Arc::new(t) as ArrayRef
-        }
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -157,5 +126,31 @@ impl crate::Loggable for Float32 {
                 slice.iter().copied().map(Self).collect::<Vec<_>>()
             }
         })
+    }
+}
+
+impl From<f32> for Float32 {
+    #[inline]
+    fn from(value: f32) -> Self {
+        Self(value)
+    }
+}
+
+impl From<Float32> for f32 {
+    #[inline]
+    fn from(value: Float32) -> Self {
+        value.0
+    }
+}
+
+impl crate::SizeBytes for Float32 {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <f32>::is_pod()
     }
 }

@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: An Axis-Aligned Bounding Box in 2D space, implemented as the minimum and maximum corners.
@@ -27,18 +27,6 @@ pub struct Range2D {
 
     /// The range of the Y-axis (usually top and bottom bounds).
     pub y_range: crate::datatypes::Range1D,
-}
-
-impl ::re_types_core::SizeBytes for Range2D {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.x_range.heap_size_bytes() + self.y_range.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Range1D>::is_pod() && <crate::datatypes::Range1D>::is_pod()
-    }
 }
 
 ::re_types_core::macros::impl_into_cow!(Range2D);
@@ -70,13 +58,8 @@ impl ::re_types_core::Loggable for Range2D {
     {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{Loggable as _, ResultExt as _};
+        use ::re_types_core::{arrow_helpers::as_array_ref, Loggable as _, ResultExt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
-
-        #[allow(unused)]
-        fn as_array_ref<T: Array + 'static>(t: T) -> ArrayRef {
-            std::sync::Arc::new(t) as ArrayRef
-        }
         Ok({
             let fields = Fields::from(vec![
                 Field::new(
@@ -403,5 +386,17 @@ impl ::re_types_core::Loggable for Range2D {
                 .with_context("rerun.datatypes.Range2D")?
             }
         })
+    }
+}
+
+impl ::re_types_core::SizeBytes for Range2D {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.x_range.heap_size_bytes() + self.y_range.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::Range1D>::is_pod() && <crate::datatypes::Range1D>::is_pod()
     }
 }

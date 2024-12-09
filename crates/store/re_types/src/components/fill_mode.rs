@@ -14,9 +14,9 @@
 #![allow(non_camel_case_types)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: How a geometric shape is drawn and colored.
@@ -29,7 +29,7 @@ pub enum FillMode {
     ///
     /// * An [`archetypes::Ellipsoids3D`][crate::archetypes::Ellipsoids3D] will draw three axis-aligned ellipses that are cross-sections
     ///   of each ellipsoid, each of which displays two out of three of the sizes of the ellipsoid.
-    /// * For [`archetypes::Boxes3D`][crate::archetypes::Boxes3D], it is the edges of the box, identical to `DenseWireframe`.
+    /// * For [`archetypes::Boxes3D`][crate::archetypes::Boxes3D], it is the edges of the box, identical to [`components::FillMode::DenseWireframe`][crate::components::FillMode::DenseWireframe].
     #[default]
     MajorWireframe = 1,
 
@@ -39,54 +39,17 @@ pub enum FillMode {
     ///
     /// * An [`archetypes::Ellipsoids3D`][crate::archetypes::Ellipsoids3D] will draw a wireframe triangle mesh that approximates each
     ///   ellipsoid.
-    /// * For [`archetypes::Boxes3D`][crate::archetypes::Boxes3D], it is the edges of the box, identical to `MajorWireframe`.
+    /// * For [`archetypes::Boxes3D`][crate::archetypes::Boxes3D], it is the edges of the box, identical to [`components::FillMode::MajorWireframe`][crate::components::FillMode::MajorWireframe].
     DenseWireframe = 2,
 
     /// The surface of the shape is filled in with a solid color. No lines are drawn.
     Solid = 3,
 }
 
-impl ::re_types_core::reflection::Enum for FillMode {
+impl ::re_types_core::Component for FillMode {
     #[inline]
-    fn variants() -> &'static [Self] {
-        &[Self::MajorWireframe, Self::DenseWireframe, Self::Solid]
-    }
-
-    #[inline]
-    fn docstring_md(self) -> &'static str {
-        match self {
-            Self::MajorWireframe => {
-                "Lines are drawn around the parts of the shape which directly correspond to the logged data.\n\nExamples of what this means:\n\n* An [`archetypes::Ellipsoids3D`][crate::archetypes::Ellipsoids3D] will draw three axis-aligned ellipses that are cross-sections\n  of each ellipsoid, each of which displays two out of three of the sizes of the ellipsoid.\n* For [`archetypes::Boxes3D`][crate::archetypes::Boxes3D], it is the edges of the box, identical to `DenseWireframe`."
-            }
-            Self::DenseWireframe => {
-                "Many lines are drawn to represent the surface of the shape in a see-through fashion.\n\nExamples of what this means:\n\n* An [`archetypes::Ellipsoids3D`][crate::archetypes::Ellipsoids3D] will draw a wireframe triangle mesh that approximates each\n  ellipsoid.\n* For [`archetypes::Boxes3D`][crate::archetypes::Boxes3D], it is the edges of the box, identical to `MajorWireframe`."
-            }
-            Self::Solid => {
-                "The surface of the shape is filled in with a solid color. No lines are drawn."
-            }
-        }
-    }
-}
-
-impl ::re_types_core::SizeBytes for FillMode {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
-    }
-}
-
-impl std::fmt::Display for FillMode {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::MajorWireframe => write!(f, "MajorWireframe"),
-            Self::DenseWireframe => write!(f, "DenseWireframe"),
-            Self::Solid => write!(f, "Solid"),
-        }
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.components.FillMode")
     }
 }
 
@@ -108,13 +71,8 @@ impl ::re_types_core::Loggable for FillMode {
     {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{Loggable as _, ResultExt as _};
+        use ::re_types_core::{arrow_helpers::as_array_ref, Loggable as _, ResultExt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
-
-        #[allow(unused)]
-        fn as_array_ref<T: Array + 'static>(t: T) -> ArrayRef {
-            std::sync::Arc::new(t) as ArrayRef
-        }
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -177,9 +135,46 @@ impl ::re_types_core::Loggable for FillMode {
     }
 }
 
-impl ::re_types_core::Component for FillMode {
+impl std::fmt::Display for FillMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::MajorWireframe => write!(f, "MajorWireframe"),
+            Self::DenseWireframe => write!(f, "DenseWireframe"),
+            Self::Solid => write!(f, "Solid"),
+        }
+    }
+}
+
+impl ::re_types_core::reflection::Enum for FillMode {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.components.FillMode".into()
+    fn variants() -> &'static [Self] {
+        &[Self::MajorWireframe, Self::DenseWireframe, Self::Solid]
+    }
+
+    #[inline]
+    fn docstring_md(self) -> &'static str {
+        match self {
+            Self::MajorWireframe => {
+                "Lines are drawn around the parts of the shape which directly correspond to the logged data.\n\nExamples of what this means:\n\n* An [`archetypes.Ellipsoids3D`](https://rerun.io/docs/reference/types/archetypes/ellipsoids3d) will draw three axis-aligned ellipses that are cross-sections\n  of each ellipsoid, each of which displays two out of three of the sizes of the ellipsoid.\n* For [`archetypes.Boxes3D`](https://rerun.io/docs/reference/types/archetypes/boxes3d), it is the edges of the box, identical to [`components.FillMode#DenseWireframe`](https://rerun.io/docs/reference/types/components/fill_mode)."
+            }
+            Self::DenseWireframe => {
+                "Many lines are drawn to represent the surface of the shape in a see-through fashion.\n\nExamples of what this means:\n\n* An [`archetypes.Ellipsoids3D`](https://rerun.io/docs/reference/types/archetypes/ellipsoids3d) will draw a wireframe triangle mesh that approximates each\n  ellipsoid.\n* For [`archetypes.Boxes3D`](https://rerun.io/docs/reference/types/archetypes/boxes3d), it is the edges of the box, identical to [`components.FillMode#MajorWireframe`](https://rerun.io/docs/reference/types/components/fill_mode)."
+            }
+            Self::Solid => {
+                "The surface of the shape is filled in with a solid color. No lines are drawn."
+            }
+        }
+    }
+}
+
+impl ::re_types_core::SizeBytes for FillMode {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
     }
 }

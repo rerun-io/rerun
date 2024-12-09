@@ -17,22 +17,50 @@ namespace rerun {
         cells.reserve(5);
 
         {
-            auto result = ComponentBatch::from_loggable(archetype.positions);
+            auto result = ComponentBatch::from_loggable(
+                archetype.positions,
+                ComponentDescriptor(
+                    "rerun.archetypes.GeoPoints",
+                    "positions",
+                    "rerun.components.LatLon"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.radii.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.radii.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.radii.value(),
+                ComponentDescriptor(
+                    "rerun.archetypes.GeoPoints",
+                    "radii",
+                    "rerun.components.Radius"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.colors.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.colors.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.colors.value(),
+                ComponentDescriptor(
+                    "rerun.archetypes.GeoPoints",
+                    "colors",
+                    "rerun.components.Color"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.class_ids.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.class_ids.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.class_ids.value(),
+                ComponentDescriptor(
+                    "rerun.archetypes.GeoPoints",
+                    "class_ids",
+                    "rerun.components.ClassId"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

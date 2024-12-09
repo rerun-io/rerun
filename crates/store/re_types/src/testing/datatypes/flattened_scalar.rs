@@ -13,40 +13,14 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct FlattenedScalar {
     pub value: f32,
-}
-
-impl ::re_types_core::SizeBytes for FlattenedScalar {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.value.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <f32>::is_pod()
-    }
-}
-
-impl From<f32> for FlattenedScalar {
-    #[inline]
-    fn from(value: f32) -> Self {
-        Self { value }
-    }
-}
-
-impl From<FlattenedScalar> for f32 {
-    #[inline]
-    fn from(value: FlattenedScalar) -> Self {
-        value.value
-    }
 }
 
 ::re_types_core::macros::impl_into_cow!(FlattenedScalar);
@@ -71,13 +45,8 @@ impl ::re_types_core::Loggable for FlattenedScalar {
     {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{Loggable as _, ResultExt as _};
+        use ::re_types_core::{arrow_helpers::as_array_ref, Loggable as _, ResultExt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
-
-        #[allow(unused)]
-        fn as_array_ref<T: Array + 'static>(t: T) -> ArrayRef {
-            std::sync::Arc::new(t) as ArrayRef
-        }
         Ok({
             let fields = Fields::from(vec![Field::new("value", DataType::Float32, false)]);
             let (somes, data): (Vec<_>, Vec<_>) = data
@@ -189,5 +158,31 @@ impl ::re_types_core::Loggable for FlattenedScalar {
                 .with_context("rerun.testing.datatypes.FlattenedScalar")?
             }
         })
+    }
+}
+
+impl From<f32> for FlattenedScalar {
+    #[inline]
+    fn from(value: f32) -> Self {
+        Self { value }
+    }
+}
+
+impl From<FlattenedScalar> for f32 {
+    #[inline]
+    fn from(value: FlattenedScalar) -> Self {
+        value.value
+    }
+}
+
+impl ::re_types_core::SizeBytes for FlattenedScalar {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.value.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <f32>::is_pod()
     }
 }

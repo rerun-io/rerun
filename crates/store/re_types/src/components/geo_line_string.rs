@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: A geospatial line string expressed in [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees).
@@ -23,21 +23,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct GeoLineString(pub Vec<crate::datatypes::DVec2D>);
 
-impl ::re_types_core::SizeBytes for GeoLineString {
+impl ::re_types_core::Component for GeoLineString {
     #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <Vec<crate::datatypes::DVec2D>>::is_pod()
-    }
-}
-
-impl<I: Into<crate::datatypes::DVec2D>, T: IntoIterator<Item = I>> From<T> for GeoLineString {
-    fn from(v: T) -> Self {
-        Self(v.into_iter().map(|v| v.into()).collect())
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.components.GeoLineString")
     }
 }
 
@@ -63,13 +52,8 @@ impl ::re_types_core::Loggable for GeoLineString {
     {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{Loggable as _, ResultExt as _};
+        use ::re_types_core::{arrow_helpers::as_array_ref, Loggable as _, ResultExt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
-
-        #[allow(unused)]
-        fn as_array_ref<T: Array + 'static>(t: T) -> ArrayRef {
-            std::sync::Arc::new(t) as ArrayRef
-        }
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -261,9 +245,20 @@ impl ::re_types_core::Loggable for GeoLineString {
     }
 }
 
-impl ::re_types_core::Component for GeoLineString {
+impl<I: Into<crate::datatypes::DVec2D>, T: IntoIterator<Item = I>> From<T> for GeoLineString {
+    fn from(v: T) -> Self {
+        Self(v.into_iter().map(|v| v.into()).collect())
+    }
+}
+
+impl ::re_types_core::SizeBytes for GeoLineString {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.components.GeoLineString".into()
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <Vec<crate::datatypes::DVec2D>>::is_pod()
     }
 }

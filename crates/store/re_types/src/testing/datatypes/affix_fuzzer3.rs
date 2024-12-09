@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -24,26 +24,6 @@ pub enum AffixFuzzer3 {
     Craziness(Vec<crate::testing::datatypes::AffixFuzzer1>),
     FixedSizeShenanigans([f32; 3usize]),
     EmptyVariant,
-}
-
-impl ::re_types_core::SizeBytes for AffixFuzzer3 {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        #![allow(clippy::match_same_arms)]
-        match self {
-            Self::Degrees(v) => v.heap_size_bytes(),
-            Self::Craziness(v) => v.heap_size_bytes(),
-            Self::FixedSizeShenanigans(v) => v.heap_size_bytes(),
-            Self::EmptyVariant => 0,
-        }
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <f32>::is_pod()
-            && <Vec<crate::testing::datatypes::AffixFuzzer1>>::is_pod()
-            && <[f32; 3usize]>::is_pod()
-    }
 }
 
 ::re_types_core::macros::impl_into_cow!(AffixFuzzer3);
@@ -91,13 +71,8 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
     {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{Loggable as _, ResultExt as _};
+        use ::re_types_core::{arrow_helpers::as_array_ref, Loggable as _, ResultExt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
-
-        #[allow(unused)]
-        fn as_array_ref<T: Array + 'static>(t: T) -> ArrayRef {
-            std::sync::Arc::new(t) as ArrayRef
-        }
         Ok({
             // Dense Arrow union
             let data: Vec<_> = data
@@ -576,5 +551,25 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                     .with_context("rerun.testing.datatypes.AffixFuzzer3")?
             }
         })
+    }
+}
+
+impl ::re_types_core::SizeBytes for AffixFuzzer3 {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        #![allow(clippy::match_same_arms)]
+        match self {
+            Self::Degrees(v) => v.heap_size_bytes(),
+            Self::Craziness(v) => v.heap_size_bytes(),
+            Self::FixedSizeShenanigans(v) => v.heap_size_bytes(),
+            Self::EmptyVariant => 0,
+        }
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <f32>::is_pod()
+            && <Vec<crate::testing::datatypes::AffixFuzzer1>>::is_pod()
+            && <[f32; 3usize]>::is_pod()
     }
 }

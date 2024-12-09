@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -29,34 +29,6 @@ pub struct AffixFuzzer1 {
     pub flattened_scalar: f32,
     pub almost_flattened_scalar: crate::testing::datatypes::FlattenedScalar,
     pub from_parent: Option<bool>,
-}
-
-impl ::re_types_core::SizeBytes for AffixFuzzer1 {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.single_float_optional.heap_size_bytes()
-            + self.single_string_required.heap_size_bytes()
-            + self.single_string_optional.heap_size_bytes()
-            + self.many_floats_optional.heap_size_bytes()
-            + self.many_strings_required.heap_size_bytes()
-            + self.many_strings_optional.heap_size_bytes()
-            + self.flattened_scalar.heap_size_bytes()
-            + self.almost_flattened_scalar.heap_size_bytes()
-            + self.from_parent.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <Option<f32>>::is_pod()
-            && <::re_types_core::ArrowString>::is_pod()
-            && <Option<::re_types_core::ArrowString>>::is_pod()
-            && <Option<::re_types_core::ArrowBuffer<f32>>>::is_pod()
-            && <Vec<::re_types_core::ArrowString>>::is_pod()
-            && <Option<Vec<::re_types_core::ArrowString>>>::is_pod()
-            && <f32>::is_pod()
-            && <crate::testing::datatypes::FlattenedScalar>::is_pod()
-            && <Option<bool>>::is_pod()
-    }
 }
 
 ::re_types_core::macros::impl_into_cow!(AffixFuzzer1);
@@ -115,13 +87,8 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
     {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{Loggable as _, ResultExt as _};
+        use ::re_types_core::{arrow_helpers::as_array_ref, Loggable as _, ResultExt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
-
-        #[allow(unused)]
-        fn as_array_ref<T: Array + 'static>(t: T) -> ArrayRef {
-            std::sync::Arc::new(t) as ArrayRef
-        }
         Ok({
             let fields = Fields::from(vec![
                 Field::new("single_float_optional", DataType::Float32, true),
@@ -224,9 +191,8 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                             let inner_data: arrow::buffer::Buffer = single_string_required
                                 .into_iter()
                                 .flatten()
-                                .flat_map(|s| s.0)
+                                .flat_map(|s| s.into_arrow2_buffer())
                                 .collect();
-
                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                             as_array_ref(unsafe {
                                 StringArray::new_unchecked(
@@ -261,9 +227,8 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                             let inner_data: arrow::buffer::Buffer = single_string_optional
                                 .into_iter()
                                 .flatten()
-                                .flat_map(|s| s.0)
+                                .flat_map(|s| s.into_arrow2_buffer())
                                 .collect();
-
                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                             as_array_ref(unsafe {
                                 StringArray::new_unchecked(
@@ -357,7 +322,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                                     let inner_data: arrow::buffer::Buffer =
                                         many_strings_required_inner_data
                                             .into_iter()
-                                            .flat_map(|s| s.0)
+                                            .flat_map(|s| s.into_arrow2_buffer())
                                             .collect();
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     as_array_ref(unsafe {
@@ -413,7 +378,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                                     let inner_data: arrow::buffer::Buffer =
                                         many_strings_optional_inner_data
                                             .into_iter()
-                                            .flat_map(|s| s.0)
+                                            .flat_map(|s| s.into_arrow2_buffer())
                                             .collect();
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     as_array_ref(unsafe {
@@ -601,7 +566,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                         })
                         .map(|res_or_opt| {
                             res_or_opt.map(|res_or_opt| {
-                                res_or_opt.map(|v| ::re_types_core::ArrowString(v))
+                                res_or_opt.map(|v| ::re_types_core::ArrowString::from(v))
                             })
                         })
                         .collect::<DeserializationResult<Vec<Option<_>>>>()
@@ -658,7 +623,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                         })
                         .map(|res_or_opt| {
                             res_or_opt.map(|res_or_opt| {
-                                res_or_opt.map(|v| ::re_types_core::ArrowString(v))
+                                res_or_opt.map(|v| ::re_types_core::ArrowString::from(v))
                             })
                         })
                         .collect::<DeserializationResult<Vec<Option<_>>>>()
@@ -816,7 +781,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                                         .map(|res_or_opt| {
                                             res_or_opt
                                                 .map(|res_or_opt| {
-                                                    res_or_opt.map(|v| ::re_types_core::ArrowString(v))
+                                                    res_or_opt.map(|v| ::re_types_core::ArrowString::from(v))
                                                 })
                                         })
                                         .collect::<DeserializationResult<Vec<Option<_>>>>()
@@ -937,7 +902,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                                         .map(|res_or_opt| {
                                             res_or_opt
                                                 .map(|res_or_opt| {
-                                                    res_or_opt.map(|v| ::re_types_core::ArrowString(v))
+                                                    res_or_opt.map(|v| ::re_types_core::ArrowString::from(v))
                                                 })
                                         })
                                         .collect::<DeserializationResult<Vec<Option<_>>>>()
@@ -1097,5 +1062,33 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                     .with_context("rerun.testing.datatypes.AffixFuzzer1")?
             }
         })
+    }
+}
+
+impl ::re_types_core::SizeBytes for AffixFuzzer1 {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.single_float_optional.heap_size_bytes()
+            + self.single_string_required.heap_size_bytes()
+            + self.single_string_optional.heap_size_bytes()
+            + self.many_floats_optional.heap_size_bytes()
+            + self.many_strings_required.heap_size_bytes()
+            + self.many_strings_optional.heap_size_bytes()
+            + self.flattened_scalar.heap_size_bytes()
+            + self.almost_flattened_scalar.heap_size_bytes()
+            + self.from_parent.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <Option<f32>>::is_pod()
+            && <::re_types_core::ArrowString>::is_pod()
+            && <Option<::re_types_core::ArrowString>>::is_pod()
+            && <Option<::re_types_core::ArrowBuffer<f32>>>::is_pod()
+            && <Vec<::re_types_core::ArrowString>>::is_pod()
+            && <Option<Vec<::re_types_core::ArrowString>>>::is_pod()
+            && <f32>::is_pod()
+            && <crate::testing::datatypes::FlattenedScalar>::is_pod()
+            && <Option<bool>>::is_pod()
     }
 }

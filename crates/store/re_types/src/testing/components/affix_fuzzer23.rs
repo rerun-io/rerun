@@ -13,52 +13,18 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct AffixFuzzer23(pub Option<crate::testing::datatypes::MultiEnum>);
 
-impl ::re_types_core::SizeBytes for AffixFuzzer23 {
+impl ::re_types_core::Component for AffixFuzzer23 {
     #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <Option<crate::testing::datatypes::MultiEnum>>::is_pod()
-    }
-}
-
-impl<T: Into<Option<crate::testing::datatypes::MultiEnum>>> From<T> for AffixFuzzer23 {
-    fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<Option<crate::testing::datatypes::MultiEnum>> for AffixFuzzer23 {
-    #[inline]
-    fn borrow(&self) -> &Option<crate::testing::datatypes::MultiEnum> {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for AffixFuzzer23 {
-    type Target = Option<crate::testing::datatypes::MultiEnum>;
-
-    #[inline]
-    fn deref(&self) -> &Option<crate::testing::datatypes::MultiEnum> {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for AffixFuzzer23 {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut Option<crate::testing::datatypes::MultiEnum> {
-        &mut self.0
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.testing.components.AffixFuzzer23")
     }
 }
 
@@ -91,13 +57,8 @@ impl ::re_types_core::Loggable for AffixFuzzer23 {
     {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{Loggable as _, ResultExt as _};
+        use ::re_types_core::{arrow_helpers::as_array_ref, Loggable as _, ResultExt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
-
-        #[allow(unused)]
-        fn as_array_ref<T: Array + 'static>(t: T) -> ArrayRef {
-            std::sync::Arc::new(t) as ArrayRef
-        }
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -141,9 +102,43 @@ impl ::re_types_core::Loggable for AffixFuzzer23 {
     }
 }
 
-impl ::re_types_core::Component for AffixFuzzer23 {
+impl<T: Into<Option<crate::testing::datatypes::MultiEnum>>> From<T> for AffixFuzzer23 {
+    fn from(v: T) -> Self {
+        Self(v.into())
+    }
+}
+
+impl std::borrow::Borrow<Option<crate::testing::datatypes::MultiEnum>> for AffixFuzzer23 {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.testing.components.AffixFuzzer23".into()
+    fn borrow(&self) -> &Option<crate::testing::datatypes::MultiEnum> {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for AffixFuzzer23 {
+    type Target = Option<crate::testing::datatypes::MultiEnum>;
+
+    #[inline]
+    fn deref(&self) -> &Option<crate::testing::datatypes::MultiEnum> {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for AffixFuzzer23 {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Option<crate::testing::datatypes::MultiEnum> {
+        &mut self.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for AffixFuzzer23 {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <Option<crate::testing::datatypes::MultiEnum>>::is_pod()
     }
 }

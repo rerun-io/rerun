@@ -14,9 +14,9 @@
 #![allow(non_camel_case_types)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: The kind of a blueprint container (tabs, grid, …).
@@ -37,43 +37,10 @@ pub enum ContainerKind {
     Grid = 4,
 }
 
-impl ::re_types_core::reflection::Enum for ContainerKind {
+impl ::re_types_core::Component for ContainerKind {
     #[inline]
-    fn variants() -> &'static [Self] {
-        &[Self::Tabs, Self::Horizontal, Self::Vertical, Self::Grid]
-    }
-
-    #[inline]
-    fn docstring_md(self) -> &'static str {
-        match self {
-            Self::Tabs => "Put children in separate tabs",
-            Self::Horizontal => "Order the children left to right",
-            Self::Vertical => "Order the children top to bottom",
-            Self::Grid => "Organize children in a grid layout",
-        }
-    }
-}
-
-impl ::re_types_core::SizeBytes for ContainerKind {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
-    }
-}
-
-impl std::fmt::Display for ContainerKind {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Tabs => write!(f, "Tabs"),
-            Self::Horizontal => write!(f, "Horizontal"),
-            Self::Vertical => write!(f, "Vertical"),
-            Self::Grid => write!(f, "Grid"),
-        }
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.blueprint.components.ContainerKind")
     }
 }
 
@@ -95,13 +62,8 @@ impl ::re_types_core::Loggable for ContainerKind {
     {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{Loggable as _, ResultExt as _};
+        use ::re_types_core::{arrow_helpers::as_array_ref, Loggable as _, ResultExt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
-
-        #[allow(unused)]
-        fn as_array_ref<T: Array + 'static>(t: T) -> ArrayRef {
-            std::sync::Arc::new(t) as ArrayRef
-        }
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -165,9 +127,42 @@ impl ::re_types_core::Loggable for ContainerKind {
     }
 }
 
-impl ::re_types_core::Component for ContainerKind {
+impl std::fmt::Display for ContainerKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Tabs => write!(f, "Tabs"),
+            Self::Horizontal => write!(f, "Horizontal"),
+            Self::Vertical => write!(f, "Vertical"),
+            Self::Grid => write!(f, "Grid"),
+        }
+    }
+}
+
+impl ::re_types_core::reflection::Enum for ContainerKind {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.blueprint.components.ContainerKind".into()
+    fn variants() -> &'static [Self] {
+        &[Self::Tabs, Self::Horizontal, Self::Vertical, Self::Grid]
+    }
+
+    #[inline]
+    fn docstring_md(self) -> &'static str {
+        match self {
+            Self::Tabs => "Put children in separate tabs",
+            Self::Horizontal => "Order the children left to right",
+            Self::Vertical => "Order the children top to bottom",
+            Self::Grid => "Organize children in a grid layout",
+        }
+    }
+}
+
+impl ::re_types_core::SizeBytes for ContainerKind {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
     }
 }

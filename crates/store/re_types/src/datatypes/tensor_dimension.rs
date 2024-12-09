@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: A single dimension within a multi-dimensional tensor.
@@ -26,18 +26,6 @@ pub struct TensorDimension {
 
     /// The name of this dimension, e.g. "width", "height", "channel", "batch', ….
     pub name: Option<::re_types_core::ArrowString>,
-}
-
-impl ::re_types_core::SizeBytes for TensorDimension {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.size.heap_size_bytes() + self.name.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <u64>::is_pod() && <Option<::re_types_core::ArrowString>>::is_pod()
-    }
 }
 
 ::re_types_core::macros::impl_into_cow!(TensorDimension);
@@ -61,13 +49,8 @@ impl ::re_types_core::Loggable for TensorDimension {
     {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{Loggable as _, ResultExt as _};
+        use ::re_types_core::{arrow_helpers::as_array_ref, Loggable as _, ResultExt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
-
-        #[allow(unused)]
-        fn as_array_ref<T: Array + 'static>(t: T) -> ArrayRef {
-            std::sync::Arc::new(t) as ArrayRef
-        }
         Ok({
             let fields = Fields::from(vec![
                 Field::new("size", DataType::UInt64, false),
@@ -126,8 +109,11 @@ impl ::re_types_core::Loggable for TensorDimension {
                                 arrow::buffer::OffsetBuffer::<i32>::from_lengths(name.iter().map(
                                     |opt| opt.as_ref().map(|datum| datum.len()).unwrap_or_default(),
                                 ));
-                            let inner_data: arrow::buffer::Buffer =
-                                name.into_iter().flatten().flat_map(|s| s.0).collect();
+                            let inner_data: arrow::buffer::Buffer = name
+                                .into_iter()
+                                .flatten()
+                                .flat_map(|s| s.into_arrow2_buffer())
+                                .collect();
                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                             as_array_ref(unsafe {
                                 StringArray::new_unchecked(offsets, inner_data, name_validity)
@@ -236,7 +222,7 @@ impl ::re_types_core::Loggable for TensorDimension {
                         })
                         .map(|res_or_opt| {
                             res_or_opt.map(|res_or_opt| {
-                                res_or_opt.map(|v| ::re_types_core::ArrowString(v))
+                                res_or_opt.map(|v| ::re_types_core::ArrowString::from(v))
                             })
                         })
                         .collect::<DeserializationResult<Vec<Option<_>>>>()
@@ -263,5 +249,17 @@ impl ::re_types_core::Loggable for TensorDimension {
                 .with_context("rerun.datatypes.TensorDimension")?
             }
         })
+    }
+}
+
+impl ::re_types_core::SizeBytes for TensorDimension {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.size.heap_size_bytes() + self.name.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <u64>::is_pod() && <Option<::re_types_core::ArrowString>>::is_pod()
     }
 }

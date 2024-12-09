@@ -13,28 +13,15 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct AffixFuzzer20 {
     pub p: crate::testing::datatypes::PrimitiveComponent,
     pub s: crate::testing::datatypes::StringComponent,
-}
-
-impl ::re_types_core::SizeBytes for AffixFuzzer20 {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.p.heap_size_bytes() + self.s.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::testing::datatypes::PrimitiveComponent>::is_pod()
-            && <crate::testing::datatypes::StringComponent>::is_pod()
-    }
 }
 
 ::re_types_core::macros::impl_into_cow!(AffixFuzzer20);
@@ -66,13 +53,8 @@ impl ::re_types_core::Loggable for AffixFuzzer20 {
     {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{Loggable as _, ResultExt as _};
+        use ::re_types_core::{arrow_helpers::as_array_ref, Loggable as _, ResultExt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
-
-        #[allow(unused)]
-        fn as_array_ref<T: Array + 'static>(t: T) -> ArrayRef {
-            std::sync::Arc::new(t) as ArrayRef
-        }
         Ok({
             let fields = Fields::from(vec![
                 Field::new(
@@ -142,7 +124,7 @@ impl ::re_types_core::Loggable for AffixFuzzer20 {
                             let inner_data: arrow::buffer::Buffer = s
                                 .into_iter()
                                 .flatten()
-                                .flat_map(|datum| datum.0 .0)
+                                .flat_map(|datum| datum.0.into_arrow2_buffer())
                                 .collect();
                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                             as_array_ref(unsafe {
@@ -257,7 +239,7 @@ impl ::re_types_core::Loggable for AffixFuzzer20 {
                             res_or_opt.map(|res_or_opt| {
                                 res_or_opt.map(|v| {
                                     crate::testing::datatypes::StringComponent(
-                                        ::re_types_core::ArrowString(v),
+                                        ::re_types_core::ArrowString::from(v),
                                     )
                                 })
                             })
@@ -286,5 +268,18 @@ impl ::re_types_core::Loggable for AffixFuzzer20 {
                 .with_context("rerun.testing.datatypes.AffixFuzzer20")?
             }
         })
+    }
+}
+
+impl ::re_types_core::SizeBytes for AffixFuzzer20 {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.p.heap_size_bytes() + self.s.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::testing::datatypes::PrimitiveComponent>::is_pod()
+            && <crate::testing::datatypes::StringComponent>::is_pod()
     }
 }

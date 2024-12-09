@@ -38,10 +38,15 @@ const DEFAULT_MARKER_SIZE: f32 = 3.0;
 impl VisualizerSystem for SeriesPointSystem {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
         let mut query_info = VisualizerQueryInfo::from_archetype::<archetypes::Scalar>();
-        query_info
-            .queried
-            .extend(SeriesPoint::all_components().iter().map(ToOwned::to_owned));
+        query_info.queried.extend(
+            SeriesPoint::all_components()
+                .iter()
+                .map(|descr| descr.component_name),
+        );
+
+        use re_types::ComponentBatch as _;
         query_info.indicators = std::iter::once(SeriesPoint::indicator().name()).collect();
+
         query_info
     }
 

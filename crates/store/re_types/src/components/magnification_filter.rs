@@ -14,9 +14,9 @@
 #![allow(non_camel_case_types)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: Filter used when magnifying an image/texture such that a single pixel/texel is displayed as multiple pixels on screen.
@@ -36,43 +36,10 @@ pub enum MagnificationFilter {
     Linear = 2,
 }
 
-impl ::re_types_core::reflection::Enum for MagnificationFilter {
+impl ::re_types_core::Component for MagnificationFilter {
     #[inline]
-    fn variants() -> &'static [Self] {
-        &[Self::Nearest, Self::Linear]
-    }
-
-    #[inline]
-    fn docstring_md(self) -> &'static str {
-        match self {
-            Self::Nearest => {
-                "Show the nearest pixel value.\n\nThis will give a blocky appearance when zooming in.\nUsed as default when rendering 2D images."
-            }
-            Self::Linear => {
-                "Linearly interpolate the nearest neighbors, creating a smoother look when zooming in.\n\nUsed as default for mesh rendering."
-            }
-        }
-    }
-}
-
-impl ::re_types_core::SizeBytes for MagnificationFilter {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
-    }
-}
-
-impl std::fmt::Display for MagnificationFilter {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Nearest => write!(f, "Nearest"),
-            Self::Linear => write!(f, "Linear"),
-        }
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.components.MagnificationFilter")
     }
 }
 
@@ -94,13 +61,8 @@ impl ::re_types_core::Loggable for MagnificationFilter {
     {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{Loggable as _, ResultExt as _};
+        use ::re_types_core::{arrow_helpers::as_array_ref, Loggable as _, ResultExt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
-
-        #[allow(unused)]
-        fn as_array_ref<T: Array + 'static>(t: T) -> ArrayRef {
-            std::sync::Arc::new(t) as ArrayRef
-        }
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -162,9 +124,42 @@ impl ::re_types_core::Loggable for MagnificationFilter {
     }
 }
 
-impl ::re_types_core::Component for MagnificationFilter {
+impl std::fmt::Display for MagnificationFilter {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Nearest => write!(f, "Nearest"),
+            Self::Linear => write!(f, "Linear"),
+        }
+    }
+}
+
+impl ::re_types_core::reflection::Enum for MagnificationFilter {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.components.MagnificationFilter".into()
+    fn variants() -> &'static [Self] {
+        &[Self::Nearest, Self::Linear]
+    }
+
+    #[inline]
+    fn docstring_md(self) -> &'static str {
+        match self {
+            Self::Nearest => {
+                "Show the nearest pixel value.\n\nThis will give a blocky appearance when zooming in.\nUsed as default when rendering 2D images."
+            }
+            Self::Linear => {
+                "Linearly interpolate the nearest neighbors, creating a smoother look when zooming in.\n\nUsed as default for mesh rendering."
+            }
+        }
+    }
+}
+
+impl ::re_types_core::SizeBytes for MagnificationFilter {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
     }
 }

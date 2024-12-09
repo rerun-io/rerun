@@ -13,39 +13,13 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct AffixFuzzer2(pub Option<f32>);
-
-impl ::re_types_core::SizeBytes for AffixFuzzer2 {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <Option<f32>>::is_pod()
-    }
-}
-
-impl From<Option<f32>> for AffixFuzzer2 {
-    #[inline]
-    fn from(single_float_optional: Option<f32>) -> Self {
-        Self(single_float_optional)
-    }
-}
-
-impl From<AffixFuzzer2> for Option<f32> {
-    #[inline]
-    fn from(value: AffixFuzzer2) -> Self {
-        value.0
-    }
-}
 
 ::re_types_core::macros::impl_into_cow!(AffixFuzzer2);
 
@@ -65,13 +39,8 @@ impl ::re_types_core::Loggable for AffixFuzzer2 {
     {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{Loggable as _, ResultExt as _};
+        use ::re_types_core::{arrow_helpers::as_array_ref, Loggable as _, ResultExt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
-
-        #[allow(unused)]
-        fn as_array_ref<T: Array + 'static>(t: T) -> ArrayRef {
-            std::sync::Arc::new(t) as ArrayRef
-        }
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -123,5 +92,31 @@ impl ::re_types_core::Loggable for AffixFuzzer2 {
             .collect::<DeserializationResult<Vec<Option<_>>>>()
             .with_context("rerun.testing.datatypes.AffixFuzzer2#single_float_optional")
             .with_context("rerun.testing.datatypes.AffixFuzzer2")?)
+    }
+}
+
+impl From<Option<f32>> for AffixFuzzer2 {
+    #[inline]
+    fn from(single_float_optional: Option<f32>) -> Self {
+        Self(single_float_optional)
+    }
+}
+
+impl From<AffixFuzzer2> for Option<f32> {
+    #[inline]
+    fn from(value: AffixFuzzer2) -> Self {
+        value.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for AffixFuzzer2 {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <Option<f32>>::is_pod()
     }
 }

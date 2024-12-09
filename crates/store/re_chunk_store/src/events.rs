@@ -263,9 +263,12 @@ mod tests {
                     .entry(event.chunk.entity_path().clone())
                     .or_default() += delta_chunks;
 
-                for (component_name, list_array) in event.chunk.components() {
+                for (component_desc, list_array) in event.chunk.components().iter_flattened() {
                     let delta = event.delta() * list_array.iter().flatten().count() as i64;
-                    *self.component_names.entry(*component_name).or_default() += delta;
+                    *self
+                        .component_names
+                        .entry(component_desc.component_name)
+                        .or_default() += delta;
                 }
 
                 if event.is_static() {

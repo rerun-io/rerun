@@ -13,53 +13,18 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct AffixFuzzer12(pub Vec<::re_types_core::ArrowString>);
 
-impl ::re_types_core::SizeBytes for AffixFuzzer12 {
+impl ::re_types_core::Component for AffixFuzzer12 {
     #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <Vec<::re_types_core::ArrowString>>::is_pod()
-    }
-}
-
-impl From<Vec<::re_types_core::ArrowString>> for AffixFuzzer12 {
-    #[inline]
-    fn from(many_strings_required: Vec<::re_types_core::ArrowString>) -> Self {
-        Self(many_strings_required)
-    }
-}
-
-impl From<AffixFuzzer12> for Vec<::re_types_core::ArrowString> {
-    #[inline]
-    fn from(value: AffixFuzzer12) -> Self {
-        value.0
-    }
-}
-
-impl std::ops::Deref for AffixFuzzer12 {
-    type Target = Vec<::re_types_core::ArrowString>;
-
-    #[inline]
-    fn deref(&self) -> &Vec<::re_types_core::ArrowString> {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for AffixFuzzer12 {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut Vec<::re_types_core::ArrowString> {
-        &mut self.0
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.testing.components.AffixFuzzer12")
     }
 }
 
@@ -85,13 +50,8 @@ impl ::re_types_core::Loggable for AffixFuzzer12 {
     {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{Loggable as _, ResultExt as _};
+        use ::re_types_core::{arrow_helpers::as_array_ref, Loggable as _, ResultExt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
-
-        #[allow(unused)]
-        fn as_array_ref<T: Array + 'static>(t: T) -> ArrayRef {
-            std::sync::Arc::new(t) as ArrayRef
-        }
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -120,8 +80,10 @@ impl ::re_types_core::Loggable for AffixFuzzer12 {
                         let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
                             data0_inner_data.iter().map(|datum| datum.len()),
                         );
-                        let inner_data: arrow::buffer::Buffer =
-                            data0_inner_data.into_iter().flat_map(|s| s.0).collect();
+                        let inner_data: arrow::buffer::Buffer = data0_inner_data
+                            .into_iter()
+                            .flat_map(|s| s.into_arrow2_buffer())
+                            .collect();
 
                         #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                         as_array_ref(unsafe {
@@ -198,7 +160,7 @@ impl ::re_types_core::Loggable for AffixFuzzer12 {
                         })
                         .map(|res_or_opt| {
                             res_or_opt.map(|res_or_opt| {
-                                res_or_opt.map(|v| ::re_types_core::ArrowString(v))
+                                res_or_opt.map(|v| ::re_types_core::ArrowString::from(v))
                             })
                         })
                         .collect::<DeserializationResult<Vec<Option<_>>>>()
@@ -248,9 +210,44 @@ impl ::re_types_core::Loggable for AffixFuzzer12 {
     }
 }
 
-impl ::re_types_core::Component for AffixFuzzer12 {
+impl From<Vec<::re_types_core::ArrowString>> for AffixFuzzer12 {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.testing.components.AffixFuzzer12".into()
+    fn from(many_strings_required: Vec<::re_types_core::ArrowString>) -> Self {
+        Self(many_strings_required)
+    }
+}
+
+impl From<AffixFuzzer12> for Vec<::re_types_core::ArrowString> {
+    #[inline]
+    fn from(value: AffixFuzzer12) -> Self {
+        value.0
+    }
+}
+
+impl std::ops::Deref for AffixFuzzer12 {
+    type Target = Vec<::re_types_core::ArrowString>;
+
+    #[inline]
+    fn deref(&self) -> &Vec<::re_types_core::ArrowString> {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for AffixFuzzer12 {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Vec<::re_types_core::ArrowString> {
+        &mut self.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for AffixFuzzer12 {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <Vec<::re_types_core::ArrowString>>::is_pod()
     }
 }

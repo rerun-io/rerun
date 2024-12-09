@@ -10,8 +10,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     rec.log(
         "points_and_mesh",
         &[
-            rerun::Points3D::indicator().as_ref() as &dyn rerun::ComponentBatch,
-            rerun::Mesh3D::indicator().as_ref(),
+            &rerun::Points3D::indicator() as &dyn rerun::ComponentBatch,
+            &rerun::Mesh3D::indicator() as _,
             &[[0.0, 0.0, 0.0], [10.0, 0.0, 0.0], [0.0, 10.0, 0.0]].map(rerun::Position3D::from),
             &[[255, 0, 0], [0, 255, 0], [0, 0, 255]]
                 .map(|[r, g, b]| rerun::Color::from_rgb(r, g, b)),

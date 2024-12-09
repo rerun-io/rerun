@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: A 16-bit ID representing a type of semantic keypoint within a class.
@@ -40,32 +40,6 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
 pub struct KeypointId(pub u16);
 
-impl ::re_types_core::SizeBytes for KeypointId {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <u16>::is_pod()
-    }
-}
-
-impl From<u16> for KeypointId {
-    #[inline]
-    fn from(id: u16) -> Self {
-        Self(id)
-    }
-}
-
-impl From<KeypointId> for u16 {
-    #[inline]
-    fn from(value: KeypointId) -> Self {
-        value.0
-    }
-}
-
 ::re_types_core::macros::impl_into_cow!(KeypointId);
 
 impl ::re_types_core::Loggable for KeypointId {
@@ -84,13 +58,8 @@ impl ::re_types_core::Loggable for KeypointId {
     {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{Loggable as _, ResultExt as _};
+        use ::re_types_core::{arrow_helpers::as_array_ref, Loggable as _, ResultExt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
-
-        #[allow(unused)]
-        fn as_array_ref<T: Array + 'static>(t: T) -> ArrayRef {
-            std::sync::Arc::new(t) as ArrayRef
-        }
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -174,5 +143,31 @@ impl ::re_types_core::Loggable for KeypointId {
                 slice.iter().copied().map(Self).collect::<Vec<_>>()
             }
         })
+    }
+}
+
+impl From<u16> for KeypointId {
+    #[inline]
+    fn from(id: u16) -> Self {
+        Self(id)
+    }
+}
+
+impl From<KeypointId> for u16 {
+    #[inline]
+    fn from(value: KeypointId) -> Self {
+        value.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for KeypointId {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <u16>::is_pod()
     }
 }

@@ -17,7 +17,14 @@ namespace rerun {
         cells.reserve(2);
 
         {
-            auto result = ComponentBatch::from_loggable(archetype.is_recursive);
+            auto result = ComponentBatch::from_loggable(
+                archetype.is_recursive,
+                ComponentDescriptor(
+                    "rerun.archetypes.Clear",
+                    "is_recursive",
+                    "rerun.components.ClearIsRecursive"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

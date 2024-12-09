@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: Distance to the near clip plane used for `Spatial2DView`.
@@ -26,44 +26,10 @@ pub struct NearClipPlane(
     pub crate::datatypes::Float32,
 );
 
-impl ::re_types_core::SizeBytes for NearClipPlane {
+impl ::re_types_core::Component for NearClipPlane {
     #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Float32>::is_pod()
-    }
-}
-
-impl<T: Into<crate::datatypes::Float32>> From<T> for NearClipPlane {
-    fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Float32> for NearClipPlane {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Float32 {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for NearClipPlane {
-    type Target = crate::datatypes::Float32;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Float32 {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for NearClipPlane {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Float32 {
-        &mut self.0
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.blueprint.components.NearClipPlane")
     }
 }
 
@@ -108,9 +74,43 @@ impl ::re_types_core::Loggable for NearClipPlane {
     }
 }
 
-impl ::re_types_core::Component for NearClipPlane {
+impl<T: Into<crate::datatypes::Float32>> From<T> for NearClipPlane {
+    fn from(v: T) -> Self {
+        Self(v.into())
+    }
+}
+
+impl std::borrow::Borrow<crate::datatypes::Float32> for NearClipPlane {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.blueprint.components.NearClipPlane".into()
+    fn borrow(&self) -> &crate::datatypes::Float32 {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for NearClipPlane {
+    type Target = crate::datatypes::Float32;
+
+    #[inline]
+    fn deref(&self) -> &crate::datatypes::Float32 {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for NearClipPlane {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::Float32 {
+        &mut self.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for NearClipPlane {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::Float32>::is_pod()
     }
 }

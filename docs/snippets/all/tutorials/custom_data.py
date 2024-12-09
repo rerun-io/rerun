@@ -9,18 +9,18 @@ from typing import Any, Iterable
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
-import rerun as rr  # pip install rerun-sdk
+import rerun as rr
 
 
-class ConfidenceBatch(rr.ComponentBatchLike):
+class ConfidenceBatch(rr.ComponentBatchMixin):
     """A batch of confidence data."""
 
     def __init__(self: Any, confidence: npt.ArrayLike) -> None:
         self.confidence = confidence
 
-    def component_name(self) -> str:
-        """The name of the custom component."""
-        return "user.Confidence"
+    def component_descriptor(self) -> rr.ComponentDescriptor:
+        """The descriptor of the custom component."""
+        return rr.ComponentDescriptor("user.Confidence")
 
     def as_arrow_array(self) -> pa.Array:
         """The arrow batch representing the custom component."""
@@ -30,16 +30,17 @@ class ConfidenceBatch(rr.ComponentBatchLike):
 class CustomPoints3D(rr.AsComponents):
     """A custom archetype that extends Rerun's builtin `Points3D` archetype with a custom component."""
 
-    def __init__(self: Any, points3d: npt.ArrayLike, confidences: npt.ArrayLike) -> None:
-        self.points3d = points3d
-        self.confidences = confidences
+    def __init__(self: Any, positions: npt.ArrayLike, confidences: npt.ArrayLike) -> None:
+        self.points3d = rr.Points3D(positions)
+        self.confidences = ConfidenceBatch(confidences).or_with_descriptor_overrides(
+            archetype_name="user.CustomPoints3D", archetype_field_name="confidences"
+        )
 
     def as_component_batches(self) -> Iterable[rr.ComponentBatchLike]:
-        points3d = np.asarray(self.points3d)
         return (
-            list(rr.Points3D(points3d).as_component_batches())  # The components from Points3D
+            list(self.points3d.as_component_batches())  # The components from Points3D
             + [rr.IndicatorComponentBatch("user.CustomPoints3D")]  # Our custom indicator
-            + [ConfidenceBatch(self.confidences)]  # Custom confidence data
+            + [self.confidences]  # Custom confidence data
         )
 
 
@@ -51,14 +52,14 @@ def log_custom_data() -> None:
     rr.log(
         "left/my_confident_point_cloud",
         CustomPoints3D(
-            points3d=point_grid,
+            positions=point_grid,
             confidences=[42],
         ),
     )
 
     rr.log(
         "right/my_polarized_point_cloud",
-        CustomPoints3D(points3d=point_grid, confidences=np.arange(0, len(point_grid))),
+        CustomPoints3D(positions=point_grid, confidences=np.arange(0, len(point_grid))),
     )
 
 

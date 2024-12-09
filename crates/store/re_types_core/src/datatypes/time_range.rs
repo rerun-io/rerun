@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use crate::external::arrow2;
-use crate::ComponentName;
 use crate::SerializationResult;
-use crate::{ComponentBatch, MaybeOwnedComponentBatch};
+use crate::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use crate::{ComponentDescriptor, ComponentName};
 use crate::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: Visible time range bounds for a specific timeline.
@@ -26,19 +26,6 @@ pub struct TimeRange {
 
     /// High time boundary for sequence timeline.
     pub end: crate::datatypes::TimeRangeBoundary,
-}
-
-impl crate::SizeBytes for TimeRange {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.start.heap_size_bytes() + self.end.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::TimeRangeBoundary>::is_pod()
-            && <crate::datatypes::TimeRangeBoundary>::is_pod()
-    }
 }
 
 crate::macros::impl_into_cow!(TimeRange);
@@ -70,13 +57,8 @@ impl crate::Loggable for TimeRange {
     {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
-        use crate::{Loggable as _, ResultExt as _};
+        use crate::{arrow_helpers::as_array_ref, Loggable as _, ResultExt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
-
-        #[allow(unused)]
-        fn as_array_ref<T: Array + 'static>(t: T) -> ArrayRef {
-            std::sync::Arc::new(t) as ArrayRef
-        }
         Ok({
             let fields = Fields::from(vec![
                 Field::new(
@@ -221,5 +203,18 @@ impl crate::Loggable for TimeRange {
                 .with_context("rerun.datatypes.TimeRange")?
             }
         })
+    }
+}
+
+impl crate::SizeBytes for TimeRange {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.start.heap_size_bytes() + self.end.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::TimeRangeBoundary>::is_pod()
+            && <crate::datatypes::TimeRangeBoundary>::is_pod()
     }
 }

@@ -13,41 +13,15 @@
 #![allow(clippy::too_many_lines)]
 
 use crate::external::arrow2;
-use crate::ComponentName;
 use crate::SerializationResult;
-use crate::{ComponentBatch, MaybeOwnedComponentBatch};
+use crate::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use crate::{ComponentDescriptor, ComponentName};
 use crate::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: A string of text, encoded as UTF-8.
 #[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
 pub struct Utf8(pub crate::ArrowString);
-
-impl crate::SizeBytes for Utf8 {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::ArrowString>::is_pod()
-    }
-}
-
-impl From<crate::ArrowString> for Utf8 {
-    #[inline]
-    fn from(value: crate::ArrowString) -> Self {
-        Self(value)
-    }
-}
-
-impl From<Utf8> for crate::ArrowString {
-    #[inline]
-    fn from(value: Utf8) -> Self {
-        value.0
-    }
-}
 
 crate::macros::impl_into_cow!(Utf8);
 
@@ -67,13 +41,8 @@ impl crate::Loggable for Utf8 {
     {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
-        use crate::{Loggable as _, ResultExt as _};
+        use crate::{arrow_helpers::as_array_ref, Loggable as _, ResultExt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
-
-        #[allow(unused)]
-        fn as_array_ref<T: Array + 'static>(t: T) -> ArrayRef {
-            std::sync::Arc::new(t) as ArrayRef
-        }
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -93,8 +62,11 @@ impl crate::Loggable for Utf8 {
                         .iter()
                         .map(|opt| opt.as_ref().map(|datum| datum.len()).unwrap_or_default()),
                 );
-                let inner_data: arrow::buffer::Buffer =
-                    data0.into_iter().flatten().flat_map(|s| s.0).collect();
+                let inner_data: arrow::buffer::Buffer = data0
+                    .into_iter()
+                    .flatten()
+                    .flat_map(|s| s.into_arrow2_buffer())
+                    .collect();
 
                 #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                 as_array_ref(unsafe {
@@ -148,7 +120,7 @@ impl crate::Loggable for Utf8 {
                 .transpose()
             })
             .map(|res_or_opt| {
-                res_or_opt.map(|res_or_opt| res_or_opt.map(|v| crate::ArrowString(v)))
+                res_or_opt.map(|res_or_opt| res_or_opt.map(|v| crate::ArrowString::from(v)))
             })
             .collect::<DeserializationResult<Vec<Option<_>>>>()
             .with_context("rerun.datatypes.Utf8#value")?
@@ -159,5 +131,31 @@ impl crate::Loggable for Utf8 {
         .collect::<DeserializationResult<Vec<Option<_>>>>()
         .with_context("rerun.datatypes.Utf8#value")
         .with_context("rerun.datatypes.Utf8")?)
+    }
+}
+
+impl From<crate::ArrowString> for Utf8 {
+    #[inline]
+    fn from(value: crate::ArrowString) -> Self {
+        Self(value)
+    }
+}
+
+impl From<Utf8> for crate::ArrowString {
+    #[inline]
+    fn from(value: Utf8) -> Self {
+        value.0
+    }
+}
+
+impl crate::SizeBytes for Utf8 {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::ArrowString>::is_pod()
     }
 }

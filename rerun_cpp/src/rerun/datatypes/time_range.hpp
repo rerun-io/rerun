@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../component_descriptor.hpp"
 #include "../result.hpp"
 #include "time_range_boundary.hpp"
 
@@ -36,7 +37,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<datatypes::TimeRange> {
-        static constexpr const char Name[] = "rerun.datatypes.TimeRange";
+        static constexpr ComponentDescriptor Descriptor = "rerun.datatypes.TimeRange";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();

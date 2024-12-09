@@ -26,24 +26,24 @@ fn stats() -> anyhow::Result<()> {
                 RowId::new(),
                 [build_frame_nr(TimeInt::new_temporal(0))],
                 [
-                    (MyColor::name(), None),
-                    (MyPoint::name(), Some(&MyPoint::from_iter(0..1) as _)),
+                    (MyColor::descriptor(), None),
+                    (MyPoint::descriptor(), Some(&MyPoint::from_iter(0..1) as _)),
                 ],
             )
             .with_sparse_component_batches(
                 RowId::new(),
                 [build_frame_nr(TimeInt::new_temporal(1))],
                 [
-                    (MyColor::name(), Some(&MyColor::from_iter(2..3) as _)),
-                    (MyPoint::name(), None),
+                    (MyColor::descriptor(), Some(&MyColor::from_iter(2..3) as _)),
+                    (MyPoint::descriptor(), None),
                 ],
             )
             .with_sparse_component_batches(
                 RowId::new(),
                 [build_frame_nr(TimeInt::new_temporal(2))],
                 [
-                    (MyColor::name(), Some(&MyColor::from_iter(2..3) as _)),
-                    (MyPoint::name(), Some(&MyPoint::from_iter(2..3) as _)),
+                    (MyColor::descriptor(), Some(&MyColor::from_iter(2..3) as _)),
+                    (MyPoint::descriptor(), Some(&MyPoint::from_iter(2..3) as _)),
                 ],
             )
             .build()?;
@@ -63,8 +63,8 @@ fn stats() -> anyhow::Result<()> {
                 RowId::new(),
                 [build_frame_nr(TimeInt::new_temporal(3))],
                 [
-                    (MyColor::name(), None),
-                    (MyPoint::name(), Some(&MyPoint::from_iter(1..2) as _)),
+                    (MyColor::descriptor(), None),
+                    (MyPoint::descriptor(), Some(&MyPoint::from_iter(1..2) as _)),
                 ],
             )
             .build()?;
@@ -88,24 +88,24 @@ fn stats() -> anyhow::Result<()> {
                 RowId::new(),
                 TimePoint::default(),
                 [
-                    (MyColor::name(), None),
-                    (MyPoint::name(), Some(&MyPoint::from_iter(0..1) as _)),
+                    (MyColor::descriptor(), None),
+                    (MyPoint::descriptor(), Some(&MyPoint::from_iter(0..1) as _)),
                 ],
             )
             .with_sparse_component_batches(
                 RowId::new(),
                 TimePoint::default(),
                 [
-                    (MyColor::name(), Some(&MyColor::from_iter(2..3) as _)),
-                    (MyPoint::name(), None),
+                    (MyColor::descriptor(), Some(&MyColor::from_iter(2..3) as _)),
+                    (MyPoint::descriptor(), None),
                 ],
             )
             .with_sparse_component_batches(
                 RowId::new(),
                 TimePoint::default(),
                 [
-                    (MyColor::name(), Some(&MyColor::from_iter(2..3) as _)),
-                    (MyPoint::name(), Some(&MyPoint::from_iter(2..3) as _)),
+                    (MyColor::descriptor(), Some(&MyColor::from_iter(2..3) as _)),
+                    (MyPoint::descriptor(), Some(&MyPoint::from_iter(2..3) as _)),
                 ],
             )
             .build()?;
