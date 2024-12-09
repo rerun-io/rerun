@@ -32,16 +32,16 @@ pub struct ContainerBlueprint {
 
     /// The layout shares of each column in the container.
     ///
-    /// For `Horizontal` containers, the length of this list should always match the number of contents.
+    /// For [`components::ContainerKind::Horizontal`][crate::blueprint::components::ContainerKind::Horizontal] containers, the length of this list should always match the number of contents.
     ///
-    /// Ignored for `Vertical` containers.
+    /// Ignored for [`components::ContainerKind::Vertical`][crate::blueprint::components::ContainerKind::Vertical] containers.
     pub col_shares: Option<Vec<crate::blueprint::components::ColumnShare>>,
 
     /// The layout shares of each row of the container.
     ///
-    /// For `Vertical` containers, the length of this list should always match the number of contents.
+    /// For [`components::ContainerKind::Vertical`][crate::blueprint::components::ContainerKind::Vertical] containers, the length of this list should always match the number of contents.
     ///
-    /// Ignored for `Horizontal` containers.
+    /// Ignored for [`components::ContainerKind::Horizontal`][crate::blueprint::components::ContainerKind::Horizontal] containers.
     pub row_shares: Option<Vec<crate::blueprint::components::RowShare>>,
 
     /// Which tab is active.
@@ -58,7 +58,7 @@ pub struct ContainerBlueprint {
     ///
     /// If unset, the grid layout will be auto.
     ///
-    /// Ignored for `Horizontal`/`Vertical` containers.
+    /// Ignored for [`components::ContainerKind::Horizontal`][crate::blueprint::components::ContainerKind::Horizontal]/[`components::ContainerKind::Vertical`][crate::blueprint::components::ContainerKind::Vertical] containers.
     pub grid_columns: Option<crate::blueprint::components::GridColumns>,
 }
 
@@ -480,9 +480,9 @@ impl ContainerBlueprint {
 
     /// The layout shares of each column in the container.
     ///
-    /// For `Horizontal` containers, the length of this list should always match the number of contents.
+    /// For [`components::ContainerKind::Horizontal`][crate::blueprint::components::ContainerKind::Horizontal] containers, the length of this list should always match the number of contents.
     ///
-    /// Ignored for `Vertical` containers.
+    /// Ignored for [`components::ContainerKind::Vertical`][crate::blueprint::components::ContainerKind::Vertical] containers.
     #[inline]
     pub fn with_col_shares(
         mut self,
@@ -494,9 +494,9 @@ impl ContainerBlueprint {
 
     /// The layout shares of each row of the container.
     ///
-    /// For `Vertical` containers, the length of this list should always match the number of contents.
+    /// For [`components::ContainerKind::Vertical`][crate::blueprint::components::ContainerKind::Vertical] containers, the length of this list should always match the number of contents.
     ///
-    /// Ignored for `Horizontal` containers.
+    /// Ignored for [`components::ContainerKind::Horizontal`][crate::blueprint::components::ContainerKind::Horizontal] containers.
     #[inline]
     pub fn with_row_shares(
         mut self,
@@ -534,7 +534,7 @@ impl ContainerBlueprint {
     ///
     /// If unset, the grid layout will be auto.
     ///
-    /// Ignored for `Horizontal`/`Vertical` containers.
+    /// Ignored for [`components::ContainerKind::Horizontal`][crate::blueprint::components::ContainerKind::Horizontal]/[`components::ContainerKind::Vertical`][crate::blueprint::components::ContainerKind::Vertical] containers.
     #[inline]
     pub fn with_grid_columns(
         mut self,

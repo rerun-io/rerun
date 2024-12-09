@@ -27,7 +27,7 @@ table GraphEdges (
 
   /// Specifies if the graph is directed or undirected.
   ///
-  /// If no `GraphType` is provided, the graph is assumed to be undirected.
+  /// If no [components.GraphType] is provided, the graph is assumed to be undirected.
   graph_type: rerun.components.GraphType ("attr.rerun.component_recommended", nullable, order: 2000);
 
 }
