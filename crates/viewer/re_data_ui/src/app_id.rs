@@ -67,10 +67,8 @@ impl crate::DataUi for ApplicationId {
             let active_blueprint = ctx.store_context.blueprint;
             let default_blueprint = ctx.store_context.hub.default_blueprint_for_app(self);
 
-            let button = egui::Button::image_and_text(
-                re_ui::icons::RESET.as_image(),
-                "Reset to default blueprint",
-            );
+            let button =
+                egui::Button::image_and_text(&re_ui::icons::RESET, "Reset to default blueprint");
 
             let is_same_as_default = default_blueprint.map_or(false, |default_blueprint| {
                 default_blueprint.latest_row_id() == active_blueprint.latest_row_id()
@@ -95,7 +93,7 @@ impl crate::DataUi for ApplicationId {
             }
 
             if ui.add(egui::Button::image_and_text(
-                re_ui::icons::RESET.as_image(),
+                &re_ui::icons::RESET,
                 "Reset to heuristic blueprint",
             )).on_hover_text("Clear both active and default blueprint, and auto-generate a new blueprint based on heuristics").clicked() {
                 ctx.command_sender

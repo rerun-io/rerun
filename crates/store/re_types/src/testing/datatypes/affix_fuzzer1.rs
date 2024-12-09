@@ -87,13 +87,8 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
     {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{Loggable as _, ResultExt as _};
+        use ::re_types_core::{arrow_helpers::as_array_ref, Loggable as _, ResultExt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
-
-        #[allow(unused)]
-        fn as_array_ref<T: Array + 'static>(t: T) -> ArrayRef {
-            std::sync::Arc::new(t) as ArrayRef
-        }
         Ok({
             let fields = Fields::from(vec![
                 Field::new("single_float_optional", DataType::Float32, true),
@@ -196,9 +191,8 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                             let inner_data: arrow::buffer::Buffer = single_string_required
                                 .into_iter()
                                 .flatten()
-                                .flat_map(|s| s.0)
+                                .flat_map(|s| s.into_arrow2_buffer())
                                 .collect();
-
                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                             as_array_ref(unsafe {
                                 StringArray::new_unchecked(
@@ -233,9 +227,8 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                             let inner_data: arrow::buffer::Buffer = single_string_optional
                                 .into_iter()
                                 .flatten()
-                                .flat_map(|s| s.0)
+                                .flat_map(|s| s.into_arrow2_buffer())
                                 .collect();
-
                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                             as_array_ref(unsafe {
                                 StringArray::new_unchecked(
@@ -329,7 +322,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                                     let inner_data: arrow::buffer::Buffer =
                                         many_strings_required_inner_data
                                             .into_iter()
-                                            .flat_map(|s| s.0)
+                                            .flat_map(|s| s.into_arrow2_buffer())
                                             .collect();
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     as_array_ref(unsafe {
@@ -385,7 +378,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                                     let inner_data: arrow::buffer::Buffer =
                                         many_strings_optional_inner_data
                                             .into_iter()
-                                            .flat_map(|s| s.0)
+                                            .flat_map(|s| s.into_arrow2_buffer())
                                             .collect();
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     as_array_ref(unsafe {
@@ -573,7 +566,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                         })
                         .map(|res_or_opt| {
                             res_or_opt.map(|res_or_opt| {
-                                res_or_opt.map(|v| ::re_types_core::ArrowString(v))
+                                res_or_opt.map(|v| ::re_types_core::ArrowString::from(v))
                             })
                         })
                         .collect::<DeserializationResult<Vec<Option<_>>>>()
@@ -630,7 +623,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                         })
                         .map(|res_or_opt| {
                             res_or_opt.map(|res_or_opt| {
-                                res_or_opt.map(|v| ::re_types_core::ArrowString(v))
+                                res_or_opt.map(|v| ::re_types_core::ArrowString::from(v))
                             })
                         })
                         .collect::<DeserializationResult<Vec<Option<_>>>>()
@@ -788,7 +781,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                                         .map(|res_or_opt| {
                                             res_or_opt
                                                 .map(|res_or_opt| {
-                                                    res_or_opt.map(|v| ::re_types_core::ArrowString(v))
+                                                    res_or_opt.map(|v| ::re_types_core::ArrowString::from(v))
                                                 })
                                         })
                                         .collect::<DeserializationResult<Vec<Option<_>>>>()
@@ -909,7 +902,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                                         .map(|res_or_opt| {
                                             res_or_opt
                                                 .map(|res_or_opt| {
-                                                    res_or_opt.map(|v| ::re_types_core::ArrowString(v))
+                                                    res_or_opt.map(|v| ::re_types_core::ArrowString::from(v))
                                                 })
                                         })
                                         .collect::<DeserializationResult<Vec<Option<_>>>>()

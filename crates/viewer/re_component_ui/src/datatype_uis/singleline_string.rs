@@ -70,7 +70,7 @@ fn edit_multiline_string_impl(
         *value = edit_name.into();
         response
     } else {
-        UiLayout::SelectionPanelFull.data_label(ui, value.as_str())
+        UiLayout::SelectionPanel.data_label(ui, value.as_str())
     }
 }
 
