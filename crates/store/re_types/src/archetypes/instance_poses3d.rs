@@ -115,7 +115,7 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usiz
     once_cell::sync::Lazy::new(|| {
         [ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
-            component_name: "InstancePoses3DIndicator".into(),
+            component_name: "rerun.components.InstancePoses3DIndicator".into(),
             archetype_field_name: None,
         }]
     });
@@ -156,7 +156,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 6usize]> =
         [
             ComponentDescriptor {
                 archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
-                component_name: "InstancePoses3DIndicator".into(),
+                component_name: "rerun.components.InstancePoses3DIndicator".into(),
                 archetype_field_name: None,
             },
             ComponentDescriptor {

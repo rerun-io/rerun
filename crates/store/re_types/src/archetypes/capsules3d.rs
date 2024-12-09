@@ -143,7 +143,7 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usiz
             },
             ComponentDescriptor {
                 archetype_name: Some("rerun.archetypes.Capsules3D".into()),
-                component_name: "Capsules3DIndicator".into(),
+                component_name: "rerun.components.Capsules3DIndicator".into(),
                 archetype_field_name: None,
             },
         ]
@@ -205,7 +205,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 10usize]> =
             },
             ComponentDescriptor {
                 archetype_name: Some("rerun.archetypes.Capsules3D".into()),
-                component_name: "Capsules3DIndicator".into(),
+                component_name: "rerun.components.Capsules3DIndicator".into(),
                 archetype_field_name: None,
             },
             ComponentDescriptor {

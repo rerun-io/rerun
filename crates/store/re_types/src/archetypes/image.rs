@@ -165,7 +165,7 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usiz
     once_cell::sync::Lazy::new(|| {
         [ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Image".into()),
-            component_name: "ImageIndicator".into(),
+            component_name: "rerun.components.ImageIndicator".into(),
             archetype_field_name: None,
         }]
     });
@@ -201,7 +201,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
             },
             ComponentDescriptor {
                 archetype_name: Some("rerun.archetypes.Image".into()),
-                component_name: "ImageIndicator".into(),
+                component_name: "rerun.components.ImageIndicator".into(),
                 archetype_field_name: None,
             },
             ComponentDescriptor {
