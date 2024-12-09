@@ -46,9 +46,7 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usiz
     once_cell::sync::Lazy::new(|| {
         [ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.TensorScalarMapping".into()),
-            component_name: TensorScalarMappingIndicator::DEFAULT
-                .descriptor()
-                .component_name,
+            component_name: "rerun.blueprint.components.TensorScalarMappingIndicator".into(),
             archetype_field_name: None,
         }]
     });
@@ -79,9 +77,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]> =
         [
             ComponentDescriptor {
                 archetype_name: Some("rerun.blueprint.archetypes.TensorScalarMapping".into()),
-                component_name: TensorScalarMappingIndicator::DEFAULT
-                    .descriptor()
-                    .component_name,
+                component_name: "rerun.blueprint.components.TensorScalarMappingIndicator".into(),
                 archetype_field_name: None,
             },
             ComponentDescriptor {

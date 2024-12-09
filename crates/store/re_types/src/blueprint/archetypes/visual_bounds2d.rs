@@ -46,7 +46,7 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usiz
     once_cell::sync::Lazy::new(|| {
         [ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.VisualBounds2D".into()),
-            component_name: VisualBounds2DIndicator::DEFAULT.descriptor().component_name,
+            component_name: "rerun.blueprint.components.VisualBounds2DIndicator".into(),
             archetype_field_name: None,
         }]
     });
@@ -64,7 +64,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
             },
             ComponentDescriptor {
                 archetype_name: Some("rerun.blueprint.archetypes.VisualBounds2D".into()),
-                component_name: VisualBounds2DIndicator::DEFAULT.descriptor().component_name,
+                component_name: "rerun.blueprint.components.VisualBounds2DIndicator".into(),
                 archetype_field_name: None,
             },
         ]

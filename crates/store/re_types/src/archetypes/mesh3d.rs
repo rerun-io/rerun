@@ -169,7 +169,7 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usiz
             },
             ComponentDescriptor {
                 archetype_name: Some("rerun.archetypes.Mesh3D".into()),
-                component_name: Mesh3DIndicator::DEFAULT.descriptor().component_name,
+                component_name: "rerun.components.Mesh3DIndicator".into(),
                 archetype_field_name: None,
             },
         ]
@@ -231,7 +231,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 10usize]> =
             },
             ComponentDescriptor {
                 archetype_name: Some("rerun.archetypes.Mesh3D".into()),
-                component_name: Mesh3DIndicator::DEFAULT.descriptor().component_name,
+                component_name: "rerun.components.Mesh3DIndicator".into(),
                 archetype_field_name: None,
             },
             ComponentDescriptor {

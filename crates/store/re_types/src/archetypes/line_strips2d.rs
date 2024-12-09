@@ -138,7 +138,7 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usiz
             },
             ComponentDescriptor {
                 archetype_name: Some("rerun.archetypes.LineStrips2D".into()),
-                component_name: LineStrips2DIndicator::DEFAULT.descriptor().component_name,
+                component_name: "rerun.components.LineStrips2DIndicator".into(),
                 archetype_field_name: None,
             },
         ]
@@ -190,7 +190,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 8usize]> =
             },
             ComponentDescriptor {
                 archetype_name: Some("rerun.archetypes.LineStrips2D".into()),
-                component_name: LineStrips2DIndicator::DEFAULT.descriptor().component_name,
+                component_name: "rerun.components.LineStrips2DIndicator".into(),
                 archetype_field_name: None,
             },
             ComponentDescriptor {

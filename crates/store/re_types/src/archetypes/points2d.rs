@@ -161,7 +161,7 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usiz
             },
             ComponentDescriptor {
                 archetype_name: Some("rerun.archetypes.Points2D".into()),
-                component_name: Points2DIndicator::DEFAULT.descriptor().component_name,
+                component_name: "rerun.components.Points2DIndicator".into(),
                 archetype_field_name: None,
             },
         ]
@@ -218,7 +218,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 9usize]> =
             },
             ComponentDescriptor {
                 archetype_name: Some("rerun.archetypes.Points2D".into()),
-                component_name: Points2DIndicator::DEFAULT.descriptor().component_name,
+                component_name: "rerun.components.Points2DIndicator".into(),
                 archetype_field_name: None,
             },
             ComponentDescriptor {

@@ -51,9 +51,7 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usiz
     once_cell::sync::Lazy::new(|| {
         [ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.TensorSliceSelection".into()),
-            component_name: TensorSliceSelectionIndicator::DEFAULT
-                .descriptor()
-                .component_name,
+            component_name: "rerun.blueprint.components.TensorSliceSelectionIndicator".into(),
             archetype_field_name: None,
         }]
     });
@@ -89,9 +87,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
         [
             ComponentDescriptor {
                 archetype_name: Some("rerun.blueprint.archetypes.TensorSliceSelection".into()),
-                component_name: TensorSliceSelectionIndicator::DEFAULT
-                    .descriptor()
-                    .component_name,
+                component_name: "rerun.blueprint.components.TensorSliceSelectionIndicator".into(),
                 archetype_field_name: None,
             },
             ComponentDescriptor {

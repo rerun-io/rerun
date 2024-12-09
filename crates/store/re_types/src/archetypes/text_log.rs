@@ -91,7 +91,7 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usiz
             },
             ComponentDescriptor {
                 archetype_name: Some("rerun.archetypes.TextLog".into()),
-                component_name: TextLogIndicator::DEFAULT.descriptor().component_name,
+                component_name: "rerun.components.TextLogIndicator".into(),
                 archetype_field_name: None,
             },
         ]
@@ -121,7 +121,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]> =
             },
             ComponentDescriptor {
                 archetype_name: Some("rerun.archetypes.TextLog".into()),
-                component_name: TextLogIndicator::DEFAULT.descriptor().component_name,
+                component_name: "rerun.components.TextLogIndicator".into(),
                 archetype_field_name: None,
             },
             ComponentDescriptor {

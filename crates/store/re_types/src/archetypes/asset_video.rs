@@ -158,7 +158,7 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usiz
             },
             ComponentDescriptor {
                 archetype_name: Some("rerun.archetypes.AssetVideo".into()),
-                component_name: AssetVideoIndicator::DEFAULT.descriptor().component_name,
+                component_name: "rerun.components.AssetVideoIndicator".into(),
                 archetype_field_name: None,
             },
         ]
@@ -182,7 +182,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
             },
             ComponentDescriptor {
                 archetype_name: Some("rerun.archetypes.AssetVideo".into()),
-                component_name: AssetVideoIndicator::DEFAULT.descriptor().component_name,
+                component_name: "rerun.components.AssetVideoIndicator".into(),
                 archetype_field_name: None,
             },
         ]
