@@ -119,6 +119,7 @@
 mod reflection;
 
 use std::collections::{BTreeMap, BTreeSet};
+use std::path::PathBuf;
 
 use anyhow::Context as _;
 use codegen::FbsCodeGenerator;
@@ -160,6 +161,7 @@ pub use self::{
     arrow_registry::{ArrowRegistry, LazyDatatype, LazyField},
     codegen::{
         CodeGenerator, CppCodeGenerator, DocsCodeGenerator, PythonCodeGenerator, RustCodeGenerator,
+        SnippetsRefCodeGenerator,
     },
     docs::Docs,
     format::{CodeFormatter, CppCodeFormatter, PythonCodeFormatter, RustCodeFormatter},
@@ -358,6 +360,11 @@ pub fn compute_re_types_hash(locations: &SourceLocations<'_>) -> String {
     let re_types_builder_hash = compute_re_types_builder_hash();
     let definitions_hash = compute_dir_hash(locations.definitions_dir, Some(&["fbs"]));
     let snippets_hash = compute_dir_hash(locations.snippets_dir, Some(&["rs", "py", "cpp"]));
+    let snippets_index_hash = PathBuf::from(locations.snippets_dir)
+        .parent()
+        .map_or(String::new(), |dir| {
+            compute_dir_filtered_hash(dir, |path| path.to_str().unwrap().ends_with("INDEX.md"))
+        });
     let python_extensions_hash = compute_dir_filtered_hash(locations.python_output_dir, |path| {
         path.to_str().unwrap().ends_with("_ext.py")
     });
@@ -369,6 +376,7 @@ pub fn compute_re_types_hash(locations: &SourceLocations<'_>) -> String {
         &re_types_builder_hash,
         &definitions_hash,
         &snippets_hash,
+        &snippets_index_hash,
         &python_extensions_hash,
         &cpp_extensions_hash,
     ]);
@@ -376,6 +384,7 @@ pub fn compute_re_types_hash(locations: &SourceLocations<'_>) -> String {
     re_log::debug!("re_types_builder_hash: {re_types_builder_hash:?}");
     re_log::debug!("definitions_hash: {definitions_hash:?}");
     re_log::debug!("snippets_hash: {snippets_hash:?}");
+    re_log::debug!("snippets_index_hash: {snippets_index_hash:?}");
     re_log::debug!("python_extensions_hash: {python_extensions_hash:?}");
     re_log::debug!("cpp_extensions_hash: {cpp_extensions_hash:?}");
     re_log::debug!("new_hash: {new_hash:?}");
@@ -560,6 +569,37 @@ pub fn generate_docs(
         &mut generator,
         &mut formatter,
         &Default::default(),
+        check,
+    );
+}
+
+pub fn generate_snippets_ref(
+    reporter: &Reporter,
+    output_snippets_ref_dir: impl AsRef<Utf8Path>,
+    objects: &Objects,
+    arrow_registry: &ArrowRegistry,
+    check: bool,
+) {
+    re_tracing::profile_function!();
+
+    re_log::info!(
+        "Generating snippets_ref to {}",
+        output_snippets_ref_dir.as_ref()
+    );
+
+    let mut generator = SnippetsRefCodeGenerator::new(output_snippets_ref_dir.as_ref());
+    let mut formatter = NoopCodeFormatter;
+
+    // NOTE: We generate in an existing folder, don't touch anything else.
+    let orphan_path_opt_out = output_snippets_ref_dir.as_ref().to_owned();
+
+    generate_code(
+        reporter,
+        objects,
+        arrow_registry,
+        &mut generator,
+        &mut formatter,
+        &std::iter::once(orphan_path_opt_out).collect(),
         check,
     );
 }
