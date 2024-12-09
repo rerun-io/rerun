@@ -58,7 +58,7 @@ class VisualBounds2D(VisualBounds2DExt, Archetype):
         metadata={"component": "required"},
         converter=blueprint_components.NearClipPlaneBatch._required,  # type: ignore[misc]
     )
-    # Controls the distance to the near clip plane.
+    # Controls the distance to the near clip plane in 3D scene units.
     #
     # Content closer than this distance will not be visible.
     #

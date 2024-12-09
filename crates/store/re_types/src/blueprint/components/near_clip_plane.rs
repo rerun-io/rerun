@@ -22,7 +22,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Debug, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(transparent)]
 pub struct NearClipPlane(
-    /// Distance to the near clip plane.
+    /// Distance to the near clip plane in 3D scene units.
     pub crate::datatypes::Float32,
 );
 

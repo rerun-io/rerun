@@ -32,7 +32,7 @@ pub struct VisualBounds2D {
     /// Use this to control pan & zoom of the view.
     pub range: crate::blueprint::components::VisualBounds2D,
 
-    /// Controls the distance to the near clip plane.
+    /// Controls the distance to the near clip plane in 3D scene units.
     ///
     /// Content closer than this distance will not be visible.
     pub near_clip_plane: crate::blueprint::components::NearClipPlane,

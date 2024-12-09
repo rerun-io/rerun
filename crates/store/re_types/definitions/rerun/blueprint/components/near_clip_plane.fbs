@@ -9,6 +9,6 @@ struct NearClipPlane (
   "attr.rust.repr": "transparent",
   "attr.docs.unreleased"
 ) {
-  /// Distance to the near clip plane.
+  /// Distance to the near clip plane in 3D scene units.
   near_clip_plane: rerun.datatypes.Float32 (order: 100);
 }

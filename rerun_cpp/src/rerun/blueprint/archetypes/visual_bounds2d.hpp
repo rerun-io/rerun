@@ -28,7 +28,7 @@ namespace rerun::blueprint::archetypes {
         /// Use this to control pan & zoom of the view.
         rerun::blueprint::components::VisualBounds2D range;
 
-        /// Controls the distance to the near clip plane.
+        /// Controls the distance to the near clip plane in 3D scene units.
         ///
         /// Content closer than this distance will not be visible.
         rerun::blueprint::components::NearClipPlane near_clip_plane;

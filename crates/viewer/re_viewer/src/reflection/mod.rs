@@ -2213,7 +2213,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     is_required : true, }, ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.NearClipPlane".into(), display_name :
                     "Near clip plane", docstring_md :
-                    "Controls the distance to the near clip plane.\n\nContent closer than this distance will not be visible.",
+                    "Controls the distance to the near clip plane in 3D scene units.\n\nContent closer than this distance will not be visible.",
                     is_required : false, },
                 ],
             },
