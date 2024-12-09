@@ -1186,6 +1186,8 @@
 <a href="#1186" id="1186">1186</a>
 <a href="#1187" id="1187">1187</a>
 <a href="#1188" id="1188">1188</a>
+<a href="#1189" id="1189">1189</a>
+<a href="#1190" id="1190">1190</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>arrow2::datatypes::DataType;
 <span class="kw">use </span>proc_macro2::{Literal, TokenStream};
 <span class="kw">use </span>quote::{format_ident, quote};
@@ -1514,11 +1516,12 @@
                 <span class="kw">let </span>quoted_field_deserializers = obj
                     .fields
                     .iter()
-                    .filter(|obj_field|
-                        <span class="comment">// For unit fields we don't have to collect any data.
-                        </span>obj_field.typ != <span class="kw">crate</span>::Type::Unit)
                     .enumerate()
-                    .map(|(i, obj_field)| {
+                    .filter(|(<span class="kw">_</span>, obj_field)| {
+                        <span class="comment">// For unit fields we don't have to collect any data.
+                        </span>obj_field.typ != <span class="kw">crate</span>::Type::Unit
+                    })
+                    .map(|(type_id, obj_field)| {
                         <span class="kw">let </span>data_dst = <span class="macro">format_ident!</span>(<span class="string">"{}"</span>, obj_field.snake_case_name());
 
                         <span class="kw">let </span>field_datatype = <span class="kw-2">&amp;</span>arrow_registry.get(<span class="kw-2">&amp;</span>obj_field.fqname);
@@ -1532,15 +1535,15 @@
                             InnerRepr::NativeIterable,
                         );
 
-                        <span class="kw">let </span>i = i + <span class="number">1</span>; <span class="comment">// NOTE: +1 to account for `_null_markers` virtual arm
+                        <span class="kw">let </span>type_id = Literal::usize_unsuffixed(type_id + <span class="number">1</span>); <span class="comment">// NOTE: +1 to account for `_null_markers` virtual arm
 
                         </span><span class="macro">quote!</span> {
                             <span class="kw">let </span>#data_dst = {
                                 <span class="comment">// NOTE: `data_src_arrays` is a runtime collection of all of the
-                                // input's payload's union arms, while `#i` is our comptime union
+                                // input's payload's union arms, while `#type_id` is our comptime union
                                 // arm counter… there's no guarantee it's actually there at
                                 // runtime!
-                                </span><span class="kw">if </span>#i &gt;= #data_src_arrays.len() {
+                                </span><span class="kw">if </span>#data_src_arrays.len() &lt;= #type_id {
                                     <span class="comment">// By not returning an error but rather defaulting to an empty
                                     // vector, we introduce some kind of light forwards compatibility:
                                     // old clients that don't yet know about the new arms can still
@@ -1548,13 +1551,13 @@
                                     </span><span class="kw">return </span><span class="prelude-val">Ok</span>(Vec::new());
 
                                     <span class="comment">// return Err(DeserializationError::missing_union_arm(
-                                    //     #quoted_datatype, #obj_field_fqname, #i,
+                                    //     #quoted_datatype, #obj_field_fqname, #type_id,
                                     // )).with_context(#obj_fqname);
                                 </span>}
 
                                 <span class="comment">// NOTE: The array indexing is safe: checked above.
-                                </span><span class="kw">let </span>#data_src = <span class="kw-2">&amp;*</span>#data_src_arrays[#i];
-                                 #quoted_deserializer.collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
+                                </span><span class="kw">let </span>#data_src = <span class="kw-2">&amp;*</span>#data_src_arrays[#type_id];
+                                #quoted_deserializer.collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
                             }
                         }
                     });
@@ -1771,19 +1774,20 @@
 
                 <span class="kw">let </span>offsets = #data_src.offsets();
                 arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                    offsets.iter().zip(offsets.lengths()),
+                    offsets.windows(<span class="number">2</span>),
                     #data_src.validity(),
                 )
-                .map(|elem| elem.map(|(start, len)| {
+                .map(|elem| elem.map(|window| {
                         <span class="comment">// NOTE: Do _not_ use `Buffer::sliced`, it panics on malformed inputs.
 
-                        </span><span class="kw">let </span>start = <span class="kw-2">*</span>start <span class="kw">as </span>usize;
-                        <span class="kw">let </span>end = start + len;
+                        </span><span class="kw">let </span>start = window[<span class="number">0</span>] <span class="kw">as </span>usize;
+                        <span class="kw">let </span>end = window[<span class="number">1</span>] <span class="kw">as </span>usize;
+                        <span class="kw">let </span>len = end - start;
 
                         <span class="comment">// NOTE: It is absolutely crucial we explicitly handle the
                         // boundchecks manually first, otherwise rustc completely chokes
                         // when slicing the data (as in: a 100x perf drop)!
-                        </span><span class="kw">if </span>end &gt; #data_src_buf.len() {
+                        </span><span class="kw">if </span>#data_src_buf.len() &lt; end {
                             <span class="comment">// error context is appended below during final collection
                             </span><span class="kw">return </span><span class="prelude-val">Err</span>(DeserializationError::offset_slice_oob(
                                 (start, end), #data_src_buf.len(),
@@ -2000,19 +2004,19 @@
 
                     <span class="kw">let </span>offsets = #data_src.offsets();
                     arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                        offsets.iter().zip(offsets.lengths()),
+                        offsets.windows(<span class="number">2</span>),
                         #data_src.validity(),
                     )
-                    .map(|elem| elem.map(|(start, len)| {
+                    .map(|elem| elem.map(|window| {
                             <span class="comment">// NOTE: Do _not_ use `Buffer::sliced`, it panics on malformed inputs.
 
-                            </span><span class="kw">let </span>start = <span class="kw-2">*</span>start <span class="kw">as </span>usize;
-                            <span class="kw">let </span>end = start + len;
+                            </span><span class="kw">let </span>start = window[<span class="number">0</span>] <span class="kw">as </span>usize;
+                            <span class="kw">let </span>end = window[<span class="number">1</span>] <span class="kw">as </span>usize;
 
                             <span class="comment">// NOTE: It is absolutely crucial we explicitly handle the
                             // boundchecks manually first, otherwise rustc completely chokes
                             // when slicing the data (as in: a 100x perf drop)!
-                            </span><span class="kw">if </span>end  &gt; #data_src_inner.len() {
+                            </span><span class="kw">if </span>#data_src_inner.len() &lt; end {
                                 <span class="comment">// error context is appended below during final collection
                                 </span><span class="kw">return </span><span class="prelude-val">Err</span>(DeserializationError::offset_slice_oob(
                                     (start, end), #data_src_inner.len(),

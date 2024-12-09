@@ -1638,6 +1638,8 @@
 <a href="#1638" id="1638">1638</a>
 <a href="#1639" id="1639">1639</a>
 <a href="#1640" id="1640">1640</a>
+<a href="#1641" id="1641">1641</a>
+<a href="#1642" id="1642">1642</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::{BTreeMap, HashMap, HashSet};
 
 <span class="kw">use </span>anyhow::Context <span class="kw">as _</span>;
@@ -2724,6 +2726,8 @@
     <span class="kw">let </span>quoted_indicator_name = <span class="macro">format_ident!</span>(<span class="string">"{indicator_name}"</span>);
     <span class="kw">let </span>quoted_indicator_doc =
         <span class="macro">format!</span>(<span class="string">"Indicator component for the [`{name}`] [`::re_types_core::Archetype`]"</span>);
+    <span class="kw">let </span>indicator_component_name =
+        <span class="macro">format!</span>(<span class="string">"{}Indicator"</span>, fqname.replace(<span class="string">"archetypes"</span>, <span class="string">"components"</span>));
 
     <span class="kw">let </span>(num_required_descriptors, required_descriptors) =
         compute_component_descriptors(obj, ATTR_RERUN_COMPONENT_REQUIRED);
@@ -2737,7 +2741,7 @@
         #recommended_descriptors
         ComponentDescriptor {
             archetype_name: <span class="prelude-val">Some</span>(#archetype_name.into()),
-            component_name: #indicator_name.into(),
+            component_name: #indicator_component_name.into(),
             archetype_field_name: <span class="prelude-val">None</span>,
         },
     };

@@ -795,14 +795,14 @@
                             };
                             <span class="kw">let </span>offsets = arrow_data.offsets();
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                offsets.iter().zip(offsets.lengths()),
+                                offsets.windows(<span class="number">2</span>),
                                 arrow_data.validity(),
                             )
                             .map(|elem| {
-                                elem.map(|(start, len)| {
-                                    <span class="kw">let </span>start = <span class="kw-2">*</span>start <span class="kw">as </span>usize;
-                                    <span class="kw">let </span>end = start + len;
-                                    <span class="kw">if </span>end &gt; arrow_data_inner.len() {
+                                elem.map(|window| {
+                                    <span class="kw">let </span>start = window[<span class="number">0</span>] <span class="kw">as </span>usize;
+                                    <span class="kw">let </span>end = window[<span class="number">1</span>] <span class="kw">as </span>usize;
+                                    <span class="kw">if </span>arrow_data_inner.len() &lt; end {
                                         <span class="kw">return </span><span class="prelude-val">Err</span>(DeserializationError::offset_slice_oob(
                                             (start, end),
                                             arrow_data_inner.len(),
@@ -865,14 +865,14 @@
                             };
                             <span class="kw">let </span>offsets = arrow_data.offsets();
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                offsets.iter().zip(offsets.lengths()),
+                                offsets.windows(<span class="number">2</span>),
                                 arrow_data.validity(),
                             )
                             .map(|elem| {
-                                elem.map(|(start, len)| {
-                                    <span class="kw">let </span>start = <span class="kw-2">*</span>start <span class="kw">as </span>usize;
-                                    <span class="kw">let </span>end = start + len;
-                                    <span class="kw">if </span>end &gt; arrow_data_inner.len() {
+                                elem.map(|window| {
+                                    <span class="kw">let </span>start = window[<span class="number">0</span>] <span class="kw">as </span>usize;
+                                    <span class="kw">let </span>end = window[<span class="number">1</span>] <span class="kw">as </span>usize;
+                                    <span class="kw">if </span>arrow_data_inner.len() &lt; end {
                                         <span class="kw">return </span><span class="prelude-val">Err</span>(DeserializationError::offset_slice_oob(
                                             (start, end),
                                             arrow_data_inner.len(),

@@ -863,10 +863,10 @@
                     .with_context(<span class="string">"rerun.testing.datatypes.AffixFuzzer3"</span>);
                 }
                 <span class="kw">let </span>degrees = {
-                    <span class="kw">if </span><span class="number">1usize </span>&gt;= arrow_data_arrays.len() {
+                    <span class="kw">if </span>arrow_data_arrays.len() &lt;= <span class="number">1 </span>{
                         <span class="kw">return </span><span class="prelude-val">Ok</span>(Vec::new());
                     }
-                    <span class="kw">let </span>arrow_data = <span class="kw-2">&amp;*</span>arrow_data_arrays[<span class="number">1usize</span>];
+                    <span class="kw">let </span>arrow_data = <span class="kw-2">&amp;*</span>arrow_data_arrays[<span class="number">1</span>];
                     arrow_data
                         .as_any()
                         .downcast_ref::&lt;Float32Array&gt;()
@@ -881,10 +881,10 @@
                         .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
                 };
                 <span class="kw">let </span>craziness = {
-                    <span class="kw">if </span><span class="number">2usize </span>&gt;= arrow_data_arrays.len() {
+                    <span class="kw">if </span>arrow_data_arrays.len() &lt;= <span class="number">2 </span>{
                         <span class="kw">return </span><span class="prelude-val">Ok</span>(Vec::new());
                     }
-                    <span class="kw">let </span>arrow_data = <span class="kw-2">&amp;*</span>arrow_data_arrays[<span class="number">2usize</span>];
+                    <span class="kw">let </span>arrow_data = <span class="kw-2">&amp;*</span>arrow_data_arrays[<span class="number">2</span>];
                     {
                         <span class="kw">let </span>arrow_data = arrow_data
                             .as_any()
@@ -913,14 +913,14 @@
                             };
                             <span class="kw">let </span>offsets = arrow_data.offsets();
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                offsets.iter().zip(offsets.lengths()),
+                                offsets.windows(<span class="number">2</span>),
                                 arrow_data.validity(),
                             )
                             .map(|elem| {
-                                elem.map(|(start, len)| {
-                                    <span class="kw">let </span>start = <span class="kw-2">*</span>start <span class="kw">as </span>usize;
-                                    <span class="kw">let </span>end = start + len;
-                                    <span class="kw">if </span>end &gt; arrow_data_inner.len() {
+                                elem.map(|window| {
+                                    <span class="kw">let </span>start = window[<span class="number">0</span>] <span class="kw">as </span>usize;
+                                    <span class="kw">let </span>end = window[<span class="number">1</span>] <span class="kw">as </span>usize;
+                                    <span class="kw">if </span>arrow_data_inner.len() &lt; end {
                                         <span class="kw">return </span><span class="prelude-val">Err</span>(DeserializationError::offset_slice_oob(
                                             (start, end),
                                             arrow_data_inner.len(),
@@ -946,10 +946,10 @@
                     .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
                 };
                 <span class="kw">let </span>fixed_size_shenanigans = {
-                    <span class="kw">if </span><span class="number">3usize </span>&gt;= arrow_data_arrays.len() {
+                    <span class="kw">if </span>arrow_data_arrays.len() &lt;= <span class="number">3 </span>{
                         <span class="kw">return </span><span class="prelude-val">Ok</span>(Vec::new());
                     }
-                    <span class="kw">let </span>arrow_data = <span class="kw-2">&amp;*</span>arrow_data_arrays[<span class="number">3usize</span>];
+                    <span class="kw">let </span>arrow_data = <span class="kw-2">&amp;*</span>arrow_data_arrays[<span class="number">3</span>];
                     {
                         <span class="kw">let </span>arrow_data = arrow_data
                             .as_any()

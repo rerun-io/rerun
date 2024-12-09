@@ -582,10 +582,10 @@
                     .with_context(<span class="string">"rerun.datatypes.TimeRangeBoundary"</span>);
                 }
                 <span class="kw">let </span>cursor_relative = {
-                    <span class="kw">if </span><span class="number">1usize </span>&gt;= arrow_data_arrays.len() {
+                    <span class="kw">if </span>arrow_data_arrays.len() &lt;= <span class="number">1 </span>{
                         <span class="kw">return </span><span class="prelude-val">Ok</span>(Vec::new());
                     }
-                    <span class="kw">let </span>arrow_data = <span class="kw-2">&amp;*</span>arrow_data_arrays[<span class="number">1usize</span>];
+                    <span class="kw">let </span>arrow_data = <span class="kw-2">&amp;*</span>arrow_data_arrays[<span class="number">1</span>];
                     arrow_data
                         .as_any()
                         .downcast_ref::&lt;Int64Array&gt;()
@@ -601,10 +601,10 @@
                         .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
                 };
                 <span class="kw">let </span>absolute = {
-                    <span class="kw">if </span><span class="number">2usize </span>&gt;= arrow_data_arrays.len() {
+                    <span class="kw">if </span>arrow_data_arrays.len() &lt;= <span class="number">2 </span>{
                         <span class="kw">return </span><span class="prelude-val">Ok</span>(Vec::new());
                     }
-                    <span class="kw">let </span>arrow_data = <span class="kw-2">&amp;*</span>arrow_data_arrays[<span class="number">2usize</span>];
+                    <span class="kw">let </span>arrow_data = <span class="kw-2">&amp;*</span>arrow_data_arrays[<span class="number">2</span>];
                     arrow_data
                         .as_any()
                         .downcast_ref::&lt;Int64Array&gt;()
