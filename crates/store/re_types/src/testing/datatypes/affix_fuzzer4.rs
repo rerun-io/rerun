@@ -229,7 +229,7 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                     .with_context("rerun.testing.datatypes.AffixFuzzer4");
                 }
                 let single_required = {
-                    if 1 >= arrow_data_arrays.len() {
+                    if arrow_data_arrays.len() <= 1 {
                         return Ok(Vec::new());
                     }
                     let arrow_data = &*arrow_data_arrays[1];
@@ -239,7 +239,7 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                         .collect::<Vec<_>>()
                 };
                 let many_required = {
-                    if 2 >= arrow_data_arrays.len() {
+                    if arrow_data_arrays.len() <= 2 {
                         return Ok(Vec::new());
                     }
                     let arrow_data = &*arrow_data_arrays[2];

@@ -353,7 +353,7 @@ pub fn quote_arrow_deserializer(
                                 // input's payload's union arms, while `#type_id` is our comptime union
                                 // arm counter… there's no guarantee it's actually there at
                                 // runtime!
-                                if #type_id >= #data_src_arrays.len() {
+                                if #data_src_arrays.len() <= #type_id {
                                     // By not returning an error but rather defaulting to an empty
                                     // vector, we introduce some kind of light forwards compatibility:
                                     // old clients that don't yet know about the new arms can still

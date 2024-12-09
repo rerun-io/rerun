@@ -231,7 +231,7 @@ impl crate::Loggable for TimeRangeBoundary {
                     .with_context("rerun.datatypes.TimeRangeBoundary");
                 }
                 let cursor_relative = {
-                    if 1 >= arrow_data_arrays.len() {
+                    if arrow_data_arrays.len() <= 1 {
                         return Ok(Vec::new());
                     }
                     let arrow_data = &*arrow_data_arrays[1];
@@ -250,7 +250,7 @@ impl crate::Loggable for TimeRangeBoundary {
                         .collect::<Vec<_>>()
                 };
                 let absolute = {
-                    if 2 >= arrow_data_arrays.len() {
+                    if arrow_data_arrays.len() <= 2 {
                         return Ok(Vec::new());
                     }
                     let arrow_data = &*arrow_data_arrays[2];
