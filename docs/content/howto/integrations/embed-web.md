@@ -96,7 +96,7 @@ await viewer.start(null, parentElement);
 The Viewer API supports adding and removing recordings:
 
 ```js,id=embed-web-viewer-api-js-open-close
-const rrdUrl = "https://app.rerun.io/version/0.14.1/examples/arkit_scenes.rrd";
+const rrdUrl = "https://app.rerun.io/version/0.20.3/examples/arkit_scenes.rrd";
 
 // Open a recording:
 viewer.open(rrdUrl);
