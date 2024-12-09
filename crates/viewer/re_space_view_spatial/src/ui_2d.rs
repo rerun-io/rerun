@@ -358,16 +358,16 @@ fn setup_target_config(
     }
     let pinhole_rect = Rect::from_min_size(Pos2::ZERO, egui::vec2(resolution.x, resolution.y));
 
+    let focal_length = pinhole.focal_length_in_pixels();
+    let focal_length = 2.0 / (1.0 / focal_length.x() + 1.0 / focal_length.y()); // harmonic mean (lack of anamorphic support)
+
     let projection_from_view = re_renderer::view_builder::Projection::Perspective {
         vertical_fov: pinhole.fov_y().unwrap_or(Eye::DEFAULT_FOV_Y),
-        near_plane_distance: near_clip_plane,
+        near_plane_distance: near_clip_plane * focal_length / 500.0, // TODO(#8373): The need to scale this by 500 is quite hacky.
         aspect_ratio: pinhole
             .aspect_ratio()
             .unwrap_or(scene_bounds_size.x / scene_bounds_size.y), // only happens if the pinhole lacks resolution
     };
-
-    let focal_length = pinhole.focal_length_in_pixels();
-    let focal_length = 2.0 / (1.0 / focal_length.x() + 1.0 / focal_length.y()); // harmonic mean (lack of anamorphic support)
 
     // Position the camera looking straight at the principal point:
     let view_from_world = re_math::IsoTransform::look_at_rh(
