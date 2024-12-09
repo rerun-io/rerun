@@ -15,7 +15,6 @@ mod map_provider;
 mod marker_shape;
 mod pinhole;
 mod plane3d;
-mod position2d;
 mod radius;
 mod recording_uri;
 mod resolution;
@@ -30,14 +29,14 @@ mod zoom_level;
 use datatype_uis::{
     display_name_ui, display_text_ui, edit_bool, edit_f32_min_to_max_float, edit_f32_zero_to_max,
     edit_f32_zero_to_one, edit_f64_min_to_max_float, edit_f64_zero_to_max, edit_multiline_string,
-    edit_or_view_vec3d, edit_singleline_string, edit_ui_points, edit_view_enum,
+    edit_or_view_vec3d, edit_singleline_string, edit_u64_range, edit_ui_points, edit_view_enum,
     edit_view_enum_with_variant_available, edit_view_range1d, view_uuid, view_view_id,
 };
 
 use re_types::{
     blueprint::components::{
-        BackgroundKind, Corner2D, Enabled, ForceDistance, ForceStrength, GridSpacing,
-        LockRangeDuringZoom, MapProvider, ViewFit, Visible,
+        BackgroundKind, Corner2D, Enabled, ForceDistance, ForceIterations, ForceStrength,
+        GridSpacing, LockRangeDuringZoom, MapProvider, ViewFit, Visible,
     },
     components::{
         AggregationPolicy, AlbedoFactor, AxisLength, Color, DepthMeter, DrawOrder, FillMode,
@@ -86,6 +85,11 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
 
     // float 0-1 components:
     registry.add_singleline_edit_or_view::<Opacity>(edit_f32_zero_to_one);
+
+    // integer range components:
+    registry.add_singleline_edit_or_view::<ForceIterations>(|ctx, ui, value| {
+        edit_u64_range(ctx, ui, value, 1..=5)
+    });
 
     // Bool components:
     registry.add_singleline_edit_or_view::<Enabled>(edit_bool);
@@ -142,8 +146,6 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
 
     registry.add_multiline_edit_or_view(visual_bounds2d::multiline_edit_visual_bounds2d);
     registry.add_singleline_edit_or_view(visual_bounds2d::singleline_edit_visual_bounds2d);
-
-    registry.add_singleline_edit_or_view(position2d::singleline_edit_position2d);
 
     registry.add_multiline_edit_or_view(transforms::multiline_view_transform_mat3x3);
     registry.add_singleline_edit_or_view(transforms::singleline_view_transform_mat3x3);
