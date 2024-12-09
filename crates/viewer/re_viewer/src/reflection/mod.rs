@@ -75,14 +75,6 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <ClippingPlane as Component>::name(),
-            ComponentReflection {
-                docstring_md: "Distance to the near clipping plane in used for `Spatial2DView`.",
-                custom_placeholder: Some(ClippingPlane::default().to_arrow2()?),
-                datatype: ClippingPlane::arrow2_datatype(),
-            },
-        ),
-        (
             <ColumnShare as Component>::name(),
             ComponentReflection {
                 docstring_md: "The layout share of a column in the container.",
@@ -178,6 +170,14 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
                 docstring_md: "Name of the map provider to be used in Map views.",
                 custom_placeholder: Some(MapProvider::default().to_arrow2()?),
                 datatype: MapProvider::arrow2_datatype(),
+            },
+        ),
+        (
+            <NearClipPlane as Component>::name(),
+            ComponentReflection {
+                docstring_md: "Distance to the near clip plane used for `Spatial2DView`.",
+                custom_placeholder: Some(NearClipPlane::default().to_arrow2()?),
+                datatype: NearClipPlane::arrow2_datatype(),
             },
         ),
         (
@@ -2211,10 +2211,10 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "Range", docstring_md :
                     "Controls the visible range of a 2D view.\n\nUse this to control pan & zoom of the view.",
                     is_required : true, }, ArchetypeFieldReflection { component_name :
-                    "rerun.blueprint.components.ClippingPlane".into(), display_name :
-                    "Clipping plane", docstring_md :
-                    "Controls the distance to the near clipping plane", is_required :
-                    false, },
+                    "rerun.blueprint.components.NearClipPlane".into(), display_name :
+                    "Near clip plane", docstring_md :
+                    "Controls the distance to the near clip plane.\n\nContent closer than this distance will not be visible.",
+                    is_required : false, },
                 ],
             },
         ),

@@ -23,7 +23,7 @@ namespace rerun {
             cells.push_back(std::move(result.value));
         }
         {
-            auto result = ComponentBatch::from_loggable(archetype.clipping_plane);
+            auto result = ComponentBatch::from_loggable(archetype.near_clip_plane);
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

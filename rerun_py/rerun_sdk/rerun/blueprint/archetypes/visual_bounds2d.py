@@ -34,7 +34,7 @@ class VisualBounds2D(VisualBounds2DExt, Archetype):
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
             range=None,  # type: ignore[arg-type]
-            clipping_plane=None,  # type: ignore[arg-type]
+            near_clip_plane=None,  # type: ignore[arg-type]
         )
 
     @classmethod
@@ -54,11 +54,13 @@ class VisualBounds2D(VisualBounds2DExt, Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    clipping_plane: blueprint_components.ClippingPlaneBatch = field(
+    near_clip_plane: blueprint_components.NearClipPlaneBatch = field(
         metadata={"component": "required"},
-        converter=blueprint_components.ClippingPlaneBatch._required,  # type: ignore[misc]
+        converter=blueprint_components.NearClipPlaneBatch._required,  # type: ignore[misc]
     )
-    # Controls the distance to the near clipping plane
+    # Controls the distance to the near clip plane.
+    #
+    # Content closer than this distance will not be visible.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

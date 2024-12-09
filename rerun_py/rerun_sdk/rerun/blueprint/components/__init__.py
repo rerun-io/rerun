@@ -7,7 +7,6 @@ from .apply_latest_at import ApplyLatestAt, ApplyLatestAtBatch
 from .auto_layout import AutoLayout, AutoLayoutBatch
 from .auto_space_views import AutoSpaceViews, AutoSpaceViewsBatch
 from .background_kind import BackgroundKind, BackgroundKindArrayLike, BackgroundKindBatch, BackgroundKindLike
-from .clipping_plane import ClippingPlane, ClippingPlaneBatch
 from .column_share import ColumnShare, ColumnShareBatch
 from .component_column_selector import ComponentColumnSelector, ComponentColumnSelectorBatch
 from .container_kind import ContainerKind, ContainerKindArrayLike, ContainerKindBatch, ContainerKindLike
@@ -20,6 +19,7 @@ from .included_content import IncludedContent, IncludedContentBatch
 from .interactive import Interactive, InteractiveBatch
 from .lock_range_during_zoom import LockRangeDuringZoom, LockRangeDuringZoomBatch
 from .map_provider import MapProvider, MapProviderArrayLike, MapProviderBatch, MapProviderLike
+from .near_clip_plane import NearClipPlane, NearClipPlaneBatch
 from .panel_state import PanelState, PanelStateArrayLike, PanelStateBatch, PanelStateLike
 from .query_expression import QueryExpression, QueryExpressionBatch
 from .root_container import RootContainer, RootContainerBatch
@@ -51,8 +51,6 @@ __all__ = [
     "BackgroundKindArrayLike",
     "BackgroundKindBatch",
     "BackgroundKindLike",
-    "ClippingPlane",
-    "ClippingPlaneBatch",
     "ColumnShare",
     "ColumnShareBatch",
     "ComponentColumnSelector",
@@ -83,6 +81,8 @@ __all__ = [
     "MapProviderArrayLike",
     "MapProviderBatch",
     "MapProviderLike",
+    "NearClipPlane",
+    "NearClipPlaneBatch",
     "PanelState",
     "PanelStateArrayLike",
     "PanelStateBatch",
