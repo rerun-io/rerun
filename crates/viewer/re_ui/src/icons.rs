@@ -131,7 +131,6 @@ pub const VIDEO_ERROR: Icon = icon_from_path!("../data/icons/video_error.png");
 // drag and drop icons
 pub const DND_ADD_NEW: Icon = icon_from_path!("../data/icons/dnd_add_new.png");
 pub const DND_ADD_TO_EXISTING: Icon = icon_from_path!("../data/icons/dnd_add_to_existing.png");
-pub const DND_CANNOT_USE: Icon = icon_from_path!("../data/icons/dnd_cannot_use.png");
 pub const DND_MOVE: Icon = icon_from_path!("../data/icons/dnd_move.png");
 
 /// `>`
