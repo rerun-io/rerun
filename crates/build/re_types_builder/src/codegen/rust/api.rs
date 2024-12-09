@@ -990,12 +990,7 @@ fn quote_trait_impls_for_datatype_or_component(
                 #![allow(clippy::wildcard_imports)]
                 #![allow(clippy::manual_is_variant_and)]
                 use arrow::{array::*, buffer::*, datatypes::*};
-                use ::re_types_core::{Loggable as _, ResultExt as _};
-
-                #[allow(unused)]
-                fn as_array_ref<T: Array + 'static>(t: T) -> ArrayRef {
-                    std::sync::Arc::new(t) as ArrayRef
-                }
+                use ::re_types_core::{Loggable as _, ResultExt as _, arrow_helpers::as_array_ref};
 
                 Ok(#quoted_serializer)
             }

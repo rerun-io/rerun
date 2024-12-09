@@ -456,7 +456,7 @@ impl Chunk {
                     let offsets = &offsets.as_slice()[idx..idx + len];
                     let lengths = &lengths.as_slice()[idx..idx + len];
                     izip!(offsets, lengths)
-                        .map(|(&idx, &len)| ArrowString(values.clone().sliced(idx as _, len)))
+                        .map(|(&idx, &len)| ArrowString::from(values.clone().sliced(idx as _, len)))
                         .collect_vec()
                 }),
         )

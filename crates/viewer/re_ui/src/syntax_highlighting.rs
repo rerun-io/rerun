@@ -1,7 +1,9 @@
 use std::sync::Arc;
 
 use re_entity_db::InstancePath;
-use re_log_types::{EntityPath, EntityPathPart, Instance};
+use re_log_types::{
+    external::re_types_core::ComponentName, ComponentPath, EntityPath, EntityPathPart, Instance,
+};
 
 use egui::{text::LayoutJob, Color32, Style, TextFormat};
 
@@ -84,6 +86,12 @@ fn faint_text_format(style: &Style) -> TextFormat {
     }
 }
 
+impl SyntaxHighlighting for &'_ str {
+    fn syntax_highlight_into(&self, style: &Style, job: &mut LayoutJob) {
+        job.append(self.to_owned(), 0.0, text_format(style));
+    }
+}
+
 impl SyntaxHighlighting for String {
     fn syntax_highlight_into(&self, style: &Style, job: &mut LayoutJob) {
         job.append(self, 0.0, text_format(style));
@@ -125,6 +133,24 @@ impl SyntaxHighlighting for InstancePath {
         if self.instance.is_specific() {
             InstanceInBrackets(self.instance).syntax_highlight_into(style, job);
         }
+    }
+}
+
+impl SyntaxHighlighting for ComponentName {
+    fn syntax_highlight_into(&self, style: &Style, job: &mut LayoutJob) {
+        self.short_name().syntax_highlight_into(style, job);
+    }
+}
+
+impl SyntaxHighlighting for ComponentPath {
+    fn syntax_highlight_into(&self, style: &Style, job: &mut LayoutJob) {
+        let Self {
+            entity_path,
+            component_name,
+        } = self;
+        entity_path.syntax_highlight_into(style, job);
+        job.append(":", 0.0, faint_text_format(style));
+        component_name.syntax_highlight_into(style, job);
     }
 }
 

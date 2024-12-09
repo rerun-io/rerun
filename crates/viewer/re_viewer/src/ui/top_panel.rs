@@ -316,7 +316,7 @@ fn panel_buttons_r2l(app: &App, app_blueprint: &AppBlueprint<'_>, ui: &mut egui:
 /// Shows clickable website link as an image (text doesn't look as nice)
 fn website_link_ui(ui: &mut egui::Ui) {
     let desired_height = ui.max_rect().height();
-    let desired_height = desired_height.at_most(28.0); // figma size 2023-02-03
+    let desired_height = desired_height.at_most(20.0);
 
     let image = re_ui::icons::RERUN_IO_TEXT
         .as_image()

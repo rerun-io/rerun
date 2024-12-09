@@ -24,7 +24,16 @@ impl Icon {
 
     #[inline]
     pub fn as_image(&self) -> Image<'static> {
-        Image::new(self.as_image_source())
+        // Default size is the same size as the source data specifies
+        const ICON_SCALE: f32 = 0.5; // Because we save all icons as 2x
+        Image::new(self.as_image_source()).fit_to_original_size(ICON_SCALE)
+    }
+}
+
+impl From<&'static Icon> for Image<'static> {
+    #[inline]
+    fn from(icon: &'static Icon) -> Self {
+        icon.as_image()
     }
 }
 

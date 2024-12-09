@@ -14,6 +14,17 @@ use re_viewer_context::{
 };
 use re_viewport_blueprint::ViewportBlueprint;
 
+pub fn is_component_static(ctx: &ViewerContext<'_>, component_path: &ComponentPath) -> bool {
+    let ComponentPath {
+        entity_path,
+        component_name,
+    } = component_path;
+    let (_query, db) = guess_query_and_db_for_selected_entity(ctx, entity_path);
+    db.storage_engine()
+        .store()
+        .entity_has_static_component(entity_path, component_name)
+}
+
 #[must_use]
 pub struct ItemTitle {
     pub icon: &'static re_ui::Icon,
@@ -30,14 +41,10 @@ impl ItemTitle {
         item: &Item,
     ) -> Self {
         match &item {
-            Item::AppId(app_id) => {
-                let title = app_id.to_string();
-                Self::new(title, &icons::APPLICATION)
-            }
+            Item::AppId(app_id) => Self::new(app_id.to_string(), &icons::APPLICATION),
 
             Item::DataSource(data_source) => {
-                let title = data_source.to_string();
-                Self::new(title, &icons::DATA_SOURCE)
+                Self::new(data_source.to_string(), &icons::DATA_SOURCE)
             }
 
             Item::StoreId(store_id) => Self::from_store_id(ctx, store_id),
@@ -120,14 +127,12 @@ impl ItemTitle {
     }
 
     pub fn from_component_path(ctx: &ViewerContext<'_>, component_path: &ComponentPath) -> Self {
-        let entity_path = &component_path.entity_path;
-        let component_name = &component_path.component_name;
+        let is_static = is_component_static(ctx, component_path);
 
-        let (_query, db) = guess_query_and_db_for_selected_entity(ctx, entity_path);
-        let is_static = db
-            .storage_engine()
-            .store()
-            .entity_has_static_component(entity_path, component_name);
+        let ComponentPath {
+            entity_path,
+            component_name,
+        } = component_path;
 
         Self::new(
             component_name.short_name(),
