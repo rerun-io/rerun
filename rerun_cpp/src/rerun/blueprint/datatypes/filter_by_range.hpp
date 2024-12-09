@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../../component_descriptor.hpp"
 #include "../../datatypes/time_int.hpp"
 #include "../../result.hpp"
 
@@ -36,7 +37,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<blueprint::datatypes::FilterByRange> {
-        static constexpr const char Name[] = "rerun.blueprint.datatypes.FilterByRange";
+        static constexpr ComponentDescriptor Descriptor = "rerun.blueprint.datatypes.FilterByRange";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();

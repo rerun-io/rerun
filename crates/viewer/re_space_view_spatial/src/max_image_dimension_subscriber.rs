@@ -78,7 +78,13 @@ impl ChunkStoreSubscriber for MaxImageDimensionSubscriber {
             }
 
             // Handle `Image`, `DepthImage`, `SegmentationImage`…
-            if let Some(all_dimensions) = event.diff.chunk.components().get(&ImageFormat::name()) {
+            if let Some(all_dimensions) = event
+                .diff
+                .chunk
+                .components()
+                .get(&ImageFormat::name())
+                .and_then(|per_desc| per_desc.values().next())
+            {
                 for new_dim in all_dimensions.iter().filter_map(|array| {
                     array.and_then(|array| {
                         ImageFormat::from_arrow2(&*array).ok()?.into_iter().next()

@@ -34,17 +34,17 @@ pub fn range_with_blueprint_resolved_data(
 ) -> HybridRangeResults {
     re_tracing::profile_function!(data_result.entity_path.to_string());
 
-    let mut component_set = component_names.into_iter().collect::<IntSet<_>>();
+    let mut component_name_set = component_names.into_iter().collect::<IntSet<_>>();
 
-    let overrides = query_overrides(ctx.viewer_ctx, data_result, component_set.iter());
+    let overrides = query_overrides(ctx.viewer_ctx, data_result, component_name_set.iter());
 
     // No need to query for components that have overrides.
-    component_set.retain(|component| !overrides.components.contains_key(component));
+    component_name_set.retain(|component| !overrides.components.contains_key(component));
 
     let results = ctx.recording_engine().cache().range(
         range_query,
         &data_result.entity_path,
-        component_set.iter().copied(),
+        component_name_set.iter(),
     );
 
     // TODO(jleibs): This doesn't work when the component set contains empty results.
@@ -54,7 +54,7 @@ pub fn range_with_blueprint_resolved_data(
     let defaults = ctx.viewer_ctx.blueprint_engine().cache().latest_at(
         ctx.viewer_ctx.blueprint_query,
         ctx.defaults_path,
-        component_set.iter().copied(),
+        component_name_set.iter().copied(),
     );
 
     HybridRangeResults {
@@ -260,7 +260,7 @@ impl DataResultQuery for DataResult {
             None,
             latest_at_query,
             self,
-            A::all_components().iter().copied(),
+            A::all_components().iter().map(|descr| descr.component_name),
             query_shadowed_defaults,
         )
     }
@@ -275,7 +275,7 @@ impl DataResultQuery for DataResult {
             &view_query.timeline,
             view_query.latest_at,
             self.query_range(),
-            A::all_components().iter().copied(),
+            A::all_components().iter().map(|descr| descr.component_name),
             self,
         )
     }

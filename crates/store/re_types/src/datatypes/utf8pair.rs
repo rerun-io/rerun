@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: Stores a tuple of UTF-8 strings.
@@ -26,18 +26,6 @@ pub struct Utf8Pair {
 
     /// The second string.
     pub second: crate::datatypes::Utf8,
-}
-
-impl ::re_types_core::SizeBytes for Utf8Pair {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.first.heap_size_bytes() + self.second.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Utf8>::is_pod() && <crate::datatypes::Utf8>::is_pod()
-    }
 }
 
 ::re_types_core::macros::impl_into_cow!(Utf8Pair);
@@ -312,5 +300,17 @@ impl ::re_types_core::Loggable for Utf8Pair {
                 .with_context("rerun.datatypes.Utf8Pair")?
             }
         })
+    }
+}
+
+impl ::re_types_core::SizeBytes for Utf8Pair {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.first.heap_size_bytes() + self.second.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::Utf8>::is_pod() && <crate::datatypes::Utf8>::is_pod()
     }
 }

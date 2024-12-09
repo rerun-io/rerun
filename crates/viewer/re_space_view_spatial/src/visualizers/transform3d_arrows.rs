@@ -65,7 +65,7 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
         Some(Box::new(Transform3DApplicabilityFilter {
             applicability_trigger_components: Transform3D::all_components()
                 .iter()
-                .copied()
+                .map(|descr| descr.component_name)
                 .collect(),
         }))
     }

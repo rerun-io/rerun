@@ -38,10 +38,15 @@ const DEFAULT_STROKE_WIDTH: f32 = 0.75;
 impl VisualizerSystem for SeriesLineSystem {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
         let mut query_info = VisualizerQueryInfo::from_archetype::<archetypes::Scalar>();
-        query_info
-            .queried
-            .extend(SeriesLine::all_components().iter().map(ToOwned::to_owned));
+        query_info.queried.extend(
+            SeriesLine::all_components()
+                .iter()
+                .map(|descr| descr.component_name),
+        );
+
+        use re_types::ComponentBatch as _;
         query_info.indicators = std::iter::once(SeriesLine::indicator().name()).collect();
+
         query_info
     }
 

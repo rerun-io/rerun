@@ -558,11 +558,7 @@ fn query_and_compare(
     re_log::setup_logging();
 
     for _ in 0..3 {
-        let cached = caches.latest_at(
-            query,
-            entity_path,
-            MyPoints::all_components().iter().copied(),
-        );
+        let cached = caches.latest_at(query, entity_path, MyPoints::all_components().iter());
 
         let cached_points = cached.component_batch::<MyPoint>().unwrap();
         let cached_colors = cached.component_batch::<MyColor>().unwrap_or_default();

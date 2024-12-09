@@ -13,40 +13,14 @@
 #![allow(clippy::too_many_lines)]
 
 use crate::external::arrow2;
-use crate::ComponentName;
 use crate::SerializationResult;
-use crate::{ComponentBatch, MaybeOwnedComponentBatch};
+use crate::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use crate::{ComponentDescriptor, ComponentName};
 use crate::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: A 64-bit number describing either nanoseconds OR sequence numbers.
 #[derive(Clone, Debug, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct TimeInt(pub i64);
-
-impl crate::SizeBytes for TimeInt {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <i64>::is_pod()
-    }
-}
-
-impl From<i64> for TimeInt {
-    #[inline]
-    fn from(value: i64) -> Self {
-        Self(value)
-    }
-}
-
-impl From<TimeInt> for i64 {
-    #[inline]
-    fn from(value: TimeInt) -> Self {
-        value.0
-    }
-}
 
 crate::macros::impl_into_cow!(TimeInt);
 
@@ -156,5 +130,31 @@ impl crate::Loggable for TimeInt {
                 slice.iter().copied().map(Self).collect::<Vec<_>>()
             }
         })
+    }
+}
+
+impl From<i64> for TimeInt {
+    #[inline]
+    fn from(value: i64) -> Self {
+        Self(value)
+    }
+}
+
+impl From<TimeInt> for i64 {
+    #[inline]
+    fn from(value: TimeInt) -> Self {
+        value.0
+    }
+}
+
+impl crate::SizeBytes for TimeInt {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <i64>::is_pod()
     }
 }
