@@ -229,20 +229,20 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                     .with_context("rerun.testing.datatypes.AffixFuzzer4");
                 }
                 let single_required = {
-                    if 1usize >= arrow_data_arrays.len() {
+                    if 1 >= arrow_data_arrays.len() {
                         return Ok(Vec::new());
                     }
-                    let arrow_data = &*arrow_data_arrays[1usize];
+                    let arrow_data = &*arrow_data_arrays[1];
                     crate::testing::datatypes::AffixFuzzer3::from_arrow2_opt(arrow_data)
                         .with_context("rerun.testing.datatypes.AffixFuzzer4#single_required")?
                         .into_iter()
                         .collect::<Vec<_>>()
                 };
                 let many_required = {
-                    if 2usize >= arrow_data_arrays.len() {
+                    if 2 >= arrow_data_arrays.len() {
                         return Ok(Vec::new());
                     }
-                    let arrow_data = &*arrow_data_arrays[2usize];
+                    let arrow_data = &*arrow_data_arrays[2];
                     {
                         let arrow_data = arrow_data
                             .as_any()

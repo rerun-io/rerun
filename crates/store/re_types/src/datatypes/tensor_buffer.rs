@@ -787,10 +787,10 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     .with_context("rerun.datatypes.TensorBuffer");
                 }
                 let u8 = {
-                    if 1usize >= arrow_data_arrays.len() {
+                    if 1 >= arrow_data_arrays.len() {
                         return Ok(Vec::new());
                     }
-                    let arrow_data = &*arrow_data_arrays[1usize];
+                    let arrow_data = &*arrow_data_arrays[1];
                     {
                         let arrow_data = arrow_data
                             .as_any()
@@ -855,10 +855,10 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     .collect::<Vec<_>>()
                 };
                 let u16 = {
-                    if 2usize >= arrow_data_arrays.len() {
+                    if 2 >= arrow_data_arrays.len() {
                         return Ok(Vec::new());
                     }
-                    let arrow_data = &*arrow_data_arrays[2usize];
+                    let arrow_data = &*arrow_data_arrays[2];
                     {
                         let arrow_data = arrow_data
                             .as_any()
@@ -923,10 +923,10 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     .collect::<Vec<_>>()
                 };
                 let u32 = {
-                    if 3usize >= arrow_data_arrays.len() {
+                    if 3 >= arrow_data_arrays.len() {
                         return Ok(Vec::new());
                     }
-                    let arrow_data = &*arrow_data_arrays[3usize];
+                    let arrow_data = &*arrow_data_arrays[3];
                     {
                         let arrow_data = arrow_data
                             .as_any()
@@ -991,10 +991,10 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     .collect::<Vec<_>>()
                 };
                 let u64 = {
-                    if 4usize >= arrow_data_arrays.len() {
+                    if 4 >= arrow_data_arrays.len() {
                         return Ok(Vec::new());
                     }
-                    let arrow_data = &*arrow_data_arrays[4usize];
+                    let arrow_data = &*arrow_data_arrays[4];
                     {
                         let arrow_data = arrow_data
                             .as_any()
@@ -1059,10 +1059,10 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     .collect::<Vec<_>>()
                 };
                 let i8 = {
-                    if 5usize >= arrow_data_arrays.len() {
+                    if 5 >= arrow_data_arrays.len() {
                         return Ok(Vec::new());
                     }
-                    let arrow_data = &*arrow_data_arrays[5usize];
+                    let arrow_data = &*arrow_data_arrays[5];
                     {
                         let arrow_data = arrow_data
                             .as_any()
@@ -1127,10 +1127,10 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     .collect::<Vec<_>>()
                 };
                 let i16 = {
-                    if 6usize >= arrow_data_arrays.len() {
+                    if 6 >= arrow_data_arrays.len() {
                         return Ok(Vec::new());
                     }
-                    let arrow_data = &*arrow_data_arrays[6usize];
+                    let arrow_data = &*arrow_data_arrays[6];
                     {
                         let arrow_data = arrow_data
                             .as_any()
@@ -1195,10 +1195,10 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     .collect::<Vec<_>>()
                 };
                 let i32 = {
-                    if 7usize >= arrow_data_arrays.len() {
+                    if 7 >= arrow_data_arrays.len() {
                         return Ok(Vec::new());
                     }
-                    let arrow_data = &*arrow_data_arrays[7usize];
+                    let arrow_data = &*arrow_data_arrays[7];
                     {
                         let arrow_data = arrow_data
                             .as_any()
@@ -1263,10 +1263,10 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     .collect::<Vec<_>>()
                 };
                 let i64 = {
-                    if 8usize >= arrow_data_arrays.len() {
+                    if 8 >= arrow_data_arrays.len() {
                         return Ok(Vec::new());
                     }
-                    let arrow_data = &*arrow_data_arrays[8usize];
+                    let arrow_data = &*arrow_data_arrays[8];
                     {
                         let arrow_data = arrow_data
                             .as_any()
@@ -1331,10 +1331,10 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     .collect::<Vec<_>>()
                 };
                 let f16 = {
-                    if 9usize >= arrow_data_arrays.len() {
+                    if 9 >= arrow_data_arrays.len() {
                         return Ok(Vec::new());
                     }
-                    let arrow_data = &*arrow_data_arrays[9usize];
+                    let arrow_data = &*arrow_data_arrays[9];
                     {
                         let arrow_data = arrow_data
                             .as_any()
@@ -1399,10 +1399,10 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     .collect::<Vec<_>>()
                 };
                 let f32 = {
-                    if 10usize >= arrow_data_arrays.len() {
+                    if 10 >= arrow_data_arrays.len() {
                         return Ok(Vec::new());
                     }
-                    let arrow_data = &*arrow_data_arrays[10usize];
+                    let arrow_data = &*arrow_data_arrays[10];
                     {
                         let arrow_data = arrow_data
                             .as_any()
@@ -1467,10 +1467,10 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     .collect::<Vec<_>>()
                 };
                 let f64 = {
-                    if 11usize >= arrow_data_arrays.len() {
+                    if 11 >= arrow_data_arrays.len() {
                         return Ok(Vec::new());
                     }
-                    let arrow_data = &*arrow_data_arrays[11usize];
+                    let arrow_data = &*arrow_data_arrays[11];
                     {
                         let arrow_data = arrow_data
                             .as_any()

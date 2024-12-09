@@ -345,7 +345,7 @@ pub fn quote_arrow_deserializer(
                             InnerRepr::NativeIterable,
                         );
 
-                        let type_id = type_id + 1; // NOTE: +1 to account for `_null_markers` virtual arm
+                        let type_id = Literal::usize_unsuffixed(type_id + 1); // NOTE: +1 to account for `_null_markers` virtual arm
 
                         quote! {
                             let #data_dst = {

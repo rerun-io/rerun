@@ -288,10 +288,10 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                     .with_context("rerun.testing.datatypes.AffixFuzzer3");
                 }
                 let degrees = {
-                    if 1usize >= arrow_data_arrays.len() {
+                    if 1 >= arrow_data_arrays.len() {
                         return Ok(Vec::new());
                     }
-                    let arrow_data = &*arrow_data_arrays[1usize];
+                    let arrow_data = &*arrow_data_arrays[1];
                     arrow_data
                         .as_any()
                         .downcast_ref::<Float32Array>()
@@ -306,10 +306,10 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                         .collect::<Vec<_>>()
                 };
                 let craziness = {
-                    if 2usize >= arrow_data_arrays.len() {
+                    if 2 >= arrow_data_arrays.len() {
                         return Ok(Vec::new());
                     }
-                    let arrow_data = &*arrow_data_arrays[2usize];
+                    let arrow_data = &*arrow_data_arrays[2];
                     {
                         let arrow_data = arrow_data
                             .as_any()
@@ -371,10 +371,10 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                     .collect::<Vec<_>>()
                 };
                 let fixed_size_shenanigans = {
-                    if 3usize >= arrow_data_arrays.len() {
+                    if 3 >= arrow_data_arrays.len() {
                         return Ok(Vec::new());
                     }
-                    let arrow_data = &*arrow_data_arrays[3usize];
+                    let arrow_data = &*arrow_data_arrays[3];
                     {
                         let arrow_data = arrow_data
                             .as_any()
