@@ -12,7 +12,7 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 
-use ::re_types_core::external::arrow2;
+use ::re_types_core::external::arrow;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
@@ -162,8 +162,8 @@ impl ::re_types_core::Archetype for TensorSliceSelection {
     }
 
     #[inline]
-    fn from_arrow2_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, Box<dyn arrow2::array::Array>)>,
+    fn from_arrow_components(
+        arrow_data: impl IntoIterator<Item = (ComponentName, arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
@@ -173,7 +173,7 @@ impl ::re_types_core::Archetype for TensorSliceSelection {
             .collect();
         let width = if let Some(array) = arrays_by_name.get("rerun.components.TensorWidthDimension")
         {
-            <crate::components::TensorWidthDimension>::from_arrow2_opt(&**array)
+            <crate::components::TensorWidthDimension>::from_arrow_opt(&**array)
                 .with_context("rerun.blueprint.archetypes.TensorSliceSelection#width")?
                 .into_iter()
                 .next()
@@ -183,7 +183,7 @@ impl ::re_types_core::Archetype for TensorSliceSelection {
         };
         let height =
             if let Some(array) = arrays_by_name.get("rerun.components.TensorHeightDimension") {
-                <crate::components::TensorHeightDimension>::from_arrow2_opt(&**array)
+                <crate::components::TensorHeightDimension>::from_arrow_opt(&**array)
                     .with_context("rerun.blueprint.archetypes.TensorSliceSelection#height")?
                     .into_iter()
                     .next()
@@ -195,7 +195,7 @@ impl ::re_types_core::Archetype for TensorSliceSelection {
             arrays_by_name.get("rerun.components.TensorDimensionIndexSelection")
         {
             Some({
-                <crate::components::TensorDimensionIndexSelection>::from_arrow2_opt(&**array)
+                <crate::components::TensorDimensionIndexSelection>::from_arrow_opt(&**array)
                     .with_context("rerun.blueprint.archetypes.TensorSliceSelection#indices")?
                     .into_iter()
                     .map(|v| v.ok_or_else(DeserializationError::missing_data))
@@ -209,14 +209,12 @@ impl ::re_types_core::Archetype for TensorSliceSelection {
             arrays_by_name.get("rerun.blueprint.components.TensorDimensionIndexSlider")
         {
             Some({
-                <crate::blueprint::components::TensorDimensionIndexSlider>::from_arrow2_opt(
-                    &**array,
-                )
-                .with_context("rerun.blueprint.archetypes.TensorSliceSelection#slider")?
-                .into_iter()
-                .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                .collect::<DeserializationResult<Vec<_>>>()
-                .with_context("rerun.blueprint.archetypes.TensorSliceSelection#slider")?
+                <crate::blueprint::components::TensorDimensionIndexSlider>::from_arrow_opt(&**array)
+                    .with_context("rerun.blueprint.archetypes.TensorSliceSelection#slider")?
+                    .into_iter()
+                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
+                    .collect::<DeserializationResult<Vec<_>>>()
+                    .with_context("rerun.blueprint.archetypes.TensorSliceSelection#slider")?
             })
         } else {
             None

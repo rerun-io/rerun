@@ -12,7 +12,7 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 
-use ::re_types_core::external::arrow2;
+use ::re_types_core::external::arrow;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
@@ -235,8 +235,8 @@ impl ::re_types_core::Archetype for InstancePoses3D {
     }
 
     #[inline]
-    fn from_arrow2_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, Box<dyn arrow2::array::Array>)>,
+    fn from_arrow_components(
+        arrow_data: impl IntoIterator<Item = (ComponentName, arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
@@ -247,7 +247,7 @@ impl ::re_types_core::Archetype for InstancePoses3D {
         let translations =
             if let Some(array) = arrays_by_name.get("rerun.components.PoseTranslation3D") {
                 Some({
-                    <crate::components::PoseTranslation3D>::from_arrow2_opt(&**array)
+                    <crate::components::PoseTranslation3D>::from_arrow_opt(&**array)
                         .with_context("rerun.archetypes.InstancePoses3D#translations")?
                         .into_iter()
                         .map(|v| v.ok_or_else(DeserializationError::missing_data))
@@ -260,7 +260,7 @@ impl ::re_types_core::Archetype for InstancePoses3D {
         let rotation_axis_angles =
             if let Some(array) = arrays_by_name.get("rerun.components.PoseRotationAxisAngle") {
                 Some({
-                    <crate::components::PoseRotationAxisAngle>::from_arrow2_opt(&**array)
+                    <crate::components::PoseRotationAxisAngle>::from_arrow_opt(&**array)
                         .with_context("rerun.archetypes.InstancePoses3D#rotation_axis_angles")?
                         .into_iter()
                         .map(|v| v.ok_or_else(DeserializationError::missing_data))
@@ -273,7 +273,7 @@ impl ::re_types_core::Archetype for InstancePoses3D {
         let quaternions =
             if let Some(array) = arrays_by_name.get("rerun.components.PoseRotationQuat") {
                 Some({
-                    <crate::components::PoseRotationQuat>::from_arrow2_opt(&**array)
+                    <crate::components::PoseRotationQuat>::from_arrow_opt(&**array)
                         .with_context("rerun.archetypes.InstancePoses3D#quaternions")?
                         .into_iter()
                         .map(|v| v.ok_or_else(DeserializationError::missing_data))
@@ -285,7 +285,7 @@ impl ::re_types_core::Archetype for InstancePoses3D {
             };
         let scales = if let Some(array) = arrays_by_name.get("rerun.components.PoseScale3D") {
             Some({
-                <crate::components::PoseScale3D>::from_arrow2_opt(&**array)
+                <crate::components::PoseScale3D>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.InstancePoses3D#scales")?
                     .into_iter()
                     .map(|v| v.ok_or_else(DeserializationError::missing_data))
@@ -298,7 +298,7 @@ impl ::re_types_core::Archetype for InstancePoses3D {
         let mat3x3 = if let Some(array) = arrays_by_name.get("rerun.components.PoseTransformMat3x3")
         {
             Some({
-                <crate::components::PoseTransformMat3x3>::from_arrow2_opt(&**array)
+                <crate::components::PoseTransformMat3x3>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.InstancePoses3D#mat3x3")?
                     .into_iter()
                     .map(|v| v.ok_or_else(DeserializationError::missing_data))

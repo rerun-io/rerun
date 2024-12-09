@@ -12,7 +12,7 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 
-use ::re_types_core::external::arrow2;
+use ::re_types_core::external::arrow;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
@@ -67,16 +67,15 @@ impl ::re_types_core::Loggable for PrimitiveComponent {
         })
     }
 
-    fn from_arrow2_opt(
-        arrow_data: &dyn arrow2::array::Array,
+    fn from_arrow_opt(
+        arrow_data: &dyn arrow::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
         #![allow(clippy::wildcard_imports)]
-        use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow::datatypes::*;
-        use arrow2::{array::*, buffer::*};
+        use ::re_types_core::{arrow_zip_validity::ZipValidity, Loggable as _, ResultExt as _};
+        use arrow::{array::*, buffer::*, datatypes::*};
         Ok(arrow_data
             .as_any()
             .downcast_ref::<UInt32Array>()
@@ -87,7 +86,6 @@ impl ::re_types_core::Loggable for PrimitiveComponent {
             })
             .with_context("rerun.testing.datatypes.PrimitiveComponent#value")?
             .into_iter()
-            .map(|opt| opt.copied())
             .map(|v| v.ok_or_else(DeserializationError::missing_data))
             .map(|res| res.map(|v| Some(Self(v))))
             .collect::<DeserializationResult<Vec<Option<_>>>>()
@@ -96,16 +94,15 @@ impl ::re_types_core::Loggable for PrimitiveComponent {
     }
 
     #[inline]
-    fn from_arrow2(arrow_data: &dyn arrow2::array::Array) -> DeserializationResult<Vec<Self>>
+    fn from_arrow(arrow_data: &dyn arrow::array::Array) -> DeserializationResult<Vec<Self>>
     where
         Self: Sized,
     {
         #![allow(clippy::wildcard_imports)]
-        use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow::datatypes::*;
-        use arrow2::{array::*, buffer::*};
-        if let Some(validity) = arrow_data.validity() {
-            if validity.unset_bits() != 0 {
+        use ::re_types_core::{arrow_zip_validity::ZipValidity, Loggable as _, ResultExt as _};
+        use arrow::{array::*, buffer::*, datatypes::*};
+        if let Some(nulls) = arrow_data.nulls() {
+            if nulls.null_count() != 0 {
                 return Err(DeserializationError::missing_data());
             }
         }
@@ -120,7 +117,7 @@ impl ::re_types_core::Loggable for PrimitiveComponent {
                 })
                 .with_context("rerun.testing.datatypes.PrimitiveComponent#value")?
                 .values()
-                .as_slice();
+                .as_ref();
             {
                 slice.iter().copied().map(Self).collect::<Vec<_>>()
             }

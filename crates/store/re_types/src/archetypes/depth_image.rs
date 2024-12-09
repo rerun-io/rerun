@@ -12,7 +12,7 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 
-use ::re_types_core::external::arrow2;
+use ::re_types_core::external::arrow;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
@@ -264,8 +264,8 @@ impl ::re_types_core::Archetype for DepthImage {
     }
 
     #[inline]
-    fn from_arrow2_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, Box<dyn arrow2::array::Array>)>,
+    fn from_arrow_components(
+        arrow_data: impl IntoIterator<Item = (ComponentName, arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
@@ -278,7 +278,7 @@ impl ::re_types_core::Archetype for DepthImage {
                 .get("rerun.components.ImageBuffer")
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.DepthImage#buffer")?;
-            <crate::components::ImageBuffer>::from_arrow2_opt(&**array)
+            <crate::components::ImageBuffer>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.DepthImage#buffer")?
                 .into_iter()
                 .next()
@@ -291,7 +291,7 @@ impl ::re_types_core::Archetype for DepthImage {
                 .get("rerun.components.ImageFormat")
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.DepthImage#format")?;
-            <crate::components::ImageFormat>::from_arrow2_opt(&**array)
+            <crate::components::ImageFormat>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.DepthImage#format")?
                 .into_iter()
                 .next()
@@ -300,7 +300,7 @@ impl ::re_types_core::Archetype for DepthImage {
                 .with_context("rerun.archetypes.DepthImage#format")?
         };
         let meter = if let Some(array) = arrays_by_name.get("rerun.components.DepthMeter") {
-            <crate::components::DepthMeter>::from_arrow2_opt(&**array)
+            <crate::components::DepthMeter>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.DepthImage#meter")?
                 .into_iter()
                 .next()
@@ -309,7 +309,7 @@ impl ::re_types_core::Archetype for DepthImage {
             None
         };
         let colormap = if let Some(array) = arrays_by_name.get("rerun.components.Colormap") {
-            <crate::components::Colormap>::from_arrow2_opt(&**array)
+            <crate::components::Colormap>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.DepthImage#colormap")?
                 .into_iter()
                 .next()
@@ -318,7 +318,7 @@ impl ::re_types_core::Archetype for DepthImage {
             None
         };
         let depth_range = if let Some(array) = arrays_by_name.get("rerun.components.ValueRange") {
-            <crate::components::ValueRange>::from_arrow2_opt(&**array)
+            <crate::components::ValueRange>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.DepthImage#depth_range")?
                 .into_iter()
                 .next()
@@ -328,7 +328,7 @@ impl ::re_types_core::Archetype for DepthImage {
         };
         let point_fill_ratio = if let Some(array) = arrays_by_name.get("rerun.components.FillRatio")
         {
-            <crate::components::FillRatio>::from_arrow2_opt(&**array)
+            <crate::components::FillRatio>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.DepthImage#point_fill_ratio")?
                 .into_iter()
                 .next()
@@ -337,7 +337,7 @@ impl ::re_types_core::Archetype for DepthImage {
             None
         };
         let draw_order = if let Some(array) = arrays_by_name.get("rerun.components.DrawOrder") {
-            <crate::components::DrawOrder>::from_arrow2_opt(&**array)
+            <crate::components::DrawOrder>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.DepthImage#draw_order")?
                 .into_iter()
                 .next()
