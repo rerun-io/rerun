@@ -153,3 +153,8 @@ def to_np_float32(data: npt.ArrayLike) -> npt.NDArray[np.float32]:
 def to_np_float64(data: npt.ArrayLike) -> npt.NDArray[np.float64]:
     """Convert some data to a numpy float64 array."""
     return np.asarray(data, dtype=np.float64)
+
+
+def to_np_string(data: npt.ArrayLike) -> npt.NDArray[np.string]:
+    """Convert some data to a numpy string array."""
+    return np.asarray(data, dtype=np.string)
