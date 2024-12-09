@@ -1,5 +1,26 @@
 # This file is read in `compare_snippet_output.py` and the `snippets` command in `re_dev_tools`/`build_examples`.
 
+# TODO: doc
+[snippets_ref.archetypes.opt_out]
+"Points3D" = [
+  "annotation_context_connections",
+  "disconnected_space",
+  "ellipsoid3d_simple",
+  "instance_poses3d_combined",
+  "manual_indicator",
+  "pinhole_perspective",
+  "transform3d_hierarchy",
+]
+
+# TODO: doc
+[snippets_ref.archetypes.custom_sort]
+"Points3D" = [
+  "point3d_simple",
+  "point3d_random",
+  "point3d_ui_radius",
+  "points3d_send_columns",
+]
+
 # These entries won't run at all.
 #
 # You should only ever use this if the test isn't implemented and cannot yet be implemented

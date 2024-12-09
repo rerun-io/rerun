@@ -360,6 +360,26 @@ pub struct Object {
     pub datatype: Option<crate::LazyDatatype>,
 }
 
+impl PartialEq for Object {
+    fn eq(&self, other: &Self) -> bool {
+        self.fqname == other.fqname
+    }
+}
+
+impl Eq for Object {}
+
+impl Ord for Object {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.fqname.cmp(&other.fqname)
+    }
+}
+
+impl PartialOrd for Object {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
 impl Object {
     /// Resolves a raw [`crate::Object`] into a higher-level representation that can be easily
     /// interpreted and manipulated.

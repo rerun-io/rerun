@@ -160,6 +160,7 @@ pub use self::{
     arrow_registry::{ArrowRegistry, LazyDatatype, LazyField},
     codegen::{
         CodeGenerator, CppCodeGenerator, DocsCodeGenerator, PythonCodeGenerator, RustCodeGenerator,
+        SnippetsRefCodeGenerator,
     },
     docs::Docs,
     format::{CodeFormatter, CppCodeFormatter, PythonCodeFormatter, RustCodeFormatter},
@@ -560,6 +561,37 @@ pub fn generate_docs(
         &mut generator,
         &mut formatter,
         &Default::default(),
+        check,
+    );
+}
+
+pub fn generate_snippets_ref(
+    reporter: &Reporter,
+    output_snippets_ref_dir: impl AsRef<Utf8Path>,
+    objects: &Objects,
+    arrow_registry: &ArrowRegistry,
+    check: bool,
+) {
+    re_tracing::profile_function!();
+
+    re_log::info!(
+        "Generating snippets_ref to {}",
+        output_snippets_ref_dir.as_ref()
+    );
+
+    let mut generator = SnippetsRefCodeGenerator::new(output_snippets_ref_dir.as_ref());
+    let mut formatter = NoopCodeFormatter;
+
+    // NOTE: We generate in an existing folder, don't touch anything else.
+    let orphan_path_opt_out = output_snippets_ref_dir.as_ref().to_owned();
+
+    generate_code(
+        reporter,
+        objects,
+        arrow_registry,
+        &mut generator,
+        &mut formatter,
+        &std::iter::once(orphan_path_opt_out).collect(),
         check,
     );
 }
