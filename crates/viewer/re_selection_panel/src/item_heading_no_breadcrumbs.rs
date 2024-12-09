@@ -1,8 +1,8 @@
 use egui::WidgetText;
 
-use re_data_ui::item_ui::guess_instance_path_icon;
+use re_data_ui::item_ui::{cursor_interact_with_selectable, guess_instance_path_icon};
 use re_log_types::ComponentPath;
-use re_ui::{icons, Icon, SyntaxHighlighting};
+use re_ui::{icons, list_item, Icon, SyntaxHighlighting, UiExt as _};
 use re_viewer_context::{Item, ViewerContext};
 use re_viewport_blueprint::ViewportBlueprint;
 
@@ -11,8 +11,37 @@ use crate::{
     item_title::{is_component_static, ItemTitle},
 };
 
+/// Just the title of the item; for when multiple items are selected
+pub fn item_title_list_item(
+    ctx: &ViewerContext<'_>,
+    viewport: &ViewportBlueprint,
+    ui: &mut egui::Ui,
+    item: &Item,
+) {
+    let response = ui
+        .list_item()
+        .with_height(re_ui::DesignTokens::list_item_height())
+        .interactive(true)
+        .show_flat(
+            ui,
+            list_item::CustomContent::new(|ui, context| {
+                ui.allocate_new_ui(
+                    egui::UiBuilder::new()
+                        .max_rect(context.rect)
+                        .layout(egui::Layout::left_to_right(egui::Align::Center)),
+                    |ui| {
+                        ui.spacing_mut().item_spacing.x = 4.0;
+                        ui.style_mut().interaction.selectable_labels = false;
+                        item_heading_no_breadcrumbs(ctx, viewport, ui, item);
+                    },
+                );
+            }),
+        );
+    cursor_interact_with_selectable(ctx, response, item.clone());
+}
+
 /// Fully descriptive heading for an item, without any breadcrumbs.
-pub fn item_heading_no_breadcrumbs(
+fn item_heading_no_breadcrumbs(
     ctx: &ViewerContext<'_>,
     viewport: &ViewportBlueprint,
     ui: &mut egui::Ui,

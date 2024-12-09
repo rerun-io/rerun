@@ -23,7 +23,7 @@ use re_viewport_blueprint::{ui::show_add_space_view_or_container_modal, Viewport
 
 use crate::{
     defaults_ui::view_components_defaults_section_ui,
-    item_heading_no_breadcrumbs::item_heading_no_breadcrumbs,
+    item_heading_no_breadcrumbs::item_title_list_item,
     item_heading_with_breadcrumbs::item_heading_with_breadcrumbs,
     space_view_entity_picker::SpaceViewEntityPicker,
     visible_time_range_ui::{
@@ -145,27 +145,7 @@ impl SelectionPanel {
 
                 for item in selection.iter_items() {
                     ui.add_space(4.0);
-
-                    let response = ui
-                        .list_item()
-                        .with_height(re_ui::DesignTokens::list_item_height())
-                        .interactive(true)
-                        .show_flat(
-                            ui,
-                            list_item::CustomContent::new(|ui, context| {
-                                ui.allocate_new_ui(
-                                    egui::UiBuilder::new()
-                                        .max_rect(context.rect)
-                                        .layout(egui::Layout::left_to_right(egui::Align::Center)),
-                                    |ui| {
-                                        ui.spacing_mut().item_spacing.x = 4.0;
-                                        ui.style_mut().interaction.selectable_labels = false;
-                                        item_heading_no_breadcrumbs(ctx, viewport, ui, item);
-                                    },
-                                );
-                            }),
-                        );
-                    cursor_interact_with_selectable(ctx, response, item.clone());
+                    item_title_list_item(ctx, viewport, ui, item);
                 }
             });
         }
