@@ -99,14 +99,15 @@ impl crate::Loggable for Utf8 {
             let arrow_data_buf = arrow_data.values();
             let offsets = arrow_data.offsets();
             arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                offsets.iter().zip(offsets.lengths()),
+                offsets.windows(2),
                 arrow_data.validity(),
             )
             .map(|elem| {
-                elem.map(|(start, len)| {
-                    let start = *start as usize;
-                    let end = start + len;
-                    if end > arrow_data_buf.len() {
+                elem.map(|window| {
+                    let start = window[0] as usize;
+                    let end = window[1] as usize;
+                    let len = end - start;
+                    if arrow_data_buf.len() < end {
                         return Err(DeserializationError::offset_slice_oob(
                             (start, end),
                             arrow_data_buf.len(),
