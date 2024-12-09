@@ -131,6 +131,7 @@ impl AsComponents for Vec<&dyn ComponentBatch> {
 
 mod archetype;
 mod arrow_buffer;
+pub mod arrow_helpers;
 mod arrow_string;
 mod component_descriptor;
 mod loggable;

@@ -68,13 +68,8 @@ impl crate::Loggable for TimeRangeBoundary {
     {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
-        use crate::{Loggable as _, ResultExt as _};
+        use crate::{arrow_helpers::as_array_ref, Loggable as _, ResultExt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
-
-        #[allow(unused)]
-        fn as_array_ref<T: Array + 'static>(t: T) -> ArrayRef {
-            std::sync::Arc::new(t) as ArrayRef
-        }
         Ok({
             // Dense Arrow union
             let data: Vec<_> = data
