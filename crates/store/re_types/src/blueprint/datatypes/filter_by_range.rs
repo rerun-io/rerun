@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: Configuration for the filter-by-range feature of the dataframe view.
@@ -26,18 +26,6 @@ pub struct FilterByRange {
 
     /// End of the time range (inclusive).
     pub end: crate::datatypes::TimeInt,
-}
-
-impl ::re_types_core::SizeBytes for FilterByRange {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.start.heap_size_bytes() + self.end.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::TimeInt>::is_pod() && <crate::datatypes::TimeInt>::is_pod()
-    }
 }
 
 ::re_types_core::macros::impl_into_cow!(FilterByRange);
@@ -239,5 +227,17 @@ impl ::re_types_core::Loggable for FilterByRange {
                 .with_context("rerun.blueprint.datatypes.FilterByRange")?
             }
         })
+    }
+}
+
+impl ::re_types_core::SizeBytes for FilterByRange {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.start.heap_size_bytes() + self.end.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::TimeInt>::is_pod() && <crate::datatypes::TimeInt>::is_pod()
     }
 }

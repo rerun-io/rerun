@@ -8025,6 +8025,7 @@ dependencies = [
  "re_build_tools",
  "rerun",
  "rust-format",
+ "similar-asserts",
 ]
 
 [[package]]

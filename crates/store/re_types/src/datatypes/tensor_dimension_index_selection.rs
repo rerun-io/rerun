@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: Indexing a specific tensor dimension.
@@ -28,18 +28,6 @@ pub struct TensorDimensionIndexSelection {
 
     /// The index along the dimension to use.
     pub index: u64,
-}
-
-impl ::re_types_core::SizeBytes for TensorDimensionIndexSelection {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.dimension.heap_size_bytes() + self.index.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <u32>::is_pod() && <u64>::is_pod()
-    }
 }
 
 ::re_types_core::macros::impl_into_cow!(TensorDimensionIndexSelection);
@@ -236,5 +224,17 @@ impl ::re_types_core::Loggable for TensorDimensionIndexSelection {
                 .with_context("rerun.datatypes.TensorDimensionIndexSelection")?
             }
         })
+    }
+}
+
+impl ::re_types_core::SizeBytes for TensorDimensionIndexSelection {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.dimension.heap_size_bytes() + self.index.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <u32>::is_pod() && <u64>::is_pod()
     }
 }

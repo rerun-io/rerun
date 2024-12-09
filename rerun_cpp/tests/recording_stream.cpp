@@ -20,7 +20,7 @@ struct BadComponent {};
 
 template <>
 struct rerun::Loggable<BadComponent> {
-    static constexpr const char* Name = "bad!";
+    static constexpr rerun::ComponentDescriptor Descriptor = "bad!";
     static rerun::Error error;
 
     static const std::shared_ptr<arrow::DataType>& arrow_datatype() {

@@ -14,9 +14,9 @@
 #![allow(non_camel_case_types)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: One of four 2D corners, typically used to align objects.
@@ -37,48 +37,10 @@ pub enum Corner2D {
     RightBottom = 4,
 }
 
-impl ::re_types_core::reflection::Enum for Corner2D {
+impl ::re_types_core::Component for Corner2D {
     #[inline]
-    fn variants() -> &'static [Self] {
-        &[
-            Self::LeftTop,
-            Self::RightTop,
-            Self::LeftBottom,
-            Self::RightBottom,
-        ]
-    }
-
-    #[inline]
-    fn docstring_md(self) -> &'static str {
-        match self {
-            Self::LeftTop => "Left top corner.",
-            Self::RightTop => "Right top corner.",
-            Self::LeftBottom => "Left bottom corner.",
-            Self::RightBottom => "Right bottom corner.",
-        }
-    }
-}
-
-impl ::re_types_core::SizeBytes for Corner2D {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
-    }
-}
-
-impl std::fmt::Display for Corner2D {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::LeftTop => write!(f, "LeftTop"),
-            Self::RightTop => write!(f, "RightTop"),
-            Self::LeftBottom => write!(f, "LeftBottom"),
-            Self::RightBottom => write!(f, "RightBottom"),
-        }
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.blueprint.components.Corner2D")
     }
 }
 
@@ -170,9 +132,47 @@ impl ::re_types_core::Loggable for Corner2D {
     }
 }
 
-impl ::re_types_core::Component for Corner2D {
+impl std::fmt::Display for Corner2D {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::LeftTop => write!(f, "LeftTop"),
+            Self::RightTop => write!(f, "RightTop"),
+            Self::LeftBottom => write!(f, "LeftBottom"),
+            Self::RightBottom => write!(f, "RightBottom"),
+        }
+    }
+}
+
+impl ::re_types_core::reflection::Enum for Corner2D {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.blueprint.components.Corner2D".into()
+    fn variants() -> &'static [Self] {
+        &[
+            Self::LeftTop,
+            Self::RightTop,
+            Self::LeftBottom,
+            Self::RightBottom,
+        ]
+    }
+
+    #[inline]
+    fn docstring_md(self) -> &'static str {
+        match self {
+            Self::LeftTop => "Left top corner.",
+            Self::RightTop => "Right top corner.",
+            Self::LeftBottom => "Left bottom corner.",
+            Self::RightBottom => "Right bottom corner.",
+        }
+    }
+}
+
+impl ::re_types_core::SizeBytes for Corner2D {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
     }
 }

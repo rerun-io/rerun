@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use re_types_core::{Component, ComponentName, DeserializationError, Loggable, SizeBytes};
+use re_types_core::{Component, ComponentDescriptor, DeserializationError, Loggable, SizeBytes};
 
 // ----------------------------------------------------------------------------
 
@@ -24,15 +24,15 @@ impl re_types_core::Archetype for MyPoints {
         "MyPoints"
     }
 
-    fn required_components() -> ::std::borrow::Cow<'static, [re_types_core::ComponentName]> {
-        vec![MyPoint::name()].into()
+    fn required_components() -> ::std::borrow::Cow<'static, [re_types_core::ComponentDescriptor]> {
+        vec![MyPoint::descriptor()].into()
     }
 
-    fn recommended_components() -> std::borrow::Cow<'static, [re_types_core::ComponentName]> {
+    fn recommended_components() -> std::borrow::Cow<'static, [re_types_core::ComponentDescriptor]> {
         vec![
-            re_types_core::ComponentBatch::name(&Self::Indicator::default()),
-            MyColor::name(),
-            MyLabel::name(),
+            re_types_core::ComponentBatch::descriptor(&Self::Indicator::default()).into_owned(),
+            MyColor::descriptor(),
+            MyLabel::descriptor(),
         ]
         .into()
     }
@@ -142,8 +142,8 @@ impl Loggable for MyPoint {
 }
 
 impl Component for MyPoint {
-    fn name() -> ComponentName {
-        "example.MyPoint".into()
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("example.MyPoint")
     }
 }
 
@@ -251,8 +251,8 @@ impl Loggable for MyPoint64 {
 }
 
 impl Component for MyPoint64 {
-    fn name() -> ComponentName {
-        "example.MyPoint64".into()
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("example.MyPoint64")
     }
 }
 
@@ -325,8 +325,8 @@ impl Loggable for MyColor {
 }
 
 impl Component for MyColor {
-    fn name() -> ComponentName {
-        "example.MyColor".into()
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("example.MyColor")
     }
 }
 
@@ -376,8 +376,8 @@ impl Loggable for MyLabel {
 }
 
 impl Component for MyLabel {
-    fn name() -> ComponentName {
-        "example.MyLabel".into()
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("example.MyLabel")
     }
 }
 
@@ -436,7 +436,7 @@ impl Loggable for MyIndex {
 }
 
 impl Component for MyIndex {
-    fn name() -> ComponentName {
-        "example.MyIndex".into()
+    fn descriptor() -> re_types_core::ComponentDescriptor {
+        ComponentDescriptor::new("example.MyIndex")
     }
 }

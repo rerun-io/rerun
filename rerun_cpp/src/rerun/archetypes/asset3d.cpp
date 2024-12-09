@@ -17,17 +17,34 @@ namespace rerun {
         cells.reserve(4);
 
         {
-            auto result = ComponentBatch::from_loggable(archetype.blob);
+            auto result = ComponentBatch::from_loggable(
+                archetype.blob,
+                ComponentDescriptor("rerun.archetypes.Asset3D", "blob", "rerun.components.Blob")
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.media_type.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.media_type.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.media_type.value(),
+                ComponentDescriptor(
+                    "rerun.archetypes.Asset3D",
+                    "media_type",
+                    "rerun.components.MediaType"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.albedo_factor.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.albedo_factor.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.albedo_factor.value(),
+                ComponentDescriptor(
+                    "rerun.archetypes.Asset3D",
+                    "albedo_factor",
+                    "rerun.components.AlbedoFactor"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

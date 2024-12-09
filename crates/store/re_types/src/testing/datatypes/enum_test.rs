@@ -14,9 +14,9 @@
 #![allow(non_camel_case_types)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: A test of the enum type.
@@ -41,57 +41,6 @@ pub enum EnumTest {
 
     /// Baby's got it.
     Back = 6,
-}
-
-impl ::re_types_core::reflection::Enum for EnumTest {
-    #[inline]
-    fn variants() -> &'static [Self] {
-        &[
-            Self::Up,
-            Self::Down,
-            Self::Right,
-            Self::Left,
-            Self::Forward,
-            Self::Back,
-        ]
-    }
-
-    #[inline]
-    fn docstring_md(self) -> &'static str {
-        match self {
-            Self::Up => "Great film.",
-            Self::Down => "Feeling blue.",
-            Self::Right => "Correct.",
-            Self::Left => "It's what's remaining.",
-            Self::Forward => "It's the only way to go.",
-            Self::Back => "Baby's got it.",
-        }
-    }
-}
-
-impl ::re_types_core::SizeBytes for EnumTest {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
-    }
-}
-
-impl std::fmt::Display for EnumTest {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Up => write!(f, "Up"),
-            Self::Down => write!(f, "Down"),
-            Self::Right => write!(f, "Right"),
-            Self::Left => write!(f, "Left"),
-            Self::Forward => write!(f, "Forward"),
-            Self::Back => write!(f, "Back"),
-        }
-    }
 }
 
 ::re_types_core::macros::impl_into_cow!(EnumTest);
@@ -181,5 +130,56 @@ impl ::re_types_core::Loggable for EnumTest {
             })
             .collect::<DeserializationResult<Vec<Option<_>>>>()
             .with_context("rerun.testing.datatypes.EnumTest")?)
+    }
+}
+
+impl std::fmt::Display for EnumTest {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Up => write!(f, "Up"),
+            Self::Down => write!(f, "Down"),
+            Self::Right => write!(f, "Right"),
+            Self::Left => write!(f, "Left"),
+            Self::Forward => write!(f, "Forward"),
+            Self::Back => write!(f, "Back"),
+        }
+    }
+}
+
+impl ::re_types_core::reflection::Enum for EnumTest {
+    #[inline]
+    fn variants() -> &'static [Self] {
+        &[
+            Self::Up,
+            Self::Down,
+            Self::Right,
+            Self::Left,
+            Self::Forward,
+            Self::Back,
+        ]
+    }
+
+    #[inline]
+    fn docstring_md(self) -> &'static str {
+        match self {
+            Self::Up => "Great film.",
+            Self::Down => "Feeling blue.",
+            Self::Right => "Correct.",
+            Self::Left => "It's what's remaining.",
+            Self::Forward => "It's the only way to go.",
+            Self::Back => "Baby's got it.",
+        }
+    }
+}
+
+impl ::re_types_core::SizeBytes for EnumTest {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
     }
 }

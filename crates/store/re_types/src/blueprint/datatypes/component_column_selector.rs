@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: Describe a component column to be selected in the dataframe view.
@@ -26,18 +26,6 @@ pub struct ComponentColumnSelector {
 
     /// The name of the component.
     pub component: crate::datatypes::Utf8,
-}
-
-impl ::re_types_core::SizeBytes for ComponentColumnSelector {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.entity_path.heap_size_bytes() + self.component.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::EntityPath>::is_pod() && <crate::datatypes::Utf8>::is_pod()
-    }
 }
 
 ::re_types_core::macros::impl_into_cow!(ComponentColumnSelector);
@@ -345,5 +333,17 @@ impl ::re_types_core::Loggable for ComponentColumnSelector {
                 .with_context("rerun.blueprint.datatypes.ComponentColumnSelector")?
             }
         })
+    }
+}
+
+impl ::re_types_core::SizeBytes for ComponentColumnSelector {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.entity_path.heap_size_bytes() + self.component.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::EntityPath>::is_pod() && <crate::datatypes::Utf8>::is_pod()
     }
 }

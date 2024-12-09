@@ -13,40 +13,14 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct AffixFuzzer22 {
     pub fixed_sized_native: [u8; 4usize],
-}
-
-impl ::re_types_core::SizeBytes for AffixFuzzer22 {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.fixed_sized_native.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <[u8; 4usize]>::is_pod()
-    }
-}
-
-impl From<[u8; 4usize]> for AffixFuzzer22 {
-    #[inline]
-    fn from(fixed_sized_native: [u8; 4usize]) -> Self {
-        Self { fixed_sized_native }
-    }
-}
-
-impl From<AffixFuzzer22> for [u8; 4usize] {
-    #[inline]
-    fn from(value: AffixFuzzer22) -> Self {
-        value.fixed_sized_native
-    }
 }
 
 ::re_types_core::macros::impl_into_cow!(AffixFuzzer22);
@@ -282,5 +256,31 @@ impl ::re_types_core::Loggable for AffixFuzzer22 {
                 .with_context("rerun.testing.datatypes.AffixFuzzer22")?
             }
         })
+    }
+}
+
+impl From<[u8; 4usize]> for AffixFuzzer22 {
+    #[inline]
+    fn from(fixed_sized_native: [u8; 4usize]) -> Self {
+        Self { fixed_sized_native }
+    }
+}
+
+impl From<AffixFuzzer22> for [u8; 4usize] {
+    #[inline]
+    fn from(value: AffixFuzzer22) -> Self {
+        value.fixed_sized_native
+    }
+}
+
+impl ::re_types_core::SizeBytes for AffixFuzzer22 {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.fixed_sized_native.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <[u8; 4usize]>::is_pod()
     }
 }

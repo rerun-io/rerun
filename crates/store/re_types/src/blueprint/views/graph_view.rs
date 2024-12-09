@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **View**: A graph view to display time-variying, directed or undirected graph visualization.
@@ -42,6 +42,13 @@ pub struct GraphView {
     pub force_center: crate::blueprint::archetypes::ForceCenter,
 }
 
+impl ::re_types_core::View for GraphView {
+    #[inline]
+    fn identifier() -> ::re_types_core::SpaceViewClassIdentifier {
+        "Graph".into()
+    }
+}
+
 impl ::re_types_core::SizeBytes for GraphView {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
@@ -61,12 +68,5 @@ impl ::re_types_core::SizeBytes for GraphView {
             && <crate::blueprint::archetypes::ForcePosition>::is_pod()
             && <crate::blueprint::archetypes::ForceCollisionRadius>::is_pod()
             && <crate::blueprint::archetypes::ForceCenter>::is_pod()
-    }
-}
-
-impl ::re_types_core::View for GraphView {
-    #[inline]
-    fn identifier() -> ::re_types_core::SpaceViewClassIdentifier {
-        "Graph".into()
     }
 }
