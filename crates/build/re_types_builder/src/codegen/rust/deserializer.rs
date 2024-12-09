@@ -572,7 +572,7 @@ fn quote_arrow_field_deserializer(
                 objects,
                 datatype,
                 IteratorKind::ResultOptionValue,
-                quote!(::re_types_core::ArrowString).into(),
+                quote!(::re_types_core::ArrowString::from).into(),
             );
 
             let data_src_buf = format_ident!("{data_src}_buf");

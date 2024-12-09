@@ -17,10 +17,12 @@ To implement this, fill in the placeholders:
 - `RRD_URL` - The URL of the recording to display in the viewer.
 - `RERUN_VERSION` - The version of the Rerun SDK used to generate the recording.
 
+The `RRD_URL` can be a file served over `http` (e.g. `https://app.rerun.io/version/0.20.3/examples/arkit_scenes.rrd`), or a connection to an SDK using our [serve](https://www.rerun.io/docs/reference/sdk/operating-modes#serve) API (e.g. `ws://localhost:4321`).
+
 For instance:
 
 ```html
-<iframe src="https://app.rerun.io/version/0.14.1/?url=https://app.rerun.io/version/0.14.1/examples/arkit_scenes.rrd"></iframe>
+<iframe src="https://app.rerun.io/version/0.20.3/?url=https://app.rerun.io/version/0.20.3/examples/arkit_scenes.rrd"></iframe>
 ```
 
 ## Using the JavaScript package
@@ -94,7 +96,7 @@ await viewer.start(null, parentElement);
 The Viewer API supports adding and removing recordings:
 
 ```js,id=embed-web-viewer-api-js-open-close
-const rrdUrl = "https://app.rerun.io/version/0.14.1/examples/arkit_scenes.rrd";
+const rrdUrl = "https://app.rerun.io/version/0.20.3/examples/arkit_scenes.rrd";
 
 // Open a recording:
 viewer.open(rrdUrl);

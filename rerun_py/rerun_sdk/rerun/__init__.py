@@ -33,6 +33,7 @@ from . import (
     remote as remote,
 )
 from ._baseclasses import (
+    ComponentBatchMixin as ComponentBatchMixin,
     ComponentColumn as ComponentColumn,
     ComponentDescriptor as ComponentDescriptor,
     DescribedComponentBatch as DescribedComponentBatch,
