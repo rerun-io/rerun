@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use re_types::{
     archetypes::Tensor,
-    datatypes::{TensorBuffer, TensorData, TensorDimension},
+    datatypes::{TensorBuffer, TensorData},
     tensor_data::TensorCastError,
     Archetype as _, AsComponents as _,
 };

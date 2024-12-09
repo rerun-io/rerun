@@ -33,17 +33,17 @@ impl Image {
         let tensor_data: TensorData = data
             .try_into()
             .map_err(ImageConstructionError::TensorDataConversion)?;
-        let shape = tensor_data.shape;
+        let TensorData { shape, buffer, .. } = tensor_data;
 
         let non_empty_dim_inds = find_non_empty_dim_indices(&shape);
 
         let is_shape_correct = match color_model {
             ColorModel::L => non_empty_dim_inds.len() == 2,
             ColorModel::RGB | ColorModel::BGR => {
-                non_empty_dim_inds.len() == 3 && shape[non_empty_dim_inds[2]].size == 3
+                non_empty_dim_inds.len() == 3 && shape[non_empty_dim_inds[2]] == 3
             }
             ColorModel::RGBA | ColorModel::BGRA => {
-                non_empty_dim_inds.len() == 3 && shape[non_empty_dim_inds[2]].size == 4
+                non_empty_dim_inds.len() == 3 && shape[non_empty_dim_inds[2]] == 4
             }
         };
 
@@ -51,15 +51,13 @@ impl Image {
             return Err(ImageConstructionError::BadImageShape(shape));
         }
 
-        let (blob, datatype) = blob_and_datatype_from_tensor(tensor_data.buffer);
+        let (blob, datatype) = blob_and_datatype_from_tensor(buffer);
 
-        let (height, width) = (&shape[non_empty_dim_inds[0]], &shape[non_empty_dim_inds[1]]);
-        let height = height.size as u32;
-        let width = width.size as u32;
+        let (height, width) = (shape[non_empty_dim_inds[0]], shape[non_empty_dim_inds[1]]);
 
         let image_format = ImageFormat {
-            width,
-            height,
+            width: width as _,
+            height: height as _,
             pixel_format: None,
             channel_datatype: Some(datatype),
             color_model: Some(color_model),

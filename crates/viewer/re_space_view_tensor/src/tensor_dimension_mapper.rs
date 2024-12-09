@@ -1,10 +1,11 @@
 use re_types::{
-    blueprint::archetypes::TensorSliceSelection,
-    datatypes::{TensorDimension, TensorDimensionIndexSelection},
+    blueprint::archetypes::TensorSliceSelection, datatypes::TensorDimensionIndexSelection,
 };
 use re_ui::UiExt as _;
 use re_viewer_context::ViewerContext;
 use re_viewport_blueprint::ViewProperty;
+
+use crate::TensorDimension;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum DragDropAddress {

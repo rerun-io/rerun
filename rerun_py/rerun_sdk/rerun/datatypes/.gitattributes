@@ -29,7 +29,6 @@ rgba32.py linguist-generated=true
 rotation_axis_angle.py linguist-generated=true
 tensor_buffer.py linguist-generated=true
 tensor_data.py linguist-generated=true
-tensor_dimension.py linguist-generated=true
 tensor_dimension_index_selection.py linguist-generated=true
 tensor_dimension_selection.py linguist-generated=true
 time_int.py linguist-generated=true
