@@ -107,7 +107,7 @@ impl crate::Loggable for VisibleTimeRange {
                             let inner_data: arrow::buffer::Buffer = timeline
                                 .into_iter()
                                 .flatten()
-                                .flat_map(|datum| datum.0 .0)
+                                .flat_map(|datum| datum.0.into_arrow2_buffer())
                                 .collect();
                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                             as_array_ref(unsafe {
@@ -213,7 +213,8 @@ impl crate::Loggable for VisibleTimeRange {
                         })
                         .map(|res_or_opt| {
                             res_or_opt.map(|res_or_opt| {
-                                res_or_opt.map(|v| crate::datatypes::Utf8(crate::ArrowString(v)))
+                                res_or_opt
+                                    .map(|v| crate::datatypes::Utf8(crate::ArrowString::from(v)))
                             })
                         })
                         .collect::<DeserializationResult<Vec<Option<_>>>>()

@@ -80,8 +80,10 @@ impl ::re_types_core::Loggable for AffixFuzzer12 {
                         let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
                             data0_inner_data.iter().map(|datum| datum.len()),
                         );
-                        let inner_data: arrow::buffer::Buffer =
-                            data0_inner_data.into_iter().flat_map(|s| s.0).collect();
+                        let inner_data: arrow::buffer::Buffer = data0_inner_data
+                            .into_iter()
+                            .flat_map(|s| s.into_arrow2_buffer())
+                            .collect();
 
                         #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                         as_array_ref(unsafe {
@@ -158,7 +160,7 @@ impl ::re_types_core::Loggable for AffixFuzzer12 {
                         })
                         .map(|res_or_opt| {
                             res_or_opt.map(|res_or_opt| {
-                                res_or_opt.map(|v| ::re_types_core::ArrowString(v))
+                                res_or_opt.map(|v| ::re_types_core::ArrowString::from(v))
                             })
                         })
                         .collect::<DeserializationResult<Vec<Option<_>>>>()

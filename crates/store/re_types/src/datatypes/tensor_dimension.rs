@@ -109,8 +109,11 @@ impl ::re_types_core::Loggable for TensorDimension {
                                 arrow::buffer::OffsetBuffer::<i32>::from_lengths(name.iter().map(
                                     |opt| opt.as_ref().map(|datum| datum.len()).unwrap_or_default(),
                                 ));
-                            let inner_data: arrow::buffer::Buffer =
-                                name.into_iter().flatten().flat_map(|s| s.0).collect();
+                            let inner_data: arrow::buffer::Buffer = name
+                                .into_iter()
+                                .flatten()
+                                .flat_map(|s| s.into_arrow2_buffer())
+                                .collect();
                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                             as_array_ref(unsafe {
                                 StringArray::new_unchecked(offsets, inner_data, name_validity)
@@ -219,7 +222,7 @@ impl ::re_types_core::Loggable for TensorDimension {
                         })
                         .map(|res_or_opt| {
                             res_or_opt.map(|res_or_opt| {
-                                res_or_opt.map(|v| ::re_types_core::ArrowString(v))
+                                res_or_opt.map(|v| ::re_types_core::ArrowString::from(v))
                             })
                         })
                         .collect::<DeserializationResult<Vec<Option<_>>>>()

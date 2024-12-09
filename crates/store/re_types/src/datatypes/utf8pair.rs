@@ -91,7 +91,7 @@ impl ::re_types_core::Loggable for Utf8Pair {
                             let inner_data: arrow::buffer::Buffer = first
                                 .into_iter()
                                 .flatten()
-                                .flat_map(|datum| datum.0 .0)
+                                .flat_map(|datum| datum.0.into_arrow2_buffer())
                                 .collect();
                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                             as_array_ref(unsafe {
@@ -120,7 +120,7 @@ impl ::re_types_core::Loggable for Utf8Pair {
                             let inner_data: arrow::buffer::Buffer = second
                                 .into_iter()
                                 .flatten()
-                                .flat_map(|datum| datum.0 .0)
+                                .flat_map(|datum| datum.0.into_arrow2_buffer())
                                 .collect();
                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                             as_array_ref(unsafe {
@@ -210,7 +210,7 @@ impl ::re_types_core::Loggable for Utf8Pair {
                         .map(|res_or_opt| {
                             res_or_opt.map(|res_or_opt| {
                                 res_or_opt.map(|v| {
-                                    crate::datatypes::Utf8(::re_types_core::ArrowString(v))
+                                    crate::datatypes::Utf8(::re_types_core::ArrowString::from(v))
                                 })
                             })
                         })
@@ -265,7 +265,7 @@ impl ::re_types_core::Loggable for Utf8Pair {
                         .map(|res_or_opt| {
                             res_or_opt.map(|res_or_opt| {
                                 res_or_opt.map(|v| {
-                                    crate::datatypes::Utf8(::re_types_core::ArrowString(v))
+                                    crate::datatypes::Utf8(::re_types_core::ArrowString::from(v))
                                 })
                             })
                         })
