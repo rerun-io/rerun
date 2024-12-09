@@ -13,7 +13,7 @@ namespace rerun.archetypes;
 ///
 /// Currently, many visualizers support only a single instance transform per entity.
 /// Check archetype documentations for details - if not otherwise specified, only the first instance transform is applied.
-/// Some visualizers like the mesh visualizer used for [`archetype.Mesh3D`],
+/// Some visualizers like the mesh visualizer used for [archetypes.Mesh3D],
 /// will draw an object for every pose, a behavior also known as "instancing".
 ///
 /// \example archetypes/instance_poses3d_combined title="Regular & instance transforms in tandem" image="https://static.rerun.io/leaf_transform3d/41674f0082d6de489f8a1cd1583f60f6b5820ddf/1200w.png"

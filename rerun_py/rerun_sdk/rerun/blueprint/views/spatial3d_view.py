@@ -45,6 +45,15 @@ class Spatial3DView(SpaceView):
             name="3D Scene",
             # Set the background color to light blue.
             background=[100, 149, 237],
+            # Configure the line grid.
+            line_grid=rrb.archetypes.LineGrid3D(
+                visible=True,  # The grid is enabled by default, but you can hide it with this property.
+                spacing=0.1,  # Makes the grid more fine-grained.
+                # By default, the plane is inferred from view coordinates setup, but you can set arbitrary planes.
+                plane=rr.components.Plane3D.XY.with_distance(-5.0),
+                stroke_width=2.0,  # Makes the grid lines twice as thick as usual.
+                color=[255, 255, 255, 128],  # Colors the grid a half-transparent white.
+            ),
         ),
         collapse_panels=True,
     )
@@ -76,6 +85,7 @@ class Spatial3DView(SpaceView):
         | datatypes.Rgba32Like
         | blueprint_components.BackgroundKindLike
         | None = None,
+        line_grid: blueprint_archetypes.LineGrid3D | None = None,
         time_ranges: blueprint_archetypes.VisibleTimeRanges
         | datatypes.VisibleTimeRangeLike
         | Sequence[datatypes.VisibleTimeRangeLike]
@@ -112,6 +122,8 @@ class Spatial3DView(SpaceView):
             This will be addressed in <https://github.com/rerun-io/rerun/issues/6673>.
         background:
             Configuration for the background of the view.
+        line_grid:
+            Configuration for the 3D line grid.
         time_ranges:
             Configures which range on each timeline is shown by this view (unless specified differently per entity).
 
@@ -125,6 +137,11 @@ class Spatial3DView(SpaceView):
             if not isinstance(background, blueprint_archetypes.Background):
                 background = blueprint_archetypes.Background(background)
             properties["Background"] = background
+
+        if line_grid is not None:
+            if not isinstance(line_grid, blueprint_archetypes.LineGrid3D):
+                line_grid = blueprint_archetypes.LineGrid3D(line_grid)
+            properties["LineGrid3D"] = line_grid
 
         if time_ranges is not None:
             if not isinstance(time_ranges, blueprint_archetypes.VisibleTimeRanges):

@@ -90,7 +90,7 @@ impl ViewProperty {
     /// Get the value of a specific component or its fallback if the component is not present.
     // TODO(andreas): Unfortunately we can't use TypedComponentFallbackProvider here because it may not be implemented for all components of interest.
     // This sadly means that there's a bit of unnecessary back and forth between arrow array and untyped that could be avoided otherwise.
-    pub fn component_or_fallback<C: re_types::Component + Default>(
+    pub fn component_or_fallback<C: re_types::Component>(
         &self,
         ctx: &ViewerContext<'_>,
         fallback_provider: &dyn ComponentFallbackProvider,
@@ -103,7 +103,7 @@ impl ViewProperty {
     }
 
     /// Get the component array for a given type or its fallback if the component is not present or empty.
-    pub fn component_array_or_fallback<C: re_types::Component + Default>(
+    pub fn component_array_or_fallback<C: re_types::Component>(
         &self,
         ctx: &ViewerContext<'_>,
         fallback_provider: &dyn ComponentFallbackProvider,

@@ -17,6 +17,11 @@ impl RotationAxisAngle {
 impl From<RotationAxisAngle> for glam::Affine3A {
     #[inline]
     fn from(val: RotationAxisAngle) -> Self {
-        Self::from_axis_angle(val.0.axis.into(), val.0.angle.radians())
+        if let Some(normalized) = glam::Vec3::from(val.0.axis).try_normalize() {
+            Self::from_axis_angle(normalized, val.0.angle.radians())
+        } else {
+            // If the axis is zero length, we can't normalize it, so we just use the identity rotation.
+            Self::IDENTITY
+        }
     }
 }
