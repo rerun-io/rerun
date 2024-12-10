@@ -115,7 +115,7 @@ class TensorDataExt:
                 resolved_shape = [size for size in array.shape]
 
         if resolved_shape is not None:
-            self.shape = resolved_shape
+            self.shape: npt.NDArray[np.uint64] = resolved_shape
         else:
             # This shouldn't be possible but typing can't figure it out
             raise ValueError("No shape provided.")
@@ -125,7 +125,7 @@ class TensorDataExt:
         elif array is not None:
             self.buffer = TensorBuffer(array.flatten())
 
-        self.names = None
+        self.names: list[str] | None = None
         if dim_names:
             if len(self.shape) == len(dim_names):
                 self.names = dim_names
