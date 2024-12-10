@@ -41,7 +41,7 @@ impl ChunkStore {
         for (component_name, per_desc) in chunk.components().iter() {
             assert!(
                 per_desc.len() <= 1,
-                "Insert Chunk with multiple values for component named `{component_name}`: this is currently UB",
+                "[DEBUG ONLY] Insert Chunk with multiple values for component named `{component_name}`: this is currently UB",
             );
         }
 
