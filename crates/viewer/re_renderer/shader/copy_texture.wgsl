@@ -11,5 +11,5 @@ var tex: texture_2d<f32>;
 
 @fragment
 fn main(in: FragmentInput) -> @location(0) vec4f {
-    return textureSample(tex, nearest_sampler, in.texcoord);
+    return textureSample(tex, nearest_sampler_clamped, in.texcoord);
 }

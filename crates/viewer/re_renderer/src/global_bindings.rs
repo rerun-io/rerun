@@ -45,8 +45,9 @@ pub struct FrameUniformBuffer {
 
 pub(crate) struct GlobalBindings {
     pub(crate) layout: GpuBindGroupLayoutHandle,
-    nearest_neighbor_sampler: GpuSamplerHandle,
-    trilinear_sampler: GpuSamplerHandle,
+    nearest_neighbor_sampler_repeat: GpuSamplerHandle,
+    nearest_neighbor_sampler_clamped: GpuSamplerHandle,
+    trilinear_sampler_repeat: GpuSamplerHandle,
 }
 
 impl GlobalBindings {
@@ -73,16 +74,23 @@ impl GlobalBindings {
                             },
                             count: None,
                         },
-                        // Sampler without any filtering.
+                        // Sampler without any filtering, repeat.
                         wgpu::BindGroupLayoutEntry {
                             binding: 1,
                             visibility: wgpu::ShaderStages::FRAGMENT,
                             ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::NonFiltering),
                             count: None,
                         },
-                        // Trilinear sampler.
+                        // Sampler without any filtering, clamped.
                         wgpu::BindGroupLayoutEntry {
                             binding: 2,
+                            visibility: wgpu::ShaderStages::FRAGMENT,
+                            ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::NonFiltering),
+                            count: None,
+                        },
+                        // Trilinear sampler, repeat.
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 3,
                             visibility: wgpu::ShaderStages::FRAGMENT,
                             ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
                             count: None,
@@ -90,7 +98,7 @@ impl GlobalBindings {
                     ],
                 },
             ),
-            nearest_neighbor_sampler: pools.samplers.get_or_create(
+            nearest_neighbor_sampler_repeat: pools.samplers.get_or_create(
                 device,
                 &SamplerDesc {
                     label: "GlobalBindings::nearest_neighbor_sampler".into(),
@@ -100,7 +108,17 @@ impl GlobalBindings {
                     ..Default::default()
                 },
             ),
-            trilinear_sampler: pools.samplers.get_or_create(
+            nearest_neighbor_sampler_clamped: pools.samplers.get_or_create(
+                device,
+                &SamplerDesc {
+                    label: "GlobalBindings::nearest_neighbor_sampler_clamped".into(),
+                    address_mode_u: wgpu::AddressMode::ClampToEdge,
+                    address_mode_v: wgpu::AddressMode::ClampToEdge,
+                    address_mode_w: wgpu::AddressMode::ClampToEdge,
+                    ..Default::default()
+                },
+            ),
+            trilinear_sampler_repeat: pools.samplers.get_or_create(
                 device,
                 &SamplerDesc {
                     label: "GlobalBindings::trilinear_sampler".into(),
@@ -131,8 +149,9 @@ impl GlobalBindings {
                 label: "GlobalBindings::create_bind_group".into(),
                 entries: smallvec![
                     frame_uniform_buffer_binding,
-                    BindGroupEntry::Sampler(self.nearest_neighbor_sampler),
-                    BindGroupEntry::Sampler(self.trilinear_sampler),
+                    BindGroupEntry::Sampler(self.nearest_neighbor_sampler_repeat),
+                    BindGroupEntry::Sampler(self.nearest_neighbor_sampler_clamped),
+                    BindGroupEntry::Sampler(self.trilinear_sampler_repeat),
                 ],
                 layout: self.layout,
             },
