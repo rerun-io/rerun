@@ -18,7 +18,7 @@ class TensorExt:
         self: Any,
         data: TensorDataLike | TensorLike | None = None,
         *,
-        dim_names: Sequence[str | None] | None = None,
+        dim_names: Sequence[str] | None = None,
         value_range: Range1DLike | None = None,
     ):
         """
@@ -36,11 +36,11 @@ class TensorExt:
         ----------
         self:
             The TensorData object to construct.
-        data: TensorDataLike | None
+        data:
             A TensorData object, or type that can be converted to a numpy array.
-        dim_names: Sequence[str] | None
+        dim_names:
             The names of the tensor dimensions when generating the shape from an array.
-        value_range: Sequence[float] | None
+        value_range:
             The range of values to use for colormapping.
 
             If not specified, the range will be estimated from the data.
