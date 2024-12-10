@@ -138,11 +138,8 @@ pub trait Loggable: 'static + Send + Sync + Clone + Sized + SizeBytes {
     fn from_arrow2_opt(
         data: &dyn arrow2::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>> {
-        _ = data; // NOTE: do this here to avoid breaking users' autocomplete snippets
-        Err(crate::DeserializationError::NotImplemented {
-            fqname: "<unknown>".to_owned(),
-            backtrace: _Backtrace::new_unresolved(),
-        })
+        let boxed_arrow_array = arrow::array::ArrayRef::from(data);
+        Self::from_arrow_opt(boxed_arrow_array.as_ref())
     }
 }
 

@@ -19,6 +19,7 @@ from .included_content import IncludedContent, IncludedContentBatch
 from .interactive import Interactive, InteractiveBatch
 from .lock_range_during_zoom import LockRangeDuringZoom, LockRangeDuringZoomBatch
 from .map_provider import MapProvider, MapProviderArrayLike, MapProviderBatch, MapProviderLike
+from .near_clip_plane import NearClipPlane, NearClipPlaneBatch
 from .panel_state import PanelState, PanelStateArrayLike, PanelStateBatch, PanelStateLike
 from .query_expression import QueryExpression, QueryExpressionBatch
 from .root_container import RootContainer, RootContainerBatch
@@ -80,6 +81,8 @@ __all__ = [
     "MapProviderArrayLike",
     "MapProviderBatch",
     "MapProviderLike",
+    "NearClipPlane",
+    "NearClipPlaneBatch",
     "PanelState",
     "PanelStateArrayLike",
     "PanelStateBatch",

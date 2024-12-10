@@ -12,6 +12,9 @@ Everything within these bounds is guaranteed to be visible.
 
 Somethings outside of these bounds may also be visible due to letterboxing.
 
+* `range`: Controls the visible range of a 2D view.
+* `near_clip_plane`: Controls the distance to the near clip plane in 3D scene units.
+
 ## API reference links
  * 🐍 [Python API docs for `GraphView`](https://ref.rerun.io/docs/python/stable/common/blueprint_views?speculative-link#rerun.blueprint.views.GraphView)
 
