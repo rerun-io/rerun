@@ -171,23 +171,18 @@ class TensorDataExt:
         buffer = _build_buffer_array(data.buffer)
 
         if data.names is None:
-            return pa.StructArray.from_arrays(
-                [
-                    shape,
-                    buffer,
-                ],
-                fields=[data_type.field("shape"), data_type.field("buffer")],
-            ).cast(pa.struct([data_type.field("shape"), data_type.field("buffer")]))
+            names = pa.array([None], type=data_type.field("names").type)
         else:
             names = pa.array([data.names], type=data_type.field("names").type)
-            return pa.StructArray.from_arrays(
-                [
-                    shape,
-                    names,
-                    buffer,
-                ],
-                fields=[data_type.field("shape"), data_type.field("names"), data_type.field("buffer")],
-            ).cast(data_type)
+
+        return pa.StructArray.from_arrays(
+            [
+                shape,
+                names,
+                buffer,
+            ],
+            fields=data_type.fields,
+        ).cast(data_type)
 
     def numpy(self: Any, force: bool) -> npt.NDArray[Any]:
         """Convert the TensorData back to a numpy array."""
