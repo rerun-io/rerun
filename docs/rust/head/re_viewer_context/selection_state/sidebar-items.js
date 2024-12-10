@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["HoverHighlight","ItemSpaceContext","SelectionHighlight"],"fn":["either_none_or_same"],"struct":["ApplicationSelectionState","InteractionHighlight","ItemCollection"]};

@@ -1,0 +1,28 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="API documentation for the Rust `README` constant in crate `incremental_logging`."><title>README in incremental_logging - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../static.files/rustdoc-dd39b87e5fcfba68.css"><meta name="rustdoc-vars" data-root-path="../" data-static-root-path="../static.files/" data-current-crate="incremental_logging" data-themes="" data-resource-suffix="" data-rustdoc-version="1.80.0 (051478957 2024-07-21)" data-channel="1.80.0" data-search-js="search-d52510db62a78183.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../static.files/storage-118b08c4c78b968e.js"></script><script defer src="sidebar-items.js"></script><script defer src="../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc constant"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../incremental_logging/index.html">incremental_logging</a><span class="version">0.21.0-alpha.1+dev</span></h2></div><div class="sidebar-elems"></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1>Constant <a href="index.html">incremental_logging</a>::<wbr><a class="constant" href="#">README</a><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><span class="out-of-band"><a class="src" href="../src/incremental_logging/main.rs.html#29-56">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><pre class="rust item-decl"><code>pub(crate) const README: &amp;<a class="primitive" href="https://doc.rust-lang.org/1.80.0/std/primitive.str.html">str</a> = r#&quot;
+# Incremental Logging
+
+This example showcases how to incrementally log data belonging to the same archetype, and re-use some or all of it across frames.
+
+It was logged with the following code:
+```rust
+let colors = [rerun::Color::from_rgb(255, 0, 0); 10];
+let radii = [rerun::Radius(0.1); 10];
+
+// Only log colors and radii once.
+rec.set_time_sequence(&quot;frame_nr&quot;, 0);
+rec.log(&quot;points&quot;, &amp;[&amp;colors as &amp;dyn rerun::ComponentBatch, &amp;radii])?;
+
+let mut rng = rand::thread_rng();
+let dist = Uniform::new(-5., 5.);
+
+// Then log only the points themselves each frame.
+//
+// They will automatically re-use the colors and radii logged at the beginning.
+for i in 0..10 {
+    rec.set_time_sequence(&quot;frame_nr&quot;, i);
+    rec.log(&quot;points&quot;, &amp;rerun::Points3D::new((0..10).map(|_| (rng.sample(dist), rng.sample(dist), rng.sample(dist)))))?;
+}
+```
+
+Move the time cursor around, and notice how the colors and radii from frame 0 are still picked up by later frames, while the points themselves keep changing every frame.
+&quot;#;</code></pre></section></div></main></body></html>

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["git_branch","git_commit_hash","git_commit_short_hash","git_path","parse_branch_from_github_ref","rebuild_if_branch_or_commit_changes"]};

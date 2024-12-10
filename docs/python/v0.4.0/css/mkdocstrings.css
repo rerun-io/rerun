@@ -1,0 +1,53 @@
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono&display=swap");
+
+/* Indentation. */
+div.doc-contents:not(.first) {
+  padding-left: 25px;
+  border-left: 0.05rem solid var(--md-typeset-table-color);
+}
+
+/* Avoid breaking parameters name, etc. in table cells. */
+td code {
+  word-break: normal !important;
+}
+
+/* Add extra spacing between doc-objects. */
+div.doc-object {
+  margin-bottom: 2rem;
+}
+
+:root {
+  --md-primary-fg-color: #111;
+  color-scheme: dark;
+}
+
+html {
+  filter: invert(1) contrast(90%) hue-rotate(180deg);
+  background: white;
+}
+
+body {
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-weight: 500;
+}
+
+.md-typeset h1,
+.md-typeset h2 {
+  margin-bottom: 1rem;
+  font-weight: 700;
+  color: inherit;
+}
+
+.md-typeset p + h1 {
+  margin-top: 2rem;
+}
+
+header {
+  filter: invert(1);
+}
+
+code {
+  --md-code-bg-color: #e3e3e3;
+  font-family: "JetBrains Mono", monospace;
+}

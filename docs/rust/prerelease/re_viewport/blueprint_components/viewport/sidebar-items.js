@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["VIEWPORT_PATH"],"struct":["AutoSpaceViews","MutableViewportLayoutArray","SpaceViewId","SpaceViewMaximized","ViewportLayout","ViewportLayoutArray","ViewportLayoutArrayIterator"]};

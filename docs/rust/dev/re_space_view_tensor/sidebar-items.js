@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["dimension_mapping","space_view_class","tensor_dimension_mapper","tensor_slice_to_gpu","visualizer_system"],"struct":["TensorSpaceView"]};

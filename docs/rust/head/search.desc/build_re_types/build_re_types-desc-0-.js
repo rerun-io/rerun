@@ -1,0 +1,1 @@
+searchState.loadedDescShard("build_re_types", 0, "This binary runs the codegen manually.\nThis uses <code>rayon::scope</code> to spawn all closures as tasks …")

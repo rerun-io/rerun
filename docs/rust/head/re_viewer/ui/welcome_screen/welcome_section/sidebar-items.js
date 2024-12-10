@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["DOCS_URL","WELCOME_SCREEN_BULLET_TEXT","WELCOME_SCREEN_TITLE"],"fn":["welcome_section_ui"]};

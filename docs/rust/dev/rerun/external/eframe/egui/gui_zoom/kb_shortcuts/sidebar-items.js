@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["ZOOM_IN","ZOOM_IN_SECONDARY","ZOOM_OUT","ZOOM_RESET"]};
