@@ -23,8 +23,8 @@ These tests check that A) all of our SDKs yield the exact same data when used th
 
 ### Usage
 
-To run the comparison tests, check out `./docs/snippets/compare_snippet_output.py --help`.
-`./docs/snippets/compare_snippet_output.py` is a valid invocation that will build all 3 SDKs and run all tests for all of them.
+To run the comparison tests, check out `pixi run -e py docs/snippets/compare_snippet_output.py --help`.
+`pixi run -e py docs/snippets/compare_snippet_output.py` is a valid invocation that will build all 3 SDKs and run all tests for all of them.
 
 ### Implementing new tests
 
