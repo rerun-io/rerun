@@ -3,7 +3,7 @@ from __future__ import annotations
 import itertools
 from typing import cast
 
-from rerun.blueprint.archetypes.space_view_contents import SpaceViewContents
+from rerun.blueprint.archetypes.view_contents import ViewContents
 from rerun.blueprint.components.query_expression import QueryExpression, QueryExpressionBatch
 from rerun.datatypes.utf8 import Utf8ArrayLike
 
@@ -31,11 +31,11 @@ def test_space_view_contents() -> None:
         query = cast(Utf8ArrayLike, query)
 
         print(
-            "rr.SpaceViewContents(\n",
+            "rr.ViewContents(\n",
             f"    {query!r}\n",
             ")",
         )
-        arch = SpaceViewContents(
+        arch = ViewContents(
             query,
         )
 

@@ -1,9 +1,7 @@
 namespace rerun.blueprint.components;
 
-// ---
-
-/// The origin of a `SpaceView`.
-table SpaceViewOrigin (
+/// The origin of a view.
+table ViewOrigin (
     "attr.arrow.transparent",
     "attr.rerun.scope": "blueprint",
     "attr.python.aliases": "str",

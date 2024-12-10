@@ -313,7 +313,7 @@ blueprint = rrb.Blueprint(
         ),
         column_shares=[2,2,3]
     ),
-    auto_space_views=False,
+    auto_views=False,
     collapse_panels=True,
 )
 

@@ -21,28 +21,28 @@ use re_viewer_context::{
     ViewClassRegistry, ViewId, ViewStates, ViewerContext, VisualizableEntities,
 };
 
-use crate::{SpaceViewBlueprint, ViewProperty};
+use crate::{ViewBlueprint, ViewProperty};
 
-/// Data to be added to a view, built from a [`blueprint_archetypes::SpaceViewContents`].
+/// Data to be added to a view, built from a [`blueprint_archetypes::ViewContents`].
 ///
 /// During execution, it will walk an [`EntityTree`] and return a [`DataResultTree`]
 /// containing any entities that match a [`EntityPathFilter`].
 ///
-/// Note: [`SpaceViewContents`] doesn't implement Clone because it depends on its parent's [`SpaceViewId`]
+/// Note: [`ViewContents`] doesn't implement Clone because it depends on its parent's [`SpaceViewId`]
 /// used for identifying the path of its data in the blueprint store. It's ambiguous
 /// whether the intent is for a clone to write to the same place.
 ///
 /// If you want a new view otherwise identical to an existing one, use
 /// [`SpaceViewBlueprint::duplicate`].
 #[derive(Clone, Debug)]
-pub struct SpaceViewContents {
+pub struct ViewContents {
     pub blueprint_entity_path: EntityPath,
 
     pub view_class_identifier: ViewClassIdentifier,
     pub entity_path_filter: EntityPathFilter,
 }
 
-impl SpaceViewContents {
+impl ViewContents {
     pub fn is_equivalent(&self, other: &Self) -> bool {
         self.view_class_identifier.eq(&other.view_class_identifier)
             && self.entity_path_filter.eq(&other.entity_path_filter)
@@ -68,10 +68,10 @@ impl SpaceViewContents {
     }
 }
 
-impl SpaceViewContents {
-    /// Creates a new [`SpaceViewContents`].
+impl ViewContents {
+    /// Creates a new [`ViewContents`].
     ///
-    /// This [`SpaceViewContents`] is ephemeral. It must be saved by calling
+    /// This [`ViewContents`] is ephemeral. It must be saved by calling
     /// `save_to_blueprint_store` on the enclosing `SpaceViewBlueprint`.
     pub fn new(
         id: ViewId,
@@ -81,7 +81,7 @@ impl SpaceViewContents {
         // Don't use `entity_path_for_space_view_sub_archetype` here because this will do a search in the future,
         // thus needing the entity tree.
         let blueprint_entity_path = id.as_entity_path().join(&EntityPath::from_single_string(
-            blueprint_archetypes::SpaceViewContents::name().short_name(),
+            blueprint_archetypes::ViewContents::name().short_name(),
         ));
 
         Self {
@@ -91,7 +91,7 @@ impl SpaceViewContents {
         }
     }
 
-    /// Attempt to load a [`SpaceViewContents`] from the blueprint store.
+    /// Attempt to load a [`ViewContents`] from the blueprint store.
     pub fn from_db_or_default(
         view_id: ViewId,
         blueprint_db: &EntityDb,
@@ -99,7 +99,7 @@ impl SpaceViewContents {
         view_class_identifier: ViewClassIdentifier,
         space_env: &EntityPathSubs,
     ) -> Self {
-        let property = ViewProperty::from_archetype::<blueprint_archetypes::SpaceViewContents>(
+        let property = ViewProperty::from_archetype::<blueprint_archetypes::ViewContents>(
             blueprint_db,
             query,
             view_id,
@@ -109,7 +109,7 @@ impl SpaceViewContents {
 
             Err(err) => {
                 re_log::warn_once!(
-                    "Failed to load SpaceViewContents for {:?} from blueprint store at {:?}: {}",
+                    "Failed to load ViewContents for {:?} from blueprint store at {:?}: {}",
                     view_id,
                     property.blueprint_store_path,
                     err
@@ -129,18 +129,16 @@ impl SpaceViewContents {
         }
     }
 
-    /// Persist the entire [`SpaceViewContents`] to the blueprint store.
+    /// Persist the entire [`ViewContents`] to the blueprint store.
     ///
-    /// This only needs to be called if the [`SpaceViewContents`] was created with [`Self::new`].
+    /// This only needs to be called if the [`ViewContents`] was created with [`Self::new`].
     ///
     /// Otherwise, incremental calls to `set_` functions will write just the necessary component
     /// update directly to the store.
     pub fn save_to_blueprint_store(&self, ctx: &ViewerContext<'_>) {
         ctx.save_blueprint_archetype(
             &self.blueprint_entity_path,
-            &blueprint_archetypes::SpaceViewContents::new(
-                self.entity_path_filter.iter_expressions(),
-            ),
+            &blueprint_archetypes::ViewContents::new(self.entity_path_filter.iter_expressions()),
         );
     }
 
@@ -165,7 +163,7 @@ impl SpaceViewContents {
     pub fn build_resolver<'a>(
         &self,
         space_view_class_registry: &'a re_viewer_context::ViewClassRegistry,
-        space_view: &'a SpaceViewBlueprint,
+        space_view: &'a ViewBlueprint,
         applicable_entities_per_visualizer: &'a PerVisualizer<ApplicableEntities>,
         visualizable_entities_per_visualizer: &'a PerVisualizer<VisualizableEntities>,
         indicated_entities_per_visualizer: &'a PerVisualizer<IndicatedEntities>,
@@ -226,7 +224,7 @@ impl SpaceViewContents {
         self.set_entity_path_filter(ctx, &new_entity_path_filter);
     }
 
-    /// Build up the initial [`DataQueryResult`] for this [`SpaceViewContents`]
+    /// Build up the initial [`DataQueryResult`] for this [`ViewContents`]
     ///
     /// Note that this result will not have any resolved [`PropertyOverrides`]. Those can
     /// be added by separately calling `DataQueryPropertyResolver::update_overrides` on
@@ -271,7 +269,7 @@ impl SpaceViewContents {
     }
 }
 
-/// Helper struct for executing the query from [`SpaceViewContents`]
+/// Helper struct for executing the query from [`ViewContents`]
 ///
 /// This restructures the [`QueryExpression`] into several sets that are
 /// used to efficiently determine if we should continue the walk or switch
@@ -358,7 +356,7 @@ impl QueryExpressionEvaluator<'_> {
 
 pub struct DataQueryPropertyResolver<'a> {
     space_view_class_registry: &'a re_viewer_context::ViewClassRegistry,
-    space_view: &'a SpaceViewBlueprint,
+    space_view: &'a ViewBlueprint,
     individual_override_root: EntityPath,
     recursive_override_root: EntityPath,
     applicable_entities_per_visualizer: &'a PerVisualizer<ApplicableEntities>,
@@ -700,7 +698,7 @@ mod tests {
         ];
 
         for (i, Scenario { filter, outputs }) in scenarios.into_iter().enumerate() {
-            let contents = SpaceViewContents::new(
+            let contents = ViewContents::new(
                 ViewId::random(),
                 "3D".into(),
                 EntityPathFilter::parse_forgiving(filter, &space_env),

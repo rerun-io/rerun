@@ -11,52 +11,50 @@
 #include <memory>
 
 namespace rerun::blueprint::components {
-    /// **Component**: Whether or not space views should be created automatically.
-    struct AutoSpaceViews {
-        rerun::datatypes::Bool auto_space_views;
+    /// **Component**: Whether or not views should be created automatically.
+    struct AutoViews {
+        rerun::datatypes::Bool auto_views;
 
       public:
-        AutoSpaceViews() = default;
+        AutoViews() = default;
 
-        AutoSpaceViews(rerun::datatypes::Bool auto_space_views_)
-            : auto_space_views(auto_space_views_) {}
+        AutoViews(rerun::datatypes::Bool auto_views_) : auto_views(auto_views_) {}
 
-        AutoSpaceViews& operator=(rerun::datatypes::Bool auto_space_views_) {
-            auto_space_views = auto_space_views_;
+        AutoViews& operator=(rerun::datatypes::Bool auto_views_) {
+            auto_views = auto_views_;
             return *this;
         }
 
-        AutoSpaceViews(bool value_) : auto_space_views(value_) {}
+        AutoViews(bool value_) : auto_views(value_) {}
 
-        AutoSpaceViews& operator=(bool value_) {
-            auto_space_views = value_;
+        AutoViews& operator=(bool value_) {
+            auto_views = value_;
             return *this;
         }
 
         /// Cast to the underlying Bool datatype
         operator rerun::datatypes::Bool() const {
-            return auto_space_views;
+            return auto_views;
         }
     };
 } // namespace rerun::blueprint::components
 
 namespace rerun {
-    static_assert(sizeof(rerun::datatypes::Bool) == sizeof(blueprint::components::AutoSpaceViews));
+    static_assert(sizeof(rerun::datatypes::Bool) == sizeof(blueprint::components::AutoViews));
 
     /// \private
     template <>
-    struct Loggable<blueprint::components::AutoSpaceViews> {
-        static constexpr ComponentDescriptor Descriptor =
-            "rerun.blueprint.components.AutoSpaceViews";
+    struct Loggable<blueprint::components::AutoViews> {
+        static constexpr ComponentDescriptor Descriptor = "rerun.blueprint.components.AutoViews";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
             return Loggable<rerun::datatypes::Bool>::arrow_datatype();
         }
 
-        /// Serializes an array of `rerun::blueprint:: components::AutoSpaceViews` into an arrow array.
+        /// Serializes an array of `rerun::blueprint:: components::AutoViews` into an arrow array.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
-            const blueprint::components::AutoSpaceViews* instances, size_t num_instances
+            const blueprint::components::AutoViews* instances, size_t num_instances
         ) {
             if (num_instances == 0) {
                 return Loggable<rerun::datatypes::Bool>::to_arrow(nullptr, 0);
@@ -67,7 +65,7 @@ namespace rerun {
                 );
             } else {
                 return Loggable<rerun::datatypes::Bool>::to_arrow(
-                    &instances->auto_space_views,
+                    &instances->auto_views,
                     num_instances
                 );
             }

@@ -24,7 +24,7 @@ import yfinance as yf
 
 def auto_blueprint() -> rrb.BlueprintLike:
     """A blueprint enabling auto space views, which matches the application default."""
-    return rrb.Blueprint(auto_space_views=True, auto_layout=True)
+    return rrb.Blueprint(auto_views=True, auto_layout=True)
 
 
 def one_stock(symbol: str) -> rrb.ContainerLike:

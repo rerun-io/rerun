@@ -621,7 +621,7 @@ fn data_section_ui(item: &Item) -> Option<Box<dyn DataUi>> {
 fn space_view_button(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    view: &re_viewport_blueprint::SpaceViewBlueprint,
+    view: &re_viewport_blueprint::ViewBlueprint,
 ) -> egui::Response {
     let item = Item::View(view.id);
     let is_selected = ctx.selection().contains_item(&item);
@@ -692,7 +692,7 @@ fn list_existing_data_blueprints(
 fn view_top_level_properties(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    view: &re_viewport_blueprint::SpaceViewBlueprint,
+    view: &re_viewport_blueprint::ViewBlueprint,
 ) {
     ui.list_item_flat_noninteractive(PropertyContent::new("Name").value_fn(|ui, _| {
         ui.spacing_mut().text_edit_width = ui

@@ -2,7 +2,7 @@ namespace rerun.blueprint.archetypes;
 
 // ---
 
-/// The contents of a `SpaceView`.
+/// The contents of a `View`.
 ///
 /// The contents are found by combining a collection of `QueryExpression`s.
 ///
@@ -40,7 +40,7 @@ namespace rerun.blueprint.archetypes;
 /// The last rule matching `/world/car/hood` is `- /world/car/**`, so it is excluded.
 /// The last rule matching `/world` is `- /world`, so it is excluded.
 /// The last rule matching `/world/house` is `+ /world/**`, so it is included.
-table SpaceViewContents (
+table ViewContents (
     "attr.rerun.scope": "blueprint",
     "attr.rust.derive": "Default"
 )  {
@@ -48,8 +48,8 @@ table SpaceViewContents (
 
     // --- Optional ---
 
-    /// The `QueryExpression` that populates the contents for the `SpaceView`.
+    /// The `QueryExpression` that populates the contents for the view.
     ///
-    /// They determine which entities are part of the spaceview.
+    /// They determine which entities are part of the view.
     query: [rerun.blueprint.components.QueryExpression] ("attr.rerun.component_optional", order: 1000);
 }

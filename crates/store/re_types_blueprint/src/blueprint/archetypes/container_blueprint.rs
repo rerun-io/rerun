@@ -27,7 +27,7 @@ pub struct ContainerBlueprint {
     /// The name of the container.
     pub display_name: Option<crate::components::Name>,
 
-    /// `ContainerId`s or `SpaceViewId`s that are children of this container.
+    /// `ContainerId`s or `ViewId`s that are children of this container.
     pub contents: Option<Vec<crate::blueprint::components::IncludedContent>>,
 
     /// The layout shares of each column in the container.
@@ -468,7 +468,7 @@ impl ContainerBlueprint {
         self
     }
 
-    /// `ContainerId`s or `SpaceViewId`s that are children of this container.
+    /// `ContainerId`s or `ViewId`s that are children of this container.
     #[inline]
     pub fn with_contents(
         mut self,

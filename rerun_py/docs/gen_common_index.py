@@ -290,7 +290,7 @@ SECTION_TABLE: Final[list[Section]] = [
             "Vertical",
             "Grid",
             "Tabs",
-            "SpaceView",
+            "View",
             "BarChartView",
             "Spatial2DView",
             "Spatial3DView",
@@ -385,7 +385,7 @@ SECTION_TABLE: Final[list[Section]] = [
         func_list=[
             "add_space_view",
             "new_blueprint",
-            "set_auto_space_views",
+            "set_auto_views",
             "set_panels",
         ],
         show_tables=False,

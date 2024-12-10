@@ -24,7 +24,7 @@ def main() -> None:
         # Create a blueprint which includes 2 additional views each only showing 1 of the two
         # rectangles.
         #
-        # If auto_space_views is True, the blueprint will automatically add one of the heuristic
+        # If auto_views is True, the blueprint will automatically add one of the heuristic
         # space views, which will include the image and both rectangles.
         blueprint = rrb.Blueprint(
             rrb.Grid(
@@ -40,7 +40,7 @@ def main() -> None:
             rrb.BlueprintPanel(state="collapsed"),
             rrb.SelectionPanel(state="collapsed"),
             rrb.TimePanel(state="collapsed"),
-            auto_space_views=args.auto_space_views,
+            auto_views=args.auto_views,
         )
 
     rr.init("rerun_example_blueprint", spawn=True, default_blueprint=blueprint)

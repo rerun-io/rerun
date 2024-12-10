@@ -253,7 +253,7 @@ rrb.Blueprint(
 
 The blueprint has two additional parameters that influence the behavior of the viewer:
 
--   `auto_space_views` controls whether the Viewer will automatically create space views for entities that are not explicitly included in the blueprint.
+-   `auto_views` controls whether the Viewer will automatically create space views for entities that are not explicitly included in the blueprint.
 -   `auto_layout` controls whether the Viewer should automatically layout the containers when introducing new space-views.
 
 If you pass in your own `SpaceView` or `Container` objects, these will both default to `False` so that the Blueprint
@@ -270,7 +270,7 @@ and
 
 ```python
 rrb.Blueprint(
-    auto_space_views=True,
+    auto_views=True,
     auto_layout=True
 )
 ```
@@ -281,7 +281,7 @@ If you truly want to create an empty blueprint, you must set both values to `Fal
 
 ```python
 rrb.Blueprint(
-    auto_space_views=False,
+    auto_views=False,
     auto_layout=False
 ),
 ```

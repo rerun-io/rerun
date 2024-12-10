@@ -11,10 +11,10 @@ __all__ = ["TextLogView"]
 from ... import datatypes
 from ..._baseclasses import AsComponents, ComponentBatchLike
 from ...datatypes import EntityPathLike, Utf8Like
-from ..api import SpaceView, SpaceViewContentsLike
+from ..api import View, ViewContentsLike
 
 
-class TextLogView(SpaceView):
+class TextLogView(View):
     """
     **View**: A view of a text log, for use with [`archetypes.TextLog`][rerun.archetypes.TextLog].
 
@@ -56,7 +56,7 @@ class TextLogView(SpaceView):
         self,
         *,
         origin: EntityPathLike = "/",
-        contents: SpaceViewContentsLike = "$origin/**",
+        contents: ViewContentsLike = "$origin/**",
         name: Utf8Like | None = None,
         visible: datatypes.BoolLike | None = None,
         defaults: list[Union[AsComponents, ComponentBatchLike]] = [],
@@ -73,7 +73,7 @@ class TextLogView(SpaceView):
         contents:
             The contents of the view specified as a query expression.
             This is either a single expression, or a list of multiple expressions.
-            See [rerun.blueprint.archetypes.SpaceViewContents][].
+            See [rerun.blueprint.archetypes.ViewContents][].
         name:
             The display name of the view.
         visible:

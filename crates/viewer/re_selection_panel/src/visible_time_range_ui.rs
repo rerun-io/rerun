@@ -8,12 +8,12 @@ use re_types::{
 };
 use re_ui::UiExt as _;
 use re_viewer_context::{QueryRange, ViewClass, ViewState, TimeDragValue, ViewerContext};
-use re_viewport_blueprint::{entity_path_for_view_property, SpaceViewBlueprint};
+use re_viewport_blueprint::{entity_path_for_view_property, ViewBlueprint};
 
 pub fn visible_time_range_ui_for_view(
     ctx: &ViewerContext<'_>,
     ui: &mut Ui,
-    view: &SpaceViewBlueprint,
+    view: &ViewBlueprint,
     view_class: &dyn ViewClass,
     view_state: &dyn ViewState,
 ) {

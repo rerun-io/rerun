@@ -23,22 +23,22 @@ pub use re_types::blueprint::components::PanelState;
 pub use re_types::blueprint::components::QueryExpression;
 pub use re_types::blueprint::components::RowShare;
 pub use re_types::blueprint::components::SelectedColumns;
-pub use re_types::blueprint::components::SpaceViewClass;
-pub use re_types::blueprint::components::SpaceViewOrigin;
 pub use re_types::blueprint::components::TensorDimensionIndexSlider;
 pub use re_types::blueprint::components::TimelineName;
+pub use re_types::blueprint::components::ViewClass;
 pub use re_types::blueprint::components::ViewFit;
+pub use re_types::blueprint::components::ViewOrigin;
 pub use re_types::blueprint::components::ViewerRecommendationHash;
 pub use re_types::blueprint::components::Visible;
 pub use re_types::blueprint::components::VisibleTimeRange;
 pub use re_types::blueprint::components::VisualBounds2D;
 pub use re_types::blueprint::components::ZoomLevel;
 pub use re_types_blueprint::blueprint::components::AutoLayout;
-pub use re_types_blueprint::blueprint::components::AutoSpaceViews;
+pub use re_types_blueprint::blueprint::components::AutoViews;
 pub use re_types_blueprint::blueprint::components::ContainerKind;
 pub use re_types_blueprint::blueprint::components::GridColumns;
 pub use re_types_blueprint::blueprint::components::RootContainer;
-pub use re_types_blueprint::blueprint::components::SpaceViewMaximized;
+pub use re_types_blueprint::blueprint::components::ViewMaximized;
 pub use re_types_blueprint::blueprint::components::VisualizerOverrides;
 
 /// Because blueprints are both read and written the schema must match what
@@ -48,7 +48,7 @@ pub fn is_valid_blueprint(blueprint: &EntityDb) -> bool {
     validate_component::<ActiveTab>(blueprint)
         && validate_component::<ApplyLatestAt>(blueprint)
         && validate_component::<AutoLayout>(blueprint)
-        && validate_component::<AutoSpaceViews>(blueprint)
+        && validate_component::<AutoViews>(blueprint)
         && validate_component::<BackgroundKind>(blueprint)
         && validate_component::<ColumnShare>(blueprint)
         && validate_component::<ComponentColumnSelector>(blueprint)
@@ -72,12 +72,12 @@ pub fn is_valid_blueprint(blueprint: &EntityDb) -> bool {
         && validate_component::<RootContainer>(blueprint)
         && validate_component::<RowShare>(blueprint)
         && validate_component::<SelectedColumns>(blueprint)
-        && validate_component::<SpaceViewClass>(blueprint)
-        && validate_component::<SpaceViewMaximized>(blueprint)
-        && validate_component::<SpaceViewOrigin>(blueprint)
         && validate_component::<TensorDimensionIndexSlider>(blueprint)
         && validate_component::<TimelineName>(blueprint)
+        && validate_component::<ViewClass>(blueprint)
         && validate_component::<ViewFit>(blueprint)
+        && validate_component::<ViewMaximized>(blueprint)
+        && validate_component::<ViewOrigin>(blueprint)
         && validate_component::<ViewerRecommendationHash>(blueprint)
         && validate_component::<Visible>(blueprint)
         && validate_component::<VisibleTimeRange>(blueprint)

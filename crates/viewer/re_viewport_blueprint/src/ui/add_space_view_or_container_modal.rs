@@ -1,6 +1,6 @@
 //! Modal for adding a new view of container to an existing target container.
 
-use crate::{SpaceViewBlueprint, ViewportBlueprint};
+use crate::{ViewBlueprint, ViewportBlueprint};
 use re_ui::UiExt as _;
 use re_viewer_context::{
     blueprint_id_to_tile_id, icon_for_container_kind, ContainerId, RecommendedView,
@@ -108,7 +108,7 @@ fn modal_ui(
     for space_view in ctx
         .space_view_class_registry
         .iter_registry()
-        .map(|entry| SpaceViewBlueprint::new(entry.identifier, RecommendedView::root()))
+        .map(|entry| ViewBlueprint::new(entry.identifier, RecommendedView::root()))
     {
         let icon = space_view.class(ctx.space_view_class_registry).icon();
         let title = space_view

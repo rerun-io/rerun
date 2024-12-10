@@ -12,29 +12,29 @@ use re_log_types::{EntityPathSubs, Timeline};
 use re_types::{
     blueprint::{
         archetypes::{self as blueprint_archetypes},
-        components::{self as blueprint_components, SpaceViewOrigin, Visible},
+        components::{self as blueprint_components, ViewOrigin, Visible},
     },
     components::Name,
 };
 use re_types_core::Archetype as _;
 use re_viewer_context::{
-    ContentsName, QueryRange, RecommendedView, ViewClass, ViewClassRegistry,
-    ViewId, ViewState, StoreContext, SystemCommand, SystemCommandSender as _,
-    ViewContext, ViewStates, ViewerContext, VisualizerCollection,
+    ContentsName, QueryRange, RecommendedView, StoreContext, SystemCommand,
+    SystemCommandSender as _, ViewClass, ViewClassRegistry, ViewContext, ViewId, ViewState,
+    ViewStates, ViewerContext, VisualizerCollection,
 };
 
-use crate::{SpaceViewContents, ViewProperty};
+use crate::{ViewContents, ViewProperty};
 
 /// A view of a space.
 ///
-/// Note: [`SpaceViewBlueprint`] doesn't implement Clone because it stores an internal
+/// Note: [`ViewBlueprint`] doesn't implement Clone because it stores an internal
 /// uuid used for identifying the path of its data in the blueprint store. It's ambiguous
 /// whether the intent is for a clone to write to the same place.
 ///
 /// If you want a new view otherwise identical to an existing one, use
 /// `re_viewport::ViewportBlueprint::duplicate_space_view`.
 #[derive(Clone, Debug)]
-pub struct SpaceViewBlueprint {
+pub struct ViewBlueprint {
     pub id: ViewId,
     pub display_name: Option<String>,
     class_identifier: ViewClassIdentifier,
@@ -46,7 +46,7 @@ pub struct SpaceViewBlueprint {
     pub space_origin: EntityPath,
 
     /// The content of this view as defined by its queries.
-    pub contents: SpaceViewContents,
+    pub contents: ViewContents,
 
     /// True if this view is visible in the UI.
     pub visible: bool,
@@ -58,20 +58,17 @@ pub struct SpaceViewBlueprint {
     pending_writes: Vec<Chunk>,
 }
 
-impl SpaceViewBlueprint {
+impl ViewBlueprint {
     /// Path at which a view writes defaults for components.
     pub fn defaults_path(view_id: ViewId) -> EntityPath {
         view_id.as_entity_path().join(&"defaults".into())
     }
 
-    /// Creates a new [`SpaceViewBlueprint`] with a single [`SpaceViewContents`].
+    /// Creates a new [`ViewBlueprint`] with a single [`ViewContents`].
     ///
-    /// This [`SpaceViewBlueprint`] is ephemeral. If you want to make it permanent you
+    /// This [`ViewBlueprint`] is ephemeral. If you want to make it permanent you
     /// must call [`Self::save_to_blueprint_store`].
-    pub fn new(
-        space_view_class: ViewClassIdentifier,
-        recommended: RecommendedView,
-    ) -> Self {
+    pub fn new(space_view_class: ViewClassIdentifier, recommended: RecommendedView) -> Self {
         let id = ViewId::random();
 
         Self {
@@ -79,7 +76,7 @@ impl SpaceViewBlueprint {
             class_identifier: space_view_class,
             id,
             space_origin: recommended.origin,
-            contents: SpaceViewContents::new(id, space_view_class, recommended.query_filter),
+            contents: ViewContents::new(id, space_view_class, recommended.query_filter),
             visible: true,
             defaults_path: Self::defaults_path(id),
             pending_writes: Default::default(),
@@ -124,35 +121,30 @@ impl SpaceViewBlueprint {
         )
     }
 
-    /// Attempt to load a [`SpaceViewBlueprint`] from the blueprint store.
-    pub fn try_from_db(
-        id: ViewId,
-        blueprint_db: &EntityDb,
-        query: &LatestAtQuery,
-    ) -> Option<Self> {
+    /// Attempt to load a [`ViewBlueprint`] from the blueprint store.
+    pub fn try_from_db(id: ViewId, blueprint_db: &EntityDb, query: &LatestAtQuery) -> Option<Self> {
         re_tracing::profile_function!();
 
         let results = blueprint_db.storage_engine().cache().latest_at(
             query,
             &id.as_entity_path(),
-            blueprint_archetypes::SpaceViewBlueprint::all_components().iter(),
+            blueprint_archetypes::ViewBlueprint::all_components().iter(),
         );
 
-        // This is a required component. Note that when loading space-views we crawl the subtree and so
-        // cleared empty space-views paths may exist transiently. The fact that they have an empty class_identifier
+        // This is a required component. Note that when loading views we crawl the subtree and so
+        // cleared empty views paths may exist transiently. The fact that they have an empty class_identifier
         // is the marker that the have been cleared and not an error.
-        let class_identifier =
-            results.component_instance::<blueprint_components::SpaceViewClass>(0)?;
+        let class_identifier = results.component_instance::<blueprint_components::ViewClass>(0)?;
 
-        let blueprint_archetypes::SpaceViewBlueprint {
+        let blueprint_archetypes::ViewBlueprint {
             class_identifier,
             display_name,
             space_origin,
             visible,
-        } = blueprint_archetypes::SpaceViewBlueprint {
+        } = blueprint_archetypes::ViewBlueprint {
             class_identifier,
             display_name: results.component_instance::<Name>(0),
-            space_origin: results.component_instance::<SpaceViewOrigin>(0),
+            space_origin: results.component_instance::<ViewOrigin>(0),
             visible: results.component_instance::<Visible>(0),
         };
 
@@ -162,13 +154,8 @@ impl SpaceViewBlueprint {
 
         let space_env = EntityPathSubs::new_with_origin(&space_origin);
 
-        let content = SpaceViewContents::from_db_or_default(
-            id,
-            blueprint_db,
-            query,
-            class_identifier,
-            &space_env,
-        );
+        let content =
+            ViewContents::from_db_or_default(id, blueprint_db, query, class_identifier, &space_env);
         let visible = visible.map_or(true, |v| *v.0);
         let defaults_path = id.as_entity_path().join(&"defaults".into());
 
@@ -184,9 +171,9 @@ impl SpaceViewBlueprint {
         })
     }
 
-    /// Persist the entire [`SpaceViewBlueprint`] to the blueprint store.
+    /// Persist the entire [`ViewBlueprint`] to the blueprint store.
     ///
-    /// This only needs to be called if the [`SpaceViewBlueprint`] was created with [`Self::new`].
+    /// This only needs to be called if the [`ViewBlueprint`] was created with [`Self::new`].
     ///
     /// Otherwise, incremental calls to `set_` functions will write just the necessary component
     /// update directly to the store.
@@ -204,7 +191,7 @@ impl SpaceViewBlueprint {
             pending_writes,
         } = self;
 
-        let mut arch = blueprint_archetypes::SpaceViewBlueprint::new(class_identifier.as_str())
+        let mut arch = blueprint_archetypes::ViewBlueprint::new(class_identifier.as_str())
             .with_space_origin(space_origin)
             .with_visible(*visible);
 
@@ -212,7 +199,7 @@ impl SpaceViewBlueprint {
             arch = arch.with_display_name(display_name.clone());
         }
 
-        // Start with the pending writes, which explicitly filtered out the `SpaceViewBlueprint`
+        // Start with the pending writes, which explicitly filtered out the `ViewBlueprint`
         // components from the top level.
         let mut deltas = pending_writes.clone();
 
@@ -233,7 +220,7 @@ impl SpaceViewBlueprint {
             ));
     }
 
-    /// Creates a new [`SpaceViewBlueprint`] with the same contents, but a different [`SpaceViewId`]
+    /// Creates a new [`ViewBlueprint`] with the same contents, but a different [`SpaceViewId`]
     ///
     /// Also duplicates all the queries in the view.
     pub fn duplicate(&self, store_context: &StoreContext<'_>, query: &LatestAtQuery) -> Self {
@@ -264,11 +251,11 @@ impl SpaceViewBlueprint {
                             .all_components_on_timeline(&query.timeline(), path)
                             .into_iter()
                             .flat_map(|v| v.into_iter())
-                            // It's important that we don't include the SpaceViewBlueprint's components
+                            // It's important that we don't include the ViewBlueprint's components
                             // since those will be updated separately and may contain different data.
                             .filter(|component_name| {
                                 *path != current_path
-                                    || !blueprint_archetypes::SpaceViewBlueprint::all_components()
+                                    || !blueprint_archetypes::ViewBlueprint::all_components()
                                         .iter()
                                         .any(|descr| descr.component_name == *component_name)
                             })
@@ -288,9 +275,9 @@ impl SpaceViewBlueprint {
             });
         }
 
-        // SpaceViewContents is saved as an archetype in the view's entity hierarchy.
+        // ViewContents is saved as an archetype in the view's entity hierarchy.
         // This means, that the above already copied the view contents!
-        let contents = SpaceViewContents::new(
+        let contents = ViewContents::new(
             new_id,
             self.class_identifier,
             self.contents.entity_path_filter.clone(),
@@ -335,7 +322,7 @@ impl SpaceViewBlueprint {
     #[inline]
     pub fn set_origin(&self, ctx: &ViewerContext<'_>, origin: &EntityPath) {
         if origin != &self.space_origin {
-            let component = SpaceViewOrigin(origin.into());
+            let component = ViewOrigin(origin.into());
             ctx.save_blueprint_component(&self.entity_path(), &component);
         }
     }
@@ -467,7 +454,7 @@ mod tests {
         PerVisualizer, StoreContext, VisualizableEntities,
     };
 
-    use crate::space_view_contents::DataQueryPropertyResolver;
+    use crate::view_contents::DataQueryPropertyResolver;
 
     use super::*;
 
@@ -515,7 +502,7 @@ mod tests {
         );
 
         // Basic blueprint - a single view that queries everything.
-        let space_view = SpaceViewBlueprint::new("3D".into(), RecommendedView::root());
+        let space_view = ViewBlueprint::new("3D".into(), RecommendedView::root());
         let individual_override_root = space_view
             .contents
             .blueprint_entity_path
@@ -763,7 +750,7 @@ mod tests {
 
     fn update_overrides(
         test_ctx: &TestContext,
-        contents: &SpaceViewContents,
+        contents: &ViewContents,
         visualizable_entities: &PerVisualizer<VisualizableEntities>,
         resolver: &DataQueryPropertyResolver<'_>,
     ) -> re_viewer_context::DataQueryResult {

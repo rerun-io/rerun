@@ -28,7 +28,7 @@ from ... import datatypes
 from ... import components
 from ..._baseclasses import AsComponents, ComponentBatchLike
 from ...datatypes import EntityPathLike, Utf8Like
-from ..api import SpaceView, SpaceViewContentsLike
+from ..api import View, ViewContentsLike
 ",
         1,
     );
@@ -40,7 +40,7 @@ from ..api import SpaceView, SpaceViewContentsLike
             // Extension class needs to come first, so its __init__ method is called if there is one.
             superclasses.push(ext_class.name.clone());
         }
-        superclasses.push("SpaceView".to_owned());
+        superclasses.push("View".to_owned());
         superclasses.join(",")
     };
     code.push_indented(0, format!("class {}({superclasses}):", obj.name), 1);
@@ -55,7 +55,7 @@ fn init_method(reporter: &Reporter, objects: &Objects, obj: &Object) -> String {
     let mut code = r#"def __init__(
     self, *,
     origin: EntityPathLike = "/",
-    contents: SpaceViewContentsLike = "$origin/**",
+    contents: ViewContentsLike = "$origin/**",
     name: Utf8Like | None = None,
     visible: datatypes.BoolLike | None = None,
     defaults: list[Union[AsComponents, ComponentBatchLike]] = [],
@@ -117,7 +117,7 @@ All other entities will be transformed to be displayed relative to this origin."
             "contents",
             "The contents of the view specified as a query expression.
 This is either a single expression, or a list of multiple expressions.
-See [rerun.blueprint.archetypes.SpaceViewContents][]."
+See [rerun.blueprint.archetypes.ViewContents][]."
                 .to_owned(),
         ),
         ("name", "The display name of the view.".to_owned()),

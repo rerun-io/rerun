@@ -59,11 +59,11 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <AutoSpaceViews as Component>::name(),
+            <AutoViews as Component>::name(),
             ComponentReflection {
-                docstring_md: "Whether or not space views should be created automatically.",
-                custom_placeholder: Some(AutoSpaceViews::default().to_arrow2()?),
-                datatype: AutoSpaceViews::arrow2_datatype(),
+                docstring_md: "Whether or not views should be created automatically.",
+                custom_placeholder: Some(AutoViews::default().to_arrow2()?),
+                datatype: AutoViews::arrow2_datatype(),
             },
         ),
         (
@@ -223,7 +223,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <QueryExpression as Component>::name(),
             ComponentReflection {
-                docstring_md: "An individual query expression used to filter a set of [`datatypes.EntityPath`](https://rerun.io/docs/reference/types/datatypes/entity_path)s.\n\nEach expression is either an inclusion or an exclusion expression.\nInclusions start with an optional `+` and exclusions must start with a `-`.\n\nMultiple expressions are combined together as part of `SpaceViewContents`.\n\nThe `/**` suffix matches the whole subtree, i.e. self and any child, recursively\n(`/world/**` matches both `/world` and `/world/car/driver`).\nOther uses of `*` are not (yet) supported.",
+                docstring_md: "An individual query expression used to filter a set of [`datatypes.EntityPath`](https://rerun.io/docs/reference/types/datatypes/entity_path)s.\n\nEach expression is either an inclusion or an exclusion expression.\nInclusions start with an optional `+` and exclusions must start with a `-`.\n\nMultiple expressions are combined together as part of [`archetypes.ViewContents`](https://rerun.io/docs/reference/types/archetypes/view_contents).\n\nThe `/**` suffix matches the whole subtree, i.e. self and any child, recursively\n(`/world/**` matches both `/world` and `/world/car/driver`).\nOther uses of `*` are not (yet) supported.",
                 custom_placeholder: Some(QueryExpression::default().to_arrow2()?),
                 datatype: QueryExpression::arrow2_datatype(),
             },
@@ -253,30 +253,6 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <SpaceViewClass as Component>::name(),
-            ComponentReflection {
-                docstring_md: "The class identifier of view, e.g. `\"2D\"`, `\"TextLog\"`, ….",
-                custom_placeholder: Some(SpaceViewClass::default().to_arrow2()?),
-                datatype: SpaceViewClass::arrow2_datatype(),
-            },
-        ),
-        (
-            <SpaceViewMaximized as Component>::name(),
-            ComponentReflection {
-                docstring_md: "Whether a view is maximized.",
-                custom_placeholder: Some(SpaceViewMaximized::default().to_arrow2()?),
-                datatype: SpaceViewMaximized::arrow2_datatype(),
-            },
-        ),
-        (
-            <SpaceViewOrigin as Component>::name(),
-            ComponentReflection {
-                docstring_md: "The origin of a `SpaceView`.",
-                custom_placeholder: Some(SpaceViewOrigin::default().to_arrow2()?),
-                datatype: SpaceViewOrigin::arrow2_datatype(),
-            },
-        ),
-        (
             <TensorDimensionIndexSlider as Component>::name(),
             ComponentReflection {
                 docstring_md: "Show a slider for the index of some dimension of a slider.",
@@ -295,11 +271,35 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <ViewClass as Component>::name(),
+            ComponentReflection {
+                docstring_md: "The class identifier of view, e.g. `\"2D\"`, `\"TextLog\"`, ….",
+                custom_placeholder: Some(ViewClass::default().to_arrow2()?),
+                datatype: ViewClass::arrow2_datatype(),
+            },
+        ),
+        (
             <ViewFit as Component>::name(),
             ComponentReflection {
                 docstring_md: "Determines whether an image or texture should be scaled to fit the viewport.",
                 custom_placeholder: Some(ViewFit::default().to_arrow2()?),
                 datatype: ViewFit::arrow2_datatype(),
+            },
+        ),
+        (
+            <ViewMaximized as Component>::name(),
+            ComponentReflection {
+                docstring_md: "Whether a view is maximized.",
+                custom_placeholder: Some(ViewMaximized::default().to_arrow2()?),
+                datatype: ViewMaximized::arrow2_datatype(),
+            },
+        ),
+        (
+            <ViewOrigin as Component>::name(),
+            ComponentReflection {
+                docstring_md: "The origin of a view.",
+                custom_placeholder: Some(ViewOrigin::default().to_arrow2()?),
+                datatype: ViewOrigin::arrow2_datatype(),
             },
         ),
         (
@@ -1931,7 +1931,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.IncludedContent".into(), display_name :
                     "Contents", docstring_md :
-                    "`ContainerId`s or `SpaceViewId`s that are children of this container.",
+                    "`ContainerId`s or `ViewId`s that are children of this container.",
                     is_required : false, }, ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.ColumnShare".into(), display_name :
                     "Col shares", docstring_md :
@@ -2186,44 +2186,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.blueprint.archetypes.SpaceViewBlueprint"),
-            ArchetypeReflection {
-                display_name: "Space view blueprint",
-                view_types: &[],
-                fields: vec![
-                    ArchetypeFieldReflection { component_name :
-                    "rerun.blueprint.components.SpaceViewClass".into(), display_name :
-                    "Class identifier", docstring_md : "The class of the view.",
-                    is_required : true, }, ArchetypeFieldReflection { component_name :
-                    "rerun.components.Name".into(), display_name : "Display name",
-                    docstring_md : "The name of the view.", is_required : false, },
-                    ArchetypeFieldReflection { component_name :
-                    "rerun.blueprint.components.SpaceViewOrigin".into(), display_name :
-                    "Space origin", docstring_md :
-                    "The \"anchor point\" of this view.\n\nDefaults to the root path '/' if not specified.\n\nThe transform at this path forms the reference point for all scene->world transforms in this view.\nI.e. the position of this entity path in space forms the origin of the coordinate system in this view.\nFurthermore, this is the primary indicator for heuristics on what entities we show in this view.",
-                    is_required : false, }, ArchetypeFieldReflection { component_name :
-                    "rerun.blueprint.components.Visible".into(), display_name :
-                    "Visible", docstring_md :
-                    "Whether this view is visible.\n\nDefaults to true if not specified.",
-                    is_required : false, },
-                ],
-            },
-        ),
-        (
-            ArchetypeName::new("rerun.blueprint.archetypes.SpaceViewContents"),
-            ArchetypeReflection {
-                display_name: "Space view contents",
-                view_types: &[],
-                fields: vec![
-                    ArchetypeFieldReflection { component_name :
-                    "rerun.blueprint.components.QueryExpression".into(), display_name :
-                    "Query", docstring_md :
-                    "The `QueryExpression` that populates the contents for the `SpaceView`.\n\nThey determine which entities are part of the spaceview.",
-                    is_required : false, },
-                ],
-            },
-        ),
-        (
             ArchetypeName::new("rerun.blueprint.archetypes.TensorScalarMapping"),
             ArchetypeReflection {
                 display_name: "Tensor scalar mapping",
@@ -2284,6 +2246,44 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
+            ArchetypeName::new("rerun.blueprint.archetypes.ViewBlueprint"),
+            ArchetypeReflection {
+                display_name: "View blueprint",
+                view_types: &[],
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.ViewClass".into(), display_name :
+                    "Class identifier", docstring_md : "The class of the view.",
+                    is_required : true, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Name".into(), display_name : "Display name",
+                    docstring_md : "The name of the view.", is_required : false, },
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.ViewOrigin".into(), display_name :
+                    "Space origin", docstring_md :
+                    "The \"anchor point\" of this view.\n\nDefaults to the root path '/' if not specified.\n\nThe transform at this path forms the reference point for all scene->world transforms in this view.\nI.e. the position of this entity path in space forms the origin of the coordinate system in this view.\nFurthermore, this is the primary indicator for heuristics on what entities we show in this view.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.Visible".into(), display_name :
+                    "Visible", docstring_md :
+                    "Whether this view is visible.\n\nDefaults to true if not specified.",
+                    is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.blueprint.archetypes.ViewContents"),
+            ArchetypeReflection {
+                display_name: "View contents",
+                view_types: &[],
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.QueryExpression".into(), display_name :
+                    "Query", docstring_md :
+                    "The `QueryExpression` that populates the contents for the view.\n\nThey determine which entities are part of the view.",
+                    is_required : false, },
+                ],
+            },
+        ),
+        (
             ArchetypeName::new("rerun.blueprint.archetypes.ViewportBlueprint"),
             ArchetypeReflection {
                 display_name: "Viewport blueprint",
@@ -2291,22 +2291,22 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.RootContainer".into(), display_name :
-                    "Root container", docstring_md : "The layout of the space-views",
+                    "Root container", docstring_md : "The layout of the views",
                     is_required : false, }, ArchetypeFieldReflection { component_name :
-                    "rerun.blueprint.components.SpaceViewMaximized".into(), display_name
-                    : "Maximized", docstring_md : "Show one tab as maximized?",
-                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.ViewMaximized".into(), display_name :
+                    "Maximized", docstring_md : "Show one tab as maximized?", is_required
+                    : false, }, ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.AutoLayout".into(), display_name :
                     "Auto layout", docstring_md :
                     "Whether the viewport layout is determined automatically.\n\nIf `true`, the container layout will be reset whenever a new view is added or removed.\nThis defaults to `false` and is automatically set to `false` when there is user determined layout.",
                     is_required : false, }, ArchetypeFieldReflection { component_name :
-                    "rerun.blueprint.components.AutoSpaceViews".into(), display_name :
-                    "Auto space views", docstring_md :
-                    "Whether or not space views should be created automatically.\n\nIf `true`, the viewer will only add space views that it hasn't considered previously (as identified by `past_viewer_recommendations`)\nand which aren't deemed redundant to existing space views.\nThis defaults to `false` and is automatically set to `false` when the user adds space views manually in the viewer.",
+                    "rerun.blueprint.components.AutoViews".into(), display_name :
+                    "Auto views", docstring_md :
+                    "Whether or not views should be created automatically.\n\nIf `true`, the viewer will only add views that it hasn't considered previously (as identified by `past_viewer_recommendations`)\nand which aren't deemed redundant to existing views.\nThis defaults to `false` and is automatically set to `false` when the user adds views manually in the viewer.",
                     is_required : false, }, ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.ViewerRecommendationHash".into(),
                     display_name : "Past viewer recommendations", docstring_md :
-                    "Hashes of all recommended space views the viewer has already added and that should not be added again.\n\nThis is an internal field and should not be set usually.\nIf you want the viewer from stopping to add space views, you should set `auto_space_views` to `false`.\n\nThe viewer uses this to determine whether it should keep adding space views.",
+                    "Hashes of all recommended views the viewer has already added and that should not be added again.\n\nThis is an internal field and should not be set usually.\nIf you want the viewer from stopping to add views, you should set `auto_views` to `false`.\n\nThe viewer uses this to determine whether it should keep adding views.",
                     is_required : false, },
                 ],
             },

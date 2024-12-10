@@ -1,7 +1,7 @@
 use re_types::ViewClassIdentifier;
 use re_ui::Icon;
 use re_viewer_context::{ContainerId, Item, RecommendedView};
-use re_viewport_blueprint::SpaceViewBlueprint;
+use re_viewport_blueprint::ViewBlueprint;
 
 use crate::{ContextMenuAction, ContextMenuContext};
 
@@ -29,7 +29,7 @@ impl ContextMenuAction for AddSpaceViewAction {
     }
 
     fn process_container(&self, ctx: &ContextMenuContext<'_>, container_id: &ContainerId) {
-        let space_view = SpaceViewBlueprint::new(self.id, RecommendedView::root());
+        let space_view = ViewBlueprint::new(self.id, RecommendedView::root());
 
         ctx.viewport_blueprint.add_space_views(
             std::iter::once(space_view),

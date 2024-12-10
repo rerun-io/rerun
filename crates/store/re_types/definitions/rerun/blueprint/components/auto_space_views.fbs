@@ -1,10 +1,8 @@
 
 namespace rerun.blueprint.components;
 
-// ---
-
-/// Whether or not space views should be created automatically.
-struct AutoSpaceViews (
+/// Whether or not views should be created automatically.
+struct AutoViews (
   "attr.arrow.transparent",
   "attr.rerun.scope": "blueprint",
   "attr.python.aliases": "bool",
@@ -13,5 +11,5 @@ struct AutoSpaceViews (
   "attr.rust.repr": "transparent",
   "attr.rust.tuple_struct"
 ) {
-  auto_space_views: rerun.datatypes.Bool (order: 100);
+  auto_views: rerun.datatypes.Bool (order: 100);
 }

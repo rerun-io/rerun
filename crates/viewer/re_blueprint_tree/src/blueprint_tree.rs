@@ -16,7 +16,7 @@ use re_viewer_context::{
     ContainerId, DataQueryResult, DataResultNode, HoverHighlight, Item, ViewId, ViewerContext,
 };
 use re_viewport_blueprint::ui::show_add_space_view_or_container_modal;
-use re_viewport_blueprint::{SpaceViewBlueprint, ViewportBlueprint};
+use re_viewport_blueprint::{ViewBlueprint, ViewportBlueprint};
 
 /// Holds the state of the blueprint tree UI.
 #[derive(Default)]
@@ -433,7 +433,7 @@ impl BlueprintTree {
         ui: &mut egui::Ui,
         query_result: &DataQueryResult,
         node_or_path: &DataResultNodeOrPath<'_>,
-        space_view: &SpaceViewBlueprint,
+        space_view: &ViewBlueprint,
         space_view_visible: bool,
         projection_mode: bool,
     ) {

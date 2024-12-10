@@ -5,7 +5,7 @@ use nohash_hasher::IntSet;
 use re_log_types::{EntityPath, EntityPathFilter, EntityPathRule, RuleEffect};
 use re_types::ViewClassIdentifier;
 use re_viewer_context::{Item, RecommendedView, ViewClassExt as _};
-use re_viewport_blueprint::SpaceViewBlueprint;
+use re_viewport_blueprint::ViewBlueprint;
 
 use crate::{ContextMenuAction, ContextMenuContext};
 
@@ -163,7 +163,7 @@ fn create_space_view_for_selected_entities(
         query_filter: filter,
     };
 
-    let space_view = SpaceViewBlueprint::new(identifier, recommended);
+    let space_view = ViewBlueprint::new(identifier, recommended);
     let space_view_id = space_view.id;
     ctx.viewport_blueprint
         .add_space_views(std::iter::once(space_view), target_container_id, None);

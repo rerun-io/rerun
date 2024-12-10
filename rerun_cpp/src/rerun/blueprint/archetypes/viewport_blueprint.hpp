@@ -4,9 +4,9 @@
 #pragma once
 
 #include "../../blueprint/components/auto_layout.hpp"
-#include "../../blueprint/components/auto_space_views.hpp"
+#include "../../blueprint/components/auto_views.hpp"
 #include "../../blueprint/components/root_container.hpp"
-#include "../../blueprint/components/space_view_maximized.hpp"
+#include "../../blueprint/components/view_maximized.hpp"
 #include "../../blueprint/components/viewer_recommendation_hash.hpp"
 #include "../../collection.hpp"
 #include "../../compiler_utils.hpp"
@@ -22,11 +22,11 @@
 namespace rerun::blueprint::archetypes {
     /// **Archetype**: The top-level description of the viewport.
     struct ViewportBlueprint {
-        /// The layout of the space-views
+        /// The layout of the views
         std::optional<rerun::blueprint::components::RootContainer> root_container;
 
         /// Show one tab as maximized?
-        std::optional<rerun::blueprint::components::SpaceViewMaximized> maximized;
+        std::optional<rerun::blueprint::components::ViewMaximized> maximized;
 
         /// Whether the viewport layout is determined automatically.
         ///
@@ -34,19 +34,19 @@ namespace rerun::blueprint::archetypes {
         /// This defaults to `false` and is automatically set to `false` when there is user determined layout.
         std::optional<rerun::blueprint::components::AutoLayout> auto_layout;
 
-        /// Whether or not space views should be created automatically.
+        /// Whether or not views should be created automatically.
         ///
-        /// If `true`, the viewer will only add space views that it hasn't considered previously (as identified by `past_viewer_recommendations`)
-        /// and which aren't deemed redundant to existing space views.
-        /// This defaults to `false` and is automatically set to `false` when the user adds space views manually in the viewer.
-        std::optional<rerun::blueprint::components::AutoSpaceViews> auto_space_views;
+        /// If `true`, the viewer will only add views that it hasn't considered previously (as identified by `past_viewer_recommendations`)
+        /// and which aren't deemed redundant to existing views.
+        /// This defaults to `false` and is automatically set to `false` when the user adds views manually in the viewer.
+        std::optional<rerun::blueprint::components::AutoViews> auto_views;
 
-        /// Hashes of all recommended space views the viewer has already added and that should not be added again.
+        /// Hashes of all recommended views the viewer has already added and that should not be added again.
         ///
         /// This is an internal field and should not be set usually.
-        /// If you want the viewer from stopping to add space views, you should set `auto_space_views` to `false`.
+        /// If you want the viewer from stopping to add views, you should set `auto_views` to `false`.
         ///
-        /// The viewer uses this to determine whether it should keep adding space views.
+        /// The viewer uses this to determine whether it should keep adding views.
         std::optional<Collection<rerun::blueprint::components::ViewerRecommendationHash>>
             past_viewer_recommendations;
 
@@ -61,7 +61,7 @@ namespace rerun::blueprint::archetypes {
         ViewportBlueprint() = default;
         ViewportBlueprint(ViewportBlueprint&& other) = default;
 
-        /// The layout of the space-views
+        /// The layout of the views
         ViewportBlueprint with_root_container(
             rerun::blueprint::components::RootContainer _root_container
         ) && {
@@ -71,7 +71,7 @@ namespace rerun::blueprint::archetypes {
         }
 
         /// Show one tab as maximized?
-        ViewportBlueprint with_maximized(rerun::blueprint::components::SpaceViewMaximized _maximized
+        ViewportBlueprint with_maximized(rerun::blueprint::components::ViewMaximized _maximized
         ) && {
             maximized = std::move(_maximized);
             // See: https://github.com/rerun-io/rerun/issues/4027
@@ -89,25 +89,23 @@ namespace rerun::blueprint::archetypes {
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
-        /// Whether or not space views should be created automatically.
+        /// Whether or not views should be created automatically.
         ///
-        /// If `true`, the viewer will only add space views that it hasn't considered previously (as identified by `past_viewer_recommendations`)
-        /// and which aren't deemed redundant to existing space views.
-        /// This defaults to `false` and is automatically set to `false` when the user adds space views manually in the viewer.
-        ViewportBlueprint with_auto_space_views(
-            rerun::blueprint::components::AutoSpaceViews _auto_space_views
-        ) && {
-            auto_space_views = std::move(_auto_space_views);
+        /// If `true`, the viewer will only add views that it hasn't considered previously (as identified by `past_viewer_recommendations`)
+        /// and which aren't deemed redundant to existing views.
+        /// This defaults to `false` and is automatically set to `false` when the user adds views manually in the viewer.
+        ViewportBlueprint with_auto_views(rerun::blueprint::components::AutoViews _auto_views) && {
+            auto_views = std::move(_auto_views);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
-        /// Hashes of all recommended space views the viewer has already added and that should not be added again.
+        /// Hashes of all recommended views the viewer has already added and that should not be added again.
         ///
         /// This is an internal field and should not be set usually.
-        /// If you want the viewer from stopping to add space views, you should set `auto_space_views` to `false`.
+        /// If you want the viewer from stopping to add views, you should set `auto_views` to `false`.
         ///
-        /// The viewer uses this to determine whether it should keep adding space views.
+        /// The viewer uses this to determine whether it should keep adding views.
         ViewportBlueprint with_past_viewer_recommendations(
             Collection<rerun::blueprint::components::ViewerRecommendationHash>
                 _past_viewer_recommendations

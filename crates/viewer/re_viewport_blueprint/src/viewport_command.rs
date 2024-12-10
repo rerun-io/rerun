@@ -1,6 +1,6 @@
 use re_viewer_context::{ContainerId, Contents, ViewId};
 
-use crate::SpaceViewBlueprint;
+use crate::ViewBlueprint;
 
 /// Mutation actions to perform on the viewport tree at the end of the frame.
 ///
@@ -12,7 +12,7 @@ pub enum ViewportCommand {
 
     /// Add a new view to the provided container (or the root if `None`).
     AddSpaceView {
-        space_view: SpaceViewBlueprint,
+        space_view: ViewBlueprint,
         parent_container: Option<ContainerId>,
         position_in_parent: Option<usize>,
     },

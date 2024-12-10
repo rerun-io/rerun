@@ -12,10 +12,10 @@ from ... import datatypes
 from ..._baseclasses import AsComponents, ComponentBatchLike
 from ...datatypes import EntityPathLike, Utf8Like
 from .. import archetypes as blueprint_archetypes, components as blueprint_components
-from ..api import SpaceView, SpaceViewContentsLike
+from ..api import View, ViewContentsLike
 
 
-class MapView(SpaceView):
+class MapView(View):
     """
     **View**: A 2D map view to display geospatial primitives.
 
@@ -59,7 +59,7 @@ class MapView(SpaceView):
         self,
         *,
         origin: EntityPathLike = "/",
-        contents: SpaceViewContentsLike = "$origin/**",
+        contents: ViewContentsLike = "$origin/**",
         name: Utf8Like | None = None,
         visible: datatypes.BoolLike | None = None,
         defaults: list[Union[AsComponents, ComponentBatchLike]] = [],
@@ -78,7 +78,7 @@ class MapView(SpaceView):
         contents:
             The contents of the view specified as a query expression.
             This is either a single expression, or a list of multiple expressions.
-            See [rerun.blueprint.archetypes.SpaceViewContents][].
+            See [rerun.blueprint.archetypes.ViewContents][].
         name:
             The display name of the view.
         visible:

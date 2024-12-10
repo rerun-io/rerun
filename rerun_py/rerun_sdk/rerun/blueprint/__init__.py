@@ -23,7 +23,7 @@ from .api import (
     PanelState as PanelState,
     PanelStateLike as PanelStateLike,
     SelectionPanel as SelectionPanel,
-    SpaceView as SpaceView,
+    View as View,
     TimePanel as TimePanel,
     TopPanel as TopPanel,
 )

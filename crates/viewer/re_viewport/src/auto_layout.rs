@@ -9,7 +9,7 @@ use itertools::Itertools as _;
 use re_types::ViewClassIdentifier;
 use re_viewer_context::ViewId;
 
-use re_viewport_blueprint::SpaceViewBlueprint;
+use re_viewport_blueprint::ViewBlueprint;
 
 #[derive(Clone, Debug)]
 struct SpaceMakeInfo {
@@ -20,7 +20,7 @@ struct SpaceMakeInfo {
 
 pub(crate) fn tree_from_space_views(
     space_view_class_registry: &re_viewer_context::ViewClassRegistry,
-    space_views: &BTreeMap<ViewId, SpaceViewBlueprint>,
+    space_views: &BTreeMap<ViewId, ViewBlueprint>,
 ) -> egui_tiles::Tree<ViewId> {
     re_log::trace!("Auto-layout of {} space views", space_views.len());
 

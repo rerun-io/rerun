@@ -1,6 +1,6 @@
-use super::SpaceViewClass;
+use super::ViewClass;
 
-impl Default for SpaceViewClass {
+impl Default for ViewClass {
     #[inline]
     fn default() -> Self {
         "Dataframe".into()

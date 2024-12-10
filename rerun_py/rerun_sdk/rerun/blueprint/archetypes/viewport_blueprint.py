@@ -29,7 +29,7 @@ class ViewportBlueprint(Archetype):
         root_container: datatypes.UuidLike | None = None,
         maximized: datatypes.UuidLike | None = None,
         auto_layout: datatypes.BoolLike | None = None,
-        auto_space_views: datatypes.BoolLike | None = None,
+        auto_views: datatypes.BoolLike | None = None,
         past_viewer_recommendations: datatypes.UInt64ArrayLike | None = None,
     ):
         """
@@ -38,7 +38,7 @@ class ViewportBlueprint(Archetype):
         Parameters
         ----------
         root_container:
-            The layout of the space-views
+            The layout of the views
         maximized:
             Show one tab as maximized?
         auto_layout:
@@ -46,19 +46,19 @@ class ViewportBlueprint(Archetype):
 
             If `true`, the container layout will be reset whenever a new view is added or removed.
             This defaults to `false` and is automatically set to `false` when there is user determined layout.
-        auto_space_views:
-            Whether or not space views should be created automatically.
+        auto_views:
+            Whether or not views should be created automatically.
 
-            If `true`, the viewer will only add space views that it hasn't considered previously (as identified by `past_viewer_recommendations`)
-            and which aren't deemed redundant to existing space views.
-            This defaults to `false` and is automatically set to `false` when the user adds space views manually in the viewer.
+            If `true`, the viewer will only add views that it hasn't considered previously (as identified by `past_viewer_recommendations`)
+            and which aren't deemed redundant to existing views.
+            This defaults to `false` and is automatically set to `false` when the user adds views manually in the viewer.
         past_viewer_recommendations:
-            Hashes of all recommended space views the viewer has already added and that should not be added again.
+            Hashes of all recommended views the viewer has already added and that should not be added again.
 
             This is an internal field and should not be set usually.
-            If you want the viewer from stopping to add space views, you should set `auto_space_views` to `false`.
+            If you want the viewer from stopping to add views, you should set `auto_views` to `false`.
 
-            The viewer uses this to determine whether it should keep adding space views.
+            The viewer uses this to determine whether it should keep adding views.
 
         """
 
@@ -68,7 +68,7 @@ class ViewportBlueprint(Archetype):
                 root_container=root_container,
                 maximized=maximized,
                 auto_layout=auto_layout,
-                auto_space_views=auto_space_views,
+                auto_views=auto_views,
                 past_viewer_recommendations=past_viewer_recommendations,
             )
             return
@@ -80,7 +80,7 @@ class ViewportBlueprint(Archetype):
             root_container=None,  # type: ignore[arg-type]
             maximized=None,  # type: ignore[arg-type]
             auto_layout=None,  # type: ignore[arg-type]
-            auto_space_views=None,  # type: ignore[arg-type]
+            auto_views=None,  # type: ignore[arg-type]
             past_viewer_recommendations=None,  # type: ignore[arg-type]
         )
 
@@ -96,14 +96,14 @@ class ViewportBlueprint(Archetype):
         default=None,
         converter=blueprint_components.RootContainerBatch._optional,  # type: ignore[misc]
     )
-    # The layout of the space-views
+    # The layout of the views
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    maximized: blueprint_components.SpaceViewMaximizedBatch | None = field(
+    maximized: blueprint_components.ViewMaximizedBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint_components.SpaceViewMaximizedBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.ViewMaximizedBatch._optional,  # type: ignore[misc]
     )
     # Show one tab as maximized?
     #
@@ -121,16 +121,16 @@ class ViewportBlueprint(Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    auto_space_views: blueprint_components.AutoSpaceViewsBatch | None = field(
+    auto_views: blueprint_components.AutoViewsBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint_components.AutoSpaceViewsBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.AutoViewsBatch._optional,  # type: ignore[misc]
     )
-    # Whether or not space views should be created automatically.
+    # Whether or not views should be created automatically.
     #
-    # If `true`, the viewer will only add space views that it hasn't considered previously (as identified by `past_viewer_recommendations`)
-    # and which aren't deemed redundant to existing space views.
-    # This defaults to `false` and is automatically set to `false` when the user adds space views manually in the viewer.
+    # If `true`, the viewer will only add views that it hasn't considered previously (as identified by `past_viewer_recommendations`)
+    # and which aren't deemed redundant to existing views.
+    # This defaults to `false` and is automatically set to `false` when the user adds views manually in the viewer.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -139,12 +139,12 @@ class ViewportBlueprint(Archetype):
         default=None,
         converter=blueprint_components.ViewerRecommendationHashBatch._optional,  # type: ignore[misc]
     )
-    # Hashes of all recommended space views the viewer has already added and that should not be added again.
+    # Hashes of all recommended views the viewer has already added and that should not be added again.
     #
     # This is an internal field and should not be set usually.
-    # If you want the viewer from stopping to add space views, you should set `auto_space_views` to `false`.
+    # If you want the viewer from stopping to add views, you should set `auto_views` to `false`.
     #
-    # The viewer uses this to determine whether it should keep adding space views.
+    # The viewer uses this to determine whether it should keep adding views.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

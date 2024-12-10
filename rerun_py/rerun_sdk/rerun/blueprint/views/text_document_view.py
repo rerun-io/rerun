@@ -11,10 +11,10 @@ __all__ = ["TextDocumentView"]
 from ... import datatypes
 from ..._baseclasses import AsComponents, ComponentBatchLike
 from ...datatypes import EntityPathLike, Utf8Like
-from ..api import SpaceView, SpaceViewContentsLike
+from ..api import View, ViewContentsLike
 
 
-class TextDocumentView(SpaceView):
+class TextDocumentView(View):
     """
     **View**: A view of a single text document, for use with [`archetypes.TextDocument`][rerun.archetypes.TextDocument].
 
@@ -90,7 +90,7 @@ class TextDocumentView(SpaceView):
         self,
         *,
         origin: EntityPathLike = "/",
-        contents: SpaceViewContentsLike = "$origin/**",
+        contents: ViewContentsLike = "$origin/**",
         name: Utf8Like | None = None,
         visible: datatypes.BoolLike | None = None,
         defaults: list[Union[AsComponents, ComponentBatchLike]] = [],
@@ -107,7 +107,7 @@ class TextDocumentView(SpaceView):
         contents:
             The contents of the view specified as a query expression.
             This is either a single expression, or a list of multiple expressions.
-            See [rerun.blueprint.archetypes.SpaceViewContents][].
+            See [rerun.blueprint.archetypes.ViewContents][].
         name:
             The display name of the view.
         visible:

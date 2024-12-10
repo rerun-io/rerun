@@ -10,11 +10,11 @@ use re_viewer_context::{
 };
 
 use crate::space_view_highlights::highlights_for_space_view;
-use re_viewport_blueprint::SpaceViewBlueprint;
+use re_viewport_blueprint::ViewBlueprint;
 
 fn run_space_view_systems(
     ctx: &ViewerContext<'_>,
-    view: &SpaceViewBlueprint,
+    view: &ViewBlueprint,
     query: &ViewQuery<'_>,
     view_state: &dyn ViewState,
     context_systems: &mut ViewContextCollection,
@@ -55,7 +55,7 @@ fn run_space_view_systems(
 
 pub fn execute_systems_for_space_view<'a>(
     ctx: &'a ViewerContext<'_>,
-    view: &'a SpaceViewBlueprint,
+    view: &'a ViewBlueprint,
     latest_at: TimeInt,
     view_state: &dyn ViewState,
 ) -> (ViewQuery<'a>, SystemExecutionOutput) {
@@ -118,7 +118,7 @@ pub fn execute_systems_for_space_view<'a>(
 pub fn execute_systems_for_all_views<'a>(
     ctx: &'a ViewerContext<'a>,
     tree: &egui_tiles::Tree<ViewId>,
-    views: &'a BTreeMap<ViewId, SpaceViewBlueprint>,
+    views: &'a BTreeMap<ViewId, ViewBlueprint>,
     view_states: &mut ViewStates,
 ) -> HashMap<ViewId, (ViewQuery<'a>, SystemExecutionOutput)> {
     let Some(time_int) = ctx.rec_cfg.time_ctrl.read().time_int() else {

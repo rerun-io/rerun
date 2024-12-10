@@ -6,7 +6,7 @@ use re_entity_db::{EntityPath, EntityTree, InstancePath};
 use re_log_types::{EntityPathFilter, EntityPathRule};
 use re_ui::UiExt as _;
 use re_viewer_context::{DataQueryResult, ViewClassExt as _, ViewId, ViewerContext};
-use re_viewport_blueprint::{SpaceViewBlueprint, ViewportBlueprint};
+use re_viewport_blueprint::{ViewBlueprint, ViewportBlueprint};
 
 /// Window for adding/removing entities from a view.
 ///
@@ -52,7 +52,7 @@ impl SpaceViewEntityPicker {
     }
 }
 
-fn add_entities_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, space_view: &SpaceViewBlueprint) {
+fn add_entities_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, space_view: &ViewBlueprint) {
     re_tracing::profile_function!();
 
     let tree = &ctx.recording().tree();
@@ -79,7 +79,7 @@ fn add_entities_tree_ui(
     ui: &mut egui::Ui,
     name: &str,
     tree: &EntityTree,
-    space_view: &SpaceViewBlueprint,
+    space_view: &ViewBlueprint,
     query_result: &DataQueryResult,
     entity_path_filter: &EntityPathFilter,
     entities_add_info: &IntMap<EntityPath, EntityAddInfo>,
@@ -144,7 +144,7 @@ fn add_entities_line_ui(
     ui: &mut egui::Ui,
     name: &str,
     entity_tree: &EntityTree,
-    space_view: &SpaceViewBlueprint,
+    space_view: &ViewBlueprint,
     query_result: &DataQueryResult,
     entity_path_filter: &EntityPathFilter,
     entities_add_info: &IntMap<EntityPath, EntityAddInfo>,
@@ -311,7 +311,7 @@ struct EntityAddInfo {
 fn create_entity_add_info(
     ctx: &ViewerContext<'_>,
     tree: &EntityTree,
-    space_view: &SpaceViewBlueprint,
+    space_view: &ViewBlueprint,
     query_result: &DataQueryResult,
 ) -> IntMap<EntityPath, EntityAddInfo> {
     let mut meta_data: IntMap<EntityPath, EntityAddInfo> = IntMap::default();

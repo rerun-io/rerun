@@ -19,13 +19,13 @@ use re_types::{
 };
 use re_types_blueprint::blueprint::{
     archetypes as blueprint_archetypes,
-    components::{AutoLayout, AutoSpaceViews, RootContainer, SpaceViewMaximized},
+    components::{AutoLayout, AutoViews, RootContainer, ViewMaximized},
 };
 use re_viewer_context::{
     blueprint_id_to_tile_id, ContainerId, Contents, Item, ViewId, ViewerContext,
 };
 
-use crate::{container::ContainerBlueprint, SpaceViewBlueprint, ViewportCommand, VIEWPORT_PATH};
+use crate::{container::ContainerBlueprint, ViewBlueprint, ViewportCommand, VIEWPORT_PATH};
 
 // ----------------------------------------------------------------------------
 
@@ -41,7 +41,7 @@ pub struct ViewportBlueprint {
     /// Where the space views are stored.
     ///
     /// Not a hashmap in order to preserve the order of the space views.
-    pub space_views: BTreeMap<ViewId, SpaceViewBlueprint>,
+    pub space_views: BTreeMap<ViewId, ViewBlueprint>,
 
     /// All the containers found in the viewport.
     pub containers: BTreeMap<ContainerId, ContainerBlueprint>,
@@ -70,7 +70,7 @@ pub struct ViewportBlueprint {
     /// Whether space views should be created automatically for entities that are not already in a space.
     ///
     /// Note: we use an atomic here because writes needs to be effective immediately during the frame.
-    auto_space_views: AtomicBool,
+    auto_views: AtomicBool,
 
     /// Hashes of all recommended space views the viewer has already added and that should not be added again.
     past_viewer_recommendations: IntSet<ViewerRecommendationHash>,
@@ -96,13 +96,13 @@ impl ViewportBlueprint {
             root_container,
             maximized,
             auto_layout,
-            auto_space_views,
+            auto_views,
             past_viewer_recommendations,
         } = blueprint_archetypes::ViewportBlueprint {
             root_container: results.component_instance(0),
             maximized: results.component_instance(0),
             auto_layout: results.component_instance(0),
-            auto_space_views: results.component_instance(0),
+            auto_views: results.component_instance(0),
             past_viewer_recommendations: results.component_batch(),
         };
 
@@ -133,10 +133,10 @@ impl ViewportBlueprint {
             }
         }
 
-        let space_views: BTreeMap<ViewId, SpaceViewBlueprint> = all_space_view_ids
+        let space_views: BTreeMap<ViewId, ViewBlueprint> = all_space_view_ids
             .into_iter()
             .filter_map(|space_view: ViewId| {
-                SpaceViewBlueprint::try_from_db(space_view, blueprint_db, query)
+                ViewBlueprint::try_from_db(space_view, blueprint_db, query)
             })
             .map(|sv| (sv.id, sv))
             .collect();
@@ -148,8 +148,8 @@ impl ViewportBlueprint {
             .map_or(false, |ri| ri.is_app_default_blueprint());
         let auto_layout =
             AtomicBool::new(auto_layout.map_or(is_app_default_blueprint, |auto| *auto.0));
-        let auto_space_views =
-            AtomicBool::new(auto_space_views.map_or(is_app_default_blueprint, |auto| *auto.0));
+        let auto_views =
+            AtomicBool::new(auto_views.map_or(is_app_default_blueprint, |auto| *auto.0));
 
         let root_container = root_container.unwrap_or_else(|| {
             let new_root_id = ContainerId::hashed_from_str("placeholder_root_container");
@@ -178,7 +178,7 @@ impl ViewportBlueprint {
             tree,
             maximized: maximized.map(|id| id.0.into()),
             auto_layout,
-            auto_space_views,
+            auto_views,
             past_viewer_recommendations,
             deferred_commands: Default::default(),
         }
@@ -216,7 +216,7 @@ impl ViewportBlueprint {
             })
     }
 
-    pub fn view(&self, space_view: &ViewId) -> Option<&SpaceViewBlueprint> {
+    pub fn view(&self, space_view: &ViewId) -> Option<&ViewBlueprint> {
         self.space_views.get(space_view)
     }
 
@@ -300,12 +300,12 @@ impl ViewportBlueprint {
         }
 
         self.set_auto_layout(false, ctx);
-        self.set_auto_space_views(false, ctx);
+        self.set_auto_views(false, ctx);
     }
 
     /// Spawns new space views if enabled.
     pub fn spawn_heuristic_space_views(&self, ctx: &ViewerContext<'_>) {
-        if !self.auto_space_views() {
+        if !self.auto_views() {
             return;
         }
 
@@ -385,9 +385,8 @@ impl ViewportBlueprint {
                 .map(|(_, recommendation)| recommendation);
 
             self.add_space_views(
-                final_recommendations.map(|recommendation| {
-                    SpaceViewBlueprint::new(class_id, recommendation.clone())
-                }),
+                final_recommendations
+                    .map(|recommendation| ViewBlueprint::new(class_id, recommendation.clone())),
                 None,
                 None,
             );
@@ -403,7 +402,7 @@ impl ViewportBlueprint {
     /// if needed.
     pub fn add_space_views(
         &self,
-        space_views: impl Iterator<Item = SpaceViewBlueprint>,
+        space_views: impl Iterator<Item = ViewBlueprint>,
         parent_container: Option<ContainerId>,
         position_in_parent: Option<usize>,
     ) {
@@ -768,25 +767,25 @@ impl ViewportBlueprint {
 
     /// Whether space views should be created automatically for entities that are not already in a space.
     #[inline]
-    pub fn auto_space_views(&self) -> bool {
-        self.auto_space_views.load(Ordering::SeqCst)
+    pub fn auto_views(&self) -> bool {
+        self.auto_views.load(Ordering::SeqCst)
     }
 
     /// Whether space views should be created automatically for entities that are not already in a space.
     #[inline]
-    pub fn set_auto_space_views(&self, value: bool, ctx: &ViewerContext<'_>) {
-        let old_value = self.auto_space_views.swap(value, Ordering::SeqCst);
+    pub fn set_auto_views(&self, value: bool, ctx: &ViewerContext<'_>) {
+        let old_value = self.auto_views.swap(value, Ordering::SeqCst);
 
         if old_value != value {
-            let auto_space_views = AutoSpaceViews::from(value);
-            ctx.save_blueprint_component(&VIEWPORT_PATH.into(), &auto_space_views);
+            let auto_views = AutoViews::from(value);
+            ctx.save_blueprint_component(&VIEWPORT_PATH.into(), &auto_views);
         }
     }
 
     #[inline]
     pub fn set_maximized(&self, space_view_id: Option<ViewId>, ctx: &ViewerContext<'_>) {
         if self.maximized != space_view_id {
-            let space_view_maximized = space_view_id.map(|id| SpaceViewMaximized(id.into()));
+            let space_view_maximized = space_view_id.map(|id| ViewMaximized(id.into()));
             ctx.save_blueprint_component(&VIEWPORT_PATH.into(), &space_view_maximized);
         }
     }
@@ -895,7 +894,7 @@ impl ViewportBlueprint {
 }
 
 fn build_tree_from_space_views_and_containers<'a>(
-    space_views: impl Iterator<Item = &'a SpaceViewBlueprint>,
+    space_views: impl Iterator<Item = &'a ViewBlueprint>,
     containers: impl Iterator<Item = &'a ContainerBlueprint>,
     root_container: ContainerId,
 ) -> egui_tiles::Tree<ViewId> {

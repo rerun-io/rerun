@@ -5,7 +5,7 @@ use egui::{Key, NumExt as _, Ui};
 use re_log_types::EntityPath;
 use re_ui::{list_item, SyntaxHighlighting, UiExt as _};
 use re_viewer_context::ViewerContext;
-use re_viewport_blueprint::{default_created_space_views, SpaceViewBlueprint};
+use re_viewport_blueprint::{default_created_space_views, ViewBlueprint};
 
 /// State of the space origin widget.
 #[derive(Default, Clone)]
@@ -32,7 +32,7 @@ struct EditState {
 pub(crate) fn space_view_space_origin_widget_ui(
     ui: &mut Ui,
     ctx: &ViewerContext<'_>,
-    space_view: &SpaceViewBlueprint,
+    space_view: &ViewBlueprint,
 ) {
     let is_editing_id = ui.make_persistent_id(space_view.id.hash());
     let mut state: SpaceOriginEditState =
@@ -78,7 +78,7 @@ pub(crate) fn space_view_space_origin_widget_ui(
 fn space_view_space_origin_widget_editing_ui(
     ui: &mut Ui,
     ctx: &ViewerContext<'_>,
-    space_view: &SpaceViewBlueprint,
+    space_view: &ViewBlueprint,
     state: &mut EditState,
 ) -> ControlFlow<Option<EntityPath>, ()> {
     let mut control_flow = ControlFlow::Continue(());

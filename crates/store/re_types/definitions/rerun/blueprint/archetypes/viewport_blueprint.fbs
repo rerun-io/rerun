@@ -11,13 +11,13 @@ table ViewportBlueprint (
     // --- Required ---
 
     // --- Optional ---
-    /// The layout of the space-views
+    /// The layout of the views
     root_container: rerun.blueprint.components.RootContainer ("attr.rerun.component_optional", nullable, order: 2500);
 
     /// Show one tab as maximized?
-    maximized: rerun.blueprint.components.SpaceViewMaximized ("attr.rerun.component_optional", nullable, order: 3000);
+    maximized: rerun.blueprint.components.ViewMaximized ("attr.rerun.component_optional", nullable, order: 3000);
 
-    // TODO(andreas): This is to be removed in the future, all new space views without an explicit container
+    // TODO(andreas): This is to be removed in the future, all new views without an explicit container
     // should always insert themselves using a heuristic.
     /// Whether the viewport layout is determined automatically.
     ///
@@ -25,19 +25,19 @@ table ViewportBlueprint (
     /// This defaults to `false` and is automatically set to `false` when there is user determined layout.
     auto_layout: rerun.blueprint.components.AutoLayout ("attr.rerun.component_optional", nullable, order: 4000);
 
-    // TODO(jleibs): This should come with an optional container id that specifies where to insert new space views.
-    /// Whether or not space views should be created automatically.
+    // TODO(jleibs): This should come with an optional container id that specifies where to insert new views.
+    /// Whether or not views should be created automatically.
     ///
-    /// If `true`, the viewer will only add space views that it hasn't considered previously (as identified by `past_viewer_recommendations`)
-    /// and which aren't deemed redundant to existing space views.
-    /// This defaults to `false` and is automatically set to `false` when the user adds space views manually in the viewer.
-    auto_space_views: rerun.blueprint.components.AutoSpaceViews ("attr.rerun.component_optional", nullable, order: 5000);
+    /// If `true`, the viewer will only add views that it hasn't considered previously (as identified by `past_viewer_recommendations`)
+    /// and which aren't deemed redundant to existing views.
+    /// This defaults to `false` and is automatically set to `false` when the user adds views manually in the viewer.
+    auto_views: rerun.blueprint.components.AutoViews ("attr.rerun.component_optional", nullable, order: 5000);
 
-    /// Hashes of all recommended space views the viewer has already added and that should not be added again.
+    /// Hashes of all recommended views the viewer has already added and that should not be added again.
     ///
     /// This is an internal field and should not be set usually.
-    /// If you want the viewer from stopping to add space views, you should set `auto_space_views` to `false`.
+    /// If you want the viewer from stopping to add views, you should set `auto_views` to `false`.
     ///
-    /// The viewer uses this to determine whether it should keep adding space views.
+    /// The viewer uses this to determine whether it should keep adding views.
     past_viewer_recommendations: [rerun.blueprint.components.ViewerRecommendationHash] ("attr.rerun.component_optional", nullable, order: 6000);
 }

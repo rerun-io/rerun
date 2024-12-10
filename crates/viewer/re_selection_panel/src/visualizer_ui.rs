@@ -12,11 +12,11 @@ use re_viewer_context::{
     DataResult, QueryContext, ViewClassExt as _, UiLayout, ViewContext, ViewSystemIdentifier,
     VisualizerSystem,
 };
-use re_viewport_blueprint::SpaceViewBlueprint;
+use re_viewport_blueprint::ViewBlueprint;
 
 pub fn visualizer_ui(
     ctx: &ViewContext<'_>,
-    space_view: &SpaceViewBlueprint,
+    space_view: &ViewBlueprint,
     entity_path: &EntityPath,
     ui: &mut egui::Ui,
 ) {
@@ -545,7 +545,7 @@ fn menu_add_new_visualizer(
 fn available_inactive_visualizers(
     ctx: &ViewContext<'_>,
     entity_db: &EntityDb,
-    space_view: &SpaceViewBlueprint,
+    space_view: &ViewBlueprint,
     data_result: &DataResult,
     active_visualizers: &[ViewSystemIdentifier],
 ) -> Vec<ViewSystemIdentifier> {
