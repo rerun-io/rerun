@@ -258,3 +258,83 @@ impl From<crate::QueryExpression> for re_protos::common::v0::Query {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use re_protos::common::v0::{
+        column_selector::SelectorType, ColumnSelection, ColumnSelector, Component,
+        ComponentColumnSelector, ComponentsSet, EntityPath, IndexColumnSelector, IndexRange,
+        IndexValues, Query, SparseFillStrategy, TimeInt, TimeRange, Timeline, ViewContents,
+        ViewContentsPart,
+    };
+
+    #[test]
+    pub fn test_query_conversion() {
+        let grpc_query_before = Query {
+            view_contents: Some(ViewContents {
+                contents: vec![ViewContentsPart {
+                    path: Some(EntityPath {
+                        path: "/somepath".to_owned(),
+                    }),
+                    components: Some(ComponentsSet {
+                        components: vec![Component {
+                            name: "component".to_owned(),
+                        }],
+                    }),
+                }],
+            }),
+            include_indicator_columns: false,
+            include_semantically_empty_columns: true,
+            include_tombstone_columns: true,
+            filtered_index: Some(IndexColumnSelector {
+                timeline: Some(Timeline {
+                    name: "log_time".to_owned(),
+                }),
+            }),
+            filtered_index_range: Some(IndexRange {
+                time_range: Some(TimeRange { start: 0, end: 100 }),
+            }),
+            filtered_index_values: Some(IndexValues {
+                time_points: vec![
+                    TimeInt { time: 0 },
+                    TimeInt { time: 1 },
+                    TimeInt { time: 2 },
+                ],
+            }),
+            using_index_values: Some(IndexValues {
+                time_points: vec![
+                    TimeInt { time: 3 },
+                    TimeInt { time: 4 },
+                    TimeInt { time: 5 },
+                ],
+            }),
+            filtered_is_not_null: Some(ComponentColumnSelector {
+                entity_path: Some(EntityPath {
+                    path: "/somepath/c".to_owned(),
+                }),
+                component: Some(Component {
+                    name: "component".to_owned(),
+                }),
+            }),
+            column_selection: Some(ColumnSelection {
+                columns: vec![ColumnSelector {
+                    selector_type: Some(SelectorType::ComponentColumn(ComponentColumnSelector {
+                        entity_path: Some(EntityPath {
+                            path: "/somepath/c".to_owned(),
+                        }),
+                        component: Some(Component {
+                            name: "component".to_owned(),
+                        }),
+                    })),
+                }],
+            }),
+            sparse_fill_strategy: SparseFillStrategy::None.into(),
+        };
+
+        let query_expression_native: crate::QueryExpression =
+            grpc_query_before.clone().try_into().unwrap();
+        let grpc_query_after = query_expression_native.into();
+
+        assert_eq!(grpc_query_before, grpc_query_after);
+    }
+}

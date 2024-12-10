@@ -28,15 +28,16 @@ mod zoom_level;
 
 use datatype_uis::{
     display_name_ui, display_text_ui, edit_bool, edit_f32_min_to_max_float, edit_f32_zero_to_max,
-    edit_f32_zero_to_one, edit_multiline_string, edit_or_view_vec2d, edit_or_view_vec3d,
-    edit_singleline_string, edit_ui_points, edit_view_enum, edit_view_enum_with_variant_available,
-    edit_view_range1d, view_uuid, view_view_id,
+    edit_f32_zero_to_one, edit_f64_min_to_max_float, edit_f64_zero_to_max, edit_multiline_string,
+    edit_or_view_vec2d, edit_or_view_vec3d, edit_singleline_string, edit_u64_range, edit_ui_points,
+    edit_view_enum, edit_view_enum_with_variant_available, edit_view_range1d, view_uuid,
+    view_view_id,
 };
 
 use re_types::{
     blueprint::components::{
-        BackgroundKind, Corner2D, GridSpacing, LockRangeDuringZoom, MapProvider, NearClipPlane,
-        ViewFit, Visible,
+        BackgroundKind, Corner2D, Enabled, ForceDistance, ForceIterations, ForceStrength,
+        GridSpacing, LockRangeDuringZoom, MapProvider, NearClipPlane, ViewFit, Visible,
     },
     components::{
         AggregationPolicy, AlbedoFactor, AxisLength, Color, DepthMeter, DrawOrder, FillMode,
@@ -72,6 +73,7 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     registry.add_singleline_edit_or_view::<AxisLength>(edit_f32_zero_to_max);
     registry.add_singleline_edit_or_view::<DepthMeter>(edit_f32_zero_to_max);
     registry.add_singleline_edit_or_view::<FillRatio>(edit_f32_zero_to_max);
+    registry.add_singleline_edit_or_view::<ForceDistance>(edit_f64_zero_to_max);
     registry.add_singleline_edit_or_view::<GammaCorrection>(edit_f32_zero_to_max);
     registry.add_singleline_edit_or_view::<GridSpacing>(edit_f32_zero_to_max);
     registry.add_singleline_edit_or_view::<ImagePlaneDistance>(edit_f32_zero_to_max);
@@ -81,12 +83,18 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
 
     // float min-max components:
     registry.add_singleline_edit_or_view::<DrawOrder>(edit_f32_min_to_max_float);
+    registry.add_singleline_edit_or_view::<ForceStrength>(edit_f64_min_to_max_float);
 
     // float 0-1 components:
     registry.add_singleline_edit_or_view::<Opacity>(edit_f32_zero_to_one);
 
+    // integer range components:
+    registry.add_singleline_edit_or_view::<ForceIterations>(|ctx, ui, value| {
+        edit_u64_range(ctx, ui, value, 1..=5)
+    });
+
     // Bool components:
-    registry.add_singleline_edit_or_view::<Visible>(edit_bool);
+    registry.add_singleline_edit_or_view::<Enabled>(edit_bool);
     registry.add_singleline_edit_or_view::<LockRangeDuringZoom>(edit_bool);
     registry.add_singleline_edit_or_view::<ShowLabels>(edit_bool);
     registry.add_singleline_edit_or_view::<Visible>(edit_bool);
@@ -153,11 +161,6 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
 
     registry.add_singleline_edit_or_view(radius::edit_radius_ui);
     registry.add_singleline_edit_or_view(marker_shape::edit_marker_shape_ui);
-
-    registry.add_multiline_edit_or_view(visual_bounds2d::multiline_edit_visual_bounds2d);
-    registry.add_singleline_edit_or_view(visual_bounds2d::singleline_edit_visual_bounds2d);
-    registry.add_multiline_edit_or_view(visual_bounds2d::multiline_edit_visual_bounds2d);
-    registry.add_singleline_edit_or_view(visual_bounds2d::singleline_edit_visual_bounds2d);
 
     registry.add_singleline_edit_or_view(pinhole::singleline_view_pinhole);
     registry.add_multiline_edit_or_view(pinhole::multiline_view_pinhole);

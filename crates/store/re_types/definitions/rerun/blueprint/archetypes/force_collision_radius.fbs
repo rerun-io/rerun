@@ -1,0 +1,17 @@
+namespace rerun.blueprint.archetypes;
+
+/// Resolves collisions between the bounding spheres, according to the radius of the nodes.
+struct ForceCollisionRadius (
+    "attr.rerun.scope": "blueprint"
+) {
+    /// Whether the force is enabled.
+    enabled: rerun.blueprint.components.Enabled ("attr.rerun.component_optional", nullable, order: 100);
+
+    /// The strength of the force.
+    strength: rerun.blueprint.components.ForceStrength ("attr.rerun.component_optional", nullable, order: 200);
+
+    /// Specifies how often this force should be applied per iteration.
+    ///
+    /// Increasing this parameter can lead to better results at the cost of longer computation time.
+    iterations: rerun.blueprint.components.ForceIterations ("attr.rerun.component_optional", nullable, order: 300);
+}

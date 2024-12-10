@@ -87,11 +87,11 @@ impl TransportMessageV0 {
 // to become stateful and keep track if schema was sent / received.
 /// Encode a transport chunk into a byte stream.
 pub fn encode(
-    version: re_protos::remote_store::v0::EncoderVersion,
+    version: re_protos::common::v0::EncoderVersion,
     chunk: TransportChunk,
 ) -> Result<Vec<u8>, CodecError> {
     match version {
-        re_protos::remote_store::v0::EncoderVersion::V0 => {
+        re_protos::common::v0::EncoderVersion::V0 => {
             TransportMessageV0::RecordBatch(chunk).to_bytes()
         }
     }
@@ -99,21 +99,19 @@ pub fn encode(
 
 /// Encode a `NoData` message into a byte stream. This can be used by the remote store
 /// (i.e. data producer) to signal back to the client that there's no data available.
-pub fn no_data(
-    version: re_protos::remote_store::v0::EncoderVersion,
-) -> Result<Vec<u8>, CodecError> {
+pub fn no_data(version: re_protos::common::v0::EncoderVersion) -> Result<Vec<u8>, CodecError> {
     match version {
-        re_protos::remote_store::v0::EncoderVersion::V0 => TransportMessageV0::NoData.to_bytes(),
+        re_protos::common::v0::EncoderVersion::V0 => TransportMessageV0::NoData.to_bytes(),
     }
 }
 
 /// Decode transport data from a byte stream - if there's a record batch present, return it, otherwise return `None`.
 pub fn decode(
-    version: re_protos::remote_store::v0::EncoderVersion,
+    version: re_protos::common::v0::EncoderVersion,
     data: &[u8],
 ) -> Result<Option<TransportChunk>, CodecError> {
     match version {
-        re_protos::remote_store::v0::EncoderVersion::V0 => {
+        re_protos::common::v0::EncoderVersion::V0 => {
             let msg = TransportMessageV0::from_bytes(data)?;
             match msg {
                 TransportMessageV0::RecordBatch(chunk) => Ok(Some(chunk)),
@@ -166,13 +164,13 @@ pub fn read_arrow_from_bytes<R: std::io::Read>(
 
 #[cfg(test)]
 mod tests {
-    use re_dataframe::external::re_chunk::{Chunk, RowId};
-    use re_log_types::{example_components::MyPoint, Timeline};
-
     use crate::{
-        codec::{decode, encode, CodecError, TransportMessageV0},
-        v0::EncoderVersion,
+        codec::wire::{decode, encode, TransportMessageV0},
+        codec::CodecError,
     };
+    use re_chunk::{Chunk, RowId};
+    use re_log_types::{example_components::MyPoint, Timeline};
+    use re_protos::common::v0::EncoderVersion;
 
     fn get_test_chunk() -> Chunk {
         let row_id1 = RowId::new();

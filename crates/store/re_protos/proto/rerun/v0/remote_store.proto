@@ -7,7 +7,7 @@ import "rerun/v0/common.proto";
 service StorageNode {
     // data API calls
     rpc Query(QueryRequest) returns (stream DataframePart) {}
-    rpc FetchRecording(FetchRecordingRequest) returns (stream RerunChunk) {}
+    rpc FetchRecording(FetchRecordingRequest) returns (stream rerun.common.v0.RerunChunk) {}
 
     // metadata API calls
     rpc QueryCatalog(QueryCatalogRequest) returns (stream DataframePart) {}
@@ -21,7 +21,7 @@ service StorageNode {
 // DataframePart is arrow IPC encoded RecordBatch
 message DataframePart {
     // encoder version used to encode the data
-    EncoderVersion encoder_version = 1;
+    rerun.common.v0.EncoderVersion encoder_version = 1;
 
     // Data payload is Arrow IPC encoded RecordBatch
     bytes payload = 1000;
@@ -44,7 +44,7 @@ message RegisterRecordingRequest {
 // ---------------- UpdateCatalog  -----------------
 
 message UpdateCatalogRequest {
-    RecordingId recording_id = 1;
+    rerun.common.v0.RecordingId recording_id = 1;
     DataframePart metadata = 2;
 }
 
@@ -80,7 +80,7 @@ message CatalogFilter {
 }
 
 message QueryCatalogResponse {
-    EncoderVersion encoder_version = 1;
+    rerun.common.v0.EncoderVersion encoder_version = 1;
     // raw bytes are TransportChunks (i.e. RecordBatches) encoded with the relevant codec
     bytes payload = 2;
 }
@@ -101,7 +101,7 @@ message FetchRecordingResponse {
     // TODO(zehiko) we need to expand this to become something like 'encoder options'
     // as we will need to specify additional options like compression, including schema
     // in payload, etc.
-    EncoderVersion encoder_version = 1;
+    rerun.common.v0.EncoderVersion encoder_version = 1;
     // payload is raw bytes that the relevant codec can interpret
     bytes payload = 2;
 }

@@ -14,11 +14,9 @@ use re_log_encoding::codec::{wire::decode, CodecError};
 use re_log_types::{
     ApplicationId, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource, Time,
 };
-use re_protos::{
-    common::v0::RecordingId,
-    remote_store::v0::{
-        storage_node_client::StorageNodeClient, FetchRecordingRequest, QueryCatalogRequest,
-    },
+use re_protos::common::v0::RecordingId;
+use re_protos::remote_store::v0::{
+    storage_node_client::StorageNodeClient, FetchRecordingRequest, QueryCatalogRequest,
 };
 
 // ----------------------------------------------------------------------------
