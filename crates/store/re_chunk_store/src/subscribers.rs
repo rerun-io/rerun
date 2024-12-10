@@ -60,7 +60,7 @@ pub trait ChunkStoreSubscriber: std::any::Any + Send + Sync {
     fn on_events(&mut self, events: &[ChunkStoreEvent]);
 }
 
-/// A [`ChunkStoreSubscriber`] that is intantiated for each unique [`StoreId`].
+/// A [`ChunkStoreSubscriber`] that is instantiated for each unique [`StoreId`].
 pub trait PerStoreChunkSubscriber: Send + Sync + Default {
     /// Arbitrary name for the subscriber.
     ///
@@ -69,7 +69,7 @@ pub trait PerStoreChunkSubscriber: Send + Sync + Default {
 
     /// Get notified of changes happening in a [`ChunkStore`], see [`ChunkStoreSubscriber::on_events`].
     ///
-    /// Unlike [`ChunkStoreSubscriber::on_events`], all items are guarnateed to have the same [`StoreId`]
+    /// Unlike [`ChunkStoreSubscriber::on_events`], all items are guaranteed to have the same [`StoreId`]
     /// which does not change per invocation.
     fn on_events<'a>(&mut self, events: impl Iterator<Item = &'a ChunkStoreEvent>);
 }
@@ -162,8 +162,6 @@ impl ChunkStore {
 
     /// Registers a [`PerStoreChunkSubscriber`] type so it gets automatically notified when data gets added and/or
     /// removed to/from a [`ChunkStore`].
-    ///
-    /// Unlike [`register_subscriber`], this will create a new subscriber for each unique [`StoreId`].
     pub fn register_per_store_subscriber<S: PerStoreChunkSubscriber + Default + 'static>(
     ) -> ChunkStoreSubscriberHandle {
         let mut subscribers = SUBSCRIBERS.write();
