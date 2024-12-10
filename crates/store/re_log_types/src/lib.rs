@@ -32,6 +32,8 @@ mod time;
 mod time_real;
 mod vec_deque_ext;
 
+mod protobuf_conversions;
+
 use std::sync::Arc;
 
 use re_build_info::CrateVersion;
