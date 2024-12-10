@@ -24,6 +24,9 @@ struct SnippetsRef {
     snippets: OptOut,
     archetypes: OptOut,
     components: OptOut,
+
+    // <feature_name, vec<snippet_name_qualified>>
+    features: BTreeMap<String, Vec<String>>,
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -47,6 +50,7 @@ struct Snippet<'o> {
     description: Option<String>,
     contents: String,
 
+    features: BTreeSet<String>,
     archetypes: BTreeSet<&'o Object>,
     components: BTreeSet<&'o Object>,
     archetypes_blueprint: BTreeSet<&'o Object>,
@@ -57,6 +61,7 @@ struct Snippet<'o> {
 /// Maps objects (archetypes, components, etc) back to snippets.
 #[derive(Default, Debug)]
 struct Snippets<'o> {
+    per_feature: BTreeMap<String, Vec<Snippet<'o>>>,
     per_archetype: BTreeMap<&'o Object, Vec<Snippet<'o>>>,
     per_component: BTreeMap<&'o Object, Vec<Snippet<'o>>>,
     per_archetype_blueprint: BTreeMap<&'o Object, Vec<Snippet<'o>>>,
@@ -67,12 +72,20 @@ struct Snippets<'o> {
 impl<'o> Snippets<'o> {
     fn merge_extend(&mut self, rhs: Self) {
         let Self {
+            per_feature,
             per_archetype,
             per_component,
             per_archetype_blueprint,
             per_component_blueprint,
             per_view,
         } = self;
+
+        for (feature, snippets) in rhs.per_feature {
+            per_feature
+                .entry(feature.clone())
+                .or_default()
+                .extend(snippets);
+        }
 
         let merge_extend = |a: &mut BTreeMap<&'o Object, Vec<Snippet<'o>>>, b| {
             for (obj, snippets) in b {
@@ -145,6 +158,7 @@ impl SnippetsRefCodeGenerator {
         let snippets = collect_snippets_recursively(
             &known_objects,
             &snippets_dir_archetypes,
+            &config,
             &snippets_dir_root,
         )?;
 
@@ -255,6 +269,58 @@ impl SnippetsRefCodeGenerator {
             Ok::<_, anyhow::Error>(table)
         };
 
+        let per_feature_table = snippets
+            .per_feature
+            .iter()
+            .flat_map(|(feature, snippets)| {
+                let mut snippets = snippets.clone();
+                // NOTE: Gotta sort twice to make sure it stays stable after the second one.
+                snippets.sort_by(|a, b| a.name_qualified.cmp(&b.name_qualified));
+                snippets.sort_by(|a, b| {
+                    if a.name.contains(feature) {
+                        // Snippets that contain the feature in question in their name should
+                        // bubble up to the top.
+                        Ordering::Less
+                    } else {
+                        a.name.cmp(&b.name)
+                    }
+                });
+                snippets.into_iter().map(move |snippet| (feature, snippet))
+            })
+            .map(|(feature, snippet)| {
+                let snippet_name = &snippet.name;
+                let snippet_name_qualified = &snippet.name_qualified;
+                let snippet_descr = snippet.description.clone().unwrap_or_default();
+
+                let link_py = if snippet.python {
+                    let link = format!("{SNIPPETS_URL}/{snippet_name_qualified}.py");
+                    let link = make_speculative_if_needed(&snippet.name_qualified, &link)?;
+                    format!("[🐍]({link})")
+                } else {
+                    String::new()
+                };
+                let link_rs = if snippet.rust {
+                    let link = format!("{SNIPPETS_URL}/{snippet_name_qualified}.rs");
+                    let link = make_speculative_if_needed(&snippet.name_qualified, &link)?;
+                    format!("[🦀]({link})")
+                } else {
+                    String::new()
+                };
+                let link_cpp = if snippet.cpp {
+                    let link = format!("{SNIPPETS_URL}/{snippet_name_qualified}.cpp");
+                    let link = make_speculative_if_needed(&snippet.name_qualified, &link)?;
+                    format!("[🌊]({link})")
+                } else {
+                    String::new()
+                };
+
+                let row = format!("| **{feature}** | `{snippet_name}` | {snippet_descr} | {link_py} | {link_rs} | {link_cpp} |");
+
+                Ok::<_, anyhow::Error>(row)
+            })
+                .collect::<Result<Vec<_>, _>>()?
+            .join("\n");
+
         let per_archetype_table = snippets_table(&snippets.per_archetype)?;
         let per_component_table = snippets_table(&snippets.per_component)?;
         let per_archetype_blueprint_table = snippets_table(&snippets.per_archetype_blueprint)?;
@@ -278,12 +344,21 @@ Use it to quickly find copy-pastable snippets of code for any Rerun feature you'
 ---
 
 *Table of contents:*
+* [Features](#features)
 * [Types](#types)
     * [Archetypes](#archetypes)
     * [Components](#components)
     * [Views](#views-blueprint)
     * [Archetypes (blueprint)](#archetypes-blueprint)
     * [Components (blueprint)](#components-blueprint)
+
+
+## Features
+
+| Feature | Example | Description | Python | Rust | C++ |
+| ------- | ------- | ----------- | ------ | ---- | --- |
+{per_feature_table}
+
 
 
 ## Types
@@ -345,6 +420,7 @@ _All snippets, organized by the blueprint-related [`Component`](https://rerun.io
 fn collect_snippets_recursively<'o>(
     known_objects: &KnownObjects<'o>,
     dir: &Utf8Path,
+    config: &Config,
     snippet_root_path: &Utf8Path,
 ) -> anyhow::Result<Snippets<'o>> {
     let mut snippets = Snippets::default();
@@ -363,6 +439,7 @@ fn collect_snippets_recursively<'o>(
             snippets.merge_extend(collect_snippets_recursively(
                 known_objects,
                 Utf8Path::from_path(&path).unwrap(),
+                config,
                 snippet_root_path,
             )?);
             continue;
@@ -380,6 +457,7 @@ fn collect_snippets_recursively<'o>(
         });
 
         // All archetypes, components, etc that this snippet refers to.
+        let mut features = BTreeSet::default();
         let mut archetypes = BTreeSet::default();
         let mut components = BTreeSet::default();
         let mut archetypes_blueprint = BTreeSet::default();
@@ -387,6 +465,11 @@ fn collect_snippets_recursively<'o>(
         let mut views = BTreeSet::default();
 
         // Fill the sets by grepping into the snippet's contents.
+        for (feature, snippets) in &config.snippets_ref.features {
+            if snippets.contains(&name_qualified) {
+                features.insert(feature.clone());
+            }
+        }
         for (objs, set) in [
             (&known_objects.archetypes, &mut archetypes),
             (&known_objects.components, &mut components),
@@ -424,6 +507,7 @@ fn collect_snippets_recursively<'o>(
             rust,
             cpp,
 
+            features,
             archetypes,
             components,
             archetypes_blueprint,
@@ -432,6 +516,13 @@ fn collect_snippets_recursively<'o>(
         };
 
         // Fill the reverse indices.
+        for feature in &snippet.features {
+            snippets
+                .per_feature
+                .entry(feature.clone())
+                .or_default()
+                .push(snippet.clone());
+        }
         for (objs, index) in [
             (&snippet.archetypes, &mut snippets.per_archetype),
             (&snippet.components, &mut snippets.per_component),

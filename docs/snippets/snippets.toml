@@ -16,6 +16,19 @@
   "tutorials/data_out",
 ]
 
+# These arbitrary feature names will be indexed exactly as written down.
+# Add anything you can think about!
+[snippets_ref.features]
+"Dataframes" = [
+  "reference/dataframe_query",
+  "reference/dataframe_view_query",
+]
+"`AnyValue`" = [
+  "tutorials/any_values",
+  "tutorials/extra_values",
+  "howto/any_values_send_columns",
+]
+
 # These entries won't run at all.
 #
 # You should only ever use this if the test isn't implemented and cannot yet be implemented
