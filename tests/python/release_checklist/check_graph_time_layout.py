@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 # TODO(grtlr): Promote to example
-
 import os
 import random
 from argparse import Namespace
