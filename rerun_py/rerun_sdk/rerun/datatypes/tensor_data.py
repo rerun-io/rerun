@@ -164,6 +164,4 @@ class TensorDataBatch(BaseBatch[TensorDataArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: TensorDataArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError(
-            "Arrow serialization of TensorData not implemented: We lack codegen for arrow-serialization of general structs"
-        )  # You need to implement native_to_pa_array_override in tensor_data_ext.py
+        return TensorDataExt.native_to_pa_array_override(data, data_type)
