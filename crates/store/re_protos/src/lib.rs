@@ -41,10 +41,6 @@ pub mod remote_store {
     }
 }
 
-// // ==== below are all necessary transforms from internal rerun types to protobuf types =====
-
-// use std::{collections::BTreeSet, sync::Arc};
-
 #[derive(Debug, thiserror::Error)]
 pub enum TypeConversionError {
     #[error("missing required field: {type_name}.{field_name}")]
