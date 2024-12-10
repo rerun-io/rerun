@@ -155,8 +155,6 @@ jobs:
             | ------ | ------- | ---- | -------- |
             | ✅ | ${{ steps.get-sha.outputs.sha }} | https://rerun.io/viewer/pr/${{ github.event.pull_request.number }} | [+nightly](https://rerun.io/viewer/pr/${{ github.event.pull_request.number }}?manifest_url=https://app.rerun.io/version/nightly/examples_manifest.json) [+main](https://rerun.io/viewer/pr/${{ github.event.pull_request.number }}?manifest_url=https://app.rerun.io/version/main/examples_manifest.json) |
 
-            If you're updating examples, you might want to look at the following manifests: [`main`](https://rerun.io/viewer/pr/${{ github.event.pull_request.number }}?manifest_url=https://app.rerun.io/version/main/examples_manifest.json), [`nightly`](https://rerun.io/viewer/pr/${{ github.event.pull_request.number }}?manifest_url=https://app.rerun.io/version/nightly/examples_manifest.json)
-
             <sup>Note: This comment is updated whenever you push a commit.</sup>
 
       - name: Status comment
