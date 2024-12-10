@@ -109,6 +109,14 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <Enabled as Component>::name(),
+            ComponentReflection {
+                docstring_md: "Whether a procedure is enabled.",
+                custom_placeholder: Some(Enabled::default().to_arrow2()?),
+                datatype: Enabled::arrow2_datatype(),
+            },
+        ),
+        (
             <FilterByRange as Component>::name(),
             ComponentReflection {
                 docstring_md: "Configuration for a filter-by-range feature of the dataframe view.",
@@ -122,6 +130,30 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
                 docstring_md: "Configuration for the filter is not null feature of the dataframe view.",
                 custom_placeholder: Some(FilterIsNotNull::default().to_arrow2()?),
                 datatype: FilterIsNotNull::arrow2_datatype(),
+            },
+        ),
+        (
+            <ForceDistance as Component>::name(),
+            ComponentReflection {
+                docstring_md: "The target distance between two nodes.\n\nThis is helpful to scale the layout, for example if long labels are involved.",
+                custom_placeholder: Some(ForceDistance::default().to_arrow2()?),
+                datatype: ForceDistance::arrow2_datatype(),
+            },
+        ),
+        (
+            <ForceIterations as Component>::name(),
+            ComponentReflection {
+                docstring_md: "Specifies how often this force should be applied per iteration.\n\nIncreasing this parameter can lead to better results at the cost of longer computation time.",
+                custom_placeholder: Some(ForceIterations::default().to_arrow2()?),
+                datatype: ForceIterations::arrow2_datatype(),
+            },
+        ),
+        (
+            <ForceStrength as Component>::name(),
+            ComponentReflection {
+                docstring_md: "The strength of a given force.\n\nAllows to assign different weights to the individual forces, prioritizing one over the other.",
+                custom_placeholder: Some(ForceStrength::default().to_arrow2()?),
+                datatype: ForceStrength::arrow2_datatype(),
             },
         ),
         (
@@ -1950,6 +1982,99 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "rerun.blueprint.components.SelectedColumns".into(), display_name :
                     "Select", docstring_md :
                     "Selected columns. If unset, all columns are selected.", is_required
+                    : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.blueprint.archetypes.ForceCenter"),
+            ArchetypeReflection {
+                display_name: "Force center",
+                view_types: &[],
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.Enabled".into(), display_name :
+                    "Enabled", docstring_md : "Whether the force is enabled.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.ForceStrength".into(), display_name :
+                    "Strength", docstring_md : "The strength of the force.", is_required
+                    : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.blueprint.archetypes.ForceCollisionRadius"),
+            ArchetypeReflection {
+                display_name: "Force collision radius",
+                view_types: &[],
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.Enabled".into(), display_name :
+                    "Enabled", docstring_md : "Whether the force is enabled.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.ForceStrength".into(), display_name :
+                    "Strength", docstring_md : "The strength of the force.", is_required
+                    : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.ForceIterations".into(), display_name :
+                    "Iterations", docstring_md :
+                    "Specifies how often this force should be applied per iteration.\n\nIncreasing this parameter can lead to better results at the cost of longer computation time.",
+                    is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.blueprint.archetypes.ForceLink"),
+            ArchetypeReflection {
+                display_name: "Force link",
+                view_types: &[],
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.Enabled".into(), display_name :
+                    "Enabled", docstring_md : "Whether the force is enabled.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.ForceDistance".into(), display_name :
+                    "Distance", docstring_md : "The target distance between two nodes.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.ForceIterations".into(), display_name :
+                    "Iterations", docstring_md :
+                    "Specifies how often this force should be applied per iteration.\n\nIncreasing this parameter can lead to better results at the cost of longer computation time.",
+                    is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.blueprint.archetypes.ForceManyBody"),
+            ArchetypeReflection {
+                display_name: "Force many body",
+                view_types: &[],
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.Enabled".into(), display_name :
+                    "Enabled", docstring_md : "Whether the force is enabled.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.ForceStrength".into(), display_name :
+                    "Strength", docstring_md :
+                    "The strength of the force.\n\nIf `strength` is smaller than 0, it pushes nodes apart, if it is larger than 0 it pulls them together.",
+                    is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.blueprint.archetypes.ForcePosition"),
+            ArchetypeReflection {
+                display_name: "Force position",
+                view_types: &[],
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.Enabled".into(), display_name :
+                    "Enabled", docstring_md : "Whether the force is enabled.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.ForceStrength".into(), display_name :
+                    "Strength", docstring_md : "The strength of the force.", is_required
+                    : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Position2D".into(), display_name : "Position",
+                    docstring_md :
+                    "The position where the nodes should be pulled towards.", is_required
                     : false, },
                 ],
             },

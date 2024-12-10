@@ -89,9 +89,11 @@ impl DrawableLabel {
 fn draw_circle_label(
     ui: &mut Ui,
     label: &CircleLabel,
-    _highlight: InteractionHighlight,
+    highlight: InteractionHighlight,
 ) -> Response {
     let &CircleLabel { radius, color } = label;
+    let visuals = &ui.style().visuals.clone();
+
     let (resp, painter) = ui.allocate_painter(Vec2::splat(radius * 2.0), Sense::click());
     painter.circle(
         resp.rect.center(),
@@ -99,6 +101,16 @@ fn draw_circle_label(
         color.unwrap_or_else(|| ui.style().visuals.text_color()),
         Stroke::NONE,
     );
+
+    if highlight.selection == SelectionHighlight::Selection {
+        painter.circle(
+            resp.rect.center(),
+            radius - 2.0,
+            Color32::TRANSPARENT,
+            Stroke::new(2.0, visuals.selection.stroke.color),
+        );
+    }
+
     resp
 }
 

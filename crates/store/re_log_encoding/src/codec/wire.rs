@@ -1,47 +1,22 @@
-use arrow2::array::Array as Arrow2Array;
 use arrow2::chunk::Chunk as Arrow2Chunk;
 use arrow2::datatypes::Schema as Arrow2Schema;
-use arrow2::error::Error as Arrow2Error;
-use arrow2::io::ipc::{read, write};
-use re_dataframe::TransportChunk;
+use arrow2::io::ipc;
+use re_chunk::Arrow2Array;
+use re_chunk::TransportChunk;
 
-use crate::v0::EncoderVersion;
-
-#[derive(Debug, thiserror::Error)]
-pub enum CodecError {
-    #[error("Arrow serialization error: {0}")]
-    ArrowSerialization(Arrow2Error),
-
-    #[error("Failed to decode message header {0}")]
-    HeaderDecoding(std::io::Error),
-
-    #[error("Failed to encode message header {0}")]
-    HeaderEncoding(std::io::Error),
-
-    #[error("Missing record batch")]
-    MissingRecordBatch,
-
-    #[error("Unexpected stream state")]
-    UnexpectedStreamState,
-
-    #[error("Unknown message header")]
-    UnknownMessageHeader,
-
-    #[error("Invalid argument: {0}")]
-    InvalidArgument(String),
-}
+use super::CodecError;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Default)]
-pub struct MessageHader(pub u8);
+pub struct MessageHeader(pub u8);
 
-impl MessageHader {
+impl MessageHeader {
     pub const NO_DATA: Self = Self(1);
     pub const RECORD_BATCH: Self = Self(2);
 
     pub const SIZE_BYTES: usize = 1;
 }
 
-impl MessageHader {
+impl MessageHeader {
     fn decode(read: &mut impl std::io::Read) -> Result<Self, CodecError> {
         let mut buffer = [0_u8; Self::SIZE_BYTES];
         read.read_exact(&mut buffer)
@@ -72,12 +47,12 @@ impl TransportMessageV0 {
         match self {
             Self::NoData => {
                 let mut data: Vec<u8> = Vec::new();
-                MessageHader::NO_DATA.encode(&mut data)?;
+                MessageHeader::NO_DATA.encode(&mut data)?;
                 Ok(data)
             }
             Self::RecordBatch(chunk) => {
                 let mut data: Vec<u8> = Vec::new();
-                MessageHader::RECORD_BATCH.encode(&mut data)?;
+                MessageHeader::RECORD_BATCH.encode(&mut data)?;
 
                 write_arrow_to_bytes(&mut data, &chunk.schema, &chunk.data)?;
 
@@ -88,11 +63,11 @@ impl TransportMessageV0 {
 
     fn from_bytes(data: &[u8]) -> Result<Self, CodecError> {
         let mut reader = std::io::Cursor::new(data);
-        let header = MessageHader::decode(&mut reader)?;
+        let header = MessageHeader::decode(&mut reader)?;
 
         match header {
-            MessageHader::NO_DATA => Ok(Self::NoData),
-            MessageHader::RECORD_BATCH => {
+            MessageHeader::NO_DATA => Ok(Self::NoData),
+            MessageHeader::RECORD_BATCH => {
                 let (schema, data) = read_arrow_from_bytes(&mut reader)?;
 
                 let tc = TransportChunk {
@@ -111,24 +86,32 @@ impl TransportMessageV0 {
 // of sending schema in each transport message for the same stream of batches. This will require codec
 // to become stateful and keep track if schema was sent / received.
 /// Encode a transport chunk into a byte stream.
-pub fn encode(version: EncoderVersion, chunk: TransportChunk) -> Result<Vec<u8>, CodecError> {
+pub fn encode(
+    version: re_protos::common::v0::EncoderVersion,
+    chunk: TransportChunk,
+) -> Result<Vec<u8>, CodecError> {
     match version {
-        EncoderVersion::V0 => TransportMessageV0::RecordBatch(chunk).to_bytes(),
+        re_protos::common::v0::EncoderVersion::V0 => {
+            TransportMessageV0::RecordBatch(chunk).to_bytes()
+        }
     }
 }
 
 /// Encode a `NoData` message into a byte stream. This can be used by the remote store
 /// (i.e. data producer) to signal back to the client that there's no data available.
-pub fn no_data(version: EncoderVersion) -> Result<Vec<u8>, CodecError> {
+pub fn no_data(version: re_protos::common::v0::EncoderVersion) -> Result<Vec<u8>, CodecError> {
     match version {
-        EncoderVersion::V0 => TransportMessageV0::NoData.to_bytes(),
+        re_protos::common::v0::EncoderVersion::V0 => TransportMessageV0::NoData.to_bytes(),
     }
 }
 
 /// Decode transport data from a byte stream - if there's a record batch present, return it, otherwise return `None`.
-pub fn decode(version: EncoderVersion, data: &[u8]) -> Result<Option<TransportChunk>, CodecError> {
+pub fn decode(
+    version: re_protos::common::v0::EncoderVersion,
+    data: &[u8],
+) -> Result<Option<TransportChunk>, CodecError> {
     match version {
-        EncoderVersion::V0 => {
+        re_protos::common::v0::EncoderVersion::V0 => {
             let msg = TransportMessageV0::from_bytes(data)?;
             match msg {
                 TransportMessageV0::RecordBatch(chunk) => Ok(Some(chunk)),
@@ -140,13 +123,13 @@ pub fn decode(version: EncoderVersion, data: &[u8]) -> Result<Option<TransportCh
 
 /// Helper function that serializes given arrow schema and record batch into bytes
 /// using Arrow IPC format.
-fn write_arrow_to_bytes<W: std::io::Write>(
+pub fn write_arrow_to_bytes<W: std::io::Write>(
     writer: &mut W,
     schema: &Arrow2Schema,
     data: &Arrow2Chunk<Box<dyn Arrow2Array>>,
 ) -> Result<(), CodecError> {
-    let options = write::WriteOptions { compression: None };
-    let mut sw = write::StreamWriter::new(writer, options);
+    let options = ipc::write::WriteOptions { compression: None };
+    let mut sw = ipc::write::StreamWriter::new(writer, options);
 
     sw.start(schema, None)
         .map_err(CodecError::ArrowSerialization)?;
@@ -159,11 +142,12 @@ fn write_arrow_to_bytes<W: std::io::Write>(
 
 /// Helper function that deserializes raw bytes into arrow schema and record batch
 /// using Arrow IPC format.
-fn read_arrow_from_bytes<R: std::io::Read>(
+pub fn read_arrow_from_bytes<R: std::io::Read>(
     reader: &mut R,
 ) -> Result<(Arrow2Schema, Arrow2Chunk<Box<dyn Arrow2Array>>), CodecError> {
-    let metadata = read::read_stream_metadata(reader).map_err(CodecError::ArrowSerialization)?;
-    let mut stream = read::StreamReader::new(reader, metadata, None);
+    let metadata =
+        ipc::read::read_stream_metadata(reader).map_err(CodecError::ArrowSerialization)?;
+    let mut stream = ipc::read::StreamReader::new(reader, metadata, None);
 
     let schema = stream.schema().clone();
     // there should be at least one record batch in the stream
@@ -173,20 +157,20 @@ fn read_arrow_from_bytes<R: std::io::Read>(
         .map_err(CodecError::ArrowSerialization)?;
 
     match stream_state {
-        read::StreamState::Waiting => Err(CodecError::UnexpectedStreamState),
-        read::StreamState::Some(chunk) => Ok((schema, chunk)),
+        ipc::read::StreamState::Waiting => Err(CodecError::UnexpectedStreamState),
+        ipc::read::StreamState::Some(chunk) => Ok((schema, chunk)),
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use re_dataframe::external::re_chunk::{Chunk, RowId};
-    use re_log_types::{example_components::MyPoint, Timeline};
-
     use crate::{
-        codec::{decode, encode, CodecError, TransportMessageV0},
-        v0::EncoderVersion,
+        codec::wire::{decode, encode, TransportMessageV0},
+        codec::CodecError,
     };
+    use re_chunk::{Chunk, RowId};
+    use re_log_types::{example_components::MyPoint, Timeline};
+    use re_protos::common::v0::EncoderVersion;
 
     fn get_test_chunk() -> Chunk {
         let row_id1 = RowId::new();

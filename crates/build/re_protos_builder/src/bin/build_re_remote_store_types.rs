@@ -1,6 +1,6 @@
 //! This binary runs the remote store gRPC service codegen manually.
 //!
-//! It is easiest to call this using `pixi run codegen-rstore`,
+//! It is easiest to call this using `pixi run codegen-protos`,
 //! which will set up the necessary tools.
 
 #![allow(clippy::unwrap_used)]

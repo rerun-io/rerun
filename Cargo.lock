@@ -2455,9 +2455,9 @@ checksum = "0ce7134b9999ecaf8bcd65542e436736ef32ddca1b3e06094cb6ec5755203b80"
 
 [[package]]
 name = "fjadra"
-version = "0.1.0"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ccc0416b27f53bba6c9bd564260f27d4784c5f430926eb16a519356be7d66bbc"
+checksum = "d8d17b174735bd1464bc491c49570fc824466e9140617c371de9a6d86ebd33ec"
 
 [[package]]
 name = "flatbuffers"
@@ -5659,6 +5659,7 @@ dependencies = [
  "re_log",
  "re_log_encoding",
  "re_log_types",
+ "re_protos",
  "re_tracing",
  "re_types",
  "re_types_core",
@@ -5927,6 +5928,7 @@ dependencies = [
  "re_chunk",
  "re_error",
  "re_log",
+ "re_log_encoding",
  "re_log_types",
  "re_protos",
  "re_smart_channel",
@@ -5973,10 +5975,12 @@ dependencies = [
  "lz4_flex",
  "mimalloc",
  "parking_lot",
+ "re_arrow2",
  "re_build_info",
  "re_chunk",
  "re_log",
  "re_log_types",
+ "re_protos",
  "re_smart_channel",
  "re_tracing",
  "re_types",
@@ -5999,7 +6003,6 @@ dependencies = [
  "bytemuck",
  "clean-path",
  "criterion",
- "crossbeam",
  "document-features",
  "fixed",
  "half",
@@ -6013,6 +6016,7 @@ dependencies = [
  "re_build_info",
  "re_format",
  "re_log",
+ "re_protos",
  "re_string_interner",
  "re_tracing",
  "re_tuid",
@@ -6078,9 +6082,6 @@ name = "re_protos"
 version = "0.21.0-alpha.1+dev"
 dependencies = [
  "prost",
- "re_arrow2",
- "re_dataframe",
- "re_log_types",
  "thiserror",
  "tonic",
  "tonic-web-wasm-client",
@@ -6393,6 +6394,7 @@ dependencies = [
  "re_data_ui",
  "re_entity_db",
  "re_format",
+ "re_log",
  "re_log_types",
  "re_query",
  "re_renderer",
@@ -6613,6 +6615,7 @@ dependencies = [
  "document-features",
  "getrandom",
  "once_cell",
+ "re_protos",
  "serde",
  "web-time",
 ]
@@ -7271,6 +7274,7 @@ dependencies = [
  "re_chunk_store",
  "re_dataframe",
  "re_log",
+ "re_log_encoding",
  "re_log_types",
  "re_memory",
  "re_protos",
