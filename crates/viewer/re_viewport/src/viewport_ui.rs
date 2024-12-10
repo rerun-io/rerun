@@ -234,12 +234,14 @@ fn apply_viewport_command(
 
             if bp.auto_layout() {
                 // No need to add to the tree - we'll create a new tree from scratch instead.
-                re_log::trace!("Running auto-layout after adding a space-view because auto_layout is turned on");
+                re_log::trace!(
+                    "Running auto-layout after adding a view because auto_layout is turned on"
+                );
                 *run_auto_layout = true;
             } else {
                 // Add the view to the tree:
                 let parent_id = parent_container.unwrap_or(bp.root_container);
-                re_log::trace!("Adding space-view {view_id} to parent {parent_id}");
+                re_log::trace!("Adding view {view_id} to parent {parent_id}");
                 let tile_id = bp.tree.tiles.insert_pane(view_id);
                 let container_tile_id = blueprint_id_to_tile_id(&parent_id);
                 if let Some(egui_tiles::Tile::Container(container)) =
@@ -323,7 +325,7 @@ fn apply_viewport_command(
                             view.clear(ctx);
                         }
 
-                        // If the space-view was maximized, clean it up
+                        // If the view was maximized, clean it up
                         if bp.maximized == Some(view_id) {
                             bp.set_maximized(None, ctx);
                         }

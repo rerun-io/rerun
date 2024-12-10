@@ -12,7 +12,7 @@ README = """\
 This checks whether the heuristics do the right thing with mixed 2D, 3D and test data.
 
 ### Action
-You should see 4 space-views:
+You should see 4 views:
  - 2D: Boxes and points, `$origin` == `/`
  - 3D: 3D boxes, `$origin` == `/`
  - Text log: A single log line, `$origin` == `/`

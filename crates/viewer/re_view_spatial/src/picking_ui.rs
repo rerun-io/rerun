@@ -165,7 +165,7 @@ pub fn picking(
     }
 
     if hovered_items.is_empty() {
-        // If we hover nothing, we are hovering the space-view itself.
+        // If we hover nothing, we are hovering the view itself.
         hovered_items.push(Item::View(query.view_id));
     }
 

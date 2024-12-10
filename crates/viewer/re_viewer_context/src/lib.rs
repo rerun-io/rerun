@@ -158,7 +158,7 @@ pub enum ScreenshotTarget {
 
 /// Used to publish info aboutr each view.
 ///
-/// We use this for space-view screenshotting.
+/// We use this for view screenshotting.
 ///
 /// Accessed with [`egui::Memory::caches`].
 pub type ViewRectPublisher = egui::cache::FramePublisher<ViewId, PublishedViewInfo>;
@@ -171,6 +171,6 @@ pub struct PublishedViewInfo {
 
     /// Where on screen (in ui coords).
     ///
-    /// NOTE: this can include a highlighted border of the space-view.
+    /// NOTE: this can include a highlighted border of the view.
     pub rect: egui::Rect,
 }

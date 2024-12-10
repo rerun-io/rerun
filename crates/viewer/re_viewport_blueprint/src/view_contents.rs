@@ -57,7 +57,7 @@ impl ViewContents {
     /// query does in fact cover the other query. However, it should never return `true`
     /// in a case where the other query would not be fully covered.
     pub fn entity_path_filter_is_superset_of(&self, other: &Self) -> bool {
-        // A query can't fully contain another if their space-view classes don't match
+        // A query can't fully contain another if their view classes don't match
         if self.view_class_identifier != other.view_class_identifier {
             return false;
         }

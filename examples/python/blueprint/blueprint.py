@@ -14,7 +14,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Different options for how we might use blueprint")
 
     parser.add_argument("--skip-blueprint", action="store_true", help="Don't send the blueprint")
-    parser.add_argument("--auto-space-views", action="store_true", help="Automatically add views")
+    parser.add_argument("--auto-views", action="store_true", help="Automatically add views")
 
     args = parser.parse_args()
 

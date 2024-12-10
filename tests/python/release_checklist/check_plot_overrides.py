@@ -30,7 +30,7 @@ This checks whether one can override all properties in a plot.
   * Verify all 3 offset modes operate as expected
 
 ### Overrides are cloned
-* After overriding things on both the space-view and the entity, clone the space-view.
+* After overriding things on both the view and the entity, clone the view.
 
 If nothing weird happens, you can close this recording.
 """

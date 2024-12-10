@@ -129,13 +129,13 @@ However, both `origin` and `contents` play an important role in determining what
 
 ### `origin`
 
-The `origin` of a space-view is a generalized "frame of reference" for the view. We think of showing all data
+The `origin` of a view is a generalized "frame of reference" for the view. We think of showing all data
 in the view as relative to the `origin`.
 
 By default, only data that is under the `origin` will be included in the view. As such this is one of the most
-convenient ways of restricting a space-view to a particular subtree.
+convenient ways of restricting a view to a particular subtree.
 
-Because the data in the space-view is relative to the `origin`, the `origin` will be the first entity displayed
+Because the data in the view is relative to the `origin`, the `origin` will be the first entity displayed
 in the blueprint tree, with all entities under the origin shown using relative paths.
 
 For Spatial views such as `Spatial2DView` and `Spatial3DView`, the `origin` plays an additional role with respect
@@ -254,7 +254,7 @@ rrb.Blueprint(
 The blueprint has two additional parameters that influence the behavior of the viewer:
 
 -   `auto_views` controls whether the Viewer will automatically create views for entities that are not explicitly included in the blueprint.
--   `auto_layout` controls whether the Viewer should automatically layout the containers when introducing new space-views.
+-   `auto_layout` controls whether the Viewer should automatically layout the containers when introducing new views.
 
 If you pass in your own `View` or `Container` objects, these will both default to `False` so that the Blueprint
 you get is exactly what you specify. Otherwise they will default to `True` so that you will still get content (this

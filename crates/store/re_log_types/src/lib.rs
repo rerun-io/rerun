@@ -275,7 +275,7 @@ pub enum LogMsg {
     ///
     /// This is so that the viewer can wait with activating the blueprint until it is
     /// fully transmitted. Showing a half-transmitted blueprint can cause confusion,
-    /// and also lead to problems with space-view heuristics.
+    /// and also lead to problems with view heuristics.
     BlueprintActivationCommand(BlueprintActivationCommand),
 }
 

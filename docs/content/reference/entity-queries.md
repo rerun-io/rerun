@@ -76,7 +76,7 @@ rrb.Spatial3DView(
 ## `origin` substitution
 
 Query expressions also allow you to use the variable `$origin` to refer to the
-origin of the space-view that the query belongs to.
+origin of the view that the query belongs to.
 
 For example, the above query could be rewritten as:
 

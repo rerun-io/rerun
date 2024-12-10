@@ -111,7 +111,7 @@ The assorted objects used in blueprint construction are:
         - `View2D`
         - `View3D`
         - `ViewTimeSeries`
-        - … additional space-views
+        - … additional views
  - `Data`: A query that builds archetypes to draw in the view
     - `Auto`: A query to automatically build archetypes from an entity path
     - `Points2D`: A query to build a Points2D archetype

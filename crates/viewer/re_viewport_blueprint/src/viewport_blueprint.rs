@@ -54,14 +54,14 @@ pub struct ViewportBlueprint {
     /// If [`Self::maximized`] is set, this tree is ignored.
     pub tree: egui_tiles::Tree<ViewId>,
 
-    /// Show only one space-view as maximized?
+    /// Show only one view as maximized?
     ///
     /// If set, [`Self::tree`] is ignored.
     pub maximized: Option<ViewId>,
 
     /// Whether the viewport layout is determined automatically.
     ///
-    /// If `true`, we auto-layout all space-views whenever a new space-view is added.
+    /// If `true`, we auto-layout all views whenever a new view is added.
     ///
     /// Set to `false` the first time the user messes around with the viewport blueprint.
     /// Note: we use an atomic here because writes needs to be effective immediately during the frame.
@@ -140,7 +140,7 @@ impl ViewportBlueprint {
             .collect();
 
         // Auto layouting and auto view are only enabled if no blueprint has been provided by the user.
-        // Only enable auto-space-views if this is the app-default blueprint
+        // Only enable auto-views if this is the app-default blueprint
         let is_app_default_blueprint = blueprint_db
             .store_info()
             .map_or(false, |ri| ri.is_app_default_blueprint());
@@ -695,9 +695,7 @@ impl ViewportBlueprint {
                 if let Some(view) = self.view(view_id) {
                     if visible != view.visible {
                         if self.auto_layout() {
-                            re_log::trace!(
-                                "Space-view visibility changed - will no longer auto-layout"
-                            );
+                            re_log::trace!("view visibility changed - will no longer auto-layout");
                         }
 
                         self.set_auto_layout(false, ctx);
@@ -733,7 +731,7 @@ impl ViewportBlueprint {
 
     /// Whether the viewport layout is determined automatically.
     ///
-    /// If `true`, we auto-layout all space-views whenever a new space-view is added.
+    /// If `true`, we auto-layout all views whenever a new view is added.
     ///
     /// Set to `false` the first time the user messes around with the viewport blueprint.
     #[inline]
@@ -743,7 +741,7 @@ impl ViewportBlueprint {
 
     /// Whether the viewport layout is determined automatically.
     ///
-    /// If `true`, we auto-layout all space-views whenever a new space-view is added.
+    /// If `true`, we auto-layout all views whenever a new view is added.
     ///
     /// Set to `false` the first time the user messes around with the viewport blueprint.
     #[inline]
@@ -806,8 +804,8 @@ impl ViewportBlueprint {
             }
             match tile {
                 egui_tiles::Tile::Pane(view_id) => {
-                    // If a container has a pointer to a space-view
-                    // we want it to point at the space-view in the blueprint.
+                    // If a container has a pointer to a view
+                    // we want it to point at the view in the blueprint.
                     contents_from_tile_id.insert(*tile_id, Contents::View(*view_id));
                 }
                 egui_tiles::Tile::Container(container) => {
@@ -816,7 +814,7 @@ impl ViewportBlueprint {
                         && container.num_children() == 1
                     {
                         // If this is a tab-container with a single child, then it might be a
-                        // "Trivial Tab", which egui_tiles adds to all space-views during simplification
+                        // "Trivial Tab", which egui_tiles adds to all views during simplification
                         // but doesn't need to be persisted back to the store.
                         if let Some(egui_tiles::Tile::Pane(view_id)) = container
                             .children()

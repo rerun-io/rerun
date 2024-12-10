@@ -56,7 +56,7 @@ impl ContextMenuAction for ScreenshotAction {
 
         let PublishedViewInfo { name, rect } = view_info;
 
-        let rect = rect.shrink(1.75); // Hacky: Shrink so we don't accidentally include the border of the space-view.
+        let rect = rect.shrink(1.75); // Hacky: Shrink so we don't accidentally include the border of the view.
 
         let target = match self {
             Self::CopyScreenshot => ScreenshotTarget::CopyToClipboard,
