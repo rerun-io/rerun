@@ -1,16 +1,16 @@
 use re_log_types::Instance;
 use re_renderer::{renderer::LineStripFlags, PickingLayerInstanceId};
-use re_view::{process_annotation_slices, process_color_slice};
 use re_types::{
     archetypes::LineStrips3D,
     components::{ClassId, Color, LineStrip3D, Radius, ShowLabels, Text},
     ArrowString, Component as _,
 };
+use re_view::{process_annotation_slices, process_color_slice};
 use re_viewer_context::{
     auto_color_for_entity_path, ApplicableEntities, IdentifiedViewSystem, QueryContext,
-    ViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext,
-    ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
-    VisualizerQueryInfo, VisualizerSystem,
+    TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewQuery,
+    ViewSystemExecutionError, VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo,
+    VisualizerSystem,
 };
 
 use crate::{

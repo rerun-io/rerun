@@ -6,9 +6,9 @@ use re_types::{
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, ImageInfo, QueryContext,
-    ViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext,
-    ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
-    VisualizerQueryInfo, VisualizerSystem,
+    TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewQuery,
+    ViewSystemExecutionError, VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo,
+    VisualizerSystem,
 };
 
 use crate::{
@@ -184,11 +184,7 @@ impl TypedComponentFallbackProvider<Opacity> for SegmentationImageVisualizer {
     fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> Opacity {
         // Segmentation images should be transparent whenever they're on top of other images,
         // But fully opaque if there are no other images in the scene.
-        let Some(view_state) = ctx
-            .view_state
-            .as_any()
-            .downcast_ref::<SpatialViewState>()
-        else {
+        let Some(view_state) = ctx.view_state.as_any().downcast_ref::<SpatialViewState>() else {
             return 1.0.into();
         };
 

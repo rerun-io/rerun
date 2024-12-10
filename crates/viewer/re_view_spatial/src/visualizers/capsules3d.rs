@@ -1,17 +1,17 @@
 use std::iter;
 
 use ordered_float::NotNan;
-use re_view::clamped_or_nothing;
 use re_types::{
     archetypes::Capsules3D,
     components::{self, ClassId, Color, FillMode, HalfSize3D, Length, Radius, ShowLabels, Text},
     ArrowString, Component as _,
 };
+use re_view::clamped_or_nothing;
 use re_viewer_context::{
     auto_color_for_entity_path, ApplicableEntities, IdentifiedViewSystem, QueryContext,
-    ViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext,
-    ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
-    VisualizerQueryInfo, VisualizerSystem,
+    TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewQuery,
+    ViewSystemExecutionError, VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo,
+    VisualizerSystem,
 };
 
 use crate::{contexts::SpatialSceneEntityContext, proc_mesh, view_kind::SpatialViewKind};

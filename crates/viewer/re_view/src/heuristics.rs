@@ -1,6 +1,6 @@
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, RecommendedView, ViewClass,
-    ViewSpawnHeuristics, ViewerContext, VisualizerSystem,
+    ApplicableEntities, IdentifiedViewSystem, RecommendedView, ViewClass, ViewSpawnHeuristics,
+    ViewerContext, VisualizerSystem,
 };
 
 /// Spawns a view for each single entity which is visualizable & indicator-matching for a given visualizer.

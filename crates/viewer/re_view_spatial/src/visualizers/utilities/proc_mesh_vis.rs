@@ -2,10 +2,10 @@ use re_entity_db::InstancePathHash;
 use re_log_types::Instance;
 use re_renderer::renderer::{GpuMeshInstance, LineStripFlags};
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId, RenderContext};
-use re_view::{clamped_or_nothing, process_annotation_slices, process_color_slice};
 use re_types::components::{self, FillMode};
+use re_view::{clamped_or_nothing, process_annotation_slices, process_color_slice};
 use re_viewer_context::{
-    QueryContext, ViewSystemExecutionError, TypedComponentFallbackProvider, ViewQuery,
+    QueryContext, TypedComponentFallbackProvider, ViewQuery, ViewSystemExecutionError,
 };
 
 use crate::contexts::SpatialSceneEntityContext;

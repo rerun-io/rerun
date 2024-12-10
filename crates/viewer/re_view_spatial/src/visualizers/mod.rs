@@ -51,8 +51,8 @@ use re_entity_db::EntityPath;
 use re_types::datatypes::{KeypointId, KeypointPair};
 use re_viewer_context::{
     auto_color_egui, ApplicableEntities, IdentifiedViewSystem, ViewClassRegistryError,
-    ViewSystemExecutionError, ViewSystemRegistrator, ViewSystemIdentifier,
-    VisualizableEntities, VisualizableFilterContext, VisualizerCollection,
+    ViewSystemExecutionError, ViewSystemIdentifier, ViewSystemRegistrator, VisualizableEntities,
+    VisualizableFilterContext, VisualizerCollection,
 };
 
 use re_view::clamped_or_nothing;

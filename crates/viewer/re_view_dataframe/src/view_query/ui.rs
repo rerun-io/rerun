@@ -7,7 +7,7 @@ use re_log_types::{
 use re_types::blueprint::components;
 use re_types_core::{ComponentName, ComponentNameSet};
 use re_ui::{list_item, UiExt};
-use re_viewer_context::{ViewId, ViewSystemExecutionError, TimeDragValue, ViewerContext};
+use re_viewer_context::{TimeDragValue, ViewId, ViewSystemExecutionError, ViewerContext};
 
 use crate::view_query::Query;
 
@@ -425,20 +425,18 @@ fn all_pov_entities_for_view(
     timeline: &Timeline,
 ) -> BTreeSet<EntityPath> {
     let mut all_entities = BTreeSet::new();
-    ctx.lookup_query_result(view_id)
-        .tree
-        .visit(&mut |node| {
-            if !node.data_result.tree_prefix_only {
-                let comp_for_entity = ctx
-                    .recording_engine()
-                    .store()
-                    .all_components_on_timeline(timeline, &node.data_result.entity_path);
-                if comp_for_entity.is_some_and(|components| !components.is_empty()) {
-                    all_entities.insert(node.data_result.entity_path.clone());
-                }
+    ctx.lookup_query_result(view_id).tree.visit(&mut |node| {
+        if !node.data_result.tree_prefix_only {
+            let comp_for_entity = ctx
+                .recording_engine()
+                .store()
+                .all_components_on_timeline(timeline, &node.data_result.entity_path);
+            if comp_for_entity.is_some_and(|components| !components.is_empty()) {
+                all_entities.insert(node.data_result.entity_path.clone());
             }
-            true
-        });
+        }
+        true
+    });
 
     all_entities
 }

@@ -1,17 +1,17 @@
 use itertools::Itertools;
 
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId, PointCloudBuilder};
-use re_view::{process_annotation_and_keypoint_slices, process_color_slice};
 use re_types::{
     archetypes::Points3D,
     components::{ClassId, Color, KeypointId, Position3D, Radius, ShowLabels, Text},
     ArrowString, Component,
 };
+use re_view::{process_annotation_and_keypoint_slices, process_color_slice};
 use re_viewer_context::{
     auto_color_for_entity_path, ApplicableEntities, IdentifiedViewSystem, QueryContext,
-    ViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext,
-    ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
-    VisualizerQueryInfo, VisualizerSystem,
+    TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewQuery,
+    ViewSystemExecutionError, VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo,
+    VisualizerSystem,
 };
 
 use crate::{

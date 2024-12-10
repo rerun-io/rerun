@@ -1,18 +1,18 @@
 use re_log_types::EntityPath;
 use re_renderer::{renderer::PointCloudDrawDataError, PickingLayerInstanceId};
-use re_view::{
-    process_annotation_slices, process_color_slice, AnnotationSceneContext, DataResultQuery as _,
-    RangeResultsExt as _,
-};
 use re_types::{
     archetypes::GeoPoints,
     components::{ClassId, Color, LatLon, Radius},
     Component as _,
 };
+use re_view::{
+    process_annotation_slices, process_color_slice, AnnotationSceneContext, DataResultQuery as _,
+    RangeResultsExt as _,
+};
 use re_viewer_context::{
-    auto_color_for_entity_path, IdentifiedViewSystem, QueryContext, ViewHighlights,
-    ViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext,
-    ViewContextCollection, ViewQuery, VisualizerQueryInfo, VisualizerSystem,
+    auto_color_for_entity_path, IdentifiedViewSystem, QueryContext, TypedComponentFallbackProvider,
+    ViewContext, ViewContextCollection, ViewHighlights, ViewQuery, ViewSystemExecutionError,
+    VisualizerQueryInfo, VisualizerSystem,
 };
 
 #[derive(Debug, Default)]

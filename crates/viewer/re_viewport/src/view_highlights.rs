@@ -5,8 +5,8 @@ use re_entity_db::InstancePath;
 use re_log_types::EntityPathHash;
 use re_renderer::OutlineMaskPreference;
 use re_viewer_context::{
-    HoverHighlight, Item, SelectionHighlight, ViewEntityHighlight, ViewHighlights,
-    ViewId, ViewOutlineMasks,
+    HoverHighlight, Item, SelectionHighlight, ViewEntityHighlight, ViewHighlights, ViewId,
+    ViewOutlineMasks,
 };
 
 /// Computes which things in a view should received highlighting.
@@ -19,8 +19,7 @@ pub fn highlights_for_view(
 ) -> ViewHighlights {
     re_tracing::profile_function!();
 
-    let mut highlighted_entity_paths =
-        IntMap::<EntityPathHash, ViewEntityHighlight>::default();
+    let mut highlighted_entity_paths = IntMap::<EntityPathHash, ViewEntityHighlight>::default();
     let mut outlines_masks = IntMap::<EntityPathHash, ViewOutlineMasks>::default();
 
     let mut selection_mask_index: u8 = 0;

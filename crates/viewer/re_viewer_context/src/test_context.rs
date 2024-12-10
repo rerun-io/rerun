@@ -6,7 +6,7 @@ use re_log_types::{StoreId, StoreKind};
 
 use crate::{
     blueprint_timeline, command_channel, ApplicationSelectionState, CommandReceiver, CommandSender,
-    ComponentUiRegistry, RecordingConfig, ViewClassRegistry, StoreContext, SystemCommand,
+    ComponentUiRegistry, RecordingConfig, StoreContext, SystemCommand, ViewClassRegistry,
     ViewerContext,
 };
 

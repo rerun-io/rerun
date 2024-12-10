@@ -10,8 +10,8 @@ use re_types::{
 };
 use re_view::{diff_component_filter, DataResultQuery as _};
 use re_viewer_context::{
-    auto_color_for_entity_path, IdentifiedViewSystem, QueryContext, ViewSystemExecutionError,
-    TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewQuery,
+    auto_color_for_entity_path, IdentifiedViewSystem, QueryContext, TypedComponentFallbackProvider,
+    ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError,
     VisualizerAdditionalApplicabilityFilter, VisualizerQueryInfo, VisualizerSystem,
 };
 

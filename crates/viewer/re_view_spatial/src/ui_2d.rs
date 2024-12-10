@@ -4,7 +4,6 @@ use re_math::IsoTransform;
 use re_entity_db::EntityPath;
 use re_log::ResultExt as _;
 use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
-use re_view::controls::{DRAG_PAN2D_BUTTON, ZOOM_SCROLL_MODIFIER};
 use re_types::{
     archetypes::Pinhole,
     blueprint::{
@@ -14,8 +13,9 @@ use re_types::{
     components::ViewCoordinates,
 };
 use re_ui::{ContextExt as _, ModifiersMarkdown, MouseButtonMarkdown};
+use re_view::controls::{DRAG_PAN2D_BUTTON, ZOOM_SCROLL_MODIFIER};
 use re_viewer_context::{
-    gpu_bridge, ItemSpaceContext, ViewSystemExecutionError, ViewQuery, ViewerContext,
+    gpu_bridge, ItemSpaceContext, ViewQuery, ViewSystemExecutionError, ViewerContext,
 };
 use re_viewport_blueprint::ViewProperty;
 

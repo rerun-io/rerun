@@ -1,21 +1,21 @@
 use itertools::Itertools as _;
 
-use re_view::range_with_blueprint_resolved_data;
 use re_types::{
     archetypes::{self, SeriesPoint},
     components::{Color, MarkerShape, MarkerSize, Name, Scalar},
     external::arrow2::datatypes::DataType as Arrow2Datatype,
     Archetype as _, Component as _, Loggable as _,
 };
+use re_view::range_with_blueprint_resolved_data;
 use re_viewer_context::{
-    auto_color_for_entity_path, IdentifiedViewSystem, QueryContext, ViewStateExt as _,
-    ViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext, ViewQuery,
-    VisualizerQueryInfo, VisualizerSystem,
+    auto_color_for_entity_path, IdentifiedViewSystem, QueryContext, TypedComponentFallbackProvider,
+    ViewContext, ViewQuery, ViewStateExt as _, ViewSystemExecutionError, VisualizerQueryInfo,
+    VisualizerSystem,
 };
 
 use crate::{
-    view_class::TimeSeriesViewState,
     util::{determine_time_per_pixel, determine_time_range, points_to_series},
+    view_class::TimeSeriesViewState,
     PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind, ScatterAttrs,
 };
 
@@ -110,10 +110,8 @@ impl SeriesPointSystem {
     fn load_scalars(&mut self, ctx: &ViewContext<'_>, query: &ViewQuery<'_>) {
         re_tracing::profile_function!();
 
-        let plot_mem = egui_plot::PlotMemory::load(
-            ctx.viewer_ctx.egui_ctx,
-            crate::plot_id(query.view_id),
-        );
+        let plot_mem =
+            egui_plot::PlotMemory::load(ctx.viewer_ctx.egui_ctx, crate::plot_id(query.view_id));
         let time_per_pixel = determine_time_per_pixel(ctx.viewer_ctx, plot_mem.as_ref());
 
         let data_results = query.iter_visible_data_results(ctx, Self::identifier());

@@ -3,8 +3,8 @@ use std::collections::{BTreeMap, BTreeSet};
 use ahash::HashMap;
 
 use re_log_types::EntityPathHash;
-use re_view::latest_at_with_blueprint_resolved_data;
 use re_types::{components::DrawOrder, Component as _, ComponentNameSet};
+use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{IdentifiedViewSystem, ViewContextSystem, ViewSystemIdentifier};
 
 use crate::visualizers::visualizers_processing_draw_order;

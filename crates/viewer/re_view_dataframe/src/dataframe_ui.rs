@@ -12,7 +12,7 @@ use re_dataframe::QueryHandle;
 use re_log_types::{EntityPath, TimeInt, Timeline, TimelineName};
 use re_types_core::ComponentName;
 use re_ui::UiExt as _;
-use re_viewer_context::{ViewId, SystemCommandSender, ViewerContext};
+use re_viewer_context::{SystemCommandSender, ViewId, ViewerContext};
 
 use crate::display_record_batch::{DisplayRecordBatch, DisplayRecordBatchError};
 use crate::expanded_rows::{ExpandedRows, ExpandedRowsCache};

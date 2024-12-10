@@ -52,8 +52,7 @@ pub(crate) fn view_space_origin_widget_ui(
             }
         }
         SpaceOriginEditState::Editing(edit_state) => {
-            let control_flow =
-                view_space_origin_widget_editing_ui(ui, ctx, view, edit_state);
+            let control_flow = view_space_origin_widget_editing_ui(ui, ctx, view, edit_state);
 
             match control_flow {
                 ControlFlow::Break(Some(new_space_origin)) => {
@@ -93,9 +92,7 @@ fn view_space_origin_widget_editing_ui(
     // TODO(#4895): we should have/use a much simpler heuristic API to get a list of compatible entity sub-tree
     let view_suggestions = default_created_views(ctx)
         .into_iter()
-        .filter(|this_view| {
-            this_view.class_identifier() == view.class_identifier()
-        })
+        .filter(|this_view| this_view.class_identifier() == view.class_identifier())
         .collect::<Vec<_>>();
 
     // Filtered suggestions based on the current text edit content.
@@ -128,8 +125,7 @@ fn view_space_origin_widget_editing_ui(
             .saturating_add(arrow_down)
             .saturating_sub(arrow_up);
         if !view_suggestions.is_empty() && !filtered_view_suggestions.is_empty() {
-            selected_suggestion =
-                selected_suggestion.at_most(filtered_view_suggestions.len() - 1);
+            selected_suggestion = selected_suggestion.at_most(filtered_view_suggestions.len() - 1);
         }
         selected_suggestion
     });
@@ -189,9 +185,7 @@ fn view_space_origin_widget_editing_ui(
                 .show_flat(
                     ui,
                     list_item::LabelContent::new(
-                        suggested_view
-                            .space_origin
-                            .syntax_highlighted(ui.style()),
+                        suggested_view.space_origin.syntax_highlighted(ui.style()),
                     ),
                 );
 

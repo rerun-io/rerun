@@ -1,9 +1,9 @@
 use re_log_types::{TimeInt, Timeline};
-use re_view::{AnnotationSceneContext, DataResultQuery as _, HybridResults};
 use re_types::Archetype;
+use re_view::{AnnotationSceneContext, DataResultQuery as _, HybridResults};
 use re_viewer_context::{
-    IdentifiedViewSystem, QueryContext, ViewSystemExecutionError, ViewContext,
-    ViewContextCollection, ViewQuery,
+    IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
+    ViewSystemExecutionError,
 };
 
 use crate::contexts::{EntityDepthOffsets, SpatialSceneEntityContext, TransformContext};

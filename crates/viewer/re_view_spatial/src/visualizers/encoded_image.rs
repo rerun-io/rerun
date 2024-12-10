@@ -1,13 +1,13 @@
-use re_view::{diff_component_filter, HybridResults};
 use re_types::{
     archetypes::EncodedImage,
     components::{Blob, DrawOrder, MediaType, Opacity},
     Component as _,
 };
+use re_view::{diff_component_filter, HybridResults};
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, ImageDecodeCache, QueryContext,
-    ViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext,
-    ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
+    TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewQuery,
+    ViewSystemExecutionError, VisualizableEntities, VisualizableFilterContext,
     VisualizerAdditionalApplicabilityFilter, VisualizerQueryInfo, VisualizerSystem,
 };
 

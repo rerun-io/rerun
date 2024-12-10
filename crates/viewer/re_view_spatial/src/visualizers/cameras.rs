@@ -6,16 +6,15 @@ use re_types::{
     components::{ImagePlaneDistance, ViewCoordinates},
 };
 use re_viewer_context::{
-    ApplicableEntities, DataResult, IdentifiedViewSystem, QueryContext, ViewOutlineMasks,
-    ViewStateExt as _, ViewSystemExecutionError, TypedComponentFallbackProvider,
-    ViewContext, ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
-    VisualizerQueryInfo, VisualizerSystem,
+    ApplicableEntities, DataResult, IdentifiedViewSystem, QueryContext,
+    TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewOutlineMasks,
+    ViewQuery, ViewStateExt as _, ViewSystemExecutionError, VisualizableEntities,
+    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use super::{filter_visualizable_3d_entities, SpatialViewVisualizerData};
 use crate::{
-    contexts::TransformContext, query_pinhole, space_camera_3d::SpaceCamera3D,
-    ui::SpatialViewState,
+    contexts::TransformContext, query_pinhole, space_camera_3d::SpaceCamera3D, ui::SpatialViewState,
 };
 
 const CAMERA_COLOR: re_renderer::Color32 = re_renderer::Color32::from_rgb(150, 150, 150);

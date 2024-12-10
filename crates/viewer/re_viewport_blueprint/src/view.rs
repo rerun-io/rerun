@@ -379,8 +379,7 @@ impl ViewBlueprint {
         });
         time_range.map_or_else(
             || {
-                let view_class =
-                    view_class_registry.get_class_or_log_error(self.class_identifier);
+                let view_class = view_class_registry.get_class_or_log_error(self.class_identifier);
                 view_class.default_query_range(view_state)
             },
             |time_range| QueryRange::TimeRange(time_range.clone()),
@@ -715,12 +714,8 @@ mod tests {
             }
 
             // Set up a store query and update the overrides.
-            let query_result = update_overrides(
-                &test_ctx,
-                &view.contents,
-                &visualizable_entities,
-                &resolver,
-            );
+            let query_result =
+                update_overrides(&test_ctx, &view.contents, &visualizable_entities, &resolver);
 
             // Extract component overrides for testing.
             let mut visited: HashMap<EntityPath, HashMap<ComponentName, EntityPath>> =

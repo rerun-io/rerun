@@ -7,7 +7,7 @@ use re_types::{
     components::Color,
     Archetype,
 };
-use re_viewer_context::{ViewStateExt, TypedComponentFallbackProvider};
+use re_viewer_context::{TypedComponentFallbackProvider, ViewStateExt};
 
 use crate::{ui::SpatialViewState, SpatialView2D};
 

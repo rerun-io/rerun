@@ -5,7 +5,7 @@ use smallvec::SmallVec;
 
 use re_log_types::{EntityPath, EntityPathHash};
 
-use crate::{DataResult, ViewId, ViewState, ViewContext, ViewerContext};
+use crate::{DataResult, ViewContext, ViewId, ViewState, ViewerContext};
 
 slotmap::new_key_type! {
     /// Identifier for a [`DataResultNode`]

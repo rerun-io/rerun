@@ -10,7 +10,7 @@ use re_entity_db::InstancePath;
 use re_types::ArrowString;
 use re_ui::list_item;
 use re_viewer_context::{
-    HoverHighlight, InteractionHighlight, Item, SelectionHighlight, ViewHighlights, UiLayout,
+    HoverHighlight, InteractionHighlight, Item, SelectionHighlight, UiLayout, ViewHighlights,
     ViewQuery, ViewerContext,
 };
 

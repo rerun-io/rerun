@@ -7,7 +7,7 @@ use re_types::{
     Archetype,
 };
 use re_ui::UiExt as _;
-use re_viewer_context::{QueryRange, ViewClass, ViewState, TimeDragValue, ViewerContext};
+use re_viewer_context::{QueryRange, TimeDragValue, ViewClass, ViewState, ViewerContext};
 use re_viewport_blueprint::{entity_path_for_view_property, ViewBlueprint};
 
 pub fn visible_time_range_ui_for_view(

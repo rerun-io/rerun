@@ -1,6 +1,6 @@
 use re_viewer_context::{
-    ComponentFallbackProvider, IdentifiedViewSystem, ViewSystemExecutionError, ViewContext,
-    ViewContextCollection, ViewQuery, VisualizerQueryInfo, VisualizerSystem,
+    ComponentFallbackProvider, IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery,
+    ViewSystemExecutionError, VisualizerQueryInfo, VisualizerSystem,
 };
 
 /// An empty system to accept all entities in the view

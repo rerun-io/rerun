@@ -2,7 +2,6 @@ use egui::Color32;
 use re_chunk::LatestAtQuery;
 use re_log_types::{EntityPath, Instance};
 use re_query::{clamped_zip_2x4, range_zip_1x4};
-use re_view::{DataResultQuery, RangeResultsExt};
 use re_types::components::{Color, Radius, ShowLabels};
 use re_types::datatypes::Float32;
 use re_types::{
@@ -10,10 +9,11 @@ use re_types::{
     components::{self},
     ArrowString, Component as _,
 };
+use re_view::{DataResultQuery, RangeResultsExt};
 use re_viewer_context::{
-    self, IdentifiedViewSystem, QueryContext, ViewSystemExecutionError,
-    TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewQuery,
-    ViewSystemIdentifier, VisualizerQueryInfo, VisualizerSystem,
+    self, IdentifiedViewSystem, QueryContext, TypedComponentFallbackProvider, ViewContext,
+    ViewContextCollection, ViewQuery, ViewSystemExecutionError, ViewSystemIdentifier,
+    VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::graph::NodeId;

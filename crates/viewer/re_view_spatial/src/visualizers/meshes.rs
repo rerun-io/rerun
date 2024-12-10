@@ -10,8 +10,8 @@ use re_types::{
     Component as _,
 };
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, QueryContext, ViewSystemExecutionError,
-    ViewContext, ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
+    ApplicableEntities, IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection,
+    ViewQuery, ViewSystemExecutionError, VisualizableEntities, VisualizableFilterContext,
     VisualizerQueryInfo, VisualizerSystem,
 };
 
@@ -129,10 +129,9 @@ impl Mesh3DVisualizer {
                             gpu_mesh: mesh_instance.gpu_mesh.clone(),
                             world_from_mesh,
                             outline_mask_ids,
-                            picking_layer_id:
-                                re_view::picking_layer_id_from_instance_path_hash(
-                                    picking_instance_hash,
-                                ),
+                            picking_layer_id: re_view::picking_layer_id_from_instance_path_hash(
+                                picking_instance_hash,
+                            ),
                             additive_tint: re_renderer::Color32::TRANSPARENT,
                         }
                     }));

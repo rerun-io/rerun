@@ -51,9 +51,7 @@ impl Query {
             .clear_blueprint_component::<components::FilterByRange>(ctx);
     }
 
-    pub(crate) fn filter_by_range(
-        &self,
-    ) -> Result<ResolvedTimeRange, ViewSystemExecutionError> {
+    pub(crate) fn filter_by_range(&self) -> Result<ResolvedTimeRange, ViewSystemExecutionError> {
         #[allow(clippy::map_unwrap_or)]
         Ok(self
             .query_property

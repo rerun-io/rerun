@@ -4,9 +4,8 @@ use re_viewer::external::{
     re_renderer,
     re_types::{self, components::Color, Component as _, ComponentDescriptor},
     re_viewer_context::{
-        self, IdentifiedViewSystem, ViewSystemExecutionError, ViewContext,
-        ViewContextCollection, ViewQuery, ViewSystemIdentifier, VisualizerQueryInfo,
-        VisualizerSystem,
+        self, IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery,
+        ViewSystemExecutionError, ViewSystemIdentifier, VisualizerQueryInfo, VisualizerSystem,
     },
 };
 

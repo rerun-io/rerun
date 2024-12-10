@@ -1,14 +1,14 @@
 use re_chunk::LatestAtQuery;
 use re_log_types::{EntityPath, Instance};
-use re_view::{DataResultQuery, RangeResultsExt};
 use re_types::{
     self, archetypes,
     components::{self, GraphEdge, GraphNode},
     Component as _,
 };
+use re_view::{DataResultQuery, RangeResultsExt};
 use re_viewer_context::{
-    self, IdentifiedViewSystem, ViewSystemExecutionError, ViewContext, ViewContextCollection,
-    ViewQuery, ViewSystemIdentifier, VisualizerQueryInfo, VisualizerSystem,
+    self, IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery,
+    ViewSystemExecutionError, ViewSystemIdentifier, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::graph::NodeId;

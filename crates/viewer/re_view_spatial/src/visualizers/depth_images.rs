@@ -14,8 +14,8 @@ use re_types::{
 };
 use re_viewer_context::{
     ApplicableEntities, ColormapWithRange, IdentifiedViewSystem, ImageInfo, ImageStatsCache,
-    QueryContext, ViewClass, ViewSystemExecutionError, TypedComponentFallbackProvider,
-    ViewContext, ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
+    QueryContext, TypedComponentFallbackProvider, ViewClass, ViewContext, ViewContextCollection,
+    ViewQuery, ViewSystemExecutionError, VisualizableEntities, VisualizableFilterContext,
     VisualizerQueryInfo, VisualizerSystem,
 };
 
@@ -61,8 +61,7 @@ impl DepthImageVisualizer {
         ent_context: &SpatialSceneEntityContext<'_>,
         images: impl Iterator<Item = DepthImageComponentData>,
     ) {
-        let is_3d_view =
-            ent_context.view_class_identifier == SpatialView3D::identifier();
+        let is_3d_view = ent_context.view_class_identifier == SpatialView3D::identifier();
         ent_context
             .transform_info
             .warn_on_per_instance_transform(ctx.target_entity_path, "DepthImage");

@@ -1,5 +1,5 @@
 use re_log_types::{hash::Hash64, EntityPath, EntityPathFilter, EntityPathSubs};
-use re_types::ViewClassIdentifier as ViewClassIdentifier;
+use re_types::ViewClassIdentifier;
 
 /// Properties of a view that as recommended to be spawned by default via view spawn heuristics.
 #[derive(Debug, Clone)]
@@ -37,9 +37,7 @@ impl ViewSpawnHeuristics {
     pub fn new(iter: impl IntoIterator<Item = RecommendedView>) -> Self {
         let mut recommended_views: Vec<RecommendedView> = iter.into_iter().collect();
         recommended_views.sort_by(|a, b| a.origin.cmp(&b.origin));
-        Self {
-            recommended_views,
-        }
+        Self { recommended_views }
     }
 
     #[inline]

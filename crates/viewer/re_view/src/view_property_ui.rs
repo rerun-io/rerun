@@ -3,8 +3,7 @@ use re_types_core::{
 };
 use re_ui::{list_item, UiExt as _};
 use re_viewer_context::{
-    ComponentFallbackProvider, ComponentUiTypes, QueryContext, ViewId, ViewState,
-    ViewerContext,
+    ComponentFallbackProvider, ComponentUiTypes, QueryContext, ViewId, ViewState, ViewerContext,
 };
 use re_viewport_blueprint::ViewProperty;
 

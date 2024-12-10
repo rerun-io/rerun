@@ -27,18 +27,10 @@ pub(crate) fn tree_from_views(
     let space_make_infos = views
         .iter()
         // Sort for determinism:
-        .sorted_by_key(|(view_id, view)| {
-            (
-                &view.space_origin,
-                &view.display_name,
-                *view_id,
-            )
-        })
+        .sorted_by_key(|(view_id, view)| (&view.space_origin, &view.display_name, *view_id))
         .map(|(view_id, view)| {
             let class_identifier = view.class_identifier();
-            let layout_priority = view
-                .class(view_class_registry)
-                .layout_priority();
+            let layout_priority = view.class(view_class_registry).layout_priority();
             SpaceMakeInfo {
                 id: *view_id,
                 class_identifier,

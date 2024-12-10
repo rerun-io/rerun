@@ -3,16 +3,16 @@ use re_renderer::{
     renderer::{LineDrawDataError, LineStripFlags},
     PickingLayerInstanceId,
 };
-use re_view::{DataResultQuery as _, RangeResultsExt as _};
 use re_types::{
     archetypes::GeoLineStrings,
     components::{Color, GeoLineString, Radius},
     Component as _,
 };
+use re_view::{DataResultQuery as _, RangeResultsExt as _};
 use re_viewer_context::{
-    auto_color_for_entity_path, IdentifiedViewSystem, QueryContext, ViewHighlights,
-    ViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext,
-    ViewContextCollection, ViewQuery, VisualizerQueryInfo, VisualizerSystem,
+    auto_color_for_entity_path, IdentifiedViewSystem, QueryContext, TypedComponentFallbackProvider,
+    ViewContext, ViewContextCollection, ViewHighlights, ViewQuery, ViewSystemExecutionError,
+    VisualizerQueryInfo, VisualizerSystem,
 };
 
 #[derive(Debug, Default)]

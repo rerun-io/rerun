@@ -6,7 +6,7 @@ use re_types::{
     components::Position2D,
     Archetype, Component,
 };
-use re_viewer_context::{ComponentFallbackProvider, ViewState, ViewQuery, ViewerContext};
+use re_viewer_context::{ComponentFallbackProvider, ViewQuery, ViewState, ViewerContext};
 use re_viewport_blueprint::{ViewProperty, ViewPropertyQueryError};
 
 #[derive(Debug, PartialEq)]

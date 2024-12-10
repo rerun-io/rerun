@@ -2,7 +2,7 @@ use ahash::HashMap;
 
 use re_types::{ComponentNameSet, ViewClassIdentifier};
 
-use crate::{IdentifiedViewSystem, ViewSystemExecutionError, ViewQuery, ViewSystemIdentifier};
+use crate::{IdentifiedViewSystem, ViewQuery, ViewSystemExecutionError, ViewSystemIdentifier};
 
 use super::view_context::ViewContext;
 

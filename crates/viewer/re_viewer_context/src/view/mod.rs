@@ -25,7 +25,7 @@ pub use named_system::{IdentifiedViewSystem, PerSystemEntities, ViewSystemIdenti
 pub use spawn_heuristics::{RecommendedView, ViewSpawnHeuristics};
 pub use system_execution_output::SystemExecutionOutput;
 pub use view_class::{
-    ViewClassExt, ViewClass, ViewClassLayoutPriority, ViewState, ViewStateExt,
+    ViewClass, ViewClassExt, ViewClassLayoutPriority, ViewState, ViewStateExt,
     VisualizableFilterContext,
 };
 pub use view_class_registry::{ViewClassRegistry, ViewClassRegistryError, ViewSystemRegistrator};

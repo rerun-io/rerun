@@ -162,7 +162,7 @@ pub use self::{
         SerializationResult, _Backtrace,
     },
     size_bytes::SizeBytes,
-    view::{ViewClassIdentifier, View},
+    view::{View, ViewClassIdentifier},
 };
 
 /// Fundamental [`Archetype`]s that are implemented in `re_types_core` directly for convenience and
