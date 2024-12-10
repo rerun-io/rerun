@@ -153,7 +153,7 @@ jobs:
 
             | Result | Commit  | Link | Manifest |
             | ------ | ------- | ---- | -------- |
-            | ✅ | ${{ steps.get-sha.outputs.sha }} | https://rerun.io/viewer/pr/${{ github.event.pull_request.number }} | [+nightly](https://rerun.io/viewer/pr/${{ github.event.pull_request.number }}?manifest_url=https://app.rerun.io/version/nightly/examples_manifest.json) [+main](https://rerun.io/viewer/pr/${{ github.event.pull_request.number }}?manifest_url=https://app.rerun.io/version/main/examples_manifest.json) |
+            | ✅ | ${{ steps.get-sha.outputs.sha }} | https://rerun.io/viewer/pr/${{ github.event.pull_request.number }} | [`+nightly`](https://rerun.io/viewer/pr/${{ github.event.pull_request.number }}?manifest_url=https://app.rerun.io/version/nightly/examples_manifest.json) [`+main`](https://rerun.io/viewer/pr/${{ github.event.pull_request.number }}?manifest_url=https://app.rerun.io/version/main/examples_manifest.json) |
 
             <sup>Note: This comment is updated whenever you push a commit.</sup>
 
@@ -167,8 +167,8 @@ jobs:
           message: |
             Web viewer failed to build.
 
-            | Result | Commit  | Link  |
+            | Result | Commit  | Link | Manifest |
             | ------ | ------- | ----- |
-            | ❌ | ${{ steps.get-sha.outputs.sha }} | https://rerun.io/viewer/pr/${{ github.event.pull_request.number }} |
+            | ❌ | ${{ steps.get-sha.outputs.sha }} | https://rerun.io/viewer/pr/${{ github.event.pull_request.number }} | [`+nightly`](https://rerun.io/viewer/pr/${{ github.event.pull_request.number }}?manifest_url=https://app.rerun.io/version/nightly/examples_manifest.json) [`+main`](https://rerun.io/viewer/pr/${{ github.event.pull_request.number }}?manifest_url=https://app.rerun.io/version/main/examples_manifest.json) |
 
             <sup>Note: This comment is updated whenever you push a commit.</sup>
