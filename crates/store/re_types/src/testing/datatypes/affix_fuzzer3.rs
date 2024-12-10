@@ -12,7 +12,7 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 
-use ::re_types_core::external::arrow2;
+use ::re_types_core::external::arrow;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
@@ -247,20 +247,19 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
         })
     }
 
-    fn from_arrow2_opt(
-        arrow_data: &dyn arrow2::array::Array,
+    fn from_arrow_opt(
+        arrow_data: &dyn arrow::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
         #![allow(clippy::wildcard_imports)]
-        use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow::datatypes::*;
-        use arrow2::{array::*, buffer::*};
+        use ::re_types_core::{arrow_zip_validity::ZipValidity, Loggable as _, ResultExt as _};
+        use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let arrow_data = arrow_data
                 .as_any()
-                .downcast_ref::<arrow2::array::UnionArray>()
+                .downcast_ref::<arrow::array::UnionArray>()
                 .ok_or_else(|| {
                     let expected = Self::arrow_datatype();
                     let actual = arrow_data.data_type().clone();
@@ -270,8 +269,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
             if arrow_data.is_empty() {
                 Vec::new()
             } else {
-                let (arrow_data_types, arrow_data_arrays) =
-                    (arrow_data.types(), arrow_data.fields());
+                let arrow_data_type_ids = arrow_data.type_ids();
                 let arrow_data_offsets = arrow_data
                     .offsets()
                     .ok_or_else(|| {
@@ -280,18 +278,18 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                         DeserializationError::datatype_mismatch(expected, actual)
                     })
                     .with_context("rerun.testing.datatypes.AffixFuzzer3")?;
-                if arrow_data_types.len() != arrow_data_offsets.len() {
+                if arrow_data_type_ids.len() != arrow_data_offsets.len() {
                     return Err(DeserializationError::offset_slice_oob(
-                        (0, arrow_data_types.len()),
+                        (0, arrow_data_type_ids.len()),
                         arrow_data_offsets.len(),
                     ))
                     .with_context("rerun.testing.datatypes.AffixFuzzer3");
                 }
                 let degrees = {
-                    if arrow_data_arrays.len() <= 1 {
+                    if arrow_data.type_ids().inner().len() <= 1 {
                         return Ok(Vec::new());
                     }
-                    let arrow_data = &*arrow_data_arrays[1];
+                    let arrow_data = arrow_data.child(1).as_ref();
                     arrow_data
                         .as_any()
                         .downcast_ref::<Float32Array>()
@@ -302,18 +300,17 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                         })
                         .with_context("rerun.testing.datatypes.AffixFuzzer3#degrees")?
                         .into_iter()
-                        .map(|opt| opt.copied())
                         .collect::<Vec<_>>()
                 };
                 let craziness = {
-                    if arrow_data_arrays.len() <= 2 {
+                    if arrow_data.type_ids().inner().len() <= 2 {
                         return Ok(Vec::new());
                     }
-                    let arrow_data = &*arrow_data_arrays[2];
+                    let arrow_data = arrow_data.child(2).as_ref();
                     {
                         let arrow_data = arrow_data
                             .as_any()
-                            .downcast_ref::<arrow2::array::ListArray<i32>>()
+                            .downcast_ref::<arrow::array::ListArray>()
                             .ok_or_else(|| {
                                 let expected = DataType::List(std::sync::Arc::new(Field::new(
                                     "item",
@@ -329,7 +326,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                         } else {
                             let arrow_data_inner = {
                                 let arrow_data_inner = &**arrow_data.values();
-                                crate::testing::datatypes::AffixFuzzer1::from_arrow2_opt(
+                                crate::testing::datatypes::AffixFuzzer1::from_arrow_opt(
                                     arrow_data_inner,
                                 )
                                 .with_context("rerun.testing.datatypes.AffixFuzzer3#craziness")?
@@ -337,48 +334,45 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                                 .collect::<Vec<_>>()
                             };
                             let offsets = arrow_data.offsets();
-                            arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                offsets.windows(2),
-                                arrow_data.validity(),
-                            )
-                            .map(|elem| {
-                                elem.map(|window| {
-                                    let start = window[0] as usize;
-                                    let end = window[1] as usize;
-                                    if arrow_data_inner.len() < end {
-                                        return Err(DeserializationError::offset_slice_oob(
-                                            (start, end),
-                                            arrow_data_inner.len(),
-                                        ));
-                                    }
+                            ZipValidity::new_with_validity(offsets.windows(2), arrow_data.nulls())
+                                .map(|elem| {
+                                    elem.map(|window| {
+                                        let start = window[0] as usize;
+                                        let end = window[1] as usize;
+                                        if arrow_data_inner.len() < end {
+                                            return Err(DeserializationError::offset_slice_oob(
+                                                (start, end),
+                                                arrow_data_inner.len(),
+                                            ));
+                                        }
 
-                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                    let data =
-                                        unsafe { arrow_data_inner.get_unchecked(start..end) };
-                                    let data = data
-                                        .iter()
-                                        .cloned()
-                                        .map(Option::unwrap_or_default)
-                                        .collect();
-                                    Ok(data)
+                                        #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                        let data =
+                                            unsafe { arrow_data_inner.get_unchecked(start..end) };
+                                        let data = data
+                                            .iter()
+                                            .cloned()
+                                            .map(Option::unwrap_or_default)
+                                            .collect();
+                                        Ok(data)
+                                    })
+                                    .transpose()
                                 })
-                                .transpose()
-                            })
-                            .collect::<DeserializationResult<Vec<Option<_>>>>()?
+                                .collect::<DeserializationResult<Vec<Option<_>>>>()?
                         }
                         .into_iter()
                     }
                     .collect::<Vec<_>>()
                 };
                 let fixed_size_shenanigans = {
-                    if arrow_data_arrays.len() <= 3 {
+                    if arrow_data.type_ids().inner().len() <= 3 {
                         return Ok(Vec::new());
                     }
-                    let arrow_data = &*arrow_data_arrays[3];
+                    let arrow_data = arrow_data.child(3).as_ref();
                     {
                         let arrow_data = arrow_data
                             .as_any()
-                            .downcast_ref::<arrow2::array::FixedSizeListArray>()
+                            .downcast_ref::<arrow::array::FixedSizeListArray>()
                             .ok_or_else(|| {
                                 let expected = DataType::FixedSizeList(
                                     std::sync::Arc::new(
@@ -412,18 +406,14 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                                         "rerun.testing.datatypes.AffixFuzzer3#fixed_size_shenanigans",
                                     )?
                                     .into_iter()
-                                    .map(|opt| opt.copied())
                                     .collect::<Vec<_>>()
                             };
-                            arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                    offsets,
-                                    arrow_data.validity(),
-                                )
+                            ZipValidity::new_with_validity(offsets, arrow_data.nulls())
                                 .map(|elem| {
                                     elem
                                         .map(|(start, end): (usize, usize)| {
                                             debug_assert!(end - start == 3usize);
-                                            if end > arrow_data_inner.len() {
+                                            if arrow_data_inner.len() < end {
                                                 return Err(
                                                     DeserializationError::offset_slice_oob(
                                                         (start, end),
@@ -453,7 +443,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                     }
                         .collect::<Vec<_>>()
                 };
-                arrow_data_types
+                arrow_data_type_ids
                     .iter()
                     .enumerate()
                     .map(|(i, typ)| {
