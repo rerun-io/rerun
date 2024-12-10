@@ -200,7 +200,7 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usiz
     once_cell::sync::Lazy::new(|| {
         [ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Transform3D".into()),
-            component_name: "Transform3DIndicator".into(),
+            component_name: "rerun.components.Transform3DIndicator".into(),
             archetype_field_name: None,
         }]
     });
@@ -251,7 +251,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 8usize]> =
         [
             ComponentDescriptor {
                 archetype_name: Some("rerun.archetypes.Transform3D".into()),
-                component_name: "Transform3DIndicator".into(),
+                component_name: "rerun.components.Transform3DIndicator".into(),
                 archetype_field_name: None,
             },
             ComponentDescriptor {

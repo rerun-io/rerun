@@ -155,7 +155,7 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usiz
             },
             ComponentDescriptor {
                 archetype_name: Some("rerun.archetypes.Pinhole".into()),
-                component_name: "PinholeIndicator".into(),
+                component_name: "rerun.components.PinholeIndicator".into(),
                 archetype_field_name: None,
             },
         ]
@@ -192,7 +192,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
             },
             ComponentDescriptor {
                 archetype_name: Some("rerun.archetypes.Pinhole".into()),
-                component_name: "PinholeIndicator".into(),
+                component_name: "rerun.components.PinholeIndicator".into(),
                 archetype_field_name: None,
             },
             ComponentDescriptor {

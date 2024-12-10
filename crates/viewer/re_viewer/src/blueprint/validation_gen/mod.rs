@@ -18,6 +18,7 @@ pub use re_types::blueprint::components::IncludedContent;
 pub use re_types::blueprint::components::Interactive;
 pub use re_types::blueprint::components::LockRangeDuringZoom;
 pub use re_types::blueprint::components::MapProvider;
+pub use re_types::blueprint::components::NearClipPlane;
 pub use re_types::blueprint::components::PanelState;
 pub use re_types::blueprint::components::QueryExpression;
 pub use re_types::blueprint::components::RowShare;
@@ -65,6 +66,7 @@ pub fn is_valid_blueprint(blueprint: &EntityDb) -> bool {
         && validate_component::<Interactive>(blueprint)
         && validate_component::<LockRangeDuringZoom>(blueprint)
         && validate_component::<MapProvider>(blueprint)
+        && validate_component::<NearClipPlane>(blueprint)
         && validate_component::<PanelState>(blueprint)
         && validate_component::<QueryExpression>(blueprint)
         && validate_component::<RootContainer>(blueprint)

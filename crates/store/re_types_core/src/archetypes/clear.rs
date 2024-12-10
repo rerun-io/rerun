@@ -91,7 +91,7 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usiz
     once_cell::sync::Lazy::new(|| {
         [ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Clear".into()),
-            component_name: "ClearIndicator".into(),
+            component_name: "rerun.components.ClearIndicator".into(),
             archetype_field_name: None,
         }]
     });
@@ -109,7 +109,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
             },
             ComponentDescriptor {
                 archetype_name: Some("rerun.archetypes.Clear".into()),
-                component_name: "ClearIndicator".into(),
+                component_name: "rerun.components.ClearIndicator".into(),
                 archetype_field_name: None,
             },
         ]

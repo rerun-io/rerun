@@ -205,6 +205,14 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <NearClipPlane as Component>::name(),
+            ComponentReflection {
+                docstring_md: "Distance to the near clip plane used for `Spatial2DView`.",
+                custom_placeholder: Some(NearClipPlane::default().to_arrow2()?),
+                datatype: NearClipPlane::arrow2_datatype(),
+            },
+        ),
+        (
             <PanelState as Component>::name(),
             ComponentReflection {
                 docstring_md: "Tri-state for panel controls.",
@@ -2327,7 +2335,11 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "rerun.blueprint.components.VisualBounds2D".into(), display_name :
                     "Range", docstring_md :
                     "Controls the visible range of a 2D view.\n\nUse this to control pan & zoom of the view.",
-                    is_required : true, },
+                    is_required : true, }, ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.NearClipPlane".into(), display_name :
+                    "Near clip plane", docstring_md :
+                    "Controls the distance to the near clip plane in 3D scene units.\n\nContent closer than this distance will not be visible.",
+                    is_required : false, },
                 ],
             },
         ),

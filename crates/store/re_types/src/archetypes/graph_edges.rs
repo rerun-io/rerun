@@ -53,7 +53,7 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usiz
             },
             ComponentDescriptor {
                 archetype_name: Some("rerun.archetypes.GraphEdges".into()),
-                component_name: "GraphEdgesIndicator".into(),
+                component_name: "rerun.components.GraphEdgesIndicator".into(),
                 archetype_field_name: None,
             },
         ]
@@ -77,7 +77,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
             },
             ComponentDescriptor {
                 archetype_name: Some("rerun.archetypes.GraphEdges".into()),
-                component_name: "GraphEdgesIndicator".into(),
+                component_name: "rerun.components.GraphEdgesIndicator".into(),
                 archetype_field_name: None,
             },
         ]
