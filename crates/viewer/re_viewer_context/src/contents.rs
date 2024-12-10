@@ -5,7 +5,7 @@ use egui_tiles::TileId;
 use re_log_types::EntityPath;
 
 use crate::item::Item;
-use crate::{BlueprintId, BlueprintIdRegistry, ContainerId, ItemCollection, ViewId};
+use crate::{BlueprintId, BlueprintIdRegistry, ContainerId, ViewId};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Contents {
@@ -62,14 +62,6 @@ impl Contents {
             Self::View(id) => Some(*id),
             Self::Container(_) => None,
         }
-    }
-}
-
-impl TryFrom<&ItemCollection> for Vec<Contents> {
-    type Error = ();
-
-    fn try_from(value: &ItemCollection) -> Result<Self, Self::Error> {
-        value.iter().map(|(item, _)| item.try_into()).collect()
     }
 }
 

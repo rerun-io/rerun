@@ -430,6 +430,17 @@ impl DesignTokens {
     pub fn thumbnail_background_color(&self) -> egui::Color32 {
         self.color(ColorToken::gray(S250))
     }
+
+    /// Stroke used to indicate that a UI element is a container that will receive a drag-and-drop
+    /// payload.
+    ///
+    /// Sometimes this is the UI element that is being dragged over (e.g., a view receiving a new
+    /// entity). Sometimes this is a UI element not under the pointer, but whose content is
+    /// being hovered (e.g., a container in the blueprint tree)
+    #[inline]
+    pub fn drop_target_container_stroke(&self) -> egui::Stroke {
+        egui::Stroke::new(1.0, self.color(ColorToken::blue(S350)))
+    }
 }
 
 // ----------------------------------------------------------------------------

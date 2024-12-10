@@ -389,7 +389,7 @@ impl ListItem {
                     Shape::rect_stroke(
                         bg_rect_to_paint.expand(-1.0),
                         0.0,
-                        egui::Stroke::new(1.0, ui.visuals().selection.bg_fill),
+                        crate::design_tokens().drop_target_container_stroke(),
                     ),
                 );
             }

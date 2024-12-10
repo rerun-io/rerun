@@ -6,10 +6,12 @@ use ahash::HashMap;
 use egui_tiles::{Behavior as _, EditAction};
 
 use re_context_menu::{context_menu_ui_for_item, SelectionUpdateBehavior};
-use re_ui::{ContextExt as _, DesignTokens, Icon, UiExt as _};
+use re_log_types::{EntityPath, EntityPathRule};
+use re_ui::{design_tokens, ContextExt as _, DesignTokens, Icon, UiExt as _};
 use re_viewer_context::{
-    blueprint_id_to_tile_id, icon_for_container_kind, Contents, Item, PublishedViewInfo,
-    SystemExecutionOutput, ViewClassRegistry, ViewId, ViewQuery, ViewStates, ViewerContext,
+    blueprint_id_to_tile_id, icon_for_container_kind, Contents, DragAndDropPayload, Item,
+    PublishedViewInfo, SystemExecutionOutput, ViewClassRegistry, ViewId, ViewQuery, ViewStates,
+    ViewerContext,
 };
 use re_viewport_blueprint::{ViewportBlueprint, ViewportCommand};
 
@@ -100,6 +102,15 @@ impl ViewportUi {
 
             tree.ui(&mut egui_tiles_delegate, ui);
 
+            let dragged_payload = egui::DragAndDrop::payload::<DragAndDropPayload>(ui.ctx());
+            let dragged_payload = dragged_payload.as_ref().and_then(|payload| {
+                if let DragAndDropPayload::Entities { entities } = payload.as_ref() {
+                    Some(entities)
+                } else {
+                    None
+                }
+            });
+
             // Outline hovered & selected tiles:
             for contents in blueprint.contents_iter() {
                 let tile_id = contents.as_tile_id();
@@ -117,7 +128,16 @@ impl ViewportUi {
                         hovered = false;
                     }
 
-                    let stroke = if hovered {
+                    let view_id = contents.as_view_id();
+
+                    //TODO: add visualizabilty criteron here
+                    let candidate_drop_of_entities_in_view = dragged_payload
+                        .and_then(|payload| ui.rect_contains_pointer(rect).then_some(payload))
+                        .and_then(|payload| view_id.map(|view_id| (view_id, payload)));
+
+                    let stroke = if candidate_drop_of_entities_in_view.is_some() {
+                        design_tokens().drop_target_container_stroke()
+                    } else if hovered {
                         ui.ctx().hover_stroke()
                     } else if selected {
                         ui.ctx().selection_stroke()
@@ -125,14 +145,21 @@ impl ViewportUi {
                         continue;
                     };
 
+                    if let Some((view_id, entities)) = candidate_drop_of_entities_in_view {
+                        self.handle_entities_drop(ctx, ui, view_id, entities);
+                    }
+
                     // We want the rectangle to be on top of everything in the viewport,
                     // including stuff in "zoom-pan areas", like we use in the graph view.
-                    let top_layer_id = egui::LayerId::new(ui.layer_id().order, ui.id().with("child_id"));
+                    let top_layer_id =
+                        egui::LayerId::new(ui.layer_id().order, ui.id().with("child_id"));
                     ui.ctx().set_sublayer(ui.layer_id(), top_layer_id); // Make sure it is directly on top of the ui layer
 
                     // We need to shrink a bit so the panel-resize lines don't cover the highlight rectangle.
                     // This is hacky.
-                    ui.painter().clone().with_layer_id(top_layer_id)
+                    ui.painter()
+                        .clone()
+                        .with_layer_id(top_layer_id)
                         .rect_stroke(rect.shrink(stroke.width), 0.0, stroke);
                 }
             }
@@ -144,7 +171,8 @@ impl ViewportUi {
                 if egui_tiles_delegate.edited || is_dragging_a_tile {
                     if blueprint.auto_layout() {
                         re_log::trace!(
-                            "The user is manipulating the egui_tiles tree - will no longer auto-layout"
+                            "The user is manipulating the egui_tiles tree - will no longer \
+                            auto-layout"
                         );
                     }
 
@@ -164,12 +192,39 @@ impl ViewportUi {
                         });
                     }
 
-                    self.blueprint.deferred_commands.lock().push(ViewportCommand::SetTree(tree));
+                    self.blueprint
+                        .deferred_commands
+                        .lock()
+                        .push(ViewportCommand::SetTree(tree));
                 }
             }
         });
 
         self.blueprint.set_maximized(maximized, ctx);
+    }
+
+    fn handle_entities_drop(
+        &self,
+        ctx: &ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        view_id: ViewId,
+        entities: &[EntityPath],
+    ) {
+        if !ui.input(|i| i.pointer.any_released()) {
+            return;
+        }
+
+        egui::DragAndDrop::clear_payload(ui.ctx());
+
+        let Some(view) = self.blueprint.view(&view_id) else {
+            return;
+        };
+
+        for entity in entities {
+            //TODO: do that only visualizable
+            view.contents
+                .raw_add_entity_inclusion(ctx, EntityPathRule::including_subtree(entity.clone()));
+        }
     }
 
     pub fn on_frame_start(&self, ctx: &ViewerContext<'_>) {
