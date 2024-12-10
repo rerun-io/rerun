@@ -72,7 +72,7 @@ impl ContextMenuAction for AddEntitiesToNewSpaceViewAction {
     }
 }
 
-/// Builds a list of compatible space views for the provided selection.
+/// Builds a list of compatible views for the provided selection.
 fn recommended_space_views_for_selection(
     ctx: &ContextMenuContext<'_>,
 ) -> IntSet<ViewClassIdentifier> {

@@ -38,9 +38,9 @@ use crate::{container::ContainerBlueprint, ViewBlueprint, ViewportCommand, VIEWP
 /// Any change is queued up into [`Self::deferred_commands`] and applied at the end of the frame,
 /// right before saving to the blueprint store.
 pub struct ViewportBlueprint {
-    /// Where the space views are stored.
+    /// Where the views are stored.
     ///
-    /// Not a hashmap in order to preserve the order of the space views.
+    /// Not a hashmap in order to preserve the order of the views.
     pub space_views: BTreeMap<ViewId, ViewBlueprint>,
 
     /// All the containers found in the viewport.
@@ -49,7 +49,7 @@ pub struct ViewportBlueprint {
     /// The root container.
     pub root_container: ContainerId,
 
-    /// The layouts of all the space views.
+    /// The layouts of all the views.
     ///
     /// If [`Self::maximized`] is set, this tree is ignored.
     pub tree: egui_tiles::Tree<ViewId>,
@@ -67,12 +67,12 @@ pub struct ViewportBlueprint {
     /// Note: we use an atomic here because writes needs to be effective immediately during the frame.
     auto_layout: AtomicBool,
 
-    /// Whether space views should be created automatically for entities that are not already in a space.
+    /// Whether views should be created automatically for entities that are not already in a space.
     ///
     /// Note: we use an atomic here because writes needs to be effective immediately during the frame.
     auto_views: AtomicBool,
 
-    /// Hashes of all recommended space views the viewer has already added and that should not be added again.
+    /// Hashes of all recommended views the viewer has already added and that should not be added again.
     past_viewer_recommendations: IntSet<ViewerRecommendationHash>,
 
     /// Blueprint mutation events that will be processed at the end of the frame.
@@ -303,7 +303,7 @@ impl ViewportBlueprint {
         self.set_auto_views(false, ctx);
     }
 
-    /// Spawns new space views if enabled.
+    /// Spawns new views if enabled.
     pub fn spawn_heuristic_space_views(&self, ctx: &ViewerContext<'_>) {
         if !self.auto_views() {
             return;
@@ -317,7 +317,7 @@ impl ViewportBlueprint {
 
             re_tracing::profile_scope!("filter_recommendations_for", class_id);
 
-            // Remove all space views that we already spawned via heuristic before.
+            // Remove all views that we already spawned via heuristic before.
             recommended_space_views.retain(|recommended_view| {
                 !self
                     .past_viewer_recommendations
@@ -325,7 +325,7 @@ impl ViewportBlueprint {
             });
 
             // Each of the remaining recommendations would individually be a candidate for spawning if there were
-            // no other space views in the viewport.
+            // no other views in the viewport.
             // In the following steps we further filter this list depending on what's on screen already,
             // as well as redundancy within the recommendation itself BUT this is an important checkpoint:
             // All the other views may change due to user interaction, but this does *not* mean
@@ -356,7 +356,7 @@ impl ViewportBlueprint {
                 );
             }
 
-            // Remove all space views that have all the entities we already have on screen.
+            // Remove all views that have all the entities we already have on screen.
             let existing_path_filters = self
                 .space_views
                 .values()
@@ -369,8 +369,8 @@ impl ViewportBlueprint {
                 })
             });
 
-            // Remove all space views that are redundant within the remaining recommendation.
-            // This n^2 loop should only run ever for frames that add new space views.
+            // Remove all views that are redundant within the remaining recommendation.
+            // This n^2 loop should only run ever for frames that add new views.
             let final_recommendations = recommended_space_views
                 .iter()
                 .enumerate()
@@ -393,7 +393,7 @@ impl ViewportBlueprint {
         }
     }
 
-    /// Add a set of space views to the viewport.
+    /// Add a set of views to the viewport.
     ///
     /// The view is added to the root container, or, if provided, to a given parent container.
     /// The list of created view IDs is returned.
@@ -415,7 +415,7 @@ impl ViewportBlueprint {
         }
     }
 
-    /// Returns an iterator over all the contents (space views and containers) in the viewport.
+    /// Returns an iterator over all the contents (views and containers) in the viewport.
     pub fn contents_iter(&self) -> impl Iterator<Item = Contents> + '_ {
         self.space_views
             .keys()
@@ -765,13 +765,13 @@ impl ViewportBlueprint {
         }
     }
 
-    /// Whether space views should be created automatically for entities that are not already in a space.
+    /// Whether views should be created automatically for entities that are not already in a space.
     #[inline]
     pub fn auto_views(&self) -> bool {
         self.auto_views.load(Ordering::SeqCst)
     }
 
-    /// Whether space views should be created automatically for entities that are not already in a space.
+    /// Whether views should be created automatically for entities that are not already in a space.
     #[inline]
     pub fn set_auto_views(&self, value: bool, ctx: &ViewerContext<'_>) {
         let old_value = self.auto_views.swap(value, Ordering::SeqCst);

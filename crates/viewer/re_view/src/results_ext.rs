@@ -220,7 +220,7 @@ impl From<(RangeQuery, HybridRangeResults)> for HybridResults<'_> {
     }
 }
 
-/// Extension traits to abstract query result handling for all spatial space views.
+/// Extension traits to abstract query result handling for all spatial views.
 ///
 /// Also turns all results into range results, so that views only have to worry about the ranged
 /// case.

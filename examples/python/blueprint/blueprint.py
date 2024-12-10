@@ -14,7 +14,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Different options for how we might use blueprint")
 
     parser.add_argument("--skip-blueprint", action="store_true", help="Don't send the blueprint")
-    parser.add_argument("--auto-space-views", action="store_true", help="Automatically add space views")
+    parser.add_argument("--auto-space-views", action="store_true", help="Automatically add views")
 
     args = parser.parse_args()
 
@@ -25,7 +25,7 @@ def main() -> None:
         # rectangles.
         #
         # If auto_views is True, the blueprint will automatically add one of the heuristic
-        # space views, which will include the image and both rectangles.
+        # views, which will include the image and both rectangles.
         blueprint = rrb.Blueprint(
             rrb.Grid(
                 rrb.Spatial2DView(name="Rect 0", origin="/", contents=["image", "rect/0"]),

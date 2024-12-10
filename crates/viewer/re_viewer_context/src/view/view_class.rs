@@ -43,7 +43,7 @@ impl VisualizableFilterContext for () {
 /// It determines which entities are queried, how they are rendered, and how the user can interact with them.
 //
 // TODO(andreas): Consider formulating a view instance context object that is passed to all
-// methods that operate on concrete space views as opposed to be about general information on the class.
+// methods that operate on concrete views as opposed to be about general information on the class.
 pub trait ViewClass: Send + Sync {
     /// Identifier string of this view class.
     ///
@@ -170,7 +170,7 @@ pub trait ViewClass: Send + Sync {
             .collect()
     }
 
-    /// Determines which space views should be spawned by default for this class.
+    /// Determines which views should be spawned by default for this class.
     fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> ViewSpawnHeuristics;
 
     /// Ui shown when the user selects a view of this class.

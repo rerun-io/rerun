@@ -2,7 +2,7 @@
 Status: Mostly implemented.
 
 
-## What are space views
+## What are views
 Space Views visualize a Data Blueprint, i.e. a set of entities with given properties.
 They are represented as freely arrangeable tiles in the Viewport.
 Most Space Views are interactive, allowing their data to be explored freely.
@@ -56,7 +56,7 @@ As of writing we have:
 
 #### Future view class distinction
 
-The fundamental difference between different space views lies in the kinds of axes a view has.
+The fundamental difference between different views lies in the kinds of axes a view has.
 - Data Table (currently text views) have rows and columns with text
 - Text Log have rows with logs sorted in time (not 100% sure this is fundamentally different than Data Table)
 - Spatial 2D has two orthogonal axes with defined spatial relationships
@@ -71,7 +71,7 @@ With the right set of primitives a user should be able to manually build a bar c
 
 One could imagine that we would have heuristics that generate a Data Blueprint for boxes that creates a bar chart from 1-D tensors.
 
-##### On why 2D and 3D space views shouldn't be the same
+##### On why 2D and 3D views shouldn't be the same
 In the early prototype 2D and 3D Space Views were separate since they would use different
 renderers - 3D Space Views were driven by `three-d`, 2D Space Views by egui directly.
 With the advent or `re_renderer`, this distinction was no longer necessary and indeed a hindrance.
@@ -151,7 +151,7 @@ As with view classes themselves, new systems may be added at runtime.
 Despite being few in numbers, Space Views Classes are registered on startup.
 This is desirable since:
 * forces decoupling from other aspects of the Viewer (Viewer should be composable)
-* allows for user defined space views
+* allows for user defined views
 
 <!-- https://www.figma.com/file/uFpsPdnEjKbdEv9fQif5mU/Space-View-Structure?type=whiteboard&node-id=603-139&t=B8lmYdoC9j99ZmxJ-4 -->
 ![Overview diagram of how the basic traits related to each other](https://github.com/rerun-io/rerun/assets/1220815/ffdb1cdf-7efe-47a0-ac38-30262d770e69)

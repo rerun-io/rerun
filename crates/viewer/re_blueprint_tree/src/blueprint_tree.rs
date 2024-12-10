@@ -307,7 +307,7 @@ impl BlueprintTree {
 
         let root_node = result_tree.root_node();
 
-        // empty space views should display as open by default to highlight the fact that they are empty
+        // empty views should display as open by default to highlight the fact that they are empty
         let default_open = root_node.map_or(true, Self::default_open_for_data_result);
 
         let is_item_hovered =
@@ -878,7 +878,7 @@ fn reset_blueprint_button_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
         let hover_text = if default_blueprint_id.is_some() {
             "Reset to the default blueprint for this app"
         } else {
-            "Re-populate viewport with automatically chosen space views"
+            "Re-populate viewport with automatically chosen views"
         };
         response.on_hover_text(hover_text)
     };
@@ -963,7 +963,7 @@ fn expand_all_contents_until(
     });
 }
 
-/// List all space views that have the provided entity as data result.
+/// List all views that have the provided entity as data result.
 #[inline]
 fn list_space_views_with_entity(
     ctx: &ViewerContext<'_>,

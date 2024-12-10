@@ -8,7 +8,7 @@ use re_ui::{
 };
 use re_view::AnnotationSceneContext;
 use re_viewer_context::{
-    Item, ItemSpaceContext, ViewSystemExecutionError, UiLayout, ViewQuery, ViewerContext,
+    Item, ItemSpaceContext, UiLayout, ViewQuery, ViewSystemExecutionError, ViewerContext,
     VisualizerCollection,
 };
 
@@ -170,7 +170,7 @@ pub fn picking(
     }
 
     // Associate the hovered space with the first item in the hovered item list.
-    // If we were to add several, space views might render unnecessary additional hints.
+    // If we were to add several, views might render unnecessary additional hints.
     // TODO(andreas): Should there be context if no item is hovered at all? There's no usecase for that today it seems.
     let mut hovered_items = hovered_items
         .into_iter()

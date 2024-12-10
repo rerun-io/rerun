@@ -1,4 +1,4 @@
-//! Code for automatic layout of space views.
+//! Code for automatic layout of views.
 //!
 //! This uses some very rough heuristics and have a lot of room for improvement.
 
@@ -22,7 +22,7 @@ pub(crate) fn tree_from_space_views(
     space_view_class_registry: &re_viewer_context::ViewClassRegistry,
     space_views: &BTreeMap<ViewId, ViewBlueprint>,
 ) -> egui_tiles::Tree<ViewId> {
-    re_log::trace!("Auto-layout of {} space views", space_views.len());
+    re_log::trace!("Auto-layout of {} views", space_views.len());
 
     let space_make_infos = space_views
         .iter()
@@ -69,7 +69,7 @@ pub(crate) fn tree_from_space_views(
             .collect_vec();
         tiles.insert_grid_tile(child_tile_ids)
     } else {
-        // So many space views - lets group by class and put the members of each group into tabs:
+        // So many views - lets group by class and put the members of each group into tabs:
         let mut grouped_by_class: BTreeMap<ViewClassIdentifier, Vec<SpaceMakeInfo>> =
             Default::default();
         for smi in space_make_infos {

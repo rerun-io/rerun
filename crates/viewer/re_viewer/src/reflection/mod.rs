@@ -435,7 +435,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <DisconnectedSpace as Component>::name(),
             ComponentReflection {
-                docstring_md: "Spatially disconnect this entity from its parent.\n\nSpecifies that the entity path at which this is logged is spatially disconnected from its parent,\nmaking it impossible to transform the entity path into its parent's space and vice versa.\nIt *only* applies to space views that work with spatial transformations, i.e. 2D & 3D space views.\nThis is useful for specifying that a subgraph is independent of the rest of the scene.",
+                docstring_md: "Spatially disconnect this entity from its parent.\n\nSpecifies that the entity path at which this is logged is spatially disconnected from its parent,\nmaking it impossible to transform the entity path into its parent's space and vice versa.\nIt *only* applies to views that work with spatial transformations, i.e. 2D & 3D views.\nThis is useful for specifying that a subgraph is independent of the rest of the scene.",
                 custom_placeholder: Some(DisconnectedSpace::default().to_arrow2()?),
                 datatype: DisconnectedSpace::arrow2_datatype(),
             },

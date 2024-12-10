@@ -3,7 +3,7 @@ title: Entity Queries
 order: 100
 ---
 
-Many space views are made up of visualizations that include more than one
+Many views are made up of visualizations that include more than one
 entity.
 
 Rather that requiring you to specify each entity individually, Rerun supports

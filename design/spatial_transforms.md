@@ -1,6 +1,6 @@
 # Spatial transforms
 
-Spatial transforms are transforms that apply the spatial 2D & 3D space views.
+Spatial transforms are transforms that apply the spatial 2D & 3D views.
 This includes affine 2D/3D transforms as well as camera projections.
 
 Any transform component that is logged a path `parent/entity` it describes the

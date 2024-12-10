@@ -6,8 +6,8 @@ use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
 use re_types::blueprint::archetypes::LineGrid3D;
 use re_types::{
-    blueprint::archetypes::Background, components::ViewCoordinates, Component,
-    ViewClassIdentifier, View,
+    blueprint::archetypes::Background, components::ViewCoordinates, Component, View,
+    ViewClassIdentifier,
 };
 use re_ui::{list_item, UiExt as _};
 use re_view::view_property_ui;
@@ -313,12 +313,12 @@ impl ViewClass for SpatialSpaceView3D {
                             })
                             .peekable(); // Don't collect the iterator, we're only interested in 'any'-style operations.
 
-                        // Empty space views are still of interest if any of the child spaces is connected via a pinhole.
+                        // Empty views are still of interest if any of the child spaces is connected via a pinhole.
                         if subspace.entities.is_empty() && pinhole_child_spaces.peek().is_none() {
                             return None;
                         }
 
-                        // Creates space views at each view coordinates if there's any.
+                        // Creates views at each view coordinates if there's any.
                         // (yes, we do so even if they're empty at the moment!)
                         //
                         // An exception to this rule is not to create a view there if this is already _also_ a subspace root.

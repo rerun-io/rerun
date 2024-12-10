@@ -21,7 +21,7 @@ use crate::{
 /// Applicability is determined by the visualizer's set of required components.
 ///
 /// There's only a single entity subscriber per visualizer *type*.
-/// This means that if the same visualizer is used in multiple space views, only a single
+/// This means that if the same visualizer is used in multiple views, only a single
 /// `VisualizerEntitySubscriber` is created for all of them.
 pub struct VisualizerEntitySubscriber {
     /// Visualizer type this subscriber is associated with.

@@ -13,8 +13,8 @@ use re_viewer_context::{
     command_channel,
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
     AppOptions, BlueprintUndoState, CommandReceiver, CommandSender, ComponentUiRegistry, PlayState,
-    ViewClass, ViewClassRegistry, ViewClassRegistryError, StoreContext,
-    SystemCommand, SystemCommandSender,
+    StoreContext, SystemCommand, SystemCommandSender, ViewClass, ViewClassRegistry,
+    ViewClassRegistryError,
 };
 
 use crate::app_blueprint::PanelStateOverrides;
@@ -271,7 +271,7 @@ impl App {
             populate_space_view_class_registry_with_builtin(&mut space_view_class_registry)
         {
             re_log::error!(
-                "Failed to populate the view type registry with built-in space views: {}",
+                "Failed to populate the view type registry with built-in views: {}",
                 err
             );
         }
@@ -1979,7 +1979,7 @@ impl eframe::App for App {
     }
 }
 
-/// Add built-in space views to the registry.
+/// Add built-in views to the registry.
 fn populate_space_view_class_registry_with_builtin(
     space_view_class_registry: &mut ViewClassRegistry,
 ) -> Result<(), ViewClassRegistryError> {

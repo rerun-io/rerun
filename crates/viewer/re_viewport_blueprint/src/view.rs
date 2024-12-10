@@ -51,7 +51,7 @@ pub struct ViewBlueprint {
     /// True if this view is visible in the UI.
     pub visible: bool,
 
-    /// Path where these space views defaults can be found.
+    /// Path where these views defaults can be found.
     pub defaults_path: EntityPath,
 
     /// Pending blueprint writes for nested components from duplicate.

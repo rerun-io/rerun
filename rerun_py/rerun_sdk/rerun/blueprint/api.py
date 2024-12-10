@@ -463,8 +463,8 @@ class Blueprint:
             Defaults to `False` unless no Containers or Views are provided, in which case it defaults to `True`.
             If you want to create a completely empty Blueprint, you must explicitly set this to `False`.
         auto_views:
-            Whether to automatically add space views to the viewport. If `True`, the viewport will
-            automatically add space views based on content in the data store.
+            Whether to automatically add views to the viewport. If `True`, the viewport will
+            automatically add views based on content in the data store.
             Defaults to `False` unless no Containers or Views are provided, in which case it defaults to `True`.
             If you want to create a completely empty Blueprint, you must explicitly set this to `False`.
         collapse_panels:

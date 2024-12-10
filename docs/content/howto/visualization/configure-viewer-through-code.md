@@ -106,9 +106,9 @@ rr.send_blueprint(my_blueprint, make_active=True)
 
 ```
 
-## Customizing space views
+## Customizing views
 
-Any of the space views (`BarChartView`, `Spatial2DView`, `Spatial3DView`, `TensorView`,
+Any of the views (`BarChartView`, `Spatial2DView`, `Spatial3DView`, `TensorView`,
 `TextDocumentView`, `TextLogView`, or `TimeSeriesView`) can be instantiated with no arguments.
 By default these views try to include all compatible entities.
 
@@ -121,7 +121,7 @@ rrb.Blueprint(
 )
 ```
 
-Beyond instantiating the space views, there are 3 parameters you may want to specify: `name`, `origin`, and `contents`.
+Beyond instantiating the views, there are 3 parameters you may want to specify: `name`, `origin`, and `contents`.
 
 `name` is simply the name of the view used as a label in the viewer.
 
@@ -253,7 +253,7 @@ rrb.Blueprint(
 
 The blueprint has two additional parameters that influence the behavior of the viewer:
 
--   `auto_views` controls whether the Viewer will automatically create space views for entities that are not explicitly included in the blueprint.
+-   `auto_views` controls whether the Viewer will automatically create views for entities that are not explicitly included in the blueprint.
 -   `auto_layout` controls whether the Viewer should automatically layout the containers when introducing new space-views.
 
 If you pass in your own `SpaceView` or `Container` objects, these will both default to `False` so that the Blueprint

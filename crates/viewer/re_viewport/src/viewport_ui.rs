@@ -1,6 +1,6 @@
 //! The viewport panel.
 //!
-//! Contains all space views.
+//! Contains all views.
 
 use ahash::HashMap;
 use egui_tiles::{Behavior as _, EditAction};
@@ -546,10 +546,10 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
 
     fn tab_title_for_pane(&mut self, space_view_id: &ViewId) -> egui::WidgetText {
         if let Some(space_view) = self.viewport_blueprint.view(space_view_id) {
-            // Note: the formatting for unnamed space views is handled by `TabWidget::new()`
+            // Note: the formatting for unnamed views is handled by `TabWidget::new()`
             space_view.display_name_or_default().as_ref().into()
         } else {
-            // All panes are space views, so this shouldn't happen unless we have a bug
+            // All panes are views, so this shouldn't happen unless we have a bug
             re_log::warn_once!("SpaceViewId missing during egui_tiles");
             self.ctx.egui_ctx.error_text("Internal error").into()
         }

@@ -3,7 +3,6 @@ use nohash_hasher::IntMap;
 
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, EntityPath, EntityTree};
-use re_view::DataResultQuery as _;
 use re_types::{
     archetypes::{InstancePoses3D, Pinhole, Transform3D},
     components::{
@@ -13,6 +12,7 @@ use re_types::{
     },
     Archetype, Component as _, ComponentNameSet,
 };
+use re_view::DataResultQuery as _;
 use re_viewer_context::{IdentifiedViewSystem, ViewContext, ViewContextSystem};
 use vec1::smallvec_v1::SmallVec1;
 
@@ -193,7 +193,7 @@ impl ViewContextSystem for TransformContext {
         // Find the entity path tree for the root.
         let Some(current_tree) = &entity_tree.subtree(query.space_origin) else {
             // It seems the space path is not part of the object tree!
-            // This happens frequently when the viewer remembers space views from a previous run that weren't shown yet.
+            // This happens frequently when the viewer remembers views from a previous run that weren't shown yet.
             // Naturally, in this case we don't have any transforms yet.
             return;
         };

@@ -210,7 +210,7 @@ struct ContextMenuContext<'a> {
 impl<'a> ContextMenuContext<'a> {
     /// Return the clicked item's parent container id and position within it.
     ///
-    /// Valid only for space views, containers, and data results. For data results, the parent and
+    /// Valid only for views, containers, and data results. For data results, the parent and
     /// position of the enclosing view is considered.
     pub fn clicked_item_enclosing_container_id_and_position(&self) -> Option<(ContainerId, usize)> {
         match self.clicked_item {
@@ -225,7 +225,7 @@ impl<'a> ContextMenuContext<'a> {
 
     /// Return the clicked item's parent container and position within it.
     ///
-    /// Valid only for space views, containers, and data results. For data results, the parent and
+    /// Valid only for views, containers, and data results. For data results, the parent and
     /// position of the enclosing view is considered.
     pub fn clicked_item_enclosing_container_and_position(
         &self,

@@ -44,7 +44,7 @@ See the [Types](../reference/types.md) reference for a list of [archetypes](../r
 
 Although both the SDKs' archetype objects and the view are based on the same archetype definition (and are actually implemented using code that is automatically generated based on that definition), they both operate on arbitrary collection
 of components. Neither the SDKs nor the Viewer enforce or require that an entity should contain a *specific* set of component.
-The Rerun Viewer will display any data in a generic form, but its space views will only work on sets of components it can
+The Rerun Viewer will display any data in a generic form, but its views will only work on sets of components it can
 make sense of.
 
 Your entity could have any number of additional components as well. This isn't a problem. Any components that
@@ -72,4 +72,4 @@ of one or more components associated with that entity.
 ## ECS systems
 
 There is a third concept we haven't touched on: *systems* are processes which operate on the entities based on the components they possess.
-Rerun is still settling on the exact form of formalized systems and outside of Rust Viewer code it is not yet possible to write your own systems. However, space views work under the hood using a variety of systems. For more information see the [Extend the Viewer in Rust](../howto/extend/extend-ui.md) section.
+Rerun is still settling on the exact form of formalized systems and outside of Rust Viewer code it is not yet possible to write your own systems. However, views work under the hood using a variety of systems. For more information see the [Extend the Viewer in Rust](../howto/extend/extend-ui.md) section.

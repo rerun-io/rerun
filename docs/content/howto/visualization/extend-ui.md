@@ -17,7 +17,7 @@ The Rerun Viewer is defined by the crate [`re_viewer`](https://github.com/rerun-
 The best way to get started is by reading [the source code of the `extend_viewer_ui` example](https://github.com/rerun-io/rerun/tree/main/examples/rust/extend_viewer_ui).
 
 
-## Custom space views classes
+## Custom views classes
 
 <picture>
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/custom_space_view/e05a073d64003645b6af6de91b068c2f646c1b8a/480w.jpeg">
@@ -36,4 +36,4 @@ meaning that any of the built-in Space Views serves can serve as an additional e
 **⚠️ Note that the interface for adding Space Views are very far from stable.** Expect code implementing custom Space Views to break with every release of Rerun.
 
 # Future work
-We plan to also support embedding your own GUI widgets inside existing space views.
+We plan to also support embedding your own GUI widgets inside existing views.

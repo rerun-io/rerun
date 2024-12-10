@@ -21,7 +21,7 @@ give users explicit control over the details of how data is displayed in the vie
 ### UI state includes:
 
 - Is the selection panel open? how wide?
-- How are my space views organized?
+- How are my views organized?
 - What data is shown in each view
 - Additional configuration / overrides for the data within each view
 

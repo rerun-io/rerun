@@ -23,7 +23,7 @@ import yfinance as yf
 
 
 def auto_blueprint() -> rrb.BlueprintLike:
-    """A blueprint enabling auto space views, which matches the application default."""
+    """A blueprint enabling auto views, which matches the application default."""
     return rrb.Blueprint(auto_views=True, auto_layout=True)
 
 

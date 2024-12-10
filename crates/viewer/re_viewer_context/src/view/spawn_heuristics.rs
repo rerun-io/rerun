@@ -8,14 +8,14 @@ pub struct RecommendedView {
     pub query_filter: EntityPathFilter,
 }
 
-/// Heuristics for spawning space views of a given class.
+/// Heuristics for spawning views of a given class.
 ///
-/// Provides information in order to decide whether to spawn a space views, putting them in relationship to others and spawning them.
-// TODO(andreas): allow bucketing decisions for 0-n buckets for recommended space views.
+/// Provides information in order to decide whether to spawn a views, putting them in relationship to others and spawning them.
+// TODO(andreas): allow bucketing decisions for 0-n buckets for recommended views.
 // TODO(andreas): Should `ViewClassLayoutPriority` be part of this struct?
 #[derive(Default)]
 pub struct ViewSpawnHeuristics {
-    /// The recommended space views to spawn
+    /// The recommended views to spawn
     recommended_space_views: Vec<RecommendedView>,
 }
 

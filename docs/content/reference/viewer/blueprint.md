@@ -39,7 +39,7 @@ As such, all changes made here are only relevant for the View in which they resi
 Whenever entities are added to a view (either manually or automatically), groupings
 are automatically created.
 Groups, despite being derived from the [Entity Path](../../concepts/entity-path.md) are independent of logged data.
-They are meant to improve the handling of large space views and allow for hierarchical manipulation
+They are meant to improve the handling of large views and allow for hierarchical manipulation
 of blueprints.
 
 Adding Entities

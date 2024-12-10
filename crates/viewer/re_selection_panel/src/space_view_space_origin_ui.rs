@@ -89,7 +89,7 @@ fn space_view_space_origin_widget_editing_ui(
     // Build and filter the suggestion lists
     //
 
-    // All suggestions for this class of space views.
+    // All suggestions for this class of views.
     // TODO(#4895): we should have/use a much simpler heuristic API to get a list of compatible entity sub-tree
     let space_view_suggestions = default_created_space_views(ctx)
         .into_iter()
