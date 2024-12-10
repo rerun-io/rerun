@@ -1,6 +1,6 @@
 //! This binary runs the remote store gRPC service codegen manually.
 //!
-//! It is easiest to call this using `pixi run codegen-protos`,
+//! It is easiest to call this using `pixi run codegen-protos   `,
 //! which will set up the necessary tools.
 
 #![allow(clippy::unwrap_used)]
@@ -9,7 +9,7 @@ use camino::Utf8Path;
 
 const PROTOS_DIR: &str = "crates/store/re_protos/proto";
 const INPUT_V0: &[&str] = &["rerun/v0/remote_store.proto", "rerun/v0/log_msg.proto"];
-const OUTPUT_V0_RUST: &str = "crates/store/re_protos/src/v0";
+const OUTPUT_V0_RUST_DIR: &str = "crates/store/re_protos/src/v0";
 
 fn main() {
     re_log::setup_logging();
@@ -27,7 +27,7 @@ fn main() {
     );
 
     let definitions_dir_path = workspace_dir.join(PROTOS_DIR);
-    let rust_generated_output_dir_path = workspace_dir.join(OUTPUT_V0_RUST);
+    let rust_generated_output_dir_path = workspace_dir.join(OUTPUT_V0_RUST_DIR);
 
     re_log::info!(
         definitions=?definitions_dir_path,
