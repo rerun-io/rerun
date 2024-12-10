@@ -94,7 +94,7 @@ fn draw_circle_label(
     let &CircleLabel { radius, color } = label;
     let visuals = &ui.style().visuals.clone();
 
-    let (resp, painter) = ui.allocate_painter(Vec2::splat(radius * 2.0), Sense::click());
+    let (resp, painter) = ui.allocate_painter(Vec2::splat(radius * 2.0), Sense::hover());
     painter.circle(
         resp.rect.center(),
         radius,
