@@ -253,7 +253,7 @@ fn longest_and_second_longest_dim_indices(shape: &[TensorDimension]) -> (usize, 
 
 #[cfg(test)]
 mod tests {
-    use re_types::datatypes::TensorDimension;
+    use crate::TensorDimension;
     use re_types::{
         blueprint::components::TensorDimensionIndexSlider,
         components::TensorDimensionIndexSelection,

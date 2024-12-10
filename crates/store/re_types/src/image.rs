@@ -232,14 +232,7 @@ pub fn find_non_empty_dim_indices(shape: &[u64]) -> SmallVec<[usize; 4]> {
 #[test]
 fn test_find_non_empty_dim_indices() {
     fn expect(shape: &[u64], expected: &[usize]) {
-        let dim: Vec<_> = shape
-            .iter()
-            .map(|s| TensorDimension {
-                size: *s,
-                name: None,
-            })
-            .collect();
-        let got = find_non_empty_dim_indices(&dim);
+        let got = find_non_empty_dim_indices(&shape);
         assert!(
             got.as_slice() == expected,
             "Input: {shape:?}, got {got:?}, expected {expected:?}"
