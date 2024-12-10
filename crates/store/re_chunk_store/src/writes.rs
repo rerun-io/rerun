@@ -5,6 +5,7 @@ use arrow2::array::{Array as _, ListArray as Arrow2ListArray};
 use itertools::Itertools as _;
 
 use re_chunk::{Chunk, EntityPath, RowId};
+use re_log_types::StoreKind;
 use re_types_core::SizeBytes;
 
 use crate::{
@@ -37,12 +38,19 @@ impl ChunkStore {
             return Ok(Vec::new());
         }
 
+        // NOTE: It is very easy to end in a situation where one pulls an old blueprint from
+        // somewhere, and then modifies it at runtime, therefore ending with both tagged and
+        // untagged components in the data.
+        // I'd like to keep this debug assertion a tiny bit longer just in case, so for we just
+        // ignore blueprints.
         #[cfg(debug_assertions)]
-        for (component_name, per_desc) in chunk.components().iter() {
-            assert!(
-                per_desc.len() <= 1,
-                "Insert Chunk with multiple values for component named `{component_name}`: this is currently UB",
-            );
+        if self.id.kind == StoreKind::Recording {
+            for (component_name, per_desc) in chunk.components().iter() {
+                assert!(
+                    per_desc.len() <= 1,
+                    "Insert Chunk with multiple values for component named `{component_name}`: this is currently UB",
+                );
+            }
         }
 
         if !chunk.is_sorted() {
