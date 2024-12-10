@@ -5,6 +5,7 @@
 
 #include "../../blueprint/datatypes/utf8list.hpp"
 #include "../../collection.hpp"
+#include "../../component_descriptor.hpp"
 #include "../../result.hpp"
 
 #include <cstdint>
@@ -25,29 +26,6 @@ namespace rerun::blueprint::components {
     /// in a regular entity.
     struct VisualizerOverrides {
         /// Names of the visualizers that should be active.
-        ///
-        /// The built-in visualizers are:
-        /// - `BarChart`
-        /// - `Arrows2D`
-        /// - `Arrows3D`
-        /// - `Asset3D`
-        /// - `Boxes2D`
-        /// - `Boxes3D`
-        /// - `Cameras`
-        /// - `DepthImage`
-        /// - `Image`
-        /// - `Lines2D`
-        /// - `Lines3D`
-        /// - `Mesh3D`
-        /// - `Points2D`
-        /// - `Points3D`
-        /// - `Transform3DArrows`
-        /// - `Tensor`
-        /// - `TextDocument`
-        /// - `TextLog`
-        /// - `SegmentationImage`
-        /// - `SeriesLine`
-        /// - `SeriesPoint`
         rerun::blueprint::datatypes::Utf8List visualizers;
 
       public:
@@ -85,7 +63,8 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<blueprint::components::VisualizerOverrides> {
-        static constexpr const char Name[] = "rerun.blueprint.components.VisualizerOverrides";
+        static constexpr ComponentDescriptor Descriptor =
+            "rerun.blueprint.components.VisualizerOverrides";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {

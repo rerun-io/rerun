@@ -13,41 +13,15 @@
 #![allow(clippy::too_many_lines)]
 
 use crate::external::arrow2;
-use crate::ComponentName;
 use crate::SerializationResult;
-use crate::{ComponentBatch, MaybeOwnedComponentBatch};
+use crate::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use crate::{ComponentDescriptor, ComponentName};
 use crate::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: A single boolean.
 #[derive(Clone, Debug, Copy, Default, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(transparent)]
 pub struct Bool(pub bool);
-
-impl crate::SizeBytes for Bool {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <bool>::is_pod()
-    }
-}
-
-impl From<bool> for Bool {
-    #[inline]
-    fn from(value: bool) -> Self {
-        Self(value)
-    }
-}
-
-impl From<Bool> for bool {
-    #[inline]
-    fn from(value: Bool) -> Self {
-        value.0
-    }
-}
 
 crate::macros::impl_into_cow!(Bool);
 
@@ -67,13 +41,8 @@ impl crate::Loggable for Bool {
     {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
-        use crate::{Loggable as _, ResultExt as _};
+        use crate::{arrow_helpers::as_array_ref, Loggable as _, ResultExt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
-
-        #[allow(unused)]
-        fn as_array_ref<T: Array + 'static>(t: T) -> ArrayRef {
-            std::sync::Arc::new(t) as ArrayRef
-        }
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -124,5 +93,31 @@ impl crate::Loggable for Bool {
             .collect::<DeserializationResult<Vec<Option<_>>>>()
             .with_context("rerun.datatypes.Bool#value")
             .with_context("rerun.datatypes.Bool")?)
+    }
+}
+
+impl From<bool> for Bool {
+    #[inline]
+    fn from(value: bool) -> Self {
+        Self(value)
+    }
+}
+
+impl From<Bool> for bool {
+    #[inline]
+    fn from(value: Bool) -> Self {
+        value.0
+    }
+}
+
+impl crate::SizeBytes for Bool {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <bool>::is_pod()
     }
 }

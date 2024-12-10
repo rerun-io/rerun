@@ -13,41 +13,15 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: A list of strings of text, encoded as UTF-8.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Default, Hash)]
 #[repr(transparent)]
 pub struct Utf8List(pub Vec<::re_types_core::ArrowString>);
-
-impl ::re_types_core::SizeBytes for Utf8List {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <Vec<::re_types_core::ArrowString>>::is_pod()
-    }
-}
-
-impl From<Vec<::re_types_core::ArrowString>> for Utf8List {
-    #[inline]
-    fn from(value: Vec<::re_types_core::ArrowString>) -> Self {
-        Self(value)
-    }
-}
-
-impl From<Utf8List> for Vec<::re_types_core::ArrowString> {
-    #[inline]
-    fn from(value: Utf8List) -> Self {
-        value.0
-    }
-}
 
 ::re_types_core::macros::impl_into_cow!(Utf8List);
 
@@ -71,13 +45,8 @@ impl ::re_types_core::Loggable for Utf8List {
     {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{Loggable as _, ResultExt as _};
+        use ::re_types_core::{arrow_helpers::as_array_ref, Loggable as _, ResultExt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
-
-        #[allow(unused)]
-        fn as_array_ref<T: Array + 'static>(t: T) -> ArrayRef {
-            std::sync::Arc::new(t) as ArrayRef
-        }
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -106,8 +75,10 @@ impl ::re_types_core::Loggable for Utf8List {
                         let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
                             data0_inner_data.iter().map(|datum| datum.len()),
                         );
-                        let inner_data: arrow::buffer::Buffer =
-                            data0_inner_data.into_iter().flat_map(|s| s.0).collect();
+                        let inner_data: arrow::buffer::Buffer = data0_inner_data
+                            .into_iter()
+                            .flat_map(|s| s.into_arrow2_buffer())
+                            .collect();
 
                         #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                         as_array_ref(unsafe {
@@ -158,14 +129,15 @@ impl ::re_types_core::Loggable for Utf8List {
                         let arrow_data_inner_buf = arrow_data_inner.values();
                         let offsets = arrow_data_inner.offsets();
                         arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                            offsets.iter().zip(offsets.lengths()),
+                            offsets.windows(2),
                             arrow_data_inner.validity(),
                         )
                         .map(|elem| {
-                            elem.map(|(start, len)| {
-                                let start = *start as usize;
-                                let end = start + len;
-                                if end > arrow_data_inner_buf.len() {
+                            elem.map(|window| {
+                                let start = window[0] as usize;
+                                let end = window[1] as usize;
+                                let len = end - start;
+                                if arrow_data_inner_buf.len() < end {
                                     return Err(DeserializationError::offset_slice_oob(
                                         (start, end),
                                         arrow_data_inner_buf.len(),
@@ -182,7 +154,7 @@ impl ::re_types_core::Loggable for Utf8List {
                         })
                         .map(|res_or_opt| {
                             res_or_opt.map(|res_or_opt| {
-                                res_or_opt.map(|v| ::re_types_core::ArrowString(v))
+                                res_or_opt.map(|v| ::re_types_core::ArrowString::from(v))
                             })
                         })
                         .collect::<DeserializationResult<Vec<Option<_>>>>()
@@ -193,14 +165,14 @@ impl ::re_types_core::Loggable for Utf8List {
                 };
                 let offsets = arrow_data.offsets();
                 arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                    offsets.iter().zip(offsets.lengths()),
+                    offsets.windows(2),
                     arrow_data.validity(),
                 )
                 .map(|elem| {
-                    elem.map(|(start, len)| {
-                        let start = *start as usize;
-                        let end = start + len;
-                        if end > arrow_data_inner.len() {
+                    elem.map(|window| {
+                        let start = window[0] as usize;
+                        let end = window[1] as usize;
+                        if arrow_data_inner.len() < end {
                             return Err(DeserializationError::offset_slice_oob(
                                 (start, end),
                                 arrow_data_inner.len(),
@@ -227,5 +199,31 @@ impl ::re_types_core::Loggable for Utf8List {
         .collect::<DeserializationResult<Vec<Option<_>>>>()
         .with_context("rerun.blueprint.datatypes.Utf8List#value")
         .with_context("rerun.blueprint.datatypes.Utf8List")?)
+    }
+}
+
+impl From<Vec<::re_types_core::ArrowString>> for Utf8List {
+    #[inline]
+    fn from(value: Vec<::re_types_core::ArrowString>) -> Self {
+        Self(value)
+    }
+}
+
+impl From<Utf8List> for Vec<::re_types_core::ArrowString> {
+    #[inline]
+    fn from(value: Utf8List) -> Self {
+        value.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for Utf8List {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <Vec<::re_types_core::ArrowString>>::is_pod()
     }
 }

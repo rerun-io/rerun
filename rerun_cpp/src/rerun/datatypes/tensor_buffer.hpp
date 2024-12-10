@@ -4,6 +4,7 @@
 #pragma once
 
 #include "../collection.hpp"
+#include "../component_descriptor.hpp"
 #include "../half.hpp"
 #include "../result.hpp"
 #include "../type_traits.hpp"
@@ -509,7 +510,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<datatypes::TensorBuffer> {
-        static constexpr const char Name[] = "rerun.datatypes.TensorBuffer";
+        static constexpr ComponentDescriptor Descriptor = "rerun.datatypes.TensorBuffer";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();

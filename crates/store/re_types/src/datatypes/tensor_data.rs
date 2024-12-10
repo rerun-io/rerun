@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: An N-dimensional array of numbers.
@@ -33,19 +33,6 @@ pub struct TensorData {
 
     /// The content/data.
     pub buffer: crate::datatypes::TensorBuffer,
-}
-
-impl ::re_types_core::SizeBytes for TensorData {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.shape.heap_size_bytes() + self.buffer.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <Vec<crate::datatypes::TensorDimension>>::is_pod()
-            && <crate::datatypes::TensorBuffer>::is_pod()
-    }
 }
 
 ::re_types_core::macros::impl_into_cow!(TensorData);
@@ -81,13 +68,8 @@ impl ::re_types_core::Loggable for TensorData {
     {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{Loggable as _, ResultExt as _};
+        use ::re_types_core::{arrow_helpers::as_array_ref, Loggable as _, ResultExt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
-
-        #[allow(unused)]
-        fn as_array_ref<T: Array + 'static>(t: T) -> ArrayRef {
-            std::sync::Arc::new(t) as ArrayRef
-        }
         Ok({
             let fields = Fields::from(vec![
                 Field::new(
@@ -245,14 +227,14 @@ impl ::re_types_core::Loggable for TensorData {
                             };
                             let offsets = arrow_data.offsets();
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                offsets.iter().zip(offsets.lengths()),
+                                offsets.windows(2),
                                 arrow_data.validity(),
                             )
                             .map(|elem| {
-                                elem.map(|(start, len)| {
-                                    let start = *start as usize;
-                                    let end = start + len;
-                                    if end > arrow_data_inner.len() {
+                                elem.map(|window| {
+                                    let start = window[0] as usize;
+                                    let end = window[1] as usize;
+                                    if arrow_data_inner.len() < end {
                                         return Err(DeserializationError::offset_slice_oob(
                                             (start, end),
                                             arrow_data_inner.len(),
@@ -310,5 +292,18 @@ impl ::re_types_core::Loggable for TensorData {
                 .with_context("rerun.datatypes.TensorData")?
             }
         })
+    }
+}
+
+impl ::re_types_core::SizeBytes for TensorData {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.shape.heap_size_bytes() + self.buffer.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <Vec<crate::datatypes::TensorDimension>>::is_pod()
+            && <crate::datatypes::TensorBuffer>::is_pod()
     }
 }

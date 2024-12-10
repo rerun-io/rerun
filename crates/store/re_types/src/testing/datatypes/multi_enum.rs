@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -25,19 +25,6 @@ pub struct MultiEnum {
 
     /// The second value.
     pub value2: Option<crate::testing::datatypes::ValuedEnum>,
-}
-
-impl ::re_types_core::SizeBytes for MultiEnum {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.value1.heap_size_bytes() + self.value2.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::testing::datatypes::EnumTest>::is_pod()
-            && <Option<crate::testing::datatypes::ValuedEnum>>::is_pod()
-    }
 }
 
 ::re_types_core::macros::impl_into_cow!(MultiEnum);
@@ -69,13 +56,8 @@ impl ::re_types_core::Loggable for MultiEnum {
     {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{Loggable as _, ResultExt as _};
+        use ::re_types_core::{arrow_helpers::as_array_ref, Loggable as _, ResultExt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
-
-        #[allow(unused)]
-        fn as_array_ref<T: Array + 'static>(t: T) -> ArrayRef {
-            std::sync::Arc::new(t) as ArrayRef
-        }
         Ok({
             let fields = Fields::from(vec![
                 Field::new(
@@ -219,5 +201,18 @@ impl ::re_types_core::Loggable for MultiEnum {
                 .with_context("rerun.testing.datatypes.MultiEnum")?
             }
         })
+    }
+}
+
+impl ::re_types_core::SizeBytes for MultiEnum {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.value1.heap_size_bytes() + self.value2.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::testing::datatypes::EnumTest>::is_pod()
+            && <Option<crate::testing::datatypes::ValuedEnum>>::is_pod()
     }
 }

@@ -9,7 +9,7 @@ use arrow2::buffer::Buffer;
 /// arise from returning a `&str` directly, but is significantly more
 /// performant than doing the full allocation necessary to return a `String`.
 #[derive(Clone, Debug, Default)]
-pub struct ArrowString(pub Buffer<u8>);
+pub struct ArrowString(Buffer<u8>);
 
 impl crate::SizeBytes for ArrowString {
     #[inline]
@@ -53,6 +53,30 @@ impl ArrowString {
     #[inline]
     pub fn as_str(&self) -> &str {
         std::str::from_utf8(self.0.as_ref()).unwrap_or("INVALID UTF-8")
+    }
+
+    #[inline]
+    pub fn into_arrow_buffer(self) -> arrow::buffer::Buffer {
+        self.0.into()
+    }
+
+    #[inline]
+    pub fn into_arrow2_buffer(self) -> arrow2::buffer::Buffer<u8> {
+        self.0
+    }
+}
+
+impl From<arrow::buffer::Buffer> for ArrowString {
+    #[inline]
+    fn from(buf: arrow::buffer::Buffer) -> Self {
+        Self(buf.into())
+    }
+}
+
+impl From<arrow2::buffer::Buffer<u8>> for ArrowString {
+    #[inline]
+    fn from(buf: arrow2::buffer::Buffer<u8>) -> Self {
+        Self(buf)
     }
 }
 

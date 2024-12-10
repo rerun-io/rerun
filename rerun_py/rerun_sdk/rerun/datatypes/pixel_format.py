@@ -56,7 +56,7 @@ class PixelFormat(Enum):
 
     YUY2 = 27
     """
-    `YUY2` (aka `YUYV`, `YUYV16` or `NV21`), is a YUV 4:2:2 chroma downsampled format with 16 bits per pixel and 8 bits per channel.
+    `YUY2` (aka 'YUYV', 'YUYV16' or 'NV21'), is a YUV 4:2:2 chroma downsampled format with 16 bits per pixel and 8 bits per channel.
 
     This uses limited range YUV, i.e. Y is expected to be within [16, 235] and U/V within [16, 240].
 

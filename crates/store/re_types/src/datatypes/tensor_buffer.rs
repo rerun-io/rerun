@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: The underlying storage for [`archetypes::Tensor`][crate::archetypes::Tensor].
@@ -55,41 +55,6 @@ pub enum TensorBuffer {
 
     /// 64bit IEEE-754 floating point, also known as `double`.
     F64(::re_types_core::ArrowBuffer<f64>),
-}
-
-impl ::re_types_core::SizeBytes for TensorBuffer {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        #![allow(clippy::match_same_arms)]
-        match self {
-            Self::U8(v) => v.heap_size_bytes(),
-            Self::U16(v) => v.heap_size_bytes(),
-            Self::U32(v) => v.heap_size_bytes(),
-            Self::U64(v) => v.heap_size_bytes(),
-            Self::I8(v) => v.heap_size_bytes(),
-            Self::I16(v) => v.heap_size_bytes(),
-            Self::I32(v) => v.heap_size_bytes(),
-            Self::I64(v) => v.heap_size_bytes(),
-            Self::F16(v) => v.heap_size_bytes(),
-            Self::F32(v) => v.heap_size_bytes(),
-            Self::F64(v) => v.heap_size_bytes(),
-        }
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <::re_types_core::ArrowBuffer<u8>>::is_pod()
-            && <::re_types_core::ArrowBuffer<u16>>::is_pod()
-            && <::re_types_core::ArrowBuffer<u32>>::is_pod()
-            && <::re_types_core::ArrowBuffer<u64>>::is_pod()
-            && <::re_types_core::ArrowBuffer<i8>>::is_pod()
-            && <::re_types_core::ArrowBuffer<i16>>::is_pod()
-            && <::re_types_core::ArrowBuffer<i32>>::is_pod()
-            && <::re_types_core::ArrowBuffer<i64>>::is_pod()
-            && <::re_types_core::ArrowBuffer<half::f16>>::is_pod()
-            && <::re_types_core::ArrowBuffer<f32>>::is_pod()
-            && <::re_types_core::ArrowBuffer<f64>>::is_pod()
-    }
 }
 
 ::re_types_core::macros::impl_into_cow!(TensorBuffer);
@@ -217,13 +182,8 @@ impl ::re_types_core::Loggable for TensorBuffer {
     {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{Loggable as _, ResultExt as _};
+        use ::re_types_core::{arrow_helpers::as_array_ref, Loggable as _, ResultExt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
-
-        #[allow(unused)]
-        fn as_array_ref<T: Array + 'static>(t: T) -> ArrayRef {
-            std::sync::Arc::new(t) as ArrayRef
-        }
         Ok({
             // Dense Arrow union
             let data: Vec<_> = data
@@ -827,10 +787,10 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     .with_context("rerun.datatypes.TensorBuffer");
                 }
                 let u8 = {
-                    if 1usize >= arrow_data_arrays.len() {
+                    if arrow_data_arrays.len() <= 1 {
                         return Ok(Vec::new());
                     }
-                    let arrow_data = &*arrow_data_arrays[1usize];
+                    let arrow_data = &*arrow_data_arrays[1];
                     {
                         let arrow_data = arrow_data
                             .as_any()
@@ -863,14 +823,14 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             };
                             let offsets = arrow_data.offsets();
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                offsets.iter().zip(offsets.lengths()),
+                                offsets.windows(2),
                                 arrow_data.validity(),
                             )
                             .map(|elem| {
-                                elem.map(|(start, len)| {
-                                    let start = *start as usize;
-                                    let end = start + len;
-                                    if end > arrow_data_inner.len() {
+                                elem.map(|window| {
+                                    let start = window[0] as usize;
+                                    let end = window[1] as usize;
+                                    if arrow_data_inner.len() < end {
                                         return Err(DeserializationError::offset_slice_oob(
                                             (start, end),
                                             arrow_data_inner.len(),
@@ -895,10 +855,10 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     .collect::<Vec<_>>()
                 };
                 let u16 = {
-                    if 2usize >= arrow_data_arrays.len() {
+                    if arrow_data_arrays.len() <= 2 {
                         return Ok(Vec::new());
                     }
-                    let arrow_data = &*arrow_data_arrays[2usize];
+                    let arrow_data = &*arrow_data_arrays[2];
                     {
                         let arrow_data = arrow_data
                             .as_any()
@@ -931,14 +891,14 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             };
                             let offsets = arrow_data.offsets();
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                offsets.iter().zip(offsets.lengths()),
+                                offsets.windows(2),
                                 arrow_data.validity(),
                             )
                             .map(|elem| {
-                                elem.map(|(start, len)| {
-                                    let start = *start as usize;
-                                    let end = start + len;
-                                    if end > arrow_data_inner.len() {
+                                elem.map(|window| {
+                                    let start = window[0] as usize;
+                                    let end = window[1] as usize;
+                                    if arrow_data_inner.len() < end {
                                         return Err(DeserializationError::offset_slice_oob(
                                             (start, end),
                                             arrow_data_inner.len(),
@@ -963,10 +923,10 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     .collect::<Vec<_>>()
                 };
                 let u32 = {
-                    if 3usize >= arrow_data_arrays.len() {
+                    if arrow_data_arrays.len() <= 3 {
                         return Ok(Vec::new());
                     }
-                    let arrow_data = &*arrow_data_arrays[3usize];
+                    let arrow_data = &*arrow_data_arrays[3];
                     {
                         let arrow_data = arrow_data
                             .as_any()
@@ -999,14 +959,14 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             };
                             let offsets = arrow_data.offsets();
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                offsets.iter().zip(offsets.lengths()),
+                                offsets.windows(2),
                                 arrow_data.validity(),
                             )
                             .map(|elem| {
-                                elem.map(|(start, len)| {
-                                    let start = *start as usize;
-                                    let end = start + len;
-                                    if end > arrow_data_inner.len() {
+                                elem.map(|window| {
+                                    let start = window[0] as usize;
+                                    let end = window[1] as usize;
+                                    if arrow_data_inner.len() < end {
                                         return Err(DeserializationError::offset_slice_oob(
                                             (start, end),
                                             arrow_data_inner.len(),
@@ -1031,10 +991,10 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     .collect::<Vec<_>>()
                 };
                 let u64 = {
-                    if 4usize >= arrow_data_arrays.len() {
+                    if arrow_data_arrays.len() <= 4 {
                         return Ok(Vec::new());
                     }
-                    let arrow_data = &*arrow_data_arrays[4usize];
+                    let arrow_data = &*arrow_data_arrays[4];
                     {
                         let arrow_data = arrow_data
                             .as_any()
@@ -1067,14 +1027,14 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             };
                             let offsets = arrow_data.offsets();
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                offsets.iter().zip(offsets.lengths()),
+                                offsets.windows(2),
                                 arrow_data.validity(),
                             )
                             .map(|elem| {
-                                elem.map(|(start, len)| {
-                                    let start = *start as usize;
-                                    let end = start + len;
-                                    if end > arrow_data_inner.len() {
+                                elem.map(|window| {
+                                    let start = window[0] as usize;
+                                    let end = window[1] as usize;
+                                    if arrow_data_inner.len() < end {
                                         return Err(DeserializationError::offset_slice_oob(
                                             (start, end),
                                             arrow_data_inner.len(),
@@ -1099,10 +1059,10 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     .collect::<Vec<_>>()
                 };
                 let i8 = {
-                    if 5usize >= arrow_data_arrays.len() {
+                    if arrow_data_arrays.len() <= 5 {
                         return Ok(Vec::new());
                     }
-                    let arrow_data = &*arrow_data_arrays[5usize];
+                    let arrow_data = &*arrow_data_arrays[5];
                     {
                         let arrow_data = arrow_data
                             .as_any()
@@ -1135,14 +1095,14 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             };
                             let offsets = arrow_data.offsets();
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                offsets.iter().zip(offsets.lengths()),
+                                offsets.windows(2),
                                 arrow_data.validity(),
                             )
                             .map(|elem| {
-                                elem.map(|(start, len)| {
-                                    let start = *start as usize;
-                                    let end = start + len;
-                                    if end > arrow_data_inner.len() {
+                                elem.map(|window| {
+                                    let start = window[0] as usize;
+                                    let end = window[1] as usize;
+                                    if arrow_data_inner.len() < end {
                                         return Err(DeserializationError::offset_slice_oob(
                                             (start, end),
                                             arrow_data_inner.len(),
@@ -1167,10 +1127,10 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     .collect::<Vec<_>>()
                 };
                 let i16 = {
-                    if 6usize >= arrow_data_arrays.len() {
+                    if arrow_data_arrays.len() <= 6 {
                         return Ok(Vec::new());
                     }
-                    let arrow_data = &*arrow_data_arrays[6usize];
+                    let arrow_data = &*arrow_data_arrays[6];
                     {
                         let arrow_data = arrow_data
                             .as_any()
@@ -1203,14 +1163,14 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             };
                             let offsets = arrow_data.offsets();
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                offsets.iter().zip(offsets.lengths()),
+                                offsets.windows(2),
                                 arrow_data.validity(),
                             )
                             .map(|elem| {
-                                elem.map(|(start, len)| {
-                                    let start = *start as usize;
-                                    let end = start + len;
-                                    if end > arrow_data_inner.len() {
+                                elem.map(|window| {
+                                    let start = window[0] as usize;
+                                    let end = window[1] as usize;
+                                    if arrow_data_inner.len() < end {
                                         return Err(DeserializationError::offset_slice_oob(
                                             (start, end),
                                             arrow_data_inner.len(),
@@ -1235,10 +1195,10 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     .collect::<Vec<_>>()
                 };
                 let i32 = {
-                    if 7usize >= arrow_data_arrays.len() {
+                    if arrow_data_arrays.len() <= 7 {
                         return Ok(Vec::new());
                     }
-                    let arrow_data = &*arrow_data_arrays[7usize];
+                    let arrow_data = &*arrow_data_arrays[7];
                     {
                         let arrow_data = arrow_data
                             .as_any()
@@ -1271,14 +1231,14 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             };
                             let offsets = arrow_data.offsets();
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                offsets.iter().zip(offsets.lengths()),
+                                offsets.windows(2),
                                 arrow_data.validity(),
                             )
                             .map(|elem| {
-                                elem.map(|(start, len)| {
-                                    let start = *start as usize;
-                                    let end = start + len;
-                                    if end > arrow_data_inner.len() {
+                                elem.map(|window| {
+                                    let start = window[0] as usize;
+                                    let end = window[1] as usize;
+                                    if arrow_data_inner.len() < end {
                                         return Err(DeserializationError::offset_slice_oob(
                                             (start, end),
                                             arrow_data_inner.len(),
@@ -1303,10 +1263,10 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     .collect::<Vec<_>>()
                 };
                 let i64 = {
-                    if 8usize >= arrow_data_arrays.len() {
+                    if arrow_data_arrays.len() <= 8 {
                         return Ok(Vec::new());
                     }
-                    let arrow_data = &*arrow_data_arrays[8usize];
+                    let arrow_data = &*arrow_data_arrays[8];
                     {
                         let arrow_data = arrow_data
                             .as_any()
@@ -1339,14 +1299,14 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             };
                             let offsets = arrow_data.offsets();
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                offsets.iter().zip(offsets.lengths()),
+                                offsets.windows(2),
                                 arrow_data.validity(),
                             )
                             .map(|elem| {
-                                elem.map(|(start, len)| {
-                                    let start = *start as usize;
-                                    let end = start + len;
-                                    if end > arrow_data_inner.len() {
+                                elem.map(|window| {
+                                    let start = window[0] as usize;
+                                    let end = window[1] as usize;
+                                    if arrow_data_inner.len() < end {
                                         return Err(DeserializationError::offset_slice_oob(
                                             (start, end),
                                             arrow_data_inner.len(),
@@ -1371,10 +1331,10 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     .collect::<Vec<_>>()
                 };
                 let f16 = {
-                    if 9usize >= arrow_data_arrays.len() {
+                    if arrow_data_arrays.len() <= 9 {
                         return Ok(Vec::new());
                     }
-                    let arrow_data = &*arrow_data_arrays[9usize];
+                    let arrow_data = &*arrow_data_arrays[9];
                     {
                         let arrow_data = arrow_data
                             .as_any()
@@ -1407,14 +1367,14 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             };
                             let offsets = arrow_data.offsets();
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                offsets.iter().zip(offsets.lengths()),
+                                offsets.windows(2),
                                 arrow_data.validity(),
                             )
                             .map(|elem| {
-                                elem.map(|(start, len)| {
-                                    let start = *start as usize;
-                                    let end = start + len;
-                                    if end > arrow_data_inner.len() {
+                                elem.map(|window| {
+                                    let start = window[0] as usize;
+                                    let end = window[1] as usize;
+                                    if arrow_data_inner.len() < end {
                                         return Err(DeserializationError::offset_slice_oob(
                                             (start, end),
                                             arrow_data_inner.len(),
@@ -1439,10 +1399,10 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     .collect::<Vec<_>>()
                 };
                 let f32 = {
-                    if 10usize >= arrow_data_arrays.len() {
+                    if arrow_data_arrays.len() <= 10 {
                         return Ok(Vec::new());
                     }
-                    let arrow_data = &*arrow_data_arrays[10usize];
+                    let arrow_data = &*arrow_data_arrays[10];
                     {
                         let arrow_data = arrow_data
                             .as_any()
@@ -1475,14 +1435,14 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             };
                             let offsets = arrow_data.offsets();
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                offsets.iter().zip(offsets.lengths()),
+                                offsets.windows(2),
                                 arrow_data.validity(),
                             )
                             .map(|elem| {
-                                elem.map(|(start, len)| {
-                                    let start = *start as usize;
-                                    let end = start + len;
-                                    if end > arrow_data_inner.len() {
+                                elem.map(|window| {
+                                    let start = window[0] as usize;
+                                    let end = window[1] as usize;
+                                    if arrow_data_inner.len() < end {
                                         return Err(DeserializationError::offset_slice_oob(
                                             (start, end),
                                             arrow_data_inner.len(),
@@ -1507,10 +1467,10 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     .collect::<Vec<_>>()
                 };
                 let f64 = {
-                    if 11usize >= arrow_data_arrays.len() {
+                    if arrow_data_arrays.len() <= 11 {
                         return Ok(Vec::new());
                     }
-                    let arrow_data = &*arrow_data_arrays[11usize];
+                    let arrow_data = &*arrow_data_arrays[11];
                     {
                         let arrow_data = arrow_data
                             .as_any()
@@ -1543,14 +1503,14 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             };
                             let offsets = arrow_data.offsets();
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                offsets.iter().zip(offsets.lengths()),
+                                offsets.windows(2),
                                 arrow_data.validity(),
                             )
                             .map(|elem| {
-                                elem.map(|(start, len)| {
-                                    let start = *start as usize;
-                                    let end = start + len;
-                                    if end > arrow_data_inner.len() {
+                                elem.map(|window| {
+                                    let start = window[0] as usize;
+                                    let end = window[1] as usize;
+                                    if arrow_data_inner.len() < end {
                                         return Err(DeserializationError::offset_slice_oob(
                                             (start, end),
                                             arrow_data_inner.len(),
@@ -1762,5 +1722,40 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     .with_context("rerun.datatypes.TensorBuffer")?
             }
         })
+    }
+}
+
+impl ::re_types_core::SizeBytes for TensorBuffer {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        #![allow(clippy::match_same_arms)]
+        match self {
+            Self::U8(v) => v.heap_size_bytes(),
+            Self::U16(v) => v.heap_size_bytes(),
+            Self::U32(v) => v.heap_size_bytes(),
+            Self::U64(v) => v.heap_size_bytes(),
+            Self::I8(v) => v.heap_size_bytes(),
+            Self::I16(v) => v.heap_size_bytes(),
+            Self::I32(v) => v.heap_size_bytes(),
+            Self::I64(v) => v.heap_size_bytes(),
+            Self::F16(v) => v.heap_size_bytes(),
+            Self::F32(v) => v.heap_size_bytes(),
+            Self::F64(v) => v.heap_size_bytes(),
+        }
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <::re_types_core::ArrowBuffer<u8>>::is_pod()
+            && <::re_types_core::ArrowBuffer<u16>>::is_pod()
+            && <::re_types_core::ArrowBuffer<u32>>::is_pod()
+            && <::re_types_core::ArrowBuffer<u64>>::is_pod()
+            && <::re_types_core::ArrowBuffer<i8>>::is_pod()
+            && <::re_types_core::ArrowBuffer<i16>>::is_pod()
+            && <::re_types_core::ArrowBuffer<i32>>::is_pod()
+            && <::re_types_core::ArrowBuffer<i64>>::is_pod()
+            && <::re_types_core::ArrowBuffer<half::f16>>::is_pod()
+            && <::re_types_core::ArrowBuffer<f32>>::is_pod()
+            && <::re_types_core::ArrowBuffer<f64>>::is_pod()
     }
 }

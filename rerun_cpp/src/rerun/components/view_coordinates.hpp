@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../component_descriptor.hpp"
 #include "../datatypes/view_coordinates.hpp"
 #include "../rerun_sdk_export.hpp"
 #include "../result.hpp"
@@ -313,7 +314,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<components::ViewCoordinates> {
-        static constexpr const char Name[] = "rerun.components.ViewCoordinates";
+        static constexpr ComponentDescriptor Descriptor = "rerun.components.ViewCoordinates";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {

@@ -14,9 +14,9 @@
 #![allow(non_camel_case_types)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: Name of the map provider to be used in Map views.
@@ -37,48 +37,10 @@ pub enum MapProvider {
     MapboxSatellite = 4,
 }
 
-impl ::re_types_core::reflection::Enum for MapProvider {
+impl ::re_types_core::Component for MapProvider {
     #[inline]
-    fn variants() -> &'static [Self] {
-        &[
-            Self::OpenStreetMap,
-            Self::MapboxStreets,
-            Self::MapboxDark,
-            Self::MapboxSatellite,
-        ]
-    }
-
-    #[inline]
-    fn docstring_md(self) -> &'static str {
-        match self {
-            Self::OpenStreetMap => "`OpenStreetMap` is the default map provider.",
-            Self::MapboxStreets => "Mapbox Streets is a minimalistic map designed by Mapbox.",
-            Self::MapboxDark => "Mapbox Dark is a dark-themed map designed by Mapbox.",
-            Self::MapboxSatellite => "Mapbox Satellite is a satellite map designed by Mapbox.",
-        }
-    }
-}
-
-impl ::re_types_core::SizeBytes for MapProvider {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
-    }
-}
-
-impl std::fmt::Display for MapProvider {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::OpenStreetMap => write!(f, "OpenStreetMap"),
-            Self::MapboxStreets => write!(f, "MapboxStreets"),
-            Self::MapboxDark => write!(f, "MapboxDark"),
-            Self::MapboxSatellite => write!(f, "MapboxSatellite"),
-        }
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.blueprint.components.MapProvider")
     }
 }
 
@@ -100,13 +62,8 @@ impl ::re_types_core::Loggable for MapProvider {
     {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{Loggable as _, ResultExt as _};
+        use ::re_types_core::{arrow_helpers::as_array_ref, Loggable as _, ResultExt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
-
-        #[allow(unused)]
-        fn as_array_ref<T: Array + 'static>(t: T) -> ArrayRef {
-            std::sync::Arc::new(t) as ArrayRef
-        }
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -170,9 +127,47 @@ impl ::re_types_core::Loggable for MapProvider {
     }
 }
 
-impl ::re_types_core::Component for MapProvider {
+impl std::fmt::Display for MapProvider {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::OpenStreetMap => write!(f, "OpenStreetMap"),
+            Self::MapboxStreets => write!(f, "MapboxStreets"),
+            Self::MapboxDark => write!(f, "MapboxDark"),
+            Self::MapboxSatellite => write!(f, "MapboxSatellite"),
+        }
+    }
+}
+
+impl ::re_types_core::reflection::Enum for MapProvider {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.blueprint.components.MapProvider".into()
+    fn variants() -> &'static [Self] {
+        &[
+            Self::OpenStreetMap,
+            Self::MapboxStreets,
+            Self::MapboxDark,
+            Self::MapboxSatellite,
+        ]
+    }
+
+    #[inline]
+    fn docstring_md(self) -> &'static str {
+        match self {
+            Self::OpenStreetMap => "`OpenStreetMap` is the default map provider.",
+            Self::MapboxStreets => "Mapbox Streets is a minimalistic map designed by Mapbox.",
+            Self::MapboxDark => "Mapbox Dark is a dark-themed map designed by Mapbox.",
+            Self::MapboxSatellite => "Mapbox Satellite is a satellite map designed by Mapbox.",
+        }
+    }
+}
+
+impl ::re_types_core::SizeBytes for MapProvider {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
     }
 }

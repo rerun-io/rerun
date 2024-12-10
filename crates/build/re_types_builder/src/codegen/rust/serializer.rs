@@ -606,7 +606,7 @@ fn quote_arrow_field_serializer(
                     (
                         quote! {
                             .flat_map(|datum| {
-                                datum.#quoted_member_accessor.0
+                                datum.#quoted_member_accessor.into_arrow2_buffer()
                             })
                         },
                         quote! {
@@ -618,7 +618,7 @@ fn quote_arrow_field_serializer(
                 } else {
                     (
                         quote! {
-                            .flat_map(|s| s.0)
+                            .flat_map(|s| s.into_arrow2_buffer())
                         },
                         quote! {
                             .map(|datum| datum.len())

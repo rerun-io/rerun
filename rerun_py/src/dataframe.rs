@@ -435,8 +435,8 @@ impl FromPyObject<'_> for ComponentLike {
             Ok(Self(component_str))
         } else if let Ok(component_str) = component
             .getattr("_BATCH_TYPE")
-            .and_then(|batch_type| batch_type.getattr("_COMPONENT_NAME"))
-            .and_then(|type_name| type_name.extract::<String>())
+            .and_then(|batch_type| batch_type.getattr("_COMPONENT_DESCRIPTOR"))
+            .and_then(|descr| descr.getattr("component_name")?.extract::<String>())
         {
             Ok(Self(component_str))
         } else {

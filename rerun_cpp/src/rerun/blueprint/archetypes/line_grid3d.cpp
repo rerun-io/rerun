@@ -17,27 +17,62 @@ namespace rerun {
         cells.reserve(6);
 
         if (archetype.visible.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.visible.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.visible.value(),
+                ComponentDescriptor(
+                    "rerun.blueprint.archetypes.LineGrid3D",
+                    "visible",
+                    "rerun.blueprint.components.Visible"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.spacing.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.spacing.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.spacing.value(),
+                ComponentDescriptor(
+                    "rerun.blueprint.archetypes.LineGrid3D",
+                    "spacing",
+                    "rerun.blueprint.components.GridSpacing"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.plane.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.plane.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.plane.value(),
+                ComponentDescriptor(
+                    "rerun.blueprint.archetypes.LineGrid3D",
+                    "plane",
+                    "rerun.components.Plane3D"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.stroke_width.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.stroke_width.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.stroke_width.value(),
+                ComponentDescriptor(
+                    "rerun.blueprint.archetypes.LineGrid3D",
+                    "stroke_width",
+                    "rerun.components.StrokeWidth"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.color.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.color.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.color.value(),
+                ComponentDescriptor(
+                    "rerun.blueprint.archetypes.LineGrid3D",
+                    "color",
+                    "rerun.components.Color"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

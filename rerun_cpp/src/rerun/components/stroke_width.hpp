@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../component_descriptor.hpp"
 #include "../datatypes/float32.hpp"
 #include "../result.hpp"
 
@@ -44,7 +45,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<components::StrokeWidth> {
-        static constexpr const char Name[] = "rerun.components.StrokeWidth";
+        static constexpr ComponentDescriptor Descriptor = "rerun.components.StrokeWidth";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {

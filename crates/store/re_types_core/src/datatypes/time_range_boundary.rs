@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use crate::external::arrow2;
-use crate::ComponentName;
 use crate::SerializationResult;
-use crate::{ComponentBatch, MaybeOwnedComponentBatch};
+use crate::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use crate::{ComponentDescriptor, ComponentName};
 use crate::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: Left or right boundary of a time range.
@@ -29,23 +29,6 @@ pub enum TimeRangeBoundary {
 
     /// The boundary extends to infinity.
     Infinite,
-}
-
-impl crate::SizeBytes for TimeRangeBoundary {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        #![allow(clippy::match_same_arms)]
-        match self {
-            Self::CursorRelative(v) => v.heap_size_bytes(),
-            Self::Absolute(v) => v.heap_size_bytes(),
-            Self::Infinite => 0,
-        }
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::TimeInt>::is_pod() && <crate::datatypes::TimeInt>::is_pod()
-    }
 }
 
 crate::macros::impl_into_cow!(TimeRangeBoundary);
@@ -85,13 +68,8 @@ impl crate::Loggable for TimeRangeBoundary {
     {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
-        use crate::{Loggable as _, ResultExt as _};
+        use crate::{arrow_helpers::as_array_ref, Loggable as _, ResultExt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
-
-        #[allow(unused)]
-        fn as_array_ref<T: Array + 'static>(t: T) -> ArrayRef {
-            std::sync::Arc::new(t) as ArrayRef
-        }
         Ok({
             // Dense Arrow union
             let data: Vec<_> = data
@@ -253,10 +231,10 @@ impl crate::Loggable for TimeRangeBoundary {
                     .with_context("rerun.datatypes.TimeRangeBoundary");
                 }
                 let cursor_relative = {
-                    if 1usize >= arrow_data_arrays.len() {
+                    if arrow_data_arrays.len() <= 1 {
                         return Ok(Vec::new());
                     }
-                    let arrow_data = &*arrow_data_arrays[1usize];
+                    let arrow_data = &*arrow_data_arrays[1];
                     arrow_data
                         .as_any()
                         .downcast_ref::<Int64Array>()
@@ -272,10 +250,10 @@ impl crate::Loggable for TimeRangeBoundary {
                         .collect::<Vec<_>>()
                 };
                 let absolute = {
-                    if 2usize >= arrow_data_arrays.len() {
+                    if arrow_data_arrays.len() <= 2 {
                         return Ok(Vec::new());
                     }
-                    let arrow_data = &*arrow_data_arrays[2usize];
+                    let arrow_data = &*arrow_data_arrays[2];
                     arrow_data
                         .as_any()
                         .downcast_ref::<Int64Array>()
@@ -352,5 +330,22 @@ impl crate::Loggable for TimeRangeBoundary {
                     .with_context("rerun.datatypes.TimeRangeBoundary")?
             }
         })
+    }
+}
+
+impl crate::SizeBytes for TimeRangeBoundary {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        #![allow(clippy::match_same_arms)]
+        match self {
+            Self::CursorRelative(v) => v.heap_size_bytes(),
+            Self::Absolute(v) => v.heap_size_bytes(),
+            Self::Infinite => 0,
+        }
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::TimeInt>::is_pod() && <crate::datatypes::TimeInt>::is_pod()
     }
 }

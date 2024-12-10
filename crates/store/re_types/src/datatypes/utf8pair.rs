@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: Stores a tuple of UTF-8 strings.
@@ -26,18 +26,6 @@ pub struct Utf8Pair {
 
     /// The second string.
     pub second: crate::datatypes::Utf8,
-}
-
-impl ::re_types_core::SizeBytes for Utf8Pair {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.first.heap_size_bytes() + self.second.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Utf8>::is_pod() && <crate::datatypes::Utf8>::is_pod()
-    }
 }
 
 ::re_types_core::macros::impl_into_cow!(Utf8Pair);
@@ -61,13 +49,8 @@ impl ::re_types_core::Loggable for Utf8Pair {
     {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{Loggable as _, ResultExt as _};
+        use ::re_types_core::{arrow_helpers::as_array_ref, Loggable as _, ResultExt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
-
-        #[allow(unused)]
-        fn as_array_ref<T: Array + 'static>(t: T) -> ArrayRef {
-            std::sync::Arc::new(t) as ArrayRef
-        }
         Ok({
             let fields = Fields::from(vec![
                 Field::new("first", <crate::datatypes::Utf8>::arrow_datatype(), false),
@@ -108,7 +91,7 @@ impl ::re_types_core::Loggable for Utf8Pair {
                             let inner_data: arrow::buffer::Buffer = first
                                 .into_iter()
                                 .flatten()
-                                .flat_map(|datum| datum.0 .0)
+                                .flat_map(|datum| datum.0.into_arrow2_buffer())
                                 .collect();
                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                             as_array_ref(unsafe {
@@ -137,7 +120,7 @@ impl ::re_types_core::Loggable for Utf8Pair {
                             let inner_data: arrow::buffer::Buffer = second
                                 .into_iter()
                                 .flatten()
-                                .flat_map(|datum| datum.0 .0)
+                                .flat_map(|datum| datum.0.into_arrow2_buffer())
                                 .collect();
                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                             as_array_ref(unsafe {
@@ -203,14 +186,15 @@ impl ::re_types_core::Loggable for Utf8Pair {
                         let arrow_data_buf = arrow_data.values();
                         let offsets = arrow_data.offsets();
                         arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                            offsets.iter().zip(offsets.lengths()),
+                            offsets.windows(2),
                             arrow_data.validity(),
                         )
                         .map(|elem| {
-                            elem.map(|(start, len)| {
-                                let start = *start as usize;
-                                let end = start + len;
-                                if end > arrow_data_buf.len() {
+                            elem.map(|window| {
+                                let start = window[0] as usize;
+                                let end = window[1] as usize;
+                                let len = end - start;
+                                if arrow_data_buf.len() < end {
                                     return Err(DeserializationError::offset_slice_oob(
                                         (start, end),
                                         arrow_data_buf.len(),
@@ -227,7 +211,7 @@ impl ::re_types_core::Loggable for Utf8Pair {
                         .map(|res_or_opt| {
                             res_or_opt.map(|res_or_opt| {
                                 res_or_opt.map(|v| {
-                                    crate::datatypes::Utf8(::re_types_core::ArrowString(v))
+                                    crate::datatypes::Utf8(::re_types_core::ArrowString::from(v))
                                 })
                             })
                         })
@@ -258,14 +242,15 @@ impl ::re_types_core::Loggable for Utf8Pair {
                         let arrow_data_buf = arrow_data.values();
                         let offsets = arrow_data.offsets();
                         arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                            offsets.iter().zip(offsets.lengths()),
+                            offsets.windows(2),
                             arrow_data.validity(),
                         )
                         .map(|elem| {
-                            elem.map(|(start, len)| {
-                                let start = *start as usize;
-                                let end = start + len;
-                                if end > arrow_data_buf.len() {
+                            elem.map(|window| {
+                                let start = window[0] as usize;
+                                let end = window[1] as usize;
+                                let len = end - start;
+                                if arrow_data_buf.len() < end {
                                     return Err(DeserializationError::offset_slice_oob(
                                         (start, end),
                                         arrow_data_buf.len(),
@@ -282,7 +267,7 @@ impl ::re_types_core::Loggable for Utf8Pair {
                         .map(|res_or_opt| {
                             res_or_opt.map(|res_or_opt| {
                                 res_or_opt.map(|v| {
-                                    crate::datatypes::Utf8(::re_types_core::ArrowString(v))
+                                    crate::datatypes::Utf8(::re_types_core::ArrowString::from(v))
                                 })
                             })
                         })
@@ -312,5 +297,17 @@ impl ::re_types_core::Loggable for Utf8Pair {
                 .with_context("rerun.datatypes.Utf8Pair")?
             }
         })
+    }
+}
+
+impl ::re_types_core::SizeBytes for Utf8Pair {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.first.heap_size_bytes() + self.second.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::Utf8>::is_pod() && <crate::datatypes::Utf8>::is_pod()
     }
 }

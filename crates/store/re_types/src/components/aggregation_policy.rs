@@ -14,9 +14,9 @@
 #![allow(non_camel_case_types)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: Policy for aggregation of multiple scalar plot values.
@@ -49,58 +49,10 @@ pub enum AggregationPolicy {
     MinMaxAverage = 6,
 }
 
-impl ::re_types_core::reflection::Enum for AggregationPolicy {
+impl ::re_types_core::Component for AggregationPolicy {
     #[inline]
-    fn variants() -> &'static [Self] {
-        &[
-            Self::Off,
-            Self::Average,
-            Self::Max,
-            Self::Min,
-            Self::MinMax,
-            Self::MinMaxAverage,
-        ]
-    }
-
-    #[inline]
-    fn docstring_md(self) -> &'static str {
-        match self {
-            Self::Off => "No aggregation.",
-            Self::Average => "Average all points in the range together.",
-            Self::Max => "Keep only the maximum values in the range.",
-            Self::Min => "Keep only the minimum values in the range.",
-            Self::MinMax => {
-                "Keep both the minimum and maximum values in the range.\n\nThis will yield two aggregated points instead of one, effectively creating a vertical line."
-            }
-            Self::MinMaxAverage => {
-                "Find both the minimum and maximum values in the range, then use the average of those."
-            }
-        }
-    }
-}
-
-impl ::re_types_core::SizeBytes for AggregationPolicy {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
-    }
-}
-
-impl std::fmt::Display for AggregationPolicy {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Off => write!(f, "Off"),
-            Self::Average => write!(f, "Average"),
-            Self::Max => write!(f, "Max"),
-            Self::Min => write!(f, "Min"),
-            Self::MinMax => write!(f, "MinMax"),
-            Self::MinMaxAverage => write!(f, "MinMaxAverage"),
-        }
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.components.AggregationPolicy")
     }
 }
 
@@ -122,13 +74,8 @@ impl ::re_types_core::Loggable for AggregationPolicy {
     {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{Loggable as _, ResultExt as _};
+        use ::re_types_core::{arrow_helpers::as_array_ref, Loggable as _, ResultExt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
-
-        #[allow(unused)]
-        fn as_array_ref<T: Array + 'static>(t: T) -> ArrayRef {
-            std::sync::Arc::new(t) as ArrayRef
-        }
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -194,9 +141,57 @@ impl ::re_types_core::Loggable for AggregationPolicy {
     }
 }
 
-impl ::re_types_core::Component for AggregationPolicy {
+impl std::fmt::Display for AggregationPolicy {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Off => write!(f, "Off"),
+            Self::Average => write!(f, "Average"),
+            Self::Max => write!(f, "Max"),
+            Self::Min => write!(f, "Min"),
+            Self::MinMax => write!(f, "MinMax"),
+            Self::MinMaxAverage => write!(f, "MinMaxAverage"),
+        }
+    }
+}
+
+impl ::re_types_core::reflection::Enum for AggregationPolicy {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.components.AggregationPolicy".into()
+    fn variants() -> &'static [Self] {
+        &[
+            Self::Off,
+            Self::Average,
+            Self::Max,
+            Self::Min,
+            Self::MinMax,
+            Self::MinMaxAverage,
+        ]
+    }
+
+    #[inline]
+    fn docstring_md(self) -> &'static str {
+        match self {
+            Self::Off => "No aggregation.",
+            Self::Average => "Average all points in the range together.",
+            Self::Max => "Keep only the maximum values in the range.",
+            Self::Min => "Keep only the minimum values in the range.",
+            Self::MinMax => {
+                "Keep both the minimum and maximum values in the range.\n\nThis will yield two aggregated points instead of one, effectively creating a vertical line."
+            }
+            Self::MinMaxAverage => {
+                "Find both the minimum and maximum values in the range, then use the average of those."
+            }
+        }
+    }
+}
+
+impl ::re_types_core::SizeBytes for AggregationPolicy {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
     }
 }

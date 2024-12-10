@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: The metadata describing the contents of a [`components::ImageBuffer`][crate::components::ImageBuffer].
@@ -41,26 +41,6 @@ pub struct ImageFormat {
     ///
     /// Also requires a [`datatypes::ColorModel`][crate::datatypes::ColorModel] to fully specify the pixel format.
     pub channel_datatype: Option<crate::datatypes::ChannelDatatype>,
-}
-
-impl ::re_types_core::SizeBytes for ImageFormat {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.width.heap_size_bytes()
-            + self.height.heap_size_bytes()
-            + self.pixel_format.heap_size_bytes()
-            + self.color_model.heap_size_bytes()
-            + self.channel_datatype.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <u32>::is_pod()
-            && <u32>::is_pod()
-            && <Option<crate::datatypes::PixelFormat>>::is_pod()
-            && <Option<crate::datatypes::ColorModel>>::is_pod()
-            && <Option<crate::datatypes::ChannelDatatype>>::is_pod()
-    }
 }
 
 ::re_types_core::macros::impl_into_cow!(ImageFormat);
@@ -99,13 +79,8 @@ impl ::re_types_core::Loggable for ImageFormat {
     {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{Loggable as _, ResultExt as _};
+        use ::re_types_core::{arrow_helpers::as_array_ref, Loggable as _, ResultExt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
-
-        #[allow(unused)]
-        fn as_array_ref<T: Array + 'static>(t: T) -> ArrayRef {
-            std::sync::Arc::new(t) as ArrayRef
-        }
         Ok({
             let fields = Fields::from(vec![
                 Field::new("width", DataType::UInt32, false),
@@ -387,5 +362,25 @@ impl ::re_types_core::Loggable for ImageFormat {
                 .with_context("rerun.datatypes.ImageFormat")?
             }
         })
+    }
+}
+
+impl ::re_types_core::SizeBytes for ImageFormat {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.width.heap_size_bytes()
+            + self.height.heap_size_bytes()
+            + self.pixel_format.heap_size_bytes()
+            + self.color_model.heap_size_bytes()
+            + self.channel_datatype.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <u32>::is_pod()
+            && <u32>::is_pod()
+            && <Option<crate::datatypes::PixelFormat>>::is_pod()
+            && <Option<crate::datatypes::ColorModel>>::is_pod()
+            && <Option<crate::datatypes::ChannelDatatype>>::is_pod()
     }
 }

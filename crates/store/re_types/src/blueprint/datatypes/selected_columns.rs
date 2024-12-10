@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: List of selected columns in a dataframe.
@@ -26,19 +26,6 @@ pub struct SelectedColumns {
 
     /// The component columns to include
     pub component_columns: Vec<crate::blueprint::datatypes::ComponentColumnSelector>,
-}
-
-impl ::re_types_core::SizeBytes for SelectedColumns {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.time_columns.heap_size_bytes() + self.component_columns.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <Vec<crate::datatypes::Utf8>>::is_pod()
-            && <Vec<crate::blueprint::datatypes::ComponentColumnSelector>>::is_pod()
-    }
 }
 
 ::re_types_core::macros::impl_into_cow!(SelectedColumns);
@@ -78,13 +65,8 @@ impl ::re_types_core::Loggable for SelectedColumns {
     {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{Loggable as _, ResultExt as _};
+        use ::re_types_core::{arrow_helpers::as_array_ref, Loggable as _, ResultExt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
-
-        #[allow(unused)]
-        fn as_array_ref<T: Array + 'static>(t: T) -> ArrayRef {
-            std::sync::Arc::new(t) as ArrayRef
-        }
         Ok({
             let fields = Fields::from(vec![
                 Field::new(
@@ -155,7 +137,7 @@ impl ::re_types_core::Loggable for SelectedColumns {
                                     );
                                     let inner_data: arrow::buffer::Buffer = time_columns_inner_data
                                         .into_iter()
-                                        .flat_map(|datum| datum.0 .0)
+                                        .flat_map(|datum| datum.0.into_arrow2_buffer())
                                         .collect();
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     as_array_ref(unsafe {
@@ -283,15 +265,16 @@ impl ::re_types_core::Loggable for SelectedColumns {
                                     let arrow_data_inner_buf = arrow_data_inner.values();
                                     let offsets = arrow_data_inner.offsets();
                                     arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                            offsets.iter().zip(offsets.lengths()),
+                                            offsets.windows(2),
                                             arrow_data_inner.validity(),
                                         )
                                         .map(|elem| {
                                             elem
-                                                .map(|(start, len)| {
-                                                    let start = *start as usize;
-                                                    let end = start + len;
-                                                    if end > arrow_data_inner_buf.len() {
+                                                .map(|window| {
+                                                    let start = window[0] as usize;
+                                                    let end = window[1] as usize;
+                                                    let len = end - start;
+                                                    if arrow_data_inner_buf.len() < end {
                                                         return Err(
                                                             DeserializationError::offset_slice_oob(
                                                                 (start, end),
@@ -313,7 +296,7 @@ impl ::re_types_core::Loggable for SelectedColumns {
                                                 .map(|res_or_opt| {
                                                     res_or_opt
                                                         .map(|v| crate::datatypes::Utf8(
-                                                            ::re_types_core::ArrowString(v),
+                                                            ::re_types_core::ArrowString::from(v),
                                                         ))
                                                 })
                                         })
@@ -327,15 +310,15 @@ impl ::re_types_core::Loggable for SelectedColumns {
                             };
                             let offsets = arrow_data.offsets();
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                    offsets.iter().zip(offsets.lengths()),
+                                    offsets.windows(2),
                                     arrow_data.validity(),
                                 )
                                 .map(|elem| {
                                     elem
-                                        .map(|(start, len)| {
-                                            let start = *start as usize;
-                                            let end = start + len;
-                                            if end > arrow_data_inner.len() {
+                                        .map(|window| {
+                                            let start = window[0] as usize;
+                                            let end = window[1] as usize;
+                                            if arrow_data_inner.len() < end {
                                                 return Err(
                                                     DeserializationError::offset_slice_oob(
                                                         (start, end),
@@ -407,15 +390,15 @@ impl ::re_types_core::Loggable for SelectedColumns {
                             };
                             let offsets = arrow_data.offsets();
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                    offsets.iter().zip(offsets.lengths()),
+                                    offsets.windows(2),
                                     arrow_data.validity(),
                                 )
                                 .map(|elem| {
                                     elem
-                                        .map(|(start, len)| {
-                                            let start = *start as usize;
-                                            let end = start + len;
-                                            if end > arrow_data_inner.len() {
+                                        .map(|window| {
+                                            let start = window[0] as usize;
+                                            let end = window[1] as usize;
+                                            if arrow_data_inner.len() < end {
                                                 return Err(
                                                     DeserializationError::offset_slice_oob(
                                                         (start, end),
@@ -467,5 +450,18 @@ impl ::re_types_core::Loggable for SelectedColumns {
                 .with_context("rerun.blueprint.datatypes.SelectedColumns")?
             }
         })
+    }
+}
+
+impl ::re_types_core::SizeBytes for SelectedColumns {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.time_columns.heap_size_bytes() + self.component_columns.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <Vec<crate::datatypes::Utf8>>::is_pod()
+            && <Vec<crate::blueprint::datatypes::ComponentColumnSelector>>::is_pod()
     }
 }

@@ -12,6 +12,7 @@ from attrs import define, field
 from rerun._baseclasses import (
     BaseBatch,
     ComponentBatchMixin,
+    ComponentDescriptor,
     ComponentMixin,
 )
 
@@ -79,7 +80,7 @@ class AffixFuzzer7Batch(BaseBatch[AffixFuzzer7ArrayLike], ComponentBatchMixin):
             metadata={},
         )
     )
-    _COMPONENT_NAME: str = "rerun.testing.components.AffixFuzzer7"
+    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.testing.components.AffixFuzzer7")
 
     @staticmethod
     def _native_to_pa_array(data: AffixFuzzer7ArrayLike, data_type: pa.DataType) -> pa.Array:

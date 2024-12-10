@@ -8,6 +8,7 @@ from __future__ import annotations
 from ... import datatypes
 from ..._baseclasses import (
     ComponentBatchMixin,
+    ComponentDescriptor,
     ComponentMixin,
 )
 
@@ -25,7 +26,7 @@ class ApplyLatestAt(datatypes.Bool, ComponentMixin):
 
 
 class ApplyLatestAtBatch(datatypes.BoolBatch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.blueprint.components.ApplyLatestAt"
+    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.blueprint.components.ApplyLatestAt")
 
 
 # This is patched in late to avoid circular dependencies.

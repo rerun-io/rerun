@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: The description of a semantic Class.
@@ -42,22 +42,6 @@ pub struct ClassDescription {
 
     /// The connections between keypoints.
     pub keypoint_connections: Vec<crate::datatypes::KeypointPair>,
-}
-
-impl ::re_types_core::SizeBytes for ClassDescription {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.info.heap_size_bytes()
-            + self.keypoint_annotations.heap_size_bytes()
-            + self.keypoint_connections.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::AnnotationInfo>::is_pod()
-            && <Vec<crate::datatypes::AnnotationInfo>>::is_pod()
-            && <Vec<crate::datatypes::KeypointPair>>::is_pod()
-    }
 }
 
 ::re_types_core::macros::impl_into_cow!(ClassDescription);
@@ -102,13 +86,8 @@ impl ::re_types_core::Loggable for ClassDescription {
     {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{Loggable as _, ResultExt as _};
+        use ::re_types_core::{arrow_helpers::as_array_ref, Loggable as _, ResultExt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
-
-        #[allow(unused)]
-        fn as_array_ref<T: Array + 'static>(t: T) -> ArrayRef {
-            std::sync::Arc::new(t) as ArrayRef
-        }
         Ok({
             let fields = Fields::from(vec![
                 Field::new(
@@ -344,14 +323,14 @@ impl ::re_types_core::Loggable for ClassDescription {
                             };
                             let offsets = arrow_data.offsets();
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                offsets.iter().zip(offsets.lengths()),
+                                offsets.windows(2),
                                 arrow_data.validity(),
                             )
                             .map(|elem| {
-                                elem.map(|(start, len)| {
-                                    let start = *start as usize;
-                                    let end = start + len;
-                                    if end > arrow_data_inner.len() {
+                                elem.map(|window| {
+                                    let start = window[0] as usize;
+                                    let end = window[1] as usize;
+                                    if arrow_data_inner.len() < end {
                                         return Err(DeserializationError::offset_slice_oob(
                                             (start, end),
                                             arrow_data_inner.len(),
@@ -414,14 +393,14 @@ impl ::re_types_core::Loggable for ClassDescription {
                             };
                             let offsets = arrow_data.offsets();
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                offsets.iter().zip(offsets.lengths()),
+                                offsets.windows(2),
                                 arrow_data.validity(),
                             )
                             .map(|elem| {
-                                elem.map(|(start, len)| {
-                                    let start = *start as usize;
-                                    let end = start + len;
-                                    if end > arrow_data_inner.len() {
+                                elem.map(|window| {
+                                    let start = window[0] as usize;
+                                    let end = window[1] as usize;
+                                    if arrow_data_inner.len() < end {
                                         return Err(DeserializationError::offset_slice_oob(
                                             (start, end),
                                             arrow_data_inner.len(),
@@ -473,5 +452,21 @@ impl ::re_types_core::Loggable for ClassDescription {
                 .with_context("rerun.datatypes.ClassDescription")?
             }
         })
+    }
+}
+
+impl ::re_types_core::SizeBytes for ClassDescription {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.info.heap_size_bytes()
+            + self.keypoint_annotations.heap_size_bytes()
+            + self.keypoint_connections.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::AnnotationInfo>::is_pod()
+            && <Vec<crate::datatypes::AnnotationInfo>>::is_pod()
+            && <Vec<crate::datatypes::KeypointPair>>::is_pod()
     }
 }

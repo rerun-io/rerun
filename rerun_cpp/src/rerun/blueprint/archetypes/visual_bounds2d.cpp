@@ -15,10 +15,29 @@ namespace rerun {
         ) {
         using namespace blueprint::archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(2);
+        cells.reserve(3);
 
         {
-            auto result = ComponentBatch::from_loggable(archetype.range);
+            auto result = ComponentBatch::from_loggable(
+                archetype.range,
+                ComponentDescriptor(
+                    "rerun.blueprint.archetypes.VisualBounds2D",
+                    "range",
+                    "rerun.blueprint.components.VisualBounds2D"
+                )
+            );
+            RR_RETURN_NOT_OK(result.error);
+            cells.push_back(std::move(result.value));
+        }
+        {
+            auto result = ComponentBatch::from_loggable(
+                archetype.near_clip_plane,
+                ComponentDescriptor(
+                    "rerun.blueprint.archetypes.VisualBounds2D",
+                    "near_clip_plane",
+                    "rerun.blueprint.components.NearClipPlane"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

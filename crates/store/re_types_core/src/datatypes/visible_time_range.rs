@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use crate::external::arrow2;
-use crate::ComponentName;
 use crate::SerializationResult;
-use crate::{ComponentBatch, MaybeOwnedComponentBatch};
+use crate::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use crate::{ComponentDescriptor, ComponentName};
 use crate::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: Visible time range bounds for a specific timeline.
@@ -26,18 +26,6 @@ pub struct VisibleTimeRange {
 
     /// Time range to use for this timeline.
     pub range: crate::datatypes::TimeRange,
-}
-
-impl crate::SizeBytes for VisibleTimeRange {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.timeline.heap_size_bytes() + self.range.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Utf8>::is_pod() && <crate::datatypes::TimeRange>::is_pod()
-    }
 }
 
 crate::macros::impl_into_cow!(VisibleTimeRange);
@@ -69,13 +57,8 @@ impl crate::Loggable for VisibleTimeRange {
     {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
-        use crate::{Loggable as _, ResultExt as _};
+        use crate::{arrow_helpers::as_array_ref, Loggable as _, ResultExt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
-
-        #[allow(unused)]
-        fn as_array_ref<T: Array + 'static>(t: T) -> ArrayRef {
-            std::sync::Arc::new(t) as ArrayRef
-        }
         Ok({
             let fields = Fields::from(vec![
                 Field::new(
@@ -124,7 +107,7 @@ impl crate::Loggable for VisibleTimeRange {
                             let inner_data: arrow::buffer::Buffer = timeline
                                 .into_iter()
                                 .flatten()
-                                .flat_map(|datum| datum.0 .0)
+                                .flat_map(|datum| datum.0.into_arrow2_buffer())
                                 .collect();
                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                             as_array_ref(unsafe {
@@ -207,14 +190,15 @@ impl crate::Loggable for VisibleTimeRange {
                         let arrow_data_buf = arrow_data.values();
                         let offsets = arrow_data.offsets();
                         arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                            offsets.iter().zip(offsets.lengths()),
+                            offsets.windows(2),
                             arrow_data.validity(),
                         )
                         .map(|elem| {
-                            elem.map(|(start, len)| {
-                                let start = *start as usize;
-                                let end = start + len;
-                                if end > arrow_data_buf.len() {
+                            elem.map(|window| {
+                                let start = window[0] as usize;
+                                let end = window[1] as usize;
+                                let len = end - start;
+                                if arrow_data_buf.len() < end {
                                     return Err(DeserializationError::offset_slice_oob(
                                         (start, end),
                                         arrow_data_buf.len(),
@@ -230,7 +214,8 @@ impl crate::Loggable for VisibleTimeRange {
                         })
                         .map(|res_or_opt| {
                             res_or_opt.map(|res_or_opt| {
-                                res_or_opt.map(|v| crate::datatypes::Utf8(crate::ArrowString(v)))
+                                res_or_opt
+                                    .map(|v| crate::datatypes::Utf8(crate::ArrowString::from(v)))
                             })
                         })
                         .collect::<DeserializationResult<Vec<Option<_>>>>()
@@ -272,5 +257,17 @@ impl crate::Loggable for VisibleTimeRange {
                 .with_context("rerun.datatypes.VisibleTimeRange")?
             }
         })
+    }
+}
+
+impl crate::SizeBytes for VisibleTimeRange {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.timeline.heap_size_bytes() + self.range.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::Utf8>::is_pod() && <crate::datatypes::TimeRange>::is_pod()
     }
 }

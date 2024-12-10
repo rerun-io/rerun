@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: A 4x4 Matrix.
@@ -34,32 +34,6 @@ pub struct Mat4x4(
     /// Flat list of matrix coefficients in column-major order.
     pub [f32; 16usize],
 );
-
-impl ::re_types_core::SizeBytes for Mat4x4 {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <[f32; 16usize]>::is_pod()
-    }
-}
-
-impl From<[f32; 16usize]> for Mat4x4 {
-    #[inline]
-    fn from(flat_columns: [f32; 16usize]) -> Self {
-        Self(flat_columns)
-    }
-}
-
-impl From<Mat4x4> for [f32; 16usize] {
-    #[inline]
-    fn from(value: Mat4x4) -> Self {
-        value.0
-    }
-}
 
 ::re_types_core::macros::impl_into_cow!(Mat4x4);
 
@@ -82,13 +56,8 @@ impl ::re_types_core::Loggable for Mat4x4 {
     {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{Loggable as _, ResultExt as _};
+        use ::re_types_core::{arrow_helpers::as_array_ref, Loggable as _, ResultExt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
-
-        #[allow(unused)]
-        fn as_array_ref<T: Array + 'static>(t: T) -> ArrayRef {
-            std::sync::Arc::new(t) as ArrayRef
-        }
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -257,5 +226,31 @@ impl ::re_types_core::Loggable for Mat4x4 {
                 slice.iter().copied().map(Self).collect::<Vec<_>>()
             }
         })
+    }
+}
+
+impl From<[f32; 16usize]> for Mat4x4 {
+    #[inline]
+    fn from(flat_columns: [f32; 16usize]) -> Self {
+        Self(flat_columns)
+    }
+}
+
+impl From<Mat4x4> for [f32; 16usize] {
+    #[inline]
+    fn from(value: Mat4x4) -> Self {
+        value.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for Mat4x4 {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <[f32; 16usize]>::is_pod()
     }
 }

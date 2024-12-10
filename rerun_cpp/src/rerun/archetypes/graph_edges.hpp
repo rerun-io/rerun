@@ -28,7 +28,7 @@ namespace rerun::archetypes {
 
         /// Specifies if the graph is directed or undirected.
         ///
-        /// If no `GraphType` is provided, the graph is assumed to be undirected.
+        /// If no `components::GraphType` is provided, the graph is assumed to be undirected.
         std::optional<rerun::components::GraphType> graph_type;
 
       public:
@@ -47,7 +47,7 @@ namespace rerun::archetypes {
 
         /// Specifies if the graph is directed or undirected.
         ///
-        /// If no `GraphType` is provided, the graph is assumed to be undirected.
+        /// If no `components::GraphType` is provided, the graph is assumed to be undirected.
         GraphEdges with_graph_type(rerun::components::GraphType _graph_type) && {
             graph_type = std::move(_graph_type);
             // See: https://github.com/rerun-io/rerun/issues/4027

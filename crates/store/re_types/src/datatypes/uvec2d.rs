@@ -13,41 +13,15 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: A uint32 vector in 2D space.
 #[derive(Clone, Debug, Default, Copy, PartialEq, Eq, Hash, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(C)]
 pub struct UVec2D(pub [u32; 2usize]);
-
-impl ::re_types_core::SizeBytes for UVec2D {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <[u32; 2usize]>::is_pod()
-    }
-}
-
-impl From<[u32; 2usize]> for UVec2D {
-    #[inline]
-    fn from(xy: [u32; 2usize]) -> Self {
-        Self(xy)
-    }
-}
-
-impl From<UVec2D> for [u32; 2usize] {
-    #[inline]
-    fn from(value: UVec2D) -> Self {
-        value.0
-    }
-}
 
 ::re_types_core::macros::impl_into_cow!(UVec2D);
 
@@ -70,13 +44,8 @@ impl ::re_types_core::Loggable for UVec2D {
     {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{Loggable as _, ResultExt as _};
+        use ::re_types_core::{arrow_helpers::as_array_ref, Loggable as _, ResultExt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
-
-        #[allow(unused)]
-        fn as_array_ref<T: Array + 'static>(t: T) -> ArrayRef {
-            std::sync::Arc::new(t) as ArrayRef
-        }
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -245,5 +214,31 @@ impl ::re_types_core::Loggable for UVec2D {
                 slice.iter().copied().map(Self).collect::<Vec<_>>()
             }
         })
+    }
+}
+
+impl From<[u32; 2usize]> for UVec2D {
+    #[inline]
+    fn from(xy: [u32; 2usize]) -> Self {
+        Self(xy)
+    }
+}
+
+impl From<UVec2D> for [u32; 2usize] {
+    #[inline]
+    fn from(value: UVec2D) -> Self {
+        value.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for UVec2D {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <[u32; 2usize]>::is_pod()
     }
 }

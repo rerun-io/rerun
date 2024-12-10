@@ -391,7 +391,7 @@ impl Object {
             "Bad filepath: {filepath:?}"
         );
 
-        let docs = Docs::from_raw_docs(obj.documentation());
+        let docs = Docs::from_raw_docs(reporter, &virtpath, obj.name(), obj.documentation());
         let attrs = Attributes::from_raw_attrs(obj.attributes());
         let kind = ObjectKind::from_pkg_name(&pkg_name, &attrs);
 
@@ -478,7 +478,7 @@ impl Object {
             .unwrap();
         let filepath = filepath_from_declaration_file(include_dir_path, &virtpath);
 
-        let docs = Docs::from_raw_docs(enm.documentation());
+        let docs = Docs::from_raw_docs(reporter, &virtpath, enm.name(), enm.documentation());
         let attrs = Attributes::from_raw_attrs(enm.attributes());
         let kind = ObjectKind::from_pkg_name(&pkg_name, &attrs);
 
@@ -772,7 +772,7 @@ impl ObjectField {
             .unwrap();
         let filepath = filepath_from_declaration_file(include_dir_path, &virtpath);
 
-        let docs = Docs::from_raw_docs(field.documentation());
+        let docs = Docs::from_raw_docs(reporter, &virtpath, field.name(), field.documentation());
 
         let attrs = Attributes::from_raw_attrs(field.attributes());
 
@@ -832,7 +832,7 @@ impl ObjectField {
             .unwrap();
         let filepath = filepath_from_declaration_file(include_dir_path, &virtpath);
 
-        let docs = Docs::from_raw_docs(val.documentation());
+        let docs = Docs::from_raw_docs(reporter, &virtpath, val.name(), val.documentation());
 
         let attrs = Attributes::from_raw_attrs(val.attributes());
 

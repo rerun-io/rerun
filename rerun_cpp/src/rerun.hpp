@@ -9,6 +9,7 @@
 #include "rerun/collection.hpp"
 #include "rerun/collection_adapter.hpp"
 #include "rerun/collection_adapter_builtins.hpp"
+#include "rerun/component_descriptor.hpp"
 #include "rerun/config.hpp"
 #include "rerun/entity_path.hpp"
 #include "rerun/error.hpp"

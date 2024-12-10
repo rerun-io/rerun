@@ -8,6 +8,7 @@ from __future__ import annotations
 from .. import datatypes
 from .._baseclasses import (
     ComponentBatchMixin,
+    ComponentDescriptor,
     ComponentMixin,
 )
 
@@ -34,7 +35,7 @@ class Color(datatypes.Rgba32, ComponentMixin):
 
 
 class ColorBatch(datatypes.Rgba32Batch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.components.Color"
+    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.components.Color")
 
 
 # This is patched in late to avoid circular dependencies.

@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: 3D rotation represented by a rotation around a given axis.
@@ -30,18 +30,6 @@ pub struct RotationAxisAngle {
 
     /// How much to rotate around the axis.
     pub angle: crate::datatypes::Angle,
-}
-
-impl ::re_types_core::SizeBytes for RotationAxisAngle {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.axis.heap_size_bytes() + self.angle.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Vec3D>::is_pod() && <crate::datatypes::Angle>::is_pod()
-    }
 }
 
 ::re_types_core::macros::impl_into_cow!(RotationAxisAngle);
@@ -65,13 +53,8 @@ impl ::re_types_core::Loggable for RotationAxisAngle {
     {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{Loggable as _, ResultExt as _};
+        use ::re_types_core::{arrow_helpers::as_array_ref, Loggable as _, ResultExt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
-
-        #[allow(unused)]
-        fn as_array_ref<T: Array + 'static>(t: T) -> ArrayRef {
-            std::sync::Arc::new(t) as ArrayRef
-        }
         Ok({
             let fields = Fields::from(vec![
                 Field::new("axis", <crate::datatypes::Vec3D>::arrow_datatype(), false),
@@ -316,5 +299,17 @@ impl ::re_types_core::Loggable for RotationAxisAngle {
                 .with_context("rerun.datatypes.RotationAxisAngle")?
             }
         })
+    }
+}
+
+impl ::re_types_core::SizeBytes for RotationAxisAngle {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.axis.heap_size_bytes() + self.angle.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::Vec3D>::is_pod() && <crate::datatypes::Angle>::is_pod()
     }
 }
