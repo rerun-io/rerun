@@ -35,9 +35,9 @@ If there's more instance poses than half sizes, the last half size will be repea
 
 ### Covariance ellipsoid
 
-snippet: archetypes/ellipsoid3d_simple
+snippet: archetypes/ellipsoids3d_simple
 
-<picture data-inline-viewer="snippets/ellipsoid3d_simple">
+<picture data-inline-viewer="snippets/ellipsoids3d_simple">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/elliopsoid3d_simple/bd5d46e61b80ae44792b52ee07d750a7137002ea/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/elliopsoid3d_simple/bd5d46e61b80ae44792b52ee07d750a7137002ea/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/elliopsoid3d_simple/bd5d46e61b80ae44792b52ee07d750a7137002ea/1024w.png">

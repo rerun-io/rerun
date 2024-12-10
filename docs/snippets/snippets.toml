@@ -197,7 +197,7 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "py",
   "rust",
 ]
-"archetypes/arrow3d_simple" = [ # TODO(#3206): examples use different RNGs
+"archetypes/arrows3d_simple" = [ # TODO(#3206): examples use different RNGs
   "cpp",
   "py",
   "rust",
@@ -210,12 +210,12 @@ quick_start = [ # These examples don't have exactly the same implementation.
 "archetypes/bar_chart" = [ # On Windows this logs f64 instead of u64 unless a numpy array with explicit type is used.
   "py",
 ]
-"archetypes/capsule3d_batch" = [ # TODO(#3235): Degree to radian conversion is slightly different.
+"archetypes/capsules3d_batch" = [ # TODO(#3235): Degree to radian conversion is slightly different.
   "cpp",
   "py",
   "rust",
 ]
-"archetypes/ellipsoid3d_simple" = [ # TODO(#3206): examples use different RNGs
+"archetypes/ellipsoids3d_simple" = [ # TODO(#3206): examples use different RNGs
   "cpp",
   "py",
   "rust",
@@ -230,12 +230,12 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "py",
   "rust",
 ]
-"archetypes/point2d_random" = [ # TODO(#3206): examples use different RNGs
+"archetypes/points2d_random" = [ # TODO(#3206): examples use different RNGs
   "cpp",
   "py",
   "rust",
 ]
-"archetypes/point3d_random" = [ # TODO(#3206): examples use different RNGs
+"archetypes/points3d_random" = [ # TODO(#3206): examples use different RNGs
   "cpp",
   "py",
   "rust",
