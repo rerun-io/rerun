@@ -88,11 +88,11 @@ Of course, this will only take us so far. In the future we plan on caching queri
 Here is an overview of the crates included in the project:
 
 <picture>
-  <img src="https://static.rerun.io/crates/35c2f18eb941ec321c6d19f5a763f0ac542ca2ed/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/35c2f18eb941ec321c6d19f5a763f0ac542ca2ed/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/35c2f18eb941ec321c6d19f5a763f0ac542ca2ed/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/35c2f18eb941ec321c6d19f5a763f0ac542ca2ed/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/35c2f18eb941ec321c6d19f5a763f0ac542ca2ed/1200w.png">
+  <img src="https://static.rerun.io/architecture/1cc75ea6e625e77e94996b1c9aef8a0cca08bfcc/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/architecture/1cc75ea6e625e77e94996b1c9aef8a0cca08bfcc/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/architecture/1cc75ea6e625e77e94996b1c9aef8a0cca08bfcc/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/architecture/1cc75ea6e625e77e94996b1c9aef8a0cca08bfcc/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/architecture/1cc75ea6e625e77e94996b1c9aef8a0cca08bfcc/1200w.png">
 </picture>
 
 
