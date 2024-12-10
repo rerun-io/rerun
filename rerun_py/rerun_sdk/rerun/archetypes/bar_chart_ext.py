@@ -21,7 +21,7 @@ class BarChartExt:
 
         # TODO(jleibs): Doing this on raw arrow data is not great. Clean this up
         # once we coerce to a canonical non-arrow type.
-        shape_dims = tensor_data.as_arrow_array()[0][0].values.field(0).to_numpy()
+        shape_dims = tensor_data.as_arrow_array()[0][0].values.to_numpy()
 
         if len([d for d in shape_dims if d != 1]) != 1:
             _send_warning_or_raise(
