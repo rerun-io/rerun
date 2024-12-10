@@ -6697,8 +6697,10 @@ dependencies = [
  "re_log",
  "re_tracing",
  "rust-format",
+ "serde",
  "syn 2.0.85",
  "tempfile",
+ "toml",
  "unindent",
  "xshell",
 ]
