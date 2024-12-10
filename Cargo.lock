@@ -5999,7 +5999,6 @@ dependencies = [
  "bytemuck",
  "clean-path",
  "criterion",
- "crossbeam",
  "document-features",
  "fixed",
  "half",
