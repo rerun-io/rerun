@@ -241,26 +241,23 @@ impl SpaceViewClass for SpatialSpaceView3D {
             .collect();
 
         // Start with all the entities which are both indicated and visualizable.
-        let mut chosen: SmallVisualizerSet = indicated
+        let mut enabled_visualizers: SmallVisualizerSet = indicated
             .intersection(&visualizable)
             .copied()
             .copied()
             .collect();
 
-        // There are three cases where we want to activate the [`Transform3DArrowVisualizer`]:
-        //  - If we have no visualizers, but otherwise meet the criteria for Transform3DArrows.
-        //  - If someone set an axis_length explicitly, so [`AxisLengthDetector`] is applicable.
-        //  - If we already have the [`CamerasVisualizer`] active.
-        if !chosen.contains(&arrows_viz)
-            && visualizable.contains(&arrows_viz)
-            && ((chosen.is_empty() && visualizable.contains(&arrows_viz))
-                || applicable.contains(&axis_detector)
-                || chosen.contains(&camera_viz))
-        {
-            chosen.push(arrows_viz);
+        // Arrow visualizer is not enabled yet but we could...
+        if !enabled_visualizers.contains(&arrows_viz) && visualizable.contains(&arrows_viz) {
+            // ... then we enable it if either:
+            // - If someone set an axis_length explicitly, so [`AxisLengthDetector`] is applicable.
+            // - If we already have the [`CamerasVisualizer`] active.
+            if applicable.contains(&axis_detector) || enabled_visualizers.contains(&camera_viz) {
+                enabled_visualizers.push(arrows_viz);
+            }
         }
 
-        chosen
+        enabled_visualizers
     }
 
     fn spawn_heuristics(
