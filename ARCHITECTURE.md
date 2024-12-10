@@ -131,16 +131,16 @@ Update instructions:
 | re_chunk_store_ui           | A chunk store browser UI.                                                                                  |
 | re_component_ui             | Provides UI editors for Rerun component data for registration with the Rerun Viewer component UI registry. |
 | re_selection_panel          | The UI for the selection panel.                                                                            |
-| re_space_view               | Types & utilities for defining Space View classes and communicating with the Viewport.                     |
-| re_space_view_bar_chart     | A Space View that shows a single bar chart.                                                                |
-| re_space_view_dataframe     | A Space View that shows the data contained in entities in a table.                                         |
-| re_space_view_graph         | A Space View that shows a graph (node-link diagram).                                                       |
-| re_space_view_map           | A Space View that shows geospatial data on a map.                                                          |
-| re_space_view_spatial       | Space Views that show entities in a 2D or 3D spatial relationship.                                         |
-| re_space_view_tensor        | A Space View dedicated to visualizing tensors with arbitrary dimensionality.                               |
-| re_space_view_text_document | A simple Space View that shows a single text box.                                                          |
-| re_space_view_text_log      | A Space View that shows text entries in a table and scrolls with the active time.                          |
-| re_space_view_time_series   | A Space View that shows plots over Rerun timelines.                                                        |
+| re_view               | Types & utilities for defining Space View classes and communicating with the Viewport.                     |
+| re_view_bar_chart     | A Space View that shows a single bar chart.                                                                |
+| re_view_dataframe     | A Space View that shows the data contained in entities in a table.                                         |
+| re_view_graph         | A Space View that shows a graph (node-link diagram).                                                       |
+| re_view_map           | A Space View that shows geospatial data on a map.                                                          |
+| re_view_spatial       | Space Views that show entities in a 2D or 3D spatial relationship.                                         |
+| re_view_tensor        | A Space View dedicated to visualizing tensors with arbitrary dimensionality.                               |
+| re_view_text_document | A simple Space View that shows a single text box.                                                          |
+| re_view_text_log      | A Space View that shows text entries in a table and scrolls with the active time.                          |
+| re_view_time_series   | A Space View that shows plots over Rerun timelines.                                                        |
 | re_time_panel               | The time panel of the Rerun Viewer, allowing to control the displayed timeline & time.                     |
 | re_viewer                   | The Rerun Viewer                                                                                           |
 | re_viewport                 | The central viewport panel of the Rerun viewer.                                                            |

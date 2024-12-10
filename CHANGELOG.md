@@ -1604,7 +1604,7 @@ Check out our [migration guide](https://www.rerun.io/docs/reference/migration/mi
 - Add lint for builder pattern functions and deref impls to be marked `#[inline]` [#4435](https://github.com/rerun-io/rerun/pull/4435)
 - Pass viewer context always non-mutable [#4438](https://github.com/rerun-io/rerun/pull/4438)
 - RenderContext usage cleanup [#4446](https://github.com/rerun-io/rerun/pull/4446)
-- Integrate re_tensor_ops crate into re_space_view_tensor [#4450](https://github.com/rerun-io/rerun/pull/4450)
+- Integrate re_tensor_ops crate into re_view_tensor [#4450](https://github.com/rerun-io/rerun/pull/4450)
 - Use TOML for example readme front-matter [#4553](https://github.com/rerun-io/rerun/pull/4553)
 - Rename `StoreDb` to `EntityDb`, `re_data_store` -> `re_entity_db` [#4670](https://github.com/rerun-io/rerun/pull/4670)
 - Rename `re_arrow_store` to `re_data_store` [#4672](https://github.com/rerun-io/rerun/pull/4672)

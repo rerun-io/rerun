@@ -3,7 +3,7 @@
 //! Defines a framework & utilities for defining classes of space views in the Rerun viewer.
 //! Does not implement any concrete space view.
 
-// TODO(andreas): Can we move some of these to the `re_space_view` crate?
+// TODO(andreas): Can we move some of these to the `re_view` crate?
 mod highlights;
 mod named_system;
 mod space_view_class;

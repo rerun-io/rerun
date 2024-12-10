@@ -13,6 +13,6 @@ mod viewport_ui;
 pub use self::viewport_ui::ViewportUi;
 
 pub mod external {
-    pub use re_space_view;
+    pub use re_view;
     pub use re_types_blueprint;
 }

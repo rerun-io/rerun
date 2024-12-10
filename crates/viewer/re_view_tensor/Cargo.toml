@@ -1,0 +1,40 @@
+[package]
+authors.workspace = true
+description = "A space view dedicated to visualizing tensors with arbitrary dimensionality."
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+name = "re_view_tensor"
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+include.workspace = true
+
+[lints]
+workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+
+[dependencies]
+re_chunk_store.workspace = true
+re_data_ui.workspace = true
+re_log_types.workspace = true
+re_query.workspace = true
+re_renderer.workspace = true
+re_view.workspace = true
+re_tracing.workspace = true
+re_types.workspace = true
+re_ui.workspace = true
+re_viewer_context.workspace = true
+re_viewport_blueprint.workspace = true
+
+anyhow.workspace = true
+bytemuck.workspace = true
+egui.workspace = true
+half.workspace = true
+ndarray.workspace = true
+thiserror.workspace = true
+wgpu.workspace = true
