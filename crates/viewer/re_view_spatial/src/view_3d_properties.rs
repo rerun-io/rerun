@@ -6,11 +6,11 @@ use re_types::{
     components::{Color, Plane3D, StrokeWidth},
     Archetype as _,
 };
-use re_viewer_context::{ViewStateExt as _, TypedComponentFallbackProvider};
+use re_viewer_context::{TypedComponentFallbackProvider, ViewStateExt as _};
 
-use crate::{ui::SpatialViewState, SpatialSpaceView3D};
+use crate::{ui::SpatialViewState, SpatialView3D};
 
-impl TypedComponentFallbackProvider<Color> for SpatialSpaceView3D {
+impl TypedComponentFallbackProvider<Color> for SpatialView3D {
     fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> Color {
         // Color is a fairly common component, make sure this is the right context.
         if ctx.archetype_name == Some(Background::name()) {
@@ -23,19 +23,19 @@ impl TypedComponentFallbackProvider<Color> for SpatialSpaceView3D {
     }
 }
 
-impl TypedComponentFallbackProvider<BackgroundKind> for SpatialSpaceView3D {
+impl TypedComponentFallbackProvider<BackgroundKind> for SpatialView3D {
     fn fallback_for(&self, _ctx: &re_viewer_context::QueryContext<'_>) -> BackgroundKind {
         BackgroundKind::GradientDark
     }
 }
 
-impl TypedComponentFallbackProvider<StrokeWidth> for SpatialSpaceView3D {
+impl TypedComponentFallbackProvider<StrokeWidth> for SpatialView3D {
     fn fallback_for(&self, _ctx: &re_viewer_context::QueryContext<'_>) -> StrokeWidth {
         1.0.into()
     }
 }
 
-impl TypedComponentFallbackProvider<Plane3D> for SpatialSpaceView3D {
+impl TypedComponentFallbackProvider<Plane3D> for SpatialView3D {
     fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> Plane3D {
         const DEFAULT_PLANE: Plane3D = Plane3D::XY;
 
@@ -51,4 +51,4 @@ impl TypedComponentFallbackProvider<Plane3D> for SpatialSpaceView3D {
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(SpatialSpaceView3D => [BackgroundKind, Color, StrokeWidth, Plane3D]);
+re_viewer_context::impl_component_fallback_provider!(SpatialView3D => [BackgroundKind, Color, StrokeWidth, Plane3D]);

@@ -9,23 +9,22 @@ use re_view::controls::{
     ASPECT_SCROLL_MODIFIER, HORIZONTAL_SCROLL_MODIFIER, SELECTION_RECT_ZOOM_BUTTON,
     ZOOM_SCROLL_MODIFIER,
 };
-use re_view::{controls, suggest_space_view_for_each_entity, view_property_ui};
+use re_view::{controls, suggest_view_for_each_entity, view_property_ui};
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem as _, IndicatedEntities, PerVisualizer,
-    ViewClass, ViewClassRegistryError, ViewId, ViewStateExt,
-    ViewSystemExecutionError, TypedComponentFallbackProvider, ViewQuery, ViewState,
-    ViewerContext, VisualizableEntities,
+    TypedComponentFallbackProvider, ViewClass, ViewClassRegistryError, ViewId, ViewQuery,
+    ViewState, ViewStateExt, ViewSystemExecutionError, ViewerContext, VisualizableEntities,
 };
 use re_viewport_blueprint::ViewProperty;
 
 use super::visualizer_system::BarChartVisualizerSystem;
 
 #[derive(Default)]
-pub struct BarChartSpaceView;
+pub struct BarChartView;
 
 type ViewType = re_types::blueprint::views::BarChartView;
 
-impl ViewClass for BarChartSpaceView {
+impl ViewClass for BarChartView {
     fn identifier() -> ViewClassIdentifier {
         ViewType::identifier()
     }
@@ -35,7 +34,7 @@ impl ViewClass for BarChartSpaceView {
     }
 
     fn icon(&self) -> &'static re_ui::Icon {
-        &re_ui::icons::SPACE_VIEW_HISTOGRAM
+        &re_ui::icons::VIEW_HISTOGRAM
     }
 
     fn new_state(&self) -> Box<dyn ViewState> {
@@ -95,12 +94,9 @@ Display a 1D tensor as a bar chart.
         }
     }
 
-    fn spawn_heuristics(
-        &self,
-        ctx: &ViewerContext<'_>,
-    ) -> re_viewer_context::ViewSpawnHeuristics {
+    fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> re_viewer_context::ViewSpawnHeuristics {
         re_tracing::profile_function!();
-        suggest_space_view_for_each_entity::<BarChartVisualizerSystem>(ctx, self)
+        suggest_view_for_each_entity::<BarChartVisualizerSystem>(ctx, self)
     }
 
     fn layout_priority(&self) -> re_viewer_context::ViewClassLayoutPriority {
@@ -113,10 +109,10 @@ Display a 1D tensor as a bar chart.
         ui: &mut egui::Ui,
         state: &mut dyn ViewState,
         _space_origin: &EntityPath,
-        space_view_id: ViewId,
+        view_id: ViewId,
     ) -> Result<(), ViewSystemExecutionError> {
         list_item::list_item_scope(ui, "time_series_selection_ui", |ui| {
-            view_property_ui::<PlotLegend>(ctx, ui, space_view_id, self, state);
+            view_property_ui::<PlotLegend>(ctx, ui, view_id, self, state);
         });
 
         Ok(())
@@ -136,7 +132,7 @@ Display a 1D tensor as a bar chart.
         let state = state.downcast_mut::<()>()?;
 
         let blueprint_db = ctx.blueprint_db();
-        let view_id = query.space_view_id;
+        let view_id = query.view_id;
 
         let charts = &system_output
             .view_systems
@@ -244,10 +240,7 @@ Display a 1D tensor as a bar chart.
             {
                 ctx.select_hovered_on_click(
                     &response,
-                    re_viewer_context::Item::DataResult(
-                        query.space_view_id,
-                        entity_path.clone().into(),
-                    ),
+                    re_viewer_context::Item::DataResult(query.view_id, entity_path.clone().into()),
                 );
             }
         });
@@ -256,7 +249,7 @@ Display a 1D tensor as a bar chart.
     }
 }
 
-impl TypedComponentFallbackProvider<Corner2D> for BarChartSpaceView {
+impl TypedComponentFallbackProvider<Corner2D> for BarChartView {
     fn fallback_for(&self, _ctx: &re_viewer_context::QueryContext<'_>) -> Corner2D {
         // Explicitly pick RightCorner2D::RightTop, we don't want to make this dependent on the (arbitrary)
         // default of Corner2D
@@ -264,4 +257,4 @@ impl TypedComponentFallbackProvider<Corner2D> for BarChartSpaceView {
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(BarChartSpaceView => [Corner2D]);
+re_viewer_context::impl_component_fallback_provider!(BarChartView => [Corner2D]);

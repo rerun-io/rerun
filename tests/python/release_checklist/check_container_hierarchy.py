@@ -61,7 +61,7 @@ def log_readme() -> None:
     rr.log("readme", rr.TextDocument(README, media_type=rr.MediaType.MARKDOWN), static=True)
 
 
-def log_some_space_views() -> None:
+def log_some_views() -> None:
     from math import cos, sin, tau
 
     rr.set_time_sequence("frame_nr", 0)
@@ -89,7 +89,7 @@ def run(args: Namespace) -> None:
     rr.script_setup(args, f"{os.path.basename(__file__)}", recording_id=uuid4())
 
     log_readme()
-    log_some_space_views()
+    log_some_views()
 
 
 if __name__ == "__main__":

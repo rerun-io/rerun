@@ -2,7 +2,7 @@
 
 use re_viewer::external::{re_log, re_memory};
 
-mod color_coordinates_space_view;
+mod color_coordinates_view;
 mod color_coordinates_visualizer_system;
 
 // By using `re_memory::AccountingAllocator` Rerun can keep track of exactly how much memory it is using,
@@ -50,7 +50,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             app.add_receiver(rx);
 
             // Register the custom view
-            app.add_space_view_class::<color_coordinates_space_view::ColorCoordinatesSpaceView>()
+            app.add_view_class::<color_coordinates_view::ColorCoordinatesView>()
                 .unwrap();
 
             Box::new(app)

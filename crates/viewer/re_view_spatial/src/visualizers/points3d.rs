@@ -16,7 +16,7 @@ use re_viewer_context::{
 
 use crate::{
     contexts::SpatialSceneEntityContext,
-    view_kind::SpatialSpaceViewKind,
+    view_kind::SpatialViewKind,
     visualizers::{load_keypoint_connections, process_radius_slice},
 };
 
@@ -34,7 +34,7 @@ pub struct Points3DVisualizer {
 impl Default for Points3DVisualizer {
     fn default() -> Self {
         Self {
-            data: SpatialViewVisualizerData::new(Some(SpatialSpaceViewKind::ThreeD)),
+            data: SpatialViewVisualizerData::new(Some(SpatialViewKind::ThreeD)),
         }
     }
 }

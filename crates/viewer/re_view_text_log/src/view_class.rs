@@ -52,7 +52,7 @@ impl ViewClass for TextView {
     }
 
     fn icon(&self) -> &'static re_ui::Icon {
-        &re_ui::icons::SPACE_VIEW_LOG
+        &re_ui::icons::VIEW_LOG
     }
 
     fn help_markdown(&self, _egui_ctx: &egui::Context) -> String {
@@ -105,7 +105,7 @@ Note: select the View for filtering options."
         ui: &mut egui::Ui,
         state: &mut dyn ViewState,
         _space_origin: &EntityPath,
-        _space_view_id: ViewId,
+        _view_id: ViewId,
     ) -> Result<(), ViewSystemExecutionError> {
         let state = state.downcast_mut::<TextViewState>()?;
 

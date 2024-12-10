@@ -9,18 +9,18 @@ use re_types_blueprint::blueprint::components::VisualizerOverrides;
 use re_ui::{list_item, UiExt as _};
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
-    DataResult, QueryContext, ViewClassExt as _, UiLayout, ViewContext, ViewSystemIdentifier,
+    DataResult, QueryContext, UiLayout, ViewClassExt as _, ViewContext, ViewSystemIdentifier,
     VisualizerSystem,
 };
 use re_viewport_blueprint::ViewBlueprint;
 
 pub fn visualizer_ui(
     ctx: &ViewContext<'_>,
-    space_view: &ViewBlueprint,
+    view: &ViewBlueprint,
     entity_path: &EntityPath,
     ui: &mut egui::Ui,
 ) {
-    let query_result = ctx.lookup_query_result(space_view.id);
+    let query_result = ctx.lookup_query_result(view.id);
     let Some(data_result) = query_result
         .tree
         .lookup_result_by_path(entity_path)
@@ -33,7 +33,7 @@ pub fn visualizer_ui(
     let available_inactive_visualizers = available_inactive_visualizers(
         ctx,
         ctx.recording(),
-        space_view,
+        view,
         &data_result,
         &active_visualizers,
     );
@@ -545,24 +545,24 @@ fn menu_add_new_visualizer(
 fn available_inactive_visualizers(
     ctx: &ViewContext<'_>,
     entity_db: &EntityDb,
-    space_view: &ViewBlueprint,
+    view: &ViewBlueprint,
     data_result: &DataResult,
     active_visualizers: &[ViewSystemIdentifier],
 ) -> Vec<ViewSystemIdentifier> {
-    // TODO(jleibs): This has already been computed for the SpaceView this frame. Maybe We
-    // should do this earlier and store it with the SpaceView?
+    // TODO(jleibs): This has already been computed for the View this frame. Maybe We
+    // should do this earlier and store it with the View?
     let applicable_entities_per_visualizer = ctx
         .viewer_ctx
-        .space_view_class_registry
+        .view_class_registry
         .applicable_entities_for_visualizer_systems(&entity_db.store_id());
 
-    let visualizable_entities = space_view
-        .class(ctx.viewer_ctx.space_view_class_registry)
+    let visualizable_entities = view
+        .class(ctx.viewer_ctx.view_class_registry)
         .determine_visualizable_entities(
             &applicable_entities_per_visualizer,
             entity_db,
             &ctx.visualizer_collection,
-            &space_view.space_origin,
+            &view.space_origin,
         );
 
     visualizable_entities

@@ -381,7 +381,7 @@ impl ApplicationSelectionState {
                     }
                 },
 
-                Item::DataResult(_current_space_view_id, current_instance_path) => match test {
+                Item::DataResult(_current_view_id, current_instance_path) => match test {
                     Item::AppId(_)
                     | Item::DataSource(_)
                     | Item::StoreId(_)

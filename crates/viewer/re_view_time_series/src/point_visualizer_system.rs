@@ -14,7 +14,7 @@ use re_viewer_context::{
 };
 
 use crate::{
-    space_view_class::TimeSeriesViewState,
+    view_class::TimeSeriesViewState,
     util::{determine_time_per_pixel, determine_time_range, points_to_series},
     PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind, ScatterAttrs,
 };
@@ -112,7 +112,7 @@ impl SeriesPointSystem {
 
         let plot_mem = egui_plot::PlotMemory::load(
             ctx.viewer_ctx.egui_ctx,
-            crate::plot_id(query.space_view_id),
+            crate::plot_id(query.view_id),
         );
         let time_per_pixel = determine_time_per_pixel(ctx.viewer_ctx, plot_mem.as_ref());
 

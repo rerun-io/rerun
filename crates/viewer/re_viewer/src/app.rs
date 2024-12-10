@@ -211,7 +211,7 @@ pub struct App {
     analytics: crate::viewer_analytics::ViewerAnalytics,
 
     /// All known view types.
-    space_view_class_registry: ViewClassRegistry,
+    view_class_registry: ViewClassRegistry,
 
     pub(crate) panel_state_overrides_active: bool,
     pub(crate) panel_state_overrides: PanelStateOverrides,
@@ -266,10 +266,8 @@ impl App {
             state.app_options.video_decoder_hw_acceleration = video_decoder_hw_acceleration;
         }
 
-        let mut space_view_class_registry = ViewClassRegistry::default();
-        if let Err(err) =
-            populate_space_view_class_registry_with_builtin(&mut space_view_class_registry)
-        {
+        let mut view_class_registry = ViewClassRegistry::default();
+        if let Err(err) = populate_view_class_registry_with_builtin(&mut view_class_registry) {
             re_log::error!(
                 "Failed to populate the view type registry with built-in views: {}",
                 err
@@ -344,7 +342,7 @@ impl App {
             command_receiver,
             cmd_palette: Default::default(),
 
-            space_view_class_registry,
+            view_class_registry,
 
             analytics,
 
@@ -395,10 +393,10 @@ impl App {
     }
 
     /// Adds a new view class to the viewer.
-    pub fn add_space_view_class<T: ViewClass + Default + 'static>(
+    pub fn add_view_class<T: ViewClass + Default + 'static>(
         &mut self,
     ) -> Result<(), ViewClassRegistryError> {
-        self.space_view_class_registry.add_class::<T>()
+        self.view_class_registry.add_class::<T>()
     }
 
     fn check_keyboard_shortcuts(&self, egui_ctx: &egui::Context) {
@@ -1102,7 +1100,7 @@ impl App {
                             store_context,
                             &self.reflection,
                             &self.component_ui_registry,
-                            &self.space_view_class_registry,
+                            &self.view_class_registry,
                             &self.rx,
                             &self.command_sender,
                             &WelcomeScreenState {
@@ -1980,21 +1978,21 @@ impl eframe::App for App {
 }
 
 /// Add built-in views to the registry.
-fn populate_space_view_class_registry_with_builtin(
-    space_view_class_registry: &mut ViewClassRegistry,
+fn populate_view_class_registry_with_builtin(
+    view_class_registry: &mut ViewClassRegistry,
 ) -> Result<(), ViewClassRegistryError> {
     re_tracing::profile_function!();
-    space_view_class_registry.add_class::<re_view_bar_chart::BarChartSpaceView>()?;
-    space_view_class_registry.add_class::<re_view_dataframe::DataframeSpaceView>()?;
-    space_view_class_registry.add_class::<re_view_graph::GraphSpaceView>()?;
+    view_class_registry.add_class::<re_view_bar_chart::BarChartView>()?;
+    view_class_registry.add_class::<re_view_dataframe::DataframeView>()?;
+    view_class_registry.add_class::<re_view_graph::GraphView>()?;
     #[cfg(feature = "map_view")]
-    space_view_class_registry.add_class::<re_view_map::MapSpaceView>()?;
-    space_view_class_registry.add_class::<re_view_spatial::SpatialSpaceView2D>()?;
-    space_view_class_registry.add_class::<re_view_spatial::SpatialSpaceView3D>()?;
-    space_view_class_registry.add_class::<re_view_tensor::TensorSpaceView>()?;
-    space_view_class_registry.add_class::<re_view_text_document::TextDocumentSpaceView>()?;
-    space_view_class_registry.add_class::<re_view_text_log::TextView>()?;
-    space_view_class_registry.add_class::<re_view_time_series::TimeSeriesSpaceView>()?;
+    view_class_registry.add_class::<re_view_map::MapView>()?;
+    view_class_registry.add_class::<re_view_spatial::SpatialView2D>()?;
+    view_class_registry.add_class::<re_view_spatial::SpatialView3D>()?;
+    view_class_registry.add_class::<re_view_tensor::TensorView>()?;
+    view_class_registry.add_class::<re_view_text_document::TextDocumentView>()?;
+    view_class_registry.add_class::<re_view_text_log::TextView>()?;
+    view_class_registry.add_class::<re_view_time_series::TimeSeriesView>()?;
 
     Ok(())
 }

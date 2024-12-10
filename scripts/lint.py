@@ -285,7 +285,7 @@ def test_lint_line() -> None:
 
     should_pass = [
         "hello world",
-        "this is a 2D spaceview",
+        "this is a 2D view",
         "todo lowercase is fine",
         'todo!("Macro is ok with text")',
         "TODO_TOKEN",
@@ -368,7 +368,7 @@ def test_lint_line() -> None:
     ]
 
     should_error = [
-        "this is a 2d spaceview",
+        "this is a 2d view",
         "FIXME",
         "HACK",
         "TODO",

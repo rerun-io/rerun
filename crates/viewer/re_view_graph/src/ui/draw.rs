@@ -301,7 +301,7 @@ pub fn draw_graph(
                     InstancePath::instance(entity_path.clone(), instance.instance_index);
                 ctx.select_hovered_on_click(
                     &response,
-                    Item::DataResult(query.space_view_id, instance_path.clone()),
+                    Item::DataResult(query.view_id, instance_path.clone()),
                 );
 
                 response = response.on_hover_ui_at_pointer(|ui| {
@@ -311,7 +311,7 @@ pub fn draw_graph(
                             &query.latest_at_query(),
                             ctx.recording(),
                             ui,
-                            Some(query.space_view_id),
+                            Some(query.view_id),
                             &instance_path,
                         );
 
@@ -348,7 +348,7 @@ pub fn draw_graph(
             let instance_path = InstancePath::entity_all(entity_path.clone());
             ctx.select_hovered_on_click(
                 &resp,
-                vec![(Item::DataResult(query.space_view_id, instance_path), None)].into_iter(),
+                vec![(Item::DataResult(query.view_id, instance_path), None)].into_iter(),
             );
         }
     }

@@ -3,7 +3,7 @@ use nohash_hasher::IntMap;
 use re_log_types::EntityPathHash;
 use re_viewer_context::VisualizerCollection;
 
-use crate::{view_kind::SpatialSpaceViewKind, visualizers::SpatialViewVisualizerData};
+use crate::{view_kind::SpatialViewKind, visualizers::SpatialViewVisualizerData};
 
 #[derive(Clone)]
 pub struct SceneBoundingBoxes {
@@ -34,7 +34,7 @@ impl SceneBoundingBoxes {
         &mut self,
         ui: &egui::Ui,
         visualizers: &VisualizerCollection,
-        space_kind: SpatialSpaceViewKind,
+        space_kind: SpatialViewKind,
     ) {
         re_tracing::profile_function!();
 
@@ -48,8 +48,8 @@ impl SceneBoundingBoxes {
             // bounding box, creating a feedback loop if we were to add it here.
             let data_is_only_2d = data
                 .preferred_view_kind
-                .map_or(false, |kind| kind == SpatialSpaceViewKind::TwoD);
-            if space_kind == SpatialSpaceViewKind::ThreeD && data_is_only_2d {
+                .map_or(false, |kind| kind == SpatialViewKind::TwoD);
+            if space_kind == SpatialViewKind::ThreeD && data_is_only_2d {
                 continue;
             }
 

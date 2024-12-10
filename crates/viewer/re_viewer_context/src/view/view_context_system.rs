@@ -31,7 +31,7 @@ pub trait ViewContextSystem: Send + Sync {
 // TODO(jleibs): This probably needs a better name now that it includes class name
 pub struct ViewContextCollection {
     pub systems: HashMap<ViewSystemIdentifier, Box<dyn ViewContextSystem>>,
-    pub space_view_class_identifier: ViewClassIdentifier,
+    pub view_class_identifier: ViewClassIdentifier,
 }
 
 impl ViewContextCollection {
@@ -52,7 +52,7 @@ impl ViewContextCollection {
         self.systems.iter().map(|s| (*s.0, s.1.as_ref()))
     }
 
-    pub fn space_view_class_identifier(&self) -> ViewClassIdentifier {
-        self.space_view_class_identifier
+    pub fn view_class_identifier(&self) -> ViewClassIdentifier {
+        self.view_class_identifier
     }
 }

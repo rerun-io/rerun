@@ -6,12 +6,12 @@ use re_viewport_blueprint::ViewBlueprint;
 use crate::{ContextMenuAction, ContextMenuContext};
 
 /// Add a view of the specific class
-pub(crate) struct AddSpaceViewAction {
+pub(crate) struct AddViewAction {
     pub icon: &'static Icon,
     pub id: ViewClassIdentifier,
 }
 
-impl ContextMenuAction for AddSpaceViewAction {
+impl ContextMenuAction for AddViewAction {
     fn supports_item(&self, _ctx: &ContextMenuContext<'_>, item: &Item) -> bool {
         matches!(item, Item::Container(_))
     }
@@ -22,20 +22,17 @@ impl ContextMenuAction for AddSpaceViewAction {
 
     fn label(&self, ctx: &ContextMenuContext<'_>) -> String {
         ctx.viewer_context
-            .space_view_class_registry
+            .view_class_registry
             .get_class_or_log_error(self.id)
             .display_name()
             .to_owned()
     }
 
     fn process_container(&self, ctx: &ContextMenuContext<'_>, container_id: &ContainerId) {
-        let space_view = ViewBlueprint::new(self.id, RecommendedView::root());
+        let view = ViewBlueprint::new(self.id, RecommendedView::root());
 
-        ctx.viewport_blueprint.add_space_views(
-            std::iter::once(space_view),
-            Some(*container_id),
-            None,
-        );
+        ctx.viewport_blueprint
+            .add_views(std::iter::once(view), Some(*container_id), None);
         ctx.viewport_blueprint
             .mark_user_interaction(ctx.viewer_context);
     }

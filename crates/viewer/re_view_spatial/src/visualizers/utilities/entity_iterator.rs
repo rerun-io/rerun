@@ -110,7 +110,7 @@ where
             highlight: query
                 .highlights
                 .entity_outline_mask(data_result.entity_path.hash()),
-            space_view_class_identifier: view_ctx.space_view_class_identifier(),
+            view_class_identifier: view_ctx.view_class_identifier(),
         };
 
         let results = data_result.query_archetype_with_history::<A>(ctx, query);

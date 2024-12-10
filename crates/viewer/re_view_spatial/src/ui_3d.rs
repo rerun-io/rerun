@@ -22,7 +22,7 @@ use re_view::controls::{
     ROTATE3D_BUTTON, SPEED_UP_3D_MODIFIER, TRACKED_OBJECT_RESTORE_KEY,
 };
 use re_viewer_context::{
-    gpu_bridge, Item, ItemSpaceContext, ViewSystemExecutionError, ViewQuery, ViewerContext,
+    gpu_bridge, Item, ItemSpaceContext, ViewQuery, ViewSystemExecutionError, ViewerContext,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -30,9 +30,9 @@ use crate::{
     scene_bounding_boxes::SceneBoundingBoxes,
     space_camera_3d::SpaceCamera3D,
     ui::{create_labels, SpatialViewState},
-    view_kind::SpatialSpaceViewKind,
+    view_kind::SpatialViewKind,
     visualizers::{collect_ui_labels, image_view_coordinates, CamerasVisualizer},
-    SpatialSpaceView3D,
+    SpatialView3D,
 };
 
 use super::eye::{Eye, ViewEye};
@@ -418,7 +418,7 @@ Display 3D content in the reference frame defined by the space origin.
     )
 }
 
-impl SpatialSpaceView3D {
+impl SpatialView3D {
     pub fn view_3d(
         &self,
         ctx: &ViewerContext<'_>,
@@ -524,7 +524,7 @@ impl SpatialSpaceView3D {
             &eye,
             ui,
             highlights,
-            SpatialSpaceViewKind::ThreeD,
+            SpatialViewKind::ThreeD,
         );
 
         if let Some(pointer_pos_ui) = response.hover_pos() {
@@ -547,7 +547,7 @@ impl SpatialSpaceView3D {
                 &system_output,
                 &ui_rects,
                 query,
-                SpatialSpaceViewKind::ThreeD,
+                SpatialViewKind::ThreeD,
             )?;
         } else {
             state.previous_picking_result = None;
@@ -560,8 +560,8 @@ impl SpatialSpaceView3D {
                     None
                 }
 
-                Item::View(space_view_id) => {
-                    if space_view_id == &query.space_view_id {
+                Item::View(view_id) => {
+                    if view_id == &query.view_id {
                         state
                             .state_3d
                             .reset_camera(&state.bounding_boxes, scene_view_coordinates);
@@ -573,8 +573,8 @@ impl SpatialSpaceView3D {
 
                 Item::InstancePath(instance_path) => Some(&instance_path.entity_path),
 
-                Item::DataResult(space_view_id, instance_path) => {
-                    if *space_view_id == query.space_view_id {
+                Item::DataResult(view_id, instance_path) => {
+                    if *view_id == query.view_id {
                         Some(&instance_path.entity_path)
                     } else {
                         None
@@ -669,7 +669,7 @@ impl SpatialSpaceView3D {
         let grid_config = ViewProperty::from_archetype::<LineGrid3D>(
             ctx.blueprint_db(),
             ctx.blueprint_query,
-            query.space_view_id,
+            query.view_id,
         );
         if let Some(draw_data) = self.setup_grid_3d(ctx, &grid_config, state)? {
             view_builder.queue_draw(draw_data);
@@ -681,7 +681,7 @@ impl SpatialSpaceView3D {
         let background = ViewProperty::from_archetype::<Background>(
             ctx.blueprint_db(),
             ctx.blueprint_query,
-            query.space_view_id,
+            query.view_id,
         );
         let (background_drawable, clear_color) =
             crate::configure_background(ctx, &background, render_ctx, self, state)?;
@@ -715,8 +715,7 @@ impl SpatialSpaceView3D {
         ctx: &ViewerContext<'_>,
         grid_config: &ViewProperty,
         state: &SpatialViewState,
-    ) -> Result<Option<re_renderer::renderer::WorldGridDrawData>, ViewSystemExecutionError>
-    {
+    ) -> Result<Option<re_renderer::renderer::WorldGridDrawData>, ViewSystemExecutionError> {
         if !**grid_config.component_or_fallback::<Visible>(ctx, self, state)? {
             return Ok(None);
         }

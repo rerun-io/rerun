@@ -44,7 +44,7 @@ impl Contents {
     pub fn as_item(&self) -> Item {
         match self {
             Self::Container(container_id) => Item::Container(*container_id),
-            Self::View(space_view_id) => Item::View(*space_view_id),
+            Self::View(view_id) => Item::View(*view_id),
         }
     }
 
@@ -57,7 +57,7 @@ impl Contents {
     }
 
     #[inline]
-    pub fn as_space_view_id(&self) -> Option<ViewId> {
+    pub fn as_view_id(&self) -> Option<ViewId> {
         match self {
             Self::View(id) => Some(*id),
             Self::Container(_) => None,

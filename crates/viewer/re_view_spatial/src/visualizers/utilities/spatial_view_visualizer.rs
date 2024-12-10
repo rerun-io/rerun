@@ -1,7 +1,7 @@
 use re_log_types::EntityPathHash;
 
 use super::UiLabel;
-use crate::{view_kind::SpatialSpaceViewKind, visualizers::LoadingSpinner, PickableTexturedRect};
+use crate::{view_kind::SpatialViewKind, visualizers::LoadingSpinner, PickableTexturedRect};
 
 /// Common data struct for all spatial scene elements.
 ///
@@ -20,11 +20,11 @@ pub struct SpatialViewVisualizerData {
     pub pickable_rects: Vec<PickableTexturedRect>,
 
     /// The view kind preferred by this visualizer (used for heuristics).
-    pub preferred_view_kind: Option<SpatialSpaceViewKind>,
+    pub preferred_view_kind: Option<SpatialViewKind>,
 }
 
 impl SpatialViewVisualizerData {
-    pub fn new(preferred_view_kind: Option<SpatialSpaceViewKind>) -> Self {
+    pub fn new(preferred_view_kind: Option<SpatialViewKind>) -> Self {
         Self {
             loading_spinners: Default::default(),
             ui_labels: Default::default(),

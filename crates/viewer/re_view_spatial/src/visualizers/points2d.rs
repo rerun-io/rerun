@@ -1,22 +1,22 @@
 use itertools::Itertools as _;
 
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId, PointCloudBuilder};
-use re_view::{process_annotation_and_keypoint_slices, process_color_slice};
 use re_types::{
     archetypes::Points2D,
     components::{ClassId, Color, DrawOrder, KeypointId, Position2D, Radius, ShowLabels, Text},
     ArrowString, Component as _,
 };
+use re_view::{process_annotation_and_keypoint_slices, process_color_slice};
 use re_viewer_context::{
     auto_color_for_entity_path, ApplicableEntities, IdentifiedViewSystem, QueryContext,
-    ViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext,
-    ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
-    VisualizerQueryInfo, VisualizerSystem,
+    TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewQuery,
+    ViewSystemExecutionError, VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo,
+    VisualizerSystem,
 };
 
 use crate::{
     contexts::SpatialSceneEntityContext,
-    view_kind::SpatialSpaceViewKind,
+    view_kind::SpatialViewKind,
     visualizers::{load_keypoint_connections, process_radius_slice},
 };
 
@@ -35,7 +35,7 @@ pub struct Points2DVisualizer {
 impl Default for Points2DVisualizer {
     fn default() -> Self {
         Self {
-            data: SpatialViewVisualizerData::new(Some(SpatialSpaceViewKind::TwoD)),
+            data: SpatialViewVisualizerData::new(Some(SpatialViewKind::TwoD)),
         }
     }
 }

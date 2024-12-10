@@ -1,18 +1,18 @@
 use re_chunk_store::{LatestAtQuery, RowId};
-use re_view::{latest_at_with_blueprint_resolved_data, RangeResultsExt};
 use re_types::{
     archetypes::Tensor,
     components::{TensorData, ValueRange},
     Component as _,
 };
+use re_view::{latest_at_with_blueprint_resolved_data, RangeResultsExt};
 use re_viewer_context::{
-    IdentifiedViewSystem, ViewSystemExecutionError, TensorStats, TensorStatsCache,
-    TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewQuery,
-    VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, TensorStats, TensorStatsCache, TypedComponentFallbackProvider,
+    ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizerQueryInfo,
+    VisualizerSystem,
 };
 
 #[derive(Clone)]
-pub struct TensorView {
+pub struct TensorVisualization {
     pub tensor_row_id: RowId,
     pub tensor: TensorData,
     pub data_range: ValueRange,
@@ -20,7 +20,7 @@ pub struct TensorView {
 
 #[derive(Default)]
 pub struct TensorSystem {
-    pub tensors: Vec<TensorView>,
+    pub tensors: Vec<TensorVisualization>,
 }
 
 impl IdentifiedViewSystem for TensorSystem {
@@ -84,7 +84,7 @@ impl VisualizerSystem for TensorSystem {
                         tensor_data_range_heuristic(&tensor_stats, tensor.dtype())
                     });
 
-                self.tensors.push(TensorView {
+                self.tensors.push(TensorVisualization {
                     tensor_row_id,
                     tensor: tensor.clone(),
                     data_range,

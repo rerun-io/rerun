@@ -59,7 +59,7 @@ pub trait ViewClass: Send + Sync {
 
     /// Icon used to identify this view class.
     fn icon(&self) -> &'static re_ui::Icon {
-        &re_ui::icons::SPACE_VIEW_GENERIC
+        &re_ui::icons::VIEW_GENERIC
     }
 
     /// Help text describing how to interact with this view in the ui.
@@ -180,7 +180,7 @@ pub trait ViewClass: Send + Sync {
         _ui: &mut egui::Ui,
         _state: &mut dyn ViewState,
         _space_origin: &EntityPath,
-        _space_view_id: ViewId,
+        _view_id: ViewId,
     ) -> Result<(), ViewSystemExecutionError> {
         Ok(())
     }
@@ -194,7 +194,7 @@ pub trait ViewClass: Send + Sync {
         _ui: &mut egui::Ui,
         _state: &mut dyn ViewState,
         _space_origin: &EntityPath,
-        _space_view_id: ViewId,
+        _view_id: ViewId,
     ) -> Result<(), ViewSystemExecutionError> {
         Ok(())
     }

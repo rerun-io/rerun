@@ -3,9 +3,9 @@ use re_viewer_context::{Item, ViewId};
 use crate::{ContextMenuAction, ContextMenuContext};
 
 /// Clone a single view
-pub(crate) struct CloneSpaceViewAction;
+pub(crate) struct CloneViewAction;
 
-impl ContextMenuAction for CloneSpaceViewAction {
+impl ContextMenuAction for CloneViewAction {
     fn supports_item(&self, _ctx: &ContextMenuContext<'_>, item: &Item) -> bool {
         matches!(item, Item::View(_))
     }
@@ -14,14 +14,14 @@ impl ContextMenuAction for CloneSpaceViewAction {
         "Clone".to_owned()
     }
 
-    fn process_space_view(&self, ctx: &ContextMenuContext<'_>, space_view_id: &ViewId) {
-        if let Some(new_space_view_id) = ctx
+    fn process_view(&self, ctx: &ContextMenuContext<'_>, view_id: &ViewId) {
+        if let Some(new_view_id) = ctx
             .viewport_blueprint
-            .duplicate_space_view(space_view_id, ctx.viewer_context)
+            .duplicate_view(view_id, ctx.viewer_context)
         {
             ctx.viewer_context
                 .selection_state()
-                .set_selection(Item::View(new_space_view_id));
+                .set_selection(Item::View(new_view_id));
             ctx.viewport_blueprint
                 .mark_user_interaction(ctx.viewer_context);
         }

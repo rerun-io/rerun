@@ -59,10 +59,10 @@ pub fn container_kind_from_egui(
 ///
 /// TODO(andreas): This is transitional. We want to pass on the view spawn heuristics
 /// directly and make more high level decisions with it.
-pub fn default_created_space_views(ctx: &ViewerContext<'_>) -> Vec<ViewBlueprint> {
+pub fn default_created_views(ctx: &ViewerContext<'_>) -> Vec<ViewBlueprint> {
     re_tracing::profile_function!();
 
-    ctx.space_view_class_registry
+    ctx.view_class_registry
         .iter_registry()
         .flat_map(|entry| {
             let spawn_heuristics = entry.class.spawn_heuristics(ctx);

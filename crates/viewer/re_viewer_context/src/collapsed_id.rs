@@ -35,17 +35,17 @@ impl CollapseScope {
     }
 
     /// Create a [`CollapsedId`] for a view in this scope.
-    pub fn space_view(self, space_view_id: ViewId) -> CollapsedId {
+    pub fn view(self, view_id: ViewId) -> CollapsedId {
         CollapsedId {
-            item: CollapseItem::SpaceView(space_view_id),
+            item: CollapseItem::View(view_id),
             scope: self,
         }
     }
 
     /// Create a [`CollapsedId`] for a data result in this scope.
-    pub fn data_result(self, space_view_id: ViewId, entity_path: EntityPath) -> CollapsedId {
+    pub fn data_result(self, view_id: ViewId, entity_path: EntityPath) -> CollapsedId {
         CollapsedId {
-            item: CollapseItem::DataResult(space_view_id, entity_path),
+            item: CollapseItem::DataResult(view_id, entity_path),
             scope: self,
         }
     }
@@ -64,7 +64,7 @@ impl CollapseScope {
 #[derive(Debug, Clone, Hash)]
 pub enum CollapseItem {
     Container(ContainerId),
-    SpaceView(ViewId),
+    View(ViewId),
     DataResult(ViewId, EntityPath),
     Entity(EntityPath),
 }

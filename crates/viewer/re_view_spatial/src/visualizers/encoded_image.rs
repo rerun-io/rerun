@@ -13,7 +13,7 @@ use re_viewer_context::{
 
 use crate::{
     contexts::SpatialSceneEntityContext,
-    view_kind::SpatialSpaceViewKind,
+    view_kind::SpatialViewKind,
     visualizers::{filter_visualizable_2d_entities, textured_rect_from_image},
     PickableRectSourceData, PickableTexturedRect,
 };
@@ -27,7 +27,7 @@ pub struct EncodedImageVisualizer {
 impl Default for EncodedImageVisualizer {
     fn default() -> Self {
         Self {
-            data: SpatialViewVisualizerData::new(Some(SpatialSpaceViewKind::TwoD)),
+            data: SpatialViewVisualizerData::new(Some(SpatialViewKind::TwoD)),
         }
     }
 }

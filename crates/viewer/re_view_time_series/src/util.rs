@@ -147,7 +147,7 @@ pub fn apply_aggregation(
     // TODO(#4969): output a thicker line instead of zig-zagging.
     let aggregation_duration = time_per_pixel; // aggregate all points covering one physical pixel
 
-    // So it can be displayed in the UI by the SpaceViewClass.
+    // So it can be displayed in the UI by the ViewClass.
     let num_points_before = points.len() as f64;
 
     // If the user logged multiples scalars per time stamp, we should aggregate them,
@@ -187,7 +187,7 @@ pub fn apply_aggregation(
     let actual_aggregation_factor = num_points_before / num_points_after;
 
     re_log::trace!(
-        id = %query.space_view_id,
+        id = %query.view_id,
         ?aggregator,
         aggregation_duration,
         num_points_before,

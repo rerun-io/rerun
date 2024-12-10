@@ -8,13 +8,13 @@ use re_types::{
 };
 use re_viewer_context::{TypedComponentFallbackProvider, ViewStateExt as _};
 
-use crate::{ui::GraphViewState, GraphSpaceView};
+use crate::{ui::GraphViewState, GraphView};
 
 fn valid_bound(rect: &egui::Rect) -> bool {
     rect.is_finite() && rect.is_positive()
 }
 
-impl TypedComponentFallbackProvider<VisualBounds2D> for GraphSpaceView {
+impl TypedComponentFallbackProvider<VisualBounds2D> for GraphView {
     fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> VisualBounds2D {
         let Ok(state) = ctx.view_state.downcast_ref::<GraphViewState>() else {
             return VisualBounds2D::default();
@@ -27,7 +27,7 @@ impl TypedComponentFallbackProvider<VisualBounds2D> for GraphSpaceView {
     }
 }
 
-impl TypedComponentFallbackProvider<Enabled> for GraphSpaceView {
+impl TypedComponentFallbackProvider<Enabled> for GraphView {
     fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> Enabled {
         match ctx.archetype_name {
             Some(name) if name == archetypes::ForceLink::name() => true.into(),
@@ -38,13 +38,13 @@ impl TypedComponentFallbackProvider<Enabled> for GraphSpaceView {
     }
 }
 
-impl TypedComponentFallbackProvider<ForceDistance> for GraphSpaceView {
+impl TypedComponentFallbackProvider<ForceDistance> for GraphView {
     fn fallback_for(&self, _ctx: &re_viewer_context::QueryContext<'_>) -> ForceDistance {
         (60.).into()
     }
 }
 
-impl TypedComponentFallbackProvider<ForceStrength> for GraphSpaceView {
+impl TypedComponentFallbackProvider<ForceStrength> for GraphView {
     fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> ForceStrength {
         match ctx.archetype_name {
             Some(name) if name == archetypes::ForceManyBody::name() => (-60.).into(),
@@ -54,7 +54,7 @@ impl TypedComponentFallbackProvider<ForceStrength> for GraphSpaceView {
     }
 }
 
-impl TypedComponentFallbackProvider<ForceIterations> for GraphSpaceView {
+impl TypedComponentFallbackProvider<ForceIterations> for GraphView {
     fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> ForceIterations {
         match ctx.archetype_name {
             Some(name) if name == archetypes::ForceLink::name() => 3.into(),
@@ -64,10 +64,10 @@ impl TypedComponentFallbackProvider<ForceIterations> for GraphSpaceView {
     }
 }
 
-impl TypedComponentFallbackProvider<Position2D> for GraphSpaceView {
+impl TypedComponentFallbackProvider<Position2D> for GraphView {
     fn fallback_for(&self, _ctx: &re_viewer_context::QueryContext<'_>) -> Position2D {
         Default::default()
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(GraphSpaceView => [VisualBounds2D, Enabled, ForceDistance, ForceStrength, ForceIterations, Position2D]);
+re_viewer_context::impl_component_fallback_provider!(GraphView => [VisualBounds2D, Enabled, ForceDistance, ForceStrength, ForceIterations, Position2D]);

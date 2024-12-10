@@ -13,7 +13,7 @@ use re_viewer_context::{
     VisualizerQueryInfo, VisualizerSystem,
 };
 
-use crate::{contexts::SpatialSceneEntityContext, view_kind::SpatialSpaceViewKind};
+use crate::{contexts::SpatialSceneEntityContext, view_kind::SpatialViewKind};
 
 use super::{
     filter_visualizable_2d_entities, process_radius_slice,
@@ -30,7 +30,7 @@ pub struct Lines2DVisualizer {
 impl Default for Lines2DVisualizer {
     fn default() -> Self {
         Self {
-            data: SpatialViewVisualizerData::new(Some(SpatialSpaceViewKind::TwoD)),
+            data: SpatialViewVisualizerData::new(Some(SpatialViewKind::TwoD)),
         }
     }
 }

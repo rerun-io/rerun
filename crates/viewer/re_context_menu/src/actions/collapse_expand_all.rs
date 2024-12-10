@@ -54,21 +54,21 @@ impl ContextMenuAction for CollapseExpandAllAction {
                 Contents::Container(container_id) => CollapseScope::BlueprintTree
                     .container(*container_id)
                     .set_open(&ctx.egui_context, self.open()),
-                Contents::View(space_view_id) => self.process_space_view(ctx, space_view_id),
+                Contents::View(view_id) => self.process_view(ctx, view_id),
             });
     }
 
-    fn process_space_view(&self, ctx: &ContextMenuContext<'_>, space_view_id: &ViewId) {
+    fn process_view(&self, ctx: &ContextMenuContext<'_>, view_id: &ViewId) {
         CollapseScope::BlueprintTree
-            .space_view(*space_view_id)
+            .view(*view_id)
             .set_open(&ctx.egui_context, self.open());
 
-        let query_result = ctx.viewer_context.lookup_query_result(*space_view_id);
+        let query_result = ctx.viewer_context.lookup_query_result(*view_id);
         let result_tree = &query_result.tree;
         if let Some(root_node) = result_tree.root_node() {
             self.process_data_result(
                 ctx,
-                space_view_id,
+                view_id,
                 &InstancePath::entity_all(root_node.data_result.entity_path.clone()),
             );
         }
@@ -77,7 +77,7 @@ impl ContextMenuAction for CollapseExpandAllAction {
     fn process_data_result(
         &self,
         ctx: &ContextMenuContext<'_>,
-        space_view_id: &ViewId,
+        view_id: &ViewId,
         instance_path: &InstancePath,
     ) {
         //TODO(ab): here we should in principle walk the DataResult tree instead of the entity tree
@@ -93,7 +93,7 @@ impl ContextMenuAction for CollapseExpandAllAction {
 
         subtree.visit_children_recursively(|entity_path| {
             CollapseScope::BlueprintTree
-                .data_result(*space_view_id, entity_path.clone())
+                .data_result(*view_id, entity_path.clone())
                 .set_open(&ctx.egui_context, self.open());
         });
     }

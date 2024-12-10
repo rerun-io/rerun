@@ -4,7 +4,7 @@ use re_log_types::EntityPath;
 use re_types::ViewClassIdentifier;
 use re_viewer_context::ViewerContext;
 
-use crate::{view_kind::SpatialSpaceViewKind, visualizers::SpatialViewVisualizerData};
+use crate::{view_kind::SpatialViewKind, visualizers::SpatialViewVisualizerData};
 
 /// Returns all entities for which a visualizer of the given kind would be picked.
 ///
@@ -12,13 +12,13 @@ use crate::{view_kind::SpatialSpaceViewKind, visualizers::SpatialViewVisualizerD
 /// *and* has a matching indicator component.
 pub fn default_visualized_entities_for_visualizer_kind(
     ctx: &ViewerContext<'_>,
-    space_view_class_identifier: ViewClassIdentifier,
-    visualizer_kind: SpatialSpaceViewKind,
+    view_class_identifier: ViewClassIdentifier,
+    visualizer_kind: SpatialViewKind,
 ) -> IntSet<EntityPath> {
     re_tracing::profile_function!();
 
-    ctx.space_view_class_registry
-        .new_visualizer_collection(space_view_class_identifier)
+    ctx.view_class_registry
+        .new_visualizer_collection(view_class_identifier)
         .iter_with_identifiers()
         .filter_map(|(id, visualizer)| {
             let data = visualizer

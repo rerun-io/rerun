@@ -1,6 +1,4 @@
-use re_viewer_context::{
-    Item, PublishedSpaceViewInfo, ScreenshotTarget, SpaceViewRectPublisher, ViewId,
-};
+use re_viewer_context::{Item, PublishedViewInfo, ScreenshotTarget, ViewId, ViewRectPublisher};
 
 use crate::{ContextMenuAction, ContextMenuContext};
 
@@ -27,14 +25,14 @@ impl ContextMenuAction for ScreenshotAction {
 
     /// Do we have a context menu for this item?
     fn supports_item(&self, ctx: &ContextMenuContext<'_>, item: &Item) -> bool {
-        let Item::View(space_view_id) = item else {
+        let Item::View(view_id) = item else {
             return false;
         };
 
         ctx.egui_context.memory_mut(|mem| {
             mem.caches
-                .cache::<SpaceViewRectPublisher>()
-                .get(space_view_id)
+                .cache::<ViewRectPublisher>()
+                .get(view_id)
                 .is_some()
         })
     }
@@ -46,17 +44,17 @@ impl ContextMenuAction for ScreenshotAction {
         }
     }
 
-    fn process_space_view(&self, ctx: &ContextMenuContext<'_>, space_view_id: &ViewId) {
-        let Some(space_view_info) = ctx.egui_context.memory_mut(|mem| {
+    fn process_view(&self, ctx: &ContextMenuContext<'_>, view_id: &ViewId) {
+        let Some(view_info) = ctx.egui_context.memory_mut(|mem| {
             mem.caches
-                .cache::<SpaceViewRectPublisher>()
-                .get(space_view_id)
+                .cache::<ViewRectPublisher>()
+                .get(view_id)
                 .cloned()
         }) else {
             return;
         };
 
-        let PublishedSpaceViewInfo { name, rect } = space_view_info;
+        let PublishedViewInfo { name, rect } = view_info;
 
         let rect = rect.shrink(1.75); // Hacky: Shrink so we don't accidentally include the border of the space-view.
 

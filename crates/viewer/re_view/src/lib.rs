@@ -17,7 +17,7 @@ pub use annotation_context_utils::{
     process_annotation_and_keypoint_slices, process_annotation_slices, process_color_slice,
 };
 pub use annotation_scene_context::AnnotationSceneContext;
-pub use heuristics::suggest_space_view_for_each_entity;
+pub use heuristics::suggest_view_for_each_entity;
 pub use instance_hash_conversions::{
     instance_path_hash_from_picking_layer_id, picking_layer_id_from_instance_path_hash,
 };

@@ -6,7 +6,7 @@ use re_viewer_context::{
     gpu_bridge, ColormapWithRange, ImageInfo, ImageStatsCache, ViewClass as _, ViewerContext,
 };
 
-use crate::{contexts::SpatialSceneEntityContext, SpatialSpaceView2D};
+use crate::{contexts::SpatialSceneEntityContext, SpatialView2D};
 
 use super::SpatialViewVisualizerData;
 
@@ -76,7 +76,7 @@ pub fn textured_rect_from_image(
             // This is avoids a cyclic relationship where the image plane grows
             // the bounds which in turn influence the size of the image plane.
             // See: https://github.com/rerun-io/rerun/issues/3728
-            if ent_context.space_view_class_identifier == SpatialSpaceView2D::identifier() {
+            if ent_context.view_class_identifier == SpatialView2D::identifier() {
                 visualizer_data.add_bounding_box(
                     ent_path.hash(),
                     bounding_box_for_textured_rect(&textured_rect),

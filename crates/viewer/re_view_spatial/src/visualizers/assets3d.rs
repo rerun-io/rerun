@@ -18,7 +18,7 @@ use super::{filter_visualizable_3d_entities, SpatialViewVisualizerData};
 use crate::{
     contexts::SpatialSceneEntityContext,
     mesh_cache::{AnyMesh, MeshCache, MeshCacheKey},
-    view_kind::SpatialSpaceViewKind,
+    view_kind::SpatialViewKind,
 };
 
 pub struct Asset3DVisualizer(SpatialViewVisualizerData);
@@ -26,7 +26,7 @@ pub struct Asset3DVisualizer(SpatialViewVisualizerData);
 impl Default for Asset3DVisualizer {
     fn default() -> Self {
         Self(SpatialViewVisualizerData::new(Some(
-            SpatialSpaceViewKind::ThreeD,
+            SpatialViewKind::ThreeD,
         )))
     }
 }

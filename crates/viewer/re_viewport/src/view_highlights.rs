@@ -13,9 +13,9 @@ use re_viewer_context::{
 ///
 /// This method makes decisions which entities & instances should which kind of highlighting
 /// based on the entities in a view and the current selection/hover state.
-pub fn highlights_for_space_view(
+pub fn highlights_for_view(
     ctx: &re_viewer_context::ViewerContext<'_>,
-    space_view_id: ViewId,
+    view_id: ViewId,
 ) -> ViewHighlights {
     re_tracing::profile_function!();
 
@@ -63,9 +63,9 @@ pub fn highlights_for_space_view(
                 add_highlight_and_mask(entity_hash, selected_instance.clone(), highlight);
             }
 
-            Item::DataResult(selected_space_view_context, selected_instance) => {
+            Item::DataResult(selected_view_context, selected_instance) => {
                 let entity_hash = selected_instance.entity_path.hash();
-                let highlight = if *selected_space_view_context == space_view_id {
+                let highlight = if *selected_view_context == view_id {
                     SelectionHighlight::Selection
                 } else {
                     SelectionHighlight::SiblingSelection

@@ -7,9 +7,9 @@ use re_viewer_context::{
 ///
 /// This is used as utility by *some* view types that want
 /// to spawn a view for every single entity that is visualizable with a given visualizer.
-pub fn suggest_space_view_for_each_entity<TVisualizer>(
+pub fn suggest_view_for_each_entity<TVisualizer>(
     ctx: &ViewerContext<'_>,
-    space_view: &impl ViewClass,
+    view: &impl ViewClass,
 ) -> ViewSpawnHeuristics
 where
     TVisualizer: VisualizerSystem + IdentifiedViewSystem + Default,
@@ -30,10 +30,10 @@ where
     };
 
     let visualizer = TVisualizer::default();
-    let recommended_space_views = applicable_entities
+    let recommended_views = applicable_entities
         .intersection(indicator_matching_entities)
         .filter_map(|entity| {
-            let context = space_view.visualizable_filter_context(entity, ctx.recording());
+            let context = view.visualizable_filter_context(entity, ctx.recording());
             if visualizer
                 .filter_visualizable_entities(
                     ApplicableEntities(std::iter::once(entity.clone()).collect()),
@@ -47,5 +47,5 @@ where
             }
         });
 
-    re_viewer_context::ViewSpawnHeuristics::new(recommended_space_views)
+    re_viewer_context::ViewSpawnHeuristics::new(recommended_views)
 }

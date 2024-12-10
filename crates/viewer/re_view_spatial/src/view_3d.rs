@@ -25,7 +25,7 @@ use crate::{
     heuristics::default_visualized_entities_for_visualizer_kind,
     spatial_topology::{HeuristicHints, SpatialTopology, SubSpaceConnectionFlags},
     ui::{format_vector, SpatialViewState},
-    view_kind::SpatialSpaceViewKind,
+    view_kind::SpatialViewKind,
     visualizers::register_3d_spatial_visualizers,
 };
 
@@ -43,11 +43,11 @@ impl VisualizableFilterContext for VisualizableFilterContext3D {
 }
 
 #[derive(Default)]
-pub struct SpatialSpaceView3D;
+pub struct SpatialView3D;
 
 type ViewType = re_types::blueprint::views::Spatial3DView;
 
-impl ViewClass for SpatialSpaceView3D {
+impl ViewClass for SpatialView3D {
     fn identifier() -> ViewClassIdentifier {
         ViewType::identifier()
     }
@@ -57,7 +57,7 @@ impl ViewClass for SpatialSpaceView3D {
     }
 
     fn icon(&self) -> &'static re_ui::Icon {
-        &re_ui::icons::SPACE_VIEW_3D
+        &re_ui::icons::VIEW_3D
     }
 
     fn help_markdown(&self, egui_ctx: &egui::Context) -> String {
@@ -268,7 +268,7 @@ impl ViewClass for SpatialSpaceView3D {
         let mut indicated_entities = default_visualized_entities_for_visualizer_kind(
             ctx,
             Self::identifier(),
-            SpatialSpaceViewKind::ThreeD,
+            SpatialViewKind::ThreeD,
         );
 
         // ViewCoordinates is a strong indicator that a 3D view is needed.
@@ -413,7 +413,7 @@ impl ViewClass for SpatialSpaceView3D {
             });
             ui.end_row();
 
-            state.bounding_box_ui(ui, SpatialSpaceViewKind::ThreeD);
+            state.bounding_box_ui(ui, SpatialViewKind::ThreeD);
         });
 
         re_ui::list_item::list_item_scope(ui, "spatial_view3d_selection_ui", |ui| {
@@ -436,7 +436,7 @@ impl ViewClass for SpatialSpaceView3D {
         re_tracing::profile_function!();
 
         let state = state.downcast_mut::<SpatialViewState>()?;
-        state.update_frame_statistics(ui, &system_output, SpatialSpaceViewKind::ThreeD);
+        state.update_frame_statistics(ui, &system_output, SpatialViewKind::ThreeD);
 
         self.view_3d(ctx, ui, state, query, system_output)
     }

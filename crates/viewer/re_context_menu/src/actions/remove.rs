@@ -31,21 +31,21 @@ impl ContextMenuAction for RemoveAction {
             .remove_contents(Contents::Container(*container_id));
     }
 
-    fn process_space_view(&self, ctx: &ContextMenuContext<'_>, space_view_id: &ViewId) {
+    fn process_view(&self, ctx: &ContextMenuContext<'_>, view_id: &ViewId) {
         ctx.viewport_blueprint
             .mark_user_interaction(ctx.viewer_context);
         ctx.viewport_blueprint
-            .remove_contents(Contents::View(*space_view_id));
+            .remove_contents(Contents::View(*view_id));
     }
 
     fn process_data_result(
         &self,
         ctx: &ContextMenuContext<'_>,
-        space_view_id: &ViewId,
+        view_id: &ViewId,
         instance_path: &InstancePath,
     ) {
-        if let Some(space_view) = ctx.viewport_blueprint.view(space_view_id) {
-            space_view.contents.remove_subtree_and_matching_rules(
+        if let Some(view) = ctx.viewport_blueprint.view(view_id) {
+            view.contents.remove_subtree_and_matching_rules(
                 ctx.viewer_context,
                 instance_path.entity_path.clone(),
             );

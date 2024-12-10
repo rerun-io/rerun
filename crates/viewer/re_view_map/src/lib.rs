@@ -3,7 +3,7 @@
 //! A View that shows geographic objects on a map.
 
 mod map_overlays;
-mod map_space_view;
+mod map_view;
 mod visualizers;
 
-pub use map_space_view::MapSpaceView;
+pub use map_view::MapView;

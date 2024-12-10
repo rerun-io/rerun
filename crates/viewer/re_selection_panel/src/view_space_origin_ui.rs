@@ -5,7 +5,7 @@ use egui::{Key, NumExt as _, Ui};
 use re_log_types::EntityPath;
 use re_ui::{list_item, SyntaxHighlighting, UiExt as _};
 use re_viewer_context::ViewerContext;
-use re_viewport_blueprint::{default_created_space_views, ViewBlueprint};
+use re_viewport_blueprint::{default_created_views, ViewBlueprint};
 
 /// State of the space origin widget.
 #[derive(Default, Clone)]
@@ -29,18 +29,18 @@ struct EditState {
 }
 
 /// Display the space origin of a view.
-pub(crate) fn space_view_space_origin_widget_ui(
+pub(crate) fn view_space_origin_widget_ui(
     ui: &mut Ui,
     ctx: &ViewerContext<'_>,
-    space_view: &ViewBlueprint,
+    view: &ViewBlueprint,
 ) {
-    let is_editing_id = ui.make_persistent_id(space_view.id.hash());
+    let is_editing_id = ui.make_persistent_id(view.id.hash());
     let mut state: SpaceOriginEditState =
         ui.memory_mut(|mem| mem.data.get_temp(is_editing_id).unwrap_or_default());
 
     match &mut state {
         SpaceOriginEditState::NotEditing => {
-            let mut space_origin_string = space_view.space_origin.to_string();
+            let mut space_origin_string = view.space_origin.to_string();
             let output = egui::TextEdit::singleline(&mut space_origin_string).show(ui);
 
             if output.response.gained_focus() {
@@ -53,11 +53,11 @@ pub(crate) fn space_view_space_origin_widget_ui(
         }
         SpaceOriginEditState::Editing(edit_state) => {
             let control_flow =
-                space_view_space_origin_widget_editing_ui(ui, ctx, space_view, edit_state);
+                view_space_origin_widget_editing_ui(ui, ctx, view, edit_state);
 
             match control_flow {
                 ControlFlow::Break(Some(new_space_origin)) => {
-                    space_view.set_origin(ctx, &new_space_origin);
+                    view.set_origin(ctx, &new_space_origin);
                     state = SpaceOriginEditState::NotEditing;
                 }
                 ControlFlow::Break(None) => {
@@ -75,10 +75,10 @@ pub(crate) fn space_view_space_origin_widget_ui(
 }
 
 /// Display the space origin of a view with it is in edit mode.
-fn space_view_space_origin_widget_editing_ui(
+fn view_space_origin_widget_editing_ui(
     ui: &mut Ui,
     ctx: &ViewerContext<'_>,
-    space_view: &ViewBlueprint,
+    view: &ViewBlueprint,
     state: &mut EditState,
 ) -> ControlFlow<Option<EntityPath>, ()> {
     let mut control_flow = ControlFlow::Continue(());
@@ -91,18 +91,18 @@ fn space_view_space_origin_widget_editing_ui(
 
     // All suggestions for this class of views.
     // TODO(#4895): we should have/use a much simpler heuristic API to get a list of compatible entity sub-tree
-    let space_view_suggestions = default_created_space_views(ctx)
+    let view_suggestions = default_created_views(ctx)
         .into_iter()
-        .filter(|this_space_view| {
-            this_space_view.class_identifier() == space_view.class_identifier()
+        .filter(|this_view| {
+            this_view.class_identifier() == view.class_identifier()
         })
         .collect::<Vec<_>>();
 
     // Filtered suggestions based on the current text edit content.
-    let filtered_space_view_suggestions = space_view_suggestions
+    let filtered_view_suggestions = view_suggestions
         .iter()
-        .filter(|suggested_space_view| {
-            suggested_space_view
+        .filter(|suggested_view| {
+            suggested_view
                 .space_origin
                 .to_string()
                 .contains(&state.origin_string)
@@ -127,9 +127,9 @@ fn space_view_space_origin_widget_editing_ui(
         selected_suggestion = selected_suggestion
             .saturating_add(arrow_down)
             .saturating_sub(arrow_up);
-        if !space_view_suggestions.is_empty() && !filtered_space_view_suggestions.is_empty() {
+        if !view_suggestions.is_empty() && !filtered_view_suggestions.is_empty() {
             selected_suggestion =
-                selected_suggestion.at_most(filtered_space_view_suggestions.len() - 1);
+                selected_suggestion.at_most(filtered_view_suggestions.len() - 1);
         }
         selected_suggestion
     });
@@ -142,7 +142,7 @@ fn space_view_space_origin_widget_editing_ui(
 
     if let Some(selected_suggestion) = state.selected_suggestion {
         if enter_key_hit {
-            if let Some(suggestion) = filtered_space_view_suggestions.get(selected_suggestion) {
+            if let Some(suggestion) = filtered_view_suggestions.get(selected_suggestion) {
                 let origin = &suggestion.space_origin;
                 state.origin_string = origin.to_string();
                 control_flow = ControlFlow::Break(Some(origin.clone()));
@@ -166,7 +166,7 @@ fn space_view_space_origin_widget_editing_ui(
     }
 
     if output.response.changed() {
-        space_view.set_origin(ctx, &state.origin_string.clone().into());
+        view.set_origin(ctx, &state.origin_string.clone().into());
     }
 
     if output.response.lost_focus() && enter_key_hit && control_flow.is_continue() {
@@ -182,14 +182,14 @@ fn space_view_space_origin_widget_editing_ui(
     }
 
     let suggestions_ui = |ui: &mut egui::Ui| {
-        for (idx, suggested_space_view) in filtered_space_view_suggestions.iter().enumerate() {
+        for (idx, suggested_view) in filtered_view_suggestions.iter().enumerate() {
             let response = ui
                 .list_item()
                 .force_hovered(state.selected_suggestion == Some(idx))
                 .show_flat(
                     ui,
                     list_item::LabelContent::new(
-                        suggested_space_view
+                        suggested_view
                             .space_origin
                             .syntax_highlighted(ui.style()),
                     ),
@@ -200,11 +200,11 @@ fn space_view_space_origin_widget_editing_ui(
             }
 
             if response.clicked() {
-                control_flow = ControlFlow::Break(Some(suggested_space_view.space_origin.clone()));
+                control_flow = ControlFlow::Break(Some(suggested_view.space_origin.clone()));
             }
         }
 
-        let excluded_count = space_view_suggestions.len() - filtered_space_view_suggestions.len();
+        let excluded_count = view_suggestions.len() - filtered_view_suggestions.len();
         if excluded_count > 0 {
             ui.list_item_flat_noninteractive(
                 list_item::LabelContent::new(format!("{excluded_count} hidden suggestions"))

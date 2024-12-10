@@ -15,12 +15,12 @@ impl Query {
     /// Create a query object from the blueprint store.
     ///
     /// See the `blueprint_io` module for more related accessors.
-    pub(crate) fn from_blueprint(ctx: &ViewerContext<'_>, space_view_id: ViewId) -> Self {
+    pub(crate) fn from_blueprint(ctx: &ViewerContext<'_>, view_id: ViewId) -> Self {
         Self {
             query_property: ViewProperty::from_archetype::<archetypes::DataframeQuery>(
                 ctx.blueprint_db(),
                 ctx.blueprint_query,
-                space_view_id,
+                view_id,
             ),
         }
     }
@@ -32,7 +32,7 @@ impl Query {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        space_view_id: ViewId,
+        view_id: ViewId,
         view_columns: &[ColumnDescriptor],
     ) -> Result<(), ViewSystemExecutionError> {
         let timeline = self.timeline(ctx)?;
@@ -41,7 +41,7 @@ impl Query {
         ui.separator();
         self.filter_range_ui(ctx, ui, &timeline)?;
         ui.separator();
-        self.filter_is_not_null_ui(ctx, ui, &timeline, space_view_id)?;
+        self.filter_is_not_null_ui(ctx, ui, &timeline, view_id)?;
         ui.separator();
         self.column_visibility_ui(ctx, ui, &timeline, view_columns)?;
         ui.separator();

@@ -9,4 +9,4 @@ mod ui;
 mod view;
 mod visualizers;
 
-pub use view::GraphSpaceView;
+pub use view::GraphView;

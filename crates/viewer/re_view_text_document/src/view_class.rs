@@ -3,7 +3,7 @@ use egui::Label;
 use re_types::View;
 use re_types::ViewClassIdentifier;
 use re_ui::UiExt as _;
-use re_view::suggest_space_view_for_each_entity;
+use re_view::suggest_view_for_each_entity;
 
 use re_viewer_context::{
     external::re_log_types::EntityPath, ViewClass, ViewClassRegistryError, ViewId, ViewQuery,
@@ -41,11 +41,11 @@ impl ViewState for TextDocumentViewState {
 }
 
 #[derive(Default)]
-pub struct TextDocumentSpaceView;
+pub struct TextDocumentView;
 
 type ViewType = re_types::blueprint::views::TextDocumentView;
 
-impl ViewClass for TextDocumentSpaceView {
+impl ViewClass for TextDocumentView {
     fn identifier() -> ViewClassIdentifier {
         ViewType::identifier()
     }
@@ -55,7 +55,7 @@ impl ViewClass for TextDocumentSpaceView {
     }
 
     fn icon(&self) -> &'static re_ui::Icon {
-        &re_ui::icons::SPACE_VIEW_TEXT
+        &re_ui::icons::VIEW_TEXT
     }
 
     fn help_markdown(&self, _egui_ctx: &egui::Context) -> String {
@@ -86,7 +86,7 @@ Displays text from a text component, as raw text or markdown."
         ui: &mut egui::Ui,
         state: &mut dyn ViewState,
         _space_origin: &EntityPath,
-        _space_view_id: ViewId,
+        _view_id: ViewId,
     ) -> Result<(), ViewSystemExecutionError> {
         let state = state.downcast_mut::<TextDocumentViewState>()?;
 
@@ -106,7 +106,7 @@ Displays text from a text component, as raw text or markdown."
     fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> re_viewer_context::ViewSpawnHeuristics {
         re_tracing::profile_function!();
         // By default spawn a view for every text document.
-        suggest_space_view_for_each_entity::<TextDocumentSystem>(ctx, self)
+        suggest_view_for_each_entity::<TextDocumentSystem>(ctx, self)
     }
 
     fn ui(

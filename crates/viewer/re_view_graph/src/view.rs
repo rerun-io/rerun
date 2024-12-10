@@ -19,10 +19,9 @@ use re_view::{
     view_property_ui,
 };
 use re_viewer_context::{
-    IdentifiedViewSystem as _, RecommendedView, ViewClass, ViewClassLayoutPriority,
-    ViewClassRegistryError, ViewId, ViewSpawnHeuristics, ViewState,
-    ViewStateExt as _, ViewSystemExecutionError, ViewSystemRegistrator,
-    SystemExecutionOutput, ViewQuery, ViewerContext,
+    IdentifiedViewSystem as _, RecommendedView, SystemExecutionOutput, ViewClass,
+    ViewClassLayoutPriority, ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics,
+    ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewSystemRegistrator, ViewerContext,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -34,9 +33,9 @@ use crate::{
 };
 
 #[derive(Default)]
-pub struct GraphSpaceView;
+pub struct GraphView;
 
-impl ViewClass for GraphSpaceView {
+impl ViewClass for GraphView {
     // State type as described above.
 
     fn identifier() -> ViewClassIdentifier {
@@ -48,7 +47,7 @@ impl ViewClass for GraphSpaceView {
     }
 
     fn icon(&self) -> &'static re_ui::Icon {
-        &re_ui::icons::SPACE_VIEW_GRAPH
+        &re_ui::icons::VIEW_GRAPH
     }
 
     fn help_markdown(&self, egui_ctx: &egui::Context) -> String {
@@ -125,7 +124,7 @@ Display a graph of nodes and edges.
         ui: &mut egui::Ui,
         state: &mut dyn ViewState,
         _space_origin: &EntityPath,
-        space_view_id: ViewId,
+        view_id: ViewId,
     ) -> Result<(), ViewSystemExecutionError> {
         let state = state.downcast_mut::<GraphViewState>()?;
 
@@ -136,12 +135,12 @@ Display a graph of nodes and edges.
         });
 
         re_ui::list_item::list_item_scope(ui, "graph_selection_ui", |ui| {
-            view_property_ui::<VisualBounds2D>(ctx, ui, space_view_id, self, state);
-            view_property_force_ui::<ForceLink>(ctx, ui, space_view_id, self, state);
-            view_property_force_ui::<ForceManyBody>(ctx, ui, space_view_id, self, state);
-            view_property_force_ui::<ForcePosition>(ctx, ui, space_view_id, self, state);
-            view_property_force_ui::<ForceCenter>(ctx, ui, space_view_id, self, state);
-            view_property_force_ui::<ForceCollisionRadius>(ctx, ui, space_view_id, self, state);
+            view_property_ui::<VisualBounds2D>(ctx, ui, view_id, self, state);
+            view_property_force_ui::<ForceLink>(ctx, ui, view_id, self, state);
+            view_property_force_ui::<ForceManyBody>(ctx, ui, view_id, self, state);
+            view_property_force_ui::<ForcePosition>(ctx, ui, view_id, self, state);
+            view_property_force_ui::<ForceCenter>(ctx, ui, view_id, self, state);
+            view_property_force_ui::<ForceCollisionRadius>(ctx, ui, view_id, self, state);
         });
 
         Ok(())
@@ -172,7 +171,7 @@ Display a graph of nodes and edges.
         let bounds_property = ViewProperty::from_archetype::<VisualBounds2D>(
             ctx.blueprint_db(),
             ctx.blueprint_query,
-            query.space_view_id,
+            query.view_id,
         );
         let rect_in_scene: blueprint::components::VisualBounds2D =
             bounds_property.component_or_fallback(ctx, self, state)?;

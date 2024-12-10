@@ -6,13 +6,13 @@
 #![allow(clippy::unwrap_used)]
 
 mod auto_layout;
-mod space_view_highlights;
 mod system_execution;
+mod view_highlights;
 mod viewport_ui;
 
 pub use self::viewport_ui::ViewportUi;
 
 pub mod external {
-    pub use re_view;
     pub use re_types_blueprint;
+    pub use re_view;
 }

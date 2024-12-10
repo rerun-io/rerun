@@ -8,23 +8,23 @@
 mod aggregation;
 mod line_visualizer_system;
 mod point_visualizer_system;
-mod space_view_class;
 mod util;
+mod view_class;
 
 use re_log_types::EntityPath;
 use re_types::components::{AggregationPolicy, MarkerShape};
-pub use space_view_class::TimeSeriesSpaceView;
+pub use view_class::TimeSeriesView;
 
 /// Computes a deterministic, globally unique ID for the plot based on the ID of the view
 /// itself.
 ///
 /// Use it to access the plot's state from anywhere, e.g.:
 /// ```ignore
-/// let plot_mem = egui_plot::PlotMemory::load(egui_ctx, crate::plot_id(query.space_view_id));
+/// let plot_mem = egui_plot::PlotMemory::load(egui_ctx, crate::plot_id(query.view_id));
 /// ```
 #[inline]
-pub(crate) fn plot_id(space_view_id: re_viewer_context::ViewId) -> egui::Id {
-    egui::Id::new(("plot", space_view_id))
+pub(crate) fn plot_id(view_id: re_viewer_context::ViewId) -> egui::Id {
+    egui::Id::new(("plot", view_id))
 }
 
 // ---

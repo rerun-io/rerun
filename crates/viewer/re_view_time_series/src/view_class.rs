@@ -8,7 +8,7 @@ use re_log_types::{EntityPath, TimeInt, TimeZone};
 use re_types::blueprint::archetypes::{PlotLegend, ScalarAxis};
 use re_types::blueprint::components::{Corner2D, LockRangeDuringZoom, Visible};
 use re_types::components::AggregationPolicy;
-use re_types::{components::Range1D, datatypes::TimeRange, ViewClassIdentifier, View};
+use re_types::{components::Range1D, datatypes::TimeRange, View, ViewClassIdentifier};
 use re_ui::{list_item, ModifiersMarkdown, MouseButtonMarkdown, UiExt as _};
 use re_view::controls::{
     ASPECT_SCROLL_MODIFIER, HORIZONTAL_SCROLL_MODIFIER, MOVE_TIME_CURSOR_BUTTON,
@@ -17,10 +17,10 @@ use re_view::controls::{
 use re_view::{controls, view_property_ui};
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, IndicatedEntities, PerVisualizer, QueryRange,
-    RecommendedView, SmallVisualizerSet, ViewClass, ViewClassRegistryError,
-    ViewId, ViewSpawnHeuristics, ViewStateExt as _, ViewSystemExecutionError,
-    SystemExecutionOutput, TypedComponentFallbackProvider, ViewQuery, ViewState,
-    ViewSystemIdentifier, ViewerContext, VisualizableEntities,
+    RecommendedView, SmallVisualizerSet, SystemExecutionOutput, TypedComponentFallbackProvider,
+    ViewClass, ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState,
+    ViewStateExt as _, ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext,
+    VisualizableEntities,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -82,11 +82,11 @@ impl ViewState for TimeSeriesViewState {
 }
 
 #[derive(Default)]
-pub struct TimeSeriesSpaceView;
+pub struct TimeSeriesView;
 
 type ViewType = re_types::blueprint::views::TimeSeriesView;
 
-impl ViewClass for TimeSeriesSpaceView {
+impl ViewClass for TimeSeriesView {
     fn identifier() -> ViewClassIdentifier {
         ViewType::identifier()
     }
@@ -96,7 +96,7 @@ impl ViewClass for TimeSeriesSpaceView {
     }
 
     fn icon(&self) -> &'static re_ui::Icon {
-        &re_ui::icons::SPACE_VIEW_TIMESERIES
+        &re_ui::icons::VIEW_TIMESERIES
     }
 
     fn help_markdown(&self, egui_ctx: &egui::Context) -> String {
@@ -156,13 +156,13 @@ Display time series data in a plot.
         ui: &mut egui::Ui,
         state: &mut dyn ViewState,
         _space_origin: &EntityPath,
-        space_view_id: ViewId,
+        view_id: ViewId,
     ) -> Result<(), ViewSystemExecutionError> {
         let state = state.downcast_mut::<TimeSeriesViewState>()?;
 
         list_item::list_item_scope(ui, "time_series_selection_ui", |ui| {
-            view_property_ui::<PlotLegend>(ctx, ui, space_view_id, self, state);
-            view_property_ui::<ScalarAxis>(ctx, ui, space_view_id, self, state);
+            view_property_ui::<PlotLegend>(ctx, ui, view_id, self, state);
+            view_property_ui::<ScalarAxis>(ctx, ui, view_id, self, state);
         });
 
         Ok(())
@@ -282,7 +282,7 @@ Display time series data in a plot.
         let state = state.downcast_mut::<TimeSeriesViewState>()?;
 
         let blueprint_db = ctx.blueprint_db();
-        let view_id = query.space_view_id;
+        let view_id = query.view_id;
 
         let plot_legend =
             ViewProperty::from_archetype::<PlotLegend>(blueprint_db, ctx.blueprint_query, view_id);
@@ -360,7 +360,7 @@ Display time series data in a plot.
         // TODO(#5075): Boxed-zoom should be fixed to accommodate the locked range.
         let time_zone_for_timestamps = ctx.app_options.time_zone;
         let mut plot = Plot::new(plot_id_src)
-            .id(crate::plot_id(query.space_view_id))
+            .id(crate::plot_id(query.view_id))
             .auto_bounds([true, false].into()) // Never use y auto bounds: we dictated bounds via blueprint under all circumstances.
             .allow_zoom([true, !lock_y_during_zoom])
             .x_axis_formatter(move |time, _| {
@@ -523,14 +523,11 @@ Display time series data in a plot.
             if let Some(hovered) = hovered_plot_item
                 .and_then(|hovered_plot_item| plot_item_id_to_entity_path.get(&hovered_plot_item))
                 .map(|entity_path| {
-                    re_viewer_context::Item::DataResult(
-                        query.space_view_id,
-                        entity_path.clone().into(),
-                    )
+                    re_viewer_context::Item::DataResult(query.view_id, entity_path.clone().into())
                 })
                 .or_else(|| {
                     if response.hovered() {
-                        Some(re_viewer_context::Item::View(query.space_view_id))
+                        Some(re_viewer_context::Item::View(query.view_id))
                     } else {
                         None
                     }
@@ -649,7 +646,7 @@ fn round_ns_to_start_of_day(ns: i64) -> i64 {
     (ns + ns_per_day / 2) / ns_per_day * ns_per_day
 }
 
-impl TypedComponentFallbackProvider<Corner2D> for TimeSeriesSpaceView {
+impl TypedComponentFallbackProvider<Corner2D> for TimeSeriesView {
     fn fallback_for(&self, _ctx: &re_viewer_context::QueryContext<'_>) -> Corner2D {
         // Explicitly pick RightCorner2D::RightBottom, we don't want to make this dependent on the (arbitrary)
         // default of Corner2D
@@ -657,7 +654,7 @@ impl TypedComponentFallbackProvider<Corner2D> for TimeSeriesSpaceView {
     }
 }
 
-impl TypedComponentFallbackProvider<Range1D> for TimeSeriesSpaceView {
+impl TypedComponentFallbackProvider<Range1D> for TimeSeriesView {
     fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> Range1D {
         ctx.view_state
             .as_any()
@@ -690,4 +687,4 @@ fn make_range_sane(y_range: Range1D) -> Range1D {
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(TimeSeriesSpaceView => [Corner2D, Range1D]);
+re_viewer_context::impl_component_fallback_provider!(TimeSeriesView => [Corner2D, Range1D]);

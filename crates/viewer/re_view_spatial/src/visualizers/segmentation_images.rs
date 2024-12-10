@@ -13,7 +13,7 @@ use re_viewer_context::{
 
 use crate::{
     ui::SpatialViewState,
-    view_kind::SpatialSpaceViewKind,
+    view_kind::SpatialViewKind,
     visualizers::{filter_visualizable_2d_entities, textured_rect_from_image},
     PickableRectSourceData, PickableTexturedRect,
 };
@@ -27,7 +27,7 @@ pub struct SegmentationImageVisualizer {
 impl Default for SegmentationImageVisualizer {
     fn default() -> Self {
         Self {
-            data: SpatialViewVisualizerData::new(Some(SpatialSpaceViewKind::TwoD)),
+            data: SpatialViewVisualizerData::new(Some(SpatialViewKind::TwoD)),
         }
     }
 }

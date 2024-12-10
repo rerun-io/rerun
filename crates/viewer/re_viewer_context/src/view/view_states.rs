@@ -15,8 +15,8 @@ pub struct ViewStates {
 }
 
 impl ViewStates {
-    pub fn get(&self, space_view_id: ViewId) -> Option<&dyn ViewState> {
-        self.states.get(&space_view_id).map(|s| s.as_ref())
+    pub fn get(&self, view_id: ViewId) -> Option<&dyn ViewState> {
+        self.states.get(&view_id).map(|s| s.as_ref())
     }
 
     pub fn get_mut_or_create(

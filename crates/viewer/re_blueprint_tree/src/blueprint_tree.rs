@@ -15,7 +15,7 @@ use re_viewer_context::{
 use re_viewer_context::{
     ContainerId, DataQueryResult, DataResultNode, HoverHighlight, Item, ViewId, ViewerContext,
 };
-use re_viewport_blueprint::ui::show_add_space_view_or_container_modal;
+use re_viewport_blueprint::ui::show_add_view_or_container_modal;
 use re_viewport_blueprint::{ViewBlueprint, ViewportBlueprint};
 
 /// Holds the state of the blueprint tree UI.
@@ -53,7 +53,7 @@ impl BlueprintTree {
                 "Blueprint",
                 Some("The blueprint is where you can configure the Rerun Viewer"),
                 |ui| {
-                    self.add_new_spaceview_button_ui(ctx, viewport, ui);
+                    self.add_new_view_button_ui(ctx, viewport, ui);
                     reset_blueprint_button_ui(ctx, ui);
                 },
             );
@@ -121,7 +121,7 @@ impl BlueprintTree {
         }
     }
 
-    /// If a group or spaceview has a total of this number of elements, show its subtree by default?
+    /// If a group or view has a total of this number of elements, show its subtree by default?
     fn default_open_for_data_result(group: &DataResultNode) -> bool {
         let num_children = group.children.len();
         2 <= num_children && num_children <= 3
@@ -140,7 +140,7 @@ impl BlueprintTree {
                 self.container_tree_ui(ctx, viewport, ui, container_id, parent_visible);
             }
             Contents::View(view_id) => {
-                self.space_view_entry_ui(ctx, viewport, ui, view_id, parent_visible);
+                self.view_entry_ui(ctx, viewport, ui, view_id, parent_visible);
             }
         };
     }
@@ -284,7 +284,7 @@ impl BlueprintTree {
         );
     }
 
-    fn space_view_entry_ui(
+    fn view_entry_ui(
         &mut self,
         ctx: &ViewerContext<'_>,
         viewport: &ViewportBlueprint,
@@ -292,18 +292,18 @@ impl BlueprintTree {
         view_id: &ViewId,
         container_visible: bool,
     ) {
-        let Some(space_view) = viewport.view(view_id) else {
+        let Some(view) = viewport.view(view_id) else {
             re_log::warn_once!("Bug: asked to show a UI for a view that doesn't exist");
             return;
         };
-        debug_assert_eq!(space_view.id, *view_id);
+        debug_assert_eq!(view.id, *view_id);
 
-        let query_result = ctx.lookup_query_result(space_view.id);
+        let query_result = ctx.lookup_query_result(view.id);
         let result_tree = &query_result.tree;
 
-        let mut visible = space_view.visible;
-        let space_view_visible = visible && container_visible;
-        let item = Item::View(space_view.id);
+        let mut visible = view.visible;
+        let view_visible = visible && container_visible;
+        let item = Item::View(view.id);
 
         let root_node = result_tree.root_node();
 
@@ -313,13 +313,13 @@ impl BlueprintTree {
         let is_item_hovered =
             ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
 
-        let class = &space_view.class(ctx.space_view_class_registry);
-        let space_view_name = space_view.display_name_or_default();
+        let class = &view.class(ctx.view_class_registry);
+        let view_name = view.display_name_or_default();
 
-        let item_content = list_item::LabelContent::new(space_view_name.as_ref())
-            .label_style(contents_name_style(&space_view_name))
+        let item_content = list_item::LabelContent::new(view_name.as_ref())
+            .label_style(contents_name_style(&view_name))
             .with_icon(class.icon())
-            .subdued(!space_view_visible)
+            .subdued(!view_visible)
             .with_buttons(|ui| {
                 let vis_response = visibility_button_ui(ui, container_visible, &mut visible);
 
@@ -334,7 +334,7 @@ impl BlueprintTree {
 
         // Globally unique id - should only be one of these in view at one time.
         // We do this so that we can support "collapse/expand all" command.
-        let id = egui::Id::new(CollapseScope::BlueprintTree.space_view(*view_id));
+        let id = egui::Id::new(CollapseScope::BlueprintTree.view(*view_id));
 
         let list_item::ShowCollapsingResponse {
             item_response: response,
@@ -347,14 +347,14 @@ impl BlueprintTree {
             .force_hovered(is_item_hovered)
             .show_hierarchical_with_children(ui, id, default_open, item_content, |ui| {
                 // Always show the origin hierarchy first.
-                self.space_view_entity_hierarchy_ui(
+                self.view_entity_hierarchy_ui(
                     ctx,
                     viewport,
                     ui,
                     query_result,
-                    &DataResultNodeOrPath::from_path_lookup(result_tree, &space_view.space_origin),
-                    space_view,
-                    space_view_visible,
+                    &DataResultNodeOrPath::from_path_lookup(result_tree, &view.space_origin),
+                    view,
+                    view_visible,
                     false,
                 );
 
@@ -362,11 +362,7 @@ impl BlueprintTree {
                 // The latter is important since `+ image/camera/**` necessarily has `image` and `image/camera` in the data result tree.
                 let mut projections = Vec::new();
                 result_tree.visit(&mut |node| {
-                    if node
-                        .data_result
-                        .entity_path
-                        .starts_with(&space_view.space_origin)
-                    {
+                    if node.data_result.entity_path.starts_with(&view.space_origin) {
                         false // If it's under the origin, we're not interested, stop recursing.
                     } else if node.data_result.tree_prefix_only {
                         true // Keep recursing until we find a projection.
@@ -382,14 +378,14 @@ impl BlueprintTree {
                     );
 
                     for projection in projections {
-                        self.space_view_entity_hierarchy_ui(
+                        self.view_entity_hierarchy_ui(
                             ctx,
                             viewport,
                             ui,
                             query_result,
                             &DataResultNodeOrPath::DataResultNode(projection),
-                            space_view,
-                            space_view_visible,
+                            view,
+                            view_visible,
                             true,
                         );
                     }
@@ -399,7 +395,7 @@ impl BlueprintTree {
         let response = response.on_hover_text(format!("{} view", class.display_name()));
 
         if response.clicked() {
-            viewport.focus_tab(space_view.id);
+            viewport.focus_tab(view.id);
         }
 
         context_menu_ui_for_item(
@@ -426,20 +422,20 @@ impl BlueprintTree {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn space_view_entity_hierarchy_ui(
+    fn view_entity_hierarchy_ui(
         &self,
         ctx: &ViewerContext<'_>,
         viewport: &ViewportBlueprint,
         ui: &mut egui::Ui,
         query_result: &DataQueryResult,
         node_or_path: &DataResultNodeOrPath<'_>,
-        space_view: &ViewBlueprint,
-        space_view_visible: bool,
+        view: &ViewBlueprint,
+        view_visible: bool,
         projection_mode: bool,
     ) {
         let entity_path = node_or_path.path();
 
-        if projection_mode && entity_path == &space_view.space_origin {
+        if projection_mode && entity_path == &view.space_origin {
             if ui
                 .list_item()
                 .show_hierarchical(
@@ -456,7 +452,7 @@ impl BlueprintTree {
                 .clicked()
             {
                 ctx.selection_state().set_selection(Item::DataResult(
-                    space_view.id,
+                    view.id,
                     InstancePath::entity_all(entity_path.clone()),
                 ));
             }
@@ -465,13 +461,13 @@ impl BlueprintTree {
 
         let data_result_node = node_or_path.data_result_node();
 
-        let item = Item::DataResult(space_view.id, entity_path.clone().into());
+        let item = Item::DataResult(view.id, entity_path.clone().into());
         let is_selected = ctx.selection().contains_item(&item);
         let is_item_hovered =
             ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
 
         let visible = data_result_node.map_or(false, |n| n.data_result.is_visible(ctx));
-        let empty_origin = entity_path == &space_view.space_origin && data_result_node.is_none();
+        let empty_origin = entity_path == &view.space_origin && data_result_node.is_none();
 
         let item_label = if entity_path.is_root() {
             "/ (root)".to_owned()
@@ -487,7 +483,7 @@ impl BlueprintTree {
             ui.ctx().warning_text(item_label)
         };
 
-        let subdued = !space_view_visible || !visible;
+        let subdued = !view_visible || !visible;
 
         let mut item_content = list_item::LabelContent::new(item_label)
             .with_icon(guess_instance_path_icon(
@@ -506,7 +502,7 @@ impl BlueprintTree {
         if !empty_origin {
             item_content = item_content.with_buttons(|ui: &mut egui::Ui| {
                 let mut visible_after = visible;
-                let vis_response = visibility_button_ui(ui, space_view_visible, &mut visible_after);
+                let vis_response = visibility_button_ui(ui, view_visible, &mut visible_after);
                 if visible_after != visible {
                     if let Some(data_result_node) = data_result_node {
                         data_result_node
@@ -522,8 +518,7 @@ impl BlueprintTree {
                 let response =
                     remove_button_ui(ui, "Remove this entity and all its children from the view");
                 if response.clicked() {
-                    space_view
-                        .contents
+                    view.contents
                         .remove_subtree_and_matching_rules(ctx, entity_path.clone());
                 }
 
@@ -535,13 +530,13 @@ impl BlueprintTree {
         let has_children = data_result_node.map_or(false, |n| !n.children.is_empty());
         let response = if let (true, Some(node)) = (has_children, data_result_node) {
             // Don't default open projections.
-            let default_open = entity_path.starts_with(&space_view.space_origin)
+            let default_open = entity_path.starts_with(&view.space_origin)
                 && Self::default_open_for_data_result(node);
 
             // Globally unique id - should only be one of these in view at one time.
             // We do this so that we can support "collapse/expand all" command.
             let id = egui::Id::new(
-                CollapseScope::BlueprintTree.data_result(space_view.id, entity_path.clone()),
+                CollapseScope::BlueprintTree.data_result(view.id, entity_path.clone()),
             );
 
             list_item
@@ -550,21 +545,21 @@ impl BlueprintTree {
                         query_result
                             .tree
                             .lookup_result(**c)
-                            .map_or(&space_view.space_origin, |c| &c.entity_path)
+                            .map_or(&view.space_origin, |c| &c.entity_path)
                     }) {
                         let Some(child_node) = query_result.tree.lookup_node(*child) else {
                             debug_assert!(false, "DataResultNode {node:?} has an invalid child");
                             continue;
                         };
 
-                        self.space_view_entity_hierarchy_ui(
+                        self.view_entity_hierarchy_ui(
                             ctx,
                             viewport,
                             ui,
                             query_result,
                             &DataResultNodeOrPath::DataResultNode(child_node),
-                            space_view,
-                            space_view_visible,
+                            view,
+                            view_visible,
                             projection_mode,
                         );
                     }
@@ -606,7 +601,7 @@ impl BlueprintTree {
 
     /// Add a button to trigger the addition of a new view or container.
     #[allow(clippy::unused_self)]
-    fn add_new_spaceview_button_ui(
+    fn add_new_view_button_ui(
         &self,
         ctx: &ViewerContext<'_>,
         viewport: &ViewportBlueprint,
@@ -626,7 +621,7 @@ impl BlueprintTree {
                     viewport.root_container
                 };
 
-            show_add_space_view_or_container_modal(target_container_id);
+            show_add_view_or_container_modal(target_container_id);
         }
     }
 
@@ -914,7 +909,7 @@ fn handle_focused_item(
             ctx.focused_item.clone()
         }
         Item::InstancePath(instance_path) => {
-            let view_ids = list_space_views_with_entity(ctx, viewport, &instance_path.entity_path);
+            let view_ids = list_views_with_entity(ctx, viewport, &instance_path.entity_path);
 
             // focus on the first matching data result
             let res = view_ids
@@ -949,7 +944,7 @@ fn expand_all_contents_until(
             .container(*container_id)
             .set_open(egui_ctx, true),
         Contents::View(view_id) => CollapseScope::BlueprintTree
-            .space_view(*view_id)
+            .view(*view_id)
             .set_open(egui_ctx, true),
     };
 
@@ -965,7 +960,7 @@ fn expand_all_contents_until(
 
 /// List all views that have the provided entity as data result.
 #[inline]
-fn list_space_views_with_entity(
+fn list_views_with_entity(
     ctx: &ViewerContext<'_>,
     viewport: &ViewportBlueprint,
     entity_path: &EntityPath,

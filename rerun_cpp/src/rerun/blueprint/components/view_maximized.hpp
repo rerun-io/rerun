@@ -14,28 +14,28 @@
 namespace rerun::blueprint::components {
     /// **Component**: Whether a view is maximized.
     struct ViewMaximized {
-        rerun::datatypes::Uuid space_view_id;
+        rerun::datatypes::Uuid view_id;
 
       public:
         ViewMaximized() = default;
 
-        ViewMaximized(rerun::datatypes::Uuid space_view_id_) : space_view_id(space_view_id_) {}
+        ViewMaximized(rerun::datatypes::Uuid view_id_) : view_id(view_id_) {}
 
-        ViewMaximized& operator=(rerun::datatypes::Uuid space_view_id_) {
-            space_view_id = space_view_id_;
+        ViewMaximized& operator=(rerun::datatypes::Uuid view_id_) {
+            view_id = view_id_;
             return *this;
         }
 
-        ViewMaximized(std::array<uint8_t, 16> bytes_) : space_view_id(bytes_) {}
+        ViewMaximized(std::array<uint8_t, 16> bytes_) : view_id(bytes_) {}
 
         ViewMaximized& operator=(std::array<uint8_t, 16> bytes_) {
-            space_view_id = bytes_;
+            view_id = bytes_;
             return *this;
         }
 
         /// Cast to the underlying Uuid datatype
         operator rerun::datatypes::Uuid() const {
-            return space_view_id;
+            return view_id;
         }
     };
 } // namespace rerun::blueprint::components
@@ -67,7 +67,7 @@ namespace rerun {
                 );
             } else {
                 return Loggable<rerun::datatypes::Uuid>::to_arrow(
-                    &instances->space_view_id,
+                    &instances->view_id,
                     num_instances
                 );
             }

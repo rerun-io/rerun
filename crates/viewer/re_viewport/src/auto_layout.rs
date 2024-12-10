@@ -18,29 +18,29 @@ struct SpaceMakeInfo {
     layout_priority: re_viewer_context::ViewClassLayoutPriority,
 }
 
-pub(crate) fn tree_from_space_views(
-    space_view_class_registry: &re_viewer_context::ViewClassRegistry,
-    space_views: &BTreeMap<ViewId, ViewBlueprint>,
+pub(crate) fn tree_from_views(
+    view_class_registry: &re_viewer_context::ViewClassRegistry,
+    views: &BTreeMap<ViewId, ViewBlueprint>,
 ) -> egui_tiles::Tree<ViewId> {
-    re_log::trace!("Auto-layout of {} views", space_views.len());
+    re_log::trace!("Auto-layout of {} views", views.len());
 
-    let space_make_infos = space_views
+    let space_make_infos = views
         .iter()
         // Sort for determinism:
-        .sorted_by_key(|(space_view_id, space_view)| {
+        .sorted_by_key(|(view_id, view)| {
             (
-                &space_view.space_origin,
-                &space_view.display_name,
-                *space_view_id,
+                &view.space_origin,
+                &view.display_name,
+                *view_id,
             )
         })
-        .map(|(space_view_id, space_view)| {
-            let class_identifier = space_view.class_identifier();
-            let layout_priority = space_view
-                .class(space_view_class_registry)
+        .map(|(view_id, view)| {
+            let class_identifier = view.class_identifier();
+            let layout_priority = view
+                .class(view_class_registry)
                 .layout_priority();
             SpaceMakeInfo {
-                id: *space_view_id,
+                id: *view_id,
                 class_identifier,
                 layout_priority,
             }

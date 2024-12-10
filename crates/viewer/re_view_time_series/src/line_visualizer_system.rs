@@ -17,7 +17,7 @@ use re_viewer_context::{
     VisualizerQueryInfo, VisualizerSystem,
 };
 
-use crate::space_view_class::TimeSeriesViewState;
+use crate::view_class::TimeSeriesViewState;
 use crate::util::{determine_time_per_pixel, determine_time_range, points_to_series};
 use crate::{PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind};
 
@@ -112,7 +112,7 @@ impl SeriesLineSystem {
 
         let plot_mem = egui_plot::PlotMemory::load(
             ctx.viewer_ctx.egui_ctx,
-            crate::plot_id(query.space_view_id),
+            crate::plot_id(query.view_id),
         );
         let time_per_pixel = determine_time_per_pixel(ctx.viewer_ctx, plot_mem.as_ref());
 

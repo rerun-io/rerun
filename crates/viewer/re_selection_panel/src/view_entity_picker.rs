@@ -12,14 +12,14 @@ use re_viewport_blueprint::{ViewBlueprint, ViewportBlueprint};
 ///
 /// Delegates to [`re_ui::modal::ModalHandler`]
 #[derive(Default)]
-pub(crate) struct SpaceViewEntityPicker {
-    space_view_id: Option<ViewId>,
+pub(crate) struct ViewEntityPicker {
+    view_id: Option<ViewId>,
     modal_handler: re_ui::modal::ModalHandler,
 }
 
-impl SpaceViewEntityPicker {
-    pub fn open(&mut self, space_view_id: ViewId) {
-        self.space_view_id = Some(space_view_id);
+impl ViewEntityPicker {
+    pub fn open(&mut self, view_id: ViewId) {
+        self.view_id = Some(view_id);
         self.modal_handler.open();
     }
 
@@ -34,39 +34,39 @@ impl SpaceViewEntityPicker {
             egui_ctx,
             || re_ui::modal::ModalWrapper::new("Add/remove Entities").default_height(640.0),
             |ui, open| {
-                let Some(space_view_id) = &self.space_view_id else {
+                let Some(view_id) = &self.view_id else {
                     *open = false;
                     return;
                 };
 
-                let Some(space_view) = viewport_blueprint.view(space_view_id) else {
+                let Some(view) = viewport_blueprint.view(view_id) else {
                     *open = false;
                     return;
                 };
 
                 egui::ScrollArea::vertical().show(ui, |ui| {
-                    add_entities_ui(ctx, ui, space_view);
+                    add_entities_ui(ctx, ui, view);
                 });
             },
         );
     }
 }
 
-fn add_entities_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, space_view: &ViewBlueprint) {
+fn add_entities_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, view: &ViewBlueprint) {
     re_tracing::profile_function!();
 
     let tree = &ctx.recording().tree();
     // TODO(jleibs): Avoid clone
-    let query_result = ctx.lookup_query_result(space_view.id).clone();
-    let entity_path_filter = &space_view.contents.entity_path_filter;
-    let entities_add_info = create_entity_add_info(ctx, tree, space_view, &query_result);
+    let query_result = ctx.lookup_query_result(view.id).clone();
+    let entity_path_filter = &view.contents.entity_path_filter;
+    let entities_add_info = create_entity_add_info(ctx, tree, view, &query_result);
 
     add_entities_tree_ui(
         ctx,
         ui,
         &tree.path.to_string(),
         tree,
-        space_view,
+        view,
         &query_result,
         entity_path_filter,
         &entities_add_info,
@@ -79,7 +79,7 @@ fn add_entities_tree_ui(
     ui: &mut egui::Ui,
     name: &str,
     tree: &EntityTree,
-    space_view: &ViewBlueprint,
+    view: &ViewBlueprint,
     query_result: &DataQueryResult,
     entity_path_filter: &EntityPathFilter,
     entities_add_info: &IntMap<EntityPath, EntityAddInfo>,
@@ -90,16 +90,15 @@ fn add_entities_tree_ui(
             ui,
             name,
             tree,
-            space_view,
+            view,
             query_result,
             entity_path_filter,
             entities_add_info,
         );
     } else {
         let level = tree.path.len();
-        let default_open = space_view.space_origin.is_descendant_of(&tree.path)
-            || tree.children.len() <= 3
-            || level < 2;
+        let default_open =
+            view.space_origin.is_descendant_of(&tree.path) || tree.children.len() <= 3 || level < 2;
         egui::collapsing_header::CollapsingState::load_with_default_open(
             ui.ctx(),
             ui.id().with(name),
@@ -111,7 +110,7 @@ fn add_entities_tree_ui(
                 ui,
                 name,
                 tree,
-                space_view,
+                view,
                 query_result,
                 entity_path_filter,
                 entities_add_info,
@@ -120,7 +119,7 @@ fn add_entities_tree_ui(
         .body(|ui| {
             for (path_comp, child_tree) in tree.children.iter().sorted_by_key(|(_, child_tree)| {
                 // Put descendants of the space path always first
-                let put_first = child_tree.path.starts_with(&space_view.space_origin);
+                let put_first = child_tree.path.starts_with(&view.space_origin);
                 !put_first
             }) {
                 add_entities_tree_ui(
@@ -128,7 +127,7 @@ fn add_entities_tree_ui(
                     ui,
                     &path_comp.ui_string(),
                     child_tree,
-                    space_view,
+                    view,
                     query_result,
                     entity_path_filter,
                     entities_add_info,
@@ -144,7 +143,7 @@ fn add_entities_line_ui(
     ui: &mut egui::Ui,
     name: &str,
     entity_tree: &EntityTree,
-    space_view: &ViewBlueprint,
+    view: &ViewBlueprint,
     query_result: &DataQueryResult,
     entity_path_filter: &EntityPathFilter,
     entities_add_info: &IntMap<EntityPath, EntityAddInfo>,
@@ -167,7 +166,7 @@ fn add_entities_line_ui(
             let widget_text = if is_explicitly_excluded {
                 // TODO(jleibs): Better design-language for excluded.
                 egui::RichText::new(name).italics()
-            } else if entity_path == &space_view.space_origin {
+            } else if entity_path == &view.space_origin {
                 egui::RichText::new(name).strong()
             } else {
                 egui::RichText::new(name)
@@ -177,7 +176,7 @@ fn add_entities_line_ui(
                 &query,
                 ctx.recording(),
                 ui,
-                Some(space_view.id),
+                Some(view.id),
                 &InstancePath::entity_all(entity_path.clone()),
                 widget_text,
             );
@@ -193,9 +192,7 @@ fn add_entities_line_ui(
                 let response = ui.small_icon_button(&re_ui::icons::RESET);
 
                 if response.clicked() {
-                    space_view
-                        .contents
-                        .remove_filter_rule_for(ctx, &entity_tree.path);
+                    view.contents.remove_filter_rule_for(ctx, &entity_tree.path);
                 }
 
                 if is_explicitly_excluded {
@@ -209,15 +206,13 @@ fn add_entities_line_ui(
                 let response = ui.small_icon_button(&re_ui::icons::REMOVE);
 
                 if response.clicked() {
-                    space_view.contents.raw_add_entity_exclusion(
+                    view.contents.raw_add_entity_exclusion(
                         ctx,
                         EntityPathRule::including_subtree(entity_tree.path.clone()),
                     );
                 }
 
-                response.on_hover_text(
-                    "Exclude this entity and all its descendants from the view",
-                );
+                response.on_hover_text("Exclude this entity and all its descendants from the view");
             } else {
                 // Add-button:
                 // Shows when an entity is not included
@@ -228,7 +223,7 @@ fn add_entities_line_ui(
                     let response = ui.small_icon_button(&re_ui::icons::ADD);
 
                     if response.clicked() {
-                        space_view.contents.raw_add_entity_inclusion(
+                        view.contents.raw_add_entity_inclusion(
                             ctx,
                             EntityPathRule::including_subtree(entity_tree.path.clone()),
                         );
@@ -240,10 +235,9 @@ fn add_entities_line_ui(
                                 "Include this entity and all its descendants in the view",
                             );
                         } else {
-                            response
-                                .on_hover_text("Add descendants of this entity to the view");
+                            response.on_hover_text("Add descendants of this entity to the view");
                         }
-                    } else if let CanAddToSpaceView::No { reason } = &add_info.can_add {
+                    } else if let CanAddToView::No { reason } = &add_info.can_add {
                         response.on_disabled_hover_text(reason);
                     }
                 });
@@ -254,12 +248,12 @@ fn add_entities_line_ui(
 
 /// Describes if an entity path can be added to a view.
 #[derive(Clone, PartialEq, Eq)]
-enum CanAddToSpaceView {
+enum CanAddToView {
     Compatible { already_added: bool },
     No { reason: String },
 }
 
-impl Default for CanAddToSpaceView {
+impl Default for CanAddToView {
     fn default() -> Self {
         Self::Compatible {
             already_added: false,
@@ -267,7 +261,7 @@ impl Default for CanAddToSpaceView {
     }
 }
 
-impl CanAddToSpaceView {
+impl CanAddToView {
     /// Can be generally added but view might already have this element.
     pub fn is_compatible(&self) -> bool {
         match self {
@@ -276,7 +270,7 @@ impl CanAddToSpaceView {
         }
     }
 
-    /// Can be added and spaceview doesn't have it already.
+    /// Can be added and view doesn't have it already.
     pub fn is_compatible_and_missing(&self) -> bool {
         self == &Self::Compatible {
             already_added: false,
@@ -304,40 +298,40 @@ impl CanAddToSpaceView {
 #[derive(Default)]
 #[allow(dead_code)]
 struct EntityAddInfo {
-    can_add: CanAddToSpaceView,
-    can_add_self_or_descendant: CanAddToSpaceView,
+    can_add: CanAddToView,
+    can_add_self_or_descendant: CanAddToView,
 }
 
 fn create_entity_add_info(
     ctx: &ViewerContext<'_>,
     tree: &EntityTree,
-    space_view: &ViewBlueprint,
+    view: &ViewBlueprint,
     query_result: &DataQueryResult,
 ) -> IntMap<EntityPath, EntityAddInfo> {
     let mut meta_data: IntMap<EntityPath, EntityAddInfo> = IntMap::default();
 
     // TODO(andreas): This should be state that is already available because it's part of the view's state.
-    let class = space_view.class(ctx.space_view_class_registry);
+    let class = view.class(ctx.view_class_registry);
     let visualizable_entities = class.determine_visualizable_entities(
         ctx.applicable_entities_per_visualizer,
         ctx.recording(),
-        &ctx.space_view_class_registry
-            .new_visualizer_collection(space_view.class_identifier()),
-        &space_view.space_origin,
+        &ctx.view_class_registry
+            .new_visualizer_collection(view.class_identifier()),
+        &view.space_origin,
     );
 
     tree.visit_children_recursively(|entity_path| {
-        let can_add: CanAddToSpaceView =
+        let can_add: CanAddToView =
             if visualizable_entities.iter().any(|(_, entities)| entities.contains(entity_path)) {
-                CanAddToSpaceView::Compatible {
+                CanAddToView::Compatible {
                     already_added: query_result.contains_entity(entity_path),
                 }
             } else {
                 // TODO(#6321): This shouldn't necessarily prevent us from adding it.
-                CanAddToSpaceView::No {
+                CanAddToView::No {
                     reason: format!(
                         "Entity can't be displayed by any of the available visualizers in this class of view ({}).",
-                        space_view.class_identifier()
+                        view.class_identifier()
                     ),
                 }
             };

@@ -16,7 +16,7 @@ use re_viewer_context::{
 };
 
 use crate::{
-    contexts::SpatialSceneEntityContext, view_kind::SpatialSpaceViewKind,
+    contexts::SpatialSceneEntityContext, view_kind::SpatialViewKind,
     visualizers::filter_visualizable_2d_entities,
 };
 
@@ -36,7 +36,7 @@ pub struct Arrows2DVisualizer {
 impl Default for Arrows2DVisualizer {
     fn default() -> Self {
         Self {
-            data: SpatialViewVisualizerData::new(Some(SpatialSpaceViewKind::TwoD)),
+            data: SpatialViewVisualizerData::new(Some(SpatialViewKind::TwoD)),
         }
     }
 }

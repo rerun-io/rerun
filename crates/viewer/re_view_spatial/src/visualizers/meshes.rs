@@ -23,7 +23,7 @@ use super::{
 use crate::{
     contexts::SpatialSceneEntityContext,
     mesh_cache::{AnyMesh, MeshCache, MeshCacheKey},
-    view_kind::SpatialSpaceViewKind,
+    view_kind::SpatialViewKind,
 };
 
 // ---
@@ -33,7 +33,7 @@ pub struct Mesh3DVisualizer(SpatialViewVisualizerData);
 impl Default for Mesh3DVisualizer {
     fn default() -> Self {
         Self(SpatialViewVisualizerData::new(Some(
-            SpatialSpaceViewKind::ThreeD,
+            SpatialViewKind::ThreeD,
         )))
     }
 }

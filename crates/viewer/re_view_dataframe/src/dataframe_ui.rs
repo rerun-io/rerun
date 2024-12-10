@@ -35,7 +35,7 @@ pub(crate) fn dataframe_ui(
     ui: &mut egui::Ui,
     query_handle: &re_dataframe::QueryHandle<StorageEngineArcReadGuard>,
     expanded_rows_cache: &mut ExpandedRowsCache,
-    space_view_id: &ViewId,
+    view_id: &ViewId,
 ) -> Vec<HideColumnAction> {
     re_tracing::profile_function!();
 
@@ -48,13 +48,13 @@ pub(crate) fn dataframe_ui(
     // The table id mainly drives column widths, along with the id of each column. Empirically, the
     // user experience is better if we have stable column width even when the query changes (which
     // can, in turn, change the column's content).
-    let table_id_salt = egui::Id::new("__dataframe__").with(space_view_id);
+    let table_id_salt = egui::Id::new("__dataframe__").with(view_id);
 
     // For the row expansion cache, we invalidate more aggressively for now, because the expanded
     // state is stored against a row index (not unique id like columns). This means rows will more
     // often auto-collapse when the query is modified.
     let row_expansion_id_salt = egui::Id::new("__dataframe_row_exp__")
-        .with(space_view_id)
+        .with(view_id)
         .with(&selected_columns)
         .with(query_handle.query());
 

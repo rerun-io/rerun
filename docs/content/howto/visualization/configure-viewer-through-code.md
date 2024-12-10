@@ -22,12 +22,12 @@ encounter:
 
 -   `Blueprint`: The root object that represents the entire Viewer layout.
 -   `Container`: A layout object that contains other containers or views.
--   `SpaceView`: A view object that represents a single view of the data.
+-   `View`: A view object that represents a single view of the data.
 
-Both containers and spaceviews should be used via typed subclasses instead.:
+Both containers and views should be used via typed subclasses instead.:
 
 -   `Container` has subclasses: `Horizontal`, `Vertical`, `Grid`, and `Tabs`.
--   `SpaceView` has subclasses: `BarChartView`, `Spatial2DView`, `Spatial3DView`, `TensorView`,
+-   `View` has subclasses: `BarChartView`, `Spatial2DView`, `Spatial3DView`, `TensorView`,
     `TextDocumentView`, `TextLogView`, and `TimeSeriesView`.
 
 These paths can be combined hierarchically to create a complex Viewer layout.
@@ -189,8 +189,8 @@ rrb.Blueprint(
 ## Implicit conversion
 
 For convenience all of the blueprint APIs take a `BlueprintLike` rather than requiring a `Blueprint` object.
-Both `SpaceView`s and `Containers` are considered `BlueprintLike`. Similarly, the `Blueprint` object can
-take a `SpaceView` or `Container` as an argument.
+Both `View`s and `Containers` are considered `BlueprintLike`. Similarly, the `Blueprint` object can
+take a `View` or `Container` as an argument.
 
 All of the following are equivalent:
 
@@ -256,7 +256,7 @@ The blueprint has two additional parameters that influence the behavior of the v
 -   `auto_views` controls whether the Viewer will automatically create views for entities that are not explicitly included in the blueprint.
 -   `auto_layout` controls whether the Viewer should automatically layout the containers when introducing new space-views.
 
-If you pass in your own `SpaceView` or `Container` objects, these will both default to `False` so that the Blueprint
+If you pass in your own `View` or `Container` objects, these will both default to `False` so that the Blueprint
 you get is exactly what you specify. Otherwise they will default to `True` so that you will still get content (this
 matches the default behavior of the Viewer if no blueprint is provided).
 

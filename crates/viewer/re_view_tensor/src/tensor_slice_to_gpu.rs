@@ -14,7 +14,7 @@ use re_viewer_context::{
     ColormapWithRange,
 };
 
-use crate::space_view_class::selected_tensor_slice;
+use crate::view_class::selected_tensor_slice;
 
 #[derive(thiserror::Error, Debug, PartialEq)]
 pub enum TensorUploadError {

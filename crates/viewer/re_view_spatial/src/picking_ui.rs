@@ -16,7 +16,7 @@ use crate::{
     picking::{PickableUiRect, PickingContext, PickingHitType},
     picking_ui_pixel::{textured_rect_hover_ui, PickedPixelInfo},
     ui::SpatialViewState,
-    view_kind::SpatialSpaceViewKind,
+    view_kind::SpatialViewKind,
     visualizers::{CamerasVisualizer, DepthImageVisualizer, SpatialViewVisualizerData},
     PickableRectSourceData, PickableTexturedRect,
 };
@@ -32,7 +32,7 @@ pub fn picking(
     system_output: &re_viewer_context::SystemExecutionOutput,
     ui_rects: &[PickableUiRect],
     query: &ViewQuery<'_>,
-    spatial_kind: SpatialSpaceViewKind,
+    spatial_kind: SpatialViewKind,
 ) -> Result<egui::Response, ViewSystemExecutionError> {
     re_tracing::profile_function!();
 
@@ -59,7 +59,7 @@ pub fn picking(
             picking_context.pointer_in_pixel.as_ivec2(),
             glam::uvec2(picking_rect_size, picking_rect_size),
         ),
-        query.space_view_id.gpu_readback_id(),
+        query.view_id.gpu_readback_id(),
         (),
         ctx.app_options.show_picking_debug_overlay,
     );
@@ -70,7 +70,7 @@ pub fn picking(
 
     let picking_result = picking_context.pick(
         render_ctx,
-        query.space_view_id.gpu_readback_id(),
+        query.view_id.gpu_readback_id(),
         &state.previous_picking_result,
         iter_pickable_rects(&system_output.view_systems),
         ui_rects,
@@ -93,7 +93,7 @@ pub fn picking(
             instance_path.instance = Instance::ALL;
         }
 
-        let query_result = ctx.lookup_query_result(query.space_view_id);
+        let query_result = ctx.lookup_query_result(query.view_id);
         let Some(data_result) = query_result
             .tree
             .lookup_result_by_path(&instance_path.entity_path)
@@ -153,7 +153,7 @@ pub fn picking(
                         &query.latest_at_query(),
                         ctx.recording(),
                         ui,
-                        Some(query.space_view_id),
+                        Some(query.view_id),
                         &instance_path,
                     );
                     instance_path.data_ui_recording(ctx, ui, UiLayout::Tooltip);
@@ -161,12 +161,12 @@ pub fn picking(
             })
         };
 
-        hovered_items.push(Item::DataResult(query.space_view_id, instance_path.clone()));
+        hovered_items.push(Item::DataResult(query.view_id, instance_path.clone()));
     }
 
     if hovered_items.is_empty() {
         // If we hover nothing, we are hovering the space-view itself.
-        hovered_items.push(Item::View(query.space_view_id));
+        hovered_items.push(Item::View(query.view_id));
     }
 
     // Associate the hovered space with the first item in the hovered item list.
@@ -179,13 +179,13 @@ pub fn picking(
 
     if let Some((_, context)) = hovered_items.first_mut() {
         *context = Some(match spatial_kind {
-            SpatialSpaceViewKind::TwoD => ItemSpaceContext::TwoD {
+            SpatialViewKind::TwoD => ItemSpaceContext::TwoD {
                 space_2d: query.space_origin.clone(),
                 pos: picking_context
                     .pointer_in_camera_plane
                     .extend(depth_at_pointer.unwrap_or(f32::INFINITY)),
             },
-            SpatialSpaceViewKind::ThreeD => {
+            SpatialViewKind::ThreeD => {
                 let hovered_point = picking_result.space_position();
                 let cameras_visualizer_output =
                     system_output.view_systems.get::<CamerasVisualizer>()?;

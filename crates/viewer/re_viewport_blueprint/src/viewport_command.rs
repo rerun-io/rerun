@@ -11,8 +11,8 @@ pub enum ViewportCommand {
     SetTree(egui_tiles::Tree<ViewId>),
 
     /// Add a new view to the provided container (or the root if `None`).
-    AddSpaceView {
-        space_view: ViewBlueprint,
+    AddView {
+        view: ViewBlueprint,
         parent_container: Option<ContainerId>,
         position_in_parent: Option<usize>,
     },

@@ -9,8 +9,8 @@ use re_dataframe::QueryEngine;
 use re_log_types::EntityPath;
 use re_types_core::ViewClassIdentifier;
 use re_viewer_context::{
-    ViewClass, ViewClassRegistryError, ViewId, ViewState, ViewStateExt,
-    ViewSystemExecutionError, SystemExecutionOutput, ViewQuery, ViewerContext,
+    SystemExecutionOutput, ViewClass, ViewClassRegistryError, ViewId, ViewQuery, ViewState,
+    ViewStateExt, ViewSystemExecutionError, ViewerContext,
 };
 
 #[derive(Default)]
@@ -33,9 +33,9 @@ impl ViewState for DataframeViewState {
 }
 
 #[derive(Default)]
-pub struct DataframeSpaceView;
+pub struct DataframeView;
 
-impl ViewClass for DataframeSpaceView {
+impl ViewClass for DataframeView {
     fn identifier() -> ViewClassIdentifier {
         "Dataframe".into()
     }
@@ -45,7 +45,7 @@ impl ViewClass for DataframeSpaceView {
     }
 
     fn icon(&self) -> &'static re_ui::Icon {
-        &re_ui::icons::SPACE_VIEW_DATAFRAME
+        &re_ui::icons::VIEW_DATAFRAME
     }
 
     fn help_markdown(&self, _egui_ctx: &egui::Context) -> String {
@@ -89,10 +89,7 @@ mode sets the default time range to _everything_. You can override this in the s
         re_viewer_context::ViewClassLayoutPriority::Low
     }
 
-    fn spawn_heuristics(
-        &self,
-        _ctx: &ViewerContext<'_>,
-    ) -> re_viewer_context::ViewSpawnHeuristics {
+    fn spawn_heuristics(&self, _ctx: &ViewerContext<'_>) -> re_viewer_context::ViewSpawnHeuristics {
         // Doesn't spawn anything by default.
         Default::default()
     }
@@ -103,16 +100,16 @@ mode sets the default time range to _everything_. You can override this in the s
         ui: &mut egui::Ui,
         state: &mut dyn ViewState,
         _space_origin: &EntityPath,
-        space_view_id: ViewId,
+        view_id: ViewId,
     ) -> Result<(), ViewSystemExecutionError> {
         let state = state.downcast_mut::<DataframeViewState>()?;
-        let view_query = view_query::Query::from_blueprint(ctx, space_view_id);
+        let view_query = view_query::Query::from_blueprint(ctx, view_id);
         let Some(view_columns) = &state.view_columns else {
             // Shouldn't happen, except maybe on the first frame, which is too early
             // for the user to click the menu anyway.
             return Ok(());
         };
-        view_query.selection_panel_ui(ctx, ui, space_view_id, view_columns)
+        view_query.selection_panel_ui(ctx, ui, view_id, view_columns)
     }
 
     fn ui(
@@ -126,7 +123,7 @@ mode sets the default time range to _everything_. You can override this in the s
         re_tracing::profile_function!();
 
         let state = state.downcast_mut::<DataframeViewState>()?;
-        let view_query = view_query::Query::from_blueprint(ctx, query.space_view_id);
+        let view_query = view_query::Query::from_blueprint(ctx, query.view_id);
 
         let query_engine = QueryEngine {
             engine: ctx.recording().storage_engine_arc(),
@@ -170,7 +167,7 @@ mode sets the default time range to _everything_. You can override this in the s
             ui,
             &query_handle,
             &mut state.expended_rows_cache,
-            &query.space_view_id,
+            &query.view_id,
         );
 
         view_query.handle_hide_column_actions(ctx, &view_columns, hide_column_actions)?;
@@ -180,4 +177,4 @@ mode sets the default time range to _everything_. You can override this in the s
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(DataframeSpaceView => []);
+re_viewer_context::impl_component_fallback_provider!(DataframeView => []);

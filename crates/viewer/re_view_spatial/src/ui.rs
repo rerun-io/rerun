@@ -14,7 +14,7 @@ use crate::{
     pickable_textured_rect::PickableRectSourceData,
     picking::{PickableUiRect, PickingResult},
     scene_bounding_boxes::SceneBoundingBoxes,
-    view_kind::SpatialSpaceViewKind,
+    view_kind::SpatialViewKind,
     visualizers::{SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget},
 };
 
@@ -72,7 +72,7 @@ impl SpatialViewState {
         &mut self,
         ui: &egui::Ui,
         system_output: &re_viewer_context::SystemExecutionOutput,
-        space_kind: SpatialSpaceViewKind,
+        space_kind: SpatialViewKind,
     ) {
         re_tracing::profile_function!();
 
@@ -95,7 +95,7 @@ impl SpatialViewState {
             .sum();
     }
 
-    pub fn bounding_box_ui(&self, ui: &mut egui::Ui, spatial_kind: SpatialSpaceViewKind) {
+    pub fn bounding_box_ui(&self, ui: &mut egui::Ui, spatial_kind: SpatialViewKind) {
         ui.grid_left_hand_label("Bounding box")
             .on_hover_text("The bounding box encompassing all Entities in the view right now");
         ui.vertical(|ui| {
@@ -103,7 +103,7 @@ impl SpatialViewState {
             let BoundingBox { min, max } = self.bounding_boxes.current;
             ui.label(format!("x [{} - {}]", format_f32(min.x), format_f32(max.x),));
             ui.label(format!("y [{} - {}]", format_f32(min.y), format_f32(max.y),));
-            if spatial_kind == SpatialSpaceViewKind::ThreeD {
+            if spatial_kind == SpatialViewKind::ThreeD {
                 ui.label(format!("z [{} - {}]", format_f32(min.z), format_f32(max.z),));
             }
         });
@@ -156,7 +156,7 @@ pub fn create_labels(
     eye3d: &Eye,
     parent_ui: &egui::Ui,
     highlights: &ViewHighlights,
-    spatial_kind: SpatialSpaceViewKind,
+    spatial_kind: SpatialViewKind,
 ) -> (Vec<egui::Shape>, Vec<PickableUiRect>) {
     re_tracing::profile_function!();
 
@@ -178,7 +178,7 @@ pub fn create_labels(
         let (wrap_width, text_anchor_pos) = match label.target {
             UiLabelTarget::Rect(rect) => {
                 // TODO(#1640): 2D labels are not visible in 3D for now.
-                if spatial_kind == SpatialSpaceViewKind::ThreeD {
+                if spatial_kind == SpatialViewKind::ThreeD {
                     continue;
                 }
                 let rect_in_ui = ui_from_scene.transform_rect(rect);
@@ -190,7 +190,7 @@ pub fn create_labels(
             }
             UiLabelTarget::Point2D(pos) => {
                 // TODO(#1640): 2D labels are not visible in 3D for now.
-                if spatial_kind == SpatialSpaceViewKind::ThreeD {
+                if spatial_kind == SpatialViewKind::ThreeD {
                     continue;
                 }
                 let pos_in_ui = ui_from_scene.transform_pos(pos);
@@ -198,7 +198,7 @@ pub fn create_labels(
             }
             UiLabelTarget::Position3D(pos) => {
                 // TODO(#1640): 3D labels are not visible in 2D for now.
-                if spatial_kind == SpatialSpaceViewKind::TwoD {
+                if spatial_kind == SpatialViewKind::TwoD {
                     continue;
                 }
                 let pos_in_ui = ui_from_world_3d * pos.extend(1.0);

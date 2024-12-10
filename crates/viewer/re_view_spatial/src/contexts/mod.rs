@@ -18,7 +18,7 @@ pub struct SpatialSceneEntityContext<'a> {
     pub annotations: std::sync::Arc<Annotations>,
 
     pub highlight: &'a re_viewer_context::ViewOutlineMasks, // Not part of the context, but convenient to have here.
-    pub space_view_class_identifier: ViewClassIdentifier,
+    pub view_class_identifier: ViewClassIdentifier,
 }
 
 pub fn register_spatial_contexts(

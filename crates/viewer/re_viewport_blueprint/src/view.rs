@@ -32,7 +32,7 @@ use crate::{ViewContents, ViewProperty};
 /// whether the intent is for a clone to write to the same place.
 ///
 /// If you want a new view otherwise identical to an existing one, use
-/// `re_viewport::ViewportBlueprint::duplicate_space_view`.
+/// `re_viewport::ViewportBlueprint::duplicate_view`.
 #[derive(Clone, Debug)]
 pub struct ViewBlueprint {
     pub id: ViewId,
@@ -68,15 +68,15 @@ impl ViewBlueprint {
     ///
     /// This [`ViewBlueprint`] is ephemeral. If you want to make it permanent you
     /// must call [`Self::save_to_blueprint_store`].
-    pub fn new(space_view_class: ViewClassIdentifier, recommended: RecommendedView) -> Self {
+    pub fn new(view_class: ViewClassIdentifier, recommended: RecommendedView) -> Self {
         let id = ViewId::random();
 
         Self {
             display_name: None,
-            class_identifier: space_view_class,
+            class_identifier: view_class,
             id,
             space_origin: recommended.origin,
-            contents: ViewContents::new(id, space_view_class, recommended.query_filter),
+            contents: ViewContents::new(id, view_class, recommended.query_filter),
             visible: true,
             defaults_path: Self::defaults_path(id),
             pending_writes: Default::default(),
@@ -220,7 +220,7 @@ impl ViewBlueprint {
             ));
     }
 
-    /// Creates a new [`ViewBlueprint`] with the same contents, but a different [`SpaceViewId`]
+    /// Creates a new [`ViewBlueprint`] with the same contents, but a different [`ViewId`]
     ///
     /// Also duplicates all the queries in the view.
     pub fn duplicate(&self, store_context: &StoreContext<'_>, query: &LatestAtQuery) -> Self {
@@ -341,9 +341,9 @@ impl ViewBlueprint {
 
     pub fn class<'a>(
         &self,
-        space_view_class_registry: &'a re_viewer_context::ViewClassRegistry,
+        view_class_registry: &'a re_viewer_context::ViewClassRegistry,
     ) -> &'a dyn ViewClass {
-        space_view_class_registry.get_class_or_log_error(self.class_identifier)
+        view_class_registry.get_class_or_log_error(self.class_identifier)
     }
 
     #[inline]
@@ -356,7 +356,7 @@ impl ViewBlueprint {
         blueprint: &EntityDb,
         blueprint_query: &LatestAtQuery,
         active_timeline: &Timeline,
-        space_view_class_registry: &ViewClassRegistry,
+        view_class_registry: &ViewClassRegistry,
         view_state: &dyn ViewState,
     ) -> QueryRange {
         // Visual time range works with regular overrides for the most part but it's a bit special:
@@ -379,9 +379,9 @@ impl ViewBlueprint {
         });
         time_range.map_or_else(
             || {
-                let space_view_class =
-                    space_view_class_registry.get_class_or_log_error(self.class_identifier);
-                space_view_class.default_query_range(view_state)
+                let view_class =
+                    view_class_registry.get_class_or_log_error(self.class_identifier);
+                view_class.default_query_range(view_state)
             },
             |time_range| QueryRange::TimeRange(time_range.clone()),
         )
@@ -393,7 +393,7 @@ impl ViewBlueprint {
         view_states: &'a mut ViewStates,
     ) -> ViewContext<'a> {
         let class = ctx
-            .space_view_class_registry
+            .view_class_registry
             .get_class_or_log_error(self.class_identifier());
         let view_state = view_states.get_mut_or_create(self.id, class);
 
@@ -430,7 +430,7 @@ impl ViewBlueprint {
             .entry(self.class_identifier())
             .or_insert_with(|| {
                 Arc::new(
-                    ctx.space_view_class_registry
+                    ctx.view_class_registry
                         .new_visualizer_collection(self.class_identifier()),
                 )
             })
@@ -502,21 +502,21 @@ mod tests {
         );
 
         // Basic blueprint - a single view that queries everything.
-        let space_view = ViewBlueprint::new("3D".into(), RecommendedView::root());
-        let individual_override_root = space_view
+        let view = ViewBlueprint::new("3D".into(), RecommendedView::root());
+        let individual_override_root = view
             .contents
             .blueprint_entity_path
             .join(&DataResult::INDIVIDUAL_OVERRIDES_PREFIX.into());
-        let recursive_override_root = space_view
+        let recursive_override_root = view
             .contents
             .blueprint_entity_path
             .join(&DataResult::RECURSIVE_OVERRIDES_PREFIX.into());
 
         // Things needed to resolve properties:
         let indicated_entities_per_visualizer = PerVisualizer::<IndicatedEntities>::default(); // Don't care about indicated entities.
-        let resolver = space_view.contents.build_resolver(
-            &test_ctx.space_view_class_registry,
-            &space_view,
+        let resolver = view.contents.build_resolver(
+            &test_ctx.view_class_registry,
+            &view,
             &applicable_entities,
             &visualizable_entities,
             &indicated_entities_per_visualizer,
@@ -717,7 +717,7 @@ mod tests {
             // Set up a store query and update the overrides.
             let query_result = update_overrides(
                 &test_ctx,
-                &space_view.contents,
+                &view.contents,
                 &visualizable_entities,
                 &resolver,
             );
@@ -772,7 +772,7 @@ mod tests {
                 ctx.blueprint_db(),
                 ctx.blueprint_query,
                 ctx.rec_cfg.time_ctrl.read().timeline(),
-                ctx.space_view_class_registry,
+                ctx.view_class_registry,
                 &mut query_result,
                 &mut view_states,
             );

@@ -31,12 +31,12 @@ pub fn visible_time_range_ui_for_view(
         ctx.store_context.blueprint,
         ctx.blueprint_query,
         ctx.rec_cfg.time_ctrl.read().timeline(),
-        ctx.space_view_class_registry,
+        ctx.view_class_registry,
         view_state,
     );
 
-    let is_space_view = true;
-    visible_time_range_ui(ctx, ui, query_range, &property_path, is_space_view);
+    let is_view = true;
+    visible_time_range_ui(ctx, ui, query_range, &property_path, is_view);
 }
 
 pub fn visible_time_range_ui_for_data_result(
@@ -47,8 +47,8 @@ pub fn visible_time_range_ui_for_data_result(
     let override_path = data_result.recursive_override_path();
     let query_range = data_result.property_overrides.query_range.clone();
 
-    let is_space_view = false;
-    visible_time_range_ui(ctx, ui, query_range, override_path, is_space_view);
+    let is_view = false;
+    visible_time_range_ui(ctx, ui, query_range, override_path, is_view);
 }
 
 /// Draws ui for a visible time range from a given override path and a resulting query range.
@@ -57,7 +57,7 @@ fn visible_time_range_ui(
     ui: &mut Ui,
     mut resolved_query_range: QueryRange,
     time_range_override_path: &EntityPath,
-    is_space_view: bool,
+    is_view: bool,
 ) {
     use re_types::Component as _;
 
@@ -88,7 +88,7 @@ fn visible_time_range_ui(
             ui,
             &mut resolved_query_range,
             &mut has_individual_range,
-            is_space_view,
+            is_view,
         );
     });
 
@@ -139,7 +139,7 @@ fn query_range_ui(
     ui: &mut Ui,
     query_range: &mut QueryRange,
     has_individual_time_range: &mut bool,
-    is_space_view: bool,
+    is_view: bool,
 ) {
     let time_ctrl = ctx.rec_cfg.time_ctrl.read().clone();
     let time_type = time_ctrl.timeline().typ();
@@ -160,14 +160,14 @@ Notes:
         .show(ui, |ui| {
             ui.horizontal(|ui| {
                 ui.re_radio_value(has_individual_time_range, false, "Default")
-                    .on_hover_text(if is_space_view {
+                    .on_hover_text(if is_view {
                         "Default query range settings for this kind of view"
                     } else {
                         "Query range settings inherited from parent entity or enclosing \
                         view"
                     });
                 ui.re_radio_value(has_individual_time_range, true, "Override")
-                    .on_hover_text(if is_space_view {
+                    .on_hover_text(if is_view {
                         "Set query range settings for the contents of this view"
                     } else {
                         "Set query range settings for this entity"

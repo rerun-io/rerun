@@ -28,7 +28,7 @@ The best way to get started is by reading [the source code of the `extend_viewer
 </picture>
 
 
-Above screenshot shows the [`custom_space_view`](https://github.com/rerun-io/rerun/tree/main/examples/rust/custom_space_view) example.
+Above screenshot shows the [`custom_view`](https://github.com/rerun-io/rerun/tree/main/examples/rust/custom_view) example.
 This example demonstrates how to add a fully custom View class to Rerun on startup.
 Views that are added this way have access to the exact same interfaces as all other Views,
 meaning that any of the built-in Views serves can serve as an additional example on how to implement Views.

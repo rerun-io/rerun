@@ -13,7 +13,7 @@ use re_viewer_context::{
     ViewClassExt as _, ViewClassRegistry, ViewStates, ViewerContext,
 };
 use re_viewport::ViewportUi;
-use re_viewport_blueprint::ui::add_space_view_or_container_modal_ui;
+use re_viewport_blueprint::ui::add_view_or_container_modal_ui;
 use re_viewport_blueprint::ViewportBlueprint;
 
 use crate::{
@@ -146,7 +146,7 @@ impl AppState {
         store_context: &StoreContext<'_>,
         reflection: &re_types_core::reflection::Reflection,
         component_ui_registry: &ComponentUiRegistry,
-        space_view_class_registry: &ViewClassRegistry,
+        view_class_registry: &ViewClassRegistry,
         rx: &ReceiveSet<LogMsg>,
         command_sender: &CommandSender,
         welcome_screen_state: &WelcomeScreenState,
@@ -214,36 +214,34 @@ impl AppState {
             )),
         );
 
-        let applicable_entities_per_visualizer = space_view_class_registry
-            .applicable_entities_for_visualizer_systems(&recording.store_id());
+        let applicable_entities_per_visualizer =
+            view_class_registry.applicable_entities_for_visualizer_systems(&recording.store_id());
         let indicated_entities_per_visualizer =
-            space_view_class_registry.indicated_entities_per_visualizer(&recording.store_id());
+            view_class_registry.indicated_entities_per_visualizer(&recording.store_id());
 
         // Execute the queries for every `View`
         let mut query_results = {
             re_tracing::profile_scope!("query_results");
             viewport_ui
                 .blueprint
-                .space_views
+                .views
                 .values()
-                .map(|space_view| {
+                .map(|view| {
                     // TODO(andreas): This needs to be done in a store subscriber that exists per view (instance, not class!).
                     // Note that right now we determine *all* visualizable entities, not just the queried ones.
                     // In a store subscriber set this is fine, but on a per-frame basis it's wasteful.
-                    let visualizable_entities = space_view
-                        .class(space_view_class_registry)
+                    let visualizable_entities = view
+                        .class(view_class_registry)
                         .determine_visualizable_entities(
                             &applicable_entities_per_visualizer,
                             recording,
-                            &space_view_class_registry
-                                .new_visualizer_collection(space_view.class_identifier()),
-                            &space_view.space_origin,
+                            &view_class_registry.new_visualizer_collection(view.class_identifier()),
+                            &view.space_origin,
                         );
 
                     (
-                        space_view.id,
-                        space_view
-                            .contents
+                        view.id,
+                        view.contents
                             .execute_query(store_context, &visualizable_entities),
                     )
                 })
@@ -256,7 +254,7 @@ impl AppState {
         let ctx = ViewerContext {
             app_options,
             cache: store_context.caches,
-            space_view_class_registry,
+            view_class_registry,
             reflection,
             component_ui_registry,
             store_context,
@@ -283,24 +281,23 @@ impl AppState {
         {
             re_tracing::profile_scope!("updated_query_results");
 
-            for space_view in viewport_ui.blueprint.space_views.values() {
-                if let Some(query_result) = query_results.get_mut(&space_view.id) {
+            for view in viewport_ui.blueprint.views.values() {
+                if let Some(query_result) = query_results.get_mut(&view.id) {
                     // TODO(andreas): This needs to be done in a store subscriber that exists per view (instance, not class!).
                     // Note that right now we determine *all* visualizable entities, not just the queried ones.
                     // In a store subscriber set this is fine, but on a per-frame basis it's wasteful.
-                    let visualizable_entities = space_view
-                        .class(space_view_class_registry)
+                    let visualizable_entities = view
+                        .class(view_class_registry)
                         .determine_visualizable_entities(
                             &applicable_entities_per_visualizer,
                             recording,
-                            &space_view_class_registry
-                                .new_visualizer_collection(space_view.class_identifier()),
-                            &space_view.space_origin,
+                            &view_class_registry.new_visualizer_collection(view.class_identifier()),
+                            &view.space_origin,
                         );
 
-                    let resolver = space_view.contents.build_resolver(
-                        space_view_class_registry,
-                        space_view,
+                    let resolver = view.contents.build_resolver(
+                        view_class_registry,
+                        view,
                         &applicable_entities_per_visualizer,
                         &visualizable_entities,
                         &indicated_entities_per_visualizer,
@@ -310,7 +307,7 @@ impl AppState {
                         store_context.blueprint,
                         &blueprint_query,
                         rec_cfg.time_ctrl.read().timeline(),
-                        space_view_class_registry,
+                        view_class_registry,
                         query_result,
                         view_states,
                     );
@@ -328,7 +325,7 @@ impl AppState {
         let ctx = ViewerContext {
             app_options,
             cache: store_context.caches,
-            space_view_class_registry,
+            view_class_registry,
             reflection,
             component_ui_registry,
             store_context,
@@ -508,10 +505,10 @@ impl AppState {
         // Other UI things
         //
 
-        add_space_view_or_container_modal_ui(&ctx, &viewport_ui.blueprint, ui);
+        add_view_or_container_modal_ui(&ctx, &viewport_ui.blueprint, ui);
 
         // Process deferred layout operations and apply updates back to blueprint:
-        viewport_ui.save_to_blueprint_store(&ctx, space_view_class_registry);
+        viewport_ui.save_to_blueprint_store(&ctx, view_class_registry);
 
         if WATERMARK {
             ui.ctx().paint_watermark();

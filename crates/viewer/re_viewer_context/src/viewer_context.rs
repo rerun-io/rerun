@@ -34,7 +34,7 @@ pub struct ViewerContext<'a> {
     pub component_ui_registry: &'a ComponentUiRegistry,
 
     /// Registry of all known classes of views.
-    pub space_view_class_registry: &'a ViewClassRegistry,
+    pub view_class_registry: &'a ViewClassRegistry,
 
     /// The current view of the store
     pub store_context: &'a StoreContext<'a>,

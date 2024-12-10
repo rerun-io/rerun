@@ -12,9 +12,9 @@ use crate::{ContextMenuAction, ContextMenuContext};
 /// Create a new view containing the selected entities.
 ///
 /// The view is created next to the clicked item's parent view (if a data result was clicked).
-pub(crate) struct AddEntitiesToNewSpaceViewAction;
+pub(crate) struct AddEntitiesToNewViewAction;
 
-impl ContextMenuAction for AddEntitiesToNewSpaceViewAction {
+impl ContextMenuAction for AddEntitiesToNewViewAction {
     fn supports_multi_selection(&self, _ctx: &ContextMenuContext<'_>) -> bool {
         true
     }
@@ -24,48 +24,48 @@ impl ContextMenuAction for AddEntitiesToNewSpaceViewAction {
     }
 
     fn ui(&self, ctx: &ContextMenuContext<'_>, ui: &mut Ui) -> Response {
-        let space_view_class_registry = ctx.viewer_context.space_view_class_registry;
+        let view_class_registry = ctx.viewer_context.view_class_registry;
 
-        let recommended_space_view_classes = recommended_space_views_for_selection(ctx);
-        let other_space_view_classes: IntSet<_> = space_view_class_registry
+        let recommended_view_classes = recommended_views_for_selection(ctx);
+        let other_view_classes: IntSet<_> = view_class_registry
             .iter_registry()
             .map(|entry| entry.identifier)
             .collect::<IntSet<ViewClassIdentifier>>()
-            .difference(&recommended_space_view_classes)
+            .difference(&recommended_view_classes)
             .copied()
             .collect();
 
         ui.menu_button("Add to new view", |ui| {
-            let buttons_for_space_view_classes =
-                |ui: &mut egui::Ui, space_view_classes: &IntSet<ViewClassIdentifier>| {
-                    for (identifier, class) in space_view_classes
+            let buttons_for_view_classes =
+                |ui: &mut egui::Ui, view_classes: &IntSet<ViewClassIdentifier>| {
+                    for (identifier, class) in view_classes
                         .iter()
                         .map(|identifier| {
                             (
                                 identifier,
-                                space_view_class_registry.get_class_or_log_error(*identifier),
+                                view_class_registry.get_class_or_log_error(*identifier),
                             )
                         })
                         .sorted_by_key(|(_, class)| class.display_name().to_owned())
                     {
                         let btn = egui::Button::image_and_text(class.icon(), class.display_name());
                         if ui.add(btn).clicked() {
-                            create_space_view_for_selected_entities(ctx, *identifier);
+                            create_view_for_selected_entities(ctx, *identifier);
                             ui.close_menu();
                         }
                     }
                 };
 
             ui.label(egui::WidgetText::from("Recommended:").italics());
-            if recommended_space_view_classes.is_empty() {
+            if recommended_view_classes.is_empty() {
                 ui.label("None");
             } else {
-                buttons_for_space_view_classes(ui, &recommended_space_view_classes);
+                buttons_for_view_classes(ui, &recommended_view_classes);
             }
 
-            if !other_space_view_classes.is_empty() {
+            if !other_view_classes.is_empty() {
                 ui.label(egui::WidgetText::from("Others:").italics());
-                buttons_for_space_view_classes(ui, &other_space_view_classes);
+                buttons_for_view_classes(ui, &other_view_classes);
             }
         })
         .response
@@ -73,9 +73,7 @@ impl ContextMenuAction for AddEntitiesToNewSpaceViewAction {
 }
 
 /// Builds a list of compatible views for the provided selection.
-fn recommended_space_views_for_selection(
-    ctx: &ContextMenuContext<'_>,
-) -> IntSet<ViewClassIdentifier> {
+fn recommended_views_for_selection(ctx: &ContextMenuContext<'_>) -> IntSet<ViewClassIdentifier> {
     re_tracing::profile_function!();
 
     let entities_of_interest = ctx
@@ -86,12 +84,12 @@ fn recommended_space_views_for_selection(
 
     let mut output: IntSet<ViewClassIdentifier> = IntSet::default();
 
-    let space_view_class_registry = ctx.viewer_context.space_view_class_registry;
+    let view_class_registry = ctx.viewer_context.view_class_registry;
     let recording = ctx.viewer_context.recording();
     let applicable_entities_per_visualizer =
-        space_view_class_registry.applicable_entities_for_visualizer_systems(&recording.store_id());
+        view_class_registry.applicable_entities_for_visualizer_systems(&recording.store_id());
 
-    for entry in space_view_class_registry.iter_registry() {
+    for entry in view_class_registry.iter_registry() {
         let Some(suggested_root) = entry
             .class
             .recommended_root_for_entities(&entities_of_interest, recording)
@@ -102,7 +100,7 @@ fn recommended_space_views_for_selection(
         let visualizable_entities = entry.class.determine_visualizable_entities(
             &applicable_entities_per_visualizer,
             recording,
-            &space_view_class_registry.new_visualizer_collection(entry.identifier),
+            &view_class_registry.new_visualizer_collection(entry.identifier),
             &suggested_root,
         );
 
@@ -129,7 +127,7 @@ fn recommended_space_views_for_selection(
 
 /// Creates a view of the given class, with root set as origin, and a filter set to include all
 /// selected entities. Then, the selection is set to the new view.
-fn create_space_view_for_selected_entities(
+fn create_view_for_selected_entities(
     ctx: &ContextMenuContext<'_>,
     identifier: ViewClassIdentifier,
 ) {
@@ -141,7 +139,7 @@ fn create_space_view_for_selected_entities(
 
     let origin = ctx
         .viewer_context
-        .space_view_class_registry
+        .view_class_registry
         .get_class_or_log_error(identifier)
         .recommended_root_for_entities(&entities_of_interest, ctx.viewer_context.recording())
         .unwrap_or_else(EntityPath::root);
@@ -163,13 +161,13 @@ fn create_space_view_for_selected_entities(
         query_filter: filter,
     };
 
-    let space_view = ViewBlueprint::new(identifier, recommended);
-    let space_view_id = space_view.id;
+    let view = ViewBlueprint::new(identifier, recommended);
+    let view_id = view.id;
     ctx.viewport_blueprint
-        .add_space_views(std::iter::once(space_view), target_container_id, None);
+        .add_views(std::iter::once(view), target_container_id, None);
     ctx.viewer_context
         .selection_state()
-        .set_selection(Item::View(space_view_id));
+        .set_selection(Item::View(view_id));
     ctx.viewport_blueprint
         .mark_user_interaction(ctx.viewer_context);
 }

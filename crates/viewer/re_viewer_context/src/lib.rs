@@ -77,10 +77,10 @@ pub use self::{
     view::{
         DataResult, IdentifiedViewSystem, OptionalViewEntityHighlight, OverridePath,
         PerSystemDataResults, PerSystemEntities, PropertyOverrides, RecommendedView,
-        SmallVisualizerSet, ViewClassExt, ViewHighlights, ViewOutlineMasks,
-        ViewSpawnHeuristics, SystemExecutionOutput, ViewClass, ViewClassLayoutPriority,
-        ViewClassRegistry, ViewClassRegistryError, ViewContext, ViewContextCollection,
-        ViewContextSystem, ViewEntityHighlight, ViewQuery, ViewState, ViewStateExt, ViewStates,
+        SmallVisualizerSet, SystemExecutionOutput, ViewClass, ViewClassExt,
+        ViewClassLayoutPriority, ViewClassRegistry, ViewClassRegistryError, ViewContext,
+        ViewContextCollection, ViewContextSystem, ViewEntityHighlight, ViewHighlights,
+        ViewOutlineMasks, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt, ViewStates,
         ViewSystemExecutionError, ViewSystemIdentifier, ViewSystemRegistrator,
         VisualizableFilterContext, VisualizerAdditionalApplicabilityFilter, VisualizerCollection,
         VisualizerQueryInfo, VisualizerSystem,
@@ -161,11 +161,11 @@ pub enum ScreenshotTarget {
 /// We use this for space-view screenshotting.
 ///
 /// Accessed with [`egui::Memory::caches`].
-pub type SpaceViewRectPublisher = egui::cache::FramePublisher<ViewId, PublishedSpaceViewInfo>;
+pub type ViewRectPublisher = egui::cache::FramePublisher<ViewId, PublishedViewInfo>;
 
-/// Information about a view that is published each frame by [`SpaceViewRectPublisher`].
+/// Information about a view that is published each frame by [`ViewRectPublisher`].
 #[derive(Clone, Debug)]
-pub struct PublishedSpaceViewInfo {
+pub struct PublishedViewInfo {
     /// Human-readable name of the view.
     pub name: String,
 

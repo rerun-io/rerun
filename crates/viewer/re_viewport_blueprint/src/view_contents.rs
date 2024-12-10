@@ -28,12 +28,12 @@ use crate::{ViewBlueprint, ViewProperty};
 /// During execution, it will walk an [`EntityTree`] and return a [`DataResultTree`]
 /// containing any entities that match a [`EntityPathFilter`].
 ///
-/// Note: [`ViewContents`] doesn't implement Clone because it depends on its parent's [`SpaceViewId`]
+/// Note: [`ViewContents`] doesn't implement Clone because it depends on its parent's [`ViewId`]
 /// used for identifying the path of its data in the blueprint store. It's ambiguous
 /// whether the intent is for a clone to write to the same place.
 ///
 /// If you want a new view otherwise identical to an existing one, use
-/// [`SpaceViewBlueprint::duplicate`].
+/// [`ViewBlueprint::duplicate`].
 #[derive(Clone, Debug)]
 pub struct ViewContents {
     pub blueprint_entity_path: EntityPath,
@@ -72,13 +72,13 @@ impl ViewContents {
     /// Creates a new [`ViewContents`].
     ///
     /// This [`ViewContents`] is ephemeral. It must be saved by calling
-    /// `save_to_blueprint_store` on the enclosing `SpaceViewBlueprint`.
+    /// `save_to_blueprint_store` on the enclosing `ViewBlueprint`.
     pub fn new(
         id: ViewId,
         view_class_identifier: ViewClassIdentifier,
         entity_path_filter: EntityPathFilter,
     ) -> Self {
-        // Don't use `entity_path_for_space_view_sub_archetype` here because this will do a search in the future,
+        // Don't use `entity_path_for_view_sub_archetype` here because this will do a search in the future,
         // thus needing the entity tree.
         let blueprint_entity_path = id.as_entity_path().join(&EntityPath::from_single_string(
             blueprint_archetypes::ViewContents::name().short_name(),
@@ -162,8 +162,8 @@ impl ViewContents {
 
     pub fn build_resolver<'a>(
         &self,
-        space_view_class_registry: &'a re_viewer_context::ViewClassRegistry,
-        space_view: &'a ViewBlueprint,
+        view_class_registry: &'a re_viewer_context::ViewClassRegistry,
+        view: &'a ViewBlueprint,
         applicable_entities_per_visualizer: &'a PerVisualizer<ApplicableEntities>,
         visualizable_entities_per_visualizer: &'a PerVisualizer<VisualizableEntities>,
         indicated_entities_per_visualizer: &'a PerVisualizer<IndicatedEntities>,
@@ -174,8 +174,8 @@ impl ViewContents {
         let recursive_override_root =
             base_override_root.join(&DataResult::RECURSIVE_OVERRIDES_PREFIX.into());
         DataQueryPropertyResolver {
-            space_view_class_registry,
-            space_view,
+            view_class_registry,
+            view,
             individual_override_root,
             recursive_override_root,
             applicable_entities_per_visualizer,
@@ -355,8 +355,8 @@ impl QueryExpressionEvaluator<'_> {
 }
 
 pub struct DataQueryPropertyResolver<'a> {
-    space_view_class_registry: &'a re_viewer_context::ViewClassRegistry,
-    space_view: &'a ViewBlueprint,
+    view_class_registry: &'a re_viewer_context::ViewClassRegistry,
+    view: &'a ViewBlueprint,
     individual_override_root: EntityPath,
     recursive_override_root: EntityPath,
     applicable_entities_per_visualizer: &'a PerVisualizer<ApplicableEntities>,
@@ -406,10 +406,10 @@ impl DataQueryPropertyResolver<'_> {
                         node.data_result.visualizers =
                             viz_override.0.iter().map(Into::into).collect();
                     } else {
-                        // Otherwise ask the `SpaceViewClass` to choose.
+                        // Otherwise ask the `ViewClass` to choose.
                         node.data_result.visualizers = self
-                            .space_view
-                            .class(self.space_view_class_registry)
+                            .view
+                            .class(self.view_class_registry)
                             .choose_default_visualizers(
                                 &node.data_result.entity_path,
                                 self.applicable_entities_per_visualizer,
@@ -520,7 +520,7 @@ impl DataQueryPropertyResolver<'_> {
         blueprint: &EntityDb,
         blueprint_query: &LatestAtQuery,
         active_timeline: &Timeline,
-        space_view_class_registry: &ViewClassRegistry,
+        view_class_registry: &ViewClassRegistry,
         query_result: &mut DataQueryResult,
         view_states: &mut ViewStates,
     ) {
@@ -529,14 +529,14 @@ impl DataQueryPropertyResolver<'_> {
         if let Some(root) = query_result.tree.root_handle() {
             let recursive_property_overrides = Default::default();
 
-            let class = self.space_view.class(space_view_class_registry);
-            let view_state = view_states.get_mut_or_create(self.space_view.id, class);
+            let class = self.view.class(view_class_registry);
+            let view_state = view_states.get_mut_or_create(self.view.id, class);
 
-            let default_query_range = self.space_view.query_range(
+            let default_query_range = self.view.query_range(
                 blueprint,
                 blueprint_query,
                 active_timeline,
-                space_view_class_registry,
+                view_class_registry,
                 view_state,
             );
 

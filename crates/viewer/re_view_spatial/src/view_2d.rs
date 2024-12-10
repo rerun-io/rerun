@@ -23,7 +23,7 @@ use crate::{
     max_image_dimension_subscriber::{MaxDimensions, MaxImageDimensions},
     spatial_topology::{SpatialTopology, SubSpaceConnectionFlags},
     ui::SpatialViewState,
-    view_kind::SpatialSpaceViewKind,
+    view_kind::SpatialViewKind,
     visualizers::register_2d_spatial_visualizers,
 };
 
@@ -41,11 +41,11 @@ impl VisualizableFilterContext for VisualizableFilterContext2D {
 }
 
 #[derive(Default)]
-pub struct SpatialSpaceView2D;
+pub struct SpatialView2D;
 
 type ViewType = re_types::blueprint::views::Spatial2DView;
 
-impl ViewClass for SpatialSpaceView2D {
+impl ViewClass for SpatialView2D {
     fn identifier() -> ViewClassIdentifier {
         ViewType::identifier()
     }
@@ -55,7 +55,7 @@ impl ViewClass for SpatialSpaceView2D {
     }
 
     fn icon(&self) -> &'static re_ui::Icon {
-        &re_ui::icons::SPACE_VIEW_2D
+        &re_ui::icons::VIEW_2D
     }
 
     fn help_markdown(&self, egui_ctx: &egui::Context) -> String {
@@ -173,7 +173,7 @@ impl ViewClass for SpatialSpaceView2D {
         let indicated_entities = default_visualized_entities_for_visualizer_kind(
             ctx,
             Self::identifier(),
-            SpatialSpaceViewKind::TwoD,
+            SpatialViewKind::TwoD,
         );
 
         let image_dimensions =
@@ -213,17 +213,17 @@ impl ViewClass for SpatialSpaceView2D {
                     EntityPath::common_ancestor_of(relevant_entities.iter())
                 };
 
-                let mut recommended_space_views = Vec::<RecommendedView>::new();
+                let mut recommended_views = Vec::<RecommendedView>::new();
 
-                recommended_space_views_with_image_splits(
+                recommended_views_with_image_splits(
                     ctx,
                     &image_dimensions,
                     &recommended_root,
                     &relevant_entities,
-                    &mut recommended_space_views,
+                    &mut recommended_views,
                 );
 
-                recommended_space_views
+                recommended_views
             }))
         })
         .unwrap_or_default()
@@ -240,7 +240,7 @@ impl ViewClass for SpatialSpaceView2D {
         let state = state.downcast_mut::<SpatialViewState>()?;
         // TODO(andreas): list_item'ify the rest
         ui.selection_grid("spatial_settings_ui").show(ui, |ui| {
-            state.bounding_box_ui(ui, SpatialSpaceViewKind::TwoD);
+            state.bounding_box_ui(ui, SpatialViewKind::TwoD);
         });
 
         re_ui::list_item::list_item_scope(ui, "spatial_view2d_selection_ui", |ui| {
@@ -263,7 +263,7 @@ impl ViewClass for SpatialSpaceView2D {
         re_tracing::profile_function!();
 
         let state = state.downcast_mut::<SpatialViewState>()?;
-        state.update_frame_statistics(ui, &system_output, SpatialSpaceViewKind::TwoD);
+        state.update_frame_statistics(ui, &system_output, SpatialViewKind::TwoD);
 
         self.view_2d(ctx, ui, state, query, system_output)
     }
@@ -336,7 +336,7 @@ fn find_non_nested_image_dimensions(
     }
 }
 
-fn recommended_space_views_with_image_splits(
+fn recommended_views_with_image_splits(
     ctx: &ViewerContext<'_>,
     image_dimensions: &IntMap<EntityPath, MaxDimensions>,
     recommended_root: &EntityPath,
@@ -415,7 +415,7 @@ fn recommended_space_views_with_image_splits(
                 .collect();
 
             if !sub_bucket.is_empty() {
-                recommended_space_views_with_image_splits(
+                recommended_views_with_image_splits(
                     ctx,
                     image_dimensions,
                     &child.path,

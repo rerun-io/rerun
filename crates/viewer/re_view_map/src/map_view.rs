@@ -12,14 +12,14 @@ use re_types::{
         components::MapProvider,
         components::ZoomLevel,
     },
-    ViewClassIdentifier, View,
+    View, ViewClassIdentifier,
 };
 use re_ui::list_item;
 use re_viewer_context::{
-    gpu_bridge, IdentifiedViewSystem as _, Item, ViewSpawnHeuristics, SystemExecutionOutput,
-    UiLayout, ViewClass, ViewClassLayoutPriority, ViewClassRegistryError, ViewHighlights, ViewId,
-    ViewQuery, ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewSystemRegistrator,
-    ViewerContext,
+    gpu_bridge, IdentifiedViewSystem as _, Item, SystemExecutionOutput, UiLayout, ViewClass,
+    ViewClassLayoutPriority, ViewClassRegistryError, ViewHighlights, ViewId, ViewQuery,
+    ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
+    ViewSystemRegistrator, ViewerContext,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -85,11 +85,11 @@ impl ViewState for MapViewState {
 }
 
 #[derive(Default)]
-pub struct MapSpaceView;
+pub struct MapView;
 
 type ViewType = re_types::blueprint::views::MapView;
 
-impl ViewClass for MapSpaceView {
+impl ViewClass for MapView {
     fn identifier() -> ViewClassIdentifier {
         ViewType::identifier()
     }
@@ -99,7 +99,7 @@ impl ViewClass for MapSpaceView {
     }
 
     fn icon(&self) -> &'static re_ui::Icon {
-        &re_ui::icons::SPACE_VIEW_MAP
+        &re_ui::icons::VIEW_MAP
     }
 
     fn help_markdown(&self, _egui_ctx: &egui::Context) -> String {
@@ -172,11 +172,11 @@ Displays geospatial primitives on a map.
         ui: &mut egui::Ui,
         state: &mut dyn ViewState,
         _space_origin: &EntityPath,
-        space_view_id: ViewId,
+        view_id: ViewId,
     ) -> Result<(), ViewSystemExecutionError> {
         re_ui::list_item::list_item_scope(ui, "map_selection_ui", |ui| {
-            re_view::view_property_ui::<MapZoom>(ctx, ui, space_view_id, self, state);
-            re_view::view_property_ui::<MapBackground>(ctx, ui, space_view_id, self, state);
+            re_view::view_property_ui::<MapZoom>(ctx, ui, view_id, self, state);
+            re_view::view_property_ui::<MapBackground>(ctx, ui, view_id, self, state);
         });
 
         Ok(())
@@ -194,13 +194,13 @@ Displays geospatial primitives on a map.
         let map_background = ViewProperty::from_archetype::<MapBackground>(
             ctx.blueprint_db(),
             ctx.blueprint_query,
-            query.space_view_id,
+            query.view_id,
         );
 
         let map_zoom = ViewProperty::from_archetype::<MapZoom>(
             ctx.blueprint_db(),
             ctx.blueprint_query,
-            query.space_view_id,
+            query.view_id,
         );
 
         let geo_points_visualizer = system_output.view_systems.get::<GeoPointsVisualizer>()?;
@@ -407,7 +407,7 @@ fn handle_picking_and_ui_interactions(
     map_response: Response,
     map_rect: Rect,
 ) -> Result<(), ViewSystemExecutionError> {
-    let picking_readback_identifier = query.space_view_id.hash();
+    let picking_readback_identifier = query.view_id.hash();
 
     if let Some(pointer_in_ui) = map_response.hover_pos() {
         let pixels_per_point = egui_ctx.pixels_per_point();
@@ -473,7 +473,7 @@ fn handle_ui_interactions(
                     &query.latest_at_query(),
                     ctx.recording(),
                     ui,
-                    Some(query.space_view_id),
+                    Some(query.view_id),
                     &instance_path,
                 );
 
@@ -483,21 +483,21 @@ fn handle_ui_interactions(
 
         ctx.select_hovered_on_click(
             &map_response,
-            Item::DataResult(query.space_view_id, instance_path.clone()),
+            Item::DataResult(query.view_id, instance_path.clone()),
         );
 
         // double click selects the entire entity
         if map_response.double_clicked() {
             // Select the entire entity
             ctx.selection_state().set_selection(Item::DataResult(
-                query.space_view_id,
+                query.view_id,
                 instance_path.entity_path.clone().into(),
             ));
         }
     } else if map_response.clicked() {
         // clicked elsewhere, select the view
         ctx.selection_state()
-            .set_selection(Item::View(query.space_view_id));
+            .set_selection(Item::View(query.view_id));
     }
 }
 
@@ -560,7 +560,7 @@ fn get_tile_manager(
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(MapSpaceView => []);
+re_viewer_context::impl_component_fallback_provider!(MapView => []);
 
 // TODO(ab, andreas): this is a partial copy past of re_view_spatial::picking_gpu. Should be
 // turned into a utility function.

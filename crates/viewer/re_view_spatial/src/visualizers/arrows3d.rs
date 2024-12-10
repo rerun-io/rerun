@@ -14,7 +14,7 @@ use re_viewer_context::{
 };
 
 use crate::{
-    contexts::SpatialSceneEntityContext, view_kind::SpatialSpaceViewKind,
+    contexts::SpatialSceneEntityContext, view_kind::SpatialViewKind,
     visualizers::filter_visualizable_3d_entities,
 };
 
@@ -32,7 +32,7 @@ pub struct Arrows3DVisualizer {
 impl Default for Arrows3DVisualizer {
     fn default() -> Self {
         Self {
-            data: SpatialViewVisualizerData::new(Some(SpatialSpaceViewKind::ThreeD)),
+            data: SpatialViewVisualizerData::new(Some(SpatialViewKind::ThreeD)),
         }
     }
 }

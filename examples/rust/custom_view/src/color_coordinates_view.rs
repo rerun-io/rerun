@@ -63,9 +63,9 @@ impl ViewState for ColorCoordinatesViewState {
 }
 
 #[derive(Default)]
-pub struct ColorCoordinatesSpaceView;
+pub struct ColorCoordinatesView;
 
-impl ViewClass for ColorCoordinatesSpaceView {
+impl ViewClass for ColorCoordinatesView {
     // State type as described above.
 
     fn identifier() -> ViewClassIdentifier {
@@ -77,7 +77,7 @@ impl ViewClass for ColorCoordinatesSpaceView {
     }
 
     fn icon(&self) -> &'static re_ui::Icon {
-        &re_ui::icons::SPACE_VIEW_GENERIC
+        &re_ui::icons::VIEW_GENERIC
     }
 
     fn help_markdown(&self, _egui_ctx: &egui::Context) -> String {
@@ -127,7 +127,7 @@ impl ViewClass for ColorCoordinatesSpaceView {
         ui: &mut egui::Ui,
         state: &mut dyn ViewState,
         _space_origin: &EntityPath,
-        _space_view_id: ViewId,
+        _view_id: ViewId,
     ) -> Result<(), ViewSystemExecutionError> {
         let state = state.downcast_mut::<ColorCoordinatesViewState>()?;
 
@@ -267,7 +267,7 @@ fn color_space_ui(
                     &ctx.current_query(),
                     ctx.recording(),
                     ui,
-                    Some(query.space_view_id),
+                    Some(query.view_id),
                     &instance,
                 );
                 instance.data_ui(
@@ -278,7 +278,7 @@ fn color_space_ui(
                     ctx.recording(),
                 );
             });
-            ctx.select_hovered_on_click(&interact, Item::DataResult(query.space_view_id, instance));
+            ctx.select_hovered_on_click(&interact, Item::DataResult(query.view_id, instance));
         }
     }
 

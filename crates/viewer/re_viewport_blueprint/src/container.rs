@@ -14,7 +14,7 @@ use re_viewer_context::{ContainerId, Contents, ContentsName, ViewId, ViewerConte
 ///
 /// This represents a single container in the blueprint. On each frame, it is
 /// used to populate an [`egui_tiles::Container`]. Each child in `contents` can
-/// be either a [`SpaceViewId`] or another [`ContainerId`].
+/// be either a [`ViewId`] or another [`ContainerId`].
 ///
 /// The main reason this exists is to handle type conversions that aren't yet
 /// well handled by the code-generated archetypes.

@@ -309,7 +309,7 @@ impl TransformContext {
             let child_path = &child_tree.path;
 
             let lookup_image_plane = |p: &_| {
-                let query_result = ctx.viewer_ctx.lookup_query_result(view_query.space_view_id);
+                let query_result = ctx.viewer_ctx.lookup_query_result(view_query.view_id);
 
                 query_result
                     .tree

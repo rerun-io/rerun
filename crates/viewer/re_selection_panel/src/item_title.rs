@@ -9,9 +9,7 @@ use re_ui::{
     syntax_highlighting::{InstanceInBrackets as InstanceWithBrackets, SyntaxHighlightedBuilder},
     SyntaxHighlighting as _,
 };
-use re_viewer_context::{
-    contents_name_style, ContainerId, Contents, Item, ViewId, ViewerContext,
-};
+use re_viewer_context::{contents_name_style, ContainerId, Contents, Item, ViewId, ViewerContext};
 use re_viewport_blueprint::ViewportBlueprint;
 
 pub fn is_component_static(ctx: &ViewerContext<'_>, component_path: &ComponentPath) -> bool {
@@ -182,7 +180,7 @@ impl ItemTitle {
         } else {
             Self::new(
                 format!("Unknown container {container_id}"),
-                &icons::SPACE_VIEW_UNKNOWN,
+                &icons::VIEW_UNKNOWN,
             )
             .with_tooltip("Failed to find container in blueprint")
         }
@@ -194,7 +192,7 @@ impl ItemTitle {
         view_id: &ViewId,
     ) -> Self {
         if let Some(view) = viewport.view(view_id) {
-            let view_class = view.class(ctx.space_view_class_registry);
+            let view_class = view.class(ctx.view_class_registry);
 
             let hover_text = if let Some(display_name) = view.display_name.as_ref() {
                 format!("{} view {display_name:?}", view_class.display_name(),)
@@ -206,16 +204,13 @@ impl ItemTitle {
 
             Self::new(
                 view_name.as_ref(),
-                view.class(ctx.space_view_class_registry).icon(),
+                view.class(ctx.view_class_registry).icon(),
             )
             .with_label_style(contents_name_style(&view_name))
             .with_tooltip(hover_text)
         } else {
-            Self::new(
-                format!("Unknown view {view_id}"),
-                &icons::SPACE_VIEW_UNKNOWN,
-            )
-            .with_tooltip("Failed to find view in blueprint")
+            Self::new(format!("Unknown view {view_id}"), &icons::VIEW_UNKNOWN)
+                .with_tooltip("Failed to find view in blueprint")
         }
     }
 

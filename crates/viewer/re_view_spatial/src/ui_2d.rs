@@ -21,8 +21,8 @@ use re_viewport_blueprint::ViewProperty;
 
 use super::{eye::Eye, ui::create_labels};
 use crate::{
-    query_pinhole_legacy, ui::SpatialViewState, view_kind::SpatialSpaceViewKind,
-    visualizers::collect_ui_labels, SpatialSpaceView2D,
+    query_pinhole_legacy, ui::SpatialViewState, view_kind::SpatialViewKind,
+    visualizers::collect_ui_labels, SpatialView2D,
 };
 
 // ---
@@ -31,7 +31,7 @@ use crate::{
 fn ui_from_scene(
     ctx: &ViewerContext<'_>,
     response: &egui::Response,
-    view_class: &SpatialSpaceView2D,
+    view_class: &SpatialView2D,
     view_state: &mut SpatialViewState,
     bounds_property: &ViewProperty,
 ) -> RectTransform {
@@ -134,7 +134,7 @@ Display 2D content in the reference frame defined by the space origin.
 }
 
 /// Create the outer 2D view, which consists of a scrollable region
-impl SpatialSpaceView2D {
+impl SpatialView2D {
     pub fn view_2d(
         &self,
         ctx: &ViewerContext<'_>,
@@ -166,7 +166,7 @@ impl SpatialSpaceView2D {
         let bounds_property = ViewProperty::from_archetype::<VisualBounds2D>(
             ctx.blueprint_db(),
             ctx.blueprint_query,
-            query.space_view_id,
+            query.view_id,
         );
 
         // Convert ui coordinates to/from scene coordinates.
@@ -206,7 +206,7 @@ impl SpatialSpaceView2D {
             &eye,
             ui,
             &query.highlights,
-            SpatialSpaceViewKind::TwoD,
+            SpatialViewKind::TwoD,
         );
 
         let Some(render_ctx) = ctx.render_ctx else {
@@ -232,7 +232,7 @@ impl SpatialSpaceView2D {
                 &system_output,
                 &ui_rects,
                 query,
-                SpatialSpaceViewKind::TwoD,
+                SpatialViewKind::TwoD,
             )?;
         } else {
             state.previous_picking_result = None;
@@ -245,7 +245,7 @@ impl SpatialSpaceView2D {
         let background = ViewProperty::from_archetype::<Background>(
             ctx.blueprint_db(),
             ctx.blueprint_query,
-            query.space_view_id,
+            query.view_id,
         );
         let (background_drawable, clear_color) =
             crate::configure_background(ctx, &background, render_ctx, self, state)?;

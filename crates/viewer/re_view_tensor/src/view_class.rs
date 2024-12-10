@@ -1,6 +1,6 @@
 use egui::{epaint::TextShape, Align2, NumExt as _, Vec2};
 use ndarray::Axis;
-use re_view::{suggest_space_view_for_each_entity, view_property_ui};
+use re_view::{suggest_view_for_each_entity, view_property_ui};
 
 use re_data_ui::tensor_summary_ui_grid_contents;
 use re_log_types::EntityPath;
@@ -25,11 +25,11 @@ use re_viewport_blueprint::ViewProperty;
 use crate::{
     dimension_mapping::load_tensor_slice_selection_and_make_valid,
     tensor_dimension_mapper::dimension_mapping_ui,
-    visualizer_system::{TensorSystem, TensorView},
+    visualizer_system::{TensorSystem, TensorVisualization},
 };
 
 #[derive(Default)]
-pub struct TensorSpaceView;
+pub struct TensorView;
 
 type ViewType = re_types::blueprint::views::TensorView;
 
@@ -37,7 +37,7 @@ type ViewType = re_types::blueprint::views::TensorView;
 pub struct ViewTensorState {
     /// Last viewed tensor, copied each frame.
     /// Used for the selection view.
-    tensor: Option<TensorView>,
+    tensor: Option<TensorVisualization>,
 }
 
 impl ViewState for ViewTensorState {
@@ -50,7 +50,7 @@ impl ViewState for ViewTensorState {
     }
 }
 
-impl ViewClass for TensorSpaceView {
+impl ViewClass for TensorView {
     fn identifier() -> ViewClassIdentifier {
         ViewType::identifier()
     }
@@ -60,7 +60,7 @@ impl ViewClass for TensorSpaceView {
     }
 
     fn icon(&self) -> &'static re_ui::Icon {
-        &re_ui::icons::SPACE_VIEW_TENSOR
+        &re_ui::icons::VIEW_TENSOR
     }
 
     fn help_markdown(&self, _egui_ctx: &egui::Context) -> String {
@@ -125,7 +125,7 @@ Note: select the view to configure which dimensions are shown."
 
         // TODO(andreas): Listitemify
         ui.selection_grid("tensor_selection_ui").show(ui, |ui| {
-            if let Some(TensorView {
+            if let Some(TensorVisualization {
                 tensor,
                 tensor_row_id,
                 ..
@@ -145,7 +145,7 @@ Note: select the view to configure which dimensions are shown."
         });
 
         // TODO(#6075): Listitemify
-        if let Some(TensorView { tensor, .. }) = &state.tensor {
+        if let Some(TensorVisualization { tensor, .. }) = &state.tensor {
             let slice_property = ViewProperty::from_archetype::<TensorSliceSelection>(
                 ctx.blueprint_db(),
                 ctx.blueprint_query,
@@ -186,7 +186,7 @@ Note: select the view to configure which dimensions are shown."
     fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> re_viewer_context::ViewSpawnHeuristics {
         re_tracing::profile_function!();
         // For tensors create one view for each tensor (even though we're able to stack them in one view)
-        suggest_space_view_for_each_entity::<TensorSystem>(ctx, self)
+        suggest_view_for_each_entity::<TensorSystem>(ctx, self)
     }
 
     fn ui(
@@ -217,7 +217,7 @@ Note: select the view to configure which dimensions are shown."
             });
         } else if let Some(tensor_view) = tensors.first() {
             state.tensor = Some(tensor_view.clone());
-            self.view_tensor(ctx, ui, state, query.space_view_id, &tensor_view.tensor)?;
+            self.view_tensor(ctx, ui, state, query.view_id, &tensor_view.tensor)?;
         } else {
             ui.centered_and_justified(|ui| ui.label("(empty)"));
         }
@@ -226,7 +226,7 @@ Note: select the view to configure which dimensions are shown."
     }
 }
 
-impl TensorSpaceView {
+impl TensorView {
     fn view_tensor(
         &self,
         ctx: &ViewerContext<'_>,
@@ -319,7 +319,7 @@ impl TensorSpaceView {
         let Some(tensor_view) = state.tensor.as_ref() else {
             anyhow::bail!("No tensor data available.");
         };
-        let TensorView {
+        let TensorVisualization {
             tensor_row_id,
             tensor,
             data_range,
@@ -674,7 +674,7 @@ fn selectors_ui(
     }
 }
 
-impl TypedComponentFallbackProvider<Colormap> for TensorSpaceView {
+impl TypedComponentFallbackProvider<Colormap> for TensorView {
     fn fallback_for(&self, _ctx: &re_viewer_context::QueryContext<'_>) -> Colormap {
         // Viridis is a better fallback than Turbo for arbitrary tensors.
         Colormap::Viridis
@@ -682,4 +682,4 @@ impl TypedComponentFallbackProvider<Colormap> for TensorSpaceView {
 }
 
 // Fallback for the various components of `TensorSliceSelection` is handled by `load_tensor_slice_selection_and_make_valid`.
-re_viewer_context::impl_component_fallback_provider!(TensorSpaceView => [Colormap]);
+re_viewer_context::impl_component_fallback_provider!(TensorView => [Colormap]);

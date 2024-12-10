@@ -15,18 +15,18 @@ use re_types::{
     Archetype, Component as _,
 };
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, ViewClass as _, ViewId,
-    ViewSystemExecutionError, TypedComponentFallbackProvider, VideoCache, ViewContext,
-    ViewContextCollection, ViewQuery, ViewerContext, VisualizableEntities,
-    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
+    ApplicableEntities, IdentifiedViewSystem, TypedComponentFallbackProvider, VideoCache,
+    ViewClass as _, ViewContext, ViewContextCollection, ViewId, ViewQuery,
+    ViewSystemExecutionError, ViewerContext, VisualizableEntities, VisualizableFilterContext,
+    VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{
     contexts::SpatialSceneEntityContext,
     ui::SpatialViewState,
-    view_kind::SpatialSpaceViewKind,
+    view_kind::SpatialViewKind,
     visualizers::{entity_iterator, filter_visualizable_2d_entities, LoadingSpinner},
-    PickableRectSourceData, PickableTexturedRect, SpatialSpaceView2D,
+    PickableRectSourceData, PickableTexturedRect, SpatialView2D,
 };
 
 use super::{
@@ -41,7 +41,7 @@ pub struct VideoFrameReferenceVisualizer {
 impl Default for VideoFrameReferenceVisualizer {
     fn default() -> Self {
         Self {
-            data: SpatialViewVisualizerData::new(Some(SpatialSpaceViewKind::TwoD)),
+            data: SpatialViewVisualizerData::new(Some(SpatialViewKind::TwoD)),
         }
     }
 }
@@ -117,7 +117,7 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
                         video_timestamp,
                         video_references,
                         entity_path,
-                        view_query.space_view_id,
+                        view_query.view_id,
                     );
                 }
 
@@ -276,7 +276,7 @@ impl VideoFrameReferenceVisualizer {
             },
         }
 
-        if spatial_ctx.space_view_class_identifier == SpatialSpaceView2D::identifier() {
+        if spatial_ctx.view_class_identifier == SpatialView2D::identifier() {
             let bounding_box = re_math::BoundingBox::from_min_size(
                 world_from_entity.transform_point3(glam::Vec3::ZERO),
                 video_resolution.extend(0.0),
@@ -335,11 +335,7 @@ impl VideoFrameReferenceVisualizer {
         );
         // If we're in a 2D view, make the error rect take a fixed amount of view space.
         // This makes it look a lot nicer for very small & very large videos.
-        if let Some(state) = ctx
-            .view_state
-            .as_any()
-            .downcast_ref::<SpatialViewState>()
-        {
+        if let Some(state) = ctx.view_state.as_any().downcast_ref::<SpatialViewState>() {
             if let Some(bounds) = state.visual_bounds_2d {
                 // Aim for 1/8 of the larger visual bounds axis.
                 let max_extent = bounds.x_range.abs_len().max(bounds.y_range.abs_len()) as f32;

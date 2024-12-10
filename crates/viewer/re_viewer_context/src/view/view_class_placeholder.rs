@@ -20,7 +20,7 @@ impl ViewClass for ViewClassPlaceholder {
     }
 
     fn icon(&self) -> &'static re_ui::Icon {
-        &re_ui::icons::SPACE_VIEW_UNKNOWN
+        &re_ui::icons::VIEW_UNKNOWN
     }
 
     fn help_markdown(&self, _egui_ctx: &egui::Context) -> String {

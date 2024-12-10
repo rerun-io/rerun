@@ -16,35 +16,35 @@ pub struct RecommendedView {
 #[derive(Default)]
 pub struct ViewSpawnHeuristics {
     /// The recommended views to spawn
-    recommended_space_views: Vec<RecommendedView>,
+    recommended_views: Vec<RecommendedView>,
 }
 
 impl ViewSpawnHeuristics {
     #[inline]
     pub fn empty() -> Self {
         Self {
-            recommended_space_views: Vec::new(),
+            recommended_views: Vec::new(),
         }
     }
 
     #[inline]
     pub fn root() -> Self {
         Self {
-            recommended_space_views: vec![RecommendedView::root()],
+            recommended_views: vec![RecommendedView::root()],
         }
     }
 
     pub fn new(iter: impl IntoIterator<Item = RecommendedView>) -> Self {
-        let mut recommended_space_views: Vec<RecommendedView> = iter.into_iter().collect();
-        recommended_space_views.sort_by(|a, b| a.origin.cmp(&b.origin));
+        let mut recommended_views: Vec<RecommendedView> = iter.into_iter().collect();
+        recommended_views.sort_by(|a, b| a.origin.cmp(&b.origin));
         Self {
-            recommended_space_views,
+            recommended_views,
         }
     }
 
     #[inline]
     pub fn into_vec(self) -> Vec<RecommendedView> {
-        self.recommended_space_views
+        self.recommended_views
     }
 }
 

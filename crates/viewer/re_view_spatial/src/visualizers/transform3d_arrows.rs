@@ -1,22 +1,19 @@
 use egui::Color32;
 use nohash_hasher::IntSet;
 use re_log_types::{EntityPath, Instance};
-use re_view::{latest_at_with_blueprint_resolved_data, DataResultQuery};
 use re_types::{
     archetypes::{Pinhole, Transform3D},
     components::{AxisLength, ImagePlaneDistance},
     Archetype as _, Component, ComponentName,
 };
+use re_view::{latest_at_with_blueprint_resolved_data, DataResultQuery};
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, QueryContext, ViewStateExt,
-    ViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext,
-    ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
-    VisualizerQueryInfo, VisualizerSystem,
+    ApplicableEntities, IdentifiedViewSystem, QueryContext, TypedComponentFallbackProvider,
+    ViewContext, ViewContextCollection, ViewQuery, ViewStateExt, ViewSystemExecutionError,
+    VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
-use crate::{
-    contexts::TransformContext, ui::SpatialViewState, view_kind::SpatialSpaceViewKind,
-};
+use crate::{contexts::TransformContext, ui::SpatialViewState, view_kind::SpatialViewKind};
 
 use super::{filter_visualizable_3d_entities, CamerasVisualizer, SpatialViewVisualizerData};
 
@@ -25,7 +22,7 @@ pub struct Transform3DArrowsVisualizer(SpatialViewVisualizerData);
 impl Default for Transform3DArrowsVisualizer {
     fn default() -> Self {
         Self(SpatialViewVisualizerData::new(Some(
-            SpatialSpaceViewKind::ThreeD,
+            SpatialViewKind::ThreeD,
         )))
     }
 }
@@ -277,7 +274,7 @@ re_viewer_context::impl_component_fallback_provider!(Transform3DArrowsVisualizer
 /// The `AxisLengthDetector` doesn't actually visualize anything, but it allows us to detect
 /// when a transform has set the [`AxisLength`] component.
 ///
-/// See the logic in [`crate::SpatialSpaceView3D`]`::choose_default_visualizers`.
+/// See the logic in [`crate::View3D`]`::choose_default_visualizers`.
 #[derive(Default)]
 pub struct AxisLengthDetector();
 

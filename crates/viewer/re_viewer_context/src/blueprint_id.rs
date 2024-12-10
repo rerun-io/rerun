@@ -175,7 +175,7 @@ macro_rules! define_blueprint_id_type {
 
 // ----------------------------------------------------------------------------
 // Definitions for the different [`BlueprintId`] types.
-define_blueprint_id_type!(ViewId, SpaceViewIdRegistry, "space_view");
+define_blueprint_id_type!(ViewId, ViewIdRegistry, "view");
 define_blueprint_id_type!(ContainerId, ContainerIdRegistry, "container");
 
 // ----------------------------------------------------------------------------
@@ -188,7 +188,7 @@ mod tests {
     fn test_blueprint_id() {
         let id = ViewId::random();
         let path = id.as_entity_path();
-        assert!(path.is_child_of(&EntityPath::parse_forgiving("space_view/")));
+        assert!(path.is_child_of(&EntityPath::parse_forgiving("view/")));
 
         let id = ContainerId::random();
         let path = id.as_entity_path();

@@ -249,7 +249,7 @@ pub type PerSystemDataResults<'a> = BTreeMap<ViewSystemIdentifier, Vec<&'a DataR
 
 pub struct ViewQuery<'s> {
     /// The id of the space in which context the query happens.
-    pub space_view_id: ViewId,
+    pub view_id: ViewId,
 
     /// The root of the space in which context the query happens.
     pub space_origin: &'s EntityPath,

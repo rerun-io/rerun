@@ -15,7 +15,7 @@ use re_viewer_context::{
 
 use crate::{
     contexts::SpatialSceneEntityContext,
-    view_kind::SpatialSpaceViewKind,
+    view_kind::SpatialViewKind,
     visualizers::{entity_iterator::clamped_or, UiLabelTarget},
 };
 
@@ -34,7 +34,7 @@ pub struct Boxes2DVisualizer {
 impl Default for Boxes2DVisualizer {
     fn default() -> Self {
         Self {
-            data: SpatialViewVisualizerData::new(Some(SpatialSpaceViewKind::TwoD)),
+            data: SpatialViewVisualizerData::new(Some(SpatialViewKind::TwoD)),
         }
     }
 }

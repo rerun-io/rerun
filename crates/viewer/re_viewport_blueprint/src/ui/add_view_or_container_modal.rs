@@ -3,17 +3,16 @@
 use crate::{ViewBlueprint, ViewportBlueprint};
 use re_ui::UiExt as _;
 use re_viewer_context::{
-    blueprint_id_to_tile_id, icon_for_container_kind, ContainerId, RecommendedView,
-    ViewerContext,
+    blueprint_id_to_tile_id, icon_for_container_kind, ContainerId, RecommendedView, ViewerContext,
 };
 
 #[derive(Default)]
-pub struct AddSpaceViewOrContainerModal {
+pub struct AddViewOrContainerModal {
     target_container: Option<ContainerId>,
     modal_handler: re_ui::modal::ModalHandler,
 }
 
-impl AddSpaceViewOrContainerModal {
+impl AddViewOrContainerModal {
     pub(crate) fn open(&mut self, target_container: ContainerId) {
         self.target_container = Some(target_container);
         self.modal_handler.open();
@@ -105,19 +104,17 @@ fn modal_ui(
     ui.full_span_separator();
 
     // view of any kind
-    for space_view in ctx
-        .space_view_class_registry
+    for view in ctx
+        .view_class_registry
         .iter_registry()
         .map(|entry| ViewBlueprint::new(entry.identifier, RecommendedView::root()))
     {
-        let icon = space_view.class(ctx.space_view_class_registry).icon();
-        let title = space_view
-            .class(ctx.space_view_class_registry)
-            .display_name();
+        let icon = view.class(ctx.view_class_registry).icon();
+        let title = view.class(ctx.view_class_registry).display_name();
         let subtitle = format!("Create a new view to display {title} content.");
 
         if row_ui(ui, icon, title, &subtitle).clicked() {
-            viewport.add_space_views(std::iter::once(space_view), target_container, None);
+            viewport.add_views(std::iter::once(view), target_container, None);
             viewport.mark_user_interaction(ctx);
             *keep_open = false;
         }

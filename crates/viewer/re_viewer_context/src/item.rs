@@ -54,8 +54,8 @@ impl Item {
 
 impl From<ViewId> for Item {
     #[inline]
-    fn from(space_view_id: ViewId) -> Self {
-        Self::View(space_view_id)
+    fn from(view_id: ViewId) -> Self {
+        Self::View(view_id)
     }
 }
 
@@ -85,7 +85,7 @@ impl From<Contents> for Item {
     fn from(contents: Contents) -> Self {
         match contents {
             Contents::Container(container_id) => Self::Container(container_id),
-            Contents::View(space_view_id) => Self::View(space_view_id),
+            Contents::View(view_id) => Self::View(view_id),
         }
     }
 }
@@ -127,8 +127,8 @@ impl std::fmt::Debug for Item {
             Self::ComponentPath(s) => s.fmt(f),
             Self::View(s) => write!(f, "{s:?}"),
             Self::InstancePath(path) => write!(f, "{path}"),
-            Self::DataResult(space_view_id, instance_path) => {
-                write!(f, "({space_view_id:?}, {instance_path}")
+            Self::DataResult(view_id, instance_path) => {
+                write!(f, "({view_id:?}, {instance_path}")
             }
             Self::Container(tile_id) => write!(f, "(tile: {tile_id:?})"),
         }
@@ -170,8 +170,8 @@ pub fn resolve_mono_instance_path_item(
         Item::InstancePath(instance_path) => {
             Item::InstancePath(resolve_mono_instance_path(entity_db, query, instance_path))
         }
-        Item::DataResult(space_view_id, instance_path) => Item::DataResult(
-            *space_view_id,
+        Item::DataResult(view_id, instance_path) => Item::DataResult(
+            *view_id,
             resolve_mono_instance_path(entity_db, query, instance_path),
         ),
         Item::AppId(_)

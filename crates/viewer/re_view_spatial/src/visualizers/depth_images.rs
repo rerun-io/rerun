@@ -22,9 +22,9 @@ use re_viewer_context::{
 use crate::{
     contexts::{SpatialSceneEntityContext, TwoDInThreeDTransformInfo},
     query_pinhole_legacy,
-    view_kind::SpatialSpaceViewKind,
+    view_kind::SpatialViewKind,
     visualizers::filter_visualizable_2d_entities,
-    PickableRectSourceData, PickableTexturedRect, SpatialSpaceView3D,
+    PickableRectSourceData, PickableTexturedRect, SpatialView3D,
 };
 
 use super::{textured_rect_from_image, SpatialViewVisualizerData};
@@ -39,7 +39,7 @@ pub struct DepthImageVisualizer {
 impl Default for DepthImageVisualizer {
     fn default() -> Self {
         Self {
-            data: SpatialViewVisualizerData::new(Some(SpatialSpaceViewKind::TwoD)),
+            data: SpatialViewVisualizerData::new(Some(SpatialViewKind::TwoD)),
             depth_cloud_entities: IntMap::default(),
         }
     }
@@ -62,7 +62,7 @@ impl DepthImageVisualizer {
         images: impl Iterator<Item = DepthImageComponentData>,
     ) {
         let is_3d_view =
-            ent_context.space_view_class_identifier == SpatialSpaceView3D::identifier();
+            ent_context.view_class_identifier == SpatialView3D::identifier();
         ent_context
             .transform_info
             .warn_on_per_instance_transform(ctx.target_entity_path, "DepthImage");

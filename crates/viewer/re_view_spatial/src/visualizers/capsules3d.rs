@@ -14,7 +14,7 @@ use re_viewer_context::{
     VisualizerQueryInfo, VisualizerSystem,
 };
 
-use crate::{contexts::SpatialSceneEntityContext, proc_mesh, view_kind::SpatialSpaceViewKind};
+use crate::{contexts::SpatialSceneEntityContext, proc_mesh, view_kind::SpatialViewKind};
 
 use super::{
     filter_visualizable_3d_entities,
@@ -29,7 +29,7 @@ pub struct Capsules3DVisualizer(SpatialViewVisualizerData);
 impl Default for Capsules3DVisualizer {
     fn default() -> Self {
         Self(SpatialViewVisualizerData::new(Some(
-            SpatialSpaceViewKind::ThreeD,
+            SpatialViewKind::ThreeD,
         )))
     }
 }

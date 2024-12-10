@@ -167,7 +167,7 @@ impl Drop for VisualizerTypeRegistryEntry {
 /// Expected to be populated on viewer startup.
 #[derive(Default)]
 pub struct ViewClassRegistry {
-    space_view_classes: HashMap<ViewClassIdentifier, ViewClassRegistryEntry>,
+    view_classes: HashMap<ViewClassIdentifier, ViewClassRegistryEntry>,
     context_systems: HashMap<ViewSystemIdentifier, ContextSystemTypeRegistryEntry>,
     visualizers: HashMap<ViewSystemIdentifier, VisualizerTypeRegistryEntry>,
     placeholder: ViewClassRegistryEntry,
@@ -199,7 +199,7 @@ impl ViewClassRegistry {
         } = registrator;
 
         if self
-            .space_view_classes
+            .view_classes
             .insert(
                 identifier,
                 ViewClassRegistryEntry {
@@ -220,7 +220,7 @@ impl ViewClassRegistry {
     /// Removes a view class from the registry.
     pub fn remove_class<T: ViewClass + Sized>(&mut self) -> Result<(), ViewClassRegistryError> {
         let identifier = T::identifier();
-        if self.space_view_classes.remove(&identifier).is_none() {
+        if self.view_classes.remove(&identifier).is_none() {
             return Err(ViewClassRegistryError::UnknownClassIdentifier(identifier));
         }
 
@@ -239,7 +239,7 @@ impl ViewClassRegistry {
 
     /// Queries a View type by class name, returning `None` if it is not registered.
     fn get_class(&self, name: ViewClassIdentifier) -> Option<&dyn ViewClass> {
-        self.space_view_classes
+        self.view_classes
             .get(&name)
             .map(|boxed| boxed.class.as_ref())
     }
@@ -248,7 +248,7 @@ impl ViewClassRegistry {
     ///
     /// If the class is unknown, returns a placeholder name.
     pub fn display_name(&self, name: ViewClassIdentifier) -> &'static str {
-        self.space_view_classes
+        self.view_classes
             .get(&name)
             .map_or("<unknown view class>", |boxed| boxed.class.display_name())
     }
@@ -265,7 +265,7 @@ impl ViewClassRegistry {
 
     /// Iterates over all registered View class types, sorted by name.
     pub fn iter_registry(&self) -> impl Iterator<Item = &ViewClassRegistryEntry> {
-        self.space_view_classes
+        self.view_classes
             .values()
             .sorted_by_key(|entry| entry.class.display_name())
     }
@@ -324,14 +324,14 @@ impl ViewClassRegistry {
 
     pub fn new_context_collection(
         &self,
-        space_view_class_identifier: ViewClassIdentifier,
+        view_class_identifier: ViewClassIdentifier,
     ) -> ViewContextCollection {
         re_tracing::profile_function!();
 
-        let Some(class) = self.space_view_classes.get(&space_view_class_identifier) else {
+        let Some(class) = self.view_classes.get(&view_class_identifier) else {
             return ViewContextCollection {
                 systems: Default::default(),
-                space_view_class_identifier,
+                view_class_identifier,
             };
         };
 
@@ -346,17 +346,17 @@ impl ViewClassRegistry {
                     })
                 })
                 .collect(),
-            space_view_class_identifier,
+            view_class_identifier,
         }
     }
 
     pub fn new_visualizer_collection(
         &self,
-        space_view_class_identifier: ViewClassIdentifier,
+        view_class_identifier: ViewClassIdentifier,
     ) -> VisualizerCollection {
         re_tracing::profile_function!();
 
-        let Some(class) = self.space_view_classes.get(&space_view_class_identifier) else {
+        let Some(class) = self.view_classes.get(&view_class_identifier) else {
             return VisualizerCollection {
                 systems: Default::default(),
             };

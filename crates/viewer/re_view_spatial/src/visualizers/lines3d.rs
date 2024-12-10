@@ -15,7 +15,7 @@ use re_viewer_context::{
 
 use crate::{
     contexts::SpatialSceneEntityContext,
-    view_kind::SpatialSpaceViewKind,
+    view_kind::SpatialViewKind,
     visualizers::utilities::{process_labels_3d, LabeledBatch},
 };
 
@@ -30,7 +30,7 @@ pub struct Lines3DVisualizer {
 impl Default for Lines3DVisualizer {
     fn default() -> Self {
         Self {
-            data: SpatialViewVisualizerData::new(Some(SpatialSpaceViewKind::ThreeD)),
+            data: SpatialViewVisualizerData::new(Some(SpatialViewKind::ThreeD)),
         }
     }
 }

@@ -131,7 +131,7 @@ impl Query {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         timeline: &Timeline,
-        space_view_id: ViewId,
+        view_id: ViewId,
     ) -> Result<(), ViewSystemExecutionError> {
         //
         // Read stuff
@@ -160,7 +160,7 @@ impl Query {
         // Filter entity
         //
 
-        let all_entities = all_pov_entities_for_space_view(ctx, space_view_id, timeline);
+        let all_entities = all_pov_entities_for_view(ctx, view_id, timeline);
 
         let mut filter_entity = filter_entity
             .and_then(|entity| all_entities.contains(&entity).then_some(entity))
@@ -419,13 +419,13 @@ impl Query {
 /// Meaning:
 /// - the entity is part of this view
 /// - the entity has any component on the chosen timeline
-fn all_pov_entities_for_space_view(
+fn all_pov_entities_for_view(
     ctx: &ViewerContext<'_>,
-    space_view_id: ViewId,
+    view_id: ViewId,
     timeline: &Timeline,
 ) -> BTreeSet<EntityPath> {
     let mut all_entities = BTreeSet::new();
-    ctx.lookup_query_result(space_view_id)
+    ctx.lookup_query_result(view_id)
         .tree
         .visit(&mut |node| {
             if !node.data_result.tree_prefix_only {

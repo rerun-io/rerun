@@ -5,8 +5,8 @@ mod item_heading_no_breadcrumbs;
 mod item_heading_with_breadcrumbs;
 mod item_title;
 mod selection_panel;
-mod space_view_entity_picker;
-mod space_view_space_origin_ui;
+mod view_entity_picker;
+mod view_space_origin_ui;
 mod visible_time_range_ui;
 mod visualizer_ui;
 

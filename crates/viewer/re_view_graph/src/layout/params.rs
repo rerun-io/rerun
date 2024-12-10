@@ -50,7 +50,7 @@ impl<'a, T: Archetype> QueryArchetype<'a, T> {
         let property = ViewProperty::from_archetype::<T>(
             ctx.blueprint_db(),
             ctx.blueprint_query,
-            query.space_view_id,
+            query.view_id,
         );
         Self {
             ctx,

@@ -1,20 +1,20 @@
-use re_view::HybridResults;
 use re_types::{
     archetypes::Image,
     components::{DrawOrder, ImageBuffer, ImageFormat, Opacity},
     image::ImageKind,
     Component as _,
 };
+use re_view::HybridResults;
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, ImageInfo, QueryContext,
-    ViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext,
-    ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
-    VisualizerQueryInfo, VisualizerSystem,
+    TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewQuery,
+    ViewSystemExecutionError, VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo,
+    VisualizerSystem,
 };
 
 use crate::{
     contexts::SpatialSceneEntityContext,
-    view_kind::SpatialSpaceViewKind,
+    view_kind::SpatialViewKind,
     visualizers::{filter_visualizable_2d_entities, textured_rect_from_image},
     PickableRectSourceData, PickableTexturedRect,
 };
@@ -28,7 +28,7 @@ pub struct ImageVisualizer {
 impl Default for ImageVisualizer {
     fn default() -> Self {
         Self {
-            data: SpatialViewVisualizerData::new(Some(SpatialSpaceViewKind::TwoD)),
+            data: SpatialViewVisualizerData::new(Some(SpatialViewKind::TwoD)),
         }
     }
 }

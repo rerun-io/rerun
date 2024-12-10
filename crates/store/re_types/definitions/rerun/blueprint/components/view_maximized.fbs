@@ -8,5 +8,5 @@ table ViewMaximized (
   "attr.rust.override_crate": "re_types_blueprint",
   "attr.rust.repr": "transparent"
 ) {
-    space_view_id: rerun.datatypes.Uuid (order: 100);
+    view_id: rerun.datatypes.Uuid (order: 100);
 }

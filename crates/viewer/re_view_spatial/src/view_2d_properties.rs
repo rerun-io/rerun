@@ -9,9 +9,9 @@ use re_types::{
 };
 use re_viewer_context::{ViewStateExt, TypedComponentFallbackProvider};
 
-use crate::{ui::SpatialViewState, SpatialSpaceView2D};
+use crate::{ui::SpatialViewState, SpatialView2D};
 
-impl TypedComponentFallbackProvider<Color> for SpatialSpaceView2D {
+impl TypedComponentFallbackProvider<Color> for SpatialView2D {
     fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> Color {
         // Color is a fairly common component, make sure this is the right context.
         if ctx.archetype_name == Some(Background::name()) {
@@ -22,7 +22,7 @@ impl TypedComponentFallbackProvider<Color> for SpatialSpaceView2D {
     }
 }
 
-impl TypedComponentFallbackProvider<BackgroundKind> for SpatialSpaceView2D {
+impl TypedComponentFallbackProvider<BackgroundKind> for SpatialView2D {
     fn fallback_for(&self, _ctx: &re_viewer_context::QueryContext<'_>) -> BackgroundKind {
         BackgroundKind::SolidColor
     }
@@ -40,7 +40,7 @@ fn pinhole_resolution_rect(pinhole: &Pinhole) -> Option<egui::Rect> {
         .map(|res| egui::Rect::from_min_max(egui::Pos2::ZERO, egui::pos2(res.x, res.y)))
 }
 
-impl TypedComponentFallbackProvider<VisualBounds2D> for SpatialSpaceView2D {
+impl TypedComponentFallbackProvider<VisualBounds2D> for SpatialView2D {
     fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> VisualBounds2D {
         let Ok(view_state) = ctx.view_state.downcast_ref::<SpatialViewState>() else {
             return VisualBounds2D::default();
@@ -70,4 +70,4 @@ impl TypedComponentFallbackProvider<VisualBounds2D> for SpatialSpaceView2D {
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(SpatialSpaceView2D => [BackgroundKind, Color, VisualBounds2D]);
+re_viewer_context::impl_component_fallback_provider!(SpatialView2D => [BackgroundKind, Color, VisualBounds2D]);

@@ -9,16 +9,16 @@ pub(crate) struct ShowAction;
 impl ContextMenuAction for ShowAction {
     fn supports_selection(&self, ctx: &ContextMenuContext<'_>) -> bool {
         ctx.selection.iter().any(|(item, _)| match item {
-            Item::View(space_view_id) => !ctx
+            Item::View(view_id) => !ctx
                 .viewport_blueprint
-                .is_contents_visible(&Contents::View(*space_view_id)),
+                .is_contents_visible(&Contents::View(*view_id)),
             Item::Container(container_id) => {
                 !ctx.viewport_blueprint
                     .is_contents_visible(&Contents::Container(*container_id))
                     && ctx.viewport_blueprint.root_container != *container_id
             }
-            Item::DataResult(space_view_id, instance_path) => {
-                data_result_visible(ctx, space_view_id, instance_path).is_some_and(|vis| !vis)
+            Item::DataResult(view_id, instance_path) => {
+                data_result_visible(ctx, view_id, instance_path).is_some_and(|vis| !vis)
             }
             _ => false,
         })
@@ -40,10 +40,10 @@ impl ContextMenuAction for ShowAction {
         );
     }
 
-    fn process_space_view(&self, ctx: &ContextMenuContext<'_>, space_view_id: &ViewId) {
+    fn process_view(&self, ctx: &ContextMenuContext<'_>, view_id: &ViewId) {
         ctx.viewport_blueprint.set_content_visibility(
             ctx.viewer_context,
-            &Contents::View(*space_view_id),
+            &Contents::View(*view_id),
             true,
         );
     }
@@ -51,10 +51,10 @@ impl ContextMenuAction for ShowAction {
     fn process_data_result(
         &self,
         ctx: &ContextMenuContext<'_>,
-        space_view_id: &ViewId,
+        view_id: &ViewId,
         instance_path: &InstancePath,
     ) {
-        set_data_result_visible(ctx, space_view_id, instance_path, true);
+        set_data_result_visible(ctx, view_id, instance_path, true);
     }
 }
 
@@ -63,16 +63,16 @@ pub(crate) struct HideAction;
 impl ContextMenuAction for HideAction {
     fn supports_selection(&self, ctx: &ContextMenuContext<'_>) -> bool {
         ctx.selection.iter().any(|(item, _)| match item {
-            Item::View(space_view_id) => ctx
+            Item::View(view_id) => ctx
                 .viewport_blueprint
-                .is_contents_visible(&Contents::View(*space_view_id)),
+                .is_contents_visible(&Contents::View(*view_id)),
             Item::Container(container_id) => {
                 ctx.viewport_blueprint
                     .is_contents_visible(&Contents::Container(*container_id))
                     && ctx.viewport_blueprint.root_container != *container_id
             }
-            Item::DataResult(space_view_id, instance_path) => {
-                data_result_visible(ctx, space_view_id, instance_path).unwrap_or(false)
+            Item::DataResult(view_id, instance_path) => {
+                data_result_visible(ctx, view_id, instance_path).unwrap_or(false)
             }
             _ => false,
         })
@@ -94,10 +94,10 @@ impl ContextMenuAction for HideAction {
         );
     }
 
-    fn process_space_view(&self, ctx: &ContextMenuContext<'_>, space_view_id: &ViewId) {
+    fn process_view(&self, ctx: &ContextMenuContext<'_>, view_id: &ViewId) {
         ctx.viewport_blueprint.set_content_visibility(
             ctx.viewer_context,
-            &Contents::View(*space_view_id),
+            &Contents::View(*view_id),
             false,
         );
     }
@@ -105,22 +105,22 @@ impl ContextMenuAction for HideAction {
     fn process_data_result(
         &self,
         ctx: &ContextMenuContext<'_>,
-        space_view_id: &ViewId,
+        view_id: &ViewId,
         instance_path: &InstancePath,
     ) {
-        set_data_result_visible(ctx, space_view_id, instance_path, false);
+        set_data_result_visible(ctx, view_id, instance_path, false);
     }
 }
 
 fn data_result_visible(
     ctx: &ContextMenuContext<'_>,
-    space_view_id: &ViewId,
+    view_id: &ViewId,
     instance_path: &InstancePath,
 ) -> Option<bool> {
     instance_path
         .is_all()
         .then(|| {
-            let query_result = ctx.viewer_context.lookup_query_result(*space_view_id);
+            let query_result = ctx.viewer_context.lookup_query_result(*view_id);
             query_result
                 .tree
                 .lookup_result_by_path(&instance_path.entity_path)
@@ -131,11 +131,11 @@ fn data_result_visible(
 
 fn set_data_result_visible(
     ctx: &ContextMenuContext<'_>,
-    space_view_id: &ViewId,
+    view_id: &ViewId,
     instance_path: &InstancePath,
     visible: bool,
 ) {
-    if let Some(query_result) = ctx.viewer_context.query_results.get(space_view_id) {
+    if let Some(query_result) = ctx.viewer_context.query_results.get(view_id) {
         if let Some(data_result) = query_result
             .tree
             .lookup_result_by_path(&instance_path.entity_path)
@@ -147,6 +147,6 @@ fn set_data_result_visible(
             );
         }
     } else {
-        re_log::error!("No query available for view {:?}", space_view_id);
+        re_log::error!("No query available for view {:?}", view_id);
     }
 }

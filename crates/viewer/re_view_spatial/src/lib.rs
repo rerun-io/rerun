@@ -29,8 +29,8 @@ mod view_3d;
 mod view_3d_properties;
 mod visualizers;
 
-pub use view_2d::SpatialSpaceView2D;
-pub use view_3d::SpatialSpaceView3D;
+pub use view_2d::SpatialView2D;
+pub use view_3d::SpatialView3D;
 
 pub(crate) use pickable_textured_rect::{PickableRectSourceData, PickableTexturedRect};
 
@@ -50,7 +50,7 @@ use re_viewport_blueprint::{ViewProperty, ViewPropertyQueryError};
 
 mod view_kind {
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    pub enum SpatialSpaceViewKind {
+    pub enum SpatialViewKind {
         TwoD,
         ThreeD,
     }

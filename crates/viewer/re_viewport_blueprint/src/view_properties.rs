@@ -68,12 +68,12 @@ impl ViewProperty {
     fn from_archetype_impl(
         blueprint_db: &EntityDb,
         blueprint_query: LatestAtQuery,
-        space_view_id: ViewId,
+        view_id: ViewId,
         archetype_name: ArchetypeName,
         component_names: Vec<ComponentName>,
     ) -> Self {
         let blueprint_store_path =
-            entity_path_for_view_property(space_view_id, blueprint_db.tree(), archetype_name);
+            entity_path_for_view_property(view_id, blueprint_db.tree(), archetype_name);
 
         let query_results = blueprint_db.latest_at(
             &blueprint_query,
@@ -239,7 +239,7 @@ impl ViewProperty {
 /// Entity path in the blueprint store where all components of the given view property archetype are
 /// stored.
 pub fn entity_path_for_view_property(
-    space_view_id: ViewId,
+    view_id: ViewId,
     _blueprint_entity_tree: &EntityTree,
     archetype_name: ArchetypeName,
 ) -> EntityPath {
@@ -248,8 +248,8 @@ pub fn entity_path_for_view_property(
     // Only if none is found we make up a new (standardized) path.
     // There's some nuances to figure out what happens when we find the archetype several times.
     // Also, we need to specify what it means to "find" the archetype (likely just matching the indicator?).
-    let space_view_blueprint_path = space_view_id.as_entity_path();
+    let view_blueprint_path = view_id.as_entity_path();
 
     // Use short_name instead of full_name since full_name has dots and looks too much like an indicator component.
-    space_view_blueprint_path.join(&EntityPath::from_single_string(archetype_name.short_name()))
+    view_blueprint_path.join(&EntityPath::from_single_string(archetype_name.short_name()))
 }
