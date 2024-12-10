@@ -1,0 +1,17 @@
+namespace rerun.blueprint.archetypes;
+
+/// Aims to achieve a target distance between two nodes that are connected by an edge.
+struct ForceLink (
+    "attr.rerun.scope": "blueprint"
+) {
+    /// Whether the force is enabled.
+    enabled: rerun.blueprint.components.Enabled ("attr.rerun.component_optional", nullable, order: 100);
+
+    /// The target distance between two nodes.
+    distance: rerun.blueprint.components.ForceDistance ("attr.rerun.component_optional", nullable, order: 200);
+
+    /// Specifies how often this force should be applied per iteration.
+    ///
+    /// Increasing this parameter can lead to better results at the cost of longer computation time.
+    iterations: rerun.blueprint.components.ForceIterations ("attr.rerun.component_optional", nullable, order: 300);
+}

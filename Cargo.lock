@@ -2455,9 +2455,9 @@ checksum = "0ce7134b9999ecaf8bcd65542e436736ef32ddca1b3e06094cb6ec5755203b80"
 
 [[package]]
 name = "fjadra"
-version = "0.1.0"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ccc0416b27f53bba6c9bd564260f27d4784c5f430926eb16a519356be7d66bbc"
+checksum = "d8d17b174735bd1464bc491c49570fc824466e9140617c371de9a6d86ebd33ec"
 
 [[package]]
 name = "flatbuffers"
@@ -6392,6 +6392,7 @@ dependencies = [
  "re_data_ui",
  "re_entity_db",
  "re_format",
+ "re_log",
  "re_log_types",
  "re_query",
  "re_renderer",

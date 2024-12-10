@@ -1,0 +1,14 @@
+
+namespace rerun.blueprint.components;
+
+/// The strength of a given force.
+///
+/// Allows to assign different weights to the individual forces, prioritizing one over the other.
+struct ForceStrength (
+  "attr.arrow.transparent",
+  "attr.rust.derive": "Default, Copy, PartialEq",
+  "attr.rust.repr": "transparent",
+  "attr.rerun.scope": "blueprint"
+) {
+    distance: rerun.datatypes.Float64 (order: 100);
+}
