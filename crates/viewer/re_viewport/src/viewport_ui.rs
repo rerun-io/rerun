@@ -248,7 +248,7 @@ fn apply_viewport_command(
                 if let Some(egui_tiles::Tile::Container(container)) =
                     bp.tree.tiles.get_mut(container_tile_id)
                 {
-                    re_log::trace!("Inserting new space view into root container");
+                    re_log::trace!("Inserting new view into root container");
                     container.add_child(tile_id);
                     if let Some(position_in_parent) = position_in_parent {
                         bp.tree.move_tile_to_container(
@@ -283,7 +283,7 @@ fn apply_viewport_command(
             if let Some(egui_tiles::Tile::Container(parent_container)) =
                 bp.tree.tiles.get_mut(blueprint_id_to_tile_id(&parent_id))
             {
-                re_log::trace!("Inserting new space view into container {parent_id:?}");
+                re_log::trace!("Inserting new view into container {parent_id:?}");
                 parent_container.add_child(tile_id);
             } else {
                 re_log::trace!("Parent or root was not a container - will re-run auto-layout");
@@ -309,7 +309,7 @@ fn apply_viewport_command(
                 egui_tiles::Tile::Pane(this_space_view_id) => *this_space_view_id == space_view_id,
                 egui_tiles::Tile::Container(_) => false,
             });
-            re_log::trace!("Found tab to focus on for space view ID {space_view_id}: {found}");
+            re_log::trace!("Found tab to focus on for view ID {space_view_id}: {found}");
         }
 
         ViewportCommand::RemoveContents(contents) => {
@@ -319,9 +319,9 @@ fn apply_viewport_command(
                 re_log::trace!("Removing tile {tile_id:?}");
                 match tile {
                     egui_tiles::Tile::Pane(space_view_id) => {
-                        re_log::trace!("Removing space view {space_view_id}");
+                        re_log::trace!("Removing view {space_view_id}");
 
-                        // Remove the space view from the store
+                        // Remove the view from the store
                         if let Some(space_view) = bp.space_views.get(&space_view_id) {
                             space_view.clear(ctx);
                         }
@@ -425,7 +425,7 @@ fn apply_viewport_command(
 
 /// `egui_tiles` has _tiles_ which are either _containers_ or _panes_.
 ///
-/// In our case, each pane is a space view,
+/// In our case, each pane is a view,
 /// while containers are just groups of things.
 struct TilesDelegate<'a, 'b> {
     view_states: &'a mut ViewStates,
@@ -433,7 +433,7 @@ struct TilesDelegate<'a, 'b> {
     viewport_blueprint: &'a ViewportBlueprint,
     maximized: &'a mut Option<SpaceViewId>,
 
-    /// List of query & system execution results for each space view.
+    /// List of query & system execution results for each view.
     executed_systems_per_space_view: HashMap<SpaceViewId, (ViewQuery<'a>, SystemExecutionOutput)>,
 
     /// List of contents for each tile id
@@ -472,7 +472,7 @@ impl<'a> egui_tiles::Behavior<SpaceViewId> for TilesDelegate<'a, '_> {
         };
 
         let (query, system_output) = self.executed_systems_per_space_view.remove(view_id).unwrap_or_else(|| {
-            // The space view's systems haven't been executed.
+            // The view's systems haven't been executed.
             // This may indicate that the egui_tiles tree is not in sync
             // with the blueprint tree.
             // This shouldn't happen, but better safe than sorry:
@@ -480,7 +480,7 @@ impl<'a> egui_tiles::Behavior<SpaceViewId> for TilesDelegate<'a, '_> {
 
             if cfg!(debug_assertions) {
                 re_log::warn_once!(
-                    "Visualizers for space view {:?} haven't been executed prior to display. This should never happen, please report a bug.",
+                    "Visualizers for view {:?} haven't been executed prior to display. This should never happen, please report a bug.",
                     space_view_blueprint.display_name_or_default()
                 );
             }
@@ -519,7 +519,7 @@ impl<'a> egui_tiles::Behavior<SpaceViewId> for TilesDelegate<'a, '_> {
                 .ui(self.ctx, ui, view_state, &query, system_output)
                 .unwrap_or_else(|err| {
                     re_log::error!(
-                        "Error in space view UI (class: {}, display name: {}): {err}",
+                        "Error in view UI (class: {}, display name: {}): {err}",
                         space_view_blueprint.class_identifier(),
                         class.display_name(),
                     );
@@ -678,7 +678,7 @@ impl<'a> egui_tiles::Behavior<SpaceViewId> for TilesDelegate<'a, '_> {
             // Show maximize-button:
             if ui
                 .small_icon_button(&re_ui::icons::MAXIMIZE)
-                .on_hover_text("Maximize space view")
+                .on_hover_text("Maximize view")
                 .clicked()
             {
                 *self.maximized = Some(space_view_id);
@@ -770,7 +770,7 @@ impl<'a> egui_tiles::Behavior<SpaceViewId> for TilesDelegate<'a, '_> {
 /// A tab button for a tab in the viewport.
 ///
 /// The tab can contain any `egui_tiles::Tile`,
-/// which is either a Pane with a Space View, or a container,
+/// which is either a Pane with a View, or a container,
 /// e.g. a grid of tiles.
 struct TabWidget {
     galley: std::sync::Arc<egui::Galley>,
@@ -815,11 +815,7 @@ impl TabWidget {
                     re_log::warn_once!("Space view {space_view_id} not found");
 
                     TabDesc {
-                        label: tab_viewer
-                            .ctx
-                            .egui_ctx
-                            .error_text("Unknown space view")
-                            .into(),
+                        label: tab_viewer.ctx.egui_ctx.error_text("Unknown view").into(),
                         icon: &re_ui::icons::SPACE_VIEW_GENERIC,
                         user_named: false,
                         item: None,

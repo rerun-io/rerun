@@ -1,6 +1,6 @@
-//! Rerun Text Document Space View
+//! Rerun Text Document View
 //!
-//! A simple Space View that shows a single text document.
+//! A simple Viewshows a single text document.
 
 mod space_view_class;
 mod visualizer_system;

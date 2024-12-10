@@ -1,6 +1,6 @@
 // ---
 re_string_interner::declare_new_type!(
-    /// The unique name of a space view type.
+    /// The unique name of a view
     pub struct SpaceViewClassIdentifier;
 );
 

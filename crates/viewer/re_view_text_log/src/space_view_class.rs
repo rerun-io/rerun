@@ -60,7 +60,7 @@ impl SpaceViewClass for TextSpaceView {
 
 Shows `TextLog` entries over time.
 
-Note: select the Space View for filtering options."
+Note: select the View for filtering options."
             .to_owned()
     }
 
@@ -296,8 +296,8 @@ fn table_ui(
     let mut table_builder = egui_extras::TableBuilder::new(ui)
         .resizable(true)
         .vscroll(true)
-        .auto_shrink([false; 2]) // expand to take up the whole Space View
-        .min_scrolled_height(0.0) // we can go as small as we need to be in order to fit within the space view!
+        .auto_shrink([false; 2]) // expand to take up the whole View
+        .min_scrolled_height(0.0) // we can go as small as we need to be in order to fit within the view!
         .max_scroll_height(f32::INFINITY) // Fill up whole height
         .cell_layout(egui::Layout::left_to_right(egui::Align::TOP));
 

@@ -1,6 +1,6 @@
-//! Rerun bar chart Space View.
+//! Rerun bar chart View.
 //!
-//! A Space View that shows a single bar chart.
+//! A View that shows a single bar chart.
 
 mod space_view_class;
 mod visualizer_system;

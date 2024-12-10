@@ -109,7 +109,7 @@ Displays text from a text component, as raw text or markdown."
         ctx: &ViewerContext<'_>,
     ) -> re_viewer_context::SpaceViewSpawnHeuristics {
         re_tracing::profile_function!();
-        // By default spawn a space view for every text document.
+        // By default spawn a view for every text document.
         suggest_space_view_for_each_entity::<TextDocumentSystem>(ctx, self)
     }
 

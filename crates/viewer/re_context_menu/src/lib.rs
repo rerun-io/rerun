@@ -134,7 +134,7 @@ fn action_list(
                     ],
                 }),
                 Box::new(SubMenu {
-                    label: "Add space view".to_owned(),
+                    label: "Add view".to_owned(),
                     actions: ctx
                         .space_view_class_registry
                         .iter_registry()
@@ -211,7 +211,7 @@ impl<'a> ContextMenuContext<'a> {
     /// Return the clicked item's parent container id and position within it.
     ///
     /// Valid only for space views, containers, and data results. For data results, the parent and
-    /// position of the enclosing space view is considered.
+    /// position of the enclosing view is considered.
     pub fn clicked_item_enclosing_container_id_and_position(&self) -> Option<(ContainerId, usize)> {
         match self.clicked_item {
             Item::SpaceView(space_view_id) | Item::DataResult(space_view_id, _) => {
@@ -226,7 +226,7 @@ impl<'a> ContextMenuContext<'a> {
     /// Return the clicked item's parent container and position within it.
     ///
     /// Valid only for space views, containers, and data results. For data results, the parent and
-    /// position of the enclosing space view is considered.
+    /// position of the enclosing view is considered.
     pub fn clicked_item_enclosing_container_and_position(
         &self,
     ) -> Option<(&'a ContainerBlueprint, usize)> {
@@ -347,7 +347,7 @@ trait ContextMenuAction {
     /// Process a single container.
     fn process_container(&self, _ctx: &ContextMenuContext<'_>, _container_id: &ContainerId) {}
 
-    /// Process a single space view.
+    /// Process a single view.
     fn process_space_view(&self, _ctx: &ContextMenuContext<'_>, _space_view_id: &SpaceViewId) {}
 
     /// Process a single data result.

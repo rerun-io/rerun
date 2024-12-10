@@ -8,7 +8,7 @@ They are represented as freely arrangeable tiles in the Viewport.
 Most Space Views are interactive, allowing their data to be explored freely.
 
 
-## Properties of a space view
+## Properties of a view
 All properties are saved as part of the blueprint.
 
 Changing discards Space View State:
@@ -28,7 +28,7 @@ Freely mutable:
 
 
 ## Space view state
-In addition to blueprint stored data, a space view has a class specific `SpaceViewState`
+In addition to blueprint stored data, a view has a class specific `SpaceViewState`
 which stored ephemeral state that is not persisted as part of the blueprint.
 This is typically used for animation/transition state.
 
@@ -42,7 +42,7 @@ It defines:
 * how it is interacted with
 * what properties are read from the blueprint store and how they are exposed in the UI
 
-### What space view classes are there?
+### What view classes are there?
 Space View differ only in class when they are **fundamentally different** in the way they display data.
 Naturally, this means that there are only ever very few distinct Space View classes.
 
@@ -54,7 +54,7 @@ As of writing we have:
 * Text Document
 * Time Series
 
-#### Future space view class distinction
+#### Future view class distinction
 
 The fundamental difference between different space views lies in the kinds of axes a view has.
 - Data Table (currently text views) have rows and columns with text
@@ -65,7 +65,7 @@ The fundamental difference between different space views lies in the kinds of ax
 - Rich Text is a rich text document (linear in top to bottom with wraparound in horizontal)
 
 ##### On merging bar chart with spatial 2D
-It might take some time to get the Archetype Queries + defaults expressive and easy to use enough that it makes sense to merge bar chart with spatial 2D. Right now we have the state that the bar chart space view takes a single 1-D tensor and draws a bar chart with x-axis = tensor indices and y-axis = tensor values. It draws boxes with width 1, centered on integers in x, y-min = 0 and y-max = tensor value.
+It might take some time to get the Archetype Queries + defaults expressive and easy to use enough that it makes sense to merge bar chart with spatial 2D. Right now we have the state that the bar chart view takes a single 1-D tensor and draws a bar chart with x-axis = tensor indices and y-axis = tensor values. It draws boxes with width 1, centered on integers in x, y-min = 0 and y-max = tensor value.
 
 With the right set of primitives a user should be able to manually build a bar chart in a spatial 2D view. For example they might want a stacked bar chart. Talking about bringing in 3D into a bar chart doesn't likely make sense since there probably doesn't exist a camera projection that maps between 3D and the tensor indices axis (x).
 
@@ -120,7 +120,7 @@ in a generic fashion.
 
 Example:
 The `Points2DPart` queries the `Points2D` archetype upon execution and produces as a result `re_renderer::PointCloudDrawData`.
-Since points can have UI labels, it also stores `UiLabel` in its own state which the space view class of `ui`
+Since points can have UI labels, it also stores `UiLabel` in its own state which the view class of `ui`
 can read out via `Points2DPart::data()` to draw UI labels.
 
 Note on naming:
@@ -133,7 +133,7 @@ i.e. an object or function that queries a set of components (an Archetype) and e
 ### Registration
 Registration is done via `SpaceViewSystemRegistry` which `SpaceViewClassRegistry` stores for each class.
 Space view classes can register their built-in systems upon their own registration via their `on_register` method.
-As with space view classes themselves, new systems may be added at runtime.
+As with view classes themselves, new systems may be added at runtime.
 
 ### Frame lifecycle
 * `SpaceViewClass::prepare_ui`
@@ -157,7 +157,7 @@ This is desirable since:
 ![Overview diagram of how the basic traits related to each other](https://github.com/rerun-io/rerun/assets/1220815/ffdb1cdf-7efe-47a0-ac38-30262d770e69)
 
 
-#### User defined space view classes
+#### User defined view classes
 Rust developers can use the Class Registry to register their own Space View types.
 We do *not* expect this to be a common workflow, but more of a last resort / highest level
 extensibility hooks.

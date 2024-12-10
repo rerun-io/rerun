@@ -13,7 +13,7 @@ use crate::{
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd, Ord, Eq)]
 pub enum SpaceViewClassLayoutPriority {
-    /// This space view can share space with others
+    /// This view can share space with others
     ///
     /// Used for boring things like text and plots.
     Low,
@@ -21,7 +21,7 @@ pub enum SpaceViewClassLayoutPriority {
     #[default]
     Medium,
 
-    /// Give this space view lots of space.
+    /// Give this view lots of space.
     /// Used for spatial views (2D/3D).
     High,
 }
@@ -37,33 +37,33 @@ impl VisualizableFilterContext for () {
     }
 }
 
-/// Defines a class of space view without any concrete types making it suitable for storage and interfacing.
+/// Defines a class of view without any concrete types making it suitable for storage and interfacing.
 ///
-/// Each Space View in the viewer's viewport has a single class assigned immutable at its creation time.
+/// Each View in the viewer's viewport has a single class assigned immutable at its creation time.
 /// The class defines all aspects of its behavior.
 /// It determines which entities are queried, how they are rendered, and how the user can interact with them.
 //
-// TODO(andreas): Consider formulating a space view instance context object that is passed to all
+// TODO(andreas): Consider formulating a view instance context object that is passed to all
 // methods that operate on concrete space views as opposed to be about general information on the class.
 pub trait SpaceViewClass: Send + Sync {
-    /// Identifier string of this space view class.
+    /// Identifier string of this view class.
     ///
     /// By convention we use `PascalCase`.
     fn identifier() -> SpaceViewClassIdentifier
     where
         Self: Sized;
 
-    /// User-facing name of this space view class.
+    /// User-facing name of this view class.
     ///
     /// Used for UI display.
     fn display_name(&self) -> &'static str;
 
-    /// Icon used to identify this space view class.
+    /// Icon used to identify this view class.
     fn icon(&self) -> &'static re_ui::Icon {
         &re_ui::icons::SPACE_VIEW_GENERIC
     }
 
-    /// Help text describing how to interact with this space view in the ui.
+    /// Help text describing how to interact with this view in the ui.
     fn help_markdown(&self, egui_ctx: &egui::Context) -> String;
 
     /// Called once upon registration of the class
@@ -74,24 +74,24 @@ pub trait SpaceViewClass: Send + Sync {
         system_registry: &mut SpaceViewSystemRegistrator<'_>,
     ) -> Result<(), SpaceViewClassRegistryError>;
 
-    /// Called once for every new space view instance of this class.
+    /// Called once for every new view instance of this class.
     ///
     /// The state is *not* persisted across viewer sessions, only shared frame-to-frame.
     fn new_state(&self) -> Box<dyn SpaceViewState>;
 
-    /// Optional archetype of the Space View's blueprint properties.
+    /// Optional archetype of the View's blueprint properties.
     ///
-    /// Blueprint components that only apply to the space view itself, not to the entities it displays.
+    /// Blueprint components that only apply to the view itself, not to the entities it displays.
     fn blueprint_archetype(&self) -> Option<Vec<ComponentName>> {
         None
     }
 
-    /// Preferred aspect ratio for the ui tiles of this space view.
+    /// Preferred aspect ratio for the ui tiles of this view.
     fn preferred_tile_aspect_ratio(&self, _state: &dyn SpaceViewState) -> Option<f32> {
         None
     }
 
-    /// Controls how likely this space view will get a large tile in the ui.
+    /// Controls how likely this view will get a large tile in the ui.
     fn layout_priority(&self) -> SpaceViewClassLayoutPriority;
 
     /// Controls whether the visible time range UI should be displayed for this view.
@@ -99,7 +99,7 @@ pub trait SpaceViewClass: Send + Sync {
         false
     }
 
-    /// Default query range for this space view.
+    /// Default query range for this view.
     //TODO(#6918): also provide ViewerContext and SpaceViewId, to enable reading view properties.
     fn default_query_range(&self, _state: &dyn SpaceViewState) -> QueryRange {
         QueryRange::LatestAt
@@ -174,7 +174,7 @@ pub trait SpaceViewClass: Send + Sync {
     /// Determines which space views should be spawned by default for this class.
     fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> SpaceViewSpawnHeuristics;
 
-    /// Ui shown when the user selects a space view of this class.
+    /// Ui shown when the user selects a view of this class.
     fn selection_ui(
         &self,
         _ctx: &ViewerContext<'_>,
@@ -200,7 +200,7 @@ pub trait SpaceViewClass: Send + Sync {
         Ok(())
     }
 
-    /// Draws the ui for this space view class and handles ui events.
+    /// Draws the ui for this view class and handles ui events.
     ///
     /// The passed state is kept frame-to-frame.
     ///
@@ -218,9 +218,9 @@ pub trait SpaceViewClass: Send + Sync {
 }
 
 pub trait SpaceViewClassExt<'a>: SpaceViewClass + 'a {
-    /// Determines the set of visible entities for a given space view.
+    /// Determines the set of visible entities for a given view.
     // TODO(andreas): This should be part of the SpaceView's (non-blueprint) state.
-    // Updated whenever `applicable_entities_per_visualizer` or the space view blueprint changes.
+    // Updated whenever `applicable_entities_per_visualizer` or the view blueprint changes.
     fn determine_visualizable_entities(
         &self,
         applicable_entities_per_visualizer: &PerVisualizer<ApplicableEntities>,
@@ -256,7 +256,7 @@ pub trait SpaceViewClassExt<'a>: SpaceViewClass + 'a {
 
 impl<'a> SpaceViewClassExt<'a> for dyn SpaceViewClass + 'a {}
 
-/// Unserialized frame to frame state of a space view.
+/// Unserialized frame to frame state of a view.
 ///
 /// For any state that should be persisted, use the Blueprint!
 /// This state is used for transient state, such as animation or uncommitted ui state like dragging a camera.
@@ -269,7 +269,7 @@ pub trait SpaceViewState: std::any::Any + Sync + Send {
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
 }
 
-/// Implementation of an empty space view state.
+/// Implementation of an empty view state.
 impl SpaceViewState for () {
     fn as_any(&self) -> &dyn std::any::Any {
         self

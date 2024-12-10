@@ -1,6 +1,6 @@
-//! Rerun map visualization Space View.
+//! Rerun map visualization View.
 //!
-//! A Space View that shows geographic objects on a map.
+//! A View that shows geographic objects on a map.
 
 mod map_overlays;
 mod map_space_view;

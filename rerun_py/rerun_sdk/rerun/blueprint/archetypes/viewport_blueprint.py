@@ -44,7 +44,7 @@ class ViewportBlueprint(Archetype):
         auto_layout:
             Whether the viewport layout is determined automatically.
 
-            If `true`, the container layout will be reset whenever a new space view is added or removed.
+            If `true`, the container layout will be reset whenever a new view is added or removed.
             This defaults to `false` and is automatically set to `false` when there is user determined layout.
         auto_space_views:
             Whether or not space views should be created automatically.
@@ -116,7 +116,7 @@ class ViewportBlueprint(Archetype):
     )
     # Whether the viewport layout is determined automatically.
     #
-    # If `true`, the container layout will be reset whenever a new space view is added or removed.
+    # If `true`, the container layout will be reset whenever a new view is added or removed.
     # This defaults to `false` and is automatically set to `false` when there is user determined layout.
     #
     # (Docstring intentionally commented out to hide this field from the docs)

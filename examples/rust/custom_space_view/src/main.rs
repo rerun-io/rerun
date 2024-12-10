@@ -49,7 +49,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             );
             app.add_receiver(rx);
 
-            // Register the custom space view
+            // Register the custom view
             app.add_space_view_class::<color_coordinates_space_view::ColorCoordinatesSpaceView>()
                 .unwrap();
 

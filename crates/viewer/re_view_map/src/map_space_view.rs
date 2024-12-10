@@ -424,7 +424,7 @@ fn handle_picking_and_ui_interactions(
 
         handle_ui_interactions(ctx, query, map_response, picking_result);
 
-        // TODO(ab, andreas): this part is copy-pasted-modified from spatial space view and should be factored as an utility
+        // TODO(ab, andreas): this part is copy-pasted-modified from spatial view and should be factored as an utility
 
         /// Radius in which cursor interactions may snap to the nearest object even if the cursor
         /// does not hover it directly.
@@ -618,9 +618,7 @@ fn picking_gpu(
             // Nothing found.
             None
         } else {
-            Some(re_view::instance_path_hash_from_picking_layer_id(
-                picked_id,
-            ))
+            Some(re_view::instance_path_hash_from_picking_layer_id(picked_id))
         };
 
         *last_gpu_picking_result = new_result;

@@ -8,7 +8,7 @@ use re_ui::UiExt as _;
 use re_viewer_context::{DataQueryResult, SpaceViewClassExt as _, SpaceViewId, ViewerContext};
 use re_viewport_blueprint::{SpaceViewBlueprint, ViewportBlueprint};
 
-/// Window for adding/removing entities from a space view.
+/// Window for adding/removing entities from a view.
 ///
 /// Delegates to [`re_ui::modal::ModalHandler`]
 #[derive(Default)]
@@ -216,7 +216,7 @@ fn add_entities_line_ui(
                 }
 
                 response.on_hover_text(
-                    "Exclude this entity and all its descendants from the space view",
+                    "Exclude this entity and all its descendants from the view",
                 );
             } else {
                 // Add-button:
@@ -237,11 +237,11 @@ fn add_entities_line_ui(
                     if enabled {
                         if add_info.can_add.is_compatible_and_missing() {
                             response.on_hover_text(
-                                "Include this entity and all its descendants in the space view",
+                                "Include this entity and all its descendants in the view",
                             );
                         } else {
                             response
-                                .on_hover_text("Add descendants of this entity to the space view");
+                                .on_hover_text("Add descendants of this entity to the view");
                         }
                     } else if let CanAddToSpaceView::No { reason } = &add_info.can_add {
                         response.on_disabled_hover_text(reason);
@@ -252,7 +252,7 @@ fn add_entities_line_ui(
     });
 }
 
-/// Describes if an entity path can be added to a space view.
+/// Describes if an entity path can be added to a view.
 #[derive(Clone, PartialEq, Eq)]
 enum CanAddToSpaceView {
     Compatible { already_added: bool },
@@ -268,7 +268,7 @@ impl Default for CanAddToSpaceView {
 }
 
 impl CanAddToSpaceView {
-    /// Can be generally added but space view might already have this element.
+    /// Can be generally added but view might already have this element.
     pub fn is_compatible(&self) -> bool {
         match self {
             Self::Compatible { .. } => true,
@@ -316,7 +316,7 @@ fn create_entity_add_info(
 ) -> IntMap<EntityPath, EntityAddInfo> {
     let mut meta_data: IntMap<EntityPath, EntityAddInfo> = IntMap::default();
 
-    // TODO(andreas): This should be state that is already available because it's part of the space view's state.
+    // TODO(andreas): This should be state that is already available because it's part of the view's state.
     let class = space_view.class(ctx.space_view_class_registry);
     let visualizable_entities = class.determine_visualizable_entities(
         ctx.applicable_entities_per_visualizer,
@@ -336,7 +336,7 @@ fn create_entity_add_info(
                 // TODO(#6321): This shouldn't necessarily prevent us from adding it.
                 CanAddToSpaceView::No {
                     reason: format!(
-                        "Entity can't be displayed by any of the available visualizers in this class of space view ({}).",
+                        "Entity can't be displayed by any of the available visualizers in this class of view ({}).",
                         space_view.class_identifier()
                     ),
                 }

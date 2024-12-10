@@ -207,7 +207,7 @@ That brings us to the end of this walkthrough. To recap, you have learned how to
 -   Run the Rerun Viewer using the `rerun` command.
 -   Open the examples integrated in the viewer.
 -   Work with the [Blueprint](../reference/viewer/blueprint.md), [Selection](../reference/viewer/selection.md) and [Timeline](../reference/viewer/timeline.md) panels.
--   Rearrange space view layouts.
+-   Rearrange view layouts.
 -   Explore data through hover and selection.
 -   Change the time selection.
 -   Switch between different timelines.

@@ -66,7 +66,7 @@ Display a graph of nodes and edges.
         )
     }
 
-    /// Register all systems (contexts & parts) that the space view needs.
+    /// Register all systems (contexts & parts) that the view needs.
     fn on_register(
         &self,
         system_registry: &mut SpaceViewSystemRegistrator<'_>,
@@ -116,7 +116,7 @@ Display a graph of nodes and edges.
         }
     }
 
-    /// Additional UI displayed when the space view is selected.
+    /// Additional UI displayed when the view is selected.
     ///
     /// In this sample we show a combo box to select the color coordinates mode.
     fn selection_ui(
@@ -147,7 +147,7 @@ Display a graph of nodes and edges.
         Ok(())
     }
 
-    /// The contents of the Space View window and all interaction within it.
+    /// The contents of the View window and all interaction within it.
     ///
     /// This is called with freshly created & executed context & part systems.
     fn ui(

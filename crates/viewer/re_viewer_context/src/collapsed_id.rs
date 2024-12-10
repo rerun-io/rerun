@@ -34,7 +34,7 @@ impl CollapseScope {
         }
     }
 
-    /// Create a [`CollapsedId`] for a space view in this scope.
+    /// Create a [`CollapsedId`] for a view in this scope.
     pub fn space_view(self, space_view_id: SpaceViewId) -> CollapsedId {
         CollapsedId {
             item: CollapseItem::SpaceView(space_view_id),

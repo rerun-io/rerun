@@ -210,7 +210,7 @@ pub struct App {
 
     analytics: crate::viewer_analytics::ViewerAnalytics,
 
-    /// All known space view types.
+    /// All known view types.
     space_view_class_registry: SpaceViewClassRegistry,
 
     pub(crate) panel_state_overrides_active: bool,
@@ -394,7 +394,7 @@ impl App {
         &self.rx
     }
 
-    /// Adds a new space view class to the viewer.
+    /// Adds a new view class to the viewer.
     pub fn add_space_view_class<T: SpaceViewClass + Default + 'static>(
         &mut self,
     ) -> Result<(), SpaceViewClassRegistryError> {

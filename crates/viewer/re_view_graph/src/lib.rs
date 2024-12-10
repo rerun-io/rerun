@@ -1,6 +1,6 @@
-//! Rerun Graph Space View.
+//! Rerun Graph View.
 //!
-//! A Space View that shows a graph (node-link diagram).
+//! A View that shows a graph (node-link diagram).
 
 mod graph;
 mod layout;

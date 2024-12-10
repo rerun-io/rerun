@@ -102,7 +102,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
     ) -> Option<EntityPath> {
         let common_ancestor = EntityPath::common_ancestor_of(entities.iter());
 
-        // For 3D space view, the origin of the subspace defined by the common ancestor is usually
+        // For 3D view, the origin of the subspace defined by the common ancestor is usually
         // the best choice. However, if the subspace is defined by a pinhole, we should use its
         // parent.
         //
@@ -275,7 +275,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
             SpatialSpaceViewKind::ThreeD,
         );
 
-        // ViewCoordinates is a strong indicator that a 3D space view is needed.
+        // ViewCoordinates is a strong indicator that a 3D view is needed.
         // Note that if the root has `ViewCoordinates`, this will stop the root splitting heuristic
         // from splitting the root space into several subspaces.
         //
@@ -293,7 +293,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
             }
         });
 
-        // Spawn a space view at each subspace that has any potential 3D content.
+        // Spawn a view at each subspace that has any potential 3D content.
         // Note that visualizability filtering is all about being in the right subspace,
         // so we don't need to call the visualizers' filter functions here.
         SpatialTopology::access(&ctx.recording_id(), |topo| {

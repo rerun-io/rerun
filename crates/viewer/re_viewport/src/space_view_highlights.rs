@@ -9,10 +9,10 @@ use re_viewer_context::{
     SpaceViewId, SpaceViewOutlineMasks,
 };
 
-/// Computes which things in a space view should received highlighting.
+/// Computes which things in a view should received highlighting.
 ///
 /// This method makes decisions which entities & instances should which kind of highlighting
-/// based on the entities in a space view and the current selection/hover state.
+/// based on the entities in a view and the current selection/hover state.
 pub fn highlights_for_space_view(
     ctx: &re_viewer_context::ViewerContext<'_>,
     space_view_id: SpaceViewId,

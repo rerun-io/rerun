@@ -6,7 +6,7 @@ use re_renderer::OutlineMaskPreference;
 
 use crate::{HoverHighlight, InteractionHighlight, SelectionHighlight};
 
-/// Highlights of a specific entity path in a specific space view.
+/// Highlights of a specific entity path in a specific view.
 ///
 /// Using this in bulk on many instances is faster than querying single objects.
 #[derive(Default)]
@@ -96,7 +96,7 @@ impl SpaceViewOutlineMasks {
     }
 }
 
-/// Highlights in a specific space view.
+/// Highlights in a specific view.
 ///
 /// Using this in bulk on many objects is faster than querying single objects.
 #[derive(Default)]

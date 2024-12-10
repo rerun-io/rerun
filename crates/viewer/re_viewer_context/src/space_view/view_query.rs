@@ -265,7 +265,7 @@ pub struct ViewQuery<'s> {
     /// The time on the timeline we're currently at.
     pub latest_at: TimeInt,
 
-    /// Hover/select highlighting information for this space view.
+    /// Hover/select highlighting information for this view.
     ///
     /// TODO(andreas): This should be the result of a [`crate::ViewContextSystem`] instead?
     pub highlights: SpaceViewHighlights,

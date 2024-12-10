@@ -1,6 +1,6 @@
-//! Rerun Space View utilities
+//! Rerun View utilities
 //!
-//! Types & utilities for defining Space View classes and communicating with the Viewport.
+//! Types & utilities for defining View classes and communicating with the Viewport.
 
 pub mod controls;
 

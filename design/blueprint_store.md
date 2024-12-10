@@ -22,8 +22,8 @@ give users explicit control over the details of how data is displayed in the vie
 
 - Is the selection panel open? how wide?
 - How are my space views organized?
-- What data is shown in each space view
-- Additional configuration / overrides for the data within each space view
+- What data is shown in each view
+- Additional configuration / overrides for the data within each view
 
 ## Proposal
 
@@ -112,7 +112,7 @@ The assorted objects used in blueprint construction are:
         - `View3D`
         - `ViewTimeSeries`
         - … additional space-views
- - `Data`: A query that builds archetypes to draw in the space view
+ - `Data`: A query that builds archetypes to draw in the view
     - `Auto`: A query to automatically build archetypes from an entity path
     - `Points2D`: A query to build a Points2D archetype
     - `Points3D`: A query to build a Points3D archetype

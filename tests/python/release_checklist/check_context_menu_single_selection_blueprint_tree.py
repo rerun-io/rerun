@@ -24,7 +24,7 @@ Viewport                   Expand all
                            Collapse all
 
                            Add container
-                           Add space view
+                           Add view
 ------------------------------------------------------------------
 Container                  Hide (or Show, depending on visibility)
                            Remove
@@ -33,7 +33,7 @@ Container                  Hide (or Show, depending on visibility)
                            Collapse all
 
                            Add container
-                           Add space view
+                           Add view
 
                            Move to new container
 ------------------------------------------------------------------
@@ -53,12 +53,12 @@ Space view                 Hide (or Show, depending on visibility)
                            Expand all
                            Collapse all
 
-                           Add to new space view
+                           Add to new view
 ------------------------------------------------------------------
 'boxes3d' data result      Hide (or Show, depending on visibility)
                            Remove
 
-                           Add to new space view
+                           Add to new view
 ```
 
 """

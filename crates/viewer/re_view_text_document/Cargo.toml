@@ -1,6 +1,6 @@
 [package]
 authors.workspace = true
-description = "A simple space view that shows a single text box."
+description = "A simple view that shows a single text box."
 edition.workspace = true
 homepage.workspace = true
 license.workspace = true

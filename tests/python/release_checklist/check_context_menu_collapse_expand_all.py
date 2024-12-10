@@ -8,7 +8,7 @@ import rerun as rr
 import rerun.blueprint as rrb
 
 README = """\
-# Context Menu - Add entity to new space view
+# Context Menu - Add entity to new view
 
 ## Blueprint tree
 

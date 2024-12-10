@@ -9,9 +9,9 @@ use re_viewport_blueprint::SpaceViewBlueprint;
 
 use crate::{ContextMenuAction, ContextMenuContext};
 
-/// Create a new space view containing the selected entities.
+/// Create a new view containing the selected entities.
 ///
-/// The space view is created next to the clicked item's parent view (if a data result was clicked).
+/// The view is created next to the clicked item's parent view (if a data result was clicked).
 pub(crate) struct AddEntitiesToNewSpaceViewAction;
 
 impl ContextMenuAction for AddEntitiesToNewSpaceViewAction {
@@ -35,7 +35,7 @@ impl ContextMenuAction for AddEntitiesToNewSpaceViewAction {
             .copied()
             .collect();
 
-        ui.menu_button("Add to new space view", |ui| {
+        ui.menu_button("Add to new view", |ui| {
             let buttons_for_space_view_classes =
                 |ui: &mut egui::Ui, space_view_classes: &IntSet<SpaceViewClassIdentifier>| {
                     for (identifier, class) in space_view_classes
@@ -106,7 +106,7 @@ fn recommended_space_views_for_selection(
             &suggested_root,
         );
 
-        // We consider a space view class to be recommended if all selected entities are
+        // We consider a view class to be recommended if all selected entities are
         // "visualizable" with it. By "visualizable" we mean that either the entity itself, or any
         // of its sub-entities, are visualizable.
 
@@ -127,8 +127,8 @@ fn recommended_space_views_for_selection(
     output
 }
 
-/// Creates a space view of the given class, with root set as origin, and a filter set to include all
-/// selected entities. Then, the selection is set to the new space view.
+/// Creates a view of the given class, with root set as origin, and a filter set to include all
+/// selected entities. Then, the selection is set to the new view.
 fn create_space_view_for_selected_entities(
     ctx: &ContextMenuContext<'_>,
     identifier: SpaceViewClassIdentifier,

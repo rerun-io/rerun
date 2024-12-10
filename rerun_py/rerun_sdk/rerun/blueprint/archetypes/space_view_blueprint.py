@@ -41,15 +41,15 @@ class SpaceViewBlueprint(Archetype):
         display_name:
             The name of the view.
         space_origin:
-            The "anchor point" of this space view.
+            The "anchor point" of this view.
 
             Defaults to the root path '/' if not specified.
 
-            The transform at this path forms the reference point for all scene->world transforms in this space view.
-            I.e. the position of this entity path in space forms the origin of the coordinate system in this space view.
-            Furthermore, this is the primary indicator for heuristics on what entities we show in this space view.
+            The transform at this path forms the reference point for all scene->world transforms in this view.
+            I.e. the position of this entity path in space forms the origin of the coordinate system in this view.
+            Furthermore, this is the primary indicator for heuristics on what entities we show in this view.
         visible:
-            Whether this space view is visible.
+            Whether this view is visible.
 
             Defaults to true if not specified.
 
@@ -101,13 +101,13 @@ class SpaceViewBlueprint(Archetype):
         default=None,
         converter=blueprint_components.SpaceViewOriginBatch._optional,  # type: ignore[misc]
     )
-    # The "anchor point" of this space view.
+    # The "anchor point" of this view.
     #
     # Defaults to the root path '/' if not specified.
     #
-    # The transform at this path forms the reference point for all scene->world transforms in this space view.
-    # I.e. the position of this entity path in space forms the origin of the coordinate system in this space view.
-    # Furthermore, this is the primary indicator for heuristics on what entities we show in this space view.
+    # The transform at this path forms the reference point for all scene->world transforms in this view.
+    # I.e. the position of this entity path in space forms the origin of the coordinate system in this view.
+    # Furthermore, this is the primary indicator for heuristics on what entities we show in this view.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -116,7 +116,7 @@ class SpaceViewBlueprint(Archetype):
         default=None,
         converter=blueprint_components.VisibleBatch._optional,  # type: ignore[misc]
     )
-    # Whether this space view is visible.
+    # Whether this view is visible.
     #
     # Defaults to true if not specified.
     #

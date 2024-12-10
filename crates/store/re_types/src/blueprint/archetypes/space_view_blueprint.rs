@@ -27,16 +27,16 @@ pub struct SpaceViewBlueprint {
     /// The name of the view.
     pub display_name: Option<crate::components::Name>,
 
-    /// The "anchor point" of this space view.
+    /// The "anchor point" of this view.
     ///
     /// Defaults to the root path '/' if not specified.
     ///
-    /// The transform at this path forms the reference point for all scene->world transforms in this space view.
-    /// I.e. the position of this entity path in space forms the origin of the coordinate system in this space view.
-    /// Furthermore, this is the primary indicator for heuristics on what entities we show in this space view.
+    /// The transform at this path forms the reference point for all scene->world transforms in this view.
+    /// I.e. the position of this entity path in space forms the origin of the coordinate system in this view.
+    /// Furthermore, this is the primary indicator for heuristics on what entities we show in this view.
     pub space_origin: Option<crate::blueprint::components::SpaceViewOrigin>,
 
-    /// Whether this space view is visible.
+    /// Whether this view is visible.
     ///
     /// Defaults to true if not specified.
     pub visible: Option<crate::blueprint::components::Visible>,
@@ -303,13 +303,13 @@ impl SpaceViewBlueprint {
         self
     }
 
-    /// The "anchor point" of this space view.
+    /// The "anchor point" of this view.
     ///
     /// Defaults to the root path '/' if not specified.
     ///
-    /// The transform at this path forms the reference point for all scene->world transforms in this space view.
-    /// I.e. the position of this entity path in space forms the origin of the coordinate system in this space view.
-    /// Furthermore, this is the primary indicator for heuristics on what entities we show in this space view.
+    /// The transform at this path forms the reference point for all scene->world transforms in this view.
+    /// I.e. the position of this entity path in space forms the origin of the coordinate system in this view.
+    /// Furthermore, this is the primary indicator for heuristics on what entities we show in this view.
     #[inline]
     pub fn with_space_origin(
         mut self,
@@ -319,7 +319,7 @@ impl SpaceViewBlueprint {
         self
     }
 
-    /// Whether this space view is visible.
+    /// Whether this view is visible.
     ///
     /// Defaults to true if not specified.
     #[inline]

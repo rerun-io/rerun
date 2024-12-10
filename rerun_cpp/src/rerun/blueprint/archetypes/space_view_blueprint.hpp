@@ -27,16 +27,16 @@ namespace rerun::blueprint::archetypes {
         /// The name of the view.
         std::optional<rerun::components::Name> display_name;
 
-        /// The "anchor point" of this space view.
+        /// The "anchor point" of this view.
         ///
         /// Defaults to the root path '/' if not specified.
         ///
-        /// The transform at this path forms the reference point for all scene->world transforms in this space view.
-        /// I.e. the position of this entity path in space forms the origin of the coordinate system in this space view.
-        /// Furthermore, this is the primary indicator for heuristics on what entities we show in this space view.
+        /// The transform at this path forms the reference point for all scene->world transforms in this view.
+        /// I.e. the position of this entity path in space forms the origin of the coordinate system in this view.
+        /// Furthermore, this is the primary indicator for heuristics on what entities we show in this view.
         std::optional<rerun::blueprint::components::SpaceViewOrigin> space_origin;
 
-        /// Whether this space view is visible.
+        /// Whether this view is visible.
         ///
         /// Defaults to true if not specified.
         std::optional<rerun::blueprint::components::Visible> visible;
@@ -62,13 +62,13 @@ namespace rerun::blueprint::archetypes {
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
-        /// The "anchor point" of this space view.
+        /// The "anchor point" of this view.
         ///
         /// Defaults to the root path '/' if not specified.
         ///
-        /// The transform at this path forms the reference point for all scene->world transforms in this space view.
-        /// I.e. the position of this entity path in space forms the origin of the coordinate system in this space view.
-        /// Furthermore, this is the primary indicator for heuristics on what entities we show in this space view.
+        /// The transform at this path forms the reference point for all scene->world transforms in this view.
+        /// I.e. the position of this entity path in space forms the origin of the coordinate system in this view.
+        /// Furthermore, this is the primary indicator for heuristics on what entities we show in this view.
         SpaceViewBlueprint with_space_origin(
             rerun::blueprint::components::SpaceViewOrigin _space_origin
         ) && {
@@ -77,7 +77,7 @@ namespace rerun::blueprint::archetypes {
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
-        /// Whether this space view is visible.
+        /// Whether this view is visible.
         ///
         /// Defaults to true if not specified.
         SpaceViewBlueprint with_visible(rerun::blueprint::components::Visible _visible) && {

@@ -301,7 +301,7 @@ impl ContainerBlueprint {
         }
     }
 
-    /// Placeholder name displayed in the UI if the user hasn't explicitly named the space view.
+    /// Placeholder name displayed in the UI if the user hasn't explicitly named the view.
     #[inline]
     pub fn missing_name_placeholder(&self) -> String {
         format!("{:?}", self.container_kind)

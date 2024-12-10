@@ -28,7 +28,7 @@ struct EditState {
     selected_suggestion: Option<usize>,
 }
 
-/// Display the space origin of a space view.
+/// Display the space origin of a view.
 pub(crate) fn space_view_space_origin_widget_ui(
     ui: &mut Ui,
     ctx: &ViewerContext<'_>,
@@ -74,7 +74,7 @@ pub(crate) fn space_view_space_origin_widget_ui(
     ui.memory_mut(|mem| mem.data.insert_temp(is_editing_id, state));
 }
 
-/// Display the space origin of a space view with it is in edit mode.
+/// Display the space origin of a view with it is in edit mode.
 fn space_view_space_origin_widget_editing_ui(
     ui: &mut Ui,
     ctx: &ViewerContext<'_>,

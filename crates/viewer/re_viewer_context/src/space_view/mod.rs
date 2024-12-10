@@ -1,7 +1,7 @@
-//! Rerun Space View class definition
+//! Rerun View class definition
 //!
 //! Defines a framework & utilities for defining classes of space views in the Rerun viewer.
-//! Does not implement any concrete space view.
+//! Does not implement any concrete view.
 
 // TODO(andreas): Can we move some of these to the `re_view` crate?
 mod highlights;
@@ -67,7 +67,7 @@ pub enum SpaceViewSystemExecutionError {
     #[error(transparent)]
     GpuTransferError(#[from] re_renderer::CpuWriteGpuReadError),
 
-    #[error("Failed to downcast space view's to the {0}.")]
+    #[error("Failed to downcast view's to the {0}.")]
     StateCastError(&'static str),
 
     #[error("No render context error.")]

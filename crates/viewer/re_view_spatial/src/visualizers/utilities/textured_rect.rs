@@ -72,7 +72,7 @@ pub fn textured_rect_from_image(
                 },
             };
 
-            // Only update the bounding box if this is a 2D space view.
+            // Only update the bounding box if this is a 2D view.
             // This is avoids a cyclic relationship where the image plane grows
             // the bounds which in turn influence the size of the image plane.
             // See: https://github.com/rerun-io/rerun/issues/3728

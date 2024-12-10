@@ -23,7 +23,7 @@ use re_viewer_context::{
 
 use crate::{SpaceViewBlueprint, ViewProperty};
 
-/// Data to be added to a space view, built from a [`blueprint_archetypes::SpaceViewContents`].
+/// Data to be added to a view, built from a [`blueprint_archetypes::SpaceViewContents`].
 ///
 /// During execution, it will walk an [`EntityTree`] and return a [`DataResultTree`]
 /// containing any entities that match a [`EntityPathFilter`].
@@ -32,7 +32,7 @@ use crate::{SpaceViewBlueprint, ViewProperty};
 /// used for identifying the path of its data in the blueprint store. It's ambiguous
 /// whether the intent is for a clone to write to the same place.
 ///
-/// If you want a new space view otherwise identical to an existing one, use
+/// If you want a new view otherwise identical to an existing one, use
 /// [`SpaceViewBlueprint::duplicate`].
 #[derive(Clone, Debug)]
 pub struct SpaceViewContents {
@@ -307,7 +307,7 @@ impl QueryExpressionEvaluator<'_> {
         *num_matching_entities += matches_filter as usize;
 
         // This list will be updated below during `update_overrides_recursive` by calling `choose_default_visualizers`
-        // on the space view.
+        // on the view.
         let visualizers: SmallVec<[_; 4]> = if matches_filter {
             self.visualizable_entities_for_visualizer_systems
                 .iter()

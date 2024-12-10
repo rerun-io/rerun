@@ -121,7 +121,7 @@ pub fn icon_for_container_kind(kind: &egui_tiles::ContainerKind) -> &'static re_
     }
 }
 
-/// The style to use for displaying this space view name in the UI.
+/// The style to use for displaying this view name in the UI.
 pub fn contents_name_style(name: &ContentsName) -> re_ui::LabelStyle {
     match name {
         ContentsName::Named(_) => re_ui::LabelStyle::Normal,
@@ -138,7 +138,7 @@ pub struct ScreenshotInfo {
     pub ui_rect: Option<egui::Rect>,
     pub pixels_per_point: f32,
 
-    /// Name of the screenshot (e.g. space view name), excluding file extension.
+    /// Name of the screenshot (e.g. view name), excluding file extension.
     pub name: String,
 
     /// Where to put the screenshot.
@@ -157,17 +157,17 @@ pub enum ScreenshotTarget {
 
 // ----------------------------------------------------------------------------------------
 
-/// Used to publish info aboutr each space view.
+/// Used to publish info aboutr each view.
 ///
 /// We use this for space-view screenshotting.
 ///
 /// Accessed with [`egui::Memory::caches`].
 pub type SpaceViewRectPublisher = egui::cache::FramePublisher<SpaceViewId, PublishedSpaceViewInfo>;
 
-/// Information about a space view that is published each frame by [`SpaceViewRectPublisher`].
+/// Information about a view that is published each frame by [`SpaceViewRectPublisher`].
 #[derive(Clone, Debug)]
 pub struct PublishedSpaceViewInfo {
-    /// Human-readable name of the space view.
+    /// Human-readable name of the view.
     pub name: String,
 
     /// Where on screen (in ui coords).

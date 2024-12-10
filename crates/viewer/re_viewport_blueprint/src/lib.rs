@@ -57,7 +57,7 @@ pub fn container_kind_from_egui(
 
 /// List out all space views we generate by default for the available data.
 ///
-/// TODO(andreas): This is transitional. We want to pass on the space view spawn heuristics
+/// TODO(andreas): This is transitional. We want to pass on the view spawn heuristics
 /// directly and make more high level decisions with it.
 pub fn default_created_space_views(ctx: &ViewerContext<'_>) -> Vec<SpaceViewBlueprint> {
     re_tracing::profile_function!();

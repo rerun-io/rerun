@@ -5,7 +5,7 @@ use re_viewport_blueprint::SpaceViewBlueprint;
 
 use crate::{ContextMenuAction, ContextMenuContext};
 
-/// Add a space view of the specific class
+/// Add a view of the specific class
 pub(crate) struct AddSpaceViewAction {
     pub icon: &'static Icon,
     pub id: SpaceViewClassIdentifier,

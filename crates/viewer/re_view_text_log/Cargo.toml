@@ -1,6 +1,6 @@
 [package]
 authors.workspace = true
-description = "A space view that shows text entries in a table and scrolls with the active time."
+description = "A view that shows text entries in a table and scrolls with the active time."
 edition.workspace = true
 homepage.workspace = true
 license.workspace = true

@@ -1,6 +1,6 @@
 use re_viewer_context::SpaceViewState;
 
-/// Space View state without any contents.
+/// View state without any contents.
 #[derive(Default)]
 pub struct EmptySpaceViewState;
 

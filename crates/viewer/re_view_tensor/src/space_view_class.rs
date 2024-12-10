@@ -68,7 +68,7 @@ impl SpaceViewClass for TensorSpaceView {
 
 Display an N-dimensional tensor as an arbitrary 2D slice with custom colormap.
 
-Note: select the space view to configure which dimensions are shown."
+Note: select the view to configure which dimensions are shown."
             .to_owned()
     }
 
@@ -188,7 +188,7 @@ Note: select the space view to configure which dimensions are shown."
         ctx: &ViewerContext<'_>,
     ) -> re_viewer_context::SpaceViewSpawnHeuristics {
         re_tracing::profile_function!();
-        // For tensors create one space view for each tensor (even though we're able to stack them in one view)
+        // For tensors create one view for each tensor (even though we're able to stack them in one view)
         suggest_space_view_for_each_entity::<TensorSystem>(ctx, self)
     }
 

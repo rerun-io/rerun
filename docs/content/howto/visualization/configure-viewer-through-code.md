@@ -130,7 +130,7 @@ However, both `origin` and `contents` play an important role in determining what
 ### `origin`
 
 The `origin` of a space-view is a generalized "frame of reference" for the view. We think of showing all data
-in the space view as relative to the `origin`.
+in the view as relative to the `origin`.
 
 By default, only data that is under the `origin` will be included in the view. As such this is one of the most
 convenient ways of restricting a space-view to a particular subtree.
@@ -154,7 +154,7 @@ rrb.Blueprint(
 
 ### `contents`
 
-If you need to further modify the contents of a space view, you can use the `contents` parameter. This parameter is
+If you need to further modify the contents of a view, you can use the `contents` parameter. This parameter is
 a list of [entity query expressions](../../reference/) that are either included or excluded from the
 view.
 
@@ -162,7 +162,7 @@ Each entity expressions starts with "+" for inclusion or "-" for an exclusion. T
 
 When combining multiple expressions, the "most specific" rule wins.
 
-Additionally, these expressions can reference `$origin` to refer to the origin of the space view.
+Additionally, these expressions can reference `$origin` to refer to the origin of the view.
 
 For example:
 

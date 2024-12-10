@@ -7,17 +7,17 @@ use crate::{ContextMenuAction, ContextMenuContext};
 /// Space view screenshot action.
 #[cfg(not(target_arch = "wasm32"))]
 pub enum ScreenshotAction {
-    /// Screenshot the space view, and copy the results to clipboard.
+    /// Screenshot the view, and copy the results to clipboard.
     CopyScreenshot,
 
-    /// Screenshot the space view, and save the results to disk.
+    /// Screenshot the view, and save the results to disk.
     SaveScreenshot,
 }
 
 impl ContextMenuAction for ScreenshotAction {
     /// Do we have a context menu for this selection?
     fn supports_selection(&self, ctx: &ContextMenuContext<'_>) -> bool {
-        // Allow if there is a single space view selected.
+        // Allow if there is a single view selected.
         ctx.selection.len() == 1
             && ctx
                 .selection

@@ -3,7 +3,7 @@ use re_viewer_context::{
     ViewContextCollection, ViewQuery, VisualizerQueryInfo, VisualizerSystem,
 };
 
-/// An empty system to accept all entities in the space view
+/// An empty system to accept all entities in the view
 #[derive(Default)]
 pub struct EmptySystem {}
 

@@ -1,6 +1,6 @@
-//! Rerun time series Space View
+//! Rerun time series View
 //!
-//! A Space View that shows plots over Rerun timelines.
+//! A View that shows plots over Rerun timelines.
 
 // TODO(#6330): remove unwrap()
 #![allow(clippy::unwrap_used)]
@@ -15,7 +15,7 @@ use re_log_types::EntityPath;
 use re_types::components::{AggregationPolicy, MarkerShape};
 pub use space_view_class::TimeSeriesSpaceView;
 
-/// Computes a deterministic, globally unique ID for the plot based on the ID of the space view
+/// Computes a deterministic, globally unique ID for the plot based on the ID of the view
 /// itself.
 ///
 /// Use it to access the plot's state from anywhere, e.g.:

@@ -18,13 +18,13 @@ This checks whether one can override all properties in a plot.
 * Remove all these overrides.
 
 ### Visible time range overrides
-* Select the `plots` space view and confirm it shows:
+* Select the `plots` view and confirm it shows:
   * "Default" selected
   * Showing "Entire timeline".
 * Select the `plots/cos` entity and confirm it shows:
   * "Default" selected
   * Showing "Entire timeline".
-* Override the `plots` space view Visible time range
+* Override the `plots` view Visible time range
   * Verify all 3 offset modes operate as expected
 * Override the `plots/cos` entity Visible time range
   * Verify all 3 offset modes operate as expected

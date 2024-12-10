@@ -77,7 +77,7 @@ fn init_method(reporter: &Reporter, objects: &Objects, obj: &Object) -> String {
 
         // Right now we don't create "<ArchetypeName>Like" type aliases for archetypes.
         // So we have to list all the possible types here.
-        // For archetypes in general this would only be confusing, but for Space View properties it
+        // For archetypes in general this would only be confusing, but for View properties it
         // could be useful to make the annotation here shorter.
         let additional_type_annotations = property_type
             .try_get_attr::<String>(ATTR_PYTHON_ALIASES)
@@ -130,13 +130,13 @@ Defaults to true if not specified."
         ),
         (
             "defaults",
-            "List of default components or component batches to add to the space view. When an archetype
+            "List of default components or component batches to add to the view. When an archetype
 in the view is missing a component included in this set, the value of default will be used
 instead of the normal fallback for the visualizer.".to_owned(),
         ),
         (
             "overrides",
-            "Dictionary of overrides to apply to the space view. The key is the path to the entity where the override
+            "Dictionary of overrides to apply to the view. The key is the path to the entity where the override
 should be applied. The value is a list of component or component batches to apply to the entity.
 
 Important note: the path must be a fully qualified entity path starting at the root. The override paths

@@ -15,7 +15,7 @@ the entity path of that camera is in 2D space.
 
 The spatial topology is used to determine which (spatial) visualizers can be used in which contents.
 A 2D visualizer can only ever be applied to an entity when there is a valid transformation
-along the path of the entity to the space view's origin.
+along the path of the entity to the view's origin.
 
 Examples for invalid transformation paths are:
 * mismatched start space

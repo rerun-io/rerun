@@ -6,7 +6,7 @@ use re_viewer_context::SpaceViewState;
 
 use crate::layout::{ForceLayoutParams, ForceLayoutProvider, Layout, LayoutRequest};
 
-/// Space view state for the custom space view.
+/// Space view state for the custom view.
 ///
 /// This state is preserved between frames, but not across Viewer sessions.
 #[derive(Default)]

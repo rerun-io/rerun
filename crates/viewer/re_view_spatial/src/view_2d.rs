@@ -121,7 +121,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
     ) -> Option<EntityPath> {
         let common_ancestor = EntityPath::common_ancestor_of(entities.iter());
 
-        // For a 2D space view, the origin of the subspace defined by the common ancestor is always
+        // For a 2D view, the origin of the subspace defined by the common ancestor is always
         // better.
         SpatialTopology::access(&entity_db.store_id(), |topo| {
             topo.subspace_for_entity(&common_ancestor).origin.clone()
@@ -188,7 +188,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
             })
             .unwrap_or_default();
 
-        // Spawn a space view at each subspace that has any potential 2D content.
+        // Spawn a view at each subspace that has any potential 2D content.
         // Note that visualizability filtering is all about being in the right subspace,
         // so we don't need to call the visualizers' filter functions here.
         SpatialTopology::access(&ctx.recording_id(), |topo| {

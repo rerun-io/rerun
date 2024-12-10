@@ -1,6 +1,6 @@
 //! UI utilities related to the viewport blueprint.
 //!
-//! Current this is mainly the add space view or container modal.
+//! Current this is mainly the add view or container modal.
 
 use parking_lot::Mutex;
 

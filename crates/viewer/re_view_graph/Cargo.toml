@@ -1,6 +1,6 @@
 [package]
 authors.workspace = true
-description = "A space view that shows a graph (node-link diagram)."
+description = "A view that shows a graph (node-link diagram)."
 edition.workspace = true
 homepage.workspace = true
 license.workspace = true

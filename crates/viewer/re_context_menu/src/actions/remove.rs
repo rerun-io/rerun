@@ -3,7 +3,7 @@ use re_viewer_context::{ContainerId, Contents, Item, SpaceViewId};
 
 use crate::{ContextMenuAction, ContextMenuContext};
 
-/// Remove a container, space view, or data result.
+/// Remove a container, view, or data result.
 pub(crate) struct RemoveAction;
 
 impl ContextMenuAction for RemoveAction {

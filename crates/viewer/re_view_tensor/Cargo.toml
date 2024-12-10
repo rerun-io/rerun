@@ -1,6 +1,6 @@
 [package]
 authors.workspace = true
-description = "A space view dedicated to visualizing tensors with arbitrary dimensionality."
+description = "A view dedicated to visualizing tensors with arbitrary dimensionality."
 edition.workspace = true
 homepage.workspace = true
 license.workspace = true

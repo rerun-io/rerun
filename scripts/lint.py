@@ -393,7 +393,7 @@ def test_lint_line() -> None:
         r'println!("Problem: \"{}\"", string)',
         r'println!("Problem: \"{0}\"")',
         r'println!("Problem: \"{string}\"")',
-        'ui.label("This uses ugly title casing for Space View.")',
+        'ui.label("This uses ugly title casing for View.")',
         "trailing whitespace ",
         "rr_stream",
         "rec_stream",

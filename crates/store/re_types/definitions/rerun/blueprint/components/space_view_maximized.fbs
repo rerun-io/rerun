@@ -2,7 +2,7 @@ namespace rerun.blueprint.components;
 
 // ---
 
-/// Whether a space view is maximized.
+/// Whether a view is maximized.
 table SpaceViewMaximized (
   "attr.rerun.scope": "blueprint",
   "attr.python.aliases": "npt.NDArray[np.uint8], npt.ArrayLike, Sequence[int], bytes",

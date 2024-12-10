@@ -21,7 +21,7 @@ table ViewportBlueprint (
     // should always insert themselves using a heuristic.
     /// Whether the viewport layout is determined automatically.
     ///
-    /// If `true`, the container layout will be reset whenever a new space view is added or removed.
+    /// If `true`, the container layout will be reset whenever a new view is added or removed.
     /// This defaults to `false` and is automatically set to `false` when there is user determined layout.
     auto_layout: rerun.blueprint.components.AutoLayout ("attr.rerun.component_optional", nullable, order: 4000);
 

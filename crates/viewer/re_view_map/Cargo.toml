@@ -1,6 +1,6 @@
 [package]
 authors.workspace = true
-description = "A space view that shows a map."
+description = "A view that shows a map."
 edition.workspace = true
 homepage.workspace = true
 license.workspace = true

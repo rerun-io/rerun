@@ -293,7 +293,7 @@ impl BlueprintTree {
         container_visible: bool,
     ) {
         let Some(space_view) = viewport.view(space_view_id) else {
-            re_log::warn_once!("Bug: asked to show a UI for a space view that doesn't exist");
+            re_log::warn_once!("Bug: asked to show a UI for a view that doesn't exist");
             return;
         };
         debug_assert_eq!(space_view.id, *space_view_id);
@@ -323,7 +323,7 @@ impl BlueprintTree {
             .with_buttons(|ui| {
                 let vis_response = visibility_button_ui(ui, container_visible, &mut visible);
 
-                let response = remove_button_ui(ui, "Remove space view from the viewport");
+                let response = remove_button_ui(ui, "Remove view from the viewport");
                 if response.clicked() {
                     viewport.mark_user_interaction(ctx);
                     viewport.remove_contents(Contents::SpaceView(*space_view_id));
@@ -450,7 +450,7 @@ impl BlueprintTree {
                         .with_icon(&re_ui::icons::INTERNAL_LINK),
                 )
                 .on_hover_text(
-                    "This subtree corresponds to the Space View's origin, and is displayed above \
+                    "This subtree corresponds to the View's origin, and is displayed above \
                     the 'Projections' section. Click to select it.",
                 )
                 .clicked()
@@ -519,10 +519,8 @@ impl BlueprintTree {
                     }
                 }
 
-                let response = remove_button_ui(
-                    ui,
-                    "Remove this entity and all its children from the space view",
-                );
+                let response =
+                    remove_button_ui(ui, "Remove this entity and all its children from the view");
                 if response.clicked() {
                     space_view
                         .contents
@@ -590,7 +588,7 @@ impl BlueprintTree {
 
             if empty_origin {
                 ui.label(ui.ctx().warning_text(
-                    "This space view's query did not match any data under the space origin",
+                    "This view's query did not match any data under the space origin",
                 ));
             }
         });
@@ -606,7 +604,7 @@ impl BlueprintTree {
         ctx.select_hovered_on_click(&response, item);
     }
 
-    /// Add a button to trigger the addition of a new space view or container.
+    /// Add a button to trigger the addition of a new view or container.
     #[allow(clippy::unused_self)]
     fn add_new_spaceview_button_ui(
         &self,
@@ -616,7 +614,7 @@ impl BlueprintTree {
     ) {
         if ui
             .small_icon_button(&re_ui::icons::ADD)
-            .on_hover_text("Add a new space view or container")
+            .on_hover_text("Add a new view or container")
             .clicked()
         {
             // If a single container is selected, we use it as target. Otherwise, we target the
@@ -990,7 +988,7 @@ fn list_space_views_with_entity(
     space_view_ids
 }
 
-/// Expand data results of the provided space view all the way to the provided entity.
+/// Expand data results of the provided view all the way to the provided entity.
 fn expand_all_data_results_until(
     ctx: &ViewerContext<'_>,
     egui_ctx: &egui::Context,

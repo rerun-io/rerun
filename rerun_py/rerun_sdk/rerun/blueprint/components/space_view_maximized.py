@@ -16,7 +16,7 @@ __all__ = ["SpaceViewMaximized", "SpaceViewMaximizedBatch"]
 
 
 class SpaceViewMaximized(datatypes.Uuid, ComponentMixin):
-    """**Component**: Whether a space view is maximized."""
+    """**Component**: Whether a view is maximized."""
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of SpaceViewMaximizedExt in space_view_maximized_ext.py

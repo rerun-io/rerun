@@ -33,7 +33,7 @@ This statement uses the [`rr.Points2D`](https://ref.rerun.io/docs/python/stable/
 Internally, this archetype builds a set of, in this case, two components: [`Position2D`](../reference/types/components/position2d.md) and [`Color`](../reference/types/components/color.md). Then, the
 `rr.log()` function records these two components and associate them with the `"my_point"` entity.
 
-Later, the Space View for spatial types queries the data store for all the entities that have a `Position2D` component.
+Later, the View for spatial types queries the data store for all the entities that have a `Position2D` component.
 In this case it would find the "my_point" entity. This query additionally returns the `Color` component because that
 component is associated with the same entity. These two components are recognized as corresponding to the `Points2D` archetype, which informs the Viewer on how to display the corresponding entity.
 
@@ -42,13 +42,13 @@ See the [Types](../reference/types.md) reference for a list of [archetypes](../r
 
 ### Adding custom data
 
-Although both the SDKs' archetype objects and the space view are based on the same archetype definition (and are actually implemented using code that is automatically generated based on that definition), they both operate on arbitrary collection
+Although both the SDKs' archetype objects and the view are based on the same archetype definition (and are actually implemented using code that is automatically generated based on that definition), they both operate on arbitrary collection
 of components. Neither the SDKs nor the Viewer enforce or require that an entity should contain a *specific* set of component.
 The Rerun Viewer will display any data in a generic form, but its space views will only work on sets of components it can
 make sense of.
 
 Your entity could have any number of additional components as well. This isn't a problem. Any components that
-aren't relevant to the scene that the space view is drawing are safely ignored. Also, Rerun even allows you to log your
+aren't relevant to the scene that the view is drawing are safely ignored. Also, Rerun even allows you to log your
 own set of components, bypassing archetypes altogether.
 
 In Python, the [rr.AnyValues](https://ref.rerun.io/docs/python/stable/common/custom_data/#rerun.AnyValues) helper object can be used to add custom component(s) to an archetype:

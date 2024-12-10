@@ -49,7 +49,7 @@ Space view + 'box2d' data result    Hide all
                                     Expand all
                                     Collapse all
 
-                                    Add to new space view
+                                    Add to new view
 ----------------------------------------------------------
 + some component                    Hide all
 

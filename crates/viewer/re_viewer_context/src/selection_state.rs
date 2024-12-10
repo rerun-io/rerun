@@ -8,7 +8,7 @@ use crate::{item::resolve_mono_instance_path_item, ViewerContext};
 
 use super::Item;
 
-/// Context information that a space view might attach to an item from [`ItemCollection`] and useful
+/// Context information that a view might attach to an item from [`ItemCollection`] and useful
 /// for how a selection might be displayed and interacted with.
 #[derive(Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
 pub enum ItemSpaceContext {
@@ -45,7 +45,7 @@ pub enum SelectionHighlight {
     None,
 
     /// A closely related object is selected, should apply similar highlight to selection.
-    /// (e.g. data in a different space view)
+    /// (e.g. data in a different view)
     SiblingSelection,
 
     /// Should apply selection highlight (i.e. the exact selection is highlighted).

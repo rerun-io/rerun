@@ -1,6 +1,6 @@
-//! Rerun tensor Space View.
+//! Rerun tensor View.
 //!
-//! A Space View dedicated to visualizing tensors with arbitrary dimensionality.
+//! A View dedicated to visualizing tensors with arbitrary dimensionality.
 
 // TODO(#6330): remove unwrap()
 #![allow(clippy::unwrap_used)]

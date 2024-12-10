@@ -114,7 +114,7 @@ pub fn blueprint_entity_path_button_to(
     text: impl Into<egui::WidgetText>,
 ) -> egui::Response {
     // If we're targeting an entity in the blueprint store,
-    // it doesn't make much sense to specify the space view id since space view ids are
+    // it doesn't make much sense to specify the view id since view ids are
     // embedded in entity paths of the blueprint store.
     // I.e. if there is a view relationship that we would care about, we would know that from the path!
     let space_view_id = None;

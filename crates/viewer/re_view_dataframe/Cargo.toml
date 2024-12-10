@@ -1,6 +1,6 @@
 [package]
 authors.workspace = true
-description = "A space view that shows the data contained in entities in a table."
+description = "A view that shows the data contained in entities in a table."
 edition.workspace = true
 homepage.workspace = true
 license.workspace = true

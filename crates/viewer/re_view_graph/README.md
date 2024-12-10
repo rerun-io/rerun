@@ -7,5 +7,5 @@ Part of the [`rerun`](https://github.com/rerun-io/rerun?speculative-link) family
 ![MIT](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Apache](https://img.shields.io/badge/license-Apache-blue.svg)
 
-A Space View that shows graphs (node-link diagrams).
+A View that shows graphs (node-link diagrams).
 

@@ -147,6 +147,6 @@ fn set_data_result_visible(
             );
         }
     } else {
-        re_log::error!("No query available for space view {:?}", space_view_id);
+        re_log::error!("No query available for view {:?}", space_view_id);
     }
 }

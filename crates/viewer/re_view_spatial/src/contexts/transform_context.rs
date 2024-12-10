@@ -47,7 +47,7 @@ pub struct TwoDInThreeDTransformInfo {
     /// Pinhole camera ancestor (may be this entity itself).
     ///
     /// None indicates that this entity is under the eye camera with no Pinhole camera in-between.
-    /// Some indicates that the entity is under a pinhole camera at the given entity path that is not at the root of the space view.
+    /// Some indicates that the entity is under a pinhole camera at the given entity path that is not at the root of the view.
     pub parent_pinhole: EntityPath,
 
     /// The last 3D from 3D transform at the pinhole camera, before the pinhole transformation itself.
@@ -119,7 +119,7 @@ enum UnreachableTransformReason {
 /// for the currently selected time & timeline.
 ///
 /// The renderer then uses this reference space as its world space,
-/// making world and reference space equivalent for a given space view.
+/// making world and reference space equivalent for a given view.
 ///
 /// Should be recomputed every frame.
 ///
@@ -207,7 +207,7 @@ impl ViewContextSystem for TransformContext {
             current_tree,
             ctx.recording(),
             &time_query,
-            // Ignore potential pinhole camera at the root of the space view, since it regarded as being "above" this root.
+            // Ignore potential pinhole camera at the root of the view, since it regarded as being "above" this root.
             TransformInfo::default(),
         );
 

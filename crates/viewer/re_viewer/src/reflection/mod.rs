@@ -263,7 +263,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <SpaceViewMaximized as Component>::name(),
             ComponentReflection {
-                docstring_md: "Whether a space view is maximized.",
+                docstring_md: "Whether a view is maximized.",
                 custom_placeholder: Some(SpaceViewMaximized::default().to_arrow2()?),
                 datatype: SpaceViewMaximized::arrow2_datatype(),
             },
@@ -2200,11 +2200,11 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.SpaceViewOrigin".into(), display_name :
                     "Space origin", docstring_md :
-                    "The \"anchor point\" of this space view.\n\nDefaults to the root path '/' if not specified.\n\nThe transform at this path forms the reference point for all scene->world transforms in this space view.\nI.e. the position of this entity path in space forms the origin of the coordinate system in this space view.\nFurthermore, this is the primary indicator for heuristics on what entities we show in this space view.",
+                    "The \"anchor point\" of this view.\n\nDefaults to the root path '/' if not specified.\n\nThe transform at this path forms the reference point for all scene->world transforms in this view.\nI.e. the position of this entity path in space forms the origin of the coordinate system in this view.\nFurthermore, this is the primary indicator for heuristics on what entities we show in this view.",
                     is_required : false, }, ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.Visible".into(), display_name :
                     "Visible", docstring_md :
-                    "Whether this space view is visible.\n\nDefaults to true if not specified.",
+                    "Whether this view is visible.\n\nDefaults to true if not specified.",
                     is_required : false, },
                 ],
             },
@@ -2298,7 +2298,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     is_required : false, }, ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.AutoLayout".into(), display_name :
                     "Auto layout", docstring_md :
-                    "Whether the viewport layout is determined automatically.\n\nIf `true`, the container layout will be reset whenever a new space view is added or removed.\nThis defaults to `false` and is automatically set to `false` when there is user determined layout.",
+                    "Whether the viewport layout is determined automatically.\n\nIf `true`, the container layout will be reset whenever a new view is added or removed.\nThis defaults to `false` and is automatically set to `false` when there is user determined layout.",
                     is_required : false, }, ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.AutoSpaceViews".into(), display_name :
                     "Auto space views", docstring_md :

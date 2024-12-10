@@ -31,7 +31,7 @@ use crate::{SpaceViewContents, ViewProperty};
 /// uuid used for identifying the path of its data in the blueprint store. It's ambiguous
 /// whether the intent is for a clone to write to the same place.
 ///
-/// If you want a new space view otherwise identical to an existing one, use
+/// If you want a new view otherwise identical to an existing one, use
 /// `re_viewport::ViewportBlueprint::duplicate_space_view`.
 #[derive(Clone, Debug)]
 pub struct SpaceViewBlueprint {
@@ -39,16 +39,16 @@ pub struct SpaceViewBlueprint {
     pub display_name: Option<String>,
     class_identifier: SpaceViewClassIdentifier,
 
-    /// The "anchor point" of this space view.
-    /// The transform at this path forms the reference point for all scene->world transforms in this space view.
-    /// I.e. the position of this entity path in space forms the origin of the coordinate system in this space view.
-    /// Furthermore, this is the primary indicator for heuristics on what entities we show in this space view.
+    /// The "anchor point" of this view.
+    /// The transform at this path forms the reference point for all scene->world transforms in this view.
+    /// I.e. the position of this entity path in space forms the origin of the coordinate system in this view.
+    /// Furthermore, this is the primary indicator for heuristics on what entities we show in this view.
     pub space_origin: EntityPath,
 
-    /// The content of this space view as defined by its queries.
+    /// The content of this view as defined by its queries.
     pub contents: SpaceViewContents,
 
-    /// True if this space view is visible in the UI.
+    /// True if this view is visible in the UI.
     pub visible: bool,
 
     /// Path where these space views defaults can be found.
@@ -86,7 +86,7 @@ impl SpaceViewBlueprint {
         }
     }
 
-    /// Placeholder name displayed in the UI if the user hasn't explicitly named the space view.
+    /// Placeholder name displayed in the UI if the user hasn't explicitly named the view.
     pub fn missing_name_placeholder(&self) -> String {
         let entity_path = self
             .space_origin
@@ -113,7 +113,7 @@ impl SpaceViewBlueprint {
         }
     }
 
-    /// Returns this space view's display name
+    /// Returns this view's display name
     ///
     /// When returning [`ContentsName::Placeholder`], the UI should display the resulting name using
     /// `re_ui::LabelStyle::Unnamed`.
@@ -235,7 +235,7 @@ impl SpaceViewBlueprint {
 
     /// Creates a new [`SpaceViewBlueprint`] with the same contents, but a different [`SpaceViewId`]
     ///
-    /// Also duplicates all the queries in the space view.
+    /// Also duplicates all the queries in the view.
     pub fn duplicate(&self, store_context: &StoreContext<'_>, query: &LatestAtQuery) -> Self {
         let mut pending_writes = Vec::new();
         let blueprint = store_context.blueprint;
@@ -288,8 +288,8 @@ impl SpaceViewBlueprint {
             });
         }
 
-        // SpaceViewContents is saved as an archetype in the space view's entity hierarchy.
-        // This means, that the above already copied the space view contents!
+        // SpaceViewContents is saved as an archetype in the view's entity hierarchy.
+        // This means, that the above already copied the view contents!
         let contents = SpaceViewContents::new(
             new_id,
             self.class_identifier,
@@ -514,7 +514,7 @@ mod tests {
                 .collect(),
         );
 
-        // Basic blueprint - a single space view that queries everything.
+        // Basic blueprint - a single view that queries everything.
         let space_view = SpaceViewBlueprint::new("3D".into(), RecommendedSpaceView::root());
         let individual_override_root = space_view
             .contents

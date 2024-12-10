@@ -29,7 +29,7 @@ pub struct ViewportBlueprint {
 
     /// Whether the viewport layout is determined automatically.
     ///
-    /// If `true`, the container layout will be reset whenever a new space view is added or removed.
+    /// If `true`, the container layout will be reset whenever a new view is added or removed.
     /// This defaults to `false` and is automatically set to `false` when there is user determined layout.
     pub auto_layout: Option<crate::blueprint::components::AutoLayout>,
 
@@ -365,7 +365,7 @@ impl ViewportBlueprint {
 
     /// Whether the viewport layout is determined automatically.
     ///
-    /// If `true`, the container layout will be reset whenever a new space view is added or removed.
+    /// If `true`, the container layout will be reset whenever a new view is added or removed.
     /// This defaults to `false` and is automatically set to `false` when there is user determined layout.
     #[inline]
     pub fn with_auto_layout(

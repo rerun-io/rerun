@@ -10,7 +10,7 @@ pub enum ViewportCommand {
     /// Set the whole viewport tree.
     SetTree(egui_tiles::Tree<SpaceViewId>),
 
-    /// Add a new space view to the provided container (or the root if `None`).
+    /// Add a new view to the provided container (or the root if `None`).
     AddSpaceView {
         space_view: SpaceViewBlueprint,
         parent_container: Option<ContainerId>,
@@ -26,10 +26,10 @@ pub enum ViewportCommand {
     /// Change the kind of a container.
     SetContainerKind(ContainerId, egui_tiles::ContainerKind),
 
-    /// Ensure the tab for the provided space view is focused (see [`egui_tiles::Tree::make_active`]).
+    /// Ensure the tab for the provided view is focused (see [`egui_tiles::Tree::make_active`]).
     FocusTab(SpaceViewId),
 
-    /// Remove a container (recursively) or a space view
+    /// Remove a container (recursively) or a view
     RemoveContents(Contents),
 
     /// Simplify the container with the provided options

@@ -224,7 +224,7 @@ impl PieceModelInfo {
 
 ### Image
 
-To see the image projection in the 3D space view we must log the cameras transformation and it's intrinsic parameters.
+To see the image projection in the 3D view we must log the cameras transformation and it's intrinsic parameters.
 
 ```rust
 // Computes the transformation `camera_to_a8` that goes from camera coordinates to board coordinates using the fiducial markers located at the corners of the board.

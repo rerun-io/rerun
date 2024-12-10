@@ -141,7 +141,7 @@ impl ViewportBlueprint {
             .map(|sv| (sv.id, sv))
             .collect();
 
-        // Auto layouting and auto space view are only enabled if no blueprint has been provided by the user.
+        // Auto layouting and auto view are only enabled if no blueprint has been provided by the user.
         // Only enable auto-space-views if this is the app-default blueprint
         let is_app_default_blueprint = blueprint_db
             .store_info()
@@ -224,7 +224,7 @@ impl ViewportBlueprint {
         self.containers.get(container_id)
     }
 
-    /// Duplicates a space view and its entity property overrides.
+    /// Duplicates a view and its entity property overrides.
     pub fn duplicate_space_view(
         &self,
         space_view_id: &SpaceViewId,
@@ -337,7 +337,7 @@ impl ViewportBlueprint {
             // Example:
             // Recommendation contains `/**` and `/camera/**`.
             // We filter out `/camera/**` because that would be redundant to `/**`.
-            // If now the user edits the space view at `/**` to be `/points/**`, that does *not*
+            // If now the user edits the view at `/**` to be `/points/**`, that does *not*
             // mean we should suddenly add `/camera/**` to the viewport.
             if !recommended_space_views.is_empty() {
                 let new_viewer_recommendation_hashes: Vec<ViewerRecommendationHash> = self
@@ -397,8 +397,8 @@ impl ViewportBlueprint {
 
     /// Add a set of space views to the viewport.
     ///
-    /// The space view is added to the root container, or, if provided, to a given parent container.
-    /// The list of created space view IDs is returned.
+    /// The view is added to the root container, or, if provided, to a given parent container.
+    /// The list of created view IDs is returned.
     ///
     /// Note that this doesn't focus the corresponding tab. Use [`Self::focus_tab`] with the returned ID
     /// if needed.
@@ -522,7 +522,7 @@ impl ViewportBlueprint {
             .is_some()
     }
 
-    /// Given a container or a space view, find its enclosing container and its position within it.
+    /// Given a container or a view, find its enclosing container and its position within it.
     pub fn find_parent_and_position_index(
         &self,
         contents: &Contents,
@@ -575,12 +575,12 @@ impl ViewportBlueprint {
         });
     }
 
-    /// Recursively remove a container or a space view.
+    /// Recursively remove a container or a view.
     pub fn remove_contents(&self, contents: Contents) {
         self.enqueue_command(ViewportCommand::RemoveContents(contents));
     }
 
-    /// Move the `contents` container or space view to the specified target container and position.
+    /// Move the `contents` container or view to the specified target container and position.
     pub fn move_contents(
         &self,
         contents: Contents,
@@ -610,7 +610,7 @@ impl ViewportBlueprint {
         });
     }
 
-    /// Make sure the tab corresponding to this space view is focused.
+    /// Make sure the tab corresponding to this view is focused.
     pub fn focus_tab(&self, space_view_id: SpaceViewId) {
         self.enqueue_command(ViewportCommand::FocusTab(space_view_id));
     }
@@ -665,7 +665,7 @@ impl ViewportBlueprint {
                     space_view.visible
                 } else {
                     re_log::warn_once!(
-                        "Visibility check failed due to unknown space view id {space_view_id:?}"
+                        "Visibility check failed due to unknown view id {space_view_id:?}"
                     );
 
                     false
@@ -716,7 +716,7 @@ impl ViewportBlueprint {
                     }
                 } else {
                     re_log::warn_once!(
-                        "Visibility change failed due to unknown space view id {space_view_id:?}"
+                        "Visibility change failed due to unknown view id {space_view_id:?}"
                     );
                 }
             }

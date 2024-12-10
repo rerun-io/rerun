@@ -19,7 +19,7 @@ SpaceViewContentsLike = Union[Utf8ArrayLike, SpaceViewContents]
 
 class SpaceView:
     """
-    Base class for all space view types.
+    Base class for all view types.
 
     Consider using one of the subclasses instead of this class directly:
 
@@ -47,33 +47,33 @@ class SpaceView:
         overrides: dict[EntityPathLike, list[ComponentBatchLike]] = {},
     ):
         """
-        Construct a blueprint for a new space view.
+        Construct a blueprint for a new view.
 
         Parameters
         ----------
         name
-            The name of the space view.
+            The name of the view.
         class_identifier
-            The class of the space view to add. This must correspond to a known space view class.
+            The class of the view to add. This must correspond to a known view class.
             Prefer to use one of the subclasses of `SpaceView` which will populate this for you.
         origin
-            The `EntityPath` to use as the origin of this space view. All other entities will be transformed
+            The `EntityPath` to use as the origin of this view. All other entities will be transformed
             to be displayed relative to this origin.
         contents
-            The contents of the space view specified as a query expression. This is either a single expression,
+            The contents of the view specified as a query expression. This is either a single expression,
             or a list of multiple expressions. See [rerun.blueprint.archetypes.SpaceViewContents][].
         visible:
-            Whether this space view is visible.
+            Whether this view is visible.
 
             Defaults to true if not specified.
         properties
-            Dictionary of property archetypes to add to space view's internal hierarchy.
+            Dictionary of property archetypes to add to view's internal hierarchy.
         defaults:
-            List of default components or component batches to add to the space view. When an archetype
+            List of default components or component batches to add to the view. When an archetype
             in the view is missing a component included in this set, the value of default will be used
             instead of the normal fallback for the visualizer.
         overrides:
-            Dictionary of overrides to apply to the space view. The key is the path to the entity where the override
+            Dictionary of overrides to apply to the view. The key is the path to the entity where the override
             should be applied. The value is a list of component or component batches to apply to the entity.
 
             Important note: the path must be a fully qualified entity path starting at the root. The override paths
@@ -93,7 +93,7 @@ class SpaceView:
 
     def blueprint_path(self) -> str:
         """
-        The blueprint path where this space view will be logged.
+        The blueprint path where this view will be logged.
 
         Note that although this is an `EntityPath`, is scoped to the blueprint tree and
         not a part of the regular data hierarchy.
@@ -101,13 +101,13 @@ class SpaceView:
         return f"space_view/{self.id}"
 
     def to_container(self) -> Container:
-        """Convert this space view to a container."""
+        """Convert this view to a container."""
         from .containers import Tabs
 
         return Tabs(self)
 
     def to_blueprint(self) -> Blueprint:
-        """Convert this space view to a full blueprint."""
+        """Convert this view to a full blueprint."""
         return Blueprint(self)
 
     def _log_to_stream(self, stream: RecordingStream) -> None:
@@ -225,7 +225,7 @@ class Container:
 
     def blueprint_path(self) -> str:
         """
-        The blueprint path where this space view will be logged.
+        The blueprint path where this view will be logged.
 
         Note that although this is an `EntityPath`, is scoped to the blueprint tree and
         not a part of the regular data hierarchy.
@@ -233,7 +233,7 @@ class Container:
         return f"container/{self.id}"
 
     def to_container(self) -> Container:
-        """Convert this space view to a container."""
+        """Convert this view to a container."""
         return self
 
     def to_blueprint(self) -> Blueprint:
@@ -316,7 +316,7 @@ class Panel:
 
     def blueprint_path(self) -> str:
         """
-        The blueprint path where this space view will be logged.
+        The blueprint path where this view will be logged.
 
         Note that although this is an `EntityPath`, is scoped to the blueprint tree and
         not a part of the regular data hierarchy.
@@ -459,7 +459,7 @@ class Blueprint:
             The parts of the blueprint.
         auto_layout:
             Whether to automatically layout the viewport. If `True`, the container layout will be
-            reset whenever a new space view is added to the viewport. Defaults to `False`.
+            reset whenever a new view is added to the viewport. Defaults to `False`.
             Defaults to `False` unless no Containers or SpaceViews are provided, in which case it defaults to `True`.
             If you want to create a completely empty Blueprint, you must explicitly set this to `False`.
         auto_space_views:

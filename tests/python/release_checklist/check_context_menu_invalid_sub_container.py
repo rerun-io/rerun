@@ -13,8 +13,8 @@ README = """\
 
 * Single-select the horizontal container, check that it disallow adding a horizontal container inside it.
 * Same for the vertical container.
-* Single select a space view inside a horizontal container, check that it disallow moving to a new horizontal container.
-* Same for a space view inside a vertical container.
+* Single select a view inside a horizontal container, check that it disallow moving to a new horizontal container.
+* Same for a view inside a vertical container.
 """
 
 

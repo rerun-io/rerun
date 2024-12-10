@@ -284,7 +284,7 @@ fn entity_path_breadcrumbs(
     } else {
         // Root
         let icon = if view_id.is_some() {
-            // Inside a space view, we show the root with an icon
+            // Inside a view, we show the root with an icon
             // that matches the one in the blueprint tree panel.
             guess_instance_path_icon(ctx, &InstancePath::from(full_entity_path.clone()))
         } else {

@@ -27,10 +27,10 @@ pub enum Item {
     /// A viewport container.
     Container(ContainerId),
 
-    /// A viwport space view.
+    /// A viwport view.
     SpaceView(SpaceViewId),
 
-    /// An entity or instance in the context of a space view's data results.
+    /// An entity or instance in the context of a view's data results.
     DataResult(SpaceViewId, InstancePath),
 }
 

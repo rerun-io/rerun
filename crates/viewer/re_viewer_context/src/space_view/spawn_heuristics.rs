@@ -1,7 +1,7 @@
 use re_log_types::{hash::Hash64, EntityPath, EntityPathFilter, EntityPathSubs};
 use re_types::SpaceViewClassIdentifier;
 
-/// Properties of a space view that as recommended to be spawned by default via space view spawn heuristics.
+/// Properties of a view that as recommended to be spawned by default via view spawn heuristics.
 #[derive(Debug, Clone)]
 pub struct RecommendedSpaceView {
     pub origin: EntityPath,
@@ -76,9 +76,9 @@ impl RecommendedSpaceView {
         Self::new_subtree(EntityPath::root())
     }
 
-    /// Hash together with the Space View class id to the `ViewerRecommendationHash` component.
+    /// Hash together with the View class id to the `ViewerRecommendationHash` component.
     ///
-    /// Recommendations are usually tied to a specific Space View class.
+    /// Recommendations are usually tied to a specific View class.
     /// Therefore, to identify a recommendation for identification purposes, the class id should be included in the hash.
     pub fn recommendation_hash(
         &self,

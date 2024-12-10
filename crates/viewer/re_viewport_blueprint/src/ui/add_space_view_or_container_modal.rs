@@ -1,4 +1,4 @@
-//! Modal for adding a new space view of container to an existing target container.
+//! Modal for adding a new view of container to an existing target container.
 
 use crate::{SpaceViewBlueprint, ViewportBlueprint};
 use re_ui::UiExt as _;
@@ -28,7 +28,7 @@ impl AddSpaceViewOrContainerModal {
         self.modal_handler.ui(
             egui_ctx,
             || {
-                re_ui::modal::ModalWrapper::new("Add space view or container")
+                re_ui::modal::ModalWrapper::new("Add view or container")
                     .min_width(500.0)
                     .full_span_content(true)
             },
@@ -104,7 +104,7 @@ fn modal_ui(
 
     ui.full_span_separator();
 
-    // space view of any kind
+    // view of any kind
     for space_view in ctx
         .space_view_class_registry
         .iter_registry()
@@ -114,7 +114,7 @@ fn modal_ui(
         let title = space_view
             .class(ctx.space_view_class_registry)
             .display_name();
-        let subtitle = format!("Create a new space view to display {title} content.");
+        let subtitle = format!("Create a new view to display {title} content.");
 
         if row_ui(ui, icon, title, &subtitle).clicked() {
             viewport.add_space_views(std::iter::once(space_view), target_container, None);

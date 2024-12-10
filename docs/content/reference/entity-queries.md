@@ -48,7 +48,7 @@ Consider the following example:
 
 In the viewer, an entity query is typically displayed as a multi-line
 edit box, with each query expression shown on its own line. You can find the
-query editor in the right-hand selection panel when selecting a space view.
+query editor in the right-hand selection panel when selecting a view.
 
 <picture>
   <img src="https://static.rerun.io/helix_query/e39ed9fa364724d201f19a0ae54f34d4df761c5b/full.png" alt="">

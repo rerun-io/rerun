@@ -1,6 +1,6 @@
-//! Rerun `Data` Space View
+//! Rerun `Data` View
 //!
-//! A Space View that shows the data contained in entities in a table.
+//! A View that shows the data contained in entities in a table.
 
 mod dataframe_ui;
 mod display_record_batch;

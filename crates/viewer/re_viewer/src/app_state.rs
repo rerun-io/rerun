@@ -227,7 +227,7 @@ impl AppState {
                 .space_views
                 .values()
                 .map(|space_view| {
-                    // TODO(andreas): This needs to be done in a store subscriber that exists per space view (instance, not class!).
+                    // TODO(andreas): This needs to be done in a store subscriber that exists per view (instance, not class!).
                     // Note that right now we determine *all* visualizable entities, not just the queried ones.
                     // In a store subscriber set this is fine, but on a per-frame basis it's wasteful.
                     let visualizable_entities = space_view
@@ -285,7 +285,7 @@ impl AppState {
 
             for space_view in viewport_ui.blueprint.space_views.values() {
                 if let Some(query_result) = query_results.get_mut(&space_view.id) {
-                    // TODO(andreas): This needs to be done in a store subscriber that exists per space view (instance, not class!).
+                    // TODO(andreas): This needs to be done in a store subscriber that exists per view (instance, not class!).
                     // Note that right now we determine *all* visualizable entities, not just the queried ones.
                     // In a store subscriber set this is fine, but on a per-frame basis it's wasteful.
                     let visualizable_entities = space_view

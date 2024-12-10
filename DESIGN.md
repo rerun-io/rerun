@@ -10,7 +10,7 @@ Multi-sentence text ALWAYS ends in a period.
 #### Casing
 We prefer normal casing, and avoid Title Casing.
 
-We only use Title Casing for company and product names (Rerun, Rerun Viewer, Discord, …), but NOT for concepts like “container”, “space view”, etc.
+We only use Title Casing for company and product names (Rerun, Rerun Viewer, Discord, …), but NOT for concepts like “container”, “view”, etc.
 
 #### Examples
 Good: `log("File saved")`

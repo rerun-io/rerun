@@ -31,7 +31,7 @@ pub enum SpaceViewClassRegistryError {
     UnknownClassIdentifier(SpaceViewClassIdentifier),
 }
 
-/// Utility for registering space view systems, passed on to [`crate::SpaceViewClass::on_register`].
+/// Utility for registering view systems, passed on to [`crate::SpaceViewClass::on_register`].
 pub struct SpaceViewSystemRegistrator<'a> {
     registry: &'a mut SpaceViewClassRegistry,
     identifier: SpaceViewClassIdentifier,
@@ -40,10 +40,10 @@ pub struct SpaceViewSystemRegistrator<'a> {
 }
 
 impl SpaceViewSystemRegistrator<'_> {
-    /// Registers a new [`ViewContextSystem`] type for a space view class that will be created and executed every frame.
+    /// Registers a new [`ViewContextSystem`] type for a view class that will be created and executed every frame.
     ///
-    /// It is not allowed to register a given type more than once within the same space view class.
-    /// Different space view classes may however share the same [`ViewContextSystem`] type.
+    /// It is not allowed to register a given type more than once within the same view class.
+    /// Different view classes may however share the same [`ViewContextSystem`] type.
     pub fn register_context_system<
         T: ViewContextSystem + IdentifiedViewSystem + Default + 'static,
     >(
@@ -79,10 +79,10 @@ impl SpaceViewSystemRegistrator<'_> {
         }
     }
 
-    /// Registers a new [`VisualizerSystem`] type for a space view class that will be created and executed every frame.
+    /// Registers a new [`VisualizerSystem`] type for a view class that will be created and executed every frame.
     ///
-    /// It is not allowed to register a given type more than once within the same space view class.
-    /// Different space view classes may however share the same [`VisualizerSystem`] type.
+    /// It is not allowed to register a given type more than once within the same view class.
+    /// Different view classes may however share the same [`VisualizerSystem`] type.
     pub fn register_visualizer<T: VisualizerSystem + IdentifiedViewSystem + Default + 'static>(
         &mut self,
     ) -> Result<(), SpaceViewClassRegistryError> {
@@ -166,7 +166,7 @@ impl Drop for VisualizerTypeRegistryEntry {
     }
 }
 
-/// Registry of all known space view types.
+/// Registry of all known view types.
 ///
 /// Expected to be populated on viewer startup.
 #[derive(Default)]
@@ -178,9 +178,9 @@ pub struct SpaceViewClassRegistry {
 }
 
 impl SpaceViewClassRegistry {
-    /// Adds a new space view class.
+    /// Adds a new view class.
     ///
-    /// Fails if a space view class with the same name was already registered.
+    /// Fails if a view class with the same name was already registered.
     pub fn add_class<T: SpaceViewClass + Default + 'static>(
         &mut self,
     ) -> Result<(), SpaceViewClassRegistryError> {
@@ -223,7 +223,7 @@ impl SpaceViewClassRegistry {
         Ok(())
     }
 
-    /// Removes a space view class from the registry.
+    /// Removes a view class from the registry.
     pub fn remove_class<T: SpaceViewClass + Sized>(
         &mut self,
     ) -> Result<(), SpaceViewClassRegistryError> {
@@ -247,35 +247,33 @@ impl SpaceViewClassRegistry {
         Ok(())
     }
 
-    /// Queries a Space View type by class name, returning `None` if it is not registered.
+    /// Queries a View type by class name, returning `None` if it is not registered.
     fn get_class(&self, name: SpaceViewClassIdentifier) -> Option<&dyn SpaceViewClass> {
         self.space_view_classes
             .get(&name)
             .map(|boxed| boxed.class.as_ref())
     }
 
-    /// Returns the user-facing name for the given space view class.
+    /// Returns the user-facing name for the given view class.
     ///
     /// If the class is unknown, returns a placeholder name.
     pub fn display_name(&self, name: SpaceViewClassIdentifier) -> &'static str {
         self.space_view_classes
             .get(&name)
-            .map_or("<unknown space view class>", |boxed| {
-                boxed.class.display_name()
-            })
+            .map_or("<unknown view class>", |boxed| boxed.class.display_name())
     }
 
-    /// Queries a Space View type by class name and logs if it fails, returning a placeholder class.
+    /// Queries a View type by class name and logs if it fails, returning a placeholder class.
     pub fn get_class_or_log_error(&self, name: SpaceViewClassIdentifier) -> &dyn SpaceViewClass {
         if let Some(result) = self.get_class(name) {
             result
         } else {
-            re_log::error_once!("Unknown space view class {:?}", name);
+            re_log::error_once!("Unknown view class {:?}", name);
             self.placeholder.class.as_ref()
         }
     }
 
-    /// Iterates over all registered Space View class types, sorted by name.
+    /// Iterates over all registered View class types, sorted by name.
     pub fn iter_registry(&self) -> impl Iterator<Item = &SpaceViewClassRegistryEntry> {
         self.space_view_classes
             .values()

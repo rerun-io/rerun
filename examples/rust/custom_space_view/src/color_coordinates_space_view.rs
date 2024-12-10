@@ -16,7 +16,7 @@ use re_viewer::external::{
 
 use crate::color_coordinates_visualizer_system::{ColorWithInstance, InstanceColorSystem};
 
-/// The different modes for displaying color coordinates in the custom space view.
+/// The different modes for displaying color coordinates in the custom view.
 #[derive(Default, Debug, PartialEq, Clone, Copy)]
 enum ColorCoordinatesMode {
     #[default]
@@ -43,7 +43,7 @@ impl std::fmt::Display for ColorCoordinatesMode {
     }
 }
 
-/// Space view state for the custom space view.
+/// Space view state for the custom view.
 ///
 /// This state is preserved between frames, but not across Viewer sessions.
 #[derive(Default)]
@@ -82,10 +82,10 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
     }
 
     fn help_markdown(&self, _egui_ctx: &egui::Context) -> String {
-        "A demo space view that shows colors as coordinates on a 2D plane.".to_owned()
+        "A demo view that shows colors as coordinates on a 2D plane.".to_owned()
     }
 
-    /// Register all systems (contexts & parts) that the space view needs.
+    /// Register all systems (contexts & parts) that the view needs.
     fn on_register(
         &self,
         system_registry: &mut SpaceViewSystemRegistrator<'_>,
@@ -119,7 +119,7 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
         }
     }
 
-    /// Additional UI displayed when the space view is selected.
+    /// Additional UI displayed when the view is selected.
     ///
     /// In this sample we show a combo box to select the color coordinates mode.
     fn selection_ui(
@@ -146,7 +146,7 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
         Ok(())
     }
 
-    /// The contents of the Space View window and all interaction within it.
+    /// The contents of the View window and all interaction within it.
     ///
     /// This is called with freshly created & executed context & part systems.
     fn ui(

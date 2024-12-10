@@ -10,7 +10,7 @@ use re_viewer::external::{
     },
 };
 
-/// Our space view consist of single part which holds a list of egui colors for each entity path.
+/// Our view consist of single part which holds a list of egui colors for each entity path.
 #[derive(Default)]
 pub struct InstanceColorSystem {
     pub colors: Vec<(EntityPath, Vec<ColorWithInstance>)>,
@@ -57,7 +57,7 @@ impl VisualizerSystem for InstanceColorSystem {
         query: &ViewQuery<'_>,
         _context_systems: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        // For each entity in the space view that should be displayed with the `InstanceColorSystem`…
+        // For each entity in the view that should be displayed with the `InstanceColorSystem`…
         for data_result in query.iter_visible_data_results(ctx, Self::identifier()) {
             // …gather all colors and their instance ids.
 

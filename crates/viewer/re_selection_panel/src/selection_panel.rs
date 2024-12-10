@@ -599,7 +599,7 @@ fn container_children(
             list_item::ItemActionButton::new(&re_ui::icons::ADD, || {
                 show_add_space_view_or_container_modal(*container_id);
             })
-            .hover_text("Add a new space view or container to this container"),
+            .hover_text("Add a new view or container to this container"),
         )
         .show(ui, show_content);
 }

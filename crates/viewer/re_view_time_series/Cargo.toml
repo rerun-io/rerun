@@ -1,6 +1,6 @@
 [package]
 authors.workspace = true
-description = "A space view that shows plots over Rerun timelines."
+description = "A view that shows plots over Rerun timelines."
 edition.workspace = true
 homepage.workspace = true
 license.workspace = true

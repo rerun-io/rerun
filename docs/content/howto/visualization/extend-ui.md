@@ -24,12 +24,12 @@ The best way to get started is by reading [the source code of the `extend_viewer
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/custom_space_view/e05a073d64003645b6af6de91b068c2f646c1b8a/768w.jpeg">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/custom_space_view/e05a073d64003645b6af6de91b068c2f646c1b8a/1024w.jpeg">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/custom_space_view/e05a073d64003645b6af6de91b068c2f646c1b8a/1200w.jpeg">
-  <img src="https://static.rerun.io/custom_space_view/e05a073d64003645b6af6de91b068c2f646c1b8a/full.jpeg" alt="The Rerun Viewer, extended with a custom Space View that is shown three times, each time showing points on a colored plane">
+  <img src="https://static.rerun.io/custom_space_view/e05a073d64003645b6af6de91b068c2f646c1b8a/full.jpeg" alt="The Rerun Viewer, extended with a custom View that is shown three times, each time showing points on a colored plane">
 </picture>
 
 
 Above screenshot shows the [`custom_space_view`](https://github.com/rerun-io/rerun/tree/main/examples/rust/custom_space_view) example.
-This example demonstrates how to add a fully custom Space View class to Rerun on startup.
+This example demonstrates how to add a fully custom View class to Rerun on startup.
 Space Views that are added this way have access to the exact same interfaces as all other Space Views,
 meaning that any of the built-in Space Views serves can serve as an additional example on how to implement Space Views.
 

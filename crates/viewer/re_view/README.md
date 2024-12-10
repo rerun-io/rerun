@@ -7,4 +7,4 @@ Part of the [`rerun`](https://github.com/rerun-io/rerun) family of crates.
 ![MIT](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Apache](https://img.shields.io/badge/license-Apache-blue.svg)
 
-Types & utilities for defining Space View classes and communicating with the Viewport.
+Types & utilities for defining View classes and communicating with the Viewport.
