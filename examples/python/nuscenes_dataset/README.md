@@ -86,7 +86,7 @@ rr.log(
 #### GPS data
 
 GPS data is calculated from the scene's reference coordinates and the transformations (starting map point + odometry).
-The GPS coordinates are logged as [`GeoPoints`](https://www.rerun.io/docs/reference/types/archetypes/geo_pointss).
+The GPS coordinates are logged as [`GeoPoints`](https://www.rerun.io/docs/reference/types/archetypes/geo_points).
 
 ```python
 rr.log(

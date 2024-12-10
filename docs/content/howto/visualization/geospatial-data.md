@@ -15,7 +15,7 @@ To be compatible with this view, geospatial data must be expressed using [ESPG:4
 This corresponds to what is commonly referred to as "GPS coordinates."
 Rerun provides a set of archetypes prefixed with `Geo` designed to encapsulate such data.
 
-For example, [`GeoPoints`](../../reference/types/archetypes/geo_pointss.md) represent a single geospatial location (or a batch thereof). The location of the Eiffel Tower can be logged as follows:
+For example, [`GeoPoints`](../../reference/types/archetypes/geo_points.md) represent a single geospatial location (or a batch thereof). The location of the Eiffel Tower can be logged as follows:
 
 ```python
 rr.log("eiffel_tower", rr.GeoPoints(lat_lon=[48.858222, 2.2945]))
@@ -32,7 +32,7 @@ In this case, the `lat_lon` argument is keyword-only and must thus be explicitly
 
 Rerun currently supports two types of geometries:
 
-- [`GeoPoints`](../../reference/types/archetypes/geo_pointss.md): batch of individual points, with optional [radius](../../reference/types/components/radius.md) and [color](../../reference/types/components/color.md)
+- [`GeoPoints`](../../reference/types/archetypes/geo_points.md): batch of individual points, with optional [radius](../../reference/types/components/radius.md) and [color](../../reference/types/components/color.md)
 - [`GeoLineStrings`](../../reference/types/archetypes/geo_line_stringss.md): batch of line strings, with optional [radius](../../reference/types/components/radius.md) and [color](../../reference/types/components/color.md)
 
 *Note*: polygons are planned but are not supported yet (see [this issue](https://github.com/rerun-io/rerun/issues/8066)).
