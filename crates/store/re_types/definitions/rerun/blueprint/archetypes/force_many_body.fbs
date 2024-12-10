@@ -1,0 +1,16 @@
+namespace rerun.blueprint.archetypes;
+
+/// A force between each pair of nodes that ressembles an electrical charge.
+///
+/// If `strength` is smaller than 0, it pushes nodes apart, if it is larger than 0 it pulls them together.
+struct ForceManyBody (
+    "attr.rerun.scope": "blueprint"
+) {
+    /// Whether the force is enabled.
+    enabled: rerun.blueprint.components.Enabled ("attr.rerun.component_optional", nullable, order: 100);
+
+    /// The strength of the force.
+    ///
+    /// If `strength` is smaller than 0, it pushes nodes apart, if it is larger than 0 it pulls them together.
+    strength: rerun.blueprint.components.ForceStrength ("attr.rerun.component_optional", nullable, order: 200);
+}

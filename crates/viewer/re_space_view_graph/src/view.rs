@@ -4,7 +4,13 @@ use re_space_view::{
     view_property_ui,
 };
 use re_types::{
-    blueprint::{self, archetypes::VisualBounds2D},
+    blueprint::{
+        self,
+        archetypes::{
+            ForceCenter, ForceCollisionRadius, ForceLink, ForceManyBody, ForcePosition,
+            VisualBounds2D,
+        },
+    },
     SpaceViewClassIdentifier,
 };
 use re_ui::{
@@ -22,8 +28,8 @@ use re_viewport_blueprint::ViewProperty;
 
 use crate::{
     graph::Graph,
-    layout::LayoutRequest,
-    ui::{draw_debug, draw_graph, GraphSpaceViewState},
+    layout::{ForceLayoutParams, LayoutRequest},
+    ui::{draw_debug, draw_graph, view_property_force_ui, GraphSpaceViewState},
     visualizers::{merge, EdgesVisualizer, NodeVisualizer},
 };
 
@@ -129,7 +135,14 @@ Display a graph of nodes and edges.
             state.debug_ui(ui);
         });
 
-        view_property_ui::<VisualBounds2D>(ctx, ui, space_view_id, self, state);
+        re_ui::list_item::list_item_scope(ui, "graph_selection_ui", |ui| {
+            view_property_ui::<VisualBounds2D>(ctx, ui, space_view_id, self, state);
+            view_property_force_ui::<ForceLink>(ctx, ui, space_view_id, self, state);
+            view_property_force_ui::<ForceManyBody>(ctx, ui, space_view_id, self, state);
+            view_property_force_ui::<ForcePosition>(ctx, ui, space_view_id, self, state);
+            view_property_force_ui::<ForceCenter>(ctx, ui, space_view_id, self, state);
+            view_property_force_ui::<ForceCollisionRadius>(ctx, ui, space_view_id, self, state);
+        });
 
         Ok(())
     }
@@ -164,11 +177,13 @@ Display a graph of nodes and edges.
         let rect_in_scene: blueprint::components::VisualBounds2D =
             bounds_property.component_or_fallback(ctx, self, state)?;
 
+        let params = ForceLayoutParams::get(ctx, query, self, state)?;
+
         let rect_in_ui = ui.max_rect();
 
         let request = LayoutRequest::from_graphs(graphs.iter());
         let layout_was_empty = state.layout_state.is_none();
-        let layout = state.layout_state.get(request);
+        let layout = state.layout_state.get(request, params);
 
         let mut ui_from_world = fit_to_rect_in_scene(rect_in_ui, rect_in_scene.into());
 

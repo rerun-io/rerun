@@ -6,11 +6,12 @@
 // layouts, such as `dot` from `graphviz`.
 
 use egui::{Pos2, Rect, Vec2};
-use fjadra::{self as fj};
+use fjadra::{self as fj, Simulation};
 
 use crate::graph::{EdgeId, NodeId};
 
 use super::{
+    params::ForceLayoutParams,
     request::NodeTemplate,
     slots::{slotted_edges, Slot, SlotKind},
     EdgeGeometry, EdgeTemplate, Layout, LayoutRequest, PathGeometry,
@@ -23,6 +24,77 @@ impl<'a> From<&'a NodeTemplate> for fj::Node {
             _ => Self::default(),
         }
     }
+}
+
+// TODO(grtlr): Do this more efficiently, as this currently rebuilds all helper functions.
+pub fn update_simulation(
+    mut simulation: fj::Simulation,
+    params: &ForceLayoutParams,
+    edges: Vec<(usize, usize)>,
+    radii: Vec<f64>,
+) -> Simulation {
+    // We destructure here to get compiler warnings if we add new parameters.
+    let &ForceLayoutParams {
+        force_link_enabled,
+        force_link_distance,
+        force_link_iterations,
+        force_many_body_enabled,
+        force_many_body_strength,
+        force_position_enabled,
+        force_position_strength,
+        force_position_pos,
+        force_center_enabled,
+        force_center_strength,
+        force_collision_enabled,
+        force_collision_strength,
+        force_collision_iterations,
+    } = params;
+
+    if **force_link_enabled {
+        simulation = simulation.add_force(
+            "link",
+            fj::Link::new(edges)
+                .distance(**force_link_distance)
+                .iterations(**force_link_iterations as usize),
+        );
+    }
+    if **force_many_body_enabled {
+        simulation = simulation.add_force(
+            "charge",
+            fj::ManyBody::new().strength(**force_many_body_strength),
+        );
+    }
+    if **force_position_enabled {
+        simulation = simulation
+            .add_force(
+                "x",
+                fj::PositionX::new()
+                    .strength(**force_position_strength)
+                    .x(force_position_pos[0].into()),
+            )
+            .add_force(
+                "y",
+                fj::PositionY::new()
+                    .strength(**force_position_strength)
+                    .y(force_position_pos[1].into()),
+            );
+    }
+    if **force_collision_enabled {
+        simulation = simulation.add_force(
+            "collision",
+            fj::Collide::new()
+                .radius(move |i| radii[i])
+                .iterations(**force_collision_iterations as usize)
+                .strength(**force_collision_strength),
+        );
+    }
+    if **force_center_enabled {
+        simulation = simulation.add_force(
+            "center",
+            fj::Center::new().strength(**force_center_strength),
+        );
+    }
+    simulation
 }
 
 pub struct ForceLayoutProvider {
@@ -44,19 +116,17 @@ fn considered_edges(request: &LayoutRequest) -> Vec<(usize, usize)> {
 }
 
 impl ForceLayoutProvider {
-    pub fn new(request: LayoutRequest) -> Self {
+    pub fn new(request: LayoutRequest, params: &ForceLayoutParams) -> Self {
         let nodes = request.all_nodes().map(|(_, v)| fj::Node::from(v));
+        let radii = request
+            .all_nodes()
+            .map(|(_, v)| v.size.max_elem() as f64 / 2.0)
+            .collect::<Vec<_>>();
         let edges = considered_edges(&request);
 
-        // TODO(grtlr): Currently we guesstimate good forces. Eventually these should be exposed as blueprints.
-        let simulation = fj::SimulationBuilder::default()
-            .with_alpha_decay(0.01) // TODO(grtlr): slows down the simulation for demo
-            .build(nodes)
-            .add_force("link", fj::Link::new(edges).distance(50.0).iterations(2))
-            .add_force("charge", fj::ManyBody::new())
-            // TODO(grtlr): This is a small stop-gap until we have blueprints to prevent nodes from flying away.
-            .add_force("x", fj::PositionX::new().strength(0.01))
-            .add_force("y", fj::PositionY::new().strength(0.01));
+        let simulation = fj::SimulationBuilder::default().build(nodes);
+
+        let simulation = update_simulation(simulation, params, edges, radii);
 
         Self {
             simulation,
@@ -64,7 +134,11 @@ impl ForceLayoutProvider {
         }
     }
 
-    pub fn new_with_previous(request: LayoutRequest, layout: &Layout) -> Self {
+    pub fn new_with_previous(
+        request: LayoutRequest,
+        layout: &Layout,
+        params: &ForceLayoutParams,
+    ) -> Self {
         let nodes = request.all_nodes().map(|(id, v)| {
             if let Some(rect) = layout.get_node(&id) {
                 let pos = rect.center();
@@ -73,17 +147,14 @@ impl ForceLayoutProvider {
                 fj::Node::from(v)
             }
         });
+        let radii = request
+            .all_nodes()
+            .map(|(_, v)| v.size.max_elem() as f64 / 2.0)
+            .collect::<Vec<_>>();
         let edges = considered_edges(&request);
 
-        // TODO(grtlr): Currently we guesstimate good forces. Eventually these should be exposed as blueprints.
-        let simulation = fj::SimulationBuilder::default()
-            .with_alpha_decay(0.01) // TODO(grtlr): slows down the simulation for demo
-            .build(nodes)
-            .add_force("link", fj::Link::new(edges).distance(50.0).iterations(2))
-            .add_force("charge", fj::ManyBody::new())
-            // TODO(grtlr): This is a small stop-gap until we have blueprints to prevent nodes from flying away.
-            .add_force("x", fj::PositionX::new().strength(0.01))
-            .add_force("y", fj::PositionY::new().strength(0.01));
+        let simulation = fj::SimulationBuilder::default().build(nodes);
+        let simulation = update_simulation(simulation, params, edges, radii);
 
         Self {
             simulation,
@@ -229,7 +300,7 @@ impl ForceLayoutProvider {
     }
 
     pub fn is_finished(&self) -> bool {
-        self.simulation.finished()
+        self.simulation.is_finished()
     }
 }
 
