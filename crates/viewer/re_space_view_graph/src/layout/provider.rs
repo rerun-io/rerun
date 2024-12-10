@@ -227,7 +227,7 @@ impl ForceLayoutProvider {
                                 let source_pos = source_rect.intersects_ray_from_center(d);
                                 let target_pos = target_rect.intersects_ray_from_center(-d);
 
-                                let delta = (target_pos - source_pos);
+                                let delta = target_pos - source_pos;
 
                                 // Controls the amount of space (in scene coordinates) that a slot can occupy.
                                 let fan_amount = (delta.length() * 0.3).min(40.);
