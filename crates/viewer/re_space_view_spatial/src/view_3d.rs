@@ -247,9 +247,9 @@ impl SpaceViewClass for SpatialSpaceView3D {
             .copied()
             .collect();
 
-        // Arrow visualizer is not enabled yet but we could...
+        // Arrow visualizer is not enabled yet but we could…
         if !enabled_visualizers.contains(&arrows_viz) && visualizable.contains(&arrows_viz) {
-            // ... then we enable it if either:
+            // … then we enable it if either:
             // - If someone set an axis_length explicitly, so [`AxisLengthDetector`] is applicable.
             // - If we already have the [`CamerasVisualizer`] active.
             if applicable.contains(&axis_detector) || enabled_visualizers.contains(&camera_viz) {
