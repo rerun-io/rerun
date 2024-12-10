@@ -39,9 +39,9 @@ snippet: archetypes/line_strips3d_simple
 
 ### Many individual segments
 
-snippet: archetypes/line_segments3d_simple
+snippet: archetypes/line_strips3d_segments_simple
 
-<picture data-inline-viewer="snippets/line_segments3d_simple">
+<picture data-inline-viewer="snippets/line_strips3d_segments_simple">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/line_segment3d_simple/aa800b2a6e6a7b8e32e762b42861bae36f5014bb/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/line_segment3d_simple/aa800b2a6e6a7b8e32e762b42861bae36f5014bb/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/line_segment3d_simple/aa800b2a6e6a7b8e32e762b42861bae36f5014bb/1024w.png">
