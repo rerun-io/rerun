@@ -307,13 +307,12 @@ impl TryFrom<re_protos::log_msg::v0::StoreSource> for crate::StoreSource {
 impl From<crate::PythonVersion> for re_protos::log_msg::v0::PythonVersion {
     #[inline]
     fn from(value: crate::PythonVersion) -> Self {
-        let mut version = Vec::new();
-        version.push(value.major);
-        version.push(value.minor);
-        version.push(value.patch);
-        version.extend_from_slice(value.suffix.as_bytes());
-
-        Self { version }
+        Self {
+            major: value.major as i32,
+            minor: value.minor as i32,
+            patch: value.patch as i32,
+            suffix: value.suffix,
+        }
     }
 }
 
@@ -322,30 +321,11 @@ impl TryFrom<re_protos::log_msg::v0::PythonVersion> for crate::PythonVersion {
 
     #[inline]
     fn try_from(value: re_protos::log_msg::v0::PythonVersion) -> Result<Self, Self::Error> {
-        if value.version.len() < 3 {
-            return Err(TypeConversionError::InvalidField {
-                type_name: "rerun.log_msg.v0.PythonVersion",
-                field_name: "version",
-                reason: "expected at least 3 bytes".to_owned(),
-            });
-        }
-
-        let major = value.version[0];
-        let minor = value.version[1];
-        let patch = value.version[2];
-        let suffix = std::str::from_utf8(&value.version[3..])
-            .map_err(|err| TypeConversionError::InvalidField {
-                type_name: "rerun.log_msg.v0.PythonVersion",
-                field_name: "version",
-                reason: err.to_string(),
-            })?
-            .to_owned();
-
         Ok(Self {
-            major,
-            minor,
-            patch,
-            suffix,
+            major: value.major as u8,
+            minor: value.minor as u8,
+            patch: value.patch as u8,
+            suffix: value.suffix,
         })
     }
 }
