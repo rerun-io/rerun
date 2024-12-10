@@ -28,7 +28,7 @@ rr.send_blueprint(
 
 ### Types and fields got renamed from `.*space_view.*`/`.*SpaceView.*` to `.*view.*`/`.*View.*`
 
-Various types and fields got changed to refer to "views" rather than "views".
+Various types and fields got changed to refer to "views" rather than "space views".
 This exclusively affects the Python blueprint sdk:
 
 #### Field/argument changes:
