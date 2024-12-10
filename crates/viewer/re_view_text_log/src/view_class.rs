@@ -3,19 +3,19 @@ use std::collections::BTreeMap;
 use re_data_ui::item_ui;
 use re_log_types::{EntityPath, Timeline};
 use re_types::View;
-use re_types::{components::TextLogLevel, SpaceViewClassIdentifier};
+use re_types::{components::TextLogLevel, ViewClassIdentifier};
 use re_ui::UiExt as _;
 use re_viewer_context::{
-    level_to_rich_text, IdentifiedViewSystem as _, SpaceViewClass, SpaceViewClassRegistryError,
-    SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt,
-    SpaceViewSystemExecutionError, ViewQuery, ViewerContext,
+    level_to_rich_text, IdentifiedViewSystem as _, ViewClass, ViewClassRegistryError, ViewId,
+    ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt, ViewSystemExecutionError,
+    ViewerContext,
 };
 
 use super::visualizer_system::{Entry, TextLogSystem};
 
 // TODO(andreas): This should be a blueprint component.
 #[derive(Clone, PartialEq, Eq, Default)]
-pub struct TextSpaceViewState {
+pub struct TextViewState {
     /// Keeps track of the latest time selection made by the user.
     ///
     /// We need this because we want the user to be able to manually scroll the
@@ -27,7 +27,7 @@ pub struct TextSpaceViewState {
     monospace: bool,
 }
 
-impl SpaceViewState for TextSpaceViewState {
+impl ViewState for TextViewState {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
@@ -38,12 +38,12 @@ impl SpaceViewState for TextSpaceViewState {
 }
 
 #[derive(Default)]
-pub struct TextSpaceView;
+pub struct TextView;
 
 type ViewType = re_types::blueprint::views::TextLogView;
 
-impl SpaceViewClass for TextSpaceView {
-    fn identifier() -> SpaceViewClassIdentifier {
+impl ViewClass for TextView {
+    fn identifier() -> ViewClassIdentifier {
         ViewType::identifier()
     }
 
@@ -66,27 +66,24 @@ Note: select the View for filtering options."
 
     fn on_register(
         &self,
-        system_registry: &mut re_viewer_context::SpaceViewSystemRegistrator<'_>,
-    ) -> Result<(), SpaceViewClassRegistryError> {
+        system_registry: &mut re_viewer_context::ViewSystemRegistrator<'_>,
+    ) -> Result<(), ViewClassRegistryError> {
         system_registry.register_visualizer::<TextLogSystem>()
     }
 
-    fn new_state(&self) -> Box<dyn SpaceViewState> {
-        Box::<TextSpaceViewState>::default()
+    fn new_state(&self) -> Box<dyn ViewState> {
+        Box::<TextViewState>::default()
     }
 
-    fn preferred_tile_aspect_ratio(&self, _state: &dyn SpaceViewState) -> Option<f32> {
+    fn preferred_tile_aspect_ratio(&self, _state: &dyn ViewState) -> Option<f32> {
         Some(2.0) // Make text logs wide
     }
 
-    fn layout_priority(&self) -> re_viewer_context::SpaceViewClassLayoutPriority {
-        re_viewer_context::SpaceViewClassLayoutPriority::Low
+    fn layout_priority(&self) -> re_viewer_context::ViewClassLayoutPriority {
+        re_viewer_context::ViewClassLayoutPriority::Low
     }
 
-    fn spawn_heuristics(
-        &self,
-        ctx: &ViewerContext<'_>,
-    ) -> re_viewer_context::SpaceViewSpawnHeuristics {
+    fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> re_viewer_context::ViewSpawnHeuristics {
         re_tracing::profile_function!();
 
         // Spawn a single log view at the root if there's any text logs around anywhere.
@@ -96,9 +93,9 @@ Note: select the View for filtering options."
             .get(&TextLogSystem::identifier())
             .map_or(true, |entities| entities.is_empty())
         {
-            SpaceViewSpawnHeuristics::default()
+            ViewSpawnHeuristics::default()
         } else {
-            SpaceViewSpawnHeuristics::root()
+            ViewSpawnHeuristics::root()
         }
     }
 
@@ -106,11 +103,11 @@ Note: select the View for filtering options."
         &self,
         _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut dyn SpaceViewState,
+        state: &mut dyn ViewState,
         _space_origin: &EntityPath,
-        _space_view_id: SpaceViewId,
-    ) -> Result<(), SpaceViewSystemExecutionError> {
-        let state = state.downcast_mut::<TextSpaceViewState>()?;
+        _space_view_id: ViewId,
+    ) -> Result<(), ViewSystemExecutionError> {
+        let state = state.downcast_mut::<TextViewState>()?;
 
         let ViewTextFilters {
             col_timelines,
@@ -153,14 +150,14 @@ Note: select the View for filtering options."
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut dyn SpaceViewState,
+        state: &mut dyn ViewState,
 
         _query: &ViewQuery<'_>,
         system_output: re_viewer_context::SystemExecutionOutput,
-    ) -> Result<(), SpaceViewSystemExecutionError> {
+    ) -> Result<(), ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        let state = state.downcast_mut::<TextSpaceViewState>()?;
+        let state = state.downcast_mut::<TextViewState>()?;
         let text = system_output.view_systems.get::<TextLogSystem>()?;
 
         // TODO(andreas): Should filter text entries in the part-system instead.
@@ -275,7 +272,7 @@ impl ViewTextFilters {
 fn table_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    state: &TextSpaceViewState,
+    state: &TextViewState,
     entries: &[&Entry],
     scroll_to_row: Option<usize>,
 ) {

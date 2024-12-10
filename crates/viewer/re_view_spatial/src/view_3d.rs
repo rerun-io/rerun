@@ -4,18 +4,17 @@ use nohash_hasher::IntSet;
 
 use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
-use re_view::view_property_ui;
 use re_types::blueprint::archetypes::LineGrid3D;
 use re_types::{
     blueprint::archetypes::Background, components::ViewCoordinates, Component,
-    SpaceViewClassIdentifier, View,
+    ViewClassIdentifier, View,
 };
 use re_ui::{list_item, UiExt as _};
+use re_view::view_property_ui;
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, IndicatedEntities, PerVisualizer,
-    RecommendedSpaceView, SmallVisualizerSet, SpaceViewClass, SpaceViewClassRegistryError,
-    SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
-    SpaceViewSystemExecutionError, ViewQuery, ViewSystemIdentifier, ViewerContext,
+    ApplicableEntities, IdentifiedViewSystem, IndicatedEntities, PerVisualizer, RecommendedView,
+    SmallVisualizerSet, ViewClass, ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics,
+    ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext,
     VisualizableEntities, VisualizableFilterContext,
 };
 use re_viewport_blueprint::ViewProperty;
@@ -25,7 +24,7 @@ use crate::{
     contexts::register_spatial_contexts,
     heuristics::default_visualized_entities_for_visualizer_kind,
     spatial_topology::{HeuristicHints, SpatialTopology, SubSpaceConnectionFlags},
-    ui::{format_vector, SpatialSpaceViewState},
+    ui::{format_vector, SpatialViewState},
     view_kind::SpatialSpaceViewKind,
     visualizers::register_3d_spatial_visualizers,
 };
@@ -48,8 +47,8 @@ pub struct SpatialSpaceView3D;
 
 type ViewType = re_types::blueprint::views::Spatial3DView;
 
-impl SpaceViewClass for SpatialSpaceView3D {
-    fn identifier() -> SpaceViewClassIdentifier {
+impl ViewClass for SpatialSpaceView3D {
+    fn identifier() -> ViewClassIdentifier {
         ViewType::identifier()
     }
 
@@ -65,14 +64,14 @@ impl SpaceViewClass for SpatialSpaceView3D {
         super::ui_3d::help_markdown(egui_ctx)
     }
 
-    fn new_state(&self) -> Box<dyn SpaceViewState> {
-        Box::<SpatialSpaceViewState>::default()
+    fn new_state(&self) -> Box<dyn ViewState> {
+        Box::<SpatialViewState>::default()
     }
 
     fn on_register(
         &self,
-        system_registry: &mut re_viewer_context::SpaceViewSystemRegistrator<'_>,
-    ) -> Result<(), SpaceViewClassRegistryError> {
+        system_registry: &mut re_viewer_context::ViewSystemRegistrator<'_>,
+    ) -> Result<(), ViewClassRegistryError> {
         // Ensure spatial topology is registered.
         crate::spatial_topology::SpatialTopologyStoreSubscriber::subscription_handle();
         crate::transform_component_tracker::TransformComponentTrackerStoreSubscriber::subscription_handle();
@@ -83,7 +82,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
         Ok(())
     }
 
-    fn preferred_tile_aspect_ratio(&self, _state: &dyn SpaceViewState) -> Option<f32> {
+    fn preferred_tile_aspect_ratio(&self, _state: &dyn ViewState) -> Option<f32> {
         None
     }
 
@@ -91,8 +90,8 @@ impl SpaceViewClass for SpatialSpaceView3D {
         true
     }
 
-    fn layout_priority(&self) -> re_viewer_context::SpaceViewClassLayoutPriority {
-        re_viewer_context::SpaceViewClassLayoutPriority::High
+    fn layout_priority(&self) -> re_viewer_context::ViewClassLayoutPriority {
+        re_viewer_context::ViewClassLayoutPriority::High
     }
 
     fn recommended_root_for_entities(
@@ -263,10 +262,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
         chosen
     }
 
-    fn spawn_heuristics(
-        &self,
-        ctx: &ViewerContext<'_>,
-    ) -> re_viewer_context::SpaceViewSpawnHeuristics {
+    fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> re_viewer_context::ViewSpawnHeuristics {
         re_tracing::profile_function!();
 
         let mut indicated_entities = default_visualized_entities_for_visualizer_kind(
@@ -297,7 +293,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
         // Note that visualizability filtering is all about being in the right subspace,
         // so we don't need to call the visualizers' filter functions here.
         SpatialTopology::access(&ctx.recording_id(), |topo| {
-            SpaceViewSpawnHeuristics::new(
+            ViewSpawnHeuristics::new(
                 topo.iter_subspaces()
                     .filter_map(|subspace| {
                         if !subspace.supports_3d_content() {
@@ -351,7 +347,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
                             origins.push(subspace.origin.clone());
                         }
 
-                        Some(origins.into_iter().map(RecommendedSpaceView::new_subtree))
+                        Some(origins.into_iter().map(RecommendedView::new_subtree))
                     })
                     .flatten(),
             )
@@ -363,11 +359,11 @@ impl SpaceViewClass for SpatialSpaceView3D {
         &self,
         ctx: &re_viewer_context::ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut dyn SpaceViewState,
+        state: &mut dyn ViewState,
         space_origin: &EntityPath,
-        view_id: SpaceViewId,
-    ) -> Result<(), SpaceViewSystemExecutionError> {
-        let state = state.downcast_mut::<SpatialSpaceViewState>()?;
+        view_id: ViewId,
+    ) -> Result<(), ViewSystemExecutionError> {
+        let state = state.downcast_mut::<SpatialViewState>()?;
 
         let scene_view_coordinates = ctx
             .recording()
@@ -432,14 +428,14 @@ impl SpaceViewClass for SpatialSpaceView3D {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut dyn SpaceViewState,
+        state: &mut dyn ViewState,
 
         query: &ViewQuery<'_>,
         system_output: re_viewer_context::SystemExecutionOutput,
-    ) -> Result<(), SpaceViewSystemExecutionError> {
+    ) -> Result<(), ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        let state = state.downcast_mut::<SpatialSpaceViewState>()?;
+        let state = state.downcast_mut::<SpatialViewState>()?;
         state.update_frame_statistics(ui, &system_output, SpatialSpaceViewKind::ThreeD);
 
         self.view_3d(ctx, ui, state, query, system_output)
@@ -452,9 +448,9 @@ impl SpaceViewClass for SpatialSpaceView3D {
 fn view_property_ui_grid3d(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    view_id: SpaceViewId,
+    view_id: ViewId,
     fallback_provider: &dyn re_viewer_context::ComponentFallbackProvider,
-    view_state: &dyn SpaceViewState,
+    view_state: &dyn ViewState,
 ) {
     let property = ViewProperty::from_archetype::<LineGrid3D>(
         ctx.blueprint_db(),

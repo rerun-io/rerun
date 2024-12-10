@@ -3,7 +3,7 @@
 use once_cell::sync::OnceCell;
 
 use re_entity_db::InstancePath;
-use re_viewer_context::{ContainerId, Contents, Item, ItemCollection, SpaceViewId, ViewerContext};
+use re_viewer_context::{ContainerId, Contents, Item, ItemCollection, ViewId, ViewerContext};
 use re_viewport_blueprint::{ContainerBlueprint, ViewportBlueprint};
 
 mod actions;
@@ -214,8 +214,8 @@ impl<'a> ContextMenuContext<'a> {
     /// position of the enclosing view is considered.
     pub fn clicked_item_enclosing_container_id_and_position(&self) -> Option<(ContainerId, usize)> {
         match self.clicked_item {
-            Item::SpaceView(space_view_id) | Item::DataResult(space_view_id, _) => {
-                Some(Contents::SpaceView(*space_view_id))
+            Item::View(space_view_id) | Item::DataResult(space_view_id, _) => {
+                Some(Contents::View(*space_view_id))
             }
             Item::Container(container_id) => Some(Contents::Container(*container_id)),
             _ => None,
@@ -321,7 +321,7 @@ trait ContextMenuAction {
                 Item::ComponentPath(component_path) => {
                     self.process_component_path(ctx, component_path);
                 }
-                Item::SpaceView(space_view_id) => self.process_space_view(ctx, space_view_id),
+                Item::View(space_view_id) => self.process_space_view(ctx, space_view_id),
                 Item::InstancePath(instance_path) => self.process_instance_path(ctx, instance_path),
                 Item::DataResult(space_view_id, instance_path) => {
                     self.process_data_result(ctx, space_view_id, instance_path);
@@ -348,13 +348,13 @@ trait ContextMenuAction {
     fn process_container(&self, _ctx: &ContextMenuContext<'_>, _container_id: &ContainerId) {}
 
     /// Process a single view.
-    fn process_space_view(&self, _ctx: &ContextMenuContext<'_>, _space_view_id: &SpaceViewId) {}
+    fn process_space_view(&self, _ctx: &ContextMenuContext<'_>, _space_view_id: &ViewId) {}
 
     /// Process a single data result.
     fn process_data_result(
         &self,
         _ctx: &ContextMenuContext<'_>,
-        _space_view_id: &SpaceViewId,
+        _space_view_id: &ViewId,
         _instance_path: &InstancePath,
     ) {
     }

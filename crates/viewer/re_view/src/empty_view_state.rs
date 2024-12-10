@@ -1,10 +1,10 @@
-use re_viewer_context::SpaceViewState;
+use re_viewer_context::ViewState;
 
 /// View state without any contents.
 #[derive(Default)]
-pub struct EmptySpaceViewState;
+pub struct EmptyViewState;
 
-impl SpaceViewState for EmptySpaceViewState {
+impl ViewState for EmptyViewState {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }

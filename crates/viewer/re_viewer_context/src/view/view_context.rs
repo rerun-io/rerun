@@ -6,19 +6,19 @@ use re_log_types::{EntityPath, TimePoint};
 use re_query::StorageEngineReadGuard;
 use re_types::{AsComponents, ComponentBatch, ComponentName};
 
-use crate::{DataQueryResult, DataResult, QueryContext, SpaceViewId};
+use crate::{DataQueryResult, DataResult, QueryContext, ViewId};
 
 /// The context associated with a view.
 ///
-/// This combines our [`crate::ViewerContext`] with [`crate::SpaceViewState`]
+/// This combines our [`crate::ViewerContext`] with [`crate::ViewState`]
 /// and other view-specific information. This is used as the interface for
 /// execution of view systems and selection panel UI elements that happen
 /// within the context of a view to simplify plumbing of the necessary
 /// information to resolve a query with possible overrides and fallback values.
 pub struct ViewContext<'a> {
     pub viewer_ctx: &'a crate::ViewerContext<'a>,
-    pub view_id: SpaceViewId,
-    pub view_state: &'a dyn crate::SpaceViewState,
+    pub view_id: ViewId,
+    pub view_state: &'a dyn crate::ViewState,
     pub defaults_path: &'a EntityPath,
     pub visualizer_collection: Arc<crate::VisualizerCollection>,
 }
@@ -98,7 +98,7 @@ impl<'a> ViewContext<'a> {
     }
 
     #[inline]
-    pub fn lookup_query_result(&self, id: SpaceViewId) -> &DataQueryResult {
+    pub fn lookup_query_result(&self, id: ViewId) -> &DataQueryResult {
         self.viewer_ctx.lookup_query_result(id)
     }
 

@@ -3,7 +3,7 @@ use re_types_core::{
 };
 use re_ui::{list_item, UiExt as _};
 use re_viewer_context::{
-    ComponentFallbackProvider, ComponentUiTypes, QueryContext, SpaceViewId, SpaceViewState,
+    ComponentFallbackProvider, ComponentUiTypes, QueryContext, ViewId, ViewState,
     ViewerContext,
 };
 use re_viewport_blueprint::ViewProperty;
@@ -14,9 +14,9 @@ use re_viewport_blueprint::ViewProperty;
 pub fn view_property_ui<A: Archetype + ArchetypeReflectionMarker>(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    view_id: SpaceViewId,
+    view_id: ViewId,
     fallback_provider: &dyn ComponentFallbackProvider,
-    view_state: &dyn SpaceViewState,
+    view_state: &dyn ViewState,
 ) {
     let view_property =
         ViewProperty::from_archetype::<A>(ctx.blueprint_db(), ctx.blueprint_query, view_id);
@@ -28,7 +28,7 @@ fn view_property_ui_impl(
     ui: &mut egui::Ui,
     property: &ViewProperty,
     fallback_provider: &dyn ComponentFallbackProvider,
-    view_state: &dyn SpaceViewState,
+    view_state: &dyn ViewState,
 ) {
     let Some(reflection) = ctx.reflection.archetypes.get(&property.archetype_name) else {
         // The `ArchetypeReflectionMarker` bound should make this impossible.

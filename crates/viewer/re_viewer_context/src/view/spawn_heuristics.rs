@@ -1,9 +1,9 @@
 use re_log_types::{hash::Hash64, EntityPath, EntityPathFilter, EntityPathSubs};
-use re_types::SpaceViewClassIdentifier;
+use re_types::ViewClassIdentifier as ViewClassIdentifier;
 
 /// Properties of a view that as recommended to be spawned by default via view spawn heuristics.
 #[derive(Debug, Clone)]
-pub struct RecommendedSpaceView {
+pub struct RecommendedView {
     pub origin: EntityPath,
     pub query_filter: EntityPathFilter,
 }
@@ -12,14 +12,14 @@ pub struct RecommendedSpaceView {
 ///
 /// Provides information in order to decide whether to spawn a space views, putting them in relationship to others and spawning them.
 // TODO(andreas): allow bucketing decisions for 0-n buckets for recommended space views.
-// TODO(andreas): Should `SpaceViewClassLayoutPriority` be part of this struct?
+// TODO(andreas): Should `ViewClassLayoutPriority` be part of this struct?
 #[derive(Default)]
-pub struct SpaceViewSpawnHeuristics {
+pub struct ViewSpawnHeuristics {
     /// The recommended space views to spawn
-    recommended_space_views: Vec<RecommendedSpaceView>,
+    recommended_space_views: Vec<RecommendedView>,
 }
 
-impl SpaceViewSpawnHeuristics {
+impl ViewSpawnHeuristics {
     #[inline]
     pub fn empty() -> Self {
         Self {
@@ -30,12 +30,12 @@ impl SpaceViewSpawnHeuristics {
     #[inline]
     pub fn root() -> Self {
         Self {
-            recommended_space_views: vec![RecommendedSpaceView::root()],
+            recommended_space_views: vec![RecommendedView::root()],
         }
     }
 
-    pub fn new(iter: impl IntoIterator<Item = RecommendedSpaceView>) -> Self {
-        let mut recommended_space_views: Vec<RecommendedSpaceView> = iter.into_iter().collect();
+    pub fn new(iter: impl IntoIterator<Item = RecommendedView>) -> Self {
+        let mut recommended_space_views: Vec<RecommendedView> = iter.into_iter().collect();
         recommended_space_views.sort_by(|a, b| a.origin.cmp(&b.origin));
         Self {
             recommended_space_views,
@@ -43,12 +43,12 @@ impl SpaceViewSpawnHeuristics {
     }
 
     #[inline]
-    pub fn into_vec(self) -> Vec<RecommendedSpaceView> {
+    pub fn into_vec(self) -> Vec<RecommendedView> {
         self.recommended_space_views
     }
 }
 
-impl RecommendedSpaceView {
+impl RecommendedView {
     #[inline]
     pub fn new<'a>(origin: EntityPath, expressions: impl IntoIterator<Item = &'a str>) -> Self {
         let space_env = EntityPathSubs::new_with_origin(&origin);
@@ -82,7 +82,7 @@ impl RecommendedSpaceView {
     /// Therefore, to identify a recommendation for identification purposes, the class id should be included in the hash.
     pub fn recommendation_hash(
         &self,
-        class_id: SpaceViewClassIdentifier,
+        class_id: ViewClassIdentifier,
     ) -> re_types::blueprint::components::ViewerRecommendationHash {
         let Self {
             origin,

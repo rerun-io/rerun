@@ -4,7 +4,7 @@ use re_viewer::external::{
     re_renderer,
     re_types::{self, components::Color, Component as _, ComponentDescriptor},
     re_viewer_context::{
-        self, IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContext,
+        self, IdentifiedViewSystem, ViewSystemExecutionError, ViewContext,
         ViewContextCollection, ViewQuery, ViewSystemIdentifier, VisualizerQueryInfo,
         VisualizerSystem,
     },
@@ -56,7 +56,7 @@ impl VisualizerSystem for InstanceColorSystem {
         ctx: &ViewContext<'_>,
         query: &ViewQuery<'_>,
         _context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
+    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
         // For each entity in the view that should be displayed with the `InstanceColorSystem`…
         for data_result in query.iter_visible_data_results(ctx, Self::identifier()) {
             // …gather all colors and their instance ids.

@@ -10,7 +10,7 @@ use re_entity_db::InstancePath;
 use re_types::ArrowString;
 use re_ui::list_item;
 use re_viewer_context::{
-    HoverHighlight, InteractionHighlight, Item, SelectionHighlight, SpaceViewHighlights, UiLayout,
+    HoverHighlight, InteractionHighlight, Item, SelectionHighlight, ViewHighlights, UiLayout,
     ViewQuery, ViewerContext,
 };
 
@@ -241,7 +241,7 @@ pub fn draw_entity_rect(
     ui: &mut Ui,
     rect: Rect,
     entity_path: &EntityPath,
-    highlights: &SpaceViewHighlights,
+    highlights: &ViewHighlights,
 ) -> Response {
     let color = if highlights
         .entity_outline_mask(entity_path.hash())

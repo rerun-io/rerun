@@ -2,7 +2,7 @@ use re_log_types::{TimeInt, Timeline};
 use re_view::{AnnotationSceneContext, DataResultQuery as _, HybridResults};
 use re_types::Archetype;
 use re_viewer_context::{
-    IdentifiedViewSystem, QueryContext, SpaceViewSystemExecutionError, ViewContext,
+    IdentifiedViewSystem, QueryContext, ViewSystemExecutionError, ViewContext,
     ViewContextCollection, ViewQuery,
 };
 
@@ -75,14 +75,14 @@ pub fn process_archetype<System: IdentifiedViewSystem, A, F>(
     query: &ViewQuery<'_>,
     view_ctx: &ViewContextCollection,
     mut fun: F,
-) -> Result<(), SpaceViewSystemExecutionError>
+) -> Result<(), ViewSystemExecutionError>
 where
     A: Archetype,
     F: FnMut(
         &QueryContext<'_>,
         &SpatialSceneEntityContext<'_>,
         &HybridResults<'_>,
-    ) -> Result<(), SpaceViewSystemExecutionError>,
+    ) -> Result<(), ViewSystemExecutionError>,
 {
     let transforms = view_ctx.get::<TransformContext>()?;
     let depth_offsets = view_ctx.get::<EntityDepthOffsets>()?;

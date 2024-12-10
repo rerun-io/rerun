@@ -12,7 +12,7 @@ use re_dataframe::QueryHandle;
 use re_log_types::{EntityPath, TimeInt, Timeline, TimelineName};
 use re_types_core::ComponentName;
 use re_ui::UiExt as _;
-use re_viewer_context::{SpaceViewId, SystemCommandSender, ViewerContext};
+use re_viewer_context::{ViewId, SystemCommandSender, ViewerContext};
 
 use crate::display_record_batch::{DisplayRecordBatch, DisplayRecordBatchError};
 use crate::expanded_rows::{ExpandedRows, ExpandedRowsCache};
@@ -35,7 +35,7 @@ pub(crate) fn dataframe_ui(
     ui: &mut egui::Ui,
     query_handle: &re_dataframe::QueryHandle<StorageEngineArcReadGuard>,
     expanded_rows_cache: &mut ExpandedRowsCache,
-    space_view_id: &SpaceViewId,
+    space_view_id: &ViewId,
 ) -> Vec<HideColumnAction> {
     re_tracing::profile_function!();
 

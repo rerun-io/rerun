@@ -5,22 +5,22 @@ use egui_plot::{Legend, Line, Plot, PlotPoint, Points};
 use re_chunk_store::TimeType;
 use re_format::next_grid_tick_magnitude_ns;
 use re_log_types::{EntityPath, TimeInt, TimeZone};
+use re_types::blueprint::archetypes::{PlotLegend, ScalarAxis};
+use re_types::blueprint::components::{Corner2D, LockRangeDuringZoom, Visible};
+use re_types::components::AggregationPolicy;
+use re_types::{components::Range1D, datatypes::TimeRange, ViewClassIdentifier, View};
+use re_ui::{list_item, ModifiersMarkdown, MouseButtonMarkdown, UiExt as _};
 use re_view::controls::{
     ASPECT_SCROLL_MODIFIER, HORIZONTAL_SCROLL_MODIFIER, MOVE_TIME_CURSOR_BUTTON,
     SELECTION_RECT_ZOOM_BUTTON, ZOOM_SCROLL_MODIFIER,
 };
 use re_view::{controls, view_property_ui};
-use re_types::blueprint::archetypes::{PlotLegend, ScalarAxis};
-use re_types::blueprint::components::{Corner2D, LockRangeDuringZoom, Visible};
-use re_types::components::AggregationPolicy;
-use re_types::{components::Range1D, datatypes::TimeRange, SpaceViewClassIdentifier, View};
-use re_ui::{list_item, ModifiersMarkdown, MouseButtonMarkdown, UiExt as _};
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, IndicatedEntities, PerVisualizer, QueryRange,
-    RecommendedSpaceView, SmallVisualizerSet, SpaceViewClass, SpaceViewClassRegistryError,
-    SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
-    SpaceViewSystemExecutionError, SystemExecutionOutput, TypedComponentFallbackProvider,
-    ViewQuery, ViewSystemIdentifier, ViewerContext, VisualizableEntities,
+    RecommendedView, SmallVisualizerSet, ViewClass, ViewClassRegistryError,
+    ViewId, ViewSpawnHeuristics, ViewStateExt as _, ViewSystemExecutionError,
+    SystemExecutionOutput, TypedComponentFallbackProvider, ViewQuery, ViewState,
+    ViewSystemIdentifier, ViewerContext, VisualizableEntities,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -31,7 +31,7 @@ use crate::PlotSeriesKind;
 // ---
 
 #[derive(Clone)]
-pub struct TimeSeriesSpaceViewState {
+pub struct TimeSeriesViewState {
     /// Is the user dragging the cursor this frame?
     is_dragging_time_cursor: bool,
 
@@ -58,7 +58,7 @@ pub struct TimeSeriesSpaceViewState {
     pub(crate) default_names_for_entities: HashMap<EntityPath, String>,
 }
 
-impl Default for TimeSeriesSpaceViewState {
+impl Default for TimeSeriesViewState {
     fn default() -> Self {
         Self {
             is_dragging_time_cursor: false,
@@ -71,7 +71,7 @@ impl Default for TimeSeriesSpaceViewState {
     }
 }
 
-impl SpaceViewState for TimeSeriesSpaceViewState {
+impl ViewState for TimeSeriesViewState {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
@@ -86,8 +86,8 @@ pub struct TimeSeriesSpaceView;
 
 type ViewType = re_types::blueprint::views::TimeSeriesView;
 
-impl SpaceViewClass for TimeSeriesSpaceView {
-    fn identifier() -> SpaceViewClassIdentifier {
+impl ViewClass for TimeSeriesSpaceView {
+    fn identifier() -> ViewClassIdentifier {
         ViewType::identifier()
     }
 
@@ -123,30 +123,30 @@ Display time series data in a plot.
 
     fn on_register(
         &self,
-        system_registry: &mut re_viewer_context::SpaceViewSystemRegistrator<'_>,
-    ) -> Result<(), SpaceViewClassRegistryError> {
+        system_registry: &mut re_viewer_context::ViewSystemRegistrator<'_>,
+    ) -> Result<(), ViewClassRegistryError> {
         system_registry.register_visualizer::<SeriesLineSystem>()?;
         system_registry.register_visualizer::<SeriesPointSystem>()?;
         Ok(())
     }
 
-    fn new_state(&self) -> Box<dyn SpaceViewState> {
-        Box::<TimeSeriesSpaceViewState>::default()
+    fn new_state(&self) -> Box<dyn ViewState> {
+        Box::<TimeSeriesViewState>::default()
     }
 
-    fn preferred_tile_aspect_ratio(&self, _state: &dyn SpaceViewState) -> Option<f32> {
+    fn preferred_tile_aspect_ratio(&self, _state: &dyn ViewState) -> Option<f32> {
         None
     }
 
-    fn layout_priority(&self) -> re_viewer_context::SpaceViewClassLayoutPriority {
-        re_viewer_context::SpaceViewClassLayoutPriority::Low
+    fn layout_priority(&self) -> re_viewer_context::ViewClassLayoutPriority {
+        re_viewer_context::ViewClassLayoutPriority::Low
     }
 
     fn supports_visible_time_range(&self) -> bool {
         true
     }
 
-    fn default_query_range(&self, _view_state: &dyn SpaceViewState) -> QueryRange {
+    fn default_query_range(&self, _view_state: &dyn ViewState) -> QueryRange {
         QueryRange::TimeRange(TimeRange::EVERYTHING)
     }
 
@@ -154,11 +154,11 @@ Display time series data in a plot.
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut dyn SpaceViewState,
+        state: &mut dyn ViewState,
         _space_origin: &EntityPath,
-        space_view_id: SpaceViewId,
-    ) -> Result<(), SpaceViewSystemExecutionError> {
-        let state = state.downcast_mut::<TimeSeriesSpaceViewState>()?;
+        space_view_id: ViewId,
+    ) -> Result<(), ViewSystemExecutionError> {
+        let state = state.downcast_mut::<TimeSeriesViewState>()?;
 
         list_item::list_item_scope(ui, "time_series_selection_ui", |ui| {
             view_property_ui::<PlotLegend>(ctx, ui, space_view_id, self, state);
@@ -168,7 +168,7 @@ Display time series data in a plot.
         Ok(())
     }
 
-    fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> SpaceViewSpawnHeuristics {
+    fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> ViewSpawnHeuristics {
         re_tracing::profile_function!();
 
         // For all following lookups, checking indicators is enough, since we know that this is enough to infer visualizability here.
@@ -194,7 +194,7 @@ Display time series data in a plot.
         }
 
         if indicated_entities.0.is_empty() {
-            return SpaceViewSpawnHeuristics::default();
+            return ViewSpawnHeuristics::default();
         }
 
         // Spawn time series data at the root if there's time series data either
@@ -208,7 +208,7 @@ Display time series data in a plot.
                 .iter()
                 .any(|(_, subtree)| indicated_entities.contains(&subtree.path))
         {
-            return SpaceViewSpawnHeuristics::root();
+            return ViewSpawnHeuristics::root();
         }
 
         // If there's other entities that have the right indicator & didn't match the above,
@@ -220,9 +220,9 @@ Display time series data in a plot.
             }
         }
 
-        SpaceViewSpawnHeuristics::new(child_of_root_entities.into_iter().map(|path_part| {
+        ViewSpawnHeuristics::new(child_of_root_entities.into_iter().map(|path_part| {
             let entity = EntityPath::new(vec![path_part.clone()]);
-            RecommendedSpaceView::new_subtree(entity)
+            RecommendedView::new_subtree(entity)
         }))
     }
 
@@ -273,13 +273,13 @@ Display time series data in a plot.
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut dyn SpaceViewState,
+        state: &mut dyn ViewState,
         query: &ViewQuery<'_>,
         system_output: SystemExecutionOutput,
-    ) -> Result<(), SpaceViewSystemExecutionError> {
+    ) -> Result<(), ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        let state = state.downcast_mut::<TimeSeriesSpaceViewState>()?;
+        let state = state.downcast_mut::<TimeSeriesViewState>()?;
 
         let blueprint_db = ctx.blueprint_db();
         let view_id = query.space_view_id;
@@ -530,7 +530,7 @@ Display time series data in a plot.
                 })
                 .or_else(|| {
                     if response.hovered() {
-                        Some(re_viewer_context::Item::SpaceView(query.space_view_id))
+                        Some(re_viewer_context::Item::View(query.space_view_id))
                     } else {
                         None
                     }
@@ -661,7 +661,7 @@ impl TypedComponentFallbackProvider<Range1D> for TimeSeriesSpaceView {
     fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> Range1D {
         ctx.view_state
             .as_any()
-            .downcast_ref::<TimeSeriesSpaceViewState>()
+            .downcast_ref::<TimeSeriesViewState>()
             .map(|s| make_range_sane(s.scalar_range))
             .unwrap_or_default()
     }

@@ -7,7 +7,7 @@ use re_types::{
 };
 use re_viewer_context::{
     auto_color_for_entity_path, ApplicableEntities, IdentifiedViewSystem, QueryContext,
-    SpaceViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext,
+    ViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext,
     ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
     VisualizerQueryInfo, VisualizerSystem,
 };
@@ -40,7 +40,7 @@ impl Boxes3DVisualizer {
         query_context: &QueryContext<'_>,
         ent_context: &SpatialSceneEntityContext<'_>,
         batches: impl Iterator<Item = Boxes3DComponentData<'a>>,
-    ) -> Result<(), SpaceViewSystemExecutionError> {
+    ) -> Result<(), ViewSystemExecutionError> {
         let proc_mesh_key = proc_mesh::ProcMeshKey::Cube;
 
         // `ProcMeshKey::Cube` is scaled to side length of 1, i.e. a half-size of 0.5.
@@ -113,9 +113,9 @@ impl VisualizerSystem for Boxes3DVisualizer {
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
+    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
         let Some(render_ctx) = ctx.viewer_ctx.render_ctx else {
-            return Err(SpaceViewSystemExecutionError::NoRenderContextError);
+            return Err(ViewSystemExecutionError::NoRenderContextError);
         };
 
         let mut builder =

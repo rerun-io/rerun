@@ -7,7 +7,7 @@ use re_types::{
 };
 use re_viewer_context::{
     auto_color_for_entity_path, ApplicableEntities, IdentifiedViewSystem, QueryContext,
-    SpaceViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext,
+    ViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext,
     ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
     VisualizerQueryInfo, VisualizerSystem,
 };
@@ -40,7 +40,7 @@ impl Ellipsoids3DVisualizer {
         query_context: &QueryContext<'_>,
         ent_context: &SpatialSceneEntityContext<'_>,
         batches: impl Iterator<Item = Ellipsoids3DComponentData<'a>>,
-    ) -> Result<(), SpaceViewSystemExecutionError> {
+    ) -> Result<(), ViewSystemExecutionError> {
         for batch in batches {
             // TODO(kpreid): subdivisions should be configurable, and possibly dynamic based on
             // either world size or screen size (depending on application).
@@ -120,9 +120,9 @@ impl VisualizerSystem for Ellipsoids3DVisualizer {
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
+    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
         let Some(render_ctx) = ctx.viewer_ctx.render_ctx else {
-            return Err(SpaceViewSystemExecutionError::NoRenderContextError);
+            return Err(ViewSystemExecutionError::NoRenderContextError);
         };
 
         let mut builder = ProcMeshDrawableBuilder::new(

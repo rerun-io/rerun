@@ -2,7 +2,7 @@
 //!
 //! A View that shows `TextLog` entries in a table and scrolls with the active time.
 
-mod space_view_class;
+mod view_class;
 mod visualizer_system;
 
-pub use space_view_class::TextSpaceView;
+pub use view_class::TextView;

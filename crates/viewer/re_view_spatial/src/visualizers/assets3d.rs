@@ -8,7 +8,7 @@ use re_types::{
     ArrowBuffer, ArrowString, Component as _,
 };
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, QueryContext, SpaceViewSystemExecutionError,
+    ApplicableEntities, IdentifiedViewSystem, QueryContext, ViewSystemExecutionError,
     ViewContext, ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
     VisualizerQueryInfo, VisualizerSystem,
 };
@@ -136,9 +136,9 @@ impl VisualizerSystem for Asset3DVisualizer {
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
+    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
         let Some(render_ctx) = ctx.viewer_ctx.render_ctx else {
-            return Err(SpaceViewSystemExecutionError::NoRenderContextError);
+            return Err(ViewSystemExecutionError::NoRenderContextError);
         };
 
         let mut instances = Vec::new();

@@ -44,7 +44,7 @@ pub struct GraphView {
 
 impl ::re_types_core::View for GraphView {
     #[inline]
-    fn identifier() -> ::re_types_core::SpaceViewClassIdentifier {
+    fn identifier() -> ::re_types_core::ViewClassIdentifier {
         "Graph".into()
     }
 }

@@ -17,7 +17,7 @@ use re_data_ui::item_ui::{cursor_interact_with_selectable, guess_instance_path_i
 use re_entity_db::InstancePath;
 use re_log_types::EntityPathPart;
 use re_ui::{icons, list_item, DesignTokens, SyntaxHighlighting, UiExt as _};
-use re_viewer_context::{Contents, Item, SpaceViewId, ViewerContext};
+use re_viewer_context::{Contents, Item, ViewId, ViewerContext};
 use re_viewport_blueprint::ViewportBlueprint;
 
 use crate::item_title::ItemTitle;
@@ -124,13 +124,13 @@ fn item_bread_crumbs_ui(
                 viewport_breadcrumbs(ctx, viewport, ui, Contents::Container(parent));
             }
         }
-        Item::SpaceView(view_id) => {
-            if let Some(parent) = viewport.parent(&Contents::SpaceView(*view_id)) {
+        Item::View(view_id) => {
+            if let Some(parent) = viewport.parent(&Contents::View(*view_id)) {
                 viewport_breadcrumbs(ctx, viewport, ui, Contents::Container(parent));
             }
         }
         Item::DataResult(view_id, instance_path) => {
-            viewport_breadcrumbs(ctx, viewport, ui, Contents::SpaceView(*view_id));
+            viewport_breadcrumbs(ctx, viewport, ui, Contents::View(*view_id));
 
             let InstancePath {
                 entity_path,
@@ -198,7 +198,7 @@ fn last_part_of_item_heading(
         Item::AppId { .. }
         | Item::DataSource { .. }
         | Item::Container { .. }
-        | Item::SpaceView { .. }
+        | Item::View { .. }
         | Item::StoreId { .. } => true,
 
         Item::InstancePath { .. } | Item::DataResult { .. } | Item::ComponentPath { .. } => false,
@@ -261,7 +261,7 @@ fn entity_path_breadcrumbs(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     // If we are in a view
-    view_id: Option<SpaceViewId>,
+    view_id: Option<ViewId>,
     // Everything is relative to this
     origin: &EntityPath,
     // Show crumbs for all of these

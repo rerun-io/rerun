@@ -1,5 +1,5 @@
 use re_viewer_context::{
-    ComponentFallbackProvider, IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContext,
+    ComponentFallbackProvider, IdentifiedViewSystem, ViewSystemExecutionError, ViewContext,
     ViewContextCollection, ViewQuery, VisualizerQueryInfo, VisualizerSystem,
 };
 
@@ -23,7 +23,7 @@ impl VisualizerSystem for EmptySystem {
         _ctx: &ViewContext<'_>,
         _query: &ViewQuery<'_>,
         _context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
+    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
         Ok(vec![])
     }
 

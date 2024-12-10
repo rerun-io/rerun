@@ -3,7 +3,7 @@ use re_log_types::EntityPath;
 use re_types::blueprint::archetypes::PlotLegend;
 use re_types::blueprint::components::{Corner2D, Visible};
 use re_types::View;
-use re_types::{datatypes::TensorBuffer, SpaceViewClassIdentifier};
+use re_types::{datatypes::TensorBuffer, ViewClassIdentifier};
 use re_ui::{list_item, ModifiersMarkdown, MouseButtonMarkdown};
 use re_view::controls::{
     ASPECT_SCROLL_MODIFIER, HORIZONTAL_SCROLL_MODIFIER, SELECTION_RECT_ZOOM_BUTTON,
@@ -12,9 +12,9 @@ use re_view::controls::{
 use re_view::{controls, suggest_space_view_for_each_entity, view_property_ui};
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem as _, IndicatedEntities, PerVisualizer,
-    SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewStateExt,
-    SpaceViewSystemExecutionError, TypedComponentFallbackProvider, ViewQuery, ViewerContext,
-    VisualizableEntities,
+    ViewClass, ViewClassRegistryError, ViewId, ViewStateExt,
+    ViewSystemExecutionError, TypedComponentFallbackProvider, ViewQuery, ViewState,
+    ViewerContext, VisualizableEntities,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -25,8 +25,8 @@ pub struct BarChartSpaceView;
 
 type ViewType = re_types::blueprint::views::BarChartView;
 
-impl SpaceViewClass for BarChartSpaceView {
-    fn identifier() -> SpaceViewClassIdentifier {
+impl ViewClass for BarChartSpaceView {
+    fn identifier() -> ViewClassIdentifier {
         ViewType::identifier()
     }
 
@@ -38,7 +38,7 @@ impl SpaceViewClass for BarChartSpaceView {
         &re_ui::icons::SPACE_VIEW_HISTOGRAM
     }
 
-    fn new_state(&self) -> Box<dyn SpaceViewState> {
+    fn new_state(&self) -> Box<dyn ViewState> {
         Box::<()>::default()
     }
 
@@ -64,12 +64,12 @@ Display a 1D tensor as a bar chart.
 
     fn on_register(
         &self,
-        system_registry: &mut re_viewer_context::SpaceViewSystemRegistrator<'_>,
-    ) -> Result<(), SpaceViewClassRegistryError> {
+        system_registry: &mut re_viewer_context::ViewSystemRegistrator<'_>,
+    ) -> Result<(), ViewClassRegistryError> {
         system_registry.register_visualizer::<BarChartVisualizerSystem>()
     }
 
-    fn preferred_tile_aspect_ratio(&self, _state: &dyn SpaceViewState) -> Option<f32> {
+    fn preferred_tile_aspect_ratio(&self, _state: &dyn ViewState) -> Option<f32> {
         None
     }
 
@@ -98,23 +98,23 @@ Display a 1D tensor as a bar chart.
     fn spawn_heuristics(
         &self,
         ctx: &ViewerContext<'_>,
-    ) -> re_viewer_context::SpaceViewSpawnHeuristics {
+    ) -> re_viewer_context::ViewSpawnHeuristics {
         re_tracing::profile_function!();
         suggest_space_view_for_each_entity::<BarChartVisualizerSystem>(ctx, self)
     }
 
-    fn layout_priority(&self) -> re_viewer_context::SpaceViewClassLayoutPriority {
-        re_viewer_context::SpaceViewClassLayoutPriority::Low
+    fn layout_priority(&self) -> re_viewer_context::ViewClassLayoutPriority {
+        re_viewer_context::ViewClassLayoutPriority::Low
     }
 
     fn selection_ui(
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut dyn SpaceViewState,
+        state: &mut dyn ViewState,
         _space_origin: &EntityPath,
-        space_view_id: SpaceViewId,
-    ) -> Result<(), SpaceViewSystemExecutionError> {
+        space_view_id: ViewId,
+    ) -> Result<(), ViewSystemExecutionError> {
         list_item::list_item_scope(ui, "time_series_selection_ui", |ui| {
             view_property_ui::<PlotLegend>(ctx, ui, space_view_id, self, state);
         });
@@ -126,11 +126,11 @@ Display a 1D tensor as a bar chart.
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut dyn SpaceViewState,
+        state: &mut dyn ViewState,
 
         query: &ViewQuery<'_>,
         system_output: re_viewer_context::SystemExecutionOutput,
-    ) -> Result<(), SpaceViewSystemExecutionError> {
+    ) -> Result<(), ViewSystemExecutionError> {
         use egui_plot::{Bar, BarChart, Legend, Plot};
 
         let state = state.downcast_mut::<()>()?;

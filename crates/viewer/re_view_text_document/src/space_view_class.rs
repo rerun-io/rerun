@@ -1,27 +1,26 @@
 use egui::Label;
 
-use re_types::SpaceViewClassIdentifier;
 use re_types::View;
+use re_types::ViewClassIdentifier;
 use re_ui::UiExt as _;
 use re_view::suggest_space_view_for_each_entity;
 
 use re_viewer_context::{
-    external::re_log_types::EntityPath, SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId,
-    SpaceViewState, SpaceViewStateExt as _, SpaceViewSystemExecutionError, ViewQuery,
-    ViewerContext,
+    external::re_log_types::EntityPath, ViewClass, ViewClassRegistryError, ViewId, ViewQuery,
+    ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext,
 };
 
 use crate::visualizer_system::{TextDocumentEntry, TextDocumentSystem};
 
 // TODO(andreas): This should be a blueprint component.
 
-pub struct TextDocumentSpaceViewState {
+pub struct TextDocumentViewState {
     monospace: bool,
     word_wrap: bool,
     commonmark_cache: egui_commonmark::CommonMarkCache,
 }
 
-impl Default for TextDocumentSpaceViewState {
+impl Default for TextDocumentViewState {
     fn default() -> Self {
         Self {
             monospace: false,
@@ -31,7 +30,7 @@ impl Default for TextDocumentSpaceViewState {
     }
 }
 
-impl SpaceViewState for TextDocumentSpaceViewState {
+impl ViewState for TextDocumentViewState {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
@@ -46,8 +45,8 @@ pub struct TextDocumentSpaceView;
 
 type ViewType = re_types::blueprint::views::TextDocumentView;
 
-impl SpaceViewClass for TextDocumentSpaceView {
-    fn identifier() -> SpaceViewClassIdentifier {
+impl ViewClass for TextDocumentSpaceView {
+    fn identifier() -> ViewClassIdentifier {
         ViewType::identifier()
     }
 
@@ -68,28 +67,28 @@ Displays text from a text component, as raw text or markdown."
 
     fn on_register(
         &self,
-        system_registry: &mut re_viewer_context::SpaceViewSystemRegistrator<'_>,
-    ) -> Result<(), SpaceViewClassRegistryError> {
+        system_registry: &mut re_viewer_context::ViewSystemRegistrator<'_>,
+    ) -> Result<(), ViewClassRegistryError> {
         system_registry.register_visualizer::<TextDocumentSystem>()
     }
 
-    fn new_state(&self) -> Box<dyn SpaceViewState> {
-        Box::<TextDocumentSpaceViewState>::default()
+    fn new_state(&self) -> Box<dyn ViewState> {
+        Box::<TextDocumentViewState>::default()
     }
 
-    fn layout_priority(&self) -> re_viewer_context::SpaceViewClassLayoutPriority {
-        re_viewer_context::SpaceViewClassLayoutPriority::Low
+    fn layout_priority(&self) -> re_viewer_context::ViewClassLayoutPriority {
+        re_viewer_context::ViewClassLayoutPriority::Low
     }
 
     fn selection_ui(
         &self,
         _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut dyn SpaceViewState,
+        state: &mut dyn ViewState,
         _space_origin: &EntityPath,
-        _space_view_id: SpaceViewId,
-    ) -> Result<(), SpaceViewSystemExecutionError> {
-        let state = state.downcast_mut::<TextDocumentSpaceViewState>()?;
+        _space_view_id: ViewId,
+    ) -> Result<(), ViewSystemExecutionError> {
+        let state = state.downcast_mut::<TextDocumentViewState>()?;
 
         ui.selection_grid("text_config").show(ui, |ui| {
             ui.grid_left_hand_label("Text style");
@@ -104,10 +103,7 @@ Displays text from a text component, as raw text or markdown."
         Ok(())
     }
 
-    fn spawn_heuristics(
-        &self,
-        ctx: &ViewerContext<'_>,
-    ) -> re_viewer_context::SpaceViewSpawnHeuristics {
+    fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> re_viewer_context::ViewSpawnHeuristics {
         re_tracing::profile_function!();
         // By default spawn a view for every text document.
         suggest_space_view_for_each_entity::<TextDocumentSystem>(ctx, self)
@@ -117,12 +113,12 @@ Displays text from a text component, as raw text or markdown."
         &self,
         _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut dyn SpaceViewState,
+        state: &mut dyn ViewState,
 
         _query: &ViewQuery<'_>,
         system_output: re_viewer_context::SystemExecutionOutput,
-    ) -> Result<(), SpaceViewSystemExecutionError> {
-        let state = state.downcast_mut::<TextDocumentSpaceViewState>()?;
+    ) -> Result<(), ViewSystemExecutionError> {
+        let state = state.downcast_mut::<TextDocumentViewState>()?;
         let text_document = system_output.view_systems.get::<TextDocumentSystem>()?;
 
         egui::Frame {

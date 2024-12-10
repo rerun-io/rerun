@@ -15,13 +15,13 @@ use re_types::{
 };
 use re_ui::{ContextExt as _, ModifiersMarkdown, MouseButtonMarkdown};
 use re_viewer_context::{
-    gpu_bridge, ItemSpaceContext, SpaceViewSystemExecutionError, ViewQuery, ViewerContext,
+    gpu_bridge, ItemSpaceContext, ViewSystemExecutionError, ViewQuery, ViewerContext,
 };
 use re_viewport_blueprint::ViewProperty;
 
 use super::{eye::Eye, ui::create_labels};
 use crate::{
-    query_pinhole_legacy, ui::SpatialSpaceViewState, view_kind::SpatialSpaceViewKind,
+    query_pinhole_legacy, ui::SpatialViewState, view_kind::SpatialSpaceViewKind,
     visualizers::collect_ui_labels, SpatialSpaceView2D,
 };
 
@@ -32,7 +32,7 @@ fn ui_from_scene(
     ctx: &ViewerContext<'_>,
     response: &egui::Response,
     view_class: &SpatialSpaceView2D,
-    view_state: &mut SpatialSpaceViewState,
+    view_state: &mut SpatialViewState,
     bounds_property: &ViewProperty,
 ) -> RectTransform {
     let bounds: blueprint_components::VisualBounds2D = bounds_property
@@ -139,10 +139,10 @@ impl SpatialSpaceView2D {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut SpatialSpaceViewState,
+        state: &mut SpatialViewState,
         query: &ViewQuery<'_>,
         system_output: re_viewer_context::SystemExecutionOutput,
-    ) -> Result<(), SpaceViewSystemExecutionError> {
+    ) -> Result<(), ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
         if ui.available_size().min_elem() <= 0.0 {
@@ -210,7 +210,7 @@ impl SpatialSpaceView2D {
         );
 
         let Some(render_ctx) = ctx.render_ctx else {
-            return Err(SpaceViewSystemExecutionError::NoRenderContextError);
+            return Err(ViewSystemExecutionError::NoRenderContextError);
         };
 
         let mut view_builder = ViewBuilder::new(render_ctx, target_config);

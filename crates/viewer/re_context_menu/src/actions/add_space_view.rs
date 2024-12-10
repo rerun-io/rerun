@@ -1,6 +1,6 @@
-use re_types::SpaceViewClassIdentifier;
+use re_types::ViewClassIdentifier;
 use re_ui::Icon;
-use re_viewer_context::{ContainerId, Item, RecommendedSpaceView};
+use re_viewer_context::{ContainerId, Item, RecommendedView};
 use re_viewport_blueprint::SpaceViewBlueprint;
 
 use crate::{ContextMenuAction, ContextMenuContext};
@@ -8,7 +8,7 @@ use crate::{ContextMenuAction, ContextMenuContext};
 /// Add a view of the specific class
 pub(crate) struct AddSpaceViewAction {
     pub icon: &'static Icon,
-    pub id: SpaceViewClassIdentifier,
+    pub id: ViewClassIdentifier,
 }
 
 impl ContextMenuAction for AddSpaceViewAction {
@@ -29,7 +29,7 @@ impl ContextMenuAction for AddSpaceViewAction {
     }
 
     fn process_container(&self, ctx: &ContextMenuContext<'_>, container_id: &ContainerId) {
-        let space_view = SpaceViewBlueprint::new(self.id, RecommendedSpaceView::root());
+        let space_view = SpaceViewBlueprint::new(self.id, RecommendedView::root());
 
         ctx.viewport_blueprint.add_space_views(
             std::iter::once(space_view),

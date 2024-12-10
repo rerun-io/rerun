@@ -6,7 +6,7 @@ use re_types::{
     components::Position2D,
     Archetype, Component,
 };
-use re_viewer_context::{ComponentFallbackProvider, SpaceViewState, ViewQuery, ViewerContext};
+use re_viewer_context::{ComponentFallbackProvider, ViewState, ViewQuery, ViewerContext};
 use re_viewport_blueprint::{ViewProperty, ViewPropertyQueryError};
 
 #[derive(Debug, PartialEq)]
@@ -35,7 +35,7 @@ pub struct ForceLayoutParams {
 struct QueryArchetype<'a, T> {
     ctx: &'a ViewerContext<'a>,
     provider: &'a dyn ComponentFallbackProvider,
-    view_state: &'a dyn SpaceViewState,
+    view_state: &'a dyn ViewState,
     property: ViewProperty,
     _marker: std::marker::PhantomData<T>,
 }
@@ -45,7 +45,7 @@ impl<'a, T: Archetype> QueryArchetype<'a, T> {
         ctx: &'a ViewerContext<'a>,
         query: &'a ViewQuery<'a>,
         provider: &'a dyn ComponentFallbackProvider,
-        view_state: &'a dyn SpaceViewState,
+        view_state: &'a dyn ViewState,
     ) -> Self {
         let property = ViewProperty::from_archetype::<T>(
             ctx.blueprint_db(),
@@ -75,7 +75,7 @@ impl ForceLayoutParams {
         ctx: &ViewerContext<'_>,
         query: &ViewQuery<'_>,
         provider: &dyn ComponentFallbackProvider,
-        view_state: &dyn SpaceViewState,
+        view_state: &dyn ViewState,
     ) -> Result<Self, ViewPropertyQueryError> {
         // Query the components for the archetype
         let force_link = QueryArchetype::<ForceLink>::new(ctx, query, provider, view_state);

@@ -9,7 +9,7 @@ use re_types::{
 };
 use re_viewer_context::{
     auto_color_for_entity_path, ApplicableEntities, IdentifiedViewSystem, QueryContext,
-    SpaceViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext,
+    ViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext,
     ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
     VisualizerQueryInfo, VisualizerSystem,
 };
@@ -51,7 +51,7 @@ impl Points2DVisualizer {
         query: &ViewQuery<'_>,
         ent_context: &SpatialSceneEntityContext<'_>,
         data: impl Iterator<Item = Points2DComponentData<'a>>,
-    ) -> Result<(), SpaceViewSystemExecutionError> {
+    ) -> Result<(), ViewSystemExecutionError> {
         let entity_path = ctx.target_entity_path;
 
         for data in data {
@@ -189,9 +189,9 @@ impl VisualizerSystem for Points2DVisualizer {
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
+    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
         let Some(render_ctx) = ctx.viewer_ctx.render_ctx else {
-            return Err(SpaceViewSystemExecutionError::NoRenderContextError);
+            return Err(ViewSystemExecutionError::NoRenderContextError);
         };
 
         let mut point_builder = PointCloudBuilder::new(render_ctx);

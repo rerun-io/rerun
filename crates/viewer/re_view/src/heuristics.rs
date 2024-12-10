@@ -1,6 +1,6 @@
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, RecommendedSpaceView, SpaceViewClass,
-    SpaceViewSpawnHeuristics, ViewerContext, VisualizerSystem,
+    ApplicableEntities, IdentifiedViewSystem, RecommendedView, ViewClass,
+    ViewSpawnHeuristics, ViewerContext, VisualizerSystem,
 };
 
 /// Spawns a view for each single entity which is visualizable & indicator-matching for a given visualizer.
@@ -9,8 +9,8 @@ use re_viewer_context::{
 /// to spawn a view for every single entity that is visualizable with a given visualizer.
 pub fn suggest_space_view_for_each_entity<TVisualizer>(
     ctx: &ViewerContext<'_>,
-    space_view: &impl SpaceViewClass,
-) -> SpaceViewSpawnHeuristics
+    space_view: &impl ViewClass,
+) -> ViewSpawnHeuristics
 where
     TVisualizer: VisualizerSystem + IdentifiedViewSystem + Default,
 {
@@ -43,9 +43,9 @@ where
             {
                 None
             } else {
-                Some(RecommendedSpaceView::new_single_entity(entity.clone()))
+                Some(RecommendedView::new_single_entity(entity.clone()))
             }
         });
 
-    re_viewer_context::SpaceViewSpawnHeuristics::new(recommended_space_views)
+    re_viewer_context::ViewSpawnHeuristics::new(recommended_space_views)
 }

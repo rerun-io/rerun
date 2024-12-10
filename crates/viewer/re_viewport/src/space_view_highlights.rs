@@ -5,8 +5,8 @@ use re_entity_db::InstancePath;
 use re_log_types::EntityPathHash;
 use re_renderer::OutlineMaskPreference;
 use re_viewer_context::{
-    HoverHighlight, Item, SelectionHighlight, SpaceViewEntityHighlight, SpaceViewHighlights,
-    SpaceViewId, SpaceViewOutlineMasks,
+    HoverHighlight, Item, SelectionHighlight, ViewEntityHighlight, ViewHighlights,
+    ViewId, ViewOutlineMasks,
 };
 
 /// Computes which things in a view should received highlighting.
@@ -15,13 +15,13 @@ use re_viewer_context::{
 /// based on the entities in a view and the current selection/hover state.
 pub fn highlights_for_space_view(
     ctx: &re_viewer_context::ViewerContext<'_>,
-    space_view_id: SpaceViewId,
-) -> SpaceViewHighlights {
+    space_view_id: ViewId,
+) -> ViewHighlights {
     re_tracing::profile_function!();
 
     let mut highlighted_entity_paths =
-        IntMap::<EntityPathHash, SpaceViewEntityHighlight>::default();
-    let mut outlines_masks = IntMap::<EntityPathHash, SpaceViewOutlineMasks>::default();
+        IntMap::<EntityPathHash, ViewEntityHighlight>::default();
+    let mut outlines_masks = IntMap::<EntityPathHash, ViewOutlineMasks>::default();
 
     let mut selection_mask_index: u8 = 0;
     let mut next_selection_mask = || {
@@ -47,7 +47,7 @@ pub fn highlights_for_space_view(
             Item::AppId(_)
             | Item::DataSource(_)
             | Item::StoreId(_)
-            | Item::SpaceView(_)
+            | Item::View(_)
             | Item::Container(_) => {}
 
             Item::ComponentPath(component_path) => {
@@ -87,7 +87,7 @@ pub fn highlights_for_space_view(
             Item::AppId(_)
             | Item::DataSource(_)
             | Item::StoreId(_)
-            | Item::SpaceView(_)
+            | Item::View(_)
             | Item::Container(_) => {}
 
             Item::ComponentPath(component_path) => {
@@ -118,7 +118,7 @@ pub fn highlights_for_space_view(
         };
     }
 
-    SpaceViewHighlights {
+    ViewHighlights {
         highlighted_entity_paths,
         outlines_masks,
     }

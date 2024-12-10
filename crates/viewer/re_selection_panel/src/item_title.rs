@@ -10,7 +10,7 @@ use re_ui::{
     SyntaxHighlighting as _,
 };
 use re_viewer_context::{
-    contents_name_style, ContainerId, Contents, Item, SpaceViewId, ViewerContext,
+    contents_name_style, ContainerId, Contents, Item, ViewId, ViewerContext,
 };
 use re_viewport_blueprint::ViewportBlueprint;
 
@@ -57,7 +57,7 @@ impl ItemTitle {
 
             Item::Container(container_id) => Self::from_container_id(viewport, container_id),
 
-            Item::SpaceView(view_id) => Self::from_view_id(ctx, viewport, view_id),
+            Item::View(view_id) => Self::from_view_id(ctx, viewport, view_id),
 
             Item::DataResult(view_id, instance_path) => {
                 let item_title = Self::from_instance_path(ctx, style, instance_path);
@@ -157,7 +157,7 @@ impl ItemTitle {
     ) -> Self {
         match contents {
             Contents::Container(container_id) => Self::from_container_id(viewport, container_id),
-            Contents::SpaceView(view_id) => Self::from_view_id(ctx, viewport, view_id),
+            Contents::View(view_id) => Self::from_view_id(ctx, viewport, view_id),
         }
     }
 
@@ -191,7 +191,7 @@ impl ItemTitle {
     fn from_view_id(
         ctx: &ViewerContext<'_>,
         viewport: &ViewportBlueprint,
-        view_id: &SpaceViewId,
+        view_id: &ViewId,
     ) -> Self {
         if let Some(view) = viewport.view(view_id) {
             let view_class = view.class(ctx.space_view_class_registry);

@@ -1,4 +1,4 @@
-use re_viewer_context::{ContainerId, Contents, SpaceViewId};
+use re_viewer_context::{ContainerId, Contents, ViewId};
 
 use crate::SpaceViewBlueprint;
 
@@ -8,7 +8,7 @@ use crate::SpaceViewBlueprint;
 #[derive(Clone, Debug)]
 pub enum ViewportCommand {
     /// Set the whole viewport tree.
-    SetTree(egui_tiles::Tree<SpaceViewId>),
+    SetTree(egui_tiles::Tree<ViewId>),
 
     /// Add a new view to the provided container (or the root if `None`).
     AddSpaceView {
@@ -27,7 +27,7 @@ pub enum ViewportCommand {
     SetContainerKind(ContainerId, egui_tiles::ContainerKind),
 
     /// Ensure the tab for the provided view is focused (see [`egui_tiles::Tree::make_active`]).
-    FocusTab(SpaceViewId),
+    FocusTab(ViewId),
 
     /// Remove a container (recursively) or a view
     RemoveContents(Contents),

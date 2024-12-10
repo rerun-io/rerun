@@ -340,14 +340,14 @@ impl ApplicationSelectionState {
                 Item::AppId(_)
                 | Item::DataSource(_)
                 | Item::StoreId(_)
-                | Item::SpaceView(_)
+                | Item::View(_)
                 | Item::Container(_) => current == test,
 
                 Item::ComponentPath(component_path) => match test {
                     Item::AppId(_)
                     | Item::DataSource(_)
                     | Item::StoreId(_)
-                    | Item::SpaceView(_)
+                    | Item::View(_)
                     | Item::Container(_) => false,
 
                     Item::ComponentPath(test_component_path) => {
@@ -368,7 +368,7 @@ impl ApplicationSelectionState {
                     | Item::DataSource(_)
                     | Item::StoreId(_)
                     | Item::ComponentPath(_)
-                    | Item::SpaceView(_)
+                    | Item::View(_)
                     | Item::Container(_) => false,
 
                     Item::InstancePath(test_instance_path)
@@ -386,7 +386,7 @@ impl ApplicationSelectionState {
                     | Item::DataSource(_)
                     | Item::StoreId(_)
                     | Item::ComponentPath(_)
-                    | Item::SpaceView(_)
+                    | Item::View(_)
                     | Item::Container(_) => false,
 
                     Item::InstancePath(test_instance_path)

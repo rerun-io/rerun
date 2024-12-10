@@ -6,7 +6,7 @@ use re_entity_db::{EntityTree, InstancePath};
 use re_format::format_uint;
 use re_log_types::{ApplicationId, ComponentPath, EntityPath, TimeInt, Timeline};
 use re_ui::{icons, list_item, SyntaxHighlighting, UiExt as _};
-use re_viewer_context::{HoverHighlight, Item, SpaceViewId, UiLayout, ViewerContext};
+use re_viewer_context::{HoverHighlight, Item, ViewId, UiLayout, ViewerContext};
 
 use super::DataUi;
 
@@ -39,7 +39,7 @@ pub fn entity_path_button(
     query: &re_chunk_store::LatestAtQuery,
     db: &re_entity_db::EntityDb,
     ui: &mut egui::Ui,
-    space_view_id: Option<SpaceViewId>,
+    space_view_id: Option<ViewId>,
     entity_path: &EntityPath,
 ) -> egui::Response {
     instance_path_button_to(
@@ -59,7 +59,7 @@ pub fn entity_path_parts_buttons(
     query: &re_chunk_store::LatestAtQuery,
     db: &re_entity_db::EntityDb,
     ui: &mut egui::Ui,
-    space_view_id: Option<SpaceViewId>,
+    space_view_id: Option<ViewId>,
     entity_path: &EntityPath,
 ) -> egui::Response {
     let with_individual_icons = false; // too much noise with icons in a path
@@ -136,7 +136,7 @@ pub fn entity_path_button_to(
     query: &re_chunk_store::LatestAtQuery,
     db: &re_entity_db::EntityDb,
     ui: &mut egui::Ui,
-    space_view_id: Option<SpaceViewId>,
+    space_view_id: Option<ViewId>,
     entity_path: &EntityPath,
     text: impl Into<egui::WidgetText>,
 ) -> egui::Response {
@@ -157,7 +157,7 @@ pub fn instance_path_button(
     query: &re_chunk_store::LatestAtQuery,
     db: &re_entity_db::EntityDb,
     ui: &mut egui::Ui,
-    space_view_id: Option<SpaceViewId>,
+    space_view_id: Option<ViewId>,
     instance_path: &InstancePath,
 ) -> egui::Response {
     instance_path_button_to(
@@ -237,7 +237,7 @@ pub fn instance_path_button_to(
     query: &re_chunk_store::LatestAtQuery,
     db: &re_entity_db::EntityDb,
     ui: &mut egui::Ui,
-    space_view_id: Option<SpaceViewId>,
+    space_view_id: Option<ViewId>,
     instance_path: &InstancePath,
     text: impl Into<egui::WidgetText>,
 ) -> egui::Response {
@@ -251,7 +251,7 @@ fn instance_path_button_to_ex(
     query: &re_chunk_store::LatestAtQuery,
     db: &re_entity_db::EntityDb,
     ui: &mut egui::Ui,
-    space_view_id: Option<SpaceViewId>,
+    space_view_id: Option<ViewId>,
     instance_path: &InstancePath,
     text: impl Into<egui::WidgetText>,
     with_icon: bool,
@@ -287,7 +287,7 @@ pub fn instance_path_parts_buttons(
     query: &re_chunk_store::LatestAtQuery,
     db: &re_entity_db::EntityDb,
     ui: &mut egui::Ui,
-    space_view_id: Option<SpaceViewId>,
+    space_view_id: Option<ViewId>,
     instance_path: &InstancePath,
 ) -> egui::Response {
     let with_icon = false; // too much noise with icons in a path
@@ -521,7 +521,7 @@ pub fn data_blueprint_button_to(
     db: &re_entity_db::EntityDb,
     ui: &mut egui::Ui,
     text: impl Into<egui::WidgetText>,
-    space_view_id: SpaceViewId,
+    space_view_id: ViewId,
     entity_path: &EntityPath,
 ) -> egui::Response {
     let item = Item::DataResult(space_view_id, InstancePath::entity_all(entity_path.clone()));

@@ -10,8 +10,8 @@ use re_types::{
     Component as _,
 };
 use re_viewer_context::{
-    auto_color_for_entity_path, IdentifiedViewSystem, QueryContext, SpaceViewHighlights,
-    SpaceViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext,
+    auto_color_for_entity_path, IdentifiedViewSystem, QueryContext, ViewHighlights,
+    ViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext,
     ViewContextCollection, ViewQuery, VisualizerQueryInfo, VisualizerSystem,
 };
 
@@ -45,7 +45,7 @@ impl VisualizerSystem for GeoLineStringsVisualizer {
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         _context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
+    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
         for data_result in view_query.iter_visible_data_results(ctx, Self::identifier()) {
             let results =
                 data_result.query_archetype_with_history::<GeoLineStrings>(ctx, view_query);
@@ -136,7 +136,7 @@ impl GeoLineStringsVisualizer {
         render_ctx: &re_renderer::RenderContext,
         view_builder: &mut re_renderer::ViewBuilder,
         projector: &walkers::Projector,
-        highlight: &SpaceViewHighlights,
+        highlight: &ViewHighlights,
     ) -> Result<(), LineDrawDataError> {
         let mut lines = re_renderer::LineDrawableBuilder::new(render_ctx);
         lines.radius_boost_in_ui_points_for_outlines(

@@ -8,13 +8,13 @@ use re_types::{
     Archetype as _, Component as _, Loggable as _,
 };
 use re_viewer_context::{
-    auto_color_for_entity_path, IdentifiedViewSystem, QueryContext, SpaceViewStateExt as _,
-    SpaceViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext, ViewQuery,
+    auto_color_for_entity_path, IdentifiedViewSystem, QueryContext, ViewStateExt as _,
+    ViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext, ViewQuery,
     VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{
-    space_view_class::TimeSeriesSpaceViewState,
+    space_view_class::TimeSeriesViewState,
     util::{determine_time_per_pixel, determine_time_range, points_to_series},
     PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind, ScatterAttrs,
 };
@@ -55,7 +55,7 @@ impl VisualizerSystem for SeriesPointSystem {
         ctx: &ViewContext<'_>,
         query: &ViewQuery<'_>,
         _context: &re_viewer_context::ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
+    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
         self.load_scalars(ctx, query);
@@ -85,7 +85,7 @@ impl TypedComponentFallbackProvider<MarkerSize> for SeriesPointSystem {
 
 impl TypedComponentFallbackProvider<Name> for SeriesPointSystem {
     fn fallback_for(&self, ctx: &QueryContext<'_>) -> Name {
-        let state = ctx.view_state.downcast_ref::<TimeSeriesSpaceViewState>();
+        let state = ctx.view_state.downcast_ref::<TimeSeriesViewState>();
 
         state
             .ok()
@@ -205,7 +205,7 @@ impl SeriesPointSystem {
 
         let time_offset = ctx
             .view_state
-            .downcast_ref::<TimeSeriesSpaceViewState>()
+            .downcast_ref::<TimeSeriesViewState>()
             .map_or(0, |state| state.time_offset);
         let time_range =
             determine_time_range(view_query.latest_at, time_offset, data_result, plot_mem);

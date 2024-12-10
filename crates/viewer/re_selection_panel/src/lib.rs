@@ -16,7 +16,7 @@ pub use selection_panel::SelectionPanel;
 mod test {
     use super::*;
     use re_chunk_store::LatestAtQuery;
-    use re_viewer_context::{blueprint_timeline, Item, SpaceViewId};
+    use re_viewer_context::{blueprint_timeline, Item, ViewId};
     use re_viewport_blueprint::ViewportBlueprint;
 
     /// This test mainly serve to demonstrate that non-trivial UI code can be executed with a "fake"
@@ -28,7 +28,7 @@ mod test {
 
         let mut test_ctx = re_viewer_context::test_context::TestContext::default();
         test_ctx.edit_selection(|selection_state| {
-            selection_state.set_selection(Item::SpaceView(SpaceViewId::random()));
+            selection_state.set_selection(Item::View(ViewId::random()));
         });
 
         test_ctx.run_in_egui_central_panel(|ctx, ui| {

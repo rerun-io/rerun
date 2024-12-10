@@ -6,13 +6,13 @@ use re_types::{
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, ImageInfo, QueryContext,
-    SpaceViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext,
+    ViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext,
     ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
     VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{
-    ui::SpatialSpaceViewState,
+    ui::SpatialViewState,
     view_kind::SpatialSpaceViewKind,
     visualizers::{filter_visualizable_2d_entities, textured_rect_from_image},
     PickableRectSourceData, PickableTexturedRect,
@@ -62,9 +62,9 @@ impl VisualizerSystem for SegmentationImageVisualizer {
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
+    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
         let Some(render_ctx) = ctx.viewer_ctx.render_ctx else {
-            return Err(SpaceViewSystemExecutionError::NoRenderContextError);
+            return Err(ViewSystemExecutionError::NoRenderContextError);
         };
 
         use super::entity_iterator::{iter_buffer, iter_component, process_archetype};
@@ -187,7 +187,7 @@ impl TypedComponentFallbackProvider<Opacity> for SegmentationImageVisualizer {
         let Some(view_state) = ctx
             .view_state
             .as_any()
-            .downcast_ref::<SpatialSpaceViewState>()
+            .downcast_ref::<SpatialViewState>()
         else {
             return 1.0.into();
         };

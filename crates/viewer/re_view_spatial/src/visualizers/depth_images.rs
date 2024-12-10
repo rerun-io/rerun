@@ -14,7 +14,7 @@ use re_types::{
 };
 use re_viewer_context::{
     ApplicableEntities, ColormapWithRange, IdentifiedViewSystem, ImageInfo, ImageStatsCache,
-    QueryContext, SpaceViewClass, SpaceViewSystemExecutionError, TypedComponentFallbackProvider,
+    QueryContext, ViewClass, ViewSystemExecutionError, TypedComponentFallbackProvider,
     ViewContext, ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
     VisualizerQueryInfo, VisualizerSystem,
 };
@@ -253,9 +253,9 @@ impl VisualizerSystem for DepthImageVisualizer {
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
+    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
         let Some(render_ctx) = ctx.viewer_ctx.render_ctx else {
-            return Err(SpaceViewSystemExecutionError::NoRenderContextError);
+            return Err(ViewSystemExecutionError::NoRenderContextError);
         };
 
         let mut depth_clouds = Vec::new();

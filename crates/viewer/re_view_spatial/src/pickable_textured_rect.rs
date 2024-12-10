@@ -1,7 +1,7 @@
 use re_log_types::EntityPath;
 use re_renderer::{renderer::TexturedRect, QueueableDrawData};
 use re_types::components::DepthMeter;
-use re_viewer_context::{ImageInfo, SpaceViewSystemExecutionError};
+use re_viewer_context::{ImageInfo, ViewSystemExecutionError};
 
 #[derive(Clone)]
 pub enum PickableRectSourceData {
@@ -39,7 +39,7 @@ impl PickableTexturedRect {
     pub fn to_draw_data(
         render_ctx: &re_renderer::RenderContext,
         rects: &[Self],
-    ) -> Result<QueueableDrawData, SpaceViewSystemExecutionError> {
+    ) -> Result<QueueableDrawData, ViewSystemExecutionError> {
         // TODO(wumpf): Can we avoid this copy, maybe let DrawData take an iterator?
         let rectangles = rects
             .iter()
@@ -47,7 +47,7 @@ impl PickableTexturedRect {
             .collect::<Vec<_>>();
         match re_renderer::renderer::RectangleDrawData::new(render_ctx, &rectangles) {
             Ok(draw_data) => Ok(draw_data.into()),
-            Err(err) => Err(SpaceViewSystemExecutionError::DrawDataCreationError(
+            Err(err) => Err(ViewSystemExecutionError::DrawDataCreationError(
                 Box::new(err),
             )),
         }

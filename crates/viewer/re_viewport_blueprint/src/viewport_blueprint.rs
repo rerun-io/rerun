@@ -15,14 +15,14 @@ use smallvec::SmallVec;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityPath;
 use re_types::{
-    blueprint::components::ViewerRecommendationHash, Archetype as _, SpaceViewClassIdentifier,
+    blueprint::components::ViewerRecommendationHash, Archetype as _, ViewClassIdentifier,
 };
 use re_types_blueprint::blueprint::{
     archetypes as blueprint_archetypes,
     components::{AutoLayout, AutoSpaceViews, RootContainer, SpaceViewMaximized},
 };
 use re_viewer_context::{
-    blueprint_id_to_tile_id, ContainerId, Contents, Item, SpaceViewId, ViewerContext,
+    blueprint_id_to_tile_id, ContainerId, Contents, Item, ViewId, ViewerContext,
 };
 
 use crate::{container::ContainerBlueprint, SpaceViewBlueprint, ViewportCommand, VIEWPORT_PATH};
@@ -41,7 +41,7 @@ pub struct ViewportBlueprint {
     /// Where the space views are stored.
     ///
     /// Not a hashmap in order to preserve the order of the space views.
-    pub space_views: BTreeMap<SpaceViewId, SpaceViewBlueprint>,
+    pub space_views: BTreeMap<ViewId, SpaceViewBlueprint>,
 
     /// All the containers found in the viewport.
     pub containers: BTreeMap<ContainerId, ContainerBlueprint>,
@@ -52,12 +52,12 @@ pub struct ViewportBlueprint {
     /// The layouts of all the space views.
     ///
     /// If [`Self::maximized`] is set, this tree is ignored.
-    pub tree: egui_tiles::Tree<SpaceViewId>,
+    pub tree: egui_tiles::Tree<ViewId>,
 
     /// Show only one space-view as maximized?
     ///
     /// If set, [`Self::tree`] is ignored.
-    pub maximized: Option<SpaceViewId>,
+    pub maximized: Option<ViewId>,
 
     /// Whether the viewport layout is determined automatically.
     ///
@@ -110,7 +110,7 @@ impl ViewportBlueprint {
         re_log::trace_once!("Loaded root_container: {root_container:?}");
 
         let mut containers: BTreeMap<ContainerId, ContainerBlueprint> = Default::default();
-        let mut all_space_view_ids: Vec<SpaceViewId> = Default::default();
+        let mut all_space_view_ids: Vec<ViewId> = Default::default();
 
         if let Some(root_container) = root_container {
             re_tracing::profile_scope!("visit_all_containers");
@@ -121,7 +121,7 @@ impl ViewportBlueprint {
                     for &content in &container.contents {
                         match content {
                             Contents::Container(id) => container_ids_to_visit.push(id),
-                            Contents::SpaceView(id) => {
+                            Contents::View(id) => {
                                 all_space_view_ids.push(id);
                             }
                         }
@@ -133,9 +133,9 @@ impl ViewportBlueprint {
             }
         }
 
-        let space_views: BTreeMap<SpaceViewId, SpaceViewBlueprint> = all_space_view_ids
+        let space_views: BTreeMap<ViewId, SpaceViewBlueprint> = all_space_view_ids
             .into_iter()
-            .filter_map(|space_view: SpaceViewId| {
+            .filter_map(|space_view: ViewId| {
                 SpaceViewBlueprint::try_from_db(space_view, blueprint_db, query)
             })
             .map(|sv| (sv.id, sv))
@@ -198,10 +198,10 @@ impl ViewportBlueprint {
             && self
                 .space_views
                 .values()
-                .all(|sv| sv.class_identifier() == SpaceViewClassIdentifier::invalid())
+                .all(|sv| sv.class_identifier() == ViewClassIdentifier::invalid())
     }
 
-    pub fn space_view_ids(&self) -> impl Iterator<Item = &SpaceViewId> + '_ {
+    pub fn space_view_ids(&self) -> impl Iterator<Item = &ViewId> + '_ {
         self.space_views.keys()
     }
 
@@ -216,7 +216,7 @@ impl ViewportBlueprint {
             })
     }
 
-    pub fn view(&self, space_view: &SpaceViewId) -> Option<&SpaceViewBlueprint> {
+    pub fn view(&self, space_view: &ViewId) -> Option<&SpaceViewBlueprint> {
         self.space_views.get(space_view)
     }
 
@@ -227,16 +227,15 @@ impl ViewportBlueprint {
     /// Duplicates a view and its entity property overrides.
     pub fn duplicate_space_view(
         &self,
-        space_view_id: &SpaceViewId,
+        space_view_id: &ViewId,
         ctx: &ViewerContext<'_>,
-    ) -> Option<SpaceViewId> {
+    ) -> Option<ViewId> {
         let space_view = self.view(space_view_id)?;
 
         let new_space_view = space_view.duplicate(ctx.store_context, ctx.blueprint_query);
         let new_space_view_id = new_space_view.id;
 
-        let parent_and_pos =
-            self.find_parent_and_position_index(&Contents::SpaceView(*space_view_id));
+        let parent_and_pos = self.find_parent_and_position_index(&Contents::View(*space_view_id));
 
         self.add_space_views(
             std::iter::once(new_space_view),
@@ -270,7 +269,7 @@ impl ViewportBlueprint {
             | Item::ComponentPath(_)
             | Item::InstancePath(_) => true,
 
-            Item::SpaceView(space_view_id) => self.view(space_view_id).is_some(),
+            Item::View(space_view_id) => self.view(space_view_id).is_some(),
 
             Item::DataResult(space_view_id, instance_path) => {
                 self.view(space_view_id).map_or(false, |space_view| {
@@ -421,7 +420,7 @@ impl ViewportBlueprint {
     pub fn contents_iter(&self) -> impl Iterator<Item = Contents> + '_ {
         self.space_views
             .keys()
-            .map(|space_view_id| Contents::SpaceView(*space_view_id))
+            .map(|space_view_id| Contents::View(*space_view_id))
             .chain(
                 self.containers
                     .keys()
@@ -467,7 +466,7 @@ impl ViewportBlueprint {
                     Contents::Container(container_id) => {
                         self.visit_contents_in_container_impl(container_id, hierarchy, visitor);
                     }
-                    Contents::SpaceView(_) => {}
+                    Contents::View(_) => {}
                 }
             }
             hierarchy.pop();
@@ -505,7 +504,7 @@ impl ViewportBlueprint {
                         return res;
                     }
                 }
-                Contents::SpaceView(_) => {}
+                Contents::View(_) => {}
             }
         }
 
@@ -554,7 +553,7 @@ impl ViewportBlueprint {
                         return res;
                     }
                 }
-                Contents::SpaceView(_) => {}
+                Contents::View(_) => {}
             }
         }
 
@@ -611,7 +610,7 @@ impl ViewportBlueprint {
     }
 
     /// Make sure the tab corresponding to this view is focused.
-    pub fn focus_tab(&self, space_view_id: SpaceViewId) {
+    pub fn focus_tab(&self, space_view_id: ViewId) {
         self.enqueue_command(ViewportCommand::FocusTab(space_view_id));
     }
 
@@ -660,7 +659,7 @@ impl ViewportBlueprint {
                     false
                 }
             }
-            Contents::SpaceView(space_view_id) => {
+            Contents::View(space_view_id) => {
                 if let Some(space_view) = self.view(space_view_id) {
                     space_view.visible
                 } else {
@@ -702,7 +701,7 @@ impl ViewportBlueprint {
                     );
                 }
             }
-            Contents::SpaceView(space_view_id) => {
+            Contents::View(space_view_id) => {
                 if let Some(space_view) = self.view(space_view_id) {
                     if visible != space_view.visible {
                         if self.auto_layout() {
@@ -728,7 +727,7 @@ impl ViewportBlueprint {
         &self,
         ctx: &ViewerContext<'_>,
         path: &EntityPath,
-    ) -> Vec<SpaceViewId> {
+    ) -> Vec<ViewId> {
         self.space_views
             .iter()
             .filter_map(|(space_view_id, space_view)| {
@@ -785,7 +784,7 @@ impl ViewportBlueprint {
     }
 
     #[inline]
-    pub fn set_maximized(&self, space_view_id: Option<SpaceViewId>, ctx: &ViewerContext<'_>) {
+    pub fn set_maximized(&self, space_view_id: Option<ViewId>, ctx: &ViewerContext<'_>) {
         if self.maximized != space_view_id {
             let space_view_maximized = space_view_id.map(|id| SpaceViewMaximized(id.into()));
             ctx.save_blueprint_component(&VIEWPORT_PATH.into(), &space_view_maximized);
@@ -819,7 +818,7 @@ impl ViewportBlueprint {
                 egui_tiles::Tile::Pane(space_view_id) => {
                     // If a container has a pointer to a space-view
                     // we want it to point at the space-view in the blueprint.
-                    contents_from_tile_id.insert(*tile_id, Contents::SpaceView(*space_view_id));
+                    contents_from_tile_id.insert(*tile_id, Contents::View(*space_view_id));
                 }
                 egui_tiles::Tile::Container(container) => {
                     if self.tree.root != Some(*tile_id)
@@ -836,8 +835,7 @@ impl ViewportBlueprint {
                         {
                             // This is a trivial tab -- this tile can point directly to
                             // the SpaceView and not to a Container.
-                            contents_from_tile_id
-                                .insert(*tile_id, Contents::SpaceView(*space_view_id));
+                            contents_from_tile_id.insert(*tile_id, Contents::View(*space_view_id));
                             continue;
                         }
                     }
@@ -900,7 +898,7 @@ fn build_tree_from_space_views_and_containers<'a>(
     space_views: impl Iterator<Item = &'a SpaceViewBlueprint>,
     containers: impl Iterator<Item = &'a ContainerBlueprint>,
     root_container: ContainerId,
-) -> egui_tiles::Tree<SpaceViewId> {
+) -> egui_tiles::Tree<ViewId> {
     re_tracing::profile_function!();
     let mut tree = egui_tiles::Tree::empty("viewport_tree");
 

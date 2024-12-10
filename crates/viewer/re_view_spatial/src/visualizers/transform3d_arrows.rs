@@ -8,14 +8,14 @@ use re_types::{
     Archetype as _, Component, ComponentName,
 };
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, QueryContext, SpaceViewStateExt,
-    SpaceViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext,
+    ApplicableEntities, IdentifiedViewSystem, QueryContext, ViewStateExt,
+    ViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext,
     ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
     VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{
-    contexts::TransformContext, ui::SpatialSpaceViewState, view_kind::SpatialSpaceViewKind,
+    contexts::TransformContext, ui::SpatialViewState, view_kind::SpatialSpaceViewKind,
 };
 
 use super::{filter_visualizable_3d_entities, CamerasVisualizer, SpatialViewVisualizerData};
@@ -83,9 +83,9 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
         ctx: &ViewContext<'_>,
         query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
+    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
         let Some(render_ctx) = ctx.viewer_ctx.render_ctx else {
-            return Err(SpaceViewSystemExecutionError::NoRenderContextError);
+            return Err(ViewSystemExecutionError::NoRenderContextError);
         };
 
         let transforms = context_systems.get::<TransformContext>()?;
@@ -255,7 +255,7 @@ impl TypedComponentFallbackProvider<AxisLength> for Transform3DArrowsVisualizer 
         }
 
         // If there is a finite bounding box, use the scene size to determine the axis length.
-        if let Ok(state) = ctx.view_state.downcast_ref::<SpatialSpaceViewState>() {
+        if let Ok(state) = ctx.view_state.downcast_ref::<SpatialViewState>() {
             let scene_size = state.bounding_boxes.smoothed.size().length();
 
             if scene_size.is_finite() && scene_size > 0.0 {
@@ -302,7 +302,7 @@ impl VisualizerSystem for AxisLengthDetector {
         _ctx: &ViewContext<'_>,
         _query: &ViewQuery<'_>,
         _context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
+    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
         Ok(vec![])
     }
 

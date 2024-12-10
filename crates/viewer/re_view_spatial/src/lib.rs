@@ -159,7 +159,7 @@ pub(crate) fn configure_background(
     background: &ViewProperty,
     render_ctx: &RenderContext,
     view_system: &dyn re_viewer_context::ComponentFallbackProvider,
-    state: &dyn re_viewer_context::SpaceViewState,
+    state: &dyn re_viewer_context::ViewState,
 ) -> Result<(Option<re_renderer::QueueableDrawData>, re_renderer::Rgba), ViewPropertyQueryError> {
     use re_renderer::renderer;
 

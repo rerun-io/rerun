@@ -6,8 +6,8 @@ use re_types::{
     components::{ImagePlaneDistance, ViewCoordinates},
 };
 use re_viewer_context::{
-    ApplicableEntities, DataResult, IdentifiedViewSystem, QueryContext, SpaceViewOutlineMasks,
-    SpaceViewStateExt as _, SpaceViewSystemExecutionError, TypedComponentFallbackProvider,
+    ApplicableEntities, DataResult, IdentifiedViewSystem, QueryContext, ViewOutlineMasks,
+    ViewStateExt as _, ViewSystemExecutionError, TypedComponentFallbackProvider,
     ViewContext, ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
     VisualizerQueryInfo, VisualizerSystem,
 };
@@ -15,7 +15,7 @@ use re_viewer_context::{
 use super::{filter_visualizable_3d_entities, SpatialViewVisualizerData};
 use crate::{
     contexts::TransformContext, query_pinhole, space_camera_3d::SpaceCamera3D,
-    ui::SpatialSpaceViewState,
+    ui::SpatialViewState,
 };
 
 const CAMERA_COLOR: re_renderer::Color32 = re_renderer::Color32::from_rgb(150, 150, 150);
@@ -51,7 +51,7 @@ impl CamerasVisualizer {
         data_result: &DataResult,
         pinhole: &Pinhole,
         pinhole_view_coordinates: ViewCoordinates,
-        entity_highlight: &SpaceViewOutlineMasks,
+        entity_highlight: &ViewOutlineMasks,
     ) {
         let instance = Instance::from(0);
         let ent_path = &data_result.entity_path;
@@ -214,9 +214,9 @@ impl VisualizerSystem for CamerasVisualizer {
         ctx: &ViewContext<'_>,
         query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
+    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
         let Some(render_ctx) = ctx.viewer_ctx.render_ctx else {
-            return Err(SpaceViewSystemExecutionError::NoRenderContextError);
+            return Err(ViewSystemExecutionError::NoRenderContextError);
         };
 
         let transforms = context_systems.get::<TransformContext>()?;
@@ -265,7 +265,7 @@ impl VisualizerSystem for CamerasVisualizer {
 
 impl TypedComponentFallbackProvider<ImagePlaneDistance> for CamerasVisualizer {
     fn fallback_for(&self, ctx: &QueryContext<'_>) -> ImagePlaneDistance {
-        let Ok(state) = ctx.view_state.downcast_ref::<SpatialSpaceViewState>() else {
+        let Ok(state) = ctx.view_state.downcast_ref::<SpatialViewState>() else {
             return Default::default();
         };
 

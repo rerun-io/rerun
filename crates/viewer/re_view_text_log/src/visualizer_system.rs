@@ -11,8 +11,8 @@ use re_types::{
 };
 use re_view::{range_with_blueprint_resolved_data, RangeResultsExt};
 use re_viewer_context::{
-    IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContext, ViewContextCollection,
-    ViewQuery, VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError,
+    VisualizerQueryInfo, VisualizerSystem,
 };
 
 #[derive(Debug, Clone)]
@@ -47,7 +47,7 @@ impl VisualizerSystem for TextLogSystem {
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         _context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
+    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
         let query =

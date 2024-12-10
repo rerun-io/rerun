@@ -1,5 +1,5 @@
 use re_entity_db::InstancePath;
-use re_viewer_context::{CollapseScope, ContainerId, Contents, Item, SpaceViewId};
+use re_viewer_context::{CollapseScope, ContainerId, Contents, Item, ViewId};
 
 use crate::{ContextMenuAction, ContextMenuContext};
 
@@ -29,7 +29,7 @@ impl ContextMenuAction for CollapseExpandAllAction {
                 false
             }
 
-            Item::SpaceView(_) | Item::Container(_) | Item::InstancePath(_) => true,
+            Item::View(_) | Item::Container(_) | Item::InstancePath(_) => true,
 
             //TODO(ab): for DataResult, walk the data result tree instead!
             Item::DataResult(_, instance_path) => ctx
@@ -54,11 +54,11 @@ impl ContextMenuAction for CollapseExpandAllAction {
                 Contents::Container(container_id) => CollapseScope::BlueprintTree
                     .container(*container_id)
                     .set_open(&ctx.egui_context, self.open()),
-                Contents::SpaceView(space_view_id) => self.process_space_view(ctx, space_view_id),
+                Contents::View(space_view_id) => self.process_space_view(ctx, space_view_id),
             });
     }
 
-    fn process_space_view(&self, ctx: &ContextMenuContext<'_>, space_view_id: &SpaceViewId) {
+    fn process_space_view(&self, ctx: &ContextMenuContext<'_>, space_view_id: &ViewId) {
         CollapseScope::BlueprintTree
             .space_view(*space_view_id)
             .set_open(&ctx.egui_context, self.open());
@@ -77,7 +77,7 @@ impl ContextMenuAction for CollapseExpandAllAction {
     fn process_data_result(
         &self,
         ctx: &ContextMenuContext<'_>,
-        space_view_id: &SpaceViewId,
+        space_view_id: &ViewId,
         instance_path: &InstancePath,
     ) {
         //TODO(ab): here we should in principle walk the DataResult tree instead of the entity tree

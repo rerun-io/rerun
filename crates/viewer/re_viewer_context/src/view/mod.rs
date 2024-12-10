@@ -6,11 +6,11 @@
 // TODO(andreas): Can we move some of these to the `re_view` crate?
 mod highlights;
 mod named_system;
-mod space_view_class;
-mod space_view_class_placeholder;
-mod space_view_class_registry;
 mod spawn_heuristics;
 mod system_execution_output;
+mod view_class;
+mod view_class_placeholder;
+mod view_class_registry;
 mod view_context;
 mod view_context_system;
 mod view_query;
@@ -19,19 +19,16 @@ mod visualizer_entity_subscriber;
 mod visualizer_system;
 
 pub use highlights::{
-    OptionalSpaceViewEntityHighlight, SpaceViewEntityHighlight, SpaceViewHighlights,
-    SpaceViewOutlineMasks,
+    OptionalViewEntityHighlight, ViewEntityHighlight, ViewHighlights, ViewOutlineMasks,
 };
 pub use named_system::{IdentifiedViewSystem, PerSystemEntities, ViewSystemIdentifier};
-pub use space_view_class::{
-    SpaceViewClass, SpaceViewClassExt, SpaceViewClassLayoutPriority, SpaceViewState,
-    SpaceViewStateExt, VisualizableFilterContext,
-};
-pub use space_view_class_registry::{
-    SpaceViewClassRegistry, SpaceViewClassRegistryError, SpaceViewSystemRegistrator,
-};
-pub use spawn_heuristics::{RecommendedSpaceView, SpaceViewSpawnHeuristics};
+pub use spawn_heuristics::{RecommendedView, ViewSpawnHeuristics};
 pub use system_execution_output::SystemExecutionOutput;
+pub use view_class::{
+    ViewClassExt, ViewClass, ViewClassLayoutPriority, ViewState, ViewStateExt,
+    VisualizableFilterContext,
+};
+pub use view_class_registry::{ViewClassRegistry, ViewClassRegistryError, ViewSystemRegistrator};
 pub use view_context::ViewContext;
 pub use view_context_system::{ViewContextCollection, ViewContextSystem};
 pub use view_query::{
@@ -45,7 +42,7 @@ pub use visualizer_system::{VisualizerCollection, VisualizerQueryInfo, Visualize
 // ---------------------------------------------------------------------------
 
 #[derive(Debug, thiserror::Error)]
-pub enum SpaceViewSystemExecutionError {
+pub enum ViewSystemExecutionError {
     #[error("View context system {0} not found")]
     ContextSystemNotFound(&'static str),
 
@@ -82,13 +79,13 @@ pub enum SpaceViewSystemExecutionError {
 
 // Convenience conversions for some re_renderer error types since these are so frequent.
 
-impl From<re_renderer::renderer::LineDrawDataError> for SpaceViewSystemExecutionError {
+impl From<re_renderer::renderer::LineDrawDataError> for ViewSystemExecutionError {
     fn from(val: re_renderer::renderer::LineDrawDataError) -> Self {
         Self::DrawDataCreationError(Box::new(val))
     }
 }
 
-impl From<re_renderer::renderer::PointCloudDrawDataError> for SpaceViewSystemExecutionError {
+impl From<re_renderer::renderer::PointCloudDrawDataError> for ViewSystemExecutionError {
     fn from(val: re_renderer::renderer::PointCloudDrawDataError) -> Self {
         Self::DrawDataCreationError(Box::new(val))
     }

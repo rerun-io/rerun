@@ -9,7 +9,7 @@ use re_context_menu::{context_menu_ui_for_item, SelectionUpdateBehavior};
 use re_ui::{ContextExt as _, DesignTokens, Icon, UiExt as _};
 use re_viewer_context::{
     blueprint_id_to_tile_id, icon_for_container_kind, Contents, Item, PublishedSpaceViewInfo,
-    SpaceViewClassRegistry, SpaceViewId, SystemExecutionOutput, ViewQuery, ViewStates,
+    ViewClassRegistry, ViewId, SystemExecutionOutput, ViewQuery, ViewStates,
     ViewerContext,
 };
 use re_viewport_blueprint::{ViewportBlueprint, ViewportCommand};
@@ -176,7 +176,7 @@ impl ViewportUi {
     pub fn save_to_blueprint_store(
         self,
         ctx: &ViewerContext<'_>,
-        space_view_class_registry: &SpaceViewClassRegistry,
+        space_view_class_registry: &ViewClassRegistry,
     ) {
         re_tracing::profile_function!();
 
@@ -431,10 +431,10 @@ struct TilesDelegate<'a, 'b> {
     view_states: &'a mut ViewStates,
     ctx: &'a ViewerContext<'b>,
     viewport_blueprint: &'a ViewportBlueprint,
-    maximized: &'a mut Option<SpaceViewId>,
+    maximized: &'a mut Option<ViewId>,
 
     /// List of query & system execution results for each view.
-    executed_systems_per_space_view: HashMap<SpaceViewId, (ViewQuery<'a>, SystemExecutionOutput)>,
+    executed_systems_per_space_view: HashMap<ViewId, (ViewQuery<'a>, SystemExecutionOutput)>,
 
     /// List of contents for each tile id
     contents_per_tile_id: HashMap<egui_tiles::TileId, Contents>,
@@ -446,12 +446,12 @@ struct TilesDelegate<'a, 'b> {
     tile_dropped: bool,
 }
 
-impl<'a> egui_tiles::Behavior<SpaceViewId> for TilesDelegate<'a, '_> {
+impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
     fn pane_ui(
         &mut self,
         ui: &mut egui::Ui,
         _tile_id: egui_tiles::TileId,
-        view_id: &mut SpaceViewId,
+        view_id: &mut ViewId,
     ) -> egui_tiles::UiResponse {
         re_tracing::profile_function!();
 
@@ -544,7 +544,7 @@ impl<'a> egui_tiles::Behavior<SpaceViewId> for TilesDelegate<'a, '_> {
         Default::default()
     }
 
-    fn tab_title_for_pane(&mut self, space_view_id: &SpaceViewId) -> egui::WidgetText {
+    fn tab_title_for_pane(&mut self, space_view_id: &ViewId) -> egui::WidgetText {
         if let Some(space_view) = self.viewport_blueprint.view(space_view_id) {
             // Note: the formatting for unnamed space views is handled by `TabWidget::new()`
             space_view.display_name_or_default().as_ref().into()
@@ -558,7 +558,7 @@ impl<'a> egui_tiles::Behavior<SpaceViewId> for TilesDelegate<'a, '_> {
     #[allow(clippy::fn_params_excessive_bools)]
     fn tab_ui(
         &mut self,
-        tiles: &mut egui_tiles::Tiles<SpaceViewId>,
+        tiles: &mut egui_tiles::Tiles<ViewId>,
         ui: &mut egui::Ui,
         id: egui::Id,
         tile_id: egui_tiles::TileId,
@@ -576,7 +576,7 @@ impl<'a> egui_tiles::Behavior<SpaceViewId> for TilesDelegate<'a, '_> {
         }
 
         let item = tiles.get(tile_id).and_then(|tile| match tile {
-            egui_tiles::Tile::Pane(space_view_id) => Some(Item::SpaceView(*space_view_id)),
+            egui_tiles::Tile::Pane(space_view_id) => Some(Item::View(*space_view_id)),
 
             egui_tiles::Tile::Container(_) => {
                 if let Some(Contents::Container(container_id)) =
@@ -605,7 +605,7 @@ impl<'a> egui_tiles::Behavior<SpaceViewId> for TilesDelegate<'a, '_> {
 
     fn drag_ui(
         &mut self,
-        tiles: &egui_tiles::Tiles<SpaceViewId>,
+        tiles: &egui_tiles::Tiles<ViewId>,
         ui: &mut egui::Ui,
         tile_id: egui_tiles::TileId,
     ) {
@@ -636,7 +636,7 @@ impl<'a> egui_tiles::Behavior<SpaceViewId> for TilesDelegate<'a, '_> {
         });
     }
 
-    fn retain_pane(&mut self, space_view_id: &SpaceViewId) -> bool {
+    fn retain_pane(&mut self, space_view_id: &ViewId) -> bool {
         self.viewport_blueprint
             .space_views
             .contains_key(space_view_id)
@@ -644,7 +644,7 @@ impl<'a> egui_tiles::Behavior<SpaceViewId> for TilesDelegate<'a, '_> {
 
     fn top_bar_right_ui(
         &mut self,
-        tiles: &egui_tiles::Tiles<SpaceViewId>,
+        tiles: &egui_tiles::Tiles<ViewId>,
         ui: &mut egui::Ui,
         _tile_id: egui_tiles::TileId,
         tabs: &egui_tiles::Tabs,
@@ -788,7 +788,7 @@ impl TabWidget {
     fn new<'a>(
         tab_viewer: &'a mut TilesDelegate<'_, '_>,
         ui: &'a mut egui::Ui,
-        tiles: &'a egui_tiles::Tiles<SpaceViewId>,
+        tiles: &'a egui_tiles::Tiles<ViewId>,
         tile_id: egui_tiles::TileId,
         tab_state: &egui_tiles::TabState,
         gamma: f32,
@@ -809,7 +809,7 @@ impl TabWidget {
                         icon: space_view
                             .class(tab_viewer.ctx.space_view_class_registry)
                             .icon(),
-                        item: Some(Item::SpaceView(*space_view_id)),
+                        item: Some(Item::View(*space_view_id)),
                     }
                 } else {
                     re_log::warn_once!("Space view {space_view_id} not found");

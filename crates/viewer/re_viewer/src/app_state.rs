@@ -9,8 +9,8 @@ use re_types::blueprint::components::PanelState;
 use re_ui::{ContextExt as _, DesignTokens};
 use re_viewer_context::{
     AppOptions, ApplicationSelectionState, BlueprintUndoState, CommandSender, ComponentUiRegistry,
-    PlayState, RecordingConfig, SpaceViewClassExt as _, SpaceViewClassRegistry, StoreContext,
-    StoreHub, SystemCommandSender as _, ViewStates, ViewerContext,
+    PlayState, RecordingConfig, StoreContext, StoreHub, SystemCommandSender as _,
+    ViewClassExt as _, ViewClassRegistry, ViewStates, ViewerContext,
 };
 use re_viewport::ViewportUi;
 use re_viewport_blueprint::ui::add_space_view_or_container_modal_ui;
@@ -59,7 +59,7 @@ pub struct AppState {
     #[serde(skip)]
     pub(crate) show_settings_ui: bool,
 
-    /// Storage for the state of each `SpaceView`
+    /// Storage for the state of each `View`
     ///
     /// This is stored here for simplicity. An exclusive reference for that is passed to the users,
     /// such as [`ViewportUi`] and [`re_selection_panel::SelectionPanel`].
@@ -146,7 +146,7 @@ impl AppState {
         store_context: &StoreContext<'_>,
         reflection: &re_types_core::reflection::Reflection,
         component_ui_registry: &ComponentUiRegistry,
-        space_view_class_registry: &SpaceViewClassRegistry,
+        space_view_class_registry: &ViewClassRegistry,
         rx: &ReceiveSet<LogMsg>,
         command_sender: &CommandSender,
         welcome_screen_state: &WelcomeScreenState,
@@ -219,7 +219,7 @@ impl AppState {
         let indicated_entities_per_visualizer =
             space_view_class_registry.indicated_entities_per_visualizer(&recording.store_id());
 
-        // Execute the queries for every `SpaceView`
+        // Execute the queries for every `View`
         let mut query_results = {
             re_tracing::profile_scope!("query_results");
             viewport_ui

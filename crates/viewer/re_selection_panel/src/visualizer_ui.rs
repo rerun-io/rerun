@@ -9,7 +9,7 @@ use re_types_blueprint::blueprint::components::VisualizerOverrides;
 use re_ui::{list_item, UiExt as _};
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
-    DataResult, QueryContext, SpaceViewClassExt as _, UiLayout, ViewContext, ViewSystemIdentifier,
+    DataResult, QueryContext, ViewClassExt as _, UiLayout, ViewContext, ViewSystemIdentifier,
     VisualizerSystem,
 };
 use re_viewport_blueprint::SpaceViewBlueprint;

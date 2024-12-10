@@ -23,7 +23,7 @@ pub use space_view_class::TimeSeriesSpaceView;
 /// let plot_mem = egui_plot::PlotMemory::load(egui_ctx, crate::plot_id(query.space_view_id));
 /// ```
 #[inline]
-pub(crate) fn plot_id(space_view_id: re_viewer_context::SpaceViewId) -> egui::Id {
+pub(crate) fn plot_id(space_view_id: re_viewer_context::ViewId) -> egui::Id {
     egui::Id::new(("plot", space_view_id))
 }
 

@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use re_log_types::EntityPath;
 
 re_string_interner::declare_new_type!(
-    /// Unique name for a system within a given [`crate::SpaceViewClass`].
+    /// Unique name for a system within a given [`crate::ViewClass`].
     ///
     /// Note that this is *not* unique across the entire application.
     #[derive(serde::Deserialize, serde::Serialize)]
@@ -25,7 +25,7 @@ pub type PerSystemEntities = BTreeMap<ViewSystemIdentifier, BTreeSet<EntityPath>
 ///
 /// Required to be implemented for registration.
 pub trait IdentifiedViewSystem {
-    /// Unique name for a system within a given [`crate::SpaceViewClass`].
+    /// Unique name for a system within a given [`crate::ViewClass`].
     ///
     /// Note that this is *not* unique across the entire application.
     fn identifier() -> ViewSystemIdentifier;

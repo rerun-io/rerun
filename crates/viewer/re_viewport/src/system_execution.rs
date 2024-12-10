@@ -5,7 +5,7 @@ use rayon::prelude::*;
 
 use re_log_types::TimeInt;
 use re_viewer_context::{
-    PerSystemDataResults, SpaceViewId, SpaceViewState, SystemExecutionOutput,
+    PerSystemDataResults, ViewId, ViewState, SystemExecutionOutput,
     ViewContextCollection, ViewQuery, ViewStates, ViewerContext, VisualizerCollection,
 };
 
@@ -16,7 +16,7 @@ fn run_space_view_systems(
     ctx: &ViewerContext<'_>,
     view: &SpaceViewBlueprint,
     query: &ViewQuery<'_>,
-    view_state: &dyn SpaceViewState,
+    view_state: &dyn ViewState,
     context_systems: &mut ViewContextCollection,
     view_systems: &mut VisualizerCollection,
 ) -> Vec<re_renderer::QueueableDrawData> {
@@ -57,7 +57,7 @@ pub fn execute_systems_for_space_view<'a>(
     ctx: &'a ViewerContext<'_>,
     view: &'a SpaceViewBlueprint,
     latest_at: TimeInt,
-    view_state: &dyn SpaceViewState,
+    view_state: &dyn ViewState,
 ) -> (ViewQuery<'a>, SystemExecutionOutput) {
     re_tracing::profile_function!(view.class_identifier().as_str());
 
@@ -117,10 +117,10 @@ pub fn execute_systems_for_space_view<'a>(
 
 pub fn execute_systems_for_all_views<'a>(
     ctx: &'a ViewerContext<'a>,
-    tree: &egui_tiles::Tree<SpaceViewId>,
-    views: &'a BTreeMap<SpaceViewId, SpaceViewBlueprint>,
+    tree: &egui_tiles::Tree<ViewId>,
+    views: &'a BTreeMap<ViewId, SpaceViewBlueprint>,
     view_states: &mut ViewStates,
-) -> HashMap<SpaceViewId, (ViewQuery<'a>, SystemExecutionOutput)> {
+) -> HashMap<ViewId, (ViewQuery<'a>, SystemExecutionOutput)> {
     let Some(time_int) = ctx.rec_cfg.time_ctrl.read().time_int() else {
         return Default::default();
     };

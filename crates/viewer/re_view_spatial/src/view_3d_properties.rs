@@ -6,9 +6,9 @@ use re_types::{
     components::{Color, Plane3D, StrokeWidth},
     Archetype as _,
 };
-use re_viewer_context::{SpaceViewStateExt as _, TypedComponentFallbackProvider};
+use re_viewer_context::{ViewStateExt as _, TypedComponentFallbackProvider};
 
-use crate::{ui::SpatialSpaceViewState, SpatialSpaceView3D};
+use crate::{ui::SpatialViewState, SpatialSpaceView3D};
 
 impl TypedComponentFallbackProvider<Color> for SpatialSpaceView3D {
     fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> Color {
@@ -39,7 +39,7 @@ impl TypedComponentFallbackProvider<Plane3D> for SpatialSpaceView3D {
     fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> Plane3D {
         const DEFAULT_PLANE: Plane3D = Plane3D::XY;
 
-        let Ok(view_state) = ctx.view_state.downcast_ref::<SpatialSpaceViewState>() else {
+        let Ok(view_state) = ctx.view_state.downcast_ref::<SpatialViewState>() else {
             return DEFAULT_PLANE;
         };
 

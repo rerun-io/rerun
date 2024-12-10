@@ -5,7 +5,7 @@ use re_types::{
     components::{self},
 };
 use re_viewer_context::{
-    IdentifiedViewSystem, SpaceViewSystemExecutionError, TypedComponentFallbackProvider,
+    IdentifiedViewSystem, ViewSystemExecutionError, TypedComponentFallbackProvider,
     ViewContext, ViewContextCollection, ViewQuery, VisualizerQueryInfo, VisualizerSystem,
 };
 
@@ -39,7 +39,7 @@ impl VisualizerSystem for TextDocumentSystem {
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         _context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
+    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
         let timeline_query = LatestAtQuery::new(view_query.timeline, view_query.latest_at);
 
         for data_result in view_query.iter_visible_data_results(ctx, Self::identifier()) {

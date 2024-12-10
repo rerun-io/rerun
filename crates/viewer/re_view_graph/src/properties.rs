@@ -6,9 +6,9 @@ use re_types::{
     components::Position2D,
     Archetype as _,
 };
-use re_viewer_context::{SpaceViewStateExt as _, TypedComponentFallbackProvider};
+use re_viewer_context::{TypedComponentFallbackProvider, ViewStateExt as _};
 
-use crate::{ui::GraphSpaceViewState, GraphSpaceView};
+use crate::{ui::GraphViewState, GraphSpaceView};
 
 fn valid_bound(rect: &egui::Rect) -> bool {
     rect.is_finite() && rect.is_positive()
@@ -16,7 +16,7 @@ fn valid_bound(rect: &egui::Rect) -> bool {
 
 impl TypedComponentFallbackProvider<VisualBounds2D> for GraphSpaceView {
     fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> VisualBounds2D {
-        let Ok(state) = ctx.view_state.downcast_ref::<GraphSpaceViewState>() else {
+        let Ok(state) = ctx.view_state.downcast_ref::<GraphViewState>() else {
             return VisualBounds2D::default();
         };
 

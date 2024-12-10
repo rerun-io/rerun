@@ -6,22 +6,22 @@ use std::collections::BTreeMap;
 
 use itertools::Itertools as _;
 
-use re_types::SpaceViewClassIdentifier;
-use re_viewer_context::SpaceViewId;
+use re_types::ViewClassIdentifier;
+use re_viewer_context::ViewId;
 
 use re_viewport_blueprint::SpaceViewBlueprint;
 
 #[derive(Clone, Debug)]
 struct SpaceMakeInfo {
-    id: SpaceViewId,
-    class_identifier: SpaceViewClassIdentifier,
-    layout_priority: re_viewer_context::SpaceViewClassLayoutPriority,
+    id: ViewId,
+    class_identifier: ViewClassIdentifier,
+    layout_priority: re_viewer_context::ViewClassLayoutPriority,
 }
 
 pub(crate) fn tree_from_space_views(
-    space_view_class_registry: &re_viewer_context::SpaceViewClassRegistry,
-    space_views: &BTreeMap<SpaceViewId, SpaceViewBlueprint>,
-) -> egui_tiles::Tree<SpaceViewId> {
+    space_view_class_registry: &re_viewer_context::ViewClassRegistry,
+    space_views: &BTreeMap<ViewId, SpaceViewBlueprint>,
+) -> egui_tiles::Tree<ViewId> {
     re_log::trace!("Auto-layout of {} space views", space_views.len());
 
     let space_make_infos = space_views
@@ -70,7 +70,7 @@ pub(crate) fn tree_from_space_views(
         tiles.insert_grid_tile(child_tile_ids)
     } else {
         // So many space views - lets group by class and put the members of each group into tabs:
-        let mut grouped_by_class: BTreeMap<SpaceViewClassIdentifier, Vec<SpaceMakeInfo>> =
+        let mut grouped_by_class: BTreeMap<ViewClassIdentifier, Vec<SpaceMakeInfo>> =
             Default::default();
         for smi in space_make_infos {
             grouped_by_class
@@ -107,7 +107,7 @@ pub(crate) fn tree_from_space_views(
 
 fn arrange_three(
     mut spaces: [SpaceMakeInfo; 3],
-    tiles: &mut egui_tiles::Tiles<SpaceViewId>,
+    tiles: &mut egui_tiles::Tiles<ViewId>,
 ) -> egui_tiles::TileId {
     // We will arrange it like so:
     //

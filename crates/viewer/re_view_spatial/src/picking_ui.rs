@@ -2,20 +2,20 @@ use egui::NumExt as _;
 
 use re_data_ui::{item_ui, DataUi as _};
 use re_log_types::Instance;
-use re_view::AnnotationSceneContext;
 use re_ui::{
     list_item::{list_item_scope, PropertyContent},
     UiExt as _,
 };
+use re_view::AnnotationSceneContext;
 use re_viewer_context::{
-    Item, ItemSpaceContext, SpaceViewSystemExecutionError, UiLayout, ViewQuery, ViewerContext,
+    Item, ItemSpaceContext, ViewSystemExecutionError, UiLayout, ViewQuery, ViewerContext,
     VisualizerCollection,
 };
 
 use crate::{
     picking::{PickableUiRect, PickingContext, PickingHitType},
     picking_ui_pixel::{textured_rect_hover_ui, PickedPixelInfo},
-    ui::SpatialSpaceViewState,
+    ui::SpatialViewState,
     view_kind::SpatialSpaceViewKind,
     visualizers::{CamerasVisualizer, DepthImageVisualizer, SpatialViewVisualizerData},
     PickableRectSourceData, PickableTexturedRect,
@@ -28,12 +28,12 @@ pub fn picking(
     ui: &egui::Ui,
     mut response: egui::Response,
     view_builder: &mut re_renderer::view_builder::ViewBuilder,
-    state: &mut SpatialSpaceViewState,
+    state: &mut SpatialViewState,
     system_output: &re_viewer_context::SystemExecutionOutput,
     ui_rects: &[PickableUiRect],
     query: &ViewQuery<'_>,
     spatial_kind: SpatialSpaceViewKind,
-) -> Result<egui::Response, SpaceViewSystemExecutionError> {
+) -> Result<egui::Response, ViewSystemExecutionError> {
     re_tracing::profile_function!();
 
     if ui.ctx().dragged_id().is_some() {
@@ -42,7 +42,7 @@ pub fn picking(
     }
 
     let Some(render_ctx) = ctx.render_ctx else {
-        return Err(SpaceViewSystemExecutionError::NoRenderContextError);
+        return Err(ViewSystemExecutionError::NoRenderContextError);
     };
 
     let picking_rect_size = PickingContext::UI_INTERACTION_RADIUS * ui.ctx().pixels_per_point();
@@ -166,7 +166,7 @@ pub fn picking(
 
     if hovered_items.is_empty() {
         // If we hover nothing, we are hovering the space-view itself.
-        hovered_items.push(Item::SpaceView(query.space_view_id));
+        hovered_items.push(Item::View(query.space_view_id));
     }
 
     // Associate the hovered space with the first item in the hovered item list.

@@ -10,12 +10,12 @@ use crate::{HoverHighlight, InteractionHighlight, SelectionHighlight};
 ///
 /// Using this in bulk on many instances is faster than querying single objects.
 #[derive(Default)]
-pub struct SpaceViewEntityHighlight {
+pub struct ViewEntityHighlight {
     overall: InteractionHighlight,
     instances: ahash::HashMap<Instance, InteractionHighlight>,
 }
 
-impl SpaceViewEntityHighlight {
+impl ViewEntityHighlight {
     /// Adds a new highlight to the entity highlight, combining it with existing highlights.
     #[inline]
     pub fn add(&mut self, instance: &InstancePath, highlight: InteractionHighlight) {
@@ -53,9 +53,9 @@ impl SpaceViewEntityHighlight {
 }
 
 #[derive(Copy, Clone)]
-pub struct OptionalSpaceViewEntityHighlight<'a>(Option<&'a SpaceViewEntityHighlight>);
+pub struct OptionalViewEntityHighlight<'a>(Option<&'a ViewEntityHighlight>);
 
-impl OptionalSpaceViewEntityHighlight<'_> {
+impl OptionalViewEntityHighlight<'_> {
     #[inline]
     pub fn index_highlight(&self, instance: Instance) -> InteractionHighlight {
         match self.0 {
@@ -71,12 +71,12 @@ impl OptionalSpaceViewEntityHighlight<'_> {
 }
 
 #[derive(Default)]
-pub struct SpaceViewOutlineMasks {
+pub struct ViewOutlineMasks {
     pub overall: OutlineMaskPreference,
     pub instances: ahash::HashMap<Instance, OutlineMaskPreference>,
 }
 
-impl SpaceViewOutlineMasks {
+impl ViewOutlineMasks {
     pub fn index_outline_mask(&self, instance: Instance) -> OutlineMaskPreference {
         self.instances
             .get(&instance)
@@ -100,28 +100,28 @@ impl SpaceViewOutlineMasks {
 ///
 /// Using this in bulk on many objects is faster than querying single objects.
 #[derive(Default)]
-pub struct SpaceViewHighlights {
-    pub highlighted_entity_paths: IntMap<EntityPathHash, SpaceViewEntityHighlight>,
-    pub outlines_masks: IntMap<EntityPathHash, SpaceViewOutlineMasks>,
+pub struct ViewHighlights {
+    pub highlighted_entity_paths: IntMap<EntityPathHash, ViewEntityHighlight>,
+    pub outlines_masks: IntMap<EntityPathHash, ViewOutlineMasks>,
 }
 
-impl SpaceViewHighlights {
+impl ViewHighlights {
     #[inline]
     pub fn entity_highlight(
         &self,
         entity_path_hash: EntityPathHash,
-    ) -> OptionalSpaceViewEntityHighlight<'_> {
-        OptionalSpaceViewEntityHighlight(self.highlighted_entity_paths.get(&entity_path_hash))
+    ) -> OptionalViewEntityHighlight<'_> {
+        OptionalViewEntityHighlight(self.highlighted_entity_paths.get(&entity_path_hash))
     }
 
     #[inline]
-    pub fn entity_outline_mask(&self, entity_path_hash: EntityPathHash) -> &SpaceViewOutlineMasks {
+    pub fn entity_outline_mask(&self, entity_path_hash: EntityPathHash) -> &ViewOutlineMasks {
         use std::sync::OnceLock;
-        static CELL: OnceLock<SpaceViewOutlineMasks> = OnceLock::new();
+        static CELL: OnceLock<ViewOutlineMasks> = OnceLock::new();
 
         self.outlines_masks
             .get(&entity_path_hash)
-            .unwrap_or_else(|| CELL.get_or_init(SpaceViewOutlineMasks::default))
+            .unwrap_or_else(|| CELL.get_or_init(ViewOutlineMasks::default))
     }
 
     #[inline]

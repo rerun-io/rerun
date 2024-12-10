@@ -1,10 +1,10 @@
 // ---
 re_string_interner::declare_new_type!(
     /// The unique name of a view
-    pub struct SpaceViewClassIdentifier;
+    pub struct ViewClassIdentifier;
 );
 
-impl SpaceViewClassIdentifier {
+impl ViewClassIdentifier {
     pub fn invalid() -> Self {
         Self::from("invalid")
     }
@@ -17,5 +17,5 @@ impl SpaceViewClassIdentifier {
 /// has several view properties that configure how it behaves. Each view property
 /// is a [`crate::Archetype`] that is stored in the viewer's blueprint database.
 pub trait View {
-    fn identifier() -> SpaceViewClassIdentifier;
+    fn identifier() -> ViewClassIdentifier;
 }

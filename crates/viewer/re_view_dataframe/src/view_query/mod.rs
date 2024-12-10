@@ -3,7 +3,7 @@ mod ui;
 
 use re_chunk_store::ColumnDescriptor;
 use re_types::blueprint::archetypes;
-use re_viewer_context::{SpaceViewId, SpaceViewSystemExecutionError, ViewerContext};
+use re_viewer_context::{ViewId, ViewSystemExecutionError, ViewerContext};
 use re_viewport_blueprint::ViewProperty;
 
 /// Wrapper over the `DataframeQuery` blueprint archetype that can also display some UI.
@@ -15,7 +15,7 @@ impl Query {
     /// Create a query object from the blueprint store.
     ///
     /// See the `blueprint_io` module for more related accessors.
-    pub(crate) fn from_blueprint(ctx: &ViewerContext<'_>, space_view_id: SpaceViewId) -> Self {
+    pub(crate) fn from_blueprint(ctx: &ViewerContext<'_>, space_view_id: ViewId) -> Self {
         Self {
             query_property: ViewProperty::from_archetype::<archetypes::DataframeQuery>(
                 ctx.blueprint_db(),
@@ -32,9 +32,9 @@ impl Query {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        space_view_id: SpaceViewId,
+        space_view_id: ViewId,
         view_columns: &[ColumnDescriptor],
-    ) -> Result<(), SpaceViewSystemExecutionError> {
+    ) -> Result<(), ViewSystemExecutionError> {
         let timeline = self.timeline(ctx)?;
 
         self.timeline_ui(ctx, ui, &timeline)?;

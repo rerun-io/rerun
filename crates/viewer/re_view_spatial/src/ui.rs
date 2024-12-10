@@ -7,7 +7,7 @@ use re_types::{
     image::ImageKind,
 };
 use re_ui::UiExt as _;
-use re_viewer_context::{HoverHighlight, SelectionHighlight, SpaceViewHighlights, SpaceViewState};
+use re_viewer_context::{HoverHighlight, SelectionHighlight, ViewHighlights, ViewState};
 
 use crate::{
     eye::EyeMode,
@@ -37,9 +37,9 @@ impl From<AutoSizeUnit> for WidgetText {
     }
 }
 
-/// TODO(andreas): Should turn this "inside out" - [`SpatialSpaceViewState`] should be used by [`View3DState`], not the other way round.
+/// TODO(andreas): Should turn this "inside out" - [`SpatialViewState`] should be used by [`View3DState`], not the other way round.
 #[derive(Clone, Default)]
-pub struct SpatialSpaceViewState {
+pub struct SpatialViewState {
     pub bounding_boxes: SceneBoundingBoxes,
 
     /// Number of images & depth images processed last frame.
@@ -56,7 +56,7 @@ pub struct SpatialSpaceViewState {
     pub visual_bounds_2d: Option<VisualBounds2D>,
 }
 
-impl SpaceViewState for SpatialSpaceViewState {
+impl ViewState for SpatialViewState {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
@@ -66,7 +66,7 @@ impl SpaceViewState for SpatialSpaceViewState {
     }
 }
 
-impl SpatialSpaceViewState {
+impl SpatialViewState {
     /// Updates the state with statistics from the latest system outputs.
     pub fn update_frame_statistics(
         &mut self,
@@ -155,7 +155,7 @@ pub fn create_labels(
     ui_from_scene: egui::emath::RectTransform,
     eye3d: &Eye,
     parent_ui: &egui::Ui,
-    highlights: &SpaceViewHighlights,
+    highlights: &ViewHighlights,
     spatial_kind: SpatialSpaceViewKind,
 ) -> (Vec<egui::Shape>, Vec<PickableUiRect>) {
     re_tracing::profile_function!();

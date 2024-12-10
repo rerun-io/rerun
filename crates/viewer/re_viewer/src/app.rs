@@ -13,7 +13,7 @@ use re_viewer_context::{
     command_channel,
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
     AppOptions, BlueprintUndoState, CommandReceiver, CommandSender, ComponentUiRegistry, PlayState,
-    SpaceViewClass, SpaceViewClassRegistry, SpaceViewClassRegistryError, StoreContext,
+    ViewClass, ViewClassRegistry, ViewClassRegistryError, StoreContext,
     SystemCommand, SystemCommandSender,
 };
 
@@ -211,7 +211,7 @@ pub struct App {
     analytics: crate::viewer_analytics::ViewerAnalytics,
 
     /// All known view types.
-    space_view_class_registry: SpaceViewClassRegistry,
+    space_view_class_registry: ViewClassRegistry,
 
     pub(crate) panel_state_overrides_active: bool,
     pub(crate) panel_state_overrides: PanelStateOverrides,
@@ -266,7 +266,7 @@ impl App {
             state.app_options.video_decoder_hw_acceleration = video_decoder_hw_acceleration;
         }
 
-        let mut space_view_class_registry = SpaceViewClassRegistry::default();
+        let mut space_view_class_registry = ViewClassRegistry::default();
         if let Err(err) =
             populate_space_view_class_registry_with_builtin(&mut space_view_class_registry)
         {
@@ -395,9 +395,9 @@ impl App {
     }
 
     /// Adds a new view class to the viewer.
-    pub fn add_space_view_class<T: SpaceViewClass + Default + 'static>(
+    pub fn add_space_view_class<T: ViewClass + Default + 'static>(
         &mut self,
-    ) -> Result<(), SpaceViewClassRegistryError> {
+    ) -> Result<(), ViewClassRegistryError> {
         self.space_view_class_registry.add_class::<T>()
     }
 
@@ -1981,8 +1981,8 @@ impl eframe::App for App {
 
 /// Add built-in space views to the registry.
 fn populate_space_view_class_registry_with_builtin(
-    space_view_class_registry: &mut SpaceViewClassRegistry,
-) -> Result<(), SpaceViewClassRegistryError> {
+    space_view_class_registry: &mut ViewClassRegistry,
+) -> Result<(), ViewClassRegistryError> {
     re_tracing::profile_function!();
     space_view_class_registry.add_class::<re_view_bar_chart::BarChartSpaceView>()?;
     space_view_class_registry.add_class::<re_view_dataframe::DataframeSpaceView>()?;
@@ -1993,7 +1993,7 @@ fn populate_space_view_class_registry_with_builtin(
     space_view_class_registry.add_class::<re_view_spatial::SpatialSpaceView3D>()?;
     space_view_class_registry.add_class::<re_view_tensor::TensorSpaceView>()?;
     space_view_class_registry.add_class::<re_view_text_document::TextDocumentSpaceView>()?;
-    space_view_class_registry.add_class::<re_view_text_log::TextSpaceView>()?;
+    space_view_class_registry.add_class::<re_view_text_log::TextView>()?;
     space_view_class_registry.add_class::<re_view_time_series::TimeSeriesSpaceView>()?;
 
     Ok(())

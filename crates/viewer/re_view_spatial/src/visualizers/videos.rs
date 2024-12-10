@@ -15,15 +15,15 @@ use re_types::{
     Archetype, Component as _,
 };
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, SpaceViewClass as _, SpaceViewId,
-    SpaceViewSystemExecutionError, TypedComponentFallbackProvider, VideoCache, ViewContext,
+    ApplicableEntities, IdentifiedViewSystem, ViewClass as _, ViewId,
+    ViewSystemExecutionError, TypedComponentFallbackProvider, VideoCache, ViewContext,
     ViewContextCollection, ViewQuery, ViewerContext, VisualizableEntities,
     VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{
     contexts::SpatialSceneEntityContext,
-    ui::SpatialSpaceViewState,
+    ui::SpatialViewState,
     view_kind::SpatialSpaceViewKind,
     visualizers::{entity_iterator, filter_visualizable_2d_entities, LoadingSpinner},
     PickableRectSourceData, PickableTexturedRect, SpatialSpaceView2D,
@@ -71,9 +71,9 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
+    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
         let Some(render_ctx) = ctx.viewer_ctx.render_ctx else {
-            return Err(SpaceViewSystemExecutionError::NoRenderContextError);
+            return Err(ViewSystemExecutionError::NoRenderContextError);
         };
 
         process_archetype::<Self, VideoFrameReference, _>(
@@ -152,7 +152,7 @@ impl VideoFrameReferenceVisualizer {
         video_timestamp: &VideoTimestamp,
         video_references: Option<Vec<re_types::ArrowString>>,
         entity_path: &EntityPath,
-        view_id: SpaceViewId,
+        view_id: ViewId,
     ) {
         re_tracing::profile_function!();
 
@@ -338,7 +338,7 @@ impl VideoFrameReferenceVisualizer {
         if let Some(state) = ctx
             .view_state
             .as_any()
-            .downcast_ref::<SpatialSpaceViewState>()
+            .downcast_ref::<SpatialViewState>()
         {
             if let Some(bounds) = state.visual_bounds_2d {
                 // Aim for 1/8 of the larger visual bounds axis.

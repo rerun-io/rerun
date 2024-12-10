@@ -175,7 +175,7 @@ macro_rules! define_blueprint_id_type {
 
 // ----------------------------------------------------------------------------
 // Definitions for the different [`BlueprintId`] types.
-define_blueprint_id_type!(SpaceViewId, SpaceViewIdRegistry, "space_view");
+define_blueprint_id_type!(ViewId, SpaceViewIdRegistry, "space_view");
 define_blueprint_id_type!(ContainerId, ContainerIdRegistry, "container");
 
 // ----------------------------------------------------------------------------
@@ -186,7 +186,7 @@ mod tests {
 
     #[test]
     fn test_blueprint_id() {
-        let id = SpaceViewId::random();
+        let id = ViewId::random();
         let path = id.as_entity_path();
         assert!(path.is_child_of(&EntityPath::parse_forgiving("space_view/")));
 
@@ -197,7 +197,7 @@ mod tests {
         let roundtrip = ContainerId::from_entity_path(&id.as_entity_path());
         assert_eq!(roundtrip, id);
 
-        let crossed = ContainerId::from_entity_path(&SpaceViewId::random().as_entity_path());
+        let crossed = ContainerId::from_entity_path(&ViewId::random().as_entity_path());
         assert_eq!(crossed, ContainerId::invalid());
     }
 }

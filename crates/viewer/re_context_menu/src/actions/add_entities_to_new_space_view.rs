@@ -3,8 +3,8 @@ use itertools::Itertools;
 use nohash_hasher::IntSet;
 
 use re_log_types::{EntityPath, EntityPathFilter, EntityPathRule, RuleEffect};
-use re_types::SpaceViewClassIdentifier;
-use re_viewer_context::{Item, RecommendedSpaceView, SpaceViewClassExt as _};
+use re_types::ViewClassIdentifier;
+use re_viewer_context::{Item, RecommendedView, ViewClassExt as _};
 use re_viewport_blueprint::SpaceViewBlueprint;
 
 use crate::{ContextMenuAction, ContextMenuContext};
@@ -30,14 +30,14 @@ impl ContextMenuAction for AddEntitiesToNewSpaceViewAction {
         let other_space_view_classes: IntSet<_> = space_view_class_registry
             .iter_registry()
             .map(|entry| entry.identifier)
-            .collect::<IntSet<SpaceViewClassIdentifier>>()
+            .collect::<IntSet<ViewClassIdentifier>>()
             .difference(&recommended_space_view_classes)
             .copied()
             .collect();
 
         ui.menu_button("Add to new view", |ui| {
             let buttons_for_space_view_classes =
-                |ui: &mut egui::Ui, space_view_classes: &IntSet<SpaceViewClassIdentifier>| {
+                |ui: &mut egui::Ui, space_view_classes: &IntSet<ViewClassIdentifier>| {
                     for (identifier, class) in space_view_classes
                         .iter()
                         .map(|identifier| {
@@ -75,7 +75,7 @@ impl ContextMenuAction for AddEntitiesToNewSpaceViewAction {
 /// Builds a list of compatible space views for the provided selection.
 fn recommended_space_views_for_selection(
     ctx: &ContextMenuContext<'_>,
-) -> IntSet<SpaceViewClassIdentifier> {
+) -> IntSet<ViewClassIdentifier> {
     re_tracing::profile_function!();
 
     let entities_of_interest = ctx
@@ -84,7 +84,7 @@ fn recommended_space_views_for_selection(
         .filter_map(|(item, _)| item.entity_path().cloned())
         .collect::<IntSet<_>>();
 
-    let mut output: IntSet<SpaceViewClassIdentifier> = IntSet::default();
+    let mut output: IntSet<ViewClassIdentifier> = IntSet::default();
 
     let space_view_class_registry = ctx.viewer_context.space_view_class_registry;
     let recording = ctx.viewer_context.recording();
@@ -131,7 +131,7 @@ fn recommended_space_views_for_selection(
 /// selected entities. Then, the selection is set to the new view.
 fn create_space_view_for_selected_entities(
     ctx: &ContextMenuContext<'_>,
-    identifier: SpaceViewClassIdentifier,
+    identifier: ViewClassIdentifier,
 ) {
     let entities_of_interest = ctx
         .selection
@@ -158,7 +158,7 @@ fn create_space_view_for_selected_entities(
     for path in entities_of_interest {
         filter.add_rule(RuleEffect::Include, EntityPathRule::including_subtree(path));
     }
-    let recommended = RecommendedSpaceView {
+    let recommended = RecommendedView {
         origin,
         query_filter: filter,
     };
@@ -169,7 +169,7 @@ fn create_space_view_for_selected_entities(
         .add_space_views(std::iter::once(space_view), target_container_id, None);
     ctx.viewer_context
         .selection_state()
-        .set_selection(Item::SpaceView(space_view_id));
+        .set_selection(Item::View(space_view_id));
     ctx.viewport_blueprint
         .mark_user_interaction(ctx.viewer_context);
 }

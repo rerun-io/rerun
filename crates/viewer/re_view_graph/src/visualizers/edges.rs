@@ -7,7 +7,7 @@ use re_types::{
     Component as _,
 };
 use re_viewer_context::{
-    self, IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContext, ViewContextCollection,
+    self, IdentifiedViewSystem, ViewSystemExecutionError, ViewContext, ViewContextCollection,
     ViewQuery, ViewSystemIdentifier, VisualizerQueryInfo, VisualizerSystem,
 };
 
@@ -49,7 +49,7 @@ impl VisualizerSystem for EdgesVisualizer {
         ctx: &ViewContext<'_>,
         query: &ViewQuery<'_>,
         _context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
+    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
         let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
 
         for data_result in query.iter_visible_data_results(ctx, Self::identifier()) {

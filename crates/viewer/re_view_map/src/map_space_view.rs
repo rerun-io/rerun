@@ -12,21 +12,21 @@ use re_types::{
         components::MapProvider,
         components::ZoomLevel,
     },
-    SpaceViewClassIdentifier, View,
+    ViewClassIdentifier, View,
 };
 use re_ui::list_item;
 use re_viewer_context::{
-    gpu_bridge, IdentifiedViewSystem as _, Item, SpaceViewClass, SpaceViewClassLayoutPriority,
-    SpaceViewClassRegistryError, SpaceViewHighlights, SpaceViewId, SpaceViewSpawnHeuristics,
-    SpaceViewState, SpaceViewStateExt as _, SpaceViewSystemExecutionError,
-    SpaceViewSystemRegistrator, SystemExecutionOutput, UiLayout, ViewQuery, ViewerContext,
+    gpu_bridge, IdentifiedViewSystem as _, Item, ViewSpawnHeuristics, SystemExecutionOutput,
+    UiLayout, ViewClass, ViewClassLayoutPriority, ViewClassRegistryError, ViewHighlights, ViewId,
+    ViewQuery, ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewSystemRegistrator,
+    ViewerContext,
 };
 use re_viewport_blueprint::ViewProperty;
 
 use crate::map_overlays;
 use crate::visualizers::{update_span, GeoLineStringsVisualizer, GeoPointsVisualizer};
 
-pub struct MapSpaceViewState {
+pub struct MapViewState {
     tiles: Option<HttpTiles>,
     map_memory: MapMemory,
     selected_provider: MapProvider,
@@ -38,7 +38,7 @@ pub struct MapSpaceViewState {
     last_gpu_picking_result: Option<InstancePathHash>,
 }
 
-impl Default for MapSpaceViewState {
+impl Default for MapViewState {
     fn default() -> Self {
         Self {
             tiles: None,
@@ -53,13 +53,13 @@ impl Default for MapSpaceViewState {
     }
 }
 
-impl MapSpaceViewState {
+impl MapViewState {
     // This method ensures that tiles is initialized and returns mutable references to tiles and map_memory.
     pub fn ensure_and_get_mut_refs(
         &mut self,
         ctx: &ViewerContext<'_>,
         egui_ctx: &egui::Context,
-    ) -> Result<(&mut HttpTiles, &mut MapMemory), SpaceViewSystemExecutionError> {
+    ) -> Result<(&mut HttpTiles, &mut MapMemory), ViewSystemExecutionError> {
         if self.tiles.is_none() {
             let tiles = get_tile_manager(ctx, self.selected_provider, egui_ctx);
             self.tiles = Some(tiles);
@@ -69,12 +69,12 @@ impl MapSpaceViewState {
         let tiles_ref = self
             .tiles
             .as_mut()
-            .ok_or(SpaceViewSystemExecutionError::MapTilesError)?;
+            .ok_or(ViewSystemExecutionError::MapTilesError)?;
         Ok((tiles_ref, &mut self.map_memory))
     }
 }
 
-impl SpaceViewState for MapSpaceViewState {
+impl ViewState for MapViewState {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
@@ -89,8 +89,8 @@ pub struct MapSpaceView;
 
 type ViewType = re_types::blueprint::views::MapView;
 
-impl SpaceViewClass for MapSpaceView {
-    fn identifier() -> SpaceViewClassIdentifier {
+impl ViewClass for MapSpaceView {
+    fn identifier() -> ViewClassIdentifier {
         ViewType::identifier()
     }
 
@@ -117,8 +117,8 @@ Displays geospatial primitives on a map.
 
     fn on_register(
         &self,
-        system_registry: &mut SpaceViewSystemRegistrator<'_>,
-    ) -> Result<(), SpaceViewClassRegistryError> {
+        system_registry: &mut ViewSystemRegistrator<'_>,
+    ) -> Result<(), ViewClassRegistryError> {
         system_registry.register_visualizer::<GeoPointsVisualizer>()?;
         system_registry.register_visualizer::<GeoLineStringsVisualizer>()?;
 
@@ -127,24 +127,24 @@ Displays geospatial primitives on a map.
         Ok(())
     }
 
-    fn new_state(&self) -> Box<dyn SpaceViewState> {
-        Box::<MapSpaceViewState>::new(MapSpaceViewState::default())
+    fn new_state(&self) -> Box<dyn ViewState> {
+        Box::<MapViewState>::new(MapViewState::default())
     }
 
-    fn preferred_tile_aspect_ratio(&self, _state: &dyn SpaceViewState) -> Option<f32> {
+    fn preferred_tile_aspect_ratio(&self, _state: &dyn ViewState) -> Option<f32> {
         // Prefer a square tile if possible.
         Some(1.0)
     }
 
-    fn layout_priority(&self) -> SpaceViewClassLayoutPriority {
-        SpaceViewClassLayoutPriority::default()
+    fn layout_priority(&self) -> ViewClassLayoutPriority {
+        ViewClassLayoutPriority::default()
     }
 
     fn supports_visible_time_range(&self) -> bool {
         true
     }
 
-    fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> SpaceViewSpawnHeuristics {
+    fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> ViewSpawnHeuristics {
         re_tracing::profile_function!();
 
         // Spawn a single map view at the root if any geospatial entity exists.
@@ -160,9 +160,9 @@ Displays geospatial primitives on a map.
         });
 
         if any_map_entity {
-            SpaceViewSpawnHeuristics::root()
+            ViewSpawnHeuristics::root()
         } else {
-            SpaceViewSpawnHeuristics::default()
+            ViewSpawnHeuristics::default()
         }
     }
 
@@ -170,10 +170,10 @@ Displays geospatial primitives on a map.
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut dyn SpaceViewState,
+        state: &mut dyn ViewState,
         _space_origin: &EntityPath,
-        space_view_id: SpaceViewId,
-    ) -> Result<(), SpaceViewSystemExecutionError> {
+        space_view_id: ViewId,
+    ) -> Result<(), ViewSystemExecutionError> {
         re_ui::list_item::list_item_scope(ui, "map_selection_ui", |ui| {
             re_view::view_property_ui::<MapZoom>(ctx, ui, space_view_id, self, state);
             re_view::view_property_ui::<MapBackground>(ctx, ui, space_view_id, self, state);
@@ -186,11 +186,11 @@ Displays geospatial primitives on a map.
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut dyn SpaceViewState,
+        state: &mut dyn ViewState,
         query: &ViewQuery<'_>,
         system_output: SystemExecutionOutput,
-    ) -> Result<(), SpaceViewSystemExecutionError> {
-        let state = state.downcast_mut::<MapSpaceViewState>()?;
+    ) -> Result<(), ViewSystemExecutionError> {
+        let state = state.downcast_mut::<MapViewState>()?;
         let map_background = ViewProperty::from_archetype::<MapBackground>(
             ctx.blueprint_db(),
             ctx.blueprint_query,
@@ -304,7 +304,7 @@ Displays geospatial primitives on a map.
         //
 
         let Some(render_ctx) = ctx.render_ctx else {
-            return Err(SpaceViewSystemExecutionError::NoRenderContextError);
+            return Err(ViewSystemExecutionError::NoRenderContextError);
         };
 
         let mut view_builder =
@@ -358,7 +358,7 @@ fn create_view_builder(
     render_ctx: &RenderContext,
     egui_ctx: &egui::Context,
     view_rect: Rect,
-    highlights: &SpaceViewHighlights,
+    highlights: &ViewHighlights,
 ) -> ViewBuilder {
     let pixels_per_point = egui_ctx.pixels_per_point();
     let resolution_in_pixel =
@@ -403,10 +403,10 @@ fn handle_picking_and_ui_interactions(
     egui_ctx: &egui::Context,
     view_builder: &mut ViewBuilder,
     query: &ViewQuery<'_>,
-    state: &mut MapSpaceViewState,
+    state: &mut MapViewState,
     map_response: Response,
     map_rect: Rect,
-) -> Result<(), SpaceViewSystemExecutionError> {
+) -> Result<(), ViewSystemExecutionError> {
     let picking_readback_identifier = query.space_view_id.hash();
 
     if let Some(pointer_in_ui) = map_response.hover_pos() {
@@ -497,7 +497,7 @@ fn handle_ui_interactions(
     } else if map_response.clicked() {
         // clicked elsewhere, select the view
         ctx.selection_state()
-            .set_selection(Item::SpaceView(query.space_view_id));
+            .set_selection(Item::View(query.space_view_id));
     }
 }
 

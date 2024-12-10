@@ -1,7 +1,7 @@
 use nohash_hasher::IntSet;
 
 use re_log_types::EntityPath;
-use re_types::SpaceViewClassIdentifier;
+use re_types::ViewClassIdentifier;
 use re_viewer_context::ViewerContext;
 
 use crate::{view_kind::SpatialSpaceViewKind, visualizers::SpatialViewVisualizerData};
@@ -12,7 +12,7 @@ use crate::{view_kind::SpatialSpaceViewKind, visualizers::SpatialViewVisualizerD
 /// *and* has a matching indicator component.
 pub fn default_visualized_entities_for_visualizer_kind(
     ctx: &ViewerContext<'_>,
-    space_view_class_identifier: SpaceViewClassIdentifier,
+    space_view_class_identifier: ViewClassIdentifier,
     visualizer_kind: SpatialSpaceViewKind,
 ) -> IntSet<EntityPath> {
     re_tracing::profile_function!();

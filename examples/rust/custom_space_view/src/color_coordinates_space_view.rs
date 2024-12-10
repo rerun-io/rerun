@@ -3,14 +3,14 @@ use re_viewer::external::{
     re_data_ui::{item_ui, DataUi},
     re_entity_db::InstancePath,
     re_log_types::EntityPath,
-    re_types::SpaceViewClassIdentifier,
+    re_types::ViewClassIdentifier,
     re_ui,
     re_viewer_context::{
-        HoverHighlight, IdentifiedViewSystem as _, Item, SelectionHighlight, SpaceViewClass,
-        SpaceViewClassLayoutPriority, SpaceViewClassRegistryError, SpaceViewId,
-        SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
-        SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput, UiLayout,
-        ViewQuery, ViewerContext,
+        HoverHighlight, IdentifiedViewSystem as _, Item, SelectionHighlight, ViewClass,
+        ViewClassLayoutPriority, ViewClassRegistryError, ViewId,
+        ViewSpawnHeuristics, ViewStateExt as _, ViewSystemExecutionError,
+        SystemExecutionOutput, UiLayout, ViewQuery, ViewState, ViewSystemRegistrator,
+        ViewerContext,
     },
 };
 
@@ -47,13 +47,13 @@ impl std::fmt::Display for ColorCoordinatesMode {
 ///
 /// This state is preserved between frames, but not across Viewer sessions.
 #[derive(Default)]
-pub struct ColorCoordinatesSpaceViewState {
+pub struct ColorCoordinatesViewState {
     // TODO(wumpf, jleibs): This should be part of the Blueprint so that it is serialized out.
     //                      but right now there is no way of doing that.
     mode: ColorCoordinatesMode,
 }
 
-impl SpaceViewState for ColorCoordinatesSpaceViewState {
+impl ViewState for ColorCoordinatesViewState {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
@@ -66,10 +66,10 @@ impl SpaceViewState for ColorCoordinatesSpaceViewState {
 #[derive(Default)]
 pub struct ColorCoordinatesSpaceView;
 
-impl SpaceViewClass for ColorCoordinatesSpaceView {
+impl ViewClass for ColorCoordinatesSpaceView {
     // State type as described above.
 
-    fn identifier() -> SpaceViewClassIdentifier {
+    fn identifier() -> ViewClassIdentifier {
         "ColorCoordinates".into()
     }
 
@@ -88,34 +88,34 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
     /// Register all systems (contexts & parts) that the view needs.
     fn on_register(
         &self,
-        system_registry: &mut SpaceViewSystemRegistrator<'_>,
-    ) -> Result<(), SpaceViewClassRegistryError> {
+        system_registry: &mut ViewSystemRegistrator<'_>,
+    ) -> Result<(), ViewClassRegistryError> {
         system_registry.register_visualizer::<InstanceColorSystem>()
     }
 
-    fn new_state(&self) -> Box<dyn SpaceViewState> {
-        Box::<ColorCoordinatesSpaceViewState>::default()
+    fn new_state(&self) -> Box<dyn ViewState> {
+        Box::<ColorCoordinatesViewState>::default()
     }
 
-    fn preferred_tile_aspect_ratio(&self, _state: &dyn SpaceViewState) -> Option<f32> {
+    fn preferred_tile_aspect_ratio(&self, _state: &dyn ViewState) -> Option<f32> {
         // Prefer a square tile if possible.
         Some(1.0)
     }
 
-    fn layout_priority(&self) -> SpaceViewClassLayoutPriority {
+    fn layout_priority(&self) -> ViewClassLayoutPriority {
         Default::default()
     }
 
-    fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> SpaceViewSpawnHeuristics {
+    fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> ViewSpawnHeuristics {
         // By default spawn a single view at the root if there's anything the visualizer is applicable to.
         if ctx
             .applicable_entities_per_visualizer
             .get(&InstanceColorSystem::identifier())
             .map_or(true, |entities| entities.is_empty())
         {
-            SpaceViewSpawnHeuristics::default()
+            ViewSpawnHeuristics::default()
         } else {
-            SpaceViewSpawnHeuristics::root()
+            ViewSpawnHeuristics::root()
         }
     }
 
@@ -126,11 +126,11 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
         &self,
         _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut dyn SpaceViewState,
+        state: &mut dyn ViewState,
         _space_origin: &EntityPath,
-        _space_view_id: SpaceViewId,
-    ) -> Result<(), SpaceViewSystemExecutionError> {
-        let state = state.downcast_mut::<ColorCoordinatesSpaceViewState>()?;
+        _space_view_id: ViewId,
+    ) -> Result<(), ViewSystemExecutionError> {
+        let state = state.downcast_mut::<ColorCoordinatesViewState>()?;
 
         ui.horizontal(|ui| {
             ui.label("Coordinates mode");
@@ -153,13 +153,13 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut dyn SpaceViewState,
+        state: &mut dyn ViewState,
 
         query: &ViewQuery<'_>,
         system_output: SystemExecutionOutput,
-    ) -> Result<(), SpaceViewSystemExecutionError> {
+    ) -> Result<(), ViewSystemExecutionError> {
         let colors = system_output.view_systems.get::<InstanceColorSystem>()?;
-        let state = state.downcast_mut::<ColorCoordinatesSpaceViewState>()?;
+        let state = state.downcast_mut::<ColorCoordinatesViewState>()?;
 
         egui::Frame::default().show(ui, |ui| {
             let color_at = match state.mode {

@@ -10,8 +10,8 @@ use re_log_types::StoreKind;
 use re_types::ComponentName;
 
 use crate::{
-    DataResultTree, QueryRange, SpaceViewHighlights, SpaceViewId, ViewContext,
-    ViewSystemIdentifier, ViewerContext,
+    DataResultTree, QueryRange, ViewContext, ViewHighlights, ViewId, ViewSystemIdentifier,
+    ViewerContext,
 };
 
 /// Path to a specific entity in a specific store used for overrides.
@@ -58,7 +58,7 @@ pub struct PropertyOverrides {
 
 pub type SmallVisualizerSet = SmallVec<[ViewSystemIdentifier; 4]>;
 
-/// This is the primary mechanism through which data is passed to a `SpaceView`.
+/// This is the primary mechanism through which data is passed to a `View`.
 ///
 /// It contains everything necessary to properly use this data in the context of the
 /// `ViewSystem`s that it is a part of.
@@ -249,7 +249,7 @@ pub type PerSystemDataResults<'a> = BTreeMap<ViewSystemIdentifier, Vec<&'a DataR
 
 pub struct ViewQuery<'s> {
     /// The id of the space in which context the query happens.
-    pub space_view_id: SpaceViewId,
+    pub space_view_id: ViewId,
 
     /// The root of the space in which context the query happens.
     pub space_origin: &'s EntityPath,
@@ -268,7 +268,7 @@ pub struct ViewQuery<'s> {
     /// Hover/select highlighting information for this view.
     ///
     /// TODO(andreas): This should be the result of a [`crate::ViewContextSystem`] instead?
-    pub highlights: SpaceViewHighlights,
+    pub highlights: ViewHighlights,
 }
 
 impl<'s> ViewQuery<'s> {

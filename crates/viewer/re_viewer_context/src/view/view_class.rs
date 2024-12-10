@@ -2,17 +2,16 @@ use nohash_hasher::IntSet;
 
 use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
-use re_types::{ComponentName, SpaceViewClassIdentifier};
+use re_types::{ComponentName, ViewClassIdentifier};
 
 use crate::{
     ApplicableEntities, IndicatedEntities, PerVisualizer, QueryRange, SmallVisualizerSet,
-    SpaceViewClassRegistryError, SpaceViewId, SpaceViewSpawnHeuristics,
-    SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery,
-    ViewerContext, VisualizableEntities,
+    SystemExecutionOutput, ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics,
+    ViewSystemExecutionError, ViewSystemRegistrator, ViewerContext, VisualizableEntities,
 };
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd, Ord, Eq)]
-pub enum SpaceViewClassLayoutPriority {
+pub enum ViewClassLayoutPriority {
     /// This view can share space with others
     ///
     /// Used for boring things like text and plots.
@@ -26,7 +25,7 @@ pub enum SpaceViewClassLayoutPriority {
     High,
 }
 
-/// Context object returned by [`crate::SpaceViewClass::visualizable_filter_context`].
+/// Context object returned by [`crate::ViewClass::visualizable_filter_context`].
 pub trait VisualizableFilterContext {
     fn as_any(&self) -> &dyn std::any::Any;
 }
@@ -45,11 +44,11 @@ impl VisualizableFilterContext for () {
 //
 // TODO(andreas): Consider formulating a view instance context object that is passed to all
 // methods that operate on concrete space views as opposed to be about general information on the class.
-pub trait SpaceViewClass: Send + Sync {
+pub trait ViewClass: Send + Sync {
     /// Identifier string of this view class.
     ///
     /// By convention we use `PascalCase`.
-    fn identifier() -> SpaceViewClassIdentifier
+    fn identifier() -> ViewClassIdentifier
     where
         Self: Sized;
 
@@ -71,13 +70,13 @@ pub trait SpaceViewClass: Send + Sync {
     /// This can be used to register all built-in [`crate::ViewContextSystem`] and [`crate::VisualizerSystem`].
     fn on_register(
         &self,
-        system_registry: &mut SpaceViewSystemRegistrator<'_>,
-    ) -> Result<(), SpaceViewClassRegistryError>;
+        system_registry: &mut ViewSystemRegistrator<'_>,
+    ) -> Result<(), ViewClassRegistryError>;
 
     /// Called once for every new view instance of this class.
     ///
     /// The state is *not* persisted across viewer sessions, only shared frame-to-frame.
-    fn new_state(&self) -> Box<dyn SpaceViewState>;
+    fn new_state(&self) -> Box<dyn ViewState>;
 
     /// Optional archetype of the View's blueprint properties.
     ///
@@ -87,12 +86,12 @@ pub trait SpaceViewClass: Send + Sync {
     }
 
     /// Preferred aspect ratio for the ui tiles of this view.
-    fn preferred_tile_aspect_ratio(&self, _state: &dyn SpaceViewState) -> Option<f32> {
+    fn preferred_tile_aspect_ratio(&self, _state: &dyn ViewState) -> Option<f32> {
         None
     }
 
     /// Controls how likely this view will get a large tile in the ui.
-    fn layout_priority(&self) -> SpaceViewClassLayoutPriority;
+    fn layout_priority(&self) -> ViewClassLayoutPriority;
 
     /// Controls whether the visible time range UI should be displayed for this view.
     fn supports_visible_time_range(&self) -> bool {
@@ -100,8 +99,8 @@ pub trait SpaceViewClass: Send + Sync {
     }
 
     /// Default query range for this view.
-    //TODO(#6918): also provide ViewerContext and SpaceViewId, to enable reading view properties.
-    fn default_query_range(&self, _state: &dyn SpaceViewState) -> QueryRange {
+    //TODO(#6918): also provide ViewerContext and ViewId, to enable reading view properties.
+    fn default_query_range(&self, _state: &dyn ViewState) -> QueryRange {
         QueryRange::LatestAt
     }
 
@@ -172,17 +171,17 @@ pub trait SpaceViewClass: Send + Sync {
     }
 
     /// Determines which space views should be spawned by default for this class.
-    fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> SpaceViewSpawnHeuristics;
+    fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> ViewSpawnHeuristics;
 
     /// Ui shown when the user selects a view of this class.
     fn selection_ui(
         &self,
         _ctx: &ViewerContext<'_>,
         _ui: &mut egui::Ui,
-        _state: &mut dyn SpaceViewState,
+        _state: &mut dyn ViewState,
         _space_origin: &EntityPath,
-        _space_view_id: SpaceViewId,
-    ) -> Result<(), SpaceViewSystemExecutionError> {
+        _space_view_id: ViewId,
+    ) -> Result<(), ViewSystemExecutionError> {
         Ok(())
     }
 
@@ -193,10 +192,10 @@ pub trait SpaceViewClass: Send + Sync {
         &self,
         _ctx: &ViewerContext<'_>,
         _ui: &mut egui::Ui,
-        _state: &mut dyn SpaceViewState,
+        _state: &mut dyn ViewState,
         _space_origin: &EntityPath,
-        _space_view_id: SpaceViewId,
-    ) -> Result<(), SpaceViewSystemExecutionError> {
+        _space_view_id: ViewId,
+    ) -> Result<(), ViewSystemExecutionError> {
         Ok(())
     }
 
@@ -206,20 +205,20 @@ pub trait SpaceViewClass: Send + Sync {
     ///
     /// TODO(wumpf): Right now the ui methods control when and how to create [`re_renderer::ViewBuilder`]s.
     ///              In the future, we likely want to move view builder handling to `re_viewport` with
-    ///              minimal configuration options exposed via [`crate::SpaceViewClass`].
+    ///              minimal configuration options exposed via [`crate::ViewClass`].
     fn ui(
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut dyn SpaceViewState,
+        state: &mut dyn ViewState,
         query: &ViewQuery<'_>,
         system_output: SystemExecutionOutput,
-    ) -> Result<(), SpaceViewSystemExecutionError>;
+    ) -> Result<(), ViewSystemExecutionError>;
 }
 
-pub trait SpaceViewClassExt<'a>: SpaceViewClass + 'a {
+pub trait ViewClassExt<'a>: ViewClass + 'a {
     /// Determines the set of visible entities for a given view.
-    // TODO(andreas): This should be part of the SpaceView's (non-blueprint) state.
+    // TODO(andreas): This should be part of the View's (non-blueprint) state.
     // Updated whenever `applicable_entities_per_visualizer` or the view blueprint changes.
     fn determine_visualizable_entities(
         &self,
@@ -254,14 +253,14 @@ pub trait SpaceViewClassExt<'a>: SpaceViewClass + 'a {
     }
 }
 
-impl<'a> SpaceViewClassExt<'a> for dyn SpaceViewClass + 'a {}
+impl<'a> ViewClassExt<'a> for dyn ViewClass + 'a {}
 
 /// Unserialized frame to frame state of a view.
 ///
 /// For any state that should be persisted, use the Blueprint!
 /// This state is used for transient state, such as animation or uncommitted ui state like dragging a camera.
 /// (on mouse release, the camera would be committed to the blueprint).
-pub trait SpaceViewState: std::any::Any + Sync + Send {
+pub trait ViewState: std::any::Any + Sync + Send {
     /// Converts itself to a reference of [`std::any::Any`], which enables downcasting to concrete types.
     fn as_any(&self) -> &dyn std::any::Any;
 
@@ -270,7 +269,7 @@ pub trait SpaceViewState: std::any::Any + Sync + Send {
 }
 
 /// Implementation of an empty view state.
-impl SpaceViewState for () {
+impl ViewState for () {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
@@ -280,24 +279,24 @@ impl SpaceViewState for () {
     }
 }
 
-pub trait SpaceViewStateExt: SpaceViewState {
+pub trait ViewStateExt: ViewState {
     /// Downcasts this state to a reference of a concrete type.
-    fn downcast_ref<T: SpaceViewState>(&self) -> Result<&T, SpaceViewSystemExecutionError> {
+    fn downcast_ref<T: ViewState>(&self) -> Result<&T, ViewSystemExecutionError> {
         self.as_any()
             .downcast_ref()
-            .ok_or(SpaceViewSystemExecutionError::StateCastError(
+            .ok_or(ViewSystemExecutionError::StateCastError(
                 std::any::type_name::<T>(),
             ))
     }
 
     /// Downcasts this state to a mutable reference of a concrete type.
-    fn downcast_mut<T: SpaceViewState>(&mut self) -> Result<&mut T, SpaceViewSystemExecutionError> {
+    fn downcast_mut<T: ViewState>(&mut self) -> Result<&mut T, ViewSystemExecutionError> {
         self.as_any_mut()
             .downcast_mut()
-            .ok_or(SpaceViewSystemExecutionError::StateCastError(
+            .ok_or(ViewSystemExecutionError::StateCastError(
                 std::any::type_name::<T>(),
             ))
     }
 }
 
-impl SpaceViewStateExt for dyn SpaceViewState {}
+impl ViewStateExt for dyn ViewState {}

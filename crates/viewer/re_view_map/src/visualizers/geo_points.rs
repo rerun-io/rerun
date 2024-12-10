@@ -10,8 +10,8 @@ use re_types::{
     Component as _,
 };
 use re_viewer_context::{
-    auto_color_for_entity_path, IdentifiedViewSystem, QueryContext, SpaceViewHighlights,
-    SpaceViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext,
+    auto_color_for_entity_path, IdentifiedViewSystem, QueryContext, ViewHighlights,
+    ViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext,
     ViewContextCollection, ViewQuery, VisualizerQueryInfo, VisualizerSystem,
 };
 
@@ -45,7 +45,7 @@ impl VisualizerSystem for GeoPointsVisualizer {
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
+    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
         let annotation_scene_context = context_systems.get::<AnnotationSceneContext>()?;
         let latest_at_query = view_query.latest_at_query();
 
@@ -151,7 +151,7 @@ impl GeoPointsVisualizer {
         render_ctx: &re_renderer::RenderContext,
         view_builder: &mut re_renderer::ViewBuilder,
         projector: &walkers::Projector,
-        highlight: &SpaceViewHighlights,
+        highlight: &ViewHighlights,
     ) -> Result<(), PointCloudDrawDataError> {
         let mut points = re_renderer::PointCloudBuilder::new(render_ctx);
         // NOTE: Do not `points.radius_boost_in_ui_points_for_outlines`! The points are not shaded,

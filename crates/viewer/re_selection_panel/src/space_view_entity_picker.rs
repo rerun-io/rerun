@@ -5,7 +5,7 @@ use re_data_ui::item_ui;
 use re_entity_db::{EntityPath, EntityTree, InstancePath};
 use re_log_types::{EntityPathFilter, EntityPathRule};
 use re_ui::UiExt as _;
-use re_viewer_context::{DataQueryResult, SpaceViewClassExt as _, SpaceViewId, ViewerContext};
+use re_viewer_context::{DataQueryResult, ViewClassExt as _, ViewId, ViewerContext};
 use re_viewport_blueprint::{SpaceViewBlueprint, ViewportBlueprint};
 
 /// Window for adding/removing entities from a view.
@@ -13,12 +13,12 @@ use re_viewport_blueprint::{SpaceViewBlueprint, ViewportBlueprint};
 /// Delegates to [`re_ui::modal::ModalHandler`]
 #[derive(Default)]
 pub(crate) struct SpaceViewEntityPicker {
-    space_view_id: Option<SpaceViewId>,
+    space_view_id: Option<ViewId>,
     modal_handler: re_ui::modal::ModalHandler,
 }
 
 impl SpaceViewEntityPicker {
-    pub fn open(&mut self, space_view_id: SpaceViewId) {
+    pub fn open(&mut self, space_view_id: ViewId) {
         self.space_view_id = Some(space_view_id);
         self.modal_handler.open();
     }

@@ -8,7 +8,7 @@ use re_types::components::Name;
 use re_types::{blueprint::components::Visible, Archetype as _};
 use re_types_blueprint::blueprint::archetypes as blueprint_archetypes;
 use re_types_blueprint::blueprint::components::{ContainerKind, GridColumns};
-use re_viewer_context::{ContainerId, Contents, ContentsName, SpaceViewId, ViewerContext};
+use re_viewer_context::{ContainerId, Contents, ContentsName, ViewId, ViewerContext};
 
 /// The native version of a [`re_types_blueprint::blueprint::archetypes::ContainerBlueprint`].
 ///
@@ -365,7 +365,7 @@ impl ContainerBlueprint {
         );
     }
 
-    pub fn to_tile(&self) -> egui_tiles::Tile<SpaceViewId> {
+    pub fn to_tile(&self) -> egui_tiles::Tile<ViewId> {
         let children = self
             .contents
             .iter()

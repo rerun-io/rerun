@@ -3,18 +3,18 @@ use nohash_hasher::{IntMap, IntSet};
 
 use re_entity_db::{EntityDb, EntityTree};
 use re_log_types::EntityPath;
-use re_view::view_property_ui;
 use re_types::View;
 use re_types::{
     archetypes::{DepthImage, Image},
     blueprint::archetypes::{Background, VisualBounds2D},
-    Archetype, ComponentName, SpaceViewClassIdentifier,
+    Archetype, ComponentName, ViewClassIdentifier,
 };
 use re_ui::UiExt as _;
+use re_view::view_property_ui;
 use re_viewer_context::{
-    RecommendedSpaceView, SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId,
-    SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
-    SpaceViewSystemExecutionError, ViewQuery, ViewerContext, VisualizableFilterContext,
+    RecommendedView, ViewClass, ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics,
+    ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext,
+    VisualizableFilterContext,
 };
 
 use crate::{
@@ -22,7 +22,7 @@ use crate::{
     heuristics::default_visualized_entities_for_visualizer_kind,
     max_image_dimension_subscriber::{MaxDimensions, MaxImageDimensions},
     spatial_topology::{SpatialTopology, SubSpaceConnectionFlags},
-    ui::SpatialSpaceViewState,
+    ui::SpatialViewState,
     view_kind::SpatialSpaceViewKind,
     visualizers::register_2d_spatial_visualizers,
 };
@@ -45,8 +45,8 @@ pub struct SpatialSpaceView2D;
 
 type ViewType = re_types::blueprint::views::Spatial2DView;
 
-impl SpaceViewClass for SpatialSpaceView2D {
-    fn identifier() -> SpaceViewClassIdentifier {
+impl ViewClass for SpatialSpaceView2D {
+    fn identifier() -> ViewClassIdentifier {
         ViewType::identifier()
     }
 
@@ -64,8 +64,8 @@ impl SpaceViewClass for SpatialSpaceView2D {
 
     fn on_register(
         &self,
-        system_registry: &mut re_viewer_context::SpaceViewSystemRegistrator<'_>,
-    ) -> Result<(), SpaceViewClassRegistryError> {
+        system_registry: &mut re_viewer_context::ViewSystemRegistrator<'_>,
+    ) -> Result<(), ViewClassRegistryError> {
         // Ensure spatial topology & max image dimension is registered.
         crate::spatial_topology::SpatialTopologyStoreSubscriber::subscription_handle();
         crate::transform_component_tracker::TransformComponentTrackerStoreSubscriber::subscription_handle();
@@ -77,41 +77,38 @@ impl SpaceViewClass for SpatialSpaceView2D {
         Ok(())
     }
 
-    fn new_state(&self) -> Box<dyn SpaceViewState> {
-        Box::<SpatialSpaceViewState>::default()
+    fn new_state(&self) -> Box<dyn ViewState> {
+        Box::<SpatialViewState>::default()
     }
 
-    fn preferred_tile_aspect_ratio(&self, state: &dyn SpaceViewState) -> Option<f32> {
-        state
-            .downcast_ref::<SpatialSpaceViewState>()
-            .ok()
-            .map(|state| {
-                let (width, height) = state.visual_bounds_2d.map_or_else(
-                    || {
-                        let bbox = &state.bounding_boxes.smoothed;
-                        (
-                            (bbox.max.x - bbox.min.x).abs(),
-                            (bbox.max.y - bbox.min.y).abs(),
-                        )
-                    },
-                    |bounds| {
-                        (
-                            bounds.x_range.abs_len() as f32,
-                            bounds.y_range.abs_len() as f32,
-                        )
-                    },
-                );
+    fn preferred_tile_aspect_ratio(&self, state: &dyn ViewState) -> Option<f32> {
+        state.downcast_ref::<SpatialViewState>().ok().map(|state| {
+            let (width, height) = state.visual_bounds_2d.map_or_else(
+                || {
+                    let bbox = &state.bounding_boxes.smoothed;
+                    (
+                        (bbox.max.x - bbox.min.x).abs(),
+                        (bbox.max.y - bbox.min.y).abs(),
+                    )
+                },
+                |bounds| {
+                    (
+                        bounds.x_range.abs_len() as f32,
+                        bounds.y_range.abs_len() as f32,
+                    )
+                },
+            );
 
-                width / height
-            })
+            width / height
+        })
     }
 
     fn supports_visible_time_range(&self) -> bool {
         true
     }
 
-    fn layout_priority(&self) -> re_viewer_context::SpaceViewClassLayoutPriority {
-        re_viewer_context::SpaceViewClassLayoutPriority::High
+    fn layout_priority(&self) -> re_viewer_context::ViewClassLayoutPriority {
+        re_viewer_context::ViewClassLayoutPriority::High
     }
 
     fn recommended_root_for_entities(
@@ -170,10 +167,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
         Box::new(context.unwrap_or_default())
     }
 
-    fn spawn_heuristics(
-        &self,
-        ctx: &ViewerContext<'_>,
-    ) -> re_viewer_context::SpaceViewSpawnHeuristics {
+    fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> re_viewer_context::ViewSpawnHeuristics {
         re_tracing::profile_function!();
 
         let indicated_entities = default_visualized_entities_for_visualizer_kind(
@@ -192,7 +186,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
         // Note that visualizability filtering is all about being in the right subspace,
         // so we don't need to call the visualizers' filter functions here.
         SpatialTopology::access(&ctx.recording_id(), |topo| {
-            SpaceViewSpawnHeuristics::new(topo.iter_subspaces().flat_map(|subspace| {
+            ViewSpawnHeuristics::new(topo.iter_subspaces().flat_map(|subspace| {
                 if !subspace.supports_2d_content()
                     || subspace.entities.is_empty()
                     || indicated_entities.is_disjoint(&subspace.entities)
@@ -219,7 +213,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
                     EntityPath::common_ancestor_of(relevant_entities.iter())
                 };
 
-                let mut recommended_space_views = Vec::<RecommendedSpaceView>::new();
+                let mut recommended_space_views = Vec::<RecommendedView>::new();
 
                 recommended_space_views_with_image_splits(
                     ctx,
@@ -239,11 +233,11 @@ impl SpaceViewClass for SpatialSpaceView2D {
         &self,
         ctx: &re_viewer_context::ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut dyn SpaceViewState,
+        state: &mut dyn ViewState,
         _space_origin: &EntityPath,
-        view_id: SpaceViewId,
-    ) -> Result<(), SpaceViewSystemExecutionError> {
-        let state = state.downcast_mut::<SpatialSpaceViewState>()?;
+        view_id: ViewId,
+    ) -> Result<(), ViewSystemExecutionError> {
+        let state = state.downcast_mut::<SpatialViewState>()?;
         // TODO(andreas): list_item'ify the rest
         ui.selection_grid("spatial_settings_ui").show(ui, |ui| {
             state.bounding_box_ui(ui, SpatialSpaceViewKind::TwoD);
@@ -261,14 +255,14 @@ impl SpaceViewClass for SpatialSpaceView2D {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut dyn SpaceViewState,
+        state: &mut dyn ViewState,
 
         query: &ViewQuery<'_>,
         system_output: re_viewer_context::SystemExecutionOutput,
-    ) -> Result<(), SpaceViewSystemExecutionError> {
+    ) -> Result<(), ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        let state = state.downcast_mut::<SpatialSpaceViewState>()?;
+        let state = state.downcast_mut::<SpatialViewState>()?;
         state.update_frame_statistics(ui, &system_output, SpatialSpaceViewKind::TwoD);
 
         self.view_2d(ctx, ui, state, query, system_output)
@@ -347,7 +341,7 @@ fn recommended_space_views_with_image_splits(
     image_dimensions: &IntMap<EntityPath, MaxDimensions>,
     recommended_root: &EntityPath,
     entities: &IntSet<EntityPath>,
-    recommended: &mut Vec<RecommendedSpaceView>,
+    recommended: &mut Vec<RecommendedView>,
 ) {
     re_tracing::profile_function!();
 
@@ -402,16 +396,14 @@ fn recommended_space_views_with_image_splits(
     if overlap {
         // If there are multiple images of the same size but of different types, then we can overlap them on top of each other.
         // This can be useful for comparing a segmentation image on top of an RGB image, for instance.
-        recommended.push(RecommendedSpaceView::new_subtree(recommended_root.clone()));
+        recommended.push(RecommendedView::new_subtree(recommended_root.clone()));
     } else {
         // Split the space and recurse
 
         // If the root also had a visualizable entity, give it its own space.
         // TODO(jleibs): Maybe merge this entity into each child
         if entities.contains(recommended_root) {
-            recommended.push(RecommendedSpaceView::new_single_entity(
-                recommended_root.clone(),
-            ));
+            recommended.push(RecommendedView::new_single_entity(recommended_root.clone()));
         }
 
         // And then recurse into the children

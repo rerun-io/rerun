@@ -1,5 +1,5 @@
 use re_viewer_context::{
-    Item, PublishedSpaceViewInfo, ScreenshotTarget, SpaceViewId, SpaceViewRectPublisher,
+    Item, PublishedSpaceViewInfo, ScreenshotTarget, ViewId, SpaceViewRectPublisher,
 };
 
 use crate::{ContextMenuAction, ContextMenuContext};
@@ -27,7 +27,7 @@ impl ContextMenuAction for ScreenshotAction {
 
     /// Do we have a context menu for this item?
     fn supports_item(&self, ctx: &ContextMenuContext<'_>, item: &Item) -> bool {
-        let Item::SpaceView(space_view_id) = item else {
+        let Item::View(space_view_id) = item else {
             return false;
         };
 
@@ -46,7 +46,7 @@ impl ContextMenuAction for ScreenshotAction {
         }
     }
 
-    fn process_space_view(&self, ctx: &ContextMenuContext<'_>, space_view_id: &SpaceViewId) {
+    fn process_space_view(&self, ctx: &ContextMenuContext<'_>, space_view_id: &ViewId) {
         let Some(space_view_info) = ctx.egui_context.memory_mut(|mem| {
             mem.caches
                 .cache::<SpaceViewRectPublisher>()

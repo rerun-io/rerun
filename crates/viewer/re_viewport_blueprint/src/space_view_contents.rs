@@ -11,14 +11,14 @@ use re_types::{
         archetypes as blueprint_archetypes, components as blueprint_components,
         components::QueryExpression,
     },
-    Archetype as _, SpaceViewClassIdentifier,
+    Archetype as _, ViewClassIdentifier,
 };
 use re_types_blueprint::blueprint::components::VisualizerOverrides;
 use re_types_core::ComponentName;
 use re_viewer_context::{
     ApplicableEntities, DataQueryResult, DataResult, DataResultHandle, DataResultNode,
     DataResultTree, IndicatedEntities, OverridePath, PerVisualizer, PropertyOverrides, QueryRange,
-    SpaceViewClassRegistry, SpaceViewId, ViewStates, ViewerContext, VisualizableEntities,
+    ViewClassRegistry, ViewId, ViewStates, ViewerContext, VisualizableEntities,
 };
 
 use crate::{SpaceViewBlueprint, ViewProperty};
@@ -38,7 +38,7 @@ use crate::{SpaceViewBlueprint, ViewProperty};
 pub struct SpaceViewContents {
     pub blueprint_entity_path: EntityPath,
 
-    pub view_class_identifier: SpaceViewClassIdentifier,
+    pub view_class_identifier: ViewClassIdentifier,
     pub entity_path_filter: EntityPathFilter,
 }
 
@@ -74,8 +74,8 @@ impl SpaceViewContents {
     /// This [`SpaceViewContents`] is ephemeral. It must be saved by calling
     /// `save_to_blueprint_store` on the enclosing `SpaceViewBlueprint`.
     pub fn new(
-        id: SpaceViewId,
-        view_class_identifier: SpaceViewClassIdentifier,
+        id: ViewId,
+        view_class_identifier: ViewClassIdentifier,
         entity_path_filter: EntityPathFilter,
     ) -> Self {
         // Don't use `entity_path_for_space_view_sub_archetype` here because this will do a search in the future,
@@ -93,10 +93,10 @@ impl SpaceViewContents {
 
     /// Attempt to load a [`SpaceViewContents`] from the blueprint store.
     pub fn from_db_or_default(
-        view_id: SpaceViewId,
+        view_id: ViewId,
         blueprint_db: &EntityDb,
         query: &LatestAtQuery,
-        view_class_identifier: SpaceViewClassIdentifier,
+        view_class_identifier: ViewClassIdentifier,
         space_env: &EntityPathSubs,
     ) -> Self {
         let property = ViewProperty::from_archetype::<blueprint_archetypes::SpaceViewContents>(
@@ -164,7 +164,7 @@ impl SpaceViewContents {
 
     pub fn build_resolver<'a>(
         &self,
-        space_view_class_registry: &'a re_viewer_context::SpaceViewClassRegistry,
+        space_view_class_registry: &'a re_viewer_context::ViewClassRegistry,
         space_view: &'a SpaceViewBlueprint,
         applicable_entities_per_visualizer: &'a PerVisualizer<ApplicableEntities>,
         visualizable_entities_per_visualizer: &'a PerVisualizer<VisualizableEntities>,
@@ -357,7 +357,7 @@ impl QueryExpressionEvaluator<'_> {
 }
 
 pub struct DataQueryPropertyResolver<'a> {
-    space_view_class_registry: &'a re_viewer_context::SpaceViewClassRegistry,
+    space_view_class_registry: &'a re_viewer_context::ViewClassRegistry,
     space_view: &'a SpaceViewBlueprint,
     individual_override_root: EntityPath,
     recursive_override_root: EntityPath,
@@ -522,7 +522,7 @@ impl DataQueryPropertyResolver<'_> {
         blueprint: &EntityDb,
         blueprint_query: &LatestAtQuery,
         active_timeline: &Timeline,
-        space_view_class_registry: &SpaceViewClassRegistry,
+        space_view_class_registry: &ViewClassRegistry,
         query_result: &mut DataQueryResult,
         view_states: &mut ViewStates,
     ) {
@@ -701,7 +701,7 @@ mod tests {
 
         for (i, Scenario { filter, outputs }) in scenarios.into_iter().enumerate() {
             let contents = SpaceViewContents::new(
-                SpaceViewId::random(),
+                ViewId::random(),
                 "3D".into(),
                 EntityPathFilter::parse_forgiving(filter, &space_env),
             );

@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 /// Storage for [`ExpandedRows`], which should be persisted across frames.
 ///
-/// Note: each view should store its own cache. Using a [`re_viewer_context::SpaceViewState`] is a
+/// Note: each view should store its own cache. Using a [`re_viewer_context::ViewState`] is a
 /// good way to do this.
 #[derive(Debug, Clone)]
 pub(crate) struct ExpandedRowsCache {

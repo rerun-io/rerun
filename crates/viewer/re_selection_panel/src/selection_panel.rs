@@ -16,7 +16,7 @@ use re_ui::{
 };
 use re_viewer_context::{
     contents_name_style, icon_for_container_kind, ContainerId, Contents, DataQueryResult,
-    DataResult, HoverHighlight, Item, SpaceViewId, UiLayout, ViewContext, ViewStates,
+    DataResult, HoverHighlight, Item, ViewId, UiLayout, ViewContext, ViewStates,
     ViewerContext,
 };
 use re_viewport_blueprint::{ui::show_add_space_view_or_container_modal, ViewportBlueprint};
@@ -223,7 +223,7 @@ impl SelectionPanel {
                 container_children(ctx, viewport, ui, container_id);
             }
 
-            Item::SpaceView(view_id) => {
+            Item::View(view_id) => {
                 if let Some(view) = viewport.view(view_id) {
                     view_top_level_properties(ctx, ui, view);
                 }
@@ -298,7 +298,7 @@ impl SelectionPanel {
         }
 
         match item {
-            Item::SpaceView(view_id) => {
+            Item::View(view_id) => {
                 self.view_selection_ui(ctx, ui, viewport, view_id, view_states);
             }
 
@@ -325,7 +325,7 @@ impl SelectionPanel {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         viewport: &ViewportBlueprint,
-        view_id: &SpaceViewId,
+        view_id: &ViewId,
         view_states: &mut ViewStates,
     ) {
         let markdown = r#"
@@ -437,7 +437,7 @@ fn entity_selection_ui(
     ui: &mut egui::Ui,
     entity_path: &EntityPath,
     viewport: &ViewportBlueprint,
-    view_id: &SpaceViewId,
+    view_id: &ViewId,
     view_states: &mut ViewStates,
 ) {
     let query_result = ctx.lookup_query_result(*view_id);
@@ -460,14 +460,14 @@ fn clone_space_view_button_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     viewport: &ViewportBlueprint,
-    view_id: SpaceViewId,
+    view_id: ViewId,
 ) {
     ui.list_item_flat_noninteractive(
         list_item::ButtonContent::new("Clone this view")
             .on_click(|| {
                 if let Some(new_space_view_id) = viewport.duplicate_space_view(&view_id, ctx) {
                     ctx.selection_state()
-                        .set_selection(Item::SpaceView(new_space_view_id));
+                        .set_selection(Item::View(new_space_view_id));
                     viewport.mark_user_interaction(ctx);
                 }
             })
@@ -479,7 +479,7 @@ fn clone_space_view_button_ui(
 fn entity_path_filter_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    view_id: SpaceViewId,
+    view_id: ViewId,
     filter: &EntityPathFilter,
     origin: &EntityPath,
 ) -> Option<EntityPathFilter> {
@@ -614,7 +614,7 @@ fn data_section_ui(item: &Item) -> Option<Box<dyn DataUi>> {
             Some(Box::new(instance_path.clone()))
         }
         // Skip data ui since we don't know yet what to show for these.
-        Item::SpaceView(_) | Item::Container(_) => None,
+        Item::View(_) | Item::Container(_) => None,
     }
 }
 
@@ -623,7 +623,7 @@ fn space_view_button(
     ui: &mut egui::Ui,
     view: &re_viewport_blueprint::SpaceViewBlueprint,
 ) -> egui::Response {
-    let item = Item::SpaceView(view.id);
+    let item = Item::View(view.id);
     let is_selected = ctx.selection().contains_item(&item);
     let view_name = view.display_name_or_default();
     let class = view.class(ctx.space_view_class_registry);
@@ -861,7 +861,7 @@ fn show_list_item_for_container_child(
 ) -> bool {
     let mut remove_contents = false;
     let (item, list_item_content) = match child_contents {
-        Contents::SpaceView(view_id) => {
+        Contents::View(view_id) => {
             let Some(view) = viewport.view(view_id) else {
                 re_log::warn_once!("Could not find view with ID {view_id:?}",);
                 return false;
@@ -869,7 +869,7 @@ fn show_list_item_for_container_child(
 
             let view_name = view.display_name_or_default();
             (
-                Item::SpaceView(*view_id),
+                Item::View(*view_id),
                 list_item::LabelContent::new(view_name.as_ref())
                     .label_style(contents_name_style(&view_name))
                     .with_icon(view.class(ctx.space_view_class_registry).icon())

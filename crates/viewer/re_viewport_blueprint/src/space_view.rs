@@ -3,7 +3,7 @@ use std::sync::Arc;
 use ahash::HashMap;
 use itertools::{FoldWhile, Itertools};
 use parking_lot::Mutex;
-use re_types::{ComponentDescriptor, SpaceViewClassIdentifier};
+use re_types::{ComponentDescriptor, ViewClassIdentifier};
 
 use re_chunk::{Chunk, RowId};
 use re_chunk_store::LatestAtQuery;
@@ -18,8 +18,8 @@ use re_types::{
 };
 use re_types_core::Archetype as _;
 use re_viewer_context::{
-    ContentsName, QueryRange, RecommendedSpaceView, SpaceViewClass, SpaceViewClassRegistry,
-    SpaceViewId, SpaceViewState, StoreContext, SystemCommand, SystemCommandSender as _,
+    ContentsName, QueryRange, RecommendedView, ViewClass, ViewClassRegistry,
+    ViewId, ViewState, StoreContext, SystemCommand, SystemCommandSender as _,
     ViewContext, ViewStates, ViewerContext, VisualizerCollection,
 };
 
@@ -35,9 +35,9 @@ use crate::{SpaceViewContents, ViewProperty};
 /// `re_viewport::ViewportBlueprint::duplicate_space_view`.
 #[derive(Clone, Debug)]
 pub struct SpaceViewBlueprint {
-    pub id: SpaceViewId,
+    pub id: ViewId,
     pub display_name: Option<String>,
-    class_identifier: SpaceViewClassIdentifier,
+    class_identifier: ViewClassIdentifier,
 
     /// The "anchor point" of this view.
     /// The transform at this path forms the reference point for all scene->world transforms in this view.
@@ -60,7 +60,7 @@ pub struct SpaceViewBlueprint {
 
 impl SpaceViewBlueprint {
     /// Path at which a view writes defaults for components.
-    pub fn defaults_path(view_id: SpaceViewId) -> EntityPath {
+    pub fn defaults_path(view_id: ViewId) -> EntityPath {
         view_id.as_entity_path().join(&"defaults".into())
     }
 
@@ -69,10 +69,10 @@ impl SpaceViewBlueprint {
     /// This [`SpaceViewBlueprint`] is ephemeral. If you want to make it permanent you
     /// must call [`Self::save_to_blueprint_store`].
     pub fn new(
-        space_view_class: SpaceViewClassIdentifier,
-        recommended: RecommendedSpaceView,
+        space_view_class: ViewClassIdentifier,
+        recommended: RecommendedView,
     ) -> Self {
-        let id = SpaceViewId::random();
+        let id = ViewId::random();
 
         Self {
             display_name: None,
@@ -126,7 +126,7 @@ impl SpaceViewBlueprint {
 
     /// Attempt to load a [`SpaceViewBlueprint`] from the blueprint store.
     pub fn try_from_db(
-        id: SpaceViewId,
+        id: ViewId,
         blueprint_db: &EntityDb,
         query: &LatestAtQuery,
     ) -> Option<Self> {
@@ -157,7 +157,7 @@ impl SpaceViewBlueprint {
         };
 
         let space_origin = space_origin.map_or_else(EntityPath::root, |origin| origin.0.into());
-        let class_identifier: SpaceViewClassIdentifier = class_identifier.0.as_str().into();
+        let class_identifier: ViewClassIdentifier = class_identifier.0.as_str().into();
         let display_name = display_name.map(|v| v.0.to_string());
 
         let space_env = EntityPathSubs::new_with_origin(&space_origin);
@@ -242,7 +242,7 @@ impl SpaceViewBlueprint {
         let blueprint_engine = blueprint.storage_engine();
 
         let current_path = self.entity_path();
-        let new_id = SpaceViewId::random();
+        let new_id = ViewId::random();
         let new_path = new_id.as_entity_path();
 
         // Create pending write operations to duplicate the entire subtree
@@ -348,14 +348,14 @@ impl SpaceViewBlueprint {
         }
     }
 
-    pub fn class_identifier(&self) -> SpaceViewClassIdentifier {
+    pub fn class_identifier(&self) -> ViewClassIdentifier {
         self.class_identifier
     }
 
     pub fn class<'a>(
         &self,
-        space_view_class_registry: &'a re_viewer_context::SpaceViewClassRegistry,
-    ) -> &'a dyn SpaceViewClass {
+        space_view_class_registry: &'a re_viewer_context::ViewClassRegistry,
+    ) -> &'a dyn ViewClass {
         space_view_class_registry.get_class_or_log_error(self.class_identifier)
     }
 
@@ -369,8 +369,8 @@ impl SpaceViewBlueprint {
         blueprint: &EntityDb,
         blueprint_query: &LatestAtQuery,
         active_timeline: &Timeline,
-        space_view_class_registry: &SpaceViewClassRegistry,
-        view_state: &dyn SpaceViewState,
+        space_view_class_registry: &ViewClassRegistry,
+        view_state: &dyn ViewState,
     ) -> QueryRange {
         // Visual time range works with regular overrides for the most part but it's a bit special:
         // * we need it for all entities unconditionally
@@ -422,7 +422,7 @@ impl SpaceViewBlueprint {
     pub fn bundle_context_with_state<'a>(
         &'a self,
         ctx: &'a ViewerContext<'a>,
-        view_state: &'a dyn SpaceViewState,
+        view_state: &'a dyn ViewState,
     ) -> ViewContext<'a> {
         ViewContext {
             viewer_ctx: ctx,
@@ -435,7 +435,7 @@ impl SpaceViewBlueprint {
 
     fn visualizer_collection(&self, ctx: &ViewerContext<'_>) -> Arc<VisualizerCollection> {
         static VISUALIZER_FOR_CONTEXT: once_cell::sync::Lazy<
-            Mutex<HashMap<SpaceViewClassIdentifier, Arc<VisualizerCollection>>>,
+            Mutex<HashMap<ViewClassIdentifier, Arc<VisualizerCollection>>>,
         > = once_cell::sync::Lazy::new(Default::default);
 
         VISUALIZER_FOR_CONTEXT
@@ -515,7 +515,7 @@ mod tests {
         );
 
         // Basic blueprint - a single view that queries everything.
-        let space_view = SpaceViewBlueprint::new("3D".into(), RecommendedSpaceView::root());
+        let space_view = SpaceViewBlueprint::new("3D".into(), RecommendedView::root());
         let individual_override_root = space_view
             .contents
             .blueprint_entity_path

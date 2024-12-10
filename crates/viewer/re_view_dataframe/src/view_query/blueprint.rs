@@ -5,7 +5,7 @@ use crate::view_query::Query;
 use re_chunk_store::{ColumnDescriptor, ColumnSelector, ComponentColumnSelector};
 use re_log_types::{EntityPath, ResolvedTimeRange, TimelineName};
 use re_types::blueprint::{components, datatypes};
-use re_viewer_context::{SpaceViewSystemExecutionError, ViewerContext};
+use re_viewer_context::{ViewSystemExecutionError, ViewerContext};
 
 // Accessors wrapping reads/writes to the blueprint store.
 impl Query {
@@ -16,7 +16,7 @@ impl Query {
     pub(crate) fn timeline(
         &self,
         ctx: &ViewerContext<'_>,
-    ) -> Result<re_log_types::Timeline, SpaceViewSystemExecutionError> {
+    ) -> Result<re_log_types::Timeline, ViewSystemExecutionError> {
         // read the timeline and make sure it actually exists
         let timeline = self
             .query_property
@@ -53,7 +53,7 @@ impl Query {
 
     pub(crate) fn filter_by_range(
         &self,
-    ) -> Result<ResolvedTimeRange, SpaceViewSystemExecutionError> {
+    ) -> Result<ResolvedTimeRange, ViewSystemExecutionError> {
         #[allow(clippy::map_unwrap_or)]
         Ok(self
             .query_property
@@ -77,7 +77,7 @@ impl Query {
     /// Get the filter column for the filter-is-not-null feature, if active.
     pub(crate) fn filter_is_not_null(
         &self,
-    ) -> Result<Option<ComponentColumnSelector>, SpaceViewSystemExecutionError> {
+    ) -> Result<Option<ComponentColumnSelector>, ViewSystemExecutionError> {
         Ok(self
             .filter_is_not_null_raw()?
             .filter(|filter_is_not_null| filter_is_not_null.active())
@@ -92,7 +92,7 @@ impl Query {
     /// Get the raw [`components::FilterIsNotNull`] struct (for ui purposes).
     pub(super) fn filter_is_not_null_raw(
         &self,
-    ) -> Result<Option<components::FilterIsNotNull>, SpaceViewSystemExecutionError> {
+    ) -> Result<Option<components::FilterIsNotNull>, ViewSystemExecutionError> {
         Ok(self
             .query_property
             .component_or_empty::<components::FilterIsNotNull>()?)
@@ -107,7 +107,7 @@ impl Query {
             .save_blueprint_component(ctx, filter_is_not_null);
     }
 
-    pub(crate) fn latest_at_enabled(&self) -> Result<bool, SpaceViewSystemExecutionError> {
+    pub(crate) fn latest_at_enabled(&self) -> Result<bool, ViewSystemExecutionError> {
         Ok(self
             .query_property
             .component_or_empty::<components::ApplyLatestAt>()?
@@ -171,7 +171,7 @@ impl Query {
         &self,
         ctx: &ViewerContext<'_>,
         view_columns: &[ColumnDescriptor],
-    ) -> Result<Option<Vec<ColumnSelector>>, SpaceViewSystemExecutionError> {
+    ) -> Result<Option<Vec<ColumnSelector>>, ViewSystemExecutionError> {
         let selected_columns = self
             .query_property
             .component_or_empty::<components::SelectedColumns>()?;
@@ -235,7 +235,7 @@ impl Query {
         ctx: &ViewerContext<'_>,
         view_columns: &[ColumnDescriptor],
         actions: Vec<HideColumnAction>,
-    ) -> Result<(), SpaceViewSystemExecutionError> {
+    ) -> Result<(), ViewSystemExecutionError> {
         if actions.is_empty() {
             return Ok(());
         }
@@ -279,14 +279,14 @@ impl Query {
 mod test {
     use super::Query;
     use re_viewer_context::test_context::TestContext;
-    use re_viewer_context::SpaceViewId;
+    use re_viewer_context::ViewId;
 
     /// Simple test to demo round-trip testing using [`TestContext::run_and_handle_system_commands`].
     #[test]
     fn test_latest_at_enabled() {
         let mut test_context = TestContext::default();
 
-        let view_id = SpaceViewId::random();
+        let view_id = ViewId::random();
 
         test_context.run_in_egui_central_panel(|ctx, _| {
             let query = Query::from_blueprint(ctx, view_id);

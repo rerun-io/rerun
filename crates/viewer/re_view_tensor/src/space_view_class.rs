@@ -11,14 +11,14 @@ use re_types::{
     },
     components::{Colormap, GammaCorrection, MagnificationFilter, TensorDimensionIndexSelection},
     datatypes::{TensorData, TensorDimension},
-    SpaceViewClassIdentifier, View,
+    View, ViewClassIdentifier,
 };
 use re_ui::{list_item, UiExt as _};
 use re_viewer_context::{
     gpu_bridge, ApplicableEntities, ColormapWithRange, IdentifiedViewSystem as _,
-    IndicatedEntities, PerVisualizer, SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId,
-    SpaceViewState, SpaceViewStateExt as _, SpaceViewSystemExecutionError, TensorStatsCache,
-    TypedComponentFallbackProvider, ViewQuery, ViewerContext, VisualizableEntities,
+    IndicatedEntities, PerVisualizer, TensorStatsCache, TypedComponentFallbackProvider, ViewClass,
+    ViewClassRegistryError, ViewId, ViewQuery, ViewState, ViewStateExt as _,
+    ViewSystemExecutionError, ViewerContext, VisualizableEntities,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -40,7 +40,7 @@ pub struct ViewTensorState {
     tensor: Option<TensorView>,
 }
 
-impl SpaceViewState for ViewTensorState {
+impl ViewState for ViewTensorState {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
@@ -50,8 +50,8 @@ impl SpaceViewState for ViewTensorState {
     }
 }
 
-impl SpaceViewClass for TensorSpaceView {
-    fn identifier() -> SpaceViewClassIdentifier {
+impl ViewClass for TensorSpaceView {
+    fn identifier() -> ViewClassIdentifier {
         ViewType::identifier()
     }
 
@@ -74,20 +74,20 @@ Note: select the view to configure which dimensions are shown."
 
     fn on_register(
         &self,
-        system_registry: &mut re_viewer_context::SpaceViewSystemRegistrator<'_>,
-    ) -> Result<(), SpaceViewClassRegistryError> {
+        system_registry: &mut re_viewer_context::ViewSystemRegistrator<'_>,
+    ) -> Result<(), ViewClassRegistryError> {
         system_registry.register_visualizer::<TensorSystem>()
     }
 
-    fn preferred_tile_aspect_ratio(&self, _state: &dyn SpaceViewState) -> Option<f32> {
+    fn preferred_tile_aspect_ratio(&self, _state: &dyn ViewState) -> Option<f32> {
         None
     }
 
-    fn layout_priority(&self) -> re_viewer_context::SpaceViewClassLayoutPriority {
-        re_viewer_context::SpaceViewClassLayoutPriority::Medium
+    fn layout_priority(&self) -> re_viewer_context::ViewClassLayoutPriority {
+        re_viewer_context::ViewClassLayoutPriority::Medium
     }
 
-    fn new_state(&self) -> Box<dyn SpaceViewState> {
+    fn new_state(&self) -> Box<dyn ViewState> {
         Box::<ViewTensorState>::default()
     }
 
@@ -117,10 +117,10 @@ Note: select the view to configure which dimensions are shown."
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut dyn SpaceViewState,
+        state: &mut dyn ViewState,
         _space_origin: &EntityPath,
-        view_id: SpaceViewId,
-    ) -> Result<(), SpaceViewSystemExecutionError> {
+        view_id: ViewId,
+    ) -> Result<(), ViewSystemExecutionError> {
         let state = state.downcast_mut::<ViewTensorState>()?;
 
         // TODO(andreas): Listitemify
@@ -183,10 +183,7 @@ Note: select the view to configure which dimensions are shown."
         Ok(())
     }
 
-    fn spawn_heuristics(
-        &self,
-        ctx: &ViewerContext<'_>,
-    ) -> re_viewer_context::SpaceViewSpawnHeuristics {
+    fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> re_viewer_context::ViewSpawnHeuristics {
         re_tracing::profile_function!();
         // For tensors create one view for each tensor (even though we're able to stack them in one view)
         suggest_space_view_for_each_entity::<TensorSystem>(ctx, self)
@@ -196,10 +193,10 @@ Note: select the view to configure which dimensions are shown."
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut dyn SpaceViewState,
+        state: &mut dyn ViewState,
         query: &ViewQuery<'_>,
         system_output: re_viewer_context::SystemExecutionOutput,
-    ) -> Result<(), SpaceViewSystemExecutionError> {
+    ) -> Result<(), ViewSystemExecutionError> {
         re_tracing::profile_function!();
         let state = state.downcast_mut::<ViewTensorState>()?;
         state.tensor = None;
@@ -235,9 +232,9 @@ impl TensorSpaceView {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &ViewTensorState,
-        view_id: SpaceViewId,
+        view_id: ViewId,
         tensor: &TensorData,
-    ) -> Result<(), SpaceViewSystemExecutionError> {
+    ) -> Result<(), ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
         let slice_property = ViewProperty::from_archetype::<TensorSliceSelection>(
@@ -294,7 +291,7 @@ impl TensorSpaceView {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &ViewTensorState,
-        view_id: SpaceViewId,
+        view_id: ViewId,
         dimension_labels: [Option<(String, bool)>; 2],
         slice_selection: &TensorSliceSelection,
     ) -> anyhow::Result<()> {
@@ -314,7 +311,7 @@ impl TensorSpaceView {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &ViewTensorState,
-        view_id: SpaceViewId,
+        view_id: ViewId,
         slice_selection: &TensorSliceSelection,
     ) -> anyhow::Result<(egui::Response, egui::Painter, egui::Rect)> {
         re_tracing::profile_function!();

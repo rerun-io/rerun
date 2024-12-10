@@ -8,10 +8,6 @@ use re_renderer::{
     view_builder::{Projection, TargetConfiguration, ViewBuilder},
     LineDrawableBuilder, Size,
 };
-use re_view::controls::{
-    RuntimeModifiers, DRAG_PAN3D_BUTTON, ROLL_MOUSE, ROLL_MOUSE_ALT, ROLL_MOUSE_MODIFIER,
-    ROTATE3D_BUTTON, SPEED_UP_3D_MODIFIER, TRACKED_OBJECT_RESTORE_KEY,
-};
 use re_types::{
     blueprint::{
         archetypes::{Background, LineGrid3D},
@@ -21,15 +17,19 @@ use re_types::{
     view_coordinates::SignedAxis3,
 };
 use re_ui::{ContextExt, ModifiersMarkdown, MouseButtonMarkdown};
+use re_view::controls::{
+    RuntimeModifiers, DRAG_PAN3D_BUTTON, ROLL_MOUSE, ROLL_MOUSE_ALT, ROLL_MOUSE_MODIFIER,
+    ROTATE3D_BUTTON, SPEED_UP_3D_MODIFIER, TRACKED_OBJECT_RESTORE_KEY,
+};
 use re_viewer_context::{
-    gpu_bridge, Item, ItemSpaceContext, SpaceViewSystemExecutionError, ViewQuery, ViewerContext,
+    gpu_bridge, Item, ItemSpaceContext, ViewSystemExecutionError, ViewQuery, ViewerContext,
 };
 use re_viewport_blueprint::ViewProperty;
 
 use crate::{
     scene_bounding_boxes::SceneBoundingBoxes,
     space_camera_3d::SpaceCamera3D,
-    ui::{create_labels, SpatialSpaceViewState},
+    ui::{create_labels, SpatialViewState},
     view_kind::SpatialSpaceViewKind,
     visualizers::{collect_ui_labels, image_view_coordinates, CamerasVisualizer},
     SpatialSpaceView3D,
@@ -423,10 +423,10 @@ impl SpatialSpaceView3D {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut SpatialSpaceViewState,
+        state: &mut SpatialViewState,
         query: &ViewQuery<'_>,
         system_output: re_viewer_context::SystemExecutionOutput,
-    ) -> Result<(), SpaceViewSystemExecutionError> {
+    ) -> Result<(), ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
         let highlights = &query.highlights;
@@ -486,7 +486,7 @@ impl SpatialSpaceView3D {
         };
 
         let Some(render_ctx) = ctx.render_ctx else {
-            return Err(SpaceViewSystemExecutionError::NoRenderContextError);
+            return Err(ViewSystemExecutionError::NoRenderContextError);
         };
 
         // Various ui interactions draw additional lines.
@@ -560,7 +560,7 @@ impl SpatialSpaceView3D {
                     None
                 }
 
-                Item::SpaceView(space_view_id) => {
+                Item::View(space_view_id) => {
                     if space_view_id == &query.space_view_id {
                         state
                             .state_3d
@@ -714,8 +714,8 @@ impl SpatialSpaceView3D {
         &self,
         ctx: &ViewerContext<'_>,
         grid_config: &ViewProperty,
-        state: &SpatialSpaceViewState,
-    ) -> Result<Option<re_renderer::renderer::WorldGridDrawData>, SpaceViewSystemExecutionError>
+        state: &SpatialViewState,
+    ) -> Result<Option<re_renderer::renderer::WorldGridDrawData>, ViewSystemExecutionError>
     {
         if !**grid_config.component_or_fallback::<Visible>(ctx, self, state)? {
             return Ok(None);
@@ -848,7 +848,7 @@ fn show_orbit_eye_center(
 fn show_projections_from_2d_space(
     line_builder: &mut re_renderer::LineDrawableBuilder<'_>,
     space_cameras: &[SpaceCamera3D],
-    state: &SpatialSpaceViewState,
+    state: &SpatialViewState,
     space_context: &ItemSpaceContext,
     ray_color: egui::Color32,
 ) {

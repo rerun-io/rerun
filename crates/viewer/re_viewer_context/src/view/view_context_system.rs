@@ -1,8 +1,8 @@
 use ahash::HashMap;
 
-use re_types::{ComponentNameSet, SpaceViewClassIdentifier};
+use re_types::{ComponentNameSet, ViewClassIdentifier};
 
-use crate::{IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewQuery, ViewSystemIdentifier};
+use crate::{IdentifiedViewSystem, ViewSystemExecutionError, ViewQuery, ViewSystemIdentifier};
 
 use super::view_context::ViewContext;
 
@@ -18,7 +18,7 @@ pub trait ViewContextSystem: Send + Sync {
     /// Return an empty vec to specify that the system should never run automatically for any
     /// specific entities.
     /// It may still run once per frame as part of the global context if it has been registered to
-    /// do so, see [`crate::SpaceViewSystemRegistrator`].
+    /// do so, see [`crate::ViewSystemRegistrator`].
     fn compatible_component_sets(&self) -> Vec<ComponentNameSet>;
 
     /// Queries the chunk store and performs data conversions to make it ready for consumption by scene elements.
@@ -31,18 +31,18 @@ pub trait ViewContextSystem: Send + Sync {
 // TODO(jleibs): This probably needs a better name now that it includes class name
 pub struct ViewContextCollection {
     pub systems: HashMap<ViewSystemIdentifier, Box<dyn ViewContextSystem>>,
-    pub space_view_class_identifier: SpaceViewClassIdentifier,
+    pub space_view_class_identifier: ViewClassIdentifier,
 }
 
 impl ViewContextCollection {
     pub fn get<T: ViewContextSystem + IdentifiedViewSystem + 'static>(
         &self,
-    ) -> Result<&T, SpaceViewSystemExecutionError> {
+    ) -> Result<&T, ViewSystemExecutionError> {
         self.systems
             .get(&T::identifier())
             .and_then(|s| s.as_any().downcast_ref())
             .ok_or_else(|| {
-                SpaceViewSystemExecutionError::ContextSystemNotFound(T::identifier().as_str())
+                ViewSystemExecutionError::ContextSystemNotFound(T::identifier().as_str())
             })
     }
 
@@ -52,7 +52,7 @@ impl ViewContextCollection {
         self.systems.iter().map(|s| (*s.0, s.1.as_ref()))
     }
 
-    pub fn space_view_class_identifier(&self) -> SpaceViewClassIdentifier {
+    pub fn space_view_class_identifier(&self) -> ViewClassIdentifier {
         self.space_view_class_identifier
     }
 }

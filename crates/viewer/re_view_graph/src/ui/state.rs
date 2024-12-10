@@ -2,7 +2,7 @@ use egui::Rect;
 use re_format::format_f32;
 use re_types::blueprint::components::VisualBounds2D;
 use re_ui::UiExt;
-use re_viewer_context::SpaceViewState;
+use re_viewer_context::ViewState;
 
 use crate::layout::{ForceLayoutParams, ForceLayoutProvider, Layout, LayoutRequest};
 
@@ -10,7 +10,7 @@ use crate::layout::{ForceLayoutParams, ForceLayoutProvider, Layout, LayoutReques
 ///
 /// This state is preserved between frames, but not across Viewer sessions.
 #[derive(Default)]
-pub struct GraphSpaceViewState {
+pub struct GraphViewState {
     pub layout_state: LayoutState,
 
     pub show_debug: bool,
@@ -18,7 +18,7 @@ pub struct GraphSpaceViewState {
     pub visual_bounds: Option<VisualBounds2D>,
 }
 
-impl GraphSpaceViewState {
+impl GraphViewState {
     pub fn layout_ui(&self, ui: &mut egui::Ui) {
         let Some(rect) = self.layout_state.bounding_rect() else {
             return;
@@ -47,7 +47,7 @@ impl GraphSpaceViewState {
     }
 }
 
-impl SpaceViewState for GraphSpaceViewState {
+impl ViewState for GraphViewState {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }

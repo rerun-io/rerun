@@ -50,8 +50,8 @@ use ahash::HashMap;
 use re_entity_db::EntityPath;
 use re_types::datatypes::{KeypointId, KeypointPair};
 use re_viewer_context::{
-    auto_color_egui, ApplicableEntities, IdentifiedViewSystem, SpaceViewClassRegistryError,
-    SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, ViewSystemIdentifier,
+    auto_color_egui, ApplicableEntities, IdentifiedViewSystem, ViewClassRegistryError,
+    ViewSystemExecutionError, ViewSystemRegistrator, ViewSystemIdentifier,
     VisualizableEntities, VisualizableFilterContext, VisualizerCollection,
 };
 
@@ -66,8 +66,8 @@ use super::contexts::SpatialSceneEntityContext;
 pub type Keypoints = HashMap<(re_types::components::ClassId, i64), HashMap<KeypointId, glam::Vec3>>;
 
 pub fn register_2d_spatial_visualizers(
-    system_registry: &mut SpaceViewSystemRegistrator<'_>,
-) -> Result<(), SpaceViewClassRegistryError> {
+    system_registry: &mut ViewSystemRegistrator<'_>,
+) -> Result<(), ViewClassRegistryError> {
     // Note: 2D spatial systems don't include cameras as this
     // visualizer only shows a 2D projection WITHIN a 3D view.
     system_registry.register_visualizer::<arrows2d::Arrows2DVisualizer>()?;
@@ -91,8 +91,8 @@ pub fn register_2d_spatial_visualizers(
 }
 
 pub fn register_3d_spatial_visualizers(
-    system_registry: &mut SpaceViewSystemRegistrator<'_>,
-) -> Result<(), SpaceViewClassRegistryError> {
+    system_registry: &mut ViewSystemRegistrator<'_>,
+) -> Result<(), ViewClassRegistryError> {
     system_registry.register_visualizer::<arrows2d::Arrows2DVisualizer>()?;
     system_registry.register_visualizer::<arrows3d::Arrows3DVisualizer>()?;
     system_registry.register_visualizer::<assets3d::Asset3DVisualizer>()?;
@@ -188,7 +188,7 @@ pub fn load_keypoint_connections(
     ent_context: &SpatialSceneEntityContext<'_>,
     ent_path: &re_entity_db::EntityPath,
     keypoints: &Keypoints,
-) -> Result<(), SpaceViewSystemExecutionError> {
+) -> Result<(), ViewSystemExecutionError> {
     re_tracing::profile_function!();
 
     // TODO(andreas): We should be able to compute this already when we load the keypoints

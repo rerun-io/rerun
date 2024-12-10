@@ -2,7 +2,7 @@ use re_types::{
     blueprint::components::Enabled, Archetype, ArchetypeReflectionMarker, Component as _,
 };
 use re_view::{view_property_component_ui, view_property_component_ui_custom};
-use re_viewer_context::{ComponentFallbackProvider, SpaceViewId, SpaceViewState, ViewerContext};
+use re_viewer_context::{ComponentFallbackProvider, ViewId, ViewState, ViewerContext};
 use re_viewport_blueprint::ViewProperty;
 
 /// This function is similar to [`view_property_component_ui`], but it always
@@ -12,9 +12,9 @@ use re_viewport_blueprint::ViewProperty;
 pub fn view_property_force_ui<A: Archetype + ArchetypeReflectionMarker>(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    view_id: SpaceViewId,
+    view_id: ViewId,
     fallback_provider: &dyn ComponentFallbackProvider,
-    view_state: &dyn SpaceViewState,
+    view_state: &dyn ViewState,
 ) {
     let property =
         ViewProperty::from_archetype::<A>(ctx.blueprint_db(), ctx.blueprint_query, view_id);

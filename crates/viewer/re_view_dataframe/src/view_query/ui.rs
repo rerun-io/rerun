@@ -7,7 +7,7 @@ use re_log_types::{
 use re_types::blueprint::components;
 use re_types_core::{ComponentName, ComponentNameSet};
 use re_ui::{list_item, UiExt};
-use re_viewer_context::{SpaceViewId, SpaceViewSystemExecutionError, TimeDragValue, ViewerContext};
+use re_viewer_context::{ViewId, ViewSystemExecutionError, TimeDragValue, ViewerContext};
 
 use crate::view_query::Query;
 
@@ -18,12 +18,12 @@ impl Query {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         timeline: &Timeline,
-    ) -> Result<(), SpaceViewSystemExecutionError> {
+    ) -> Result<(), ViewSystemExecutionError> {
         let mut timeline_name = *timeline.name();
         egui::Grid::new("dataframe_view_query_ui_timeline")
             .num_columns(2)
             .spacing(egui::vec2(8.0, 10.0))
-            .show(ui, |ui| -> Result<_, SpaceViewSystemExecutionError> {
+            .show(ui, |ui| -> Result<_, ViewSystemExecutionError> {
                 ui.grid_left_hand_label("Timeline");
 
                 if edit_timeline_name(ctx, ui, &mut timeline_name).changed() {
@@ -40,7 +40,7 @@ impl Query {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         timeline: &Timeline,
-    ) -> Result<(), SpaceViewSystemExecutionError> {
+    ) -> Result<(), ViewSystemExecutionError> {
         let time_drag_value = if let Some(times) = ctx.recording().time_histogram(timeline) {
             TimeDragValue::from_time_histogram(times)
         } else {
@@ -131,8 +131,8 @@ impl Query {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         timeline: &Timeline,
-        space_view_id: SpaceViewId,
-    ) -> Result<(), SpaceViewSystemExecutionError> {
+        space_view_id: ViewId,
+    ) -> Result<(), ViewSystemExecutionError> {
         //
         // Read stuff
         //
@@ -260,7 +260,7 @@ impl Query {
         ui: &mut egui::Ui,
         timeline: &Timeline,
         view_columns: &[ColumnDescriptor],
-    ) -> Result<(), SpaceViewSystemExecutionError> {
+    ) -> Result<(), ViewSystemExecutionError> {
         // Gather our selected columns.
         let selected_columns: HashSet<_> = self
             .apply_column_visibility_to_view_columns(ctx, view_columns)?
@@ -394,7 +394,7 @@ impl Query {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-    ) -> Result<(), SpaceViewSystemExecutionError> {
+    ) -> Result<(), ViewSystemExecutionError> {
         ui.label("Empty cells:");
 
         let mut latest_at = self.latest_at_enabled()?;
@@ -421,7 +421,7 @@ impl Query {
 /// - the entity has any component on the chosen timeline
 fn all_pov_entities_for_space_view(
     ctx: &ViewerContext<'_>,
-    space_view_id: SpaceViewId,
+    space_view_id: ViewId,
     timeline: &Timeline,
 ) -> BTreeSet<EntityPath> {
     let mut all_entities = BTreeSet::new();

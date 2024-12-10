@@ -20,7 +20,6 @@ mod maybe_mut_ref;
 mod query_context;
 mod query_range;
 mod selection_state;
-mod space_view;
 mod store_context;
 pub mod store_hub;
 mod tensor;
@@ -30,6 +29,7 @@ mod time_drag_value;
 mod typed_entity_collections;
 mod undo;
 mod utils;
+mod view;
 mod viewer_context;
 
 // TODO(andreas): Move to its own crate?
@@ -39,7 +39,7 @@ pub use self::{
     annotations::{AnnotationMap, Annotations, ResolvedAnnotationInfo, ResolvedAnnotationInfos},
     app_options::AppOptions,
     blueprint_helpers::{blueprint_timeline, blueprint_timepoint_for_writes},
-    blueprint_id::{BlueprintId, BlueprintIdRegistry, ContainerId, SpaceViewId},
+    blueprint_id::{BlueprintId, BlueprintIdRegistry, ContainerId, ViewId},
     cache::{Cache, Caches, ImageDecodeCache, ImageStatsCache, TensorStatsCache, VideoCache},
     collapsed_id::{CollapseItem, CollapseScope, CollapsedId},
     command_sender::{
@@ -64,18 +64,6 @@ pub use self::{
         ApplicationSelectionState, HoverHighlight, InteractionHighlight, ItemCollection,
         ItemSpaceContext, SelectionHighlight,
     },
-    space_view::{
-        DataResult, IdentifiedViewSystem, OptionalSpaceViewEntityHighlight, OverridePath,
-        PerSystemDataResults, PerSystemEntities, PropertyOverrides, RecommendedSpaceView,
-        SmallVisualizerSet, SpaceViewClass, SpaceViewClassExt, SpaceViewClassLayoutPriority,
-        SpaceViewClassRegistry, SpaceViewClassRegistryError, SpaceViewEntityHighlight,
-        SpaceViewHighlights, SpaceViewOutlineMasks, SpaceViewSpawnHeuristics, SpaceViewState,
-        SpaceViewStateExt, SpaceViewSystemExecutionError, SpaceViewSystemRegistrator,
-        SystemExecutionOutput, ViewContext, ViewContextCollection, ViewContextSystem, ViewQuery,
-        ViewStates, ViewSystemIdentifier, VisualizableFilterContext,
-        VisualizerAdditionalApplicabilityFilter, VisualizerCollection, VisualizerQueryInfo,
-        VisualizerSystem,
-    },
     store_context::StoreContext,
     store_hub::StoreHub,
     tensor::{ImageStats, TensorStats},
@@ -86,6 +74,17 @@ pub use self::{
     },
     undo::BlueprintUndoState,
     utils::{auto_color_egui, auto_color_for_entity_path, level_to_rich_text},
+    view::{
+        DataResult, IdentifiedViewSystem, OptionalViewEntityHighlight, OverridePath,
+        PerSystemDataResults, PerSystemEntities, PropertyOverrides, RecommendedView,
+        SmallVisualizerSet, ViewClassExt, ViewHighlights, ViewOutlineMasks,
+        ViewSpawnHeuristics, SystemExecutionOutput, ViewClass, ViewClassLayoutPriority,
+        ViewClassRegistry, ViewClassRegistryError, ViewContext, ViewContextCollection,
+        ViewContextSystem, ViewEntityHighlight, ViewQuery, ViewState, ViewStateExt, ViewStates,
+        ViewSystemExecutionError, ViewSystemIdentifier, ViewSystemRegistrator,
+        VisualizableFilterContext, VisualizerAdditionalApplicabilityFilter, VisualizerCollection,
+        VisualizerQueryInfo, VisualizerSystem,
+    },
     viewer_context::{RecordingConfig, ViewerContext},
 };
 
@@ -162,7 +161,7 @@ pub enum ScreenshotTarget {
 /// We use this for space-view screenshotting.
 ///
 /// Accessed with [`egui::Memory::caches`].
-pub type SpaceViewRectPublisher = egui::cache::FramePublisher<SpaceViewId, PublishedSpaceViewInfo>;
+pub type SpaceViewRectPublisher = egui::cache::FramePublisher<ViewId, PublishedSpaceViewInfo>;
 
 /// Information about a view that is published each frame by [`SpaceViewRectPublisher`].
 #[derive(Clone, Debug)]

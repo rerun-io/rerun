@@ -7,14 +7,14 @@ use crate::{
 use re_chunk_store::{ColumnDescriptor, SparseFillStrategy};
 use re_dataframe::QueryEngine;
 use re_log_types::EntityPath;
-use re_types_core::SpaceViewClassIdentifier;
+use re_types_core::ViewClassIdentifier;
 use re_viewer_context::{
-    SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewStateExt,
-    SpaceViewSystemExecutionError, SystemExecutionOutput, ViewQuery, ViewerContext,
+    ViewClass, ViewClassRegistryError, ViewId, ViewState, ViewStateExt,
+    ViewSystemExecutionError, SystemExecutionOutput, ViewQuery, ViewerContext,
 };
 
 #[derive(Default)]
-struct DataframeSpaceViewState {
+struct DataframeViewState {
     /// Cache for the expanded rows.
     expended_rows_cache: ExpandedRowsCache,
 
@@ -22,7 +22,7 @@ struct DataframeSpaceViewState {
     view_columns: Option<Vec<ColumnDescriptor>>,
 }
 
-impl SpaceViewState for DataframeSpaceViewState {
+impl ViewState for DataframeViewState {
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -35,8 +35,8 @@ impl SpaceViewState for DataframeSpaceViewState {
 #[derive(Default)]
 pub struct DataframeSpaceView;
 
-impl SpaceViewClass for DataframeSpaceView {
-    fn identifier() -> SpaceViewClassIdentifier {
+impl ViewClass for DataframeSpaceView {
+    fn identifier() -> ViewClassIdentifier {
         "Dataframe".into()
     }
 
@@ -72,27 +72,27 @@ mode sets the default time range to _everything_. You can override this in the s
 
     fn on_register(
         &self,
-        system_registry: &mut re_viewer_context::SpaceViewSystemRegistrator<'_>,
-    ) -> Result<(), SpaceViewClassRegistryError> {
+        system_registry: &mut re_viewer_context::ViewSystemRegistrator<'_>,
+    ) -> Result<(), ViewClassRegistryError> {
         system_registry.register_visualizer::<EmptySystem>()
     }
 
-    fn new_state(&self) -> Box<dyn SpaceViewState> {
-        Box::<DataframeSpaceViewState>::default()
+    fn new_state(&self) -> Box<dyn ViewState> {
+        Box::<DataframeViewState>::default()
     }
 
-    fn preferred_tile_aspect_ratio(&self, _state: &dyn SpaceViewState) -> Option<f32> {
+    fn preferred_tile_aspect_ratio(&self, _state: &dyn ViewState) -> Option<f32> {
         None
     }
 
-    fn layout_priority(&self) -> re_viewer_context::SpaceViewClassLayoutPriority {
-        re_viewer_context::SpaceViewClassLayoutPriority::Low
+    fn layout_priority(&self) -> re_viewer_context::ViewClassLayoutPriority {
+        re_viewer_context::ViewClassLayoutPriority::Low
     }
 
     fn spawn_heuristics(
         &self,
         _ctx: &ViewerContext<'_>,
-    ) -> re_viewer_context::SpaceViewSpawnHeuristics {
+    ) -> re_viewer_context::ViewSpawnHeuristics {
         // Doesn't spawn anything by default.
         Default::default()
     }
@@ -101,11 +101,11 @@ mode sets the default time range to _everything_. You can override this in the s
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut dyn SpaceViewState,
+        state: &mut dyn ViewState,
         _space_origin: &EntityPath,
-        space_view_id: SpaceViewId,
-    ) -> Result<(), SpaceViewSystemExecutionError> {
-        let state = state.downcast_mut::<DataframeSpaceViewState>()?;
+        space_view_id: ViewId,
+    ) -> Result<(), ViewSystemExecutionError> {
+        let state = state.downcast_mut::<DataframeViewState>()?;
         let view_query = view_query::Query::from_blueprint(ctx, space_view_id);
         let Some(view_columns) = &state.view_columns else {
             // Shouldn't happen, except maybe on the first frame, which is too early
@@ -119,13 +119,13 @@ mode sets the default time range to _everything_. You can override this in the s
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut dyn SpaceViewState,
+        state: &mut dyn ViewState,
         query: &ViewQuery<'_>,
         _system_output: SystemExecutionOutput,
-    ) -> Result<(), SpaceViewSystemExecutionError> {
+    ) -> Result<(), ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        let state = state.downcast_mut::<DataframeSpaceViewState>()?;
+        let state = state.downcast_mut::<DataframeViewState>()?;
         let view_query = view_query::Query::from_blueprint(ctx, query.space_view_id);
 
         let query_engine = QueryEngine {

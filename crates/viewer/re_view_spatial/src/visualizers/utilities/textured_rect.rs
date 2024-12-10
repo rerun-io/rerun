@@ -3,7 +3,7 @@ use glam::Vec3;
 use re_log_types::EntityPath;
 use re_renderer::renderer;
 use re_viewer_context::{
-    gpu_bridge, ColormapWithRange, ImageInfo, ImageStatsCache, SpaceViewClass as _, ViewerContext,
+    gpu_bridge, ColormapWithRange, ImageInfo, ImageStatsCache, ViewClass as _, ViewerContext,
 };
 
 use crate::{contexts::SpatialSceneEntityContext, SpatialSpaceView2D};

@@ -6,7 +6,7 @@ use re_types::{
 };
 use re_viewer_context::{
     external::re_entity_db::EntityTree, ComponentFallbackError, ComponentFallbackProvider,
-    QueryContext, SpaceViewId, SpaceViewSystemExecutionError, ViewerContext,
+    QueryContext, ViewId, ViewSystemExecutionError, ViewerContext,
 };
 
 #[derive(thiserror::Error, Debug)]
@@ -18,7 +18,7 @@ pub enum ViewPropertyQueryError {
     ComponentFallbackError(#[from] ComponentFallbackError),
 }
 
-impl From<ViewPropertyQueryError> for SpaceViewSystemExecutionError {
+impl From<ViewPropertyQueryError> for ViewSystemExecutionError {
     fn from(val: ViewPropertyQueryError) -> Self {
         match val {
             ViewPropertyQueryError::SerializationError(err) => err.into(),
@@ -51,7 +51,7 @@ impl ViewProperty {
     pub fn from_archetype<A: Archetype>(
         blueprint_db: &EntityDb,
         blueprint_query: &LatestAtQuery,
-        view_id: SpaceViewId,
+        view_id: ViewId,
     ) -> Self {
         Self::from_archetype_impl(
             blueprint_db,
@@ -68,7 +68,7 @@ impl ViewProperty {
     fn from_archetype_impl(
         blueprint_db: &EntityDb,
         blueprint_query: LatestAtQuery,
-        space_view_id: SpaceViewId,
+        space_view_id: ViewId,
         archetype_name: ArchetypeName,
         component_names: Vec<ComponentName>,
     ) -> Self {
@@ -97,7 +97,7 @@ impl ViewProperty {
         &self,
         ctx: &ViewerContext<'_>,
         fallback_provider: &dyn ComponentFallbackProvider,
-        view_state: &dyn re_viewer_context::SpaceViewState,
+        view_state: &dyn re_viewer_context::ViewState,
     ) -> Result<C, ViewPropertyQueryError> {
         self.component_array_or_fallback::<C>(ctx, fallback_provider, view_state)?
             .into_iter()
@@ -110,7 +110,7 @@ impl ViewProperty {
         &self,
         ctx: &ViewerContext<'_>,
         fallback_provider: &dyn ComponentFallbackProvider,
-        view_state: &dyn re_viewer_context::SpaceViewState,
+        view_state: &dyn re_viewer_context::ViewState,
     ) -> Result<Vec<C>, ViewPropertyQueryError> {
         let component_name = C::name();
         C::from_arrow2(
@@ -167,7 +167,7 @@ impl ViewProperty {
         ctx: &ViewerContext<'_>,
         component_name: ComponentName,
         fallback_provider: &dyn ComponentFallbackProvider,
-        view_state: &dyn re_viewer_context::SpaceViewState,
+        view_state: &dyn re_viewer_context::ViewState,
     ) -> Box<dyn arrow2::array::Array> {
         if let Some(value) = self.component_raw(component_name) {
             if value.len() > 0 {
@@ -223,7 +223,7 @@ impl ViewProperty {
     pub fn query_context<'a>(
         &'a self,
         viewer_ctx: &'a ViewerContext<'_>,
-        view_state: &'a dyn re_viewer_context::SpaceViewState,
+        view_state: &'a dyn re_viewer_context::ViewState,
     ) -> QueryContext<'a> {
         QueryContext {
             viewer_ctx,
@@ -239,7 +239,7 @@ impl ViewProperty {
 /// Entity path in the blueprint store where all components of the given view property archetype are
 /// stored.
 pub fn entity_path_for_view_property(
-    space_view_id: SpaceViewId,
+    space_view_id: ViewId,
     _blueprint_entity_tree: &EntityTree,
     archetype_name: ArchetypeName,
 ) -> EntityPath {

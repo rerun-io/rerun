@@ -7,9 +7,9 @@ use re_types::{
     components::Color,
     Archetype,
 };
-use re_viewer_context::{SpaceViewStateExt, TypedComponentFallbackProvider};
+use re_viewer_context::{ViewStateExt, TypedComponentFallbackProvider};
 
-use crate::{ui::SpatialSpaceViewState, SpatialSpaceView2D};
+use crate::{ui::SpatialViewState, SpatialSpaceView2D};
 
 impl TypedComponentFallbackProvider<Color> for SpatialSpaceView2D {
     fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> Color {
@@ -42,7 +42,7 @@ fn pinhole_resolution_rect(pinhole: &Pinhole) -> Option<egui::Rect> {
 
 impl TypedComponentFallbackProvider<VisualBounds2D> for SpatialSpaceView2D {
     fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> VisualBounds2D {
-        let Ok(view_state) = ctx.view_state.downcast_ref::<SpatialSpaceViewState>() else {
+        let Ok(view_state) = ctx.view_state.downcast_ref::<SpatialViewState>() else {
             return VisualBounds2D::default();
         };
 

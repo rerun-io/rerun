@@ -13,7 +13,7 @@ use re_viewer_context::{
     SystemCommandSender,
 };
 use re_viewer_context::{
-    ContainerId, DataQueryResult, DataResultNode, HoverHighlight, Item, SpaceViewId, ViewerContext,
+    ContainerId, DataQueryResult, DataResultNode, HoverHighlight, Item, ViewId, ViewerContext,
 };
 use re_viewport_blueprint::ui::show_add_space_view_or_container_modal;
 use re_viewport_blueprint::{SpaceViewBlueprint, ViewportBlueprint};
@@ -139,8 +139,8 @@ impl BlueprintTree {
             Contents::Container(container_id) => {
                 self.container_tree_ui(ctx, viewport, ui, container_id, parent_visible);
             }
-            Contents::SpaceView(space_view_id) => {
-                self.space_view_entry_ui(ctx, viewport, ui, space_view_id, parent_visible);
+            Contents::View(view_id) => {
+                self.space_view_entry_ui(ctx, viewport, ui, view_id, parent_visible);
             }
         };
     }
@@ -289,21 +289,21 @@ impl BlueprintTree {
         ctx: &ViewerContext<'_>,
         viewport: &ViewportBlueprint,
         ui: &mut egui::Ui,
-        space_view_id: &SpaceViewId,
+        view_id: &ViewId,
         container_visible: bool,
     ) {
-        let Some(space_view) = viewport.view(space_view_id) else {
+        let Some(space_view) = viewport.view(view_id) else {
             re_log::warn_once!("Bug: asked to show a UI for a view that doesn't exist");
             return;
         };
-        debug_assert_eq!(space_view.id, *space_view_id);
+        debug_assert_eq!(space_view.id, *view_id);
 
         let query_result = ctx.lookup_query_result(space_view.id);
         let result_tree = &query_result.tree;
 
         let mut visible = space_view.visible;
         let space_view_visible = visible && container_visible;
-        let item = Item::SpaceView(space_view.id);
+        let item = Item::View(space_view.id);
 
         let root_node = result_tree.root_node();
 
@@ -326,7 +326,7 @@ impl BlueprintTree {
                 let response = remove_button_ui(ui, "Remove view from the viewport");
                 if response.clicked() {
                     viewport.mark_user_interaction(ctx);
-                    viewport.remove_contents(Contents::SpaceView(*space_view_id));
+                    viewport.remove_contents(Contents::View(*view_id));
                 }
 
                 response | vis_response
@@ -334,7 +334,7 @@ impl BlueprintTree {
 
         // Globally unique id - should only be one of these in view at one time.
         // We do this so that we can support "collapse/expand all" command.
-        let id = egui::Id::new(CollapseScope::BlueprintTree.space_view(*space_view_id));
+        let id = egui::Id::new(CollapseScope::BlueprintTree.space_view(*view_id));
 
         let list_item::ShowCollapsingResponse {
             item_response: response,
@@ -412,7 +412,7 @@ impl BlueprintTree {
         self.scroll_to_me_if_needed(ui, &item, &response);
         ctx.select_hovered_on_click(&response, item);
 
-        let content = Contents::SpaceView(*space_view_id);
+        let content = Contents::View(*view_id);
 
         viewport.set_content_visibility(ctx, &content, visible);
         self.handle_drag_and_drop_interaction(
@@ -740,7 +740,7 @@ impl BlueprintTree {
                     parent_id: Contents::Container(parent_container_id),
                     position_index_in_parent,
                 },
-                Contents::SpaceView(_) => re_ui::drag_and_drop::ItemKind::Leaf {
+                Contents::View(_) => re_ui::drag_and_drop::ItemKind::Leaf {
                     parent_id: Contents::Container(parent_container_id),
                     position_index_in_parent,
                 },
@@ -903,33 +903,27 @@ fn handle_focused_item(
             expand_all_contents_until(viewport, ui.ctx(), &Contents::Container(*container_id));
             Some(focused_item.clone())
         }
-        Item::SpaceView(space_view_id) => {
-            expand_all_contents_until(viewport, ui.ctx(), &Contents::SpaceView(*space_view_id));
+        Item::View(view_id) => {
+            expand_all_contents_until(viewport, ui.ctx(), &Contents::View(*view_id));
             ctx.focused_item.clone()
         }
-        Item::DataResult(space_view_id, instance_path) => {
-            expand_all_contents_until(viewport, ui.ctx(), &Contents::SpaceView(*space_view_id));
-            expand_all_data_results_until(ctx, ui.ctx(), space_view_id, &instance_path.entity_path);
+        Item::DataResult(view_id, instance_path) => {
+            expand_all_contents_until(viewport, ui.ctx(), &Contents::View(*view_id));
+            expand_all_data_results_until(ctx, ui.ctx(), view_id, &instance_path.entity_path);
 
             ctx.focused_item.clone()
         }
         Item::InstancePath(instance_path) => {
-            let space_view_ids =
-                list_space_views_with_entity(ctx, viewport, &instance_path.entity_path);
+            let view_ids = list_space_views_with_entity(ctx, viewport, &instance_path.entity_path);
 
             // focus on the first matching data result
-            let res = space_view_ids
+            let res = view_ids
                 .first()
                 .map(|id| Item::DataResult(*id, instance_path.clone()));
 
-            for space_view_id in space_view_ids {
-                expand_all_contents_until(viewport, ui.ctx(), &Contents::SpaceView(space_view_id));
-                expand_all_data_results_until(
-                    ctx,
-                    ui.ctx(),
-                    &space_view_id,
-                    &instance_path.entity_path,
-                );
+            for view_id in view_ids {
+                expand_all_contents_until(viewport, ui.ctx(), &Contents::View(view_id));
+                expand_all_data_results_until(ctx, ui.ctx(), &view_id, &instance_path.entity_path);
             }
 
             res
@@ -954,8 +948,8 @@ fn expand_all_contents_until(
         Contents::Container(container_id) => CollapseScope::BlueprintTree
             .container(*container_id)
             .set_open(egui_ctx, true),
-        Contents::SpaceView(space_view_id) => CollapseScope::BlueprintTree
-            .space_view(*space_view_id)
+        Contents::View(view_id) => CollapseScope::BlueprintTree
+            .space_view(*view_id)
             .set_open(egui_ctx, true),
     };
 
@@ -975,34 +969,34 @@ fn list_space_views_with_entity(
     ctx: &ViewerContext<'_>,
     viewport: &ViewportBlueprint,
     entity_path: &EntityPath,
-) -> SmallVec<[SpaceViewId; 4]> {
-    let mut space_view_ids = SmallVec::new();
+) -> SmallVec<[ViewId; 4]> {
+    let mut view_ids = SmallVec::new();
     viewport.visit_contents(&mut |contents, _| {
-        if let Contents::SpaceView(space_view_id) = contents {
-            let result_tree = &ctx.lookup_query_result(*space_view_id).tree;
+        if let Contents::View(view_id) = contents {
+            let result_tree = &ctx.lookup_query_result(*view_id).tree;
             if result_tree.lookup_node_by_path(entity_path).is_some() {
-                space_view_ids.push(*space_view_id);
+                view_ids.push(*view_id);
             }
         }
     });
-    space_view_ids
+    view_ids
 }
 
 /// Expand data results of the provided view all the way to the provided entity.
 fn expand_all_data_results_until(
     ctx: &ViewerContext<'_>,
     egui_ctx: &egui::Context,
-    space_view_id: &SpaceViewId,
+    view_id: &ViewId,
     entity_path: &EntityPath,
 ) {
-    let result_tree = &ctx.lookup_query_result(*space_view_id).tree;
+    let result_tree = &ctx.lookup_query_result(*view_id).tree;
     if result_tree.lookup_node_by_path(entity_path).is_some() {
         if let Some(root_node) = result_tree.root_node() {
             EntityPath::incremental_walk(Some(&root_node.data_result.entity_path), entity_path)
                 .chain(std::iter::once(root_node.data_result.entity_path.clone()))
                 .for_each(|entity_path| {
                     CollapseScope::BlueprintTree
-                        .data_result(*space_view_id, entity_path)
+                        .data_result(*view_id, entity_path)
                         .set_open(egui_ctx, true);
                 });
         }

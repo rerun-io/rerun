@@ -7,15 +7,15 @@ use re_types::{
     Archetype,
 };
 use re_ui::UiExt as _;
-use re_viewer_context::{QueryRange, SpaceViewClass, SpaceViewState, TimeDragValue, ViewerContext};
+use re_viewer_context::{QueryRange, ViewClass, ViewState, TimeDragValue, ViewerContext};
 use re_viewport_blueprint::{entity_path_for_view_property, SpaceViewBlueprint};
 
 pub fn visible_time_range_ui_for_view(
     ctx: &ViewerContext<'_>,
     ui: &mut Ui,
     view: &SpaceViewBlueprint,
-    view_class: &dyn SpaceViewClass,
-    view_state: &dyn SpaceViewState,
+    view_class: &dyn ViewClass,
+    view_state: &dyn ViewState,
 ) {
     if !view_class.supports_visible_time_range() {
         return;

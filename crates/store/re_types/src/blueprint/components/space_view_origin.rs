@@ -18,7 +18,7 @@ use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Component**: The origin of a `SpaceView`.
+/// **Component**: The origin of a `View`.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(transparent)]
 pub struct SpaceViewOrigin(pub crate::datatypes::EntityPath);

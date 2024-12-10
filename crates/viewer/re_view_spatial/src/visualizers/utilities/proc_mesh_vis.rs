@@ -5,7 +5,7 @@ use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId, RenderContext};
 use re_view::{clamped_or_nothing, process_annotation_slices, process_color_slice};
 use re_types::components::{self, FillMode};
 use re_viewer_context::{
-    QueryContext, SpaceViewSystemExecutionError, TypedComponentFallbackProvider, ViewQuery,
+    QueryContext, ViewSystemExecutionError, TypedComponentFallbackProvider, ViewQuery,
 };
 
 use crate::contexts::SpatialSceneEntityContext;
@@ -94,7 +94,7 @@ where
         ent_context: &SpatialSceneEntityContext<'_>,
         constant_instance_transform: glam::Affine3A,
         batch: ProcMeshBatch<'_, impl Iterator<Item = ProcMeshKey>, impl Iterator<Item = FillMode>>,
-    ) -> Result<(), SpaceViewSystemExecutionError> {
+    ) -> Result<(), ViewSystemExecutionError> {
         let entity_path = query_context.target_entity_path;
 
         if batch.half_sizes.is_empty() {
@@ -176,7 +176,7 @@ where
                     let Some(wireframe_mesh) = query_context.viewer_ctx.cache.entry(
                         |c: &mut proc_mesh::WireframeCache| c.entry(proc_mesh_key, self.render_ctx),
                     ) else {
-                        return Err(SpaceViewSystemExecutionError::DrawDataCreationError(
+                        return Err(ViewSystemExecutionError::DrawDataCreationError(
                             "Failed to allocate wireframe mesh".into(),
                         ));
                     };
@@ -214,7 +214,7 @@ where
                                 c.entry(proc_mesh_key, self.render_ctx)
                             })
                     else {
-                        return Err(SpaceViewSystemExecutionError::DrawDataCreationError(
+                        return Err(ViewSystemExecutionError::DrawDataCreationError(
                             "Failed to allocate solid mesh".into(),
                         ));
                     };
@@ -261,7 +261,7 @@ where
     /// Final operation. Produce the [`re_renderer::QueueableDrawData`] to actually be drawn.
     pub fn into_draw_data(
         self,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
+    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
         let Self {
             data: _,
             fallback: _,

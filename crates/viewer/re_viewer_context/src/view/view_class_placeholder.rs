@@ -1,19 +1,18 @@
-use re_types::SpaceViewClassIdentifier;
+use re_types::ViewClassIdentifier;
 use re_ui::UiExt;
 
 use crate::{
-    SpaceViewClass, SpaceViewClassRegistryError, SpaceViewSpawnHeuristics, SpaceViewState,
-    SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery,
-    ViewerContext,
+    SystemExecutionOutput, ViewClass, ViewClassRegistryError, ViewQuery, ViewSpawnHeuristics,
+    ViewState, ViewSystemExecutionError, ViewSystemRegistrator, ViewerContext,
 };
 
 /// A placeholder view class that can be used when the actual class is not registered.
 #[derive(Default)]
-pub struct SpaceViewClassPlaceholder;
+pub struct ViewClassPlaceholder;
 
-impl SpaceViewClass for SpaceViewClassPlaceholder {
-    fn identifier() -> SpaceViewClassIdentifier {
-        "UnknownSpaceViewClass".into()
+impl ViewClass for ViewClassPlaceholder {
+    fn identifier() -> ViewClassIdentifier {
+        "UnknownViewClass".into()
     }
 
     fn display_name(&self) -> &'static str {
@@ -30,31 +29,31 @@ impl SpaceViewClass for SpaceViewClassPlaceholder {
 
     fn on_register(
         &self,
-        _system_registry: &mut SpaceViewSystemRegistrator<'_>,
-    ) -> Result<(), SpaceViewClassRegistryError> {
+        _system_registry: &mut ViewSystemRegistrator<'_>,
+    ) -> Result<(), ViewClassRegistryError> {
         Ok(())
     }
 
-    fn new_state(&self) -> Box<dyn SpaceViewState> {
+    fn new_state(&self) -> Box<dyn ViewState> {
         Box::<()>::default()
     }
 
-    fn layout_priority(&self) -> crate::SpaceViewClassLayoutPriority {
-        crate::SpaceViewClassLayoutPriority::Low
+    fn layout_priority(&self) -> crate::ViewClassLayoutPriority {
+        crate::ViewClassLayoutPriority::Low
     }
 
-    fn spawn_heuristics(&self, _ctx: &ViewerContext<'_>) -> SpaceViewSpawnHeuristics {
-        SpaceViewSpawnHeuristics::empty()
+    fn spawn_heuristics(&self, _ctx: &ViewerContext<'_>) -> ViewSpawnHeuristics {
+        ViewSpawnHeuristics::empty()
     }
 
     fn ui(
         &self,
         _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        _state: &mut dyn SpaceViewState,
+        _state: &mut dyn ViewState,
         _query: &ViewQuery<'_>,
         _system_output: SystemExecutionOutput,
-    ) -> Result<(), SpaceViewSystemExecutionError> {
+    ) -> Result<(), ViewSystemExecutionError> {
         egui::Frame {
             inner_margin: egui::Margin::same(re_ui::DesignTokens::view_padding()),
             ..Default::default()
@@ -75,4 +74,4 @@ impl SpaceViewClass for SpaceViewClassPlaceholder {
     }
 }
 
-crate::impl_component_fallback_provider!(SpaceViewClassPlaceholder => []);
+crate::impl_component_fallback_provider!(ViewClassPlaceholder => []);

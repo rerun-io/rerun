@@ -6,7 +6,7 @@ use re_types::{
     Component as _,
 };
 use re_viewer_context::{
-    IdentifiedViewSystem, SpaceViewSystemExecutionError, TensorStats, TensorStatsCache,
+    IdentifiedViewSystem, ViewSystemExecutionError, TensorStats, TensorStatsCache,
     TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewQuery,
     VisualizerQueryInfo, VisualizerSystem,
 };
@@ -39,7 +39,7 @@ impl VisualizerSystem for TensorSystem {
         ctx: &ViewContext<'_>,
         query: &ViewQuery<'_>,
         _context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
+    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
         for data_result in query.iter_visible_data_results(ctx, Self::identifier()) {

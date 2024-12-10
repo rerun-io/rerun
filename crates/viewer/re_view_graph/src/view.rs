@@ -7,7 +7,7 @@ use re_types::{
             VisualBounds2D,
         },
     },
-    SpaceViewClassIdentifier,
+    ViewClassIdentifier,
 };
 use re_ui::{
     self,
@@ -19,9 +19,9 @@ use re_view::{
     view_property_ui,
 };
 use re_viewer_context::{
-    IdentifiedViewSystem as _, RecommendedSpaceView, SpaceViewClass, SpaceViewClassLayoutPriority,
-    SpaceViewClassRegistryError, SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState,
-    SpaceViewStateExt as _, SpaceViewSystemExecutionError, SpaceViewSystemRegistrator,
+    IdentifiedViewSystem as _, RecommendedView, ViewClass, ViewClassLayoutPriority,
+    ViewClassRegistryError, ViewId, ViewSpawnHeuristics, ViewState,
+    ViewStateExt as _, ViewSystemExecutionError, ViewSystemRegistrator,
     SystemExecutionOutput, ViewQuery, ViewerContext,
 };
 use re_viewport_blueprint::ViewProperty;
@@ -29,17 +29,17 @@ use re_viewport_blueprint::ViewProperty;
 use crate::{
     graph::Graph,
     layout::{ForceLayoutParams, LayoutRequest},
-    ui::{draw_debug, draw_graph, view_property_force_ui, GraphSpaceViewState},
+    ui::{draw_debug, draw_graph, view_property_force_ui, GraphViewState},
     visualizers::{merge, EdgesVisualizer, NodeVisualizer},
 };
 
 #[derive(Default)]
 pub struct GraphSpaceView;
 
-impl SpaceViewClass for GraphSpaceView {
+impl ViewClass for GraphSpaceView {
     // State type as described above.
 
-    fn identifier() -> SpaceViewClassIdentifier {
+    fn identifier() -> ViewClassIdentifier {
         "Graph".into()
     }
 
@@ -69,18 +69,18 @@ Display a graph of nodes and edges.
     /// Register all systems (contexts & parts) that the view needs.
     fn on_register(
         &self,
-        system_registry: &mut SpaceViewSystemRegistrator<'_>,
-    ) -> Result<(), SpaceViewClassRegistryError> {
+        system_registry: &mut ViewSystemRegistrator<'_>,
+    ) -> Result<(), ViewClassRegistryError> {
         system_registry.register_visualizer::<NodeVisualizer>()?;
         system_registry.register_visualizer::<EdgesVisualizer>()
     }
 
-    fn new_state(&self) -> Box<dyn SpaceViewState> {
-        Box::<GraphSpaceViewState>::default()
+    fn new_state(&self) -> Box<dyn ViewState> {
+        Box::<GraphViewState>::default()
     }
 
-    fn preferred_tile_aspect_ratio(&self, state: &dyn SpaceViewState) -> Option<f32> {
-        let state = state.downcast_ref::<GraphSpaceViewState>().ok()?;
+    fn preferred_tile_aspect_ratio(&self, state: &dyn ViewState) -> Option<f32> {
+        let state = state.downcast_ref::<GraphViewState>().ok()?;
 
         if let Some(bounds) = state.visual_bounds {
             let width = bounds.x_range.abs_len() as f32;
@@ -96,23 +96,23 @@ Display a graph of nodes and edges.
         None
     }
 
-    fn layout_priority(&self) -> SpaceViewClassLayoutPriority {
+    fn layout_priority(&self) -> ViewClassLayoutPriority {
         Default::default()
     }
 
-    fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> SpaceViewSpawnHeuristics {
+    fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> ViewSpawnHeuristics {
         if let Some(applicable) = ctx
             .applicable_entities_per_visualizer
             .get(&NodeVisualizer::identifier())
         {
-            SpaceViewSpawnHeuristics::new(
+            ViewSpawnHeuristics::new(
                 applicable
                     .iter()
                     .cloned()
-                    .map(RecommendedSpaceView::new_single_entity),
+                    .map(RecommendedView::new_single_entity),
             )
         } else {
-            SpaceViewSpawnHeuristics::empty()
+            ViewSpawnHeuristics::empty()
         }
     }
 
@@ -123,11 +123,11 @@ Display a graph of nodes and edges.
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut dyn SpaceViewState,
+        state: &mut dyn ViewState,
         _space_origin: &EntityPath,
-        space_view_id: SpaceViewId,
-    ) -> Result<(), SpaceViewSystemExecutionError> {
-        let state = state.downcast_mut::<GraphSpaceViewState>()?;
+        space_view_id: ViewId,
+    ) -> Result<(), ViewSystemExecutionError> {
+        let state = state.downcast_mut::<GraphViewState>()?;
 
         ui.selection_grid("graph_view_settings_ui").show(ui, |ui| {
             state.layout_ui(ui);
@@ -154,10 +154,10 @@ Display a graph of nodes and edges.
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut dyn SpaceViewState,
+        state: &mut dyn ViewState,
         query: &ViewQuery<'_>,
         system_output: SystemExecutionOutput,
-    ) -> Result<(), SpaceViewSystemExecutionError> {
+    ) -> Result<(), ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
         let node_data = &system_output.view_systems.get::<NodeVisualizer>()?.data;
@@ -167,7 +167,7 @@ Display a graph of nodes and edges.
             .map(|(ent, nodes, edges)| Graph::new(ui, ent.clone(), nodes, edges))
             .collect::<Vec<_>>();
 
-        let state = state.downcast_mut::<GraphSpaceViewState>()?;
+        let state = state.downcast_mut::<GraphViewState>()?;
 
         let bounds_property = ViewProperty::from_archetype::<VisualBounds2D>(
             ctx.blueprint_db(),
