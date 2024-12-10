@@ -5,7 +5,6 @@ use arrow2::array::{Array as _, ListArray as Arrow2ListArray};
 use itertools::Itertools as _;
 
 use re_chunk::{Chunk, EntityPath, RowId};
-use re_log_types::StoreKind;
 use re_types_core::SizeBytes;
 
 use crate::{
@@ -44,7 +43,7 @@ impl ChunkStore {
         // I'd like to keep this debug assertion a tiny bit longer just in case, so for we just
         // ignore blueprints.
         #[cfg(debug_assertions)]
-        if self.id.kind == StoreKind::Recording {
+        if self.id.kind == re_log_types::StoreKind::Recording {
             for (component_name, per_desc) in chunk.components().iter() {
                 assert!(
                     per_desc.len() <= 1,
