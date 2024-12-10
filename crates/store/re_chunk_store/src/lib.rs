@@ -24,6 +24,8 @@ mod store;
 mod subscribers;
 mod writes;
 
+mod protobuf_conversions;
+
 pub use self::dataframe::{
     ColumnDescriptor, ColumnSelector, ComponentColumnDescriptor, ComponentColumnSelector, Index,
     IndexRange, IndexValue, QueryExpression, SparseFillStrategy, TimeColumnDescriptor,
