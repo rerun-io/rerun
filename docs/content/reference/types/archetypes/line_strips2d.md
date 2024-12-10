@@ -63,5 +63,5 @@ snippet: archetypes/line_strips2d_batch
 
 ### Lines with scene & UI radius each
 
-snippet: archetypes/line_strips3d_ui_radius
+snippet: archetypes/line_strips2d_ui_radius
 
