@@ -83,7 +83,7 @@ def test_bad_tensors() -> None:
     # Wrong size buffer for dimensions
     with pytest.raises(ValueError):
         TensorData(
-            shape=[8, 6, 3, 5],
+            shape=[1, 2, 3],
             dim_names=["a", "b", "c", "d"],
             buffer=RANDOM_TENSOR_SOURCE,
         )
@@ -100,7 +100,7 @@ def test_bad_tensors() -> None:
     # Shape disagrees with array
     with pytest.raises(ValueError):
         TensorData(
-            shape=[8, 6, 3, 5],
+            shape=[1, 2, 3],
             dim_names=["a", "b", "c", "d"],
             array=RANDOM_TENSOR_SOURCE,
         )
