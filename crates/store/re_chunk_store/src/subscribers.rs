@@ -1,4 +1,7 @@
+use ahash::HashMap;
+use itertools::Itertools as _;
 use parking_lot::RwLock;
+use re_log_types::StoreId;
 
 use crate::{ChunkStore, ChunkStoreEvent};
 
@@ -55,6 +58,20 @@ pub trait ChunkStoreSubscriber: std::any::Any + Send + Sync {
     /// }
     /// ```
     fn on_events(&mut self, events: &[ChunkStoreEvent]);
+}
+
+/// A [`ChunkStoreSubscriber`] that is intantiated for each unique [`StoreId`].
+pub trait PerStoreChunkSubscriber: Send + Sync + Default {
+    /// Arbitrary name for the subscriber.
+    ///
+    /// Does not need to be unique.
+    fn name() -> String;
+
+    /// Get notified of changes happening in a [`ChunkStore`], see [`ChunkStoreSubscriber::on_events`].
+    ///
+    /// Unlike [`ChunkStoreSubscriber::on_events`], all items are guarnateed to have the same [`StoreId`]
+    /// which does not change per invocation.
+    fn on_events<'a>(&mut self, events: impl Iterator<Item = &'a ChunkStoreEvent>);
 }
 
 /// All registered [`ChunkStoreSubscriber`]s.
@@ -143,6 +160,81 @@ impl ChunkStore {
         })
     }
 
+    /// Registers a [`PerStoreChunkSubscriber`] type so it gets automatically notified when data gets added and/or
+    /// removed to/from a [`ChunkStore`].
+    ///
+    /// Unlike [`register_subscriber`], this will create a new subscriber for each unique [`StoreId`].
+    pub fn register_per_store_subscriber<S: PerStoreChunkSubscriber + Default + 'static>(
+    ) -> ChunkStoreSubscriberHandle {
+        let mut subscribers = SUBSCRIBERS.write();
+        subscribers.push(RwLock::new(Box::new(
+            PerStoreStoreSubscriberWrapper::<S>::default(),
+        )));
+        ChunkStoreSubscriberHandle(subscribers.len() as u32 - 1)
+    }
+
+    /// Passes a reference to the downcasted per-store subscriber to the given `FnMut` callback.
+    ///
+    /// Returns `None` if the subscriber doesn't exist or downcasting failed.
+    pub fn with_per_store_subscriber<S: PerStoreChunkSubscriber + 'static, T, F: FnMut(&S) -> T>(
+        ChunkStoreSubscriberHandle(handle): ChunkStoreSubscriberHandle,
+        store_id: &StoreId,
+        mut f: F,
+    ) -> Option<T> {
+        let subscribers = SUBSCRIBERS.read();
+        subscribers.get(handle as usize).and_then(|subscriber| {
+            let subscriber = subscriber.read();
+            subscriber
+                .as_any()
+                .downcast_ref::<PerStoreStoreSubscriberWrapper<S>>()
+                .and_then(|wrapper| wrapper.get(store_id).map(&mut f))
+        })
+    }
+
+    /// Passes a reference to the downcasted per-store subscriber to the given `FnOnce` callback.
+    ///
+    /// Returns `None` if the subscriber doesn't exist or downcasting failed.
+    pub fn with_per_store_subscriber_once<
+        S: PerStoreChunkSubscriber + 'static,
+        T,
+        F: FnOnce(&S) -> T,
+    >(
+        ChunkStoreSubscriberHandle(handle): ChunkStoreSubscriberHandle,
+        store_id: &StoreId,
+        f: F,
+    ) -> Option<T> {
+        let subscribers = SUBSCRIBERS.read();
+        subscribers.get(handle as usize).and_then(|subscriber| {
+            let subscriber = subscriber.read();
+            subscriber
+                .as_any()
+                .downcast_ref::<PerStoreStoreSubscriberWrapper<S>>()
+                .and_then(|wrapper| wrapper.get(store_id).map(f))
+        })
+    }
+
+    /// Passes a mutable reference to the downcasted per-store subscriber to the given callback.
+    ///
+    /// Returns `None` if the subscriber doesn't exist or downcasting failed.
+    pub fn with_per_store_subscriber_mut<
+        S: PerStoreChunkSubscriber + 'static,
+        T,
+        F: FnMut(&mut S) -> T,
+    >(
+        ChunkStoreSubscriberHandle(handle): ChunkStoreSubscriberHandle,
+        store_id: &StoreId,
+        mut f: F,
+    ) -> Option<T> {
+        let subscribers = SUBSCRIBERS.read();
+        subscribers.get(handle as usize).and_then(|subscriber| {
+            let mut subscriber = subscriber.write();
+            subscriber
+                .as_any_mut()
+                .downcast_mut::<PerStoreStoreSubscriberWrapper<S>>()
+                .and_then(|wrapper| wrapper.get_mut(store_id).map(&mut f))
+        })
+    }
+
     /// Called by [`ChunkStore`]'s mutating methods to notify subscriber subscribers of upcoming events.
     pub(crate) fn on_events(events: &[ChunkStoreEvent]) {
         re_tracing::profile_function!();
@@ -150,6 +242,47 @@ impl ChunkStore {
         // TODO(cmc): might want to parallelize at some point.
         for subscriber in subscribers.iter() {
             subscriber.write().on_events(events);
+        }
+    }
+}
+
+/// Utility that makes a [`PerStoreChunkSubscriber`] a [`ChunkStoreSubscriber`].
+#[derive(Default)]
+struct PerStoreStoreSubscriberWrapper<S: PerStoreChunkSubscriber> {
+    subscribers: HashMap<StoreId, Box<S>>,
+}
+
+impl<S: PerStoreChunkSubscriber + 'static> PerStoreStoreSubscriberWrapper<S> {
+    fn get(&self, store_id: &StoreId) -> Option<&S> {
+        self.subscribers.get(store_id).map(|s| s.as_ref())
+    }
+
+    fn get_mut(&mut self, store_id: &StoreId) -> Option<&mut S> {
+        self.subscribers.get_mut(store_id).map(|s| s.as_mut())
+    }
+}
+
+impl<S: PerStoreChunkSubscriber + 'static> ChunkStoreSubscriber
+    for PerStoreStoreSubscriberWrapper<S>
+{
+    fn name(&self) -> String {
+        S::name()
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
+
+    fn on_events(&mut self, events: &[ChunkStoreEvent]) {
+        for (store_id, events) in &events.iter().chunk_by(|e| e.store_id.clone()) {
+            self.subscribers
+                .entry(store_id)
+                .or_default()
+                .on_events(events);
         }
     }
 }
