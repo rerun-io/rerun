@@ -33,7 +33,7 @@ In this case, the `lat_lon` argument is keyword-only and must thus be explicitly
 Rerun currently supports two types of geometries:
 
 - [`GeoPoints`](../../reference/types/archetypes/geo_points.md): batch of individual points, with optional [radius](../../reference/types/components/radius.md) and [color](../../reference/types/components/color.md)
-- [`GeoLineStrings`](../../reference/types/archetypes/geo_line_stringss.md): batch of line strings, with optional [radius](../../reference/types/components/radius.md) and [color](../../reference/types/components/color.md)
+- [`GeoLineStrings`](../../reference/types/archetypes/geo_line_strings.md): batch of line strings, with optional [radius](../../reference/types/components/radius.md) and [color](../../reference/types/components/color.md)
 
 *Note*: polygons are planned but are not supported yet (see [this issue](https://github.com/rerun-io/rerun/issues/8066)).
 
