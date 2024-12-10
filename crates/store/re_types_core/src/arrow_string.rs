@@ -56,8 +56,20 @@ impl ArrowString {
     }
 
     #[inline]
+    pub fn into_arrow_buffer(self) -> arrow::buffer::Buffer {
+        self.0.into()
+    }
+
+    #[inline]
     pub fn into_arrow2_buffer(self) -> arrow2::buffer::Buffer<u8> {
         self.0
+    }
+}
+
+impl From<arrow::buffer::Buffer> for ArrowString {
+    #[inline]
+    fn from(buf: arrow::buffer::Buffer) -> Self {
+        Self(buf.into())
     }
 }
 

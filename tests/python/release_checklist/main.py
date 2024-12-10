@@ -32,10 +32,10 @@ def main() -> None:
     args = parser.parse_args()
 
     # Download test assets:
-    download_test_assest_path = (
+    download_test_assets_path = (
         Path(__file__).parent.parent.parent.joinpath("assets/download_test_assets.py").absolute()
     )
-    subprocess.run([sys.executable, download_test_assest_path])
+    subprocess.run([sys.executable, download_test_assets_path])
 
     log_checks(args)
 

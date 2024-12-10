@@ -114,7 +114,7 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usiz
             },
             ComponentDescriptor {
                 archetype_name: Some("rerun.archetypes.Arrows3D".into()),
-                component_name: "Arrows3DIndicator".into(),
+                component_name: "rerun.components.Arrows3DIndicator".into(),
                 archetype_field_name: None,
             },
         ]
@@ -166,7 +166,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 8usize]> =
             },
             ComponentDescriptor {
                 archetype_name: Some("rerun.archetypes.Arrows3D".into()),
-                component_name: "Arrows3DIndicator".into(),
+                component_name: "rerun.components.Arrows3DIndicator".into(),
                 archetype_field_name: None,
             },
             ComponentDescriptor {

@@ -12,6 +12,37 @@ Everything within these bounds is guaranteed to be visible.
 
 Somethings outside of these bounds may also be visible due to letterboxing.
 
+* `range`: Controls the visible range of a 2D view.
+* `near_clip_plane`: Controls the distance to the near clip plane in 3D scene units.
+### `force_link`
+Allows to control the interaction between two nodes connected by an edge.
+
+* `enabled`: Whether the force is enabled.
+* `distance`: The target distance between two nodes.
+* `iterations`: Specifies how often this force should be applied per iteration.
+### `force_many_body`
+A force between each pair of nodes that ressembles an electrical charge.
+
+* `enabled`: Whether the force is enabled.
+* `strength`: The strength of the force.
+### `force_position`
+Similar to gravity, this force pulls nodes towards a specific position.
+
+* `enabled`: Whether the force is enabled.
+* `strength`: The strength of the force.
+* `position`: The position where the nodes should be pulled towards.
+### `force_collision_radius`
+Resolves collisions between the bounding spheres, according to the radius of the nodes.
+
+* `enabled`: Whether the force is enabled.
+* `strength`: The strength of the force.
+* `iterations`: Specifies how often this force should be applied per iteration.
+### `force_center`
+Tries to move the center of mass of the graph to the origin.
+
+* `enabled`: Whether the force is enabled.
+* `strength`: The strength of the force.
+
 ## API reference links
  * 🐍 [Python API docs for `GraphView`](https://ref.rerun.io/docs/python/stable/common/blueprint_views?speculative-link#rerun.blueprint.views.GraphView)
 

@@ -1,0 +1,14 @@
+
+namespace rerun.blueprint.components;
+
+/// Specifies how often this force should be applied per iteration.
+///
+/// Increasing this parameter can lead to better results at the cost of longer computation time.
+struct ForceIterations (
+  "attr.arrow.transparent",
+  "attr.rust.derive": "Default, Copy, PartialEq, Eq",
+  "attr.rust.repr": "transparent",
+  "attr.rerun.scope": "blueprint"
+) {
+    distance: rerun.datatypes.UInt64 (order: 100);
+}
