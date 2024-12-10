@@ -4,8 +4,9 @@ use itertools::Itertools;
 
 use re_dataframe::{
     ChunkStoreConfig, EntityPathFilter, QueryEngine, QueryExpression, ResolvedTimeRange,
-    SparseFillStrategy, StoreKind, TimeInt, Timeline, VersionPolicy,
+    SparseFillStrategy, StoreKind, TimeInt, Timeline,
 };
+use re_log_encoding::VersionPolicy;
 
 fn main() -> anyhow::Result<()> {
     let args = std::env::args().collect_vec();

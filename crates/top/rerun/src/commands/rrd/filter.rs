@@ -60,7 +60,7 @@ impl FilterCommand {
             .collect();
 
         // TODO(cmc): might want to make this configurable at some point.
-        let version_policy = re_log_encoding::decoder::VersionPolicy::Warn;
+        let version_policy = re_log_encoding::VersionPolicy::Warn;
         let (rx_decoder, rx_size_bytes) =
             read_rrd_streams_from_file_or_stdin(version_policy, path_to_input_rrds);
 

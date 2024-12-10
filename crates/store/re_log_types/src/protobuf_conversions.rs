@@ -189,3 +189,342 @@ impl From<crate::StoreId> for re_protos::common::v0::RecordingId {
         }
     }
 }
+
+impl From<crate::StoreSource> for re_protos::log_msg::v0::StoreSource {
+    #[inline]
+    fn from(value: crate::StoreSource) -> Self {
+        use re_protos::external::prost::Message as _;
+
+        let (kind, payload) = match value {
+            crate::StoreSource::Unknown => (
+                re_protos::log_msg::v0::StoreSourceKind::UnknownKind as i32,
+                Vec::new(),
+            ),
+            crate::StoreSource::CSdk => (
+                re_protos::log_msg::v0::StoreSourceKind::CSdk as i32,
+                Vec::new(),
+            ),
+            crate::StoreSource::PythonSdk(python_version) => (
+                re_protos::log_msg::v0::StoreSourceKind::PythonSdk as i32,
+                re_protos::log_msg::v0::PythonVersion::from(python_version).encode_to_vec(),
+            ),
+            crate::StoreSource::RustSdk {
+                rustc_version,
+                llvm_version,
+            } => (
+                re_protos::log_msg::v0::StoreSourceKind::RustSdk as i32,
+                re_protos::log_msg::v0::CrateInfo {
+                    rustc_version,
+                    llvm_version,
+                }
+                .encode_to_vec(),
+            ),
+            crate::StoreSource::File { file_source } => (
+                re_protos::log_msg::v0::StoreSourceKind::File as i32,
+                re_protos::log_msg::v0::FileSource::from(file_source).encode_to_vec(),
+            ),
+            crate::StoreSource::Viewer => (
+                re_protos::log_msg::v0::StoreSourceKind::Viewer as i32,
+                Vec::new(),
+            ),
+            crate::StoreSource::Other(description) => (
+                re_protos::log_msg::v0::StoreSourceKind::Other as i32,
+                description.into_bytes(),
+            ),
+        };
+
+        Self {
+            kind,
+            extra: Some(re_protos::log_msg::v0::StoreSourceExtra { payload }),
+        }
+    }
+}
+
+impl TryFrom<re_protos::log_msg::v0::StoreSource> for crate::StoreSource {
+    type Error = TypeConversionError;
+
+    #[inline]
+    fn try_from(value: re_protos::log_msg::v0::StoreSource) -> Result<Self, Self::Error> {
+        use re_protos::external::prost::Message as _;
+        use re_protos::log_msg::v0::StoreSourceKind;
+
+        match value.kind() {
+            StoreSourceKind::UnknownKind => Ok(Self::Unknown),
+            StoreSourceKind::CSdk => Ok(Self::CSdk),
+            StoreSourceKind::PythonSdk => {
+                let extra = value.extra.ok_or(TypeConversionError::missing_field(
+                    "rerun.log_msg.v0.StoreSource",
+                    "extra",
+                ))?;
+                let python_version =
+                    re_protos::log_msg::v0::PythonVersion::decode(&mut &extra.payload[..])?;
+                Ok(Self::PythonSdk(crate::PythonVersion::try_from(
+                    python_version,
+                )?))
+            }
+            StoreSourceKind::RustSdk => {
+                let extra = value.extra.ok_or(TypeConversionError::missing_field(
+                    "rerun.log_msg.v0.StoreSource",
+                    "extra",
+                ))?;
+                let crate_info =
+                    re_protos::log_msg::v0::CrateInfo::decode(&mut &extra.payload[..])?;
+                Ok(Self::RustSdk {
+                    rustc_version: crate_info.rustc_version,
+                    llvm_version: crate_info.llvm_version,
+                })
+            }
+            StoreSourceKind::File => {
+                let extra = value.extra.ok_or(TypeConversionError::missing_field(
+                    "rerun.log_msg.v0.StoreSource",
+                    "extra",
+                ))?;
+                let file_source =
+                    re_protos::log_msg::v0::FileSource::decode(&mut &extra.payload[..])?;
+                Ok(Self::File {
+                    file_source: crate::FileSource::try_from(file_source)?,
+                })
+            }
+            StoreSourceKind::Viewer => Ok(Self::Viewer),
+            StoreSourceKind::Other => {
+                let description = value.extra.ok_or(TypeConversionError::missing_field(
+                    "rerun.log_msg.v0.StoreSource",
+                    "extra",
+                ))?;
+                let description = String::from_utf8(description.payload).map_err(|err| {
+                    TypeConversionError::InvalidField {
+                        type_name: "rerun.log_msg.v0.StoreSource",
+                        field_name: "extra",
+                        reason: err.to_string(),
+                    }
+                })?;
+                Ok(Self::Other(description))
+            }
+        }
+    }
+}
+
+impl From<crate::PythonVersion> for re_protos::log_msg::v0::PythonVersion {
+    #[inline]
+    fn from(value: crate::PythonVersion) -> Self {
+        let mut version = Vec::new();
+        version.push(value.major);
+        version.push(value.minor);
+        version.push(value.patch);
+        version.extend_from_slice(value.suffix.as_bytes());
+
+        Self { version }
+    }
+}
+
+impl TryFrom<re_protos::log_msg::v0::PythonVersion> for crate::PythonVersion {
+    type Error = TypeConversionError;
+
+    #[inline]
+    fn try_from(value: re_protos::log_msg::v0::PythonVersion) -> Result<Self, Self::Error> {
+        if value.version.len() < 3 {
+            return Err(TypeConversionError::InvalidField {
+                type_name: "rerun.log_msg.v0.PythonVersion",
+                field_name: "version",
+                reason: "expected at least 3 bytes".to_owned(),
+            });
+        }
+
+        let major = value.version[0];
+        let minor = value.version[1];
+        let patch = value.version[2];
+        let suffix = std::str::from_utf8(&value.version[3..])
+            .map_err(|err| TypeConversionError::InvalidField {
+                type_name: "rerun.log_msg.v0.PythonVersion",
+                field_name: "version",
+                reason: err.to_string(),
+            })?
+            .to_owned();
+
+        Ok(Self {
+            major,
+            minor,
+            patch,
+            suffix,
+        })
+    }
+}
+
+impl From<crate::FileSource> for re_protos::log_msg::v0::FileSource {
+    #[inline]
+    fn from(value: crate::FileSource) -> Self {
+        let kind = match value {
+            crate::FileSource::Cli => re_protos::log_msg::v0::FileSourceKind::Cli as i32,
+            crate::FileSource::Uri => re_protos::log_msg::v0::FileSourceKind::Uri as i32,
+            crate::FileSource::DragAndDrop { .. } => {
+                re_protos::log_msg::v0::FileSourceKind::DragAndDrop as i32
+            }
+            crate::FileSource::FileDialog { .. } => {
+                re_protos::log_msg::v0::FileSourceKind::FileDialog as i32
+            }
+            crate::FileSource::Sdk => re_protos::log_msg::v0::FileSourceKind::Sdk as i32,
+        };
+
+        Self { kind }
+    }
+}
+
+impl TryFrom<re_protos::log_msg::v0::FileSource> for crate::FileSource {
+    type Error = TypeConversionError;
+
+    #[inline]
+    fn try_from(value: re_protos::log_msg::v0::FileSource) -> Result<Self, Self::Error> {
+        use re_protos::log_msg::v0::FileSourceKind;
+
+        match value.kind() {
+            FileSourceKind::Cli => Ok(Self::Cli),
+            FileSourceKind::Uri => Ok(Self::Uri),
+            FileSourceKind::DragAndDrop => Ok(Self::DragAndDrop {
+                recommended_application_id: None,
+                recommended_recording_id: None,
+                force_store_info: false,
+            }),
+            FileSourceKind::FileDialog => Ok(Self::FileDialog {
+                recommended_application_id: None,
+                recommended_recording_id: None,
+                force_store_info: false,
+            }),
+            FileSourceKind::Sdk => Ok(Self::Sdk),
+            FileSourceKind::UnknownSource => Err(TypeConversionError::InvalidField {
+                type_name: "rerun.log_msg.v0.FileSource",
+                field_name: "kind",
+                reason: "unknown kind".to_owned(),
+            }),
+        }
+    }
+}
+
+impl From<crate::StoreInfo> for re_protos::log_msg::v0::StoreInfo {
+    #[inline]
+    fn from(value: crate::StoreInfo) -> Self {
+        Self {
+            application_id: Some(value.application_id.into()),
+            store_id: Some(value.store_id.into()),
+            is_official_example: value.is_official_example,
+            started: Some(value.started.into()),
+            store_source: Some(value.store_source.into()),
+        }
+    }
+}
+
+impl TryFrom<re_protos::log_msg::v0::StoreInfo> for crate::StoreInfo {
+    type Error = TypeConversionError;
+
+    #[inline]
+    fn try_from(value: re_protos::log_msg::v0::StoreInfo) -> Result<Self, Self::Error> {
+        let application_id: crate::ApplicationId = value
+            .application_id
+            .ok_or(TypeConversionError::missing_field(
+                "rerun.log_msg.v0.StoreInfo",
+                "application_id",
+            ))?
+            .into();
+        let store_id: crate::StoreId = value
+            .store_id
+            .ok_or(TypeConversionError::missing_field(
+                "rerun.log_msg.v0.StoreInfo",
+                "store_id",
+            ))?
+            .into();
+        let is_official_example = value.is_official_example;
+        let started: crate::Time = value
+            .started
+            .ok_or(TypeConversionError::missing_field(
+                "rerun.log_msg.v0.StoreInfo",
+                "started",
+            ))?
+            .into();
+        let store_source: crate::StoreSource = value
+            .store_source
+            .ok_or(TypeConversionError::missing_field(
+                "rerun.log_msg.v0.StoreInfo",
+                "store_source",
+            ))?
+            .try_into()?;
+
+        Ok(Self {
+            application_id,
+            store_id,
+            cloned_from: None,
+            is_official_example,
+            started,
+            store_source,
+            store_version: Some(re_build_info::CrateVersion::LOCAL),
+        })
+    }
+}
+
+impl From<crate::SetStoreInfo> for re_protos::log_msg::v0::SetStoreInfo {
+    #[inline]
+    fn from(value: crate::SetStoreInfo) -> Self {
+        Self {
+            row_id: Some(value.row_id.into()),
+            info: Some(value.info.into()),
+        }
+    }
+}
+
+impl TryFrom<re_protos::log_msg::v0::SetStoreInfo> for crate::SetStoreInfo {
+    type Error = TypeConversionError;
+
+    #[inline]
+    fn try_from(value: re_protos::log_msg::v0::SetStoreInfo) -> Result<Self, Self::Error> {
+        Ok(Self {
+            row_id: value
+                .row_id
+                .ok_or(TypeConversionError::missing_field(
+                    "rerun.log_msg.v0.SetStoreInfo",
+                    "row_id",
+                ))?
+                .into(),
+            info: value
+                .info
+                .ok_or(TypeConversionError::missing_field(
+                    "rerun.log_msg.v0.SetStoreInfo",
+                    "info",
+                ))?
+                .try_into()?,
+        })
+    }
+}
+
+impl From<crate::BlueprintActivationCommand>
+    for re_protos::log_msg::v0::BlueprintActivationCommand
+{
+    #[inline]
+    fn from(value: crate::BlueprintActivationCommand) -> Self {
+        Self {
+            blueprint_id: Some(value.blueprint_id.into()),
+            make_active: value.make_active,
+            make_default: value.make_default,
+        }
+    }
+}
+
+impl TryFrom<re_protos::log_msg::v0::BlueprintActivationCommand>
+    for crate::BlueprintActivationCommand
+{
+    type Error = TypeConversionError;
+
+    #[inline]
+    fn try_from(
+        value: re_protos::log_msg::v0::BlueprintActivationCommand,
+    ) -> Result<Self, Self::Error> {
+        Ok(Self {
+            blueprint_id: value
+                .blueprint_id
+                .ok_or(TypeConversionError::missing_field(
+                    "rerun.log_msg.v0.BlueprintActivationCommand",
+                    "blueprint_id",
+                ))?
+                .into(),
+            make_active: value.make_active,
+            make_default: value.make_default,
+        })
+    }
+}
