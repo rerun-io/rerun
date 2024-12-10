@@ -20,7 +20,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: A force between each pair of nodes that ressembles an electrical charge.
 ///
-/// If `ForceStrength` is smaller than 0, it pushes nodes apart, if it is larger than 0 it pulls them together.
+/// If `strength` is smaller than 0, it pushes nodes apart, if it is larger than 0 it pulls them together.
 #[derive(Clone, Debug)]
 pub struct ForceManyBody {
     /// Whether the force is enabled.
@@ -39,7 +39,7 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usiz
     once_cell::sync::Lazy::new(|| {
         [ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.ForceManyBody".into()),
-            component_name: "ForceManyBodyIndicator".into(),
+            component_name: "rerun.blueprint.components.ForceManyBodyIndicator".into(),
             archetype_field_name: None,
         }]
     });
@@ -65,7 +65,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
         [
             ComponentDescriptor {
                 archetype_name: Some("rerun.blueprint.archetypes.ForceManyBody".into()),
-                component_name: "ForceManyBodyIndicator".into(),
+                component_name: "rerun.blueprint.components.ForceManyBodyIndicator".into(),
                 archetype_field_name: None,
             },
             ComponentDescriptor {

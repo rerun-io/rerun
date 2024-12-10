@@ -11,6 +11,9 @@ A graph view to display time-variying, directed or undirected graph visualizatio
 Everything within these bounds is guaranteed to be visible.
 
 Somethings outside of these bounds may also be visible due to letterboxing.
+
+* `range`: Controls the visible range of a 2D view.
+* `near_clip_plane`: Controls the distance to the near clip plane in 3D scene units.
 ### `force_link`
 Allows to control the interaction between two nodes connecting throught an edge.
 
@@ -39,9 +42,6 @@ Tries to move the center of mass of the graph to the origin.
 
 * `enabled`: Whether the force is enabled.
 * `strength`: The strength of the force.
-
-* `range`: Controls the visible range of a 2D view.
-* `near_clip_plane`: Controls the distance to the near clip plane in 3D scene units.
 
 ## API reference links
  * 🐍 [Python API docs for `GraphView`](https://ref.rerun.io/docs/python/stable/common/blueprint_views?speculative-link#rerun.blueprint.views.GraphView)
