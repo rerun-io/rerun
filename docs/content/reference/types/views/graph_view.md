@@ -15,7 +15,7 @@ Somethings outside of these bounds may also be visible due to letterboxing.
 * `range`: Controls the visible range of a 2D view.
 * `near_clip_plane`: Controls the distance to the near clip plane in 3D scene units.
 ### `force_link`
-Allows to control the interaction between two nodes connecting throught an edge.
+Allows to control the interaction between two nodes connected by an edge.
 
 * `enabled`: Whether the force is enabled.
 * `distance`: The target distance between two nodes.
@@ -32,7 +32,7 @@ Similar to gravity, this force pulls nodes towards a specific position.
 * `strength`: The strength of the force.
 * `position`: The position where the nodes should be pulled towards.
 ### `force_collision_radius`
-Resolves collisons between the bounding spheres, according to the radius of the nodes.
+Resolves collisions between the bounding spheres, according to the radius of the nodes.
 
 * `enabled`: Whether the force is enabled.
 * `strength`: The strength of the force.

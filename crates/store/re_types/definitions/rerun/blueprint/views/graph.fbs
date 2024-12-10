@@ -12,7 +12,7 @@ table GraphView (
     /// Somethings outside of these bounds may also be visible due to letterboxing.
     visual_bounds: rerun.blueprint.archetypes.VisualBounds2D (order: 1000);
 
-    /// Allows to control the interaction between two nodes connecting throught an edge.
+    /// Allows to control the interaction between two nodes connected by an edge.
     force_link: rerun.blueprint.archetypes.ForceLink (order: 2000);
 
     /// A force between each pair of nodes that ressembles an electrical charge.
@@ -21,7 +21,7 @@ table GraphView (
     /// Similar to gravity, this force pulls nodes towards a specific position.
     force_position: rerun.blueprint.archetypes.ForcePosition (order: 4000);
 
-    /// Resolves collisons between the bounding spheres, according to the radius of the nodes.
+    /// Resolves collisions between the bounding spheres, according to the radius of the nodes.
     force_collision_radius: rerun.blueprint.archetypes.ForceCollisionRadius (order: 5000);
 
     /// Tries to move the center of mass of the graph to the origin.

@@ -110,13 +110,13 @@ class GraphView(SpaceView):
 
             Somethings outside of these bounds may also be visible due to letterboxing.
         force_link:
-            Allows to control the interaction between two nodes connecting throught an edge.
+            Allows to control the interaction between two nodes connected by an edge.
         force_many_body:
             A force between each pair of nodes that ressembles an electrical charge.
         force_position:
             Similar to gravity, this force pulls nodes towards a specific position.
         force_collision_radius:
-            Resolves collisons between the bounding spheres, according to the radius of the nodes.
+            Resolves collisions between the bounding spheres, according to the radius of the nodes.
         force_center:
             Tries to move the center of mass of the graph to the origin.
 
