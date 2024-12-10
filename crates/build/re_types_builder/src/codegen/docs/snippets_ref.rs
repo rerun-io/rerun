@@ -13,6 +13,25 @@ use crate::{CodeGenerator, GeneratedFiles, Object, ObjectKind, Objects, Reporter
 
 // ---
 
+/// See `docs/snippets/snippets.toml` for more info
+#[derive(Debug, serde::Deserialize)]
+struct Config {
+    snippets_ref: SnippetsRef,
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct SnippetsRef {
+    snippets: OptOut,
+    archetypes: OptOut,
+    components: OptOut,
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct OptOut {
+    // <name, vec<snippet_name_qualified>>
+    opt_out: BTreeMap<String, Vec<String>>,
+}
+
 /// Everything we know about a snippet, including which objects (archetypes, components, etc) it references.
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
@@ -117,6 +136,10 @@ impl SnippetsRefCodeGenerator {
         let snippets_dir_root = snippets_dir.join("all");
         let snippets_dir_archetypes = snippets_dir_root.clone();
 
+        let config_path = snippets_dir.join("snippets.toml");
+        let config = std::fs::read_to_string(config_path)?;
+        let config: Config = toml::from_str(&config)?;
+
         let known_objects = KnownObjects::init(objects);
 
         let snippets = collect_snippets_recursively(
@@ -180,6 +203,10 @@ impl SnippetsRefCodeGenerator {
             Ok(row)
         }
 
+        let opt_outs = &config.snippets_ref.snippets.opt_out;
+        let archetype_opt_outs = &config.snippets_ref.archetypes.opt_out;
+        let component_opt_outs = &config.snippets_ref.components.opt_out;
+
         let snippets_table = |snippets: &BTreeMap<&Object, Vec<Snippet<'_>>>| {
             let table = snippets
                 .iter()
@@ -197,6 +224,29 @@ impl SnippetsRefCodeGenerator {
                         }
                     });
                     snippets.into_iter().map(move |snippet| (obj, snippet))
+                })
+                .filter(|(obj, snippet)| {
+                    if opt_outs.contains_key(&snippet.name_qualified) {
+                        return false;
+                    }
+
+                    if obj.kind == ObjectKind::Archetype {
+                        if let Some(opt_outs) = archetype_opt_outs.get(&obj.name) {
+                            if opt_outs.contains(&snippet.name_qualified) {
+                                return false;
+                            }
+                        }
+                    }
+
+                    if obj.kind == ObjectKind::Component {
+                        if let Some(opt_outs) = component_opt_outs.get(&obj.name) {
+                            if opt_outs.contains(&snippet.name_qualified) {
+                                return false;
+                            }
+                        }
+                    }
+
+                    true
                 })
                 .map(|(obj, snippet)| snippet_row(obj, &snippet))
                 .collect::<Result<Vec<_>, _>>()?
