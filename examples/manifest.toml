@@ -163,7 +163,7 @@ examples = [
   "all_examples",
   "custom_collection_adapter",
   "custom_data_loader",
-  "custom_space_view",
+  "custom_view",
   "custom_store_subscriber",
   "dataframe_query",
   "drone_lidar",

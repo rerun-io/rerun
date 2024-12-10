@@ -78,9 +78,9 @@ Depending on your display size, the panels may have a different arrangements. Fu
 
 This window has five main sections:
 
--   [Viewport](../reference/viewer/viewport.md) (center): Displays the rendered space views for your session.
+-   [Viewport](../reference/viewer/viewport.md) (center): Displays the rendered views for your session.
 -   [Recordings panel](../concepts/apps-and-recordings.md) (top left): Lists loaded recordings and their applications, and allows navigation back to the welcome screen.
--   [Blueprint panel](../reference/viewer/blueprint.md) (below Recordings): Controls the different space views.
+-   [Blueprint panel](../reference/viewer/blueprint.md) (below Recordings): Controls the different views.
 -   [Selection panel](../reference/viewer/selection.md) (right): Shows detailed information and configuration for selected items.
 -   [Timeline panel](../reference/viewer/timeline.md) (bottom): Controls the current point in time being viewed.
 
@@ -207,7 +207,7 @@ That brings us to the end of this walkthrough. To recap, you have learned how to
 -   Run the Rerun Viewer using the `rerun` command.
 -   Open the examples integrated in the viewer.
 -   Work with the [Blueprint](../reference/viewer/blueprint.md), [Selection](../reference/viewer/selection.md) and [Timeline](../reference/viewer/timeline.md) panels.
--   Rearrange space view layouts.
+-   Rearrange view layouts.
 -   Explore data through hover and selection.
 -   Change the time selection.
 -   Switch between different timelines.

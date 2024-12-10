@@ -1731,21 +1731,21 @@ dependencies = [
 ]
 
 [[package]]
-name = "custom_space_view"
+name = "custom_store_subscriber"
+version = "0.21.0-alpha.1+dev"
+dependencies = [
+ "re_build_tools",
+ "rerun",
+]
+
+[[package]]
+name = "custom_view"
 version = "0.21.0-alpha.1+dev"
 dependencies = [
  "mimalloc",
  "re_crash_handler",
  "re_sdk_comms",
  "re_viewer",
-]
-
-[[package]]
-name = "custom_store_subscriber"
-version = "0.21.0-alpha.1+dev"
-dependencies = [
- "re_build_tools",
- "rerun",
 ]
 
 [[package]]
@@ -6293,12 +6293,12 @@ dependencies = [
  "re_format",
  "re_log",
  "re_log_types",
- "re_space_view",
  "re_tracing",
  "re_types",
  "re_types_blueprint",
  "re_types_core",
  "re_ui",
+ "re_view",
  "re_viewer_context",
  "re_viewport_blueprint",
  "serde",
@@ -6314,245 +6314,6 @@ dependencies = [
  "re_tracing",
  "serde",
  "web-time",
-]
-
-[[package]]
-name = "re_space_view"
-version = "0.21.0-alpha.1+dev"
-dependencies = [
- "ahash",
- "arrow",
- "bytemuck",
- "egui",
- "glam",
- "itertools 0.13.0",
- "nohash-hasher",
- "re_chunk_store",
- "re_entity_db",
- "re_log",
- "re_log_types",
- "re_query",
- "re_renderer",
- "re_tracing",
- "re_types",
- "re_types_core",
- "re_ui",
- "re_viewer_context",
- "re_viewport_blueprint",
-]
-
-[[package]]
-name = "re_space_view_bar_chart"
-version = "0.21.0-alpha.1+dev"
-dependencies = [
- "egui",
- "egui_plot",
- "re_chunk_store",
- "re_entity_db",
- "re_log_types",
- "re_renderer",
- "re_space_view",
- "re_tracing",
- "re_types",
- "re_ui",
- "re_viewer_context",
- "re_viewport_blueprint",
-]
-
-[[package]]
-name = "re_space_view_dataframe"
-version = "0.21.0-alpha.1+dev"
-dependencies = [
- "anyhow",
- "egui",
- "egui_table",
- "itertools 0.13.0",
- "re_chunk_store",
- "re_dataframe",
- "re_format",
- "re_log",
- "re_log_types",
- "re_renderer",
- "re_tracing",
- "re_types",
- "re_types_core",
- "re_ui",
- "re_viewer_context",
- "re_viewport_blueprint",
- "thiserror",
-]
-
-[[package]]
-name = "re_space_view_graph"
-version = "0.21.0-alpha.1+dev"
-dependencies = [
- "ahash",
- "egui",
- "fjadra",
- "nohash-hasher",
- "re_chunk",
- "re_data_ui",
- "re_entity_db",
- "re_format",
- "re_log",
- "re_log_types",
- "re_query",
- "re_renderer",
- "re_space_view",
- "re_tracing",
- "re_types",
- "re_ui",
- "re_viewer_context",
- "re_viewport_blueprint",
-]
-
-[[package]]
-name = "re_space_view_map"
-version = "0.21.0-alpha.1+dev"
-dependencies = [
- "bytemuck",
- "egui",
- "glam",
- "itertools 0.13.0",
- "re_data_ui",
- "re_entity_db",
- "re_log",
- "re_log_types",
- "re_math",
- "re_query",
- "re_renderer",
- "re_space_view",
- "re_tracing",
- "re_types",
- "re_ui",
- "re_viewer_context",
- "re_viewport_blueprint",
- "walkers",
-]
-
-[[package]]
-name = "re_space_view_spatial"
-version = "0.21.0-alpha.1+dev"
-dependencies = [
- "ahash",
- "anyhow",
- "arrow",
- "bitflags 2.6.0",
- "bytemuck",
- "criterion",
- "egui",
- "glam",
- "hexasphere",
- "image",
- "itertools 0.13.0",
- "mimalloc",
- "nohash-hasher",
- "once_cell",
- "ordered-float",
- "re_arrow2",
- "re_chunk_store",
- "re_data_ui",
- "re_entity_db",
- "re_error",
- "re_format",
- "re_log",
- "re_log_types",
- "re_math",
- "re_query",
- "re_renderer",
- "re_space_view",
- "re_tracing",
- "re_types",
- "re_ui",
- "re_video",
- "re_viewer_context",
- "re_viewport_blueprint",
- "serde",
- "smallvec",
- "thiserror",
- "vec1",
- "web-time",
-]
-
-[[package]]
-name = "re_space_view_tensor"
-version = "0.21.0-alpha.1+dev"
-dependencies = [
- "anyhow",
- "bytemuck",
- "egui",
- "half",
- "ndarray",
- "re_chunk_store",
- "re_data_ui",
- "re_log_types",
- "re_query",
- "re_renderer",
- "re_space_view",
- "re_tracing",
- "re_types",
- "re_ui",
- "re_viewer_context",
- "re_viewport_blueprint",
- "thiserror",
- "wgpu",
-]
-
-[[package]]
-name = "re_space_view_text_document"
-version = "0.21.0-alpha.1+dev"
-dependencies = [
- "egui",
- "egui_commonmark",
- "re_chunk_store",
- "re_renderer",
- "re_space_view",
- "re_tracing",
- "re_types",
- "re_ui",
- "re_viewer_context",
-]
-
-[[package]]
-name = "re_space_view_text_log"
-version = "0.21.0-alpha.1+dev"
-dependencies = [
- "egui",
- "egui_extras",
- "itertools 0.13.0",
- "re_chunk_store",
- "re_data_ui",
- "re_entity_db",
- "re_log_types",
- "re_query",
- "re_renderer",
- "re_space_view",
- "re_tracing",
- "re_types",
- "re_ui",
- "re_viewer_context",
-]
-
-[[package]]
-name = "re_space_view_time_series"
-version = "0.21.0-alpha.1+dev"
-dependencies = [
- "egui",
- "egui_plot",
- "itertools 0.13.0",
- "rayon",
- "re_chunk_store",
- "re_format",
- "re_log",
- "re_log_types",
- "re_query",
- "re_renderer",
- "re_space_view",
- "re_tracing",
- "re_types",
- "re_ui",
- "re_viewer_context",
- "re_viewport_blueprint",
 ]
 
 [[package]]
@@ -6784,6 +6545,245 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_view"
+version = "0.21.0-alpha.1+dev"
+dependencies = [
+ "ahash",
+ "arrow",
+ "bytemuck",
+ "egui",
+ "glam",
+ "itertools 0.13.0",
+ "nohash-hasher",
+ "re_chunk_store",
+ "re_entity_db",
+ "re_log",
+ "re_log_types",
+ "re_query",
+ "re_renderer",
+ "re_tracing",
+ "re_types",
+ "re_types_core",
+ "re_ui",
+ "re_viewer_context",
+ "re_viewport_blueprint",
+]
+
+[[package]]
+name = "re_view_bar_chart"
+version = "0.21.0-alpha.1+dev"
+dependencies = [
+ "egui",
+ "egui_plot",
+ "re_chunk_store",
+ "re_entity_db",
+ "re_log_types",
+ "re_renderer",
+ "re_tracing",
+ "re_types",
+ "re_ui",
+ "re_view",
+ "re_viewer_context",
+ "re_viewport_blueprint",
+]
+
+[[package]]
+name = "re_view_dataframe"
+version = "0.21.0-alpha.1+dev"
+dependencies = [
+ "anyhow",
+ "egui",
+ "egui_table",
+ "itertools 0.13.0",
+ "re_chunk_store",
+ "re_dataframe",
+ "re_format",
+ "re_log",
+ "re_log_types",
+ "re_renderer",
+ "re_tracing",
+ "re_types",
+ "re_types_core",
+ "re_ui",
+ "re_viewer_context",
+ "re_viewport_blueprint",
+ "thiserror",
+]
+
+[[package]]
+name = "re_view_graph"
+version = "0.21.0-alpha.1+dev"
+dependencies = [
+ "ahash",
+ "egui",
+ "fjadra",
+ "nohash-hasher",
+ "re_chunk",
+ "re_data_ui",
+ "re_entity_db",
+ "re_format",
+ "re_log",
+ "re_log_types",
+ "re_query",
+ "re_renderer",
+ "re_tracing",
+ "re_types",
+ "re_ui",
+ "re_view",
+ "re_viewer_context",
+ "re_viewport_blueprint",
+]
+
+[[package]]
+name = "re_view_map"
+version = "0.21.0-alpha.1+dev"
+dependencies = [
+ "bytemuck",
+ "egui",
+ "glam",
+ "itertools 0.13.0",
+ "re_data_ui",
+ "re_entity_db",
+ "re_log",
+ "re_log_types",
+ "re_math",
+ "re_query",
+ "re_renderer",
+ "re_tracing",
+ "re_types",
+ "re_ui",
+ "re_view",
+ "re_viewer_context",
+ "re_viewport_blueprint",
+ "walkers",
+]
+
+[[package]]
+name = "re_view_spatial"
+version = "0.21.0-alpha.1+dev"
+dependencies = [
+ "ahash",
+ "anyhow",
+ "arrow",
+ "bitflags 2.6.0",
+ "bytemuck",
+ "criterion",
+ "egui",
+ "glam",
+ "hexasphere",
+ "image",
+ "itertools 0.13.0",
+ "mimalloc",
+ "nohash-hasher",
+ "once_cell",
+ "ordered-float",
+ "re_arrow2",
+ "re_chunk_store",
+ "re_data_ui",
+ "re_entity_db",
+ "re_error",
+ "re_format",
+ "re_log",
+ "re_log_types",
+ "re_math",
+ "re_query",
+ "re_renderer",
+ "re_tracing",
+ "re_types",
+ "re_ui",
+ "re_video",
+ "re_view",
+ "re_viewer_context",
+ "re_viewport_blueprint",
+ "serde",
+ "smallvec",
+ "thiserror",
+ "vec1",
+ "web-time",
+]
+
+[[package]]
+name = "re_view_tensor"
+version = "0.21.0-alpha.1+dev"
+dependencies = [
+ "anyhow",
+ "bytemuck",
+ "egui",
+ "half",
+ "ndarray",
+ "re_chunk_store",
+ "re_data_ui",
+ "re_log_types",
+ "re_query",
+ "re_renderer",
+ "re_tracing",
+ "re_types",
+ "re_ui",
+ "re_view",
+ "re_viewer_context",
+ "re_viewport_blueprint",
+ "thiserror",
+ "wgpu",
+]
+
+[[package]]
+name = "re_view_text_document"
+version = "0.21.0-alpha.1+dev"
+dependencies = [
+ "egui",
+ "egui_commonmark",
+ "re_chunk_store",
+ "re_renderer",
+ "re_tracing",
+ "re_types",
+ "re_ui",
+ "re_view",
+ "re_viewer_context",
+]
+
+[[package]]
+name = "re_view_text_log"
+version = "0.21.0-alpha.1+dev"
+dependencies = [
+ "egui",
+ "egui_extras",
+ "itertools 0.13.0",
+ "re_chunk_store",
+ "re_data_ui",
+ "re_entity_db",
+ "re_log_types",
+ "re_query",
+ "re_renderer",
+ "re_tracing",
+ "re_types",
+ "re_ui",
+ "re_view",
+ "re_viewer_context",
+]
+
+[[package]]
+name = "re_view_time_series"
+version = "0.21.0-alpha.1+dev"
+dependencies = [
+ "egui",
+ "egui_plot",
+ "itertools 0.13.0",
+ "rayon",
+ "re_chunk_store",
+ "re_format",
+ "re_log",
+ "re_log_types",
+ "re_query",
+ "re_renderer",
+ "re_tracing",
+ "re_types",
+ "re_ui",
+ "re_view",
+ "re_viewer_context",
+ "re_viewport_blueprint",
+]
+
+[[package]]
 name = "re_viewer"
 version = "0.21.0-alpha.1+dev"
 dependencies = [
@@ -6825,15 +6825,6 @@ dependencies = [
  "re_sdk_comms",
  "re_selection_panel",
  "re_smart_channel",
- "re_space_view_bar_chart",
- "re_space_view_dataframe",
- "re_space_view_graph",
- "re_space_view_map",
- "re_space_view_spatial",
- "re_space_view_tensor",
- "re_space_view_text_document",
- "re_space_view_text_log",
- "re_space_view_time_series",
  "re_time_panel",
  "re_tracing",
  "re_types",
@@ -6841,6 +6832,15 @@ dependencies = [
  "re_types_core",
  "re_ui",
  "re_video",
+ "re_view_bar_chart",
+ "re_view_dataframe",
+ "re_view_graph",
+ "re_view_map",
+ "re_view_spatial",
+ "re_view_tensor",
+ "re_view_text_document",
+ "re_view_text_log",
+ "re_view_time_series",
  "re_viewer_context",
  "re_viewport",
  "re_viewport_blueprint",
@@ -6930,11 +6930,11 @@ dependencies = [
  "re_log",
  "re_log_types",
  "re_renderer",
- "re_space_view",
  "re_tracing",
  "re_types",
  "re_types_blueprint",
  "re_ui",
+ "re_view",
  "re_viewer_context",
  "re_viewport_blueprint",
 ]

@@ -10,10 +10,10 @@ import rerun.blueprint as rrb
 README = """\
 # Focus checks
 
-- Double-click on a box in the first space view
-    - check ONLY the corresponding space view expands and scrolls
+- Double-click on a box in the first view
+    - check ONLY the corresponding view expands and scrolls
     - check the streams view expands and scrolls
-- Double-click on the leaf "boxes3d" entity in the streams view, check both space views expand (manual scrolling might be needed).
+- Double-click on the leaf "boxes3d" entity in the streams view, check both views expand (manual scrolling might be needed).
 """
 
 
@@ -29,7 +29,7 @@ def blueprint() -> rrb.BlueprintLike:
     )
 
 
-def log_some_space_views() -> None:
+def log_some_views() -> None:
     rr.set_time_sequence("frame_nr", 0)
 
     for i in range(500):
@@ -45,7 +45,7 @@ def run(args: Namespace) -> None:
     rr.script_setup(args, f"{os.path.basename(__file__)}", recording_id=uuid4(), default_blueprint=blueprint())
 
     log_readme()
-    log_some_space_views()
+    log_some_views()
 
 
 if __name__ == "__main__":

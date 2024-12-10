@@ -29,7 +29,7 @@ pub struct DataframeView {
 
 impl ::re_types_core::View for DataframeView {
     #[inline]
-    fn identifier() -> ::re_types_core::SpaceViewClassIdentifier {
+    fn identifier() -> ::re_types_core::ViewClassIdentifier {
         "Dataframe".into()
     }
 }
