@@ -31,7 +31,7 @@ impl ChunkStore {
     pub fn insert_chunk(&mut self, chunk: &Arc<Chunk>) -> ChunkStoreResult<Vec<ChunkStoreEvent>> {
         if self.chunks_per_chunk_id.contains_key(&chunk.id()) {
             // We assume that chunk IDs are unique, and that reinserting a chunk has no effect.
-            re_log::warn_once!(
+            re_log::debug_once!(
                 "Chunk #{} was inserted more than once (this has no effect)",
                 chunk.id()
             );
