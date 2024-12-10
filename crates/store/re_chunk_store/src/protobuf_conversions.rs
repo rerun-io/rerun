@@ -264,8 +264,8 @@ mod tests {
     use re_protos::common::v0::{
         column_selector::SelectorType, ColumnSelection, ColumnSelector, Component,
         ComponentColumnSelector, ComponentsSet, EntityPath, IndexColumnSelector, IndexRange,
-        IndexValues, Query, RecordingId, SparseFillStrategy, TimeInt, TimeRange, Timeline,
-        ViewContents, ViewContentsPart,
+        IndexValues, Query, SparseFillStrategy, TimeInt, TimeRange, Timeline, ViewContents,
+        ViewContentsPart,
     };
 
     #[test]
