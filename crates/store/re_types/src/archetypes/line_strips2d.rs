@@ -22,7 +22,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// ## Examples
 ///
-/// ### `line_strip2d_batch`:
+/// ### `line_strips2d_batch`:
 /// ```ignore
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_line_strip2d_batch").spawn()?;

@@ -27,9 +27,9 @@ A 2D point cloud with positions and optional colors, radii, labels, etc.
 
 ### Simple 2D points
 
-snippet: archetypes/point2d_simple
+snippet: archetypes/points2d_simple
 
-<picture data-inline-viewer="snippets/point2d_simple">
+<picture data-inline-viewer="snippets/points2d_simple">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/point2d_simple/66e33b237ecd3d51363e56706566c5e7a58fe075/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/point2d_simple/66e33b237ecd3d51363e56706566c5e7a58fe075/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/point2d_simple/66e33b237ecd3d51363e56706566c5e7a58fe075/1024w.png">
@@ -39,9 +39,9 @@ snippet: archetypes/point2d_simple
 
 ### Randomly distributed 2D points with varying color and radius
 
-snippet: archetypes/point2d_random
+snippet: archetypes/points2d_random
 
-<picture data-inline-viewer="snippets/point2d_random">
+<picture data-inline-viewer="snippets/points2d_random">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/point2d_random/8e8ac75373677bd72bd3f56a15e44fcab309a168/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/point2d_random/8e8ac75373677bd72bd3f56a15e44fcab309a168/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/point2d_random/8e8ac75373677bd72bd3f56a15e44fcab309a168/1024w.png">
@@ -51,9 +51,9 @@ snippet: archetypes/point2d_random
 
 ### Log points with radii given in UI points
 
-snippet: archetypes/point2d_ui_radius
+snippet: archetypes/points2d_ui_radius
 
-<picture data-inline-viewer="snippets/point2d_ui_radius">
+<picture data-inline-viewer="snippets/points2d_ui_radius">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/point2d_ui_radius/ce804fc77300d89c348b4ab5960395171497b7ac/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/point2d_ui_radius/ce804fc77300d89c348b4ab5960395171497b7ac/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/point2d_ui_radius/ce804fc77300d89c348b4ab5960395171497b7ac/1024w.png">

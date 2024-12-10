@@ -26,9 +26,9 @@ Geospatial points with positions expressed in [EPSG:4326](https://epsg.io/4326) 
 
 ### Log a geospatial point
 
-snippet: archetypes/geo_point_simple
+snippet: archetypes/geo_points_simple
 
-<picture data-inline-viewer="snippets/geo_point_simple">
+<picture data-inline-viewer="snippets/geo_points_simple">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/geopoint_simple/b86ce83e5871837587bd33a0ad639358b96e9010/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/geopoint_simple/b86ce83e5871837587bd33a0ad639358b96e9010/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/geopoint_simple/b86ce83e5871837587bd33a0ad639358b96e9010/1024w.png">

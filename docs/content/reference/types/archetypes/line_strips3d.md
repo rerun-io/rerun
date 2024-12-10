@@ -27,9 +27,9 @@ title: "LineStrips3D"
 
 ### Simple example
 
-snippet: archetypes/line_strip3d_simple
+snippet: archetypes/line_strips3d_simple
 
-<picture data-inline-viewer="snippets/line_strip3d_simple">
+<picture data-inline-viewer="snippets/line_strips3d_simple">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/line_strip3d_simple/13036c0e71f78d3cec37d5724f97b47c4cf3c429/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/line_strip3d_simple/13036c0e71f78d3cec37d5724f97b47c4cf3c429/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/line_strip3d_simple/13036c0e71f78d3cec37d5724f97b47c4cf3c429/1024w.png">
@@ -51,9 +51,9 @@ snippet: archetypes/line_segments3d_simple
 
 ### Many strips
 
-snippet: archetypes/line_strip3d_batch
+snippet: archetypes/line_strips3d_batch
 
-<picture data-inline-viewer="snippets/line_strip3d_batch">
+<picture data-inline-viewer="snippets/line_strips3d_batch">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/line_strip3d_batch/15e8ff18a6c95a3191acb0eae6eb04adea3b4874/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/line_strip3d_batch/15e8ff18a6c95a3191acb0eae6eb04adea3b4874/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/line_strip3d_batch/15e8ff18a6c95a3191acb0eae6eb04adea3b4874/1024w.png">
@@ -63,9 +63,9 @@ snippet: archetypes/line_strip3d_batch
 
 ### Lines with scene & UI radius each
 
-snippet: archetypes/line_strip3d_ui_radius
+snippet: archetypes/line_strips3d_ui_radius
 
-<picture data-inline-viewer="snippets/line_strip3d_ui_radius">
+<picture data-inline-viewer="snippets/line_strips3d_ui_radius">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/line_strip3d_ui_radius/36b98f47e45747b5a3601511ff39b8d74c61d120/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/line_strip3d_ui_radius/36b98f47e45747b5a3601511ff39b8d74c61d120/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/line_strip3d_ui_radius/36b98f47e45747b5a3601511ff39b8d74c61d120/1024w.png">

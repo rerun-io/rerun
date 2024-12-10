@@ -26,7 +26,7 @@ namespace rerun::archetypes {
     ///
     /// ## Examples
     ///
-    /// ### line_strip2d_batch:
+    /// ### line_strips2d_batch:
     /// ![image](https://static.rerun.io/line_strip2d_batch/c6f4062bcf510462d298a5dfe9fdbe87c754acee/full.png)
     ///
     /// ```cpp

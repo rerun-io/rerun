@@ -25,7 +25,7 @@ class LineStrips2D(Archetype):
 
     Examples
     --------
-    ### `line_strip2d_batch`:
+    ### `line_strips2d_batch`:
     ```python
     import rerun as rr
     import rerun.blueprint as rrb
