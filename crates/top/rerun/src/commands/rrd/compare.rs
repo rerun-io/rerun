@@ -30,6 +30,8 @@ impl CompareCommand {
             full_dump,
         } = self;
 
+        re_log::debug!("Comparing {path_to_rrd1:?} to {path_to_rrd2:?}…");
+
         let path_to_rrd1 = PathBuf::from(path_to_rrd1);
         let path_to_rrd2 = PathBuf::from(path_to_rrd2);
 
@@ -74,6 +76,8 @@ impl CompareCommand {
                 ),
             );
         }
+
+        re_log::debug!("{path_to_rrd1:?} and {path_to_rrd2:?} are similar enough.");
 
         Ok(())
     }

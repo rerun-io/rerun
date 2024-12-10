@@ -5,7 +5,7 @@ from typing import Any
 import numpy as np
 import numpy.typing as npt
 
-from ._converters import to_np_float32, to_np_float64, to_np_uint32
+from ._converters import to_np_float32, to_np_float64, to_np_uint32, to_np_uint64
 
 
 # This code is a straight port from Rust.
@@ -64,6 +64,13 @@ def flat_np_uint32_array_from_array_like(data: Any, dimension: int) -> npt.NDArr
     """Converts to a flat uint numpy array from an arbitrary vector, validating for an expected dimensionality."""
 
     array = to_np_uint32(data)
+    return flat_np_array_from_array_like(array, dimension)
+
+
+def flat_np_uint64_array_from_array_like(data: Any, dimension: int) -> npt.NDArray[np.uint64]:
+    """Converts to a flat uint numpy array from an arbitrary vector, validating for an expected dimensionality."""
+
+    array = to_np_uint64(data)
     return flat_np_array_from_array_like(array, dimension)
 
 

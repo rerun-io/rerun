@@ -19,10 +19,8 @@ which stores a contiguous array of typed values.
 ## Arrow datatype
 ```
 Struct {
-    shape: List<Struct {
-            size: uint64
-            name: nullable utf8
-        }>
+    shape: List<uint64>
+    names: nullable List<utf8>
     buffer: DenseUnion {
         0 = "_null_markers": nullable null
         1 = "U8": List<uint8>

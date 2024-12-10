@@ -1,10 +1,11 @@
 //! Image-related utilities.
 
+use re_types_core::ArrowBuffer;
 use smallvec::{smallvec, SmallVec};
 
 use crate::{
     datatypes::ChannelDatatype,
-    datatypes::{Blob, TensorBuffer, TensorData, TensorDimension},
+    datatypes::{Blob, TensorBuffer, TensorData},
 };
 
 // ----------------------------------------------------------------------------
@@ -95,7 +96,7 @@ where
 
     /// The tensor did not have the right shape for an image (e.g. had too many dimensions).
     #[error("Could not create Image from TensorData with shape {0:?}")]
-    BadImageShape(Vec<TensorDimension>),
+    BadImageShape(ArrowBuffer<u64>),
 
     /// Happens if you try to cast `NV12` or `YUY2` to a depth image or segmentation image.
     #[error("Chroma downsampling is not supported for this image type (e.g. DepthImage or SegmentationImage)")]
@@ -181,7 +182,7 @@ impl ImageChannelType for f64 {
 ///
 /// For instance: `[1, 480, 640, 3, 1]` would return `[1, 2, 3]`,
 /// the indices of the `[480, 640, 3]` dimensions.
-pub fn find_non_empty_dim_indices(shape: &[TensorDimension]) -> SmallVec<[usize; 4]> {
+pub fn find_non_empty_dim_indices(shape: &[u64]) -> SmallVec<[usize; 4]> {
     match shape.len() {
         0 => return smallvec![],
         1 => return smallvec![0],
@@ -197,7 +198,7 @@ pub fn find_non_empty_dim_indices(shape: &[TensorDimension]) -> SmallVec<[usize;
         shape
             .iter()
             .enumerate()
-            .filter_map(|(ind, dim)| if dim.size != 1 { Some(ind) } else { None });
+            .filter_map(|(ind, &dim)| if dim != 1 { Some(ind) } else { None });
 
     // 0 is always a valid index.
     let mut min = non_unit_indices.next().unwrap_or(0);
@@ -216,7 +217,7 @@ pub fn find_non_empty_dim_indices(shape: &[TensorDimension]) -> SmallVec<[usize;
     // Grow up to 3 if the inner dimension is already 3 or 4 (Color Images)
     // Otherwise, only grow up to 2.
     // (1x1x3) -> 1x1x3 rgb rather than 1x3 mono
-    let target_len = match shape[max].size {
+    let target_len = match shape[max] {
         3 | 4 => 3,
         _ => 2,
     };
@@ -231,14 +232,7 @@ pub fn find_non_empty_dim_indices(shape: &[TensorDimension]) -> SmallVec<[usize;
 #[test]
 fn test_find_non_empty_dim_indices() {
     fn expect(shape: &[u64], expected: &[usize]) {
-        let dim: Vec<_> = shape
-            .iter()
-            .map(|s| TensorDimension {
-                size: *s,
-                name: None,
-            })
-            .collect();
-        let got = find_non_empty_dim_indices(&dim);
+        let got = find_non_empty_dim_indices(shape);
         assert!(
             got.as_slice() == expected,
             "Input: {shape:?}, got {got:?}, expected {expected:?}"

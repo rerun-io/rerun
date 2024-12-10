@@ -66,7 +66,6 @@ namespace rerun {
     using datatypes::RotationAxisAngle;
     using datatypes::TensorBuffer;
     using datatypes::TensorData;
-    using datatypes::TensorDimension;
     using datatypes::Vec2D;
     using datatypes::Vec3D;
     using datatypes::Vec4D;

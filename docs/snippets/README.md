@@ -11,7 +11,7 @@ You can run each example individually using the following:
 - **C++**:
   - `pixi run -e cpp cpp-build-snippets` to compile all examples
   - `./build/debug/docs/snippets/all/<example_name>` to run, e.g. `./build/debug/docs/snippets/all/point3d_random`
-- **Python**: `pixi run -e py python <example_name>.py`, e.g. `pixi run -e py python point3d_random.py`.
+- **Python**: `pixi run py-build && pixi run -e py python <example_name>.py`, e.g. `pixi run -e py python point3d_random.py`.
 - **Rust**: `cargo run -p snippets -- <example_name> [args]`, e.g. `cargo run -p snippets -- point3d_random`.
 
 ## Comparison test
@@ -23,8 +23,8 @@ These tests check that A) all of our SDKs yield the exact same data when used th
 
 ### Usage
 
-To run the comparison tests, check out `./docs/snippets/compare_snippet_output.py --help`.
-`./docs/snippets/compare_snippet_output.py` is a valid invocation that will build all 3 SDKs and run all tests for all of them.
+To run the comparison tests, check out `pixi run -e py docs/snippets/compare_snippet_output.py --help`.
+`pixi run -e py docs/snippets/compare_snippet_output.py` is a valid invocation that will build all 3 SDKs and run all tests for all of them.
 
 ### Implementing new tests
 

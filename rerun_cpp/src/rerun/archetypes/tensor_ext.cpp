@@ -13,7 +13,7 @@ namespace rerun::archetypes {
     // <CODEGEN_COPY_TO_HEADER>
 
     /// New Tensor from dimensions and tensor buffer.
-    Tensor(Collection<datatypes::TensorDimension> shape, datatypes::TensorBuffer buffer)
+    Tensor(Collection<uint64_t> shape, datatypes::TensorBuffer buffer)
         : Tensor(datatypes::TensorData(std::move(shape), std::move(buffer))) {}
 
     /// New tensor from dimensions and pointer to tensor data.
@@ -24,7 +24,7 @@ namespace rerun::archetypes {
     /// \param data_
     /// Target of the pointer must outlive the archetype.
     template <typename TElement>
-    explicit Tensor(Collection<datatypes::TensorDimension> shape, const TElement* data_)
+    explicit Tensor(Collection<uint64_t> shape, const TElement* data_)
         : Tensor(datatypes::TensorData(std::move(shape), data_)) {}
 
     /// Update the `names` of the contained `TensorData` dimensions.
@@ -51,11 +51,7 @@ namespace rerun::archetypes {
                 .handle();
         }
 
-        auto new_shape = shape.to_vector();
-        for (size_t i = 0; i < std::min(shape.size(), names.size()); ++i) {
-            new_shape[i].name = std::move(names[i]);
-        }
-        shape = std::move(new_shape);
+        this->data.data.names = std::move(names);
 
         return std::move(*this);
     }
