@@ -232,7 +232,7 @@ pub fn find_non_empty_dim_indices(shape: &[u64]) -> SmallVec<[usize; 4]> {
 #[test]
 fn test_find_non_empty_dim_indices() {
     fn expect(shape: &[u64], expected: &[usize]) {
-        let got = find_non_empty_dim_indices(&shape);
+        let got = find_non_empty_dim_indices(shape);
         assert!(
             got.as_slice() == expected,
             "Input: {shape:?}, got {got:?}, expected {expected:?}"
