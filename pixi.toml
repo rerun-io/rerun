@@ -512,7 +512,7 @@ sysroot_linux-64 = ">=2.17,<3" # rustc 1.64+ requires glibc 2.17+, see https://b
 [feature.cpp.target.linux-aarch64.dependencies]
 sysroot_linux-aarch64 = ">=2.17,<3" # rustc 1.64+ requires glibc 2.17+, see https://blog.rust-lang.org/2022/08/01/Increasing-glibc-kernel-requirements.html
 
-[feature.cpp.dependencies]
+[feature.cpp.target.unix.dependencies]
 clang = "16.0.6"
 ninja = "1.11.1"
 c-compiler = "1.6.0.*"
