@@ -410,21 +410,6 @@ mod tests {
         ApplicationId, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource, Time,
     };
 
-    // useful for debugging reads in the absence of a functional debugger
-    /*
-    struct PrintReader<R> {
-        inner: R,
-    }
-
-    impl<R: std::io::Read> std::io::Read for PrintReader<R> {
-        fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
-            let read = self.inner.read(buf)?;
-            println!("read {} bytes: {:?}", read, &buf[..read]);
-            Ok(read)
-        }
-    }
-    */
-
     fn fake_log_message() -> LogMsg {
         LogMsg::SetStoreInfo(SetStoreInfo {
             row_id: *RowId::new(),
