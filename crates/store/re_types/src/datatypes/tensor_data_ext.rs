@@ -45,7 +45,7 @@ impl TensorData {
         self
     }
 
-    /// The shape of the tensor, including optional dimension names.
+    /// The shape of the tensor.
     #[inline]
     pub fn shape(&self) -> &[u64] {
         self.shape.as_slice()

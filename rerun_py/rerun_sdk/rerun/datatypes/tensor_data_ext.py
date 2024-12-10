@@ -125,6 +125,7 @@ class TensorDataExt:
         elif array is not None:
             self.buffer = TensorBuffer(array.flatten())
 
+        self.names = None
         if dim_names:
             if len(self.shape) == len(dim_names):
                 self.names = dim_names
