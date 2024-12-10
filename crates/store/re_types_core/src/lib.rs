@@ -109,6 +109,15 @@ impl<const N: usize> AsComponents for [&dyn ComponentBatch; N] {
     }
 }
 
+impl<const N: usize> AsComponents for [Box<dyn ComponentBatch>; N] {
+    #[inline]
+    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
+        self.iter()
+            .map(|batch| ComponentBatchCowWithDescriptor::new(&**batch))
+            .collect()
+    }
+}
+
 impl AsComponents for &[&dyn ComponentBatch] {
     #[inline]
     fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
@@ -118,11 +127,110 @@ impl AsComponents for &[&dyn ComponentBatch] {
     }
 }
 
+impl AsComponents for &[Box<dyn ComponentBatch>] {
+    #[inline]
+    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
+        self.iter()
+            .map(|batch| ComponentBatchCowWithDescriptor::new(&**batch))
+            .collect()
+    }
+}
+
 impl AsComponents for Vec<&dyn ComponentBatch> {
     #[inline]
     fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
         self.iter()
             .map(|batch| ComponentBatchCowWithDescriptor::new(*batch))
+            .collect()
+    }
+}
+
+impl AsComponents for Vec<Box<dyn ComponentBatch>> {
+    #[inline]
+    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
+        self.iter()
+            .map(|batch| ComponentBatchCowWithDescriptor::new(&**batch))
+            .collect()
+    }
+}
+
+impl<AS: AsComponents, const N: usize> AsComponents for [AS; N] {
+    #[inline]
+    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
+        self.iter()
+            .flat_map(|as_components| as_components.as_component_batches())
+            .collect()
+    }
+}
+
+impl<const N: usize> AsComponents for [&dyn AsComponents; N] {
+    #[inline]
+    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
+        self.iter()
+            .flat_map(|as_components| as_components.as_component_batches())
+            .collect()
+    }
+}
+
+impl<const N: usize> AsComponents for [Box<dyn AsComponents>; N] {
+    #[inline]
+    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
+        self.iter()
+            .flat_map(|as_components| as_components.as_component_batches())
+            .collect()
+    }
+}
+
+impl<AS: AsComponents> AsComponents for &[AS] {
+    #[inline]
+    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
+        self.iter()
+            .flat_map(|as_components| as_components.as_component_batches())
+            .collect()
+    }
+}
+
+impl AsComponents for &[&dyn AsComponents] {
+    #[inline]
+    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
+        self.iter()
+            .flat_map(|as_components| as_components.as_component_batches())
+            .collect()
+    }
+}
+
+impl AsComponents for &[Box<dyn AsComponents>] {
+    #[inline]
+    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
+        self.iter()
+            .flat_map(|as_components| as_components.as_component_batches())
+            .collect()
+    }
+}
+
+impl<AS: AsComponents> AsComponents for Vec<AS> {
+    #[inline]
+    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
+        self.iter()
+            .flat_map(|as_components| as_components.as_component_batches())
+            .collect()
+    }
+}
+
+impl AsComponents for Vec<&dyn AsComponents> {
+    #[inline]
+    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
+        self.iter()
+            .flat_map(|as_components| as_components.as_component_batches())
+            .collect()
+    }
+}
+
+impl AsComponents for Vec<Box<dyn AsComponents>> {
+    #[inline]
+    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
+        self.iter()
+            .flat_map(|as_components| as_components.as_component_batches())
             .collect()
     }
 }
