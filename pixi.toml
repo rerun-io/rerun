@@ -126,7 +126,7 @@ check-env = "python scripts/check_env.py"
 codegen = "cargo --quiet run --package re_types_builder -- "
 
 # Run the codegen for protobuf types.
-codegen-protos = "cargo --quiet run --package re_protos_builder"
+codegen-protos = "cargo --quiet run --package re_protos_builder && cargo fmt --all"
 
 # Generate the Rerun CLI manual.
 
