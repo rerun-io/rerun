@@ -179,11 +179,7 @@ class TensorDataExt:
                 fields=[data_type.field("shape"), data_type.field("buffer")],
             ).cast(data_type)
         else:
-            names = pa.array(data.names)
-            if False:
-                print(f"shape: {shape}")
-                print(f"names: {names}")
-                print(f"buffer: {buffer}")
+            names = pa.array([data.names], type=data_type.field("names").type)
             return pa.StructArray.from_arrays(
                 [
                     shape,
