@@ -32,11 +32,11 @@ By default, edges are undirected.
 snippet: archetypes/graph_undirected
 
 <picture data-inline-viewer="snippets/graph_undirected">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/graph_undirected/469695b3038cc74d67d881ba318415c31de2dffb/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/graph_undirected/469695b3038cc74d67d881ba318415c31de2dffb/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/graph_undirected/469695b3038cc74d67d881ba318415c31de2dffb/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/graph_undirected/469695b3038cc74d67d881ba318415c31de2dffb/1200w.png">
-  <img src="https://static.rerun.io/graph_undirected/469695b3038cc74d67d881ba318415c31de2dffb/full.png">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/graph_undirected/15f46bec77452a8c6220558e4403b99cac188e2e/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/graph_undirected/15f46bec77452a8c6220558e4403b99cac188e2e/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/graph_undirected/15f46bec77452a8c6220558e4403b99cac188e2e/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/graph_undirected/15f46bec77452a8c6220558e4403b99cac188e2e/1200w.png">
+  <img src="https://static.rerun.io/graph_undirected/15f46bec77452a8c6220558e4403b99cac188e2e/full.png">
 </picture>
 
 ### Simple directed graph
@@ -44,10 +44,10 @@ snippet: archetypes/graph_undirected
 snippet: archetypes/graph_directed
 
 <picture data-inline-viewer="snippets/graph_directed">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/graph_directed/e04ef6a2a959517c70c3633c88988a2f1af75a59/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/graph_directed/e04ef6a2a959517c70c3633c88988a2f1af75a59/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/graph_directed/e04ef6a2a959517c70c3633c88988a2f1af75a59/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/graph_directed/e04ef6a2a959517c70c3633c88988a2f1af75a59/1200w.png">
-  <img src="https://static.rerun.io/graph_directed/e04ef6a2a959517c70c3633c88988a2f1af75a59/full.png">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/graph_directed/ca29a37b65e1e0b6482251dce401982a0bc568fa/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/graph_directed/ca29a37b65e1e0b6482251dce401982a0bc568fa/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/graph_directed/ca29a37b65e1e0b6482251dce401982a0bc568fa/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/graph_directed/ca29a37b65e1e0b6482251dce401982a0bc568fa/1200w.png">
+  <img src="https://static.rerun.io/graph_directed/ca29a37b65e1e0b6482251dce401982a0bc568fa/full.png">
 </picture>
 
