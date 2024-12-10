@@ -20,8 +20,8 @@ use re_viewer_context::{
 use crate::{
     contexts::register_spatial_contexts,
     heuristics::default_visualized_entities_for_visualizer_kind,
-    max_image_dimension_subscriber::{MaxDimensions, MaxImageDimensions},
-    spatial_topology::{SpatialTopology, SubSpaceConnectionFlags},
+    max_image_dimension_subscriber::{MaxDimensions, MaxImageDimensionsStoreSubscriber},
+    spatial_topology::{SpatialTopologyStoreSubscriber, SubSpaceConnectionFlags},
     ui::SpatialSpaceViewState,
     view_kind::SpatialSpaceViewKind,
     visualizers::register_2d_spatial_visualizers,
@@ -69,7 +69,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
         // Ensure spatial topology & max image dimension is registered.
         crate::spatial_topology::SpatialTopologyStoreSubscriber::subscription_handle();
         crate::transform_component_tracker::TransformComponentTrackerStoreSubscriber::subscription_handle();
-        crate::max_image_dimension_subscriber::MaxImageDimensionSubscriber::subscription_handle();
+        crate::max_image_dimension_subscriber::MaxImageDimensionsStoreSubscriber::subscription_handle();
 
         register_spatial_contexts(system_registry)?;
         register_2d_spatial_visualizers(system_registry)?;
@@ -123,7 +123,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
 
         // For a 2D space view, the origin of the subspace defined by the common ancestor is always
         // better.
-        SpatialTopology::access(&entity_db.store_id(), |topo| {
+        SpatialTopologyStoreSubscriber::access(&entity_db.store_id(), |topo| {
             topo.subspace_for_entity(&common_ancestor).origin.clone()
         })
     }
@@ -139,7 +139,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
         // If the topology hasn't changed, we don't need to recompute any of this.
         // Also, we arrive at the same `VisualizableFilterContext` for lots of different origins!
 
-        let context = SpatialTopology::access(&entity_db.store_id(), |topo| {
+        let context = SpatialTopologyStoreSubscriber::access(&entity_db.store_id(), |topo| {
             let primary_space = topo.subspace_for_entity(space_origin);
             if !primary_space.supports_2d_content() {
                 // If this is strict 3D space, only display the origin entity itself.
@@ -183,7 +183,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
         );
 
         let image_dimensions =
-            MaxImageDimensions::access(&ctx.recording_id(), |image_dimensions| {
+            MaxImageDimensionsStoreSubscriber::access(&ctx.recording_id(), |image_dimensions| {
                 image_dimensions.clone()
             })
             .unwrap_or_default();
@@ -191,7 +191,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
         // Spawn a space view at each subspace that has any potential 2D content.
         // Note that visualizability filtering is all about being in the right subspace,
         // so we don't need to call the visualizers' filter functions here.
-        SpatialTopology::access(&ctx.recording_id(), |topo| {
+        SpatialTopologyStoreSubscriber::access(&ctx.recording_id(), |topo| {
             SpaceViewSpawnHeuristics::new(topo.iter_subspaces().flat_map(|subspace| {
                 if !subspace.supports_2d_content()
                     || subspace.entities.is_empty()

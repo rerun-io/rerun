@@ -1,10 +1,9 @@
 use once_cell::sync::OnceCell;
 
-use ahash::HashMap;
 use nohash_hasher::{IntMap, IntSet};
 use re_chunk_store::{
-    ChunkStore, ChunkStoreDiffKind, ChunkStoreEvent, ChunkStoreSubscriber,
-    ChunkStoreSubscriberHandle,
+    ChunkStore, ChunkStoreDiffKind, ChunkStoreEvent, ChunkStoreSubscriberHandle,
+    PerStoreChunkSubscriber,
 };
 use re_log_types::{EntityPath, EntityPathHash, StoreId};
 use re_types::{
@@ -118,9 +117,23 @@ impl SubSpace {
     }
 }
 
-#[derive(Default)]
+/// Spatial topological information about a store.
+///
+/// Describes how 2D & 3D spaces are connected/disconnected.
+///
+/// Used to determine whether 2D/3D visualizers are applicable and to inform
+/// space view generation heuristics.
+///
+/// Spatial topology is time independent but may change as new data comes in.
+/// Generally, the assumption is that topological cuts stay constant over time.
 pub struct SpatialTopologyStoreSubscriber {
-    topologies: HashMap<StoreId, SpatialTopology>,
+    /// All subspaces, identified by their origin-hash.
+    subspaces: IntMap<EntityPathHash, SubSpace>,
+
+    /// Maps each logged entity to the origin of a subspace.
+    ///
+    /// This is purely an optimization to speed up searching for `subspaces`.
+    subspace_origin_per_logged_entity: IntMap<EntityPathHash, EntityPathHash>,
 }
 
 impl SpatialTopologyStoreSubscriber {
@@ -129,27 +142,17 @@ impl SpatialTopologyStoreSubscriber {
     /// Lazily registers the subscriber if it hasn't been registered yet.
     pub fn subscription_handle() -> ChunkStoreSubscriberHandle {
         static SUBSCRIPTION: OnceCell<ChunkStoreSubscriberHandle> = OnceCell::new();
-        *SUBSCRIPTION.get_or_init(|| ChunkStore::register_subscriber(Box::<Self>::default()))
+        *SUBSCRIPTION.get_or_init(ChunkStore::register_per_store_subscriber::<Self>)
     }
 }
 
-impl ChunkStoreSubscriber for SpatialTopologyStoreSubscriber {
+impl PerStoreChunkSubscriber for SpatialTopologyStoreSubscriber {
     #[inline]
-    fn name(&self) -> String {
+    fn name() -> String {
         "SpatialTopologyStoreSubscriber".to_owned()
     }
 
-    #[inline]
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    #[inline]
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-        self
-    }
-
-    fn on_events(&mut self, events: &[ChunkStoreEvent]) {
+    fn on_events<'a>(&mut self, events: impl Iterator<Item = &'a ChunkStoreEvent>) {
         re_tracing::profile_function!();
 
         for event in events {
@@ -160,37 +163,15 @@ impl ChunkStoreSubscriber for SpatialTopologyStoreSubscriber {
 
             // Possible optimization:
             // only update topologies if an entity is logged the first time or a new relevant component was added.
-            self.topologies
-                .entry(event.store_id.clone())
-                .or_default()
-                .on_store_diff(
-                    event.diff.chunk.entity_path(),
-                    event.diff.chunk.component_names(),
-                );
+            self.on_store_diff(
+                event.diff.chunk.entity_path(),
+                event.diff.chunk.component_names(),
+            );
         }
     }
 }
 
-/// Spatial topological information about a store.
-///
-/// Describes how 2D & 3D spaces are connected/disconnected.
-///
-/// Used to determine whether 2D/3D visualizers are applicable and to inform
-/// space view generation heuristics.
-///
-/// Spatial topology is time independent but may change as new data comes in.
-/// Generally, the assumption is that topological cuts stay constant over time.
-pub struct SpatialTopology {
-    /// All subspaces, identified by their origin-hash.
-    subspaces: IntMap<EntityPathHash, SubSpace>,
-
-    /// Maps each logged entity to the origin of a subspace.
-    ///
-    /// This is purely an optimization to speed up searching for `subspaces`.
-    subspace_origin_per_logged_entity: IntMap<EntityPathHash, EntityPathHash>,
-}
-
-impl Default for SpatialTopology {
+impl Default for SpatialTopologyStoreSubscriber {
     fn default() -> Self {
         Self {
             subspaces: std::iter::once((
@@ -211,16 +192,11 @@ impl Default for SpatialTopology {
     }
 }
 
-impl SpatialTopology {
+impl SpatialTopologyStoreSubscriber {
     /// Accesses the spatial topology for a given store.
+    #[inline]
     pub fn access<T>(store_id: &StoreId, f: impl FnOnce(&Self) -> T) -> Option<T> {
-        ChunkStore::with_subscriber_once(
-            SpatialTopologyStoreSubscriber::subscription_handle(),
-            move |topology_subscriber: &SpatialTopologyStoreSubscriber| {
-                topology_subscriber.topologies.get(store_id).map(f)
-            },
-        )
-        .flatten()
+        ChunkStore::with_per_store_subscriber_once(Self::subscription_handle(), store_id, f)
     }
 
     /// Returns the subspace an entity belongs to.
@@ -437,11 +413,11 @@ mod tests {
 
     use crate::spatial_topology::{HeuristicHints, SubSpaceConnectionFlags};
 
-    use super::SpatialTopology;
+    use super::SpatialTopologyStoreSubscriber;
 
     #[test]
     fn no_splits() {
-        let mut topo = SpatialTopology::default();
+        let mut topo = SpatialTopologyStoreSubscriber::default();
 
         // Initialized with root space.
         assert_eq!(topo.subspaces.len(), 1);
@@ -496,7 +472,7 @@ mod tests {
 
     #[test]
     fn valid_splits() {
-        let mut topo = SpatialTopology::default();
+        let mut topo = SpatialTopologyStoreSubscriber::default();
 
         // Two cameras, one delayed for later.
         add_diff(&mut topo, "robo", &[]);
@@ -629,7 +605,7 @@ mod tests {
     #[test]
     fn handle_invalid_splits_gracefully() {
         for nested_first in [false, true] {
-            let mut topo = SpatialTopology::default();
+            let mut topo = SpatialTopologyStoreSubscriber::default();
 
             // Two nested cameras. Try both orderings
             if nested_first {
@@ -658,7 +634,7 @@ mod tests {
 
     #[test]
     fn disconnected_pinhole() {
-        let mut topo = SpatialTopology::default();
+        let mut topo = SpatialTopologyStoreSubscriber::default();
 
         add_diff(&mut topo, "stuff", &[]);
         add_diff(
@@ -682,11 +658,19 @@ mod tests {
         assert_eq!(root.connection_to_parent, SubSpaceConnectionFlags::empty());
     }
 
-    fn add_diff(topo: &mut SpatialTopology, path: &str, components: &[ComponentName]) {
+    fn add_diff(
+        topo: &mut SpatialTopologyStoreSubscriber,
+        path: &str,
+        components: &[ComponentName],
+    ) {
         topo.on_store_diff(&path.into(), components.iter().copied());
     }
 
-    fn check_paths_in_space(topo: &SpatialTopology, paths: &[&str], expected_origin: &str) {
+    fn check_paths_in_space(
+        topo: &SpatialTopologyStoreSubscriber,
+        paths: &[&str],
+        expected_origin: &str,
+    ) {
         for path in paths {
             let path = *path;
             assert_eq!(

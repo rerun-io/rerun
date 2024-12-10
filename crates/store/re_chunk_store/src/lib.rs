@@ -39,7 +39,9 @@ pub use self::stats::{ChunkStoreChunkStats, ChunkStoreStats};
 pub use self::store::{
     ChunkStore, ChunkStoreConfig, ChunkStoreGeneration, ChunkStoreHandle, ColumnMetadata,
 };
-pub use self::subscribers::{ChunkStoreSubscriber, ChunkStoreSubscriberHandle};
+pub use self::subscribers::{
+    ChunkStoreSubscriber, ChunkStoreSubscriberHandle, PerStoreChunkSubscriber,
+};
 
 pub(crate) use self::store::ColumnMetadataState;
 

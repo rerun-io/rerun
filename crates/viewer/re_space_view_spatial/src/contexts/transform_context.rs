@@ -17,7 +17,8 @@ use re_viewer_context::{IdentifiedViewSystem, ViewContext, ViewContextSystem};
 use vec1::smallvec_v1::SmallVec1;
 
 use crate::{
-    transform_component_tracker::TransformComponentTracker, visualizers::image_view_coordinates,
+    transform_component_tracker::TransformComponentTrackerStoreSubscriber,
+    visualizers::image_view_coordinates,
 };
 
 #[derive(Clone, Debug)]
@@ -736,7 +737,7 @@ fn transforms_at(
     re_tracing::profile_function!();
 
     let potential_transform_components =
-        TransformComponentTracker::access(&entity_db.store_id(), |tracker| {
+        TransformComponentTrackerStoreSubscriber::access(&entity_db.store_id(), |tracker| {
             tracker.potential_transform_components(entity_path).cloned()
         })
         .flatten()

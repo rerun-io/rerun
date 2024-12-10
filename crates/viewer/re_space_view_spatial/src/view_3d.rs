@@ -24,7 +24,7 @@ use crate::visualizers::{AxisLengthDetector, CamerasVisualizer, Transform3DArrow
 use crate::{
     contexts::register_spatial_contexts,
     heuristics::default_visualized_entities_for_visualizer_kind,
-    spatial_topology::{HeuristicHints, SpatialTopology, SubSpaceConnectionFlags},
+    spatial_topology::{HeuristicHints, SpatialTopologyStoreSubscriber, SubSpaceConnectionFlags},
     ui::{format_vector, SpatialSpaceViewState},
     view_kind::SpatialSpaceViewKind,
     visualizers::register_3d_spatial_visualizers,
@@ -108,7 +108,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
         //
         // Also, if a ViewCoordinate3D is logged somewhere between the common ancestor and the
         // subspace origin, we use it as origin.
-        SpatialTopology::access(&entity_db.store_id(), |topo| {
+        SpatialTopologyStoreSubscriber::access(&entity_db.store_id(), |topo| {
             let common_ancestor_subspace = topo.subspace_for_entity(&common_ancestor);
 
             // Consider the case where the common ancestor might be in a 2D space that is connected
@@ -150,7 +150,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
         // If the topology hasn't changed, we don't need to recompute any of this.
         // Also, we arrive at the same `VisualizableFilterContext` for lots of different origins!
 
-        let context = SpatialTopology::access(&entity_db.store_id(), |topo| {
+        let context = SpatialTopologyStoreSubscriber::access(&entity_db.store_id(), |topo| {
             let primary_space = topo.subspace_for_entity(space_origin);
             if !primary_space.supports_3d_content() {
                 // If this is strict 2D space, only display the origin entity itself.
@@ -296,7 +296,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
         // Spawn a space view at each subspace that has any potential 3D content.
         // Note that visualizability filtering is all about being in the right subspace,
         // so we don't need to call the visualizers' filter functions here.
-        SpatialTopology::access(&ctx.recording_id(), |topo| {
+        SpatialTopologyStoreSubscriber::access(&ctx.recording_id(), |topo| {
             SpaceViewSpawnHeuristics::new(
                 topo.iter_subspaces()
                     .filter_map(|subspace| {

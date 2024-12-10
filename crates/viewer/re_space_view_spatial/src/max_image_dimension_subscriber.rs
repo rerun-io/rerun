@@ -1,9 +1,8 @@
-use ahash::HashMap;
 use arrow2::array::Array;
 use nohash_hasher::IntMap;
 use once_cell::sync::OnceCell;
 
-use re_chunk_store::{ChunkStore, ChunkStoreSubscriber, ChunkStoreSubscriberHandle};
+use re_chunk_store::{ChunkStore, ChunkStoreSubscriberHandle, PerStoreChunkSubscriber};
 use re_log_types::{EntityPath, StoreId};
 use re_types::{
     components::{Blob, ImageFormat, MediaType},
@@ -18,57 +17,42 @@ pub struct MaxDimensions {
 }
 
 /// The size of the largest image and/or video at a given entity path.
-#[derive(Default, Debug, Clone)]
-pub struct MaxImageDimensions(IntMap<EntityPath, MaxDimensions>);
+#[derive(Default, Clone)]
+pub struct MaxImageDimensionsStoreSubscriber {
+    max_dimensions: IntMap<EntityPath, MaxDimensions>,
+}
 
-impl MaxImageDimensions {
+impl MaxImageDimensionsStoreSubscriber {
     /// Accesses the image/video dimension information for a given store
     pub fn access<T>(
         store_id: &StoreId,
         f: impl FnOnce(&IntMap<EntityPath, MaxDimensions>) -> T,
     ) -> Option<T> {
-        ChunkStore::with_subscriber_once(
-            MaxImageDimensionSubscriber::subscription_handle(),
-            move |subscriber: &MaxImageDimensionSubscriber| {
-                subscriber.max_dimensions.get(store_id).map(|v| &v.0).map(f)
-            },
+        ChunkStore::with_per_store_subscriber_once(
+            Self::subscription_handle(),
+            store_id,
+            move |subscriber: &Self| f(&subscriber.max_dimensions),
         )
-        .flatten()
     }
 }
 
-#[derive(Default)]
-pub struct MaxImageDimensionSubscriber {
-    max_dimensions: HashMap<StoreId, MaxImageDimensions>,
-}
-
-impl MaxImageDimensionSubscriber {
+impl MaxImageDimensionsStoreSubscriber {
     /// Accesses the global store subscriber.
     ///
     /// Lazily registers the subscriber if it hasn't been registered yet.
     pub fn subscription_handle() -> ChunkStoreSubscriberHandle {
         static SUBSCRIPTION: OnceCell<ChunkStoreSubscriberHandle> = OnceCell::new();
-        *SUBSCRIPTION.get_or_init(|| ChunkStore::register_subscriber(Box::<Self>::default()))
+        *SUBSCRIPTION.get_or_init(ChunkStore::register_per_store_subscriber::<Self>)
     }
 }
 
-impl ChunkStoreSubscriber for MaxImageDimensionSubscriber {
+impl PerStoreChunkSubscriber for MaxImageDimensionsStoreSubscriber {
     #[inline]
-    fn name(&self) -> String {
+    fn name() -> String {
         "MaxImageDimensionStoreSubscriber".to_owned()
     }
 
-    #[inline]
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    #[inline]
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-        self
-    }
-
-    fn on_events(&mut self, events: &[re_chunk_store::ChunkStoreEvent]) {
+    fn on_events<'a>(&mut self, events: impl Iterator<Item = &'a re_chunk_store::ChunkStoreEvent>) {
         re_tracing::profile_function!();
 
         for event in events {
@@ -92,9 +76,6 @@ impl ChunkStoreSubscriber for MaxImageDimensionSubscriber {
                 }) {
                     let max_dim = self
                         .max_dimensions
-                        .entry(event.store_id.clone())
-                        .or_default()
-                        .0
                         .entry(event.diff.chunk.entity_path().clone())
                         .or_default();
 
@@ -113,9 +94,6 @@ impl ChunkStoreSubscriber for MaxImageDimensionSubscriber {
                 {
                     let max_dim = self
                         .max_dimensions
-                        .entry(event.store_id.clone())
-                        .or_default()
-                        .0
                         .entry(event.diff.chunk.entity_path().clone())
                         .or_default();
                     max_dim.width = max_dim.width.max(width);

@@ -33,7 +33,7 @@ use re_viewer_context::{
 };
 use re_viewport_blueprint::ViewportBlueprint;
 
-use recursive_chunks_per_timeline_subscriber::PathRecursiveChunksPerTimeline;
+use recursive_chunks_per_timeline_subscriber::PathRecursiveChunksPerTimelineStoreSubscriber;
 use time_axis::TimelineAxis;
 use time_control_ui::TimeControlUi;
 use time_ranges_ui::TimeRangesUi;
@@ -147,7 +147,7 @@ impl TimePanel {
     /// This is implicitly called by [`Self::default`], but may need to be explicitly called in,
     /// e.g., testing context.
     pub fn ensure_registered_subscribers() {
-        PathRecursiveChunksPerTimeline::ensure_registered();
+        PathRecursiveChunksPerTimelineStoreSubscriber::ensure_registered();
     }
 
     pub fn new_blueprint_panel() -> Self {
