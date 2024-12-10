@@ -30,10 +30,10 @@ The best way to get started is by reading [the source code of the `extend_viewer
 
 Above screenshot shows the [`custom_space_view`](https://github.com/rerun-io/rerun/tree/main/examples/rust/custom_space_view) example.
 This example demonstrates how to add a fully custom View class to Rerun on startup.
-Space Views that are added this way have access to the exact same interfaces as all other Space Views,
-meaning that any of the built-in Space Views serves can serve as an additional example on how to implement Space Views.
+Views that are added this way have access to the exact same interfaces as all other Views,
+meaning that any of the built-in Views serves can serve as an additional example on how to implement Views.
 
-**⚠️ Note that the interface for adding Space Views are very far from stable.** Expect code implementing custom Space Views to break with every release of Rerun.
+**⚠️ Note that the interface for adding Views are very far from stable.** Expect code implementing custom Views to break with every release of Rerun.
 
 # Future work
 We plan to also support embedding your own GUI widgets inside existing views.

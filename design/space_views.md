@@ -1,11 +1,11 @@
-# Space views
+# Views
 Status: Mostly implemented.
 
 
 ## What are views
-Space Views visualize a Data Blueprint, i.e. a set of entities with given properties.
+Views visualize a Data Blueprint, i.e. a set of entities with given properties.
 They are represented as freely arrangeable tiles in the Viewport.
-Most Space Views are interactive, allowing their data to be explored freely.
+Most Views are interactive, allowing their data to be explored freely.
 
 
 ## Properties of a view
@@ -27,7 +27,7 @@ Freely mutable:
 * available at various stages of UI drawing & system execution build-up (see below)
 
 
-## Space view state
+## View state
 In addition to blueprint stored data, a view has a class specific `SpaceViewState`
 which stored ephemeral state that is not persisted as part of the blueprint.
 This is typically used for animation/transition state.
@@ -35,7 +35,7 @@ This is typically used for animation/transition state.
 ⚠️ As of writing, we're using this also for state that *should* be persisted and needs to be moved to
 blueprint components.
 
-## Space view class
+## View class
 Each Space View refers to an immutable Space View Class, implemented by `SpaceViewClass`.
 It defines:
 * which data it can display and how it is displayed
@@ -72,8 +72,8 @@ With the right set of primitives a user should be able to manually build a bar c
 One could imagine that we would have heuristics that generate a Data Blueprint for boxes that creates a bar chart from 1-D tensors.
 
 ##### On why 2D and 3D views shouldn't be the same
-In the early prototype 2D and 3D Space Views were separate since they would use different
-renderers - 3D Space Views were driven by `three-d`, 2D Space Views by egui directly.
+In the early prototype 2D and 3D Views were separate since they would use different
+renderers - 3D Views were driven by `three-d`, 2D Views by egui directly.
 With the advent or `re_renderer`, this distinction was no longer necessary and indeed a hindrance.
 Like most modern renderer, `re_renderer` does not distinguish 2D and 3D rendering at a fundamental level
 (albeit we might add some limited awareness in the future) since shader, hardware acceleration and
@@ -132,7 +132,7 @@ i.e. an object or function that queries a set of components (an Archetype) and e
 
 ### Registration
 Registration is done via `SpaceViewSystemRegistry` which `SpaceViewClassRegistry` stores for each class.
-Space view classes can register their built-in systems upon their own registration via their `on_register` method.
+View classes can register their built-in systems upon their own registration via their `on_register` method.
 As with view classes themselves, new systems may be added at runtime.
 
 ### Frame lifecycle
@@ -147,8 +147,8 @@ As with view classes themselves, new systems may be added at runtime.
     * this typically requires iterating over all `ViewPartSystem` and extract some data either in a generic fashion via `ViewPartSystem::data` or with knowledge of the concrete `ViewPartSystem` types
   * currently, we also pass in all `re_renderer` data since the build up of the `re_renderer` view via `ViewBuilder` is not (yet?) unified
 
-### Space view class registry
-Despite being few in numbers, Space Views Classes are registered on startup.
+### View class registry
+Despite being few in numbers, Views Classes are registered on startup.
 This is desirable since:
 * forces decoupling from other aspects of the Viewer (Viewer should be composable)
 * allows for user defined views
@@ -162,8 +162,8 @@ Rust developers can use the Class Registry to register their own Space View type
 We do *not* expect this to be a common workflow, but more of a last resort / highest level
 extensibility hooks.
 
-These user defined Space Views have no limitations over built-in Space Views and are able
-to completely reimplement existing Space Views if desired.
+These user defined Views have no limitations over built-in Views and are able
+to completely reimplement existing Views if desired.
 
 In the future A more common extension point will be to add custom systems to an existing Space View
 emitting re_renderer drawables.

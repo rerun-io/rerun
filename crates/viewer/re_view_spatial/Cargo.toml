@@ -1,6 +1,6 @@
 [package]
 authors.workspace = true
-description = "Space Views that show entities in a 2D or 3D spatial relationship."
+description = "Views that show entities in a 2D or 3D spatial relationship."
 edition.workspace = true
 homepage.workspace = true
 license.workspace = true

@@ -9,8 +9,7 @@ use re_context_menu::{context_menu_ui_for_item, SelectionUpdateBehavior};
 use re_ui::{ContextExt as _, DesignTokens, Icon, UiExt as _};
 use re_viewer_context::{
     blueprint_id_to_tile_id, icon_for_container_kind, Contents, Item, PublishedSpaceViewInfo,
-    ViewClassRegistry, ViewId, SystemExecutionOutput, ViewQuery, ViewStates,
-    ViewerContext,
+    SystemExecutionOutput, ViewClassRegistry, ViewId, ViewQuery, ViewStates, ViewerContext,
 };
 use re_viewport_blueprint::{ViewportBlueprint, ViewportCommand};
 
@@ -812,7 +811,7 @@ impl TabWidget {
                         item: Some(Item::View(*space_view_id)),
                     }
                 } else {
-                    re_log::warn_once!("Space view {space_view_id} not found");
+                    re_log::warn_once!("View {space_view_id} not found");
 
                     TabDesc {
                         label: tab_viewer.ctx.egui_ctx.error_text("Unknown view").into(),

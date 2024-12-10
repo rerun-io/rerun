@@ -37,7 +37,7 @@ Container                  Hide (or Show, depending on visibility)
 
                            Move to new container
 ------------------------------------------------------------------
-Space view                 Hide (or Show, depending on visibility)
+View                 Hide (or Show, depending on visibility)
                            Remove
 
                            Expand all

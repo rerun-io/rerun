@@ -1,4 +1,4 @@
-//! This example shows how to add custom Space Views to the Rerun Viewer.
+//! This example shows how to add custom Views to the Rerun Viewer.
 
 use re_viewer::external::{re_log, re_memory};
 

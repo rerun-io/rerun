@@ -1,10 +1,10 @@
 use re_viewer_context::{
-    Item, PublishedSpaceViewInfo, ScreenshotTarget, ViewId, SpaceViewRectPublisher,
+    Item, PublishedSpaceViewInfo, ScreenshotTarget, SpaceViewRectPublisher, ViewId,
 };
 
 use crate::{ContextMenuAction, ContextMenuContext};
 
-/// Space view screenshot action.
+/// View screenshot action.
 #[cfg(not(target_arch = "wasm32"))]
 pub enum ScreenshotAction {
     /// Screenshot the view, and copy the results to clipboard.

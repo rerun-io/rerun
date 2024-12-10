@@ -17,7 +17,7 @@ For each of the multi-selection below, check the context menu content as per the
 ==========================================================
 ITEMS                               CONTEXT MENU CONTENT
 ==========================================================
-2x Space views                      Hide all
+2x Views                      Hide all
                                     Remove
 
                                     Expand all
@@ -38,7 +38,7 @@ ITEMS                               CONTEXT MENU CONTENT
                                     Expand all
                                     Collapse all
 ==========================================================
-Space view + 'box2d' data result    Hide all
+View + 'box2d' data result    Hide all
                                     Remove
 
                                     Expand all

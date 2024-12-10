@@ -6,7 +6,7 @@ order: 300
 ## The definition of a space
 
 Every entity in Rerun exists in some _space_. This is at the core of how Rerun organizes the visualizations of the data
-that you have logged. In the [Rerun Viewer](../reference/viewer.md) you view data by configuring a _space view_, which is a view
+that you have logged. In the [Rerun Viewer](../reference/viewer.md) you view data by configuring a _view_, which is a view
 of a set of entities _as seen from a particular origin._
 
 The origin of a space is, very loosely, a generalization of the idea of a "coordinate system" (sometimes known as a "coordinate frame") to arbitrary data. If a collection of

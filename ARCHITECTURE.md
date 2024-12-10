@@ -136,7 +136,7 @@ Update instructions:
 | re_view_dataframe     | A View that shows the data contained in entities in a table.                                         |
 | re_view_graph         | A View that shows a graph (node-link diagram).                                                       |
 | re_view_map           | A View that shows geospatial data on a map.                                                          |
-| re_view_spatial       | Space Views that show entities in a 2D or 3D spatial relationship.                                         |
+| re_view_spatial       | Views that show entities in a 2D or 3D spatial relationship.                                         |
 | re_view_tensor        | A View dedicated to visualizing tensors with arbitrary dimensionality.                               |
 | re_view_text_document | A simple View that shows a single text box.                                                          |
 | re_view_text_log      | A View that shows text entries in a table and scrolls with the active time.                          |

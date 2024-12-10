@@ -6,11 +6,10 @@ use re_viewer::external::{
     re_types::ViewClassIdentifier,
     re_ui,
     re_viewer_context::{
-        HoverHighlight, IdentifiedViewSystem as _, Item, SelectionHighlight, ViewClass,
-        ViewClassLayoutPriority, ViewClassRegistryError, ViewId,
-        ViewSpawnHeuristics, ViewStateExt as _, ViewSystemExecutionError,
-        SystemExecutionOutput, UiLayout, ViewQuery, ViewState, ViewSystemRegistrator,
-        ViewerContext,
+        HoverHighlight, IdentifiedViewSystem as _, Item, SelectionHighlight, SystemExecutionOutput,
+        UiLayout, ViewClass, ViewClassLayoutPriority, ViewClassRegistryError, ViewId, ViewQuery,
+        ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
+        ViewSystemRegistrator, ViewerContext,
     },
 };
 
@@ -43,7 +42,7 @@ impl std::fmt::Display for ColorCoordinatesMode {
     }
 }
 
-/// Space view state for the custom view.
+/// View state for the custom view.
 ///
 /// This state is preserved between frames, but not across Viewer sessions.
 #[derive(Default)]

@@ -18,7 +18,7 @@ use super::{
 #[derive(Debug, thiserror::Error)]
 #[allow(clippy::enum_variant_names)]
 pub enum ViewClassRegistryError {
-    #[error("Space view with class identifier {0:?} was already registered.")]
+    #[error("View with class identifier {0:?} was already registered.")]
     DuplicateClassIdentifier(ViewClassIdentifier),
 
     #[error("A context system with identifier {0:?} was already registered.")]
@@ -27,7 +27,7 @@ pub enum ViewClassRegistryError {
     #[error("A visualizer system with identifier {0:?} was already registered.")]
     IdentifierAlreadyInUseForVisualizer(&'static str),
 
-    #[error("Space view with class identifier {0:?} was not registered.")]
+    #[error("View with class identifier {0:?} was not registered.")]
     UnknownClassIdentifier(ViewClassIdentifier),
 }
 
@@ -120,7 +120,7 @@ impl ViewSystemRegistrator<'_> {
     }
 }
 
-/// Space view class entry in [`ViewClassRegistry`].
+/// View class entry in [`ViewClassRegistry`].
 pub struct ViewClassRegistryEntry {
     pub class: Box<dyn ViewClass>,
     pub identifier: ViewClassIdentifier,
