@@ -40,6 +40,8 @@ class ForceManyBody(Archetype):
         strength:
             The strength of the force.
 
+            If `strength` is smaller than 0, it pushes nodes apart, if it is larger than 0 it pulls them together.
+
         """
 
         # You can define your own __init__ function as a member of ForceManyBodyExt in force_many_body_ext.py
@@ -77,6 +79,8 @@ class ForceManyBody(Archetype):
         converter=blueprint_components.ForceStrengthBatch._optional,  # type: ignore[misc]
     )
     # The strength of the force.
+    #
+    # If `strength` is smaller than 0, it pushes nodes apart, if it is larger than 0 it pulls them together.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

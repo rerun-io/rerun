@@ -5,6 +5,10 @@ use re_types::{
 use re_viewer_context::{ComponentFallbackProvider, SpaceViewId, SpaceViewState, ViewerContext};
 use re_viewport_blueprint::ViewProperty;
 
+/// This function is similar to [`view_property_component_ui`], but it always
+/// picks the [`Enabled`] component for the single-line edit UI.
+/// Also, it will always show the single-line edit UI (and not only if there is
+/// a single property per archetype).
 pub fn view_property_force_ui<A: Archetype + ArchetypeReflectionMarker>(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,

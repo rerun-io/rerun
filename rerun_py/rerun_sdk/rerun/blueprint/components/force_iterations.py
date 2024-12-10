@@ -17,7 +17,7 @@ __all__ = ["ForceIterations", "ForceIterationsBatch"]
 
 class ForceIterations(datatypes.UInt64, ComponentMixin):
     """
-    **Component**: The number of internal iterations of a given force.
+    **Component**: Specifies how often this force should be applied per iteration.
 
     Increasing this parameter can lead to better results at the cost of longer computation time.
     """

@@ -25,6 +25,8 @@ namespace rerun::blueprint::archetypes {
         std::optional<rerun::blueprint::components::Enabled> enabled;
 
         /// The strength of the force.
+        ///
+        /// If `strength` is smaller than 0, it pushes nodes apart, if it is larger than 0 it pulls them together.
         std::optional<rerun::blueprint::components::ForceStrength> strength;
 
       public:
@@ -46,6 +48,8 @@ namespace rerun::blueprint::archetypes {
         }
 
         /// The strength of the force.
+        ///
+        /// If `strength` is smaller than 0, it pushes nodes apart, if it is larger than 0 it pulls them together.
         ForceManyBody with_strength(rerun::blueprint::components::ForceStrength _strength) && {
             strength = std::move(_strength);
             // See: https://github.com/rerun-io/rerun/issues/4027

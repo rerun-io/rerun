@@ -21,7 +21,7 @@ __all__ = ["ForceCollisionRadius"]
 
 @define(str=False, repr=False, init=False)
 class ForceCollisionRadius(Archetype):
-    """**Archetype**: Resolves collisons between the bounding spheres, according to the radius of the nodes."""
+    """**Archetype**: Resolves collisions between the bounding spheres, according to the radius of the nodes."""
 
     def __init__(
         self: Any,
@@ -40,7 +40,9 @@ class ForceCollisionRadius(Archetype):
         strength:
             The strength of the force.
         iterations:
-            The number of iterations to run the force.
+            Specifies how often this force should be applied per iteration.
+
+            Increasing this parameter can lead to better results at the cost of longer computation time.
 
         """
 
@@ -88,7 +90,9 @@ class ForceCollisionRadius(Archetype):
         default=None,
         converter=blueprint_components.ForceIterationsBatch._optional,  # type: ignore[misc]
     )
-    # The number of iterations to run the force.
+    # Specifies how often this force should be applied per iteration.
+    #
+    # Increasing this parameter can lead to better results at the cost of longer computation time.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

@@ -18,7 +18,7 @@ use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Archetype**: Resolves collisons between the bounding spheres, according to the radius of the nodes.
+/// **Archetype**: Resolves collisions between the bounding spheres, according to the radius of the nodes.
 #[derive(Clone, Debug)]
 pub struct ForceCollisionRadius {
     /// Whether the force is enabled.
@@ -27,7 +27,9 @@ pub struct ForceCollisionRadius {
     /// The strength of the force.
     pub strength: Option<crate::blueprint::components::ForceStrength>,
 
-    /// The number of iterations to run the force.
+    /// Specifies how often this force should be applied per iteration.
+    ///
+    /// Increasing this parameter can lead to better results at the cost of longer computation time.
     pub iterations: Option<crate::blueprint::components::ForceIterations>,
 }
 
@@ -268,7 +270,9 @@ impl ForceCollisionRadius {
         self
     }
 
-    /// The number of iterations to run the force.
+    /// Specifies how often this force should be applied per iteration.
+    ///
+    /// Increasing this parameter can lead to better results at the cost of longer computation time.
     #[inline]
     pub fn with_iterations(
         mut self,

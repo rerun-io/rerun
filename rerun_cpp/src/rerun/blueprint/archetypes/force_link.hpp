@@ -26,7 +26,9 @@ namespace rerun::blueprint::archetypes {
         /// The target distance between two nodes.
         std::optional<rerun::blueprint::components::ForceDistance> distance;
 
-        /// The number of iterations to run the force.
+        /// Specifies how often this force should be applied per iteration.
+        ///
+        /// Increasing this parameter can lead to better results at the cost of longer computation time.
         std::optional<rerun::blueprint::components::ForceIterations> iterations;
 
       public:
@@ -54,7 +56,9 @@ namespace rerun::blueprint::archetypes {
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
-        /// The number of iterations to run the force.
+        /// Specifies how often this force should be applied per iteration.
+        ///
+        /// Increasing this parameter can lead to better results at the cost of longer computation time.
         ForceLink with_iterations(rerun::blueprint::components::ForceIterations _iterations) && {
             iterations = std::move(_iterations);
             // See: https://github.com/rerun-io/rerun/issues/4027

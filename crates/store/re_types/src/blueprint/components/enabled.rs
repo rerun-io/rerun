@@ -19,7 +19,7 @@ use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: Whether a procedure is enabled.
-#[derive(Clone, Debug, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, Copy, Default, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(transparent)]
 pub struct Enabled(pub crate::datatypes::Bool);
 

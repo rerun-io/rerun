@@ -27,7 +27,7 @@ pub struct ForcePosition {
     /// The strength of the force.
     pub strength: Option<crate::blueprint::components::ForceStrength>,
 
-    /// The position where the nodes should bepulled towards.
+    /// The position where the nodes should be pulled towards.
     pub position: Option<crate::components::Position2D>,
 }
 
@@ -266,7 +266,7 @@ impl ForcePosition {
         self
     }
 
-    /// The position where the nodes should bepulled towards.
+    /// The position where the nodes should be pulled towards.
     #[inline]
     pub fn with_position(mut self, position: impl Into<crate::components::Position2D>) -> Self {
         self.position = Some(position.into());

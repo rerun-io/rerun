@@ -40,7 +40,9 @@ class ForceLink(Archetype):
         distance:
             The target distance between two nodes.
         iterations:
-            The number of iterations to run the force.
+            Specifies how often this force should be applied per iteration.
+
+            Increasing this parameter can lead to better results at the cost of longer computation time.
 
         """
 
@@ -88,7 +90,9 @@ class ForceLink(Archetype):
         default=None,
         converter=blueprint_components.ForceIterationsBatch._optional,  # type: ignore[misc]
     )
-    # The number of iterations to run the force.
+    # Specifies how often this force should be applied per iteration.
+    #
+    # Increasing this parameter can lead to better results at the cost of longer computation time.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

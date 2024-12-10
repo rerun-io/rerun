@@ -16,7 +16,7 @@ Allows to control the interaction between two nodes connecting throught an edge.
 
 * `enabled`: Whether the force is enabled.
 * `distance`: The target distance between two nodes.
-* `iterations`: The number of iterations to run the force.
+* `iterations`: Specifies how often this force should be applied per iteration.
 ### `force_many_body`
 A force between each pair of nodes that ressembles an electrical charge.
 
@@ -27,13 +27,13 @@ Similar to gravity, this force pulls nodes towards a specific position.
 
 * `enabled`: Whether the force is enabled.
 * `strength`: The strength of the force.
-* `position`: The position where the nodes should bepulled towards.
+* `position`: The position where the nodes should be pulled towards.
 ### `force_collision_radius`
 Resolves collisons between the bounding spheres, according to the radius of the nodes.
 
 * `enabled`: Whether the force is enabled.
 * `strength`: The strength of the force.
-* `iterations`: The number of iterations to run the force.
+* `iterations`: Specifies how often this force should be applied per iteration.
 ### `force_center`
 Tries to move the center of mass of the graph to the origin.
 

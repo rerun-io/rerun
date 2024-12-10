@@ -40,7 +40,7 @@ class ForcePosition(Archetype):
         strength:
             The strength of the force.
         position:
-            The position where the nodes should bepulled towards.
+            The position where the nodes should be pulled towards.
 
         """
 
@@ -88,7 +88,7 @@ class ForcePosition(Archetype):
         default=None,
         converter=components.Position2DBatch._optional,  # type: ignore[misc]
     )
-    # The position where the nodes should bepulled towards.
+    # The position where the nodes should be pulled towards.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

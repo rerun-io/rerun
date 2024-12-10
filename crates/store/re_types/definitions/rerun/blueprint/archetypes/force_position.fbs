@@ -10,6 +10,6 @@ struct ForcePosition (
     /// The strength of the force.
     strength: rerun.blueprint.components.ForceStrength ("attr.rerun.component_optional", nullable, order: 200);
 
-    /// The position where the nodes should bepulled towards.
+    /// The position where the nodes should be pulled towards.
     position: rerun.components.Position2D ("attr.rerun.component_optional", nullable, order: 300);
 }

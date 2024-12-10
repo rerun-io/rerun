@@ -18,7 +18,7 @@ use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Component**: The number of internal iterations of a given force.
+/// **Component**: Specifies how often this force should be applied per iteration.
 ///
 /// Increasing this parameter can lead to better results at the cost of longer computation time.
 #[derive(Clone, Debug, Default, Copy, PartialEq, Eq)]

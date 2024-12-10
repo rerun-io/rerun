@@ -27,7 +27,9 @@ pub struct ForceLink {
     /// The target distance between two nodes.
     pub distance: Option<crate::blueprint::components::ForceDistance>,
 
-    /// The number of iterations to run the force.
+    /// Specifies how often this force should be applied per iteration.
+    ///
+    /// Increasing this parameter can lead to better results at the cost of longer computation time.
     pub iterations: Option<crate::blueprint::components::ForceIterations>,
 }
 
@@ -267,7 +269,9 @@ impl ForceLink {
         self
     }
 
-    /// The number of iterations to run the force.
+    /// Specifies how often this force should be applied per iteration.
+    ///
+    /// Increasing this parameter can lead to better results at the cost of longer computation time.
     #[inline]
     pub fn with_iterations(
         mut self,

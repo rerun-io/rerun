@@ -143,7 +143,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <ForceIterations as Component>::name(),
             ComponentReflection {
-                docstring_md: "The number of internal iterations of a given force.\n\nIncreasing this parameter can lead to better results at the cost of longer computation time.",
+                docstring_md: "Specifies how often this force should be applied per iteration.\n\nIncreasing this parameter can lead to better results at the cost of longer computation time.",
                 custom_placeholder: Some(ForceIterations::default().to_arrow2()?),
                 datatype: ForceIterations::arrow2_datatype(),
             },
@@ -2009,7 +2009,8 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     : false, }, ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.ForceIterations".into(), display_name :
                     "Iterations", docstring_md :
-                    "The number of iterations to run the force.", is_required : false, },
+                    "Specifies how often this force should be applied per iteration.\n\nIncreasing this parameter can lead to better results at the cost of longer computation time.",
+                    is_required : false, },
                 ],
             },
         ),
@@ -2028,7 +2029,8 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     is_required : false, }, ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.ForceIterations".into(), display_name :
                     "Iterations", docstring_md :
-                    "The number of iterations to run the force.", is_required : false, },
+                    "Specifies how often this force should be applied per iteration.\n\nIncreasing this parameter can lead to better results at the cost of longer computation time.",
+                    is_required : false, },
                 ],
             },
         ),
@@ -2043,8 +2045,9 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "Enabled", docstring_md : "Whether the force is enabled.",
                     is_required : false, }, ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.ForceStrength".into(), display_name :
-                    "Strength", docstring_md : "The strength of the force.", is_required
-                    : false, },
+                    "Strength", docstring_md :
+                    "The strength of the force.\n\nIf `strength` is smaller than 0, it pushes nodes apart, if it is larger than 0 it pulls them together.",
+                    is_required : false, },
                 ],
             },
         ),
@@ -2063,7 +2066,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     : false, }, ArchetypeFieldReflection { component_name :
                     "rerun.components.Position2D".into(), display_name : "Position",
                     docstring_md :
-                    "The position where the nodes should bepulled towards.", is_required
+                    "The position where the nodes should be pulled towards.", is_required
                     : false, },
                 ],
             },

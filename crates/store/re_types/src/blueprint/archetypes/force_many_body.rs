@@ -27,6 +27,8 @@ pub struct ForceManyBody {
     pub enabled: Option<crate::blueprint::components::Enabled>,
 
     /// The strength of the force.
+    ///
+    /// If `strength` is smaller than 0, it pushes nodes apart, if it is larger than 0 it pulls them together.
     pub strength: Option<crate::blueprint::components::ForceStrength>,
 }
 
@@ -220,6 +222,8 @@ impl ForceManyBody {
     }
 
     /// The strength of the force.
+    ///
+    /// If `strength` is smaller than 0, it pushes nodes apart, if it is larger than 0 it pulls them together.
     #[inline]
     pub fn with_strength(
         mut self,

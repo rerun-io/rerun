@@ -26,7 +26,7 @@ namespace rerun::blueprint::archetypes {
         /// The strength of the force.
         std::optional<rerun::blueprint::components::ForceStrength> strength;
 
-        /// The position where the nodes should bepulled towards.
+        /// The position where the nodes should be pulled towards.
         std::optional<rerun::components::Position2D> position;
 
       public:
@@ -54,7 +54,7 @@ namespace rerun::blueprint::archetypes {
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
-        /// The position where the nodes should bepulled towards.
+        /// The position where the nodes should be pulled towards.
         ForcePosition with_position(rerun::components::Position2D _position) && {
             position = std::move(_position);
             // See: https://github.com/rerun-io/rerun/issues/4027

@@ -18,7 +18,7 @@
 #include <vector>
 
 namespace rerun::blueprint::archetypes {
-    /// **Archetype**: Resolves collisons between the bounding spheres, according to the radius of the nodes.
+    /// **Archetype**: Resolves collisions between the bounding spheres, according to the radius of the nodes.
     struct ForceCollisionRadius {
         /// Whether the force is enabled.
         std::optional<rerun::blueprint::components::Enabled> enabled;
@@ -26,7 +26,9 @@ namespace rerun::blueprint::archetypes {
         /// The strength of the force.
         std::optional<rerun::blueprint::components::ForceStrength> strength;
 
-        /// The number of iterations to run the force.
+        /// Specifies how often this force should be applied per iteration.
+        ///
+        /// Increasing this parameter can lead to better results at the cost of longer computation time.
         std::optional<rerun::blueprint::components::ForceIterations> iterations;
 
       public:
@@ -55,7 +57,9 @@ namespace rerun::blueprint::archetypes {
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
-        /// The number of iterations to run the force.
+        /// Specifies how often this force should be applied per iteration.
+        ///
+        /// Increasing this parameter can lead to better results at the cost of longer computation time.
         ForceCollisionRadius with_iterations(
             rerun::blueprint::components::ForceIterations _iterations
         ) && {
