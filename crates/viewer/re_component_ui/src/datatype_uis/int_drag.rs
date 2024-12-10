@@ -4,7 +4,7 @@ use egui::NumExt as _;
 use re_types_core::datatypes;
 use re_viewer_context::MaybeMutRef;
 
-/// Generic editor for a [`re_types::datatypes::UInt64`] values wihtin a given range.
+/// Generic editor for a [`re_types::datatypes::UInt64`] values within a given range.
 pub fn edit_u64_range(
     _ctx: &re_viewer_context::ViewerContext<'_>,
     ui: &mut egui::Ui,
