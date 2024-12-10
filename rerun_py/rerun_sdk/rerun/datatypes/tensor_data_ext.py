@@ -166,9 +166,9 @@ class TensorDataExt:
             data = TensorData(array=array)
 
         # Now build the actual arrow fields
-        shape = flat_np_uint64_array_from_array_like(data.shape)
+        shape = pa.array(flat_np_uint64_array_from_array_like(data.shape, 1))
         if data.names:
-            names = flat_np_string_array_from_array_like(data.names)
+            names = pa.array(flat_np_string_array_from_array_like(data.names, 1))
         else:
             names = pa.null()
         buffer = _build_buffer_array(data.buffer)
