@@ -77,7 +77,7 @@ namespace rerun::archetypes {
 
       public: // START of extensions from tensor_ext.cpp:
         /// New Tensor from dimensions and tensor buffer.
-        Tensor(Collection<datatypes::TensorDimension> shape, datatypes::TensorBuffer buffer)
+        Tensor(Collection<uint64_t> shape, datatypes::TensorBuffer buffer)
             : Tensor(datatypes::TensorData(std::move(shape), std::move(buffer))) {}
 
         /// New tensor from dimensions and pointer to tensor data.
@@ -88,7 +88,7 @@ namespace rerun::archetypes {
         /// \param data_
         /// Target of the pointer must outlive the archetype.
         template <typename TElement>
-        explicit Tensor(Collection<datatypes::TensorDimension> shape, const TElement* data_)
+        explicit Tensor(Collection<uint64_t> shape, const TElement* data_)
             : Tensor(datatypes::TensorData(std::move(shape), data_)) {}
 
         /// Update the `names` of the contained `TensorData` dimensions.
