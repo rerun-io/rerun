@@ -164,15 +164,17 @@ Display a graph of nodes and edges.
         let rect_in_scene: blueprint::components::VisualBounds2D =
             bounds_property.component_or_fallback(ctx, self, state)?;
 
-        let rect_in_ui = ui.max_rect();
+        let rect_in_ui = *state.rect_in_ui.insert(ui.max_rect());
 
         let request = LayoutRequest::from_graphs(graphs.iter());
         let layout_was_empty = state.layout_state.is_none();
         let layout = state.layout_state.get(request);
 
-        let mut ui_from_world = fit_to_rect_in_scene(rect_in_ui, rect_in_scene.into());
+        let ui_from_world = state
+            .ui_from_world
+            .get_or_insert_with(|| fit_to_rect_in_scene(rect_in_ui, rect_in_scene.into()));
 
-        let resp = zoom_pan_area(ui, rect_in_ui, &mut ui_from_world, |ui| {
+        let resp = zoom_pan_area(ui, rect_in_ui, ui_from_world, |ui| {
             let mut world_bounding_rect = egui::Rect::NOTHING;
 
             for graph in &graphs {
@@ -191,6 +193,7 @@ Display a graph of nodes and edges.
             blueprint::components::VisualBounds2D::from(ui_from_world.inverse() * rect_in_ui);
         if resp.double_clicked() || layout_was_empty {
             bounds_property.reset_blueprint_component::<blueprint::components::VisualBounds2D>(ctx);
+            state.ui_from_world = None;
         } else if rect_in_scene != updated_rect_in_scene {
             bounds_property.save_blueprint_component(ctx, &updated_rect_in_scene);
         }
