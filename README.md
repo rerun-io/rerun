@@ -74,6 +74,7 @@ You should now be able to run `rerun --help` in any terminal.
 - 📚 [High-level docs](http://rerun.io/docs)
 - ⏃ [Loggable Types](https://www.rerun.io/docs/reference/types)
 - ⚙️ [Examples](http://rerun.io/examples)
+- 📖 [Code snippets](./docs/snippets/INDEX.md)
 - 🌊 [C++ API docs](https://ref.rerun.io/docs/cpp)
 - 🐍 [Python API docs](https://ref.rerun.io/docs/python)
 - 🦀 [Rust API docs](https://docs.rs/rerun/)
