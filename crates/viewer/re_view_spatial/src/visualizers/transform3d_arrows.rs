@@ -274,7 +274,7 @@ re_viewer_context::impl_component_fallback_provider!(Transform3DArrowsVisualizer
 /// The `AxisLengthDetector` doesn't actually visualize anything, but it allows us to detect
 /// when a transform has set the [`AxisLength`] component.
 ///
-/// See the logic in [`crate::View3D`]`::choose_default_visualizers`.
+/// See the logic in [`crate::SpatialView3D`]`::choose_default_visualizers`.
 #[derive(Default)]
 pub struct AxisLengthDetector();
 
