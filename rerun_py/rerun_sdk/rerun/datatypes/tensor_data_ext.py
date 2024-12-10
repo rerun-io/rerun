@@ -168,20 +168,30 @@ class TensorDataExt:
 
         # Now build the actual arrow fields
         shape = pa.array(flat_np_uint64_array_from_array_like(data.shape, 1))
-        if data.names:
-            names = pa.array(data.names)
-        else:
-            names = pa.null()
         buffer = _build_buffer_array(data.buffer)
 
-        return pa.StructArray.from_arrays(
-            [
-                shape,
-                names,
-                buffer,
-            ],
-            fields=[data_type.field("shape"), data_type.field("names"), data_type.field("buffer")],
-        ).cast(data_type)
+        if data.names is None:
+            return pa.StructArray.from_arrays(
+                [
+                    shape,
+                    buffer,
+                ],
+                fields=[data_type.field("shape"), data_type.field("buffer")],
+            ).cast(data_type)
+        else:
+            names = pa.array(data.names)
+            if False:
+                print(f"shape: {shape}")
+                print(f"names: {names}")
+                print(f"buffer: {buffer}")
+            return pa.StructArray.from_arrays(
+                [
+                    shape,
+                    names,
+                    buffer,
+                ],
+                fields=[data_type.field("shape"), data_type.field("names"), data_type.field("buffer")],
+            ).cast(data_type)
 
     def numpy(self: Any, force: bool) -> npt.NDArray[Any]:
         """Convert the TensorData back to a numpy array."""
