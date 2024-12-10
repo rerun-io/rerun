@@ -25,6 +25,6 @@ you have to build the web viewer of the version yourself.
 This is currently not supported outside of the Rerun repository.
 
 ## Testing it
-Start it with `cargo run -p custom_space_view`.
+Start it with `cargo run -p custom_view`.
 
 Then put some data into it with: `cargo run -p minimal_options -- --connect`

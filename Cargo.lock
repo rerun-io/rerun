@@ -1731,21 +1731,21 @@ dependencies = [
 ]
 
 [[package]]
-name = "custom_space_view"
+name = "custom_store_subscriber"
+version = "0.21.0-alpha.1+dev"
+dependencies = [
+ "re_build_tools",
+ "rerun",
+]
+
+[[package]]
+name = "custom_view"
 version = "0.21.0-alpha.1+dev"
 dependencies = [
  "mimalloc",
  "re_crash_handler",
  "re_sdk_comms",
  "re_viewer",
-]
-
-[[package]]
-name = "custom_store_subscriber"
-version = "0.21.0-alpha.1+dev"
-dependencies = [
- "re_build_tools",
- "rerun",
 ]
 
 [[package]]
