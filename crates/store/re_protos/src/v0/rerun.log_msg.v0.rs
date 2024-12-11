@@ -136,7 +136,7 @@ impl Compression {
         }
     }
 }
-/// The encoding of the mesage payload.
+/// The encoding of the message payload.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum Encoding {

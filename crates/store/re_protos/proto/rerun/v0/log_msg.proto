@@ -22,7 +22,7 @@ enum Compression {
     LZ4 = 1;
 }
 
-// The encoding of the mesage payload.
+// The encoding of the message payload.
 enum Encoding {
     // We don't know what encoding the payload is in.
     UNKNOWN = 0;
