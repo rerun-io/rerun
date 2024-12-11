@@ -4,8 +4,8 @@ use re_chunk::{ComponentName, RowId, UnitChunkShared};
 use re_data_ui::{sorted_component_list_for_ui, DataUi};
 use re_entity_db::EntityDb;
 use re_log_types::{ComponentPath, EntityPath};
-use re_types::external::arrow2;
 use re_types::blueprint::components::VisualizerOverrides;
+use re_types::external::arrow2;
 use re_ui::{list_item, UiExt as _};
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{

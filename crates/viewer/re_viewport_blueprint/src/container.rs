@@ -4,10 +4,10 @@ use egui_tiles::TileId;
 use re_chunk::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
-use re_types::components::Name;
-use re_types::{blueprint::components::Visible, Archetype as _};
 use re_types::blueprint::archetypes as blueprint_archetypes;
 use re_types::blueprint::components::{ContainerKind, GridColumns};
+use re_types::components::Name;
+use re_types::{blueprint::components::Visible, Archetype as _};
 use re_viewer_context::{ContainerId, Contents, ContentsName, ViewId, ViewerContext};
 
 /// The native version of a [`re_types::blueprint::archetypes::ContainerBlueprint`].
@@ -180,12 +180,11 @@ impl ContainerBlueprint {
         let contents: Vec<_> = contents.iter().map(|item| item.as_entity_path()).collect();
 
         let container_kind = crate::container_kind_from_egui(*container_kind);
-        let mut arch =
-            re_types::blueprint::archetypes::ContainerBlueprint::new(container_kind)
-                .with_contents(&contents)
-                .with_col_shares(col_shares.clone())
-                .with_row_shares(row_shares.clone())
-                .with_visible(*visible);
+        let mut arch = re_types::blueprint::archetypes::ContainerBlueprint::new(container_kind)
+            .with_contents(&contents)
+            .with_col_shares(col_shares.clone())
+            .with_row_shares(row_shares.clone())
+            .with_visible(*visible);
 
         // Note: it's important to _not_ clear the `Name` component if `display_name` is set to
         // `None`, as we call this function with `ContainerBlueprint` recreated from `egui_tiles`,

@@ -14,12 +14,12 @@ use smallvec::SmallVec;
 
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityPath;
-use re_types::{
-    blueprint::components::ViewerRecommendationHash, Archetype as _, ViewClassIdentifier,
-};
 use re_types::blueprint::{
     archetypes as blueprint_archetypes,
     components::{AutoLayout, AutoViews, RootContainer, ViewMaximized},
+};
+use re_types::{
+    blueprint::components::ViewerRecommendationHash, Archetype as _, ViewClassIdentifier,
 };
 use re_viewer_context::{
     blueprint_id_to_tile_id, ContainerId, Contents, Item, ViewId, ViewerContext,

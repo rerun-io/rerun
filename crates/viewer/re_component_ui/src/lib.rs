@@ -34,6 +34,7 @@ use datatype_uis::{
     view_view_id,
 };
 
+use re_types::blueprint::components::{RootContainer, ViewMaximized};
 use re_types::{
     blueprint::components::{
         BackgroundKind, Corner2D, Enabled, ForceDistance, ForceIterations, ForceStrength,
@@ -47,7 +48,6 @@ use re_types::{
     },
     Component as _,
 };
-use re_types::blueprint::components::{RootContainer, ViewMaximized};
 use re_viewer_context::gpu_bridge::colormap_edit_or_view_ui;
 
 /// Default number of ui points to show a number.
