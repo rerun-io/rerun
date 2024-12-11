@@ -247,7 +247,7 @@ impl AppState {
                         view.id,
                         view.contents.execute_query(
                             store_context,
-                            &view_class_registry,
+                            view_class_registry,
                             &blueprint_query,
                             view.id,
                             &visualizable_entities,

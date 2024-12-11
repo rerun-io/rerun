@@ -25,13 +25,13 @@ use re_viewer_context::{
 ///
 /// Data should be accessed via the [`crate::RangeResultsExt`] trait which is implemented for
 /// [`crate::HybridResults`].
-pub fn range_with_blueprint_resolved_data(
-    ctx: &ViewContext<'_>,
+pub fn range_with_blueprint_resolved_data<'a>(
+    ctx: &ViewContext<'a>,
     _annotations: Option<&re_viewer_context::Annotations>,
     range_query: &RangeQuery,
     data_result: &re_viewer_context::DataResult,
     component_names: impl IntoIterator<Item = ComponentName>,
-) -> HybridRangeResults {
+) -> HybridRangeResults<'a> {
     re_tracing::profile_function!(data_result.entity_path.to_string());
 
     let mut component_name_set = component_names.into_iter().collect::<IntSet<_>>();
@@ -47,16 +47,10 @@ pub fn range_with_blueprint_resolved_data(
         component_name_set.iter(),
     );
 
-    // TODO(jleibs): This doesn't work when the component set contains empty results.
-    // This means we over-query for defaults that will never be used.
-    // component_set.retain(|component| !results.components.contains_key(component));
-
-    let defaults = ctx.query_result.component_defaults.clone(); // TODO(andreas): don't clone
-
     HybridRangeResults {
         overrides,
         results,
-        defaults,
+        defaults: &ctx.query_result.component_defaults,
     }
 }
 
@@ -98,16 +92,10 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
         component_set.iter().copied(),
     );
 
-    // TODO(jleibs): This doesn't work when the component set contains empty results.
-    // This means we over-query for defaults that will never be used.
-    // component_set.retain(|component| !results.components.contains_key(component));
-
-    let defaults = ctx.query_result.component_defaults.clone(); // TODO(andreas): don't clone
-
     HybridLatestAtResults {
         overrides,
         results,
-        defaults,
+        defaults: &ctx.query_result.component_defaults,
         ctx,
         query: latest_at_query.clone(),
         data_result,
