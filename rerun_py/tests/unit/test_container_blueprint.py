@@ -36,8 +36,8 @@ def test_container_blueprint() -> None:
     contents_arrays: Sequence[Any] = [
         None,
         [],
-        ["space_view/1234", "container/5678"],
-        [EntityPath("space_view/1234"), EntityPath("container/5678")],
+        ["view/1234", "container/5678"],
+        [EntityPath("view/1234"), EntityPath("container/5678")],
     ]
 
     col_shares_arrays = [
@@ -54,9 +54,9 @@ def test_container_blueprint() -> None:
 
     active_tab_arrays = [
         None,
-        "space_view/1234",
-        ActiveTab("space_view/1234"),
-        ActiveTab(EntityPath("space_view/1234")),
+        "view/1234",
+        ActiveTab("view/1234"),
+        ActiveTab(EntityPath("view/1234")),
     ]
 
     visible_arrays = [
