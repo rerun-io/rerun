@@ -134,29 +134,31 @@ impl PickingContext {
             self,
             previous_picking_result,
         );
-        let mut rect_hits = picking_textured_rects(self, images);
-        rect_hits.sort_by(|a, b| b.depth_offset.cmp(&a.depth_offset));
-        let ui_rect_hits = picking_ui_rects(self, ui_rects);
+
+        let mut image_hits = picking_textured_rects(self, images);
+        image_hits.sort_by(|a, b| b.depth_offset.cmp(&a.depth_offset));
+
+        let ui_hits = picking_ui_rects(self, ui_rects);
 
         let mut hits = Vec::new();
 
         // Start with gpu based picking as baseline. This is our prime source of picking information.
-        //
-        // ..unless the same object got also picked as part of a textured rect.
-        // Textured rect picks also know where on the rect they hit, making this the better source!
-        // Note that whenever this happens, it means that the same object path has a textured rect and something else
-        // e.g. a camera.
         if let Some(gpu_pick) = gpu_pick {
-            if rect_hits.iter().all(|rect_hit| {
-                rect_hit.instance_path_hash.entity_path_hash
-                    != gpu_pick.instance_path_hash.entity_path_hash
-            }) {
+            // ..unless the same object got also picked as part of a textured rect.
+            // Textured rect picks also know where on the rect they hit, making this the better source!
+            // Note that whenever this happens, it means that the same object path has a textured rect and something else
+            // e.g. a camera.
+            let has_image_hit_on_gpu_pick = image_hits.iter().any(|image_hit| {
+                image_hit.instance_path_hash.entity_path_hash
+                    == gpu_pick.instance_path_hash.entity_path_hash
+            });
+            if !has_image_hit_on_gpu_pick {
                 hits.push(gpu_pick);
             }
         }
 
         // We never throw away any textured rects, even if they're behind other objects.
-        hits.extend(rect_hits);
+        hits.extend(image_hits);
 
         // UI rects are overlaid on top, but we don't let them hide other picking results either.
         // Give any other previous hits precedence.
@@ -165,11 +167,12 @@ impl PickingContext {
             .map(|prev_hit| prev_hit.instance_path_hash)
             .collect();
         hits.extend(
-            ui_rect_hits
+            ui_hits
                 .into_iter()
                 .filter(|ui_hit| !previously_hit_objects.contains(&ui_hit.instance_path_hash)),
         );
 
+        // Re-order so that the closest hits are first:
         hits.sort_by_key(|hit| match hit.hit_type {
             PickingHitType::GuiOverlay => 0, // GUI is closest, so always goes on top
 
