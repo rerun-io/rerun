@@ -5,7 +5,7 @@ use smallvec::SmallVec;
 
 use re_log_types::{EntityPath, EntityPathHash};
 
-use crate::{DataResult, SpaceViewId, SpaceViewState, ViewContext, ViewerContext};
+use crate::{DataResult, ViewContext, ViewId, ViewState, ViewerContext};
 
 slotmap::new_key_type! {
     /// Identifier for a [`DataResultNode`]
@@ -34,7 +34,7 @@ pub struct QueryContext<'a> {
     pub query: &'a re_chunk_store::LatestAtQuery,
 
     /// The view state of the view in which the query is executed.
-    pub view_state: &'a dyn SpaceViewState,
+    pub view_state: &'a dyn ViewState,
 
     /// The view context, if available.
     // TODO(jleibs): Make this non-optional.
@@ -201,7 +201,7 @@ impl DataResultTree {
 static EMPTY_QUERY: Lazy<DataQueryResult> = Lazy::<DataQueryResult>::new(Default::default);
 
 impl ViewerContext<'_> {
-    pub fn lookup_query_result(&self, id: SpaceViewId) -> &DataQueryResult {
+    pub fn lookup_query_result(&self, id: ViewId) -> &DataQueryResult {
         self.query_results.get(&id).unwrap_or_else(|| {
             if cfg!(debug_assertions) {
                 re_log::warn!("Tried looking up a query that doesn't exist: {:?}", id);

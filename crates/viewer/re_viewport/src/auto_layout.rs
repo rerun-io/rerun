@@ -1,4 +1,4 @@
-//! Code for automatic layout of space views.
+//! Code for automatic layout of views.
 //!
 //! This uses some very rough heuristics and have a lot of room for improvement.
 
@@ -6,41 +6,33 @@ use std::collections::BTreeMap;
 
 use itertools::Itertools as _;
 
-use re_types::SpaceViewClassIdentifier;
-use re_viewer_context::SpaceViewId;
+use re_types::ViewClassIdentifier;
+use re_viewer_context::ViewId;
 
-use re_viewport_blueprint::SpaceViewBlueprint;
+use re_viewport_blueprint::ViewBlueprint;
 
 #[derive(Clone, Debug)]
 struct SpaceMakeInfo {
-    id: SpaceViewId,
-    class_identifier: SpaceViewClassIdentifier,
-    layout_priority: re_viewer_context::SpaceViewClassLayoutPriority,
+    id: ViewId,
+    class_identifier: ViewClassIdentifier,
+    layout_priority: re_viewer_context::ViewClassLayoutPriority,
 }
 
-pub(crate) fn tree_from_space_views(
-    space_view_class_registry: &re_viewer_context::SpaceViewClassRegistry,
-    space_views: &BTreeMap<SpaceViewId, SpaceViewBlueprint>,
-) -> egui_tiles::Tree<SpaceViewId> {
-    re_log::trace!("Auto-layout of {} space views", space_views.len());
+pub(crate) fn tree_from_views(
+    view_class_registry: &re_viewer_context::ViewClassRegistry,
+    views: &BTreeMap<ViewId, ViewBlueprint>,
+) -> egui_tiles::Tree<ViewId> {
+    re_log::trace!("Auto-layout of {} views", views.len());
 
-    let space_make_infos = space_views
+    let space_make_infos = views
         .iter()
         // Sort for determinism:
-        .sorted_by_key(|(space_view_id, space_view)| {
-            (
-                &space_view.space_origin,
-                &space_view.display_name,
-                *space_view_id,
-            )
-        })
-        .map(|(space_view_id, space_view)| {
-            let class_identifier = space_view.class_identifier();
-            let layout_priority = space_view
-                .class(space_view_class_registry)
-                .layout_priority();
+        .sorted_by_key(|(view_id, view)| (&view.space_origin, &view.display_name, *view_id))
+        .map(|(view_id, view)| {
+            let class_identifier = view.class_identifier();
+            let layout_priority = view.class(view_class_registry).layout_priority();
             SpaceMakeInfo {
-                id: *space_view_id,
+                id: *view_id,
                 class_identifier,
                 layout_priority,
             }
@@ -69,8 +61,8 @@ pub(crate) fn tree_from_space_views(
             .collect_vec();
         tiles.insert_grid_tile(child_tile_ids)
     } else {
-        // So many space views - lets group by class and put the members of each group into tabs:
-        let mut grouped_by_class: BTreeMap<SpaceViewClassIdentifier, Vec<SpaceMakeInfo>> =
+        // So many views - lets group by class and put the members of each group into tabs:
+        let mut grouped_by_class: BTreeMap<ViewClassIdentifier, Vec<SpaceMakeInfo>> =
             Default::default();
         for smi in space_make_infos {
             grouped_by_class
@@ -107,7 +99,7 @@ pub(crate) fn tree_from_space_views(
 
 fn arrange_three(
     mut spaces: [SpaceMakeInfo; 3],
-    tiles: &mut egui_tiles::Tiles<SpaceViewId>,
+    tiles: &mut egui_tiles::Tiles<ViewId>,
 ) -> egui_tiles::TileId {
     // We will arrange it like so:
     //

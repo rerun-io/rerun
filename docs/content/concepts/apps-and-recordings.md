@@ -30,7 +30,7 @@ snippet: tutorials/custom-application-id
 
 The Rerun viewer will store your blueprint based on this _Application ID_.
 
-This means that you can run your app and set up the viewer to your liking, and then when you run the app again the Rerun viewer will remember how you set up your Space Views etc.
+This means that you can run your app and set up the viewer to your liking, and then when you run the app again the Rerun viewer will remember how you set up your Views etc.
 Different recordings (i.e. different _Recording IDs_) will share the same blueprint as long as they share the same _Application ID_.
 
 Check out the API to learn more about SDK initialization:

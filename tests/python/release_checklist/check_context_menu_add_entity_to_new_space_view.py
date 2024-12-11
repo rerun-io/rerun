@@ -10,18 +10,18 @@ import rerun as rr
 import rerun.blueprint as rrb
 
 README = """\
-# Context Menu - Add entity to new space view
+# Context Menu - Add entity to new view
 
 #### Blueprint tree
 
 * "Expand all" on the Vertical containers.
-* Right-click on the `boxes3d` entity and select "Add to new space view" -> "3D". Check a new space view is created _and selected_ with the boxes3d entity and origin set to root.
-* In each space view, right-click on the leaf entity, and check that "Add to new space view" recommends at least space views of the same kind.
-* Select both the `boxes3d` entity and the `text_logs` entity. Check no space view is recommended (except Dataframe if enabled).
+* Right-click on the `boxes3d` entity and select "Add to new view" -> "3D". Check a new view is created _and selected_ with the boxes3d entity and origin set to root.
+* In each view, right-click on the leaf entity, and check that "Add to new view" recommends at least views of the same kind.
+* Select both the `boxes3d` entity and the `text_logs` entity. Check no view is recommended (except Dataframe if enabled).
 
 #### Streams tree
 
-* Right-click on the `bars` entity and check that a Bar Plot space view can successfully be created.
+* Right-click on the `bars` entity and check that a Bar Plot view can successfully be created.
 """
 
 
@@ -43,7 +43,7 @@ def blueprint() -> rrb.BlueprintLike:
     )
 
 
-def log_some_space_views() -> None:
+def log_some_views() -> None:
     rr.set_time_sequence("frame_nr", 0)
 
     rr.log("boxes3d", rr.Boxes3D(centers=[[0, 0, 0], [1, 1.5, 1.15], [3, 2, 1]], half_sizes=[0.5, 1, 0.5] * 3))
@@ -61,7 +61,7 @@ def run(args: Namespace) -> None:
     rr.script_setup(args, f"{os.path.basename(__file__)}", recording_id=uuid4(), default_blueprint=blueprint())
 
     log_readme()
-    log_some_space_views()
+    log_some_views()
 
 
 if __name__ == "__main__":

@@ -27,7 +27,7 @@ pub struct BarChartView {
 
 impl ::re_types_core::View for BarChartView {
     #[inline]
-    fn identifier() -> ::re_types_core::SpaceViewClassIdentifier {
+    fn identifier() -> ::re_types_core::ViewClassIdentifier {
         "BarChart".into()
     }
 }

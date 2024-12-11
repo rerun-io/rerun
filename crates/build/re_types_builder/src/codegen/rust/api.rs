@@ -1378,7 +1378,7 @@ fn quote_trait_impls_for_view(reporter: &Reporter, obj: &Object) -> TokenStream 
     quote! {
         impl ::re_types_core::View for #name {
             #[inline]
-            fn identifier() -> ::re_types_core::SpaceViewClassIdentifier {
+            fn identifier() -> ::re_types_core::ViewClassIdentifier {
                 #identifier .into()
             }
         }

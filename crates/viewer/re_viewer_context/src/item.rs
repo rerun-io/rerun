@@ -2,7 +2,7 @@ use re_entity_db::{EntityDb, InstancePath};
 use re_log_types::{ComponentPath, DataPath, EntityPath};
 use re_types::ComponentDescriptor;
 
-use crate::{ContainerId, Contents, SpaceViewId};
+use crate::{ContainerId, Contents, ViewId};
 
 /// One "thing" in the UI.
 ///
@@ -27,11 +27,11 @@ pub enum Item {
     /// A viewport container.
     Container(ContainerId),
 
-    /// A viwport space view.
-    SpaceView(SpaceViewId),
+    /// A viwport view.
+    View(ViewId),
 
-    /// An entity or instance in the context of a space view's data results.
-    DataResult(SpaceViewId, InstancePath),
+    /// An entity or instance in the context of a view's data results.
+    DataResult(ViewId, InstancePath),
 }
 
 impl Item {
@@ -39,7 +39,7 @@ impl Item {
         match self {
             Self::AppId(_)
             | Self::DataSource(_)
-            | Self::SpaceView(_)
+            | Self::View(_)
             | Self::Container(_)
             | Self::StoreId(_) => None,
 
@@ -52,10 +52,10 @@ impl Item {
     }
 }
 
-impl From<SpaceViewId> for Item {
+impl From<ViewId> for Item {
     #[inline]
-    fn from(space_view_id: SpaceViewId) -> Self {
-        Self::SpaceView(space_view_id)
+    fn from(view_id: ViewId) -> Self {
+        Self::View(view_id)
     }
 }
 
@@ -85,7 +85,7 @@ impl From<Contents> for Item {
     fn from(contents: Contents) -> Self {
         match contents {
             Contents::Container(container_id) => Self::Container(container_id),
-            Contents::SpaceView(space_view_id) => Self::SpaceView(space_view_id),
+            Contents::View(view_id) => Self::View(view_id),
         }
     }
 }
@@ -125,10 +125,10 @@ impl std::fmt::Debug for Item {
             Self::DataSource(data_source) => data_source.fmt(f),
             Self::StoreId(store_id) => store_id.fmt(f),
             Self::ComponentPath(s) => s.fmt(f),
-            Self::SpaceView(s) => write!(f, "{s:?}"),
+            Self::View(s) => write!(f, "{s:?}"),
             Self::InstancePath(path) => write!(f, "{path}"),
-            Self::DataResult(space_view_id, instance_path) => {
-                write!(f, "({space_view_id:?}, {instance_path}")
+            Self::DataResult(view_id, instance_path) => {
+                write!(f, "({view_id:?}, {instance_path}")
             }
             Self::Container(tile_id) => write!(f, "(tile: {tile_id:?})"),
         }
@@ -146,7 +146,7 @@ impl Item {
             },
             Self::InstancePath(instance_path) => instance_path.kind(),
             Self::ComponentPath(_) => "Entity component",
-            Self::SpaceView(_) => "View",
+            Self::View(_) => "View",
             Self::Container(_) => "Container",
             Self::DataResult(_, instance_path) => {
                 if instance_path.instance.is_specific() {
@@ -170,15 +170,15 @@ pub fn resolve_mono_instance_path_item(
         Item::InstancePath(instance_path) => {
             Item::InstancePath(resolve_mono_instance_path(entity_db, query, instance_path))
         }
-        Item::DataResult(space_view_id, instance_path) => Item::DataResult(
-            *space_view_id,
+        Item::DataResult(view_id, instance_path) => Item::DataResult(
+            *view_id,
             resolve_mono_instance_path(entity_db, query, instance_path),
         ),
         Item::AppId(_)
         | Item::DataSource(_)
         | Item::StoreId(_)
         | Item::ComponentPath(_)
-        | Item::SpaceView(_)
+        | Item::View(_)
         | Item::Container(_) => item.clone(),
     }
 }

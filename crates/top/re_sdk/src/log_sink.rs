@@ -56,7 +56,7 @@ pub trait LogSink: Send + Sync + 'static {
                 // Let the viewer know that the blueprint has been fully received,
                 // and that it can now be activated.
                 // We don't want to activate half-loaded blueprints, because that can be confusing,
-                // and can also lead to problems with space-view heuristics.
+                // and can also lead to problems with view heuristics.
                 self.send(activation_cmd.into());
             } else {
                 re_log::warn!(

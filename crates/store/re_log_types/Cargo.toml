@@ -45,10 +45,12 @@ serde = [
 re_build_info.workspace = true
 re_format.workspace = true
 re_log.workspace = true
+re_protos.workspace = true
 re_string_interner.workspace = true
 re_tracing.workspace = true
 re_tuid.workspace = true
 re_types_core.workspace = true
+
 
 # External
 ahash.workspace = true

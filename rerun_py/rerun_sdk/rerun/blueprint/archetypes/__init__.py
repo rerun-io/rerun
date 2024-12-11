@@ -16,11 +16,11 @@ from .map_zoom import MapZoom
 from .panel_blueprint import PanelBlueprint
 from .plot_legend import PlotLegend
 from .scalar_axis import ScalarAxis
-from .space_view_blueprint import SpaceViewBlueprint
-from .space_view_contents import SpaceViewContents
 from .tensor_scalar_mapping import TensorScalarMapping
 from .tensor_slice_selection import TensorSliceSelection
 from .tensor_view_fit import TensorViewFit
+from .view_blueprint import ViewBlueprint
+from .view_contents import ViewContents
 from .viewport_blueprint import ViewportBlueprint
 from .visible_time_ranges import VisibleTimeRanges
 from .visual_bounds2d import VisualBounds2D
@@ -40,11 +40,11 @@ __all__ = [
     "PanelBlueprint",
     "PlotLegend",
     "ScalarAxis",
-    "SpaceViewBlueprint",
-    "SpaceViewContents",
     "TensorScalarMapping",
     "TensorSliceSelection",
     "TensorViewFit",
+    "ViewBlueprint",
+    "ViewContents",
     "ViewportBlueprint",
     "VisibleTimeRanges",
     "VisualBounds2D",
