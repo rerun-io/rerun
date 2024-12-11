@@ -52,7 +52,7 @@ fn item_heading_no_breadcrumbs(
         | Item::DataSource(_)
         | Item::StoreId(_)
         | Item::Container(_)
-        | Item::SpaceView(_) => {
+        | Item::View(_) => {
             let ItemTitle {
                 icon,
                 label,
@@ -95,7 +95,7 @@ fn item_heading_no_breadcrumbs(
         }
         Item::DataResult(view_id, instance_path) => {
             // Break up into view and instance path:
-            item_heading_no_breadcrumbs(ctx, viewport, ui, &Item::SpaceView(*view_id));
+            item_heading_no_breadcrumbs(ctx, viewport, ui, &Item::View(*view_id));
             separator_icon_ui(ui);
             item_heading_no_breadcrumbs(
                 ctx,

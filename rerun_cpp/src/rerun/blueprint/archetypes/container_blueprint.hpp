@@ -31,7 +31,7 @@ namespace rerun::blueprint::archetypes {
         /// The name of the container.
         std::optional<rerun::components::Name> display_name;
 
-        /// `ContainerId`s or `SpaceViewId`s that are children of this container.
+        /// `ContainerId`s or `ViewId`s that are children of this container.
         std::optional<Collection<rerun::blueprint::components::IncludedContent>> contents;
 
         /// The layout shares of each column in the container.
@@ -86,7 +86,7 @@ namespace rerun::blueprint::archetypes {
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
-        /// `ContainerId`s or `SpaceViewId`s that are children of this container.
+        /// `ContainerId`s or `ViewId`s that are children of this container.
         ContainerBlueprint with_contents(
             Collection<rerun::blueprint::components::IncludedContent> _contents
         ) && {

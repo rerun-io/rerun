@@ -2,17 +2,17 @@
 
 mod auto_layout;
 mod auto_layout_ext;
-mod auto_space_views;
+mod auto_views;
 mod container_kind;
 mod grid_columns;
 mod root_container;
-mod space_view_maximized;
+mod view_maximized;
 mod visualizer_overrides;
 
 pub use self::auto_layout::AutoLayout;
-pub use self::auto_space_views::AutoSpaceViews;
+pub use self::auto_views::AutoViews;
 pub use self::container_kind::ContainerKind;
 pub use self::grid_columns::GridColumns;
 pub use self::root_container::RootContainer;
-pub use self::space_view_maximized::SpaceViewMaximized;
+pub use self::view_maximized::ViewMaximized;
 pub use self::visualizer_overrides::VisualizerOverrides;

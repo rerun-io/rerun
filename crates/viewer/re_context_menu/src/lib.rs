@@ -3,7 +3,7 @@
 use once_cell::sync::OnceCell;
 
 use re_entity_db::InstancePath;
-use re_viewer_context::{ContainerId, Contents, Item, ItemCollection, SpaceViewId, ViewerContext};
+use re_viewer_context::{ContainerId, Contents, Item, ItemCollection, ViewId, ViewerContext};
 use re_viewport_blueprint::{ContainerBlueprint, ViewportBlueprint};
 
 mod actions;
@@ -11,9 +11,9 @@ mod sub_menu;
 
 use actions::{
     add_container::AddContainerAction,
-    add_entities_to_new_space_view::AddEntitiesToNewSpaceViewAction,
-    add_space_view::AddSpaceViewAction,
-    clone_space_view::CloneSpaceViewAction,
+    add_entities_to_new_view::AddEntitiesToNewViewAction,
+    add_view::AddViewAction,
+    clone_view::CloneViewAction,
     collapse_expand_all::CollapseExpandAllAction,
     move_contents_to_new_container::MoveContentsToNewContainerAction,
     remove::RemoveAction,
@@ -122,7 +122,7 @@ fn action_list(
                 Box::new(CollapseExpandAllAction::ExpandAll),
                 Box::new(CollapseExpandAllAction::CollapseAll),
             ],
-            vec![Box::new(CloneSpaceViewAction)],
+            vec![Box::new(CloneViewAction)],
             vec![
                 Box::new(SubMenu {
                     label: "Add container".to_owned(),
@@ -134,12 +134,12 @@ fn action_list(
                     ],
                 }),
                 Box::new(SubMenu {
-                    label: "Add space view".to_owned(),
+                    label: "Add view".to_owned(),
                     actions: ctx
-                        .space_view_class_registry
+                        .view_class_registry
                         .iter_registry()
                         .map(|entry| {
-                            Box::new(AddSpaceViewAction {
+                            Box::new(AddViewAction {
                                 icon: entry.class.icon(),
                                 id: entry.identifier,
                             })
@@ -157,7 +157,7 @@ fn action_list(
                     Box::new(MoveContentsToNewContainerAction(ContainerKind::Grid)),
                 ],
             })],
-            vec![Box::new(AddEntitiesToNewSpaceViewAction)],
+            vec![Box::new(AddEntitiesToNewViewAction)],
         ]
     })
 }
@@ -210,13 +210,11 @@ struct ContextMenuContext<'a> {
 impl<'a> ContextMenuContext<'a> {
     /// Return the clicked item's parent container id and position within it.
     ///
-    /// Valid only for space views, containers, and data results. For data results, the parent and
-    /// position of the enclosing space view is considered.
+    /// Valid only for views, containers, and data results. For data results, the parent and
+    /// position of the enclosing view is considered.
     pub fn clicked_item_enclosing_container_id_and_position(&self) -> Option<(ContainerId, usize)> {
         match self.clicked_item {
-            Item::SpaceView(space_view_id) | Item::DataResult(space_view_id, _) => {
-                Some(Contents::SpaceView(*space_view_id))
-            }
+            Item::View(view_id) | Item::DataResult(view_id, _) => Some(Contents::View(*view_id)),
             Item::Container(container_id) => Some(Contents::Container(*container_id)),
             _ => None,
         }
@@ -225,8 +223,8 @@ impl<'a> ContextMenuContext<'a> {
 
     /// Return the clicked item's parent container and position within it.
     ///
-    /// Valid only for space views, containers, and data results. For data results, the parent and
-    /// position of the enclosing space view is considered.
+    /// Valid only for views, containers, and data results. For data results, the parent and
+    /// position of the enclosing view is considered.
     pub fn clicked_item_enclosing_container_and_position(
         &self,
     ) -> Option<(&'a ContainerBlueprint, usize)> {
@@ -321,10 +319,10 @@ trait ContextMenuAction {
                 Item::ComponentPath(component_path) => {
                     self.process_component_path(ctx, component_path);
                 }
-                Item::SpaceView(space_view_id) => self.process_space_view(ctx, space_view_id),
+                Item::View(view_id) => self.process_view(ctx, view_id),
                 Item::InstancePath(instance_path) => self.process_instance_path(ctx, instance_path),
-                Item::DataResult(space_view_id, instance_path) => {
-                    self.process_data_result(ctx, space_view_id, instance_path);
+                Item::DataResult(view_id, instance_path) => {
+                    self.process_data_result(ctx, view_id, instance_path);
                 }
                 Item::Container(container_id) => self.process_container(ctx, container_id),
             }
@@ -347,14 +345,14 @@ trait ContextMenuAction {
     /// Process a single container.
     fn process_container(&self, _ctx: &ContextMenuContext<'_>, _container_id: &ContainerId) {}
 
-    /// Process a single space view.
-    fn process_space_view(&self, _ctx: &ContextMenuContext<'_>, _space_view_id: &SpaceViewId) {}
+    /// Process a single view.
+    fn process_view(&self, _ctx: &ContextMenuContext<'_>, _view_id: &ViewId) {}
 
     /// Process a single data result.
     fn process_data_result(
         &self,
         _ctx: &ContextMenuContext<'_>,
-        _space_view_id: &SpaceViewId,
+        _view_id: &ViewId,
         _instance_path: &InstancePath,
     ) {
     }

@@ -8,13 +8,13 @@ use re_types::components::Name;
 use re_types::{blueprint::components::Visible, Archetype as _};
 use re_types_blueprint::blueprint::archetypes as blueprint_archetypes;
 use re_types_blueprint::blueprint::components::{ContainerKind, GridColumns};
-use re_viewer_context::{ContainerId, Contents, ContentsName, SpaceViewId, ViewerContext};
+use re_viewer_context::{ContainerId, Contents, ContentsName, ViewId, ViewerContext};
 
 /// The native version of a [`re_types_blueprint::blueprint::archetypes::ContainerBlueprint`].
 ///
 /// This represents a single container in the blueprint. On each frame, it is
 /// used to populate an [`egui_tiles::Container`]. Each child in `contents` can
-/// be either a [`SpaceViewId`] or another [`ContainerId`].
+/// be either a [`ViewId`] or another [`ContainerId`].
 ///
 /// The main reason this exists is to handle type conversions that aren't yet
 /// well handled by the code-generated archetypes.
@@ -301,7 +301,7 @@ impl ContainerBlueprint {
         }
     }
 
-    /// Placeholder name displayed in the UI if the user hasn't explicitly named the space view.
+    /// Placeholder name displayed in the UI if the user hasn't explicitly named the view.
     #[inline]
     pub fn missing_name_placeholder(&self) -> String {
         format!("{:?}", self.container_kind)
@@ -365,7 +365,7 @@ impl ContainerBlueprint {
         );
     }
 
-    pub fn to_tile(&self) -> egui_tiles::Tile<SpaceViewId> {
+    pub fn to_tile(&self) -> egui_tiles::Tile<ViewId> {
         let children = self
             .contents
             .iter()

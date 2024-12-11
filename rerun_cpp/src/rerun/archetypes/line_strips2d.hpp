@@ -26,7 +26,7 @@ namespace rerun::archetypes {
     ///
     /// ## Examples
     ///
-    /// ### line_strip2d_batch:
+    /// ### line_strips2d_batch:
     /// ![image](https://static.rerun.io/line_strip2d_batch/c6f4062bcf510462d298a5dfe9fdbe87c754acee/full.png)
     ///
     /// ```cpp
@@ -58,16 +58,14 @@ namespace rerun::archetypes {
     /// #include <rerun.hpp>
     ///
     /// int main() {
-    ///     const auto rec = rerun::RecordingStream("rerun_example_line_strip3d_ui_radius");
+    ///     const auto rec = rerun::RecordingStream("rerun_example_line_strip2d_ui_radius");
     ///     rec.spawn().exit_on_failure();
     ///
     ///     // A blue line with a scene unit radii of 0.01.
-    ///     rerun::LineStrip3D linestrip_blue(
-    ///         {{0.f, 0.f, 0.f}, {0.f, 0.f, 1.f}, {1.f, 0.f, 0.f}, {1.f, 0.f, 1.f}}
-    ///     );
+    ///     rerun::LineStrip2D linestrip_blue({{0.f, 0.f}, {0.f, 1.f}, {1.f, 0.f}, {1.f, 1.f}});
     ///     rec.log(
     ///         "scene_unit_line",
-    ///         rerun::LineStrips3D(linestrip_blue)
+    ///         rerun::LineStrips2D(linestrip_blue)
     ///             // By default, radii are interpreted as world-space units.
     ///             .with_radii(0.01f)
     ///             .with_colors(rerun::Color(0, 0, 255))
@@ -76,16 +74,16 @@ namespace rerun::archetypes {
     ///     // A red line with a ui point radii of 5.
     ///     // UI points are independent of zooming in Views, but are sensitive to the application UI scaling.
     ///     // For 100 % ui scaling, UI points are equal to pixels.
-    ///     rerun::LineStrip3D linestrip_red(
-    ///         {{3.f, 0.f, 0.f}, {3.f, 0.f, 1.f}, {4.f, 0.f, 0.f}, {4.f, 0.f, 1.f}}
-    ///     );
+    ///     rerun::LineStrip2D linestrip_red({{3.f, 0.f}, {3.f, 1.f}, {4.f, 0.f}, {4.f, 1.f}});
     ///     rec.log(
     ///         "ui_points_line",
-    ///         rerun::LineStrips3D(linestrip_red)
+    ///         rerun::LineStrips2D(linestrip_red)
     ///             // By default, radii are interpreted as world-space units.
     ///             .with_radii(rerun::Radius::ui_points(5.0f))
     ///             .with_colors(rerun::Color(255, 0, 0))
     ///     );
+    ///
+    ///     // TODO(#5520): log VisualBounds2D
     /// }
     /// ```
     struct LineStrips2D {

@@ -8,8 +8,8 @@ namespace rerun.archetypes;
 /// Some of its component are repeated here for convenience.
 /// If there's more instance poses than half sizes, the last half size will be repeated for the remaining poses.
 ///
-/// \example archetypes/box3d_simple !api title="Simple 3D boxes" image="https://static.rerun.io/box3d_simple/d6a3f38d2e3360fbacac52bb43e44762635be9c8/1200w.png"
-/// \example archetypes/box3d_batch title="Batch of 3D boxes" image="https://static.rerun.io/box3d_batch/5aac5b5d29c9f2ecd572c93f6970fcec17f4984b/1200w.png"
+/// \example archetypes/boxes3d_simple !api title="Simple 3D boxes" image="https://static.rerun.io/box3d_simple/d6a3f38d2e3360fbacac52bb43e44762635be9c8/1200w.png"
+/// \example archetypes/boxes3d_batch title="Batch of 3D boxes" image="https://static.rerun.io/box3d_batch/5aac5b5d29c9f2ecd572c93f6970fcec17f4984b/1200w.png"
 table Boxes3D (
   "attr.rust.derive": "PartialEq",
   "attr.rust.new_pub_crate",

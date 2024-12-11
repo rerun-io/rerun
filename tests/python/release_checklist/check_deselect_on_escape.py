@@ -18,7 +18,7 @@ This checks that the deselect-on-escape works as expected.
 In all the following cases, the 3D view should *remain selected*.
 
 * Select the 3D view, open the "Background Kind" dropdown in the selection panel, and hit ESC.
-* Select the 3D view, open the "Add space view or container" modal, and hit ESC.
+* Select the 3D view, open the "Add view or container" modal, and hit ESC.
 * Select the 3D view, right-click on it in the blueprint tree, and hit ESC.
 * Select the 3D view, open the Rerun menu, and hit ESC (KNOWN FAIL).
 """
