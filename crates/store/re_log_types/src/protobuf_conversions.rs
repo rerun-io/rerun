@@ -1,6 +1,7 @@
-use std::sync::Arc;
-
+use re_protos::invalid_field;
+use re_protos::missing_field;
 use re_protos::TypeConversionError;
+use std::sync::Arc;
 
 impl From<crate::EntityPath> for re_protos::common::v0::EntityPath {
     fn from(value: crate::EntityPath) -> Self {
@@ -82,9 +83,9 @@ impl TryFrom<re_protos::common::v0::IndexRange> for crate::ResolvedTimeRange {
     fn try_from(value: re_protos::common::v0::IndexRange) -> Result<Self, Self::Error> {
         value
             .time_range
-            .ok_or(TypeConversionError::missing_field(
-                "rerun.common.v0.IndexRange",
-                "time_range",
+            .ok_or(missing_field!(
+                re_protos::common::v0::IndexRange,
+                "time_range"
             ))
             .map(|time_range| Self::new(time_range.start, time_range.end))
     }
@@ -118,9 +119,9 @@ impl TryFrom<re_protos::common::v0::IndexColumnSelector> for crate::Timeline {
     fn try_from(value: re_protos::common::v0::IndexColumnSelector) -> Result<Self, Self::Error> {
         let timeline = value
             .timeline
-            .ok_or(TypeConversionError::missing_field(
-                "rerun.common.v0.IndexColumnSelector",
-                "timeline",
+            .ok_or(missing_field!(
+                re_protos::common::v0::IndexColumnSelector,
+                "timeline"
             ))?
             .into();
 
@@ -264,10 +265,9 @@ impl TryFrom<re_protos::log_msg::v0::StoreSource> for crate::StoreSource {
             StoreSourceKind::UnknownKind => Ok(Self::Unknown),
             StoreSourceKind::CSdk => Ok(Self::CSdk),
             StoreSourceKind::PythonSdk => {
-                let extra = value.extra.ok_or(TypeConversionError::missing_field(
-                    "rerun.log_msg.v0.StoreSource",
-                    "extra",
-                ))?;
+                let extra = value
+                    .extra
+                    .ok_or(missing_field!(re_protos::log_msg::v0::StoreSource, "extra"))?;
                 let python_version =
                     re_protos::log_msg::v0::PythonVersion::decode(&mut &extra.payload[..])?;
                 Ok(Self::PythonSdk(crate::PythonVersion::try_from(
@@ -275,10 +275,9 @@ impl TryFrom<re_protos::log_msg::v0::StoreSource> for crate::StoreSource {
                 )?))
             }
             StoreSourceKind::RustSdk => {
-                let extra = value.extra.ok_or(TypeConversionError::missing_field(
-                    "rerun.log_msg.v0.StoreSource",
-                    "extra",
-                ))?;
+                let extra = value
+                    .extra
+                    .ok_or(missing_field!(re_protos::log_msg::v0::StoreSource, "extra"))?;
                 let crate_info =
                     re_protos::log_msg::v0::CrateInfo::decode(&mut &extra.payload[..])?;
                 Ok(Self::RustSdk {
@@ -287,10 +286,9 @@ impl TryFrom<re_protos::log_msg::v0::StoreSource> for crate::StoreSource {
                 })
             }
             StoreSourceKind::File => {
-                let extra = value.extra.ok_or(TypeConversionError::missing_field(
-                    "rerun.log_msg.v0.StoreSource",
-                    "extra",
-                ))?;
+                let extra = value
+                    .extra
+                    .ok_or(missing_field!(re_protos::log_msg::v0::StoreSource, "extra"))?;
                 let file_source =
                     re_protos::log_msg::v0::FileSource::decode(&mut &extra.payload[..])?;
                 Ok(Self::File {
@@ -299,16 +297,15 @@ impl TryFrom<re_protos::log_msg::v0::StoreSource> for crate::StoreSource {
             }
             StoreSourceKind::Viewer => Ok(Self::Viewer),
             StoreSourceKind::Other => {
-                let description = value.extra.ok_or(TypeConversionError::missing_field(
-                    "rerun.log_msg.v0.StoreSource",
-                    "extra",
-                ))?;
+                let description = value
+                    .extra
+                    .ok_or(missing_field!(re_protos::log_msg::v0::StoreSource, "extra"))?;
                 let description = String::from_utf8(description.payload).map_err(|err| {
-                    TypeConversionError::InvalidField {
-                        type_name: "rerun.log_msg.v0.StoreSource",
-                        field_name: "extra",
-                        reason: err.to_string(),
-                    }
+                    invalid_field!(
+                        re_protos::log_msg::v0::StoreSource,
+                        "extra",
+                        err.to_string()
+                    )
                 })?;
                 Ok(Self::Other(description))
             }
@@ -416,30 +413,27 @@ impl TryFrom<re_protos::log_msg::v0::StoreInfo> for crate::StoreInfo {
     fn try_from(value: re_protos::log_msg::v0::StoreInfo) -> Result<Self, Self::Error> {
         let application_id: crate::ApplicationId = value
             .application_id
-            .ok_or(TypeConversionError::missing_field(
-                "rerun.log_msg.v0.StoreInfo",
+            .ok_or(missing_field!(
+                re_protos::log_msg::v0::StoreInfo,
                 "application_id",
             ))?
             .into();
         let store_id: crate::StoreId = value
             .store_id
-            .ok_or(TypeConversionError::missing_field(
-                "rerun.log_msg.v0.StoreInfo",
+            .ok_or(missing_field!(
+                re_protos::log_msg::v0::StoreInfo,
                 "store_id",
             ))?
             .into();
         let is_official_example = value.is_official_example;
         let started: crate::Time = value
             .started
-            .ok_or(TypeConversionError::missing_field(
-                "rerun.log_msg.v0.StoreInfo",
-                "started",
-            ))?
+            .ok_or(missing_field!(re_protos::log_msg::v0::StoreInfo, "started"))?
             .into();
         let store_source: crate::StoreSource = value
             .store_source
-            .ok_or(TypeConversionError::missing_field(
-                "rerun.log_msg.v0.StoreInfo",
+            .ok_or(missing_field!(
+                re_protos::log_msg::v0::StoreInfo,
                 "store_source",
             ))?
             .try_into()?;
@@ -477,17 +471,14 @@ impl TryFrom<re_protos::log_msg::v0::SetStoreInfo> for crate::SetStoreInfo {
         Ok(Self {
             row_id: value
                 .row_id
-                .ok_or(TypeConversionError::missing_field(
-                    "rerun.log_msg.v0.SetStoreInfo",
+                .ok_or(missing_field!(
+                    re_protos::log_msg::v0::SetStoreInfo,
                     "row_id",
                 ))?
                 .into(),
             info: value
                 .info
-                .ok_or(TypeConversionError::missing_field(
-                    "rerun.log_msg.v0.SetStoreInfo",
-                    "info",
-                ))?
+                .ok_or(missing_field!(re_protos::log_msg::v0::SetStoreInfo, "info"))?
                 .try_into()?,
         })
     }
@@ -518,8 +509,8 @@ impl TryFrom<re_protos::log_msg::v0::BlueprintActivationCommand>
         Ok(Self {
             blueprint_id: value
                 .blueprint_id
-                .ok_or(TypeConversionError::missing_field(
-                    "rerun.log_msg.v0.BlueprintActivationCommand",
+                .ok_or(missing_field!(
+                    re_protos::log_msg::v0::BlueprintActivationCommand,
                     "blueprint_id",
                 ))?
                 .into(),
@@ -542,7 +533,7 @@ mod tests {
     #[test]
     fn time_conversion() {
         let time = crate::Time::from_ns_since_epoch(123456789);
-        let proto_time: re_protos::common::v0::Time = time.clone().into();
+        let proto_time: re_protos::common::v0::Time = time.into();
         let time2: crate::Time = proto_time.into();
         assert_eq!(time, time2);
     }
@@ -550,7 +541,7 @@ mod tests {
     #[test]
     fn time_int_conversion() {
         let time_int = crate::TimeInt::new_temporal(123456789);
-        let proto_time_int: re_protos::common::v0::TimeInt = time_int.clone().into();
+        let proto_time_int: re_protos::common::v0::TimeInt = time_int.into();
         let time_int2: crate::TimeInt = proto_time_int.into();
         assert_eq!(time_int, time_int2);
     }
@@ -561,7 +552,7 @@ mod tests {
             crate::TimeInt::new_temporal(123456789),
             crate::TimeInt::new_temporal(987654321),
         );
-        let proto_time_range: re_protos::common::v0::TimeRange = time_range.clone().into();
+        let proto_time_range: re_protos::common::v0::TimeRange = time_range.into();
         let time_range2: crate::ResolvedTimeRange = proto_time_range.into();
         assert_eq!(time_range, time_range2);
     }
@@ -572,7 +563,7 @@ mod tests {
             crate::TimeInt::new_temporal(123456789),
             crate::TimeInt::new_temporal(987654321),
         );
-        let proto_index_range: re_protos::common::v0::IndexRange = time_range.clone().into();
+        let proto_index_range: re_protos::common::v0::IndexRange = time_range.into();
         let time_range2: crate::ResolvedTimeRange = proto_index_range.try_into().unwrap();
         assert_eq!(time_range, time_range2);
     }
@@ -600,7 +591,7 @@ mod tests {
     #[test]
     fn store_kind_conversion() {
         let store_kind = crate::StoreKind::Recording;
-        let proto_store_kind: re_protos::common::v0::StoreKind = store_kind.clone().into();
+        let proto_store_kind: re_protos::common::v0::StoreKind = store_kind.into();
         let store_kind2: crate::StoreKind = proto_store_kind.into();
         assert_eq!(store_kind, store_kind2);
     }

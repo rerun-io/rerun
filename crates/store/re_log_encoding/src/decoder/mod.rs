@@ -402,11 +402,13 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
 
 #[cfg(all(test, feature = "decoder", feature = "encoder"))]
 mod tests {
+    #![allow(clippy::unwrap_used)] // acceptable for tests
+
     use super::*;
     use re_build_info::CrateVersion;
     use re_chunk::RowId;
     use re_log_types::{
-        ApplicationId, ArrowMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource, Time,
+        ApplicationId, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource, Time,
     };
 
     fn fake_log_messages() -> Vec<LogMsg> {
@@ -565,7 +567,7 @@ mod tests {
 
             clear_arrow_extension_metadata(&mut decoded_messages);
 
-            assert_eq!(vec![messages.clone(), messages].concat(), decoded_messages);
+            assert_eq!([messages.clone(), messages].concat(), decoded_messages);
         }
     }
 }

@@ -9,6 +9,16 @@ pub struct SetStoreInfo {
     #[prost(message, optional, tag = "2")]
     pub info: ::core::option::Option<StoreInfo>,
 }
+impl ::prost::Name for SetStoreInfo {
+    const NAME: &'static str = "SetStoreInfo";
+    const PACKAGE: &'static str = "rerun.log_msg.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.log_msg.v0.SetStoreInfo".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.log_msg.v0.SetStoreInfo".into()
+    }
+}
 /// Corresponds to `LogMsg::ArrowMsg`. Used to transmit actual data.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ArrowMsg {
@@ -27,6 +37,16 @@ pub struct ArrowMsg {
     #[prost(bytes = "vec", tag = "1000")]
     pub payload: ::prost::alloc::vec::Vec<u8>,
 }
+impl ::prost::Name for ArrowMsg {
+    const NAME: &'static str = "ArrowMsg";
+    const PACKAGE: &'static str = "rerun.log_msg.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.log_msg.v0.ArrowMsg".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.log_msg.v0.ArrowMsg".into()
+    }
+}
 /// Corresponds to `LogMsg::BlueprintActivationCommand`.
 ///
 /// Used for activating a blueprint once it has been fully transmitted,
@@ -43,6 +63,16 @@ pub struct BlueprintActivationCommand {
     /// Whether to make the blueprint the default.
     #[prost(bool, tag = "3")]
     pub make_default: bool,
+}
+impl ::prost::Name for BlueprintActivationCommand {
+    const NAME: &'static str = "BlueprintActivationCommand";
+    const PACKAGE: &'static str = "rerun.log_msg.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.log_msg.v0.BlueprintActivationCommand".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.log_msg.v0.BlueprintActivationCommand".into()
+    }
 }
 /// Information about a recording or blueprint.
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -66,6 +96,16 @@ pub struct StoreInfo {
     #[prost(message, optional, tag = "6")]
     pub store_version: ::core::option::Option<StoreVersion>,
 }
+impl ::prost::Name for StoreInfo {
+    const NAME: &'static str = "StoreInfo";
+    const PACKAGE: &'static str = "rerun.log_msg.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.log_msg.v0.StoreInfo".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.log_msg.v0.StoreInfo".into()
+    }
+}
 /// The source of a recording or blueprint.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct StoreSource {
@@ -76,6 +116,16 @@ pub struct StoreSource {
     #[prost(message, optional, tag = "2")]
     pub extra: ::core::option::Option<StoreSourceExtra>,
 }
+impl ::prost::Name for StoreSource {
+    const NAME: &'static str = "StoreSource";
+    const PACKAGE: &'static str = "rerun.log_msg.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.log_msg.v0.StoreSource".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.log_msg.v0.StoreSource".into()
+    }
+}
 /// A newtype for `StoreSource` payload.
 ///
 /// This exists to that we can implement conversions on the newtype for convenience.
@@ -83,6 +133,16 @@ pub struct StoreSource {
 pub struct StoreSourceExtra {
     #[prost(bytes = "vec", tag = "1")]
     pub payload: ::prost::alloc::vec::Vec<u8>,
+}
+impl ::prost::Name for StoreSourceExtra {
+    const NAME: &'static str = "StoreSourceExtra";
+    const PACKAGE: &'static str = "rerun.log_msg.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.log_msg.v0.StoreSourceExtra".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.log_msg.v0.StoreSourceExtra".into()
+    }
 }
 /// Version of the Python SDK that created the recording.
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -96,6 +156,16 @@ pub struct PythonVersion {
     #[prost(string, tag = "4")]
     pub suffix: ::prost::alloc::string::String,
 }
+impl ::prost::Name for PythonVersion {
+    const NAME: &'static str = "PythonVersion";
+    const PACKAGE: &'static str = "rerun.log_msg.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.log_msg.v0.PythonVersion".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.log_msg.v0.PythonVersion".into()
+    }
+}
 /// Information about the Rust SDK that created the recording.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CrateInfo {
@@ -106,11 +176,31 @@ pub struct CrateInfo {
     #[prost(string, tag = "2")]
     pub llvm_version: ::prost::alloc::string::String,
 }
+impl ::prost::Name for CrateInfo {
+    const NAME: &'static str = "CrateInfo";
+    const PACKAGE: &'static str = "rerun.log_msg.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.log_msg.v0.CrateInfo".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.log_msg.v0.CrateInfo".into()
+    }
+}
 /// A recording which came from a file.
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct FileSource {
     #[prost(enumeration = "FileSourceKind", tag = "1")]
     pub kind: i32,
+}
+impl ::prost::Name for FileSource {
+    const NAME: &'static str = "FileSource";
+    const PACKAGE: &'static str = "rerun.log_msg.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.log_msg.v0.FileSource".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.log_msg.v0.FileSource".into()
+    }
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct StoreVersion {
@@ -119,6 +209,16 @@ pub struct StoreVersion {
     /// See `CrateVersion` in `re_build_info`.
     #[prost(int32, tag = "1")]
     pub crate_version_bits: i32,
+}
+impl ::prost::Name for StoreVersion {
+    const NAME: &'static str = "StoreVersion";
+    const PACKAGE: &'static str = "rerun.log_msg.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.log_msg.v0.StoreVersion".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.log_msg.v0.StoreVersion".into()
+    }
 }
 /// The type of compression used on the payload.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]

@@ -3,7 +3,7 @@ use crate::codec::arrow::decode_arrow;
 use crate::codec::CodecError;
 use crate::decoder::DecodeError;
 use re_log_types::LogMsg;
-use re_protos::TypeConversionError;
+use re_protos::missing_field;
 
 impl MessageKind {
     pub(crate) fn decode(data: &mut impl std::io::Read) -> Result<Self, DecodeError> {
@@ -61,9 +61,7 @@ pub(crate) fn decode(data: &mut impl std::io::Read) -> Result<(u64, Option<LogMs
 
             let store_id: re_log_types::StoreId = arrow_msg
                 .store_id
-                .ok_or_else(|| {
-                    TypeConversionError::missing_field("rerun.log_msg.v0.ArrowMsg", "store_id")
-                })?
+                .ok_or_else(|| missing_field!(re_protos::log_msg::v0::ArrowMsg, "store_id"))?
                 .into();
 
             let chunk = re_chunk::Chunk::from_transport(&re_chunk::TransportChunk {

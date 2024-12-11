@@ -9,6 +9,16 @@ pub struct DataframePart {
     #[prost(bytes = "vec", tag = "1000")]
     pub payload: ::prost::alloc::vec::Vec<u8>,
 }
+impl ::prost::Name for DataframePart {
+    const NAME: &'static str = "DataframePart";
+    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.remote_store.v0.DataframePart".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.remote_store.v0.DataframePart".into()
+    }
+}
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RegisterRecordingRequest {
     /// human readable description of the recording
@@ -25,6 +35,16 @@ pub struct RegisterRecordingRequest {
     #[prost(message, optional, tag = "4")]
     pub metadata: ::core::option::Option<DataframePart>,
 }
+impl ::prost::Name for RegisterRecordingRequest {
+    const NAME: &'static str = "RegisterRecordingRequest";
+    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.remote_store.v0.RegisterRecordingRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.remote_store.v0.RegisterRecordingRequest".into()
+    }
+}
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UpdateCatalogRequest {
     #[prost(message, optional, tag = "1")]
@@ -32,8 +52,28 @@ pub struct UpdateCatalogRequest {
     #[prost(message, optional, tag = "2")]
     pub metadata: ::core::option::Option<DataframePart>,
 }
+impl ::prost::Name for UpdateCatalogRequest {
+    const NAME: &'static str = "UpdateCatalogRequest";
+    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.remote_store.v0.UpdateCatalogRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.remote_store.v0.UpdateCatalogRequest".into()
+    }
+}
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct UpdateCatalogResponse {}
+impl ::prost::Name for UpdateCatalogResponse {
+    const NAME: &'static str = "UpdateCatalogResponse";
+    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.remote_store.v0.UpdateCatalogResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.remote_store.v0.UpdateCatalogResponse".into()
+    }
+}
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct QueryRequest {
     /// unique identifier of the recording
@@ -42,6 +82,16 @@ pub struct QueryRequest {
     /// query to execute
     #[prost(message, optional, tag = "3")]
     pub query: ::core::option::Option<super::super::common::v0::Query>,
+}
+impl ::prost::Name for QueryRequest {
+    const NAME: &'static str = "QueryRequest";
+    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.remote_store.v0.QueryRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.remote_store.v0.QueryRequest".into()
+    }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct QueryCatalogRequest {
@@ -53,10 +103,30 @@ pub struct QueryCatalogRequest {
     #[prost(message, optional, tag = "2")]
     pub filter: ::core::option::Option<CatalogFilter>,
 }
+impl ::prost::Name for QueryCatalogRequest {
+    const NAME: &'static str = "QueryCatalogRequest";
+    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.remote_store.v0.QueryCatalogRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.remote_store.v0.QueryCatalogRequest".into()
+    }
+}
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ColumnProjection {
     #[prost(string, repeated, tag = "1")]
     pub columns: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+}
+impl ::prost::Name for ColumnProjection {
+    const NAME: &'static str = "ColumnProjection";
+    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.remote_store.v0.ColumnProjection".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.remote_store.v0.ColumnProjection".into()
+    }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CatalogFilter {
@@ -64,6 +134,16 @@ pub struct CatalogFilter {
     /// recordings by their ids.
     #[prost(message, repeated, tag = "1")]
     pub recording_ids: ::prost::alloc::vec::Vec<super::super::common::v0::RecordingId>,
+}
+impl ::prost::Name for CatalogFilter {
+    const NAME: &'static str = "CatalogFilter";
+    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.remote_store.v0.CatalogFilter".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.remote_store.v0.CatalogFilter".into()
+    }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct QueryCatalogResponse {
@@ -73,10 +153,30 @@ pub struct QueryCatalogResponse {
     #[prost(bytes = "vec", tag = "2")]
     pub payload: ::prost::alloc::vec::Vec<u8>,
 }
+impl ::prost::Name for QueryCatalogResponse {
+    const NAME: &'static str = "QueryCatalogResponse";
+    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.remote_store.v0.QueryCatalogResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.remote_store.v0.QueryCatalogResponse".into()
+    }
+}
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct FetchRecordingRequest {
     #[prost(message, optional, tag = "1")]
     pub recording_id: ::core::option::Option<super::super::common::v0::RecordingId>,
+}
+impl ::prost::Name for FetchRecordingRequest {
+    const NAME: &'static str = "FetchRecordingRequest";
+    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.remote_store.v0.FetchRecordingRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.remote_store.v0.FetchRecordingRequest".into()
+    }
 }
 /// TODO(jleibs): Eventually this becomes either query-mediated in some way, but for now
 /// it's useful to be able to just get back the whole RRD somehow.
@@ -91,6 +191,16 @@ pub struct FetchRecordingResponse {
     #[prost(bytes = "vec", tag = "2")]
     pub payload: ::prost::alloc::vec::Vec<u8>,
 }
+impl ::prost::Name for FetchRecordingResponse {
+    const NAME: &'static str = "FetchRecordingResponse";
+    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.remote_store.v0.FetchRecordingResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.remote_store.v0.FetchRecordingResponse".into()
+    }
+}
 /// Application level error - used as `details` in the `google.rpc.Status` message
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RemoteStoreError {
@@ -103,6 +213,16 @@ pub struct RemoteStoreError {
     /// human readable details about the error
     #[prost(string, tag = "3")]
     pub message: ::prost::alloc::string::String,
+}
+impl ::prost::Name for RemoteStoreError {
+    const NAME: &'static str = "RemoteStoreError";
+    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.remote_store.v0.RemoteStoreError".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.remote_store.v0.RemoteStoreError".into()
+    }
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]

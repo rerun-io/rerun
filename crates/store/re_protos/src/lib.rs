@@ -54,6 +54,7 @@ pub mod remote_store {
 pub enum TypeConversionError {
     #[error("missing required field: {type_name}.{field_name}")]
     MissingField {
+        package_name: &'static str,
         type_name: &'static str,
         field_name: &'static str,
     },
@@ -76,10 +77,36 @@ pub enum TypeConversionError {
 }
 
 impl TypeConversionError {
-    pub fn missing_field(type_name: &'static str, field_name: &'static str) -> Self {
+    #[inline]
+    pub fn missing_field<T: prost::Name>(field_name: &'static str) -> Self {
         Self::MissingField {
-            type_name,
+            package_name: T::PACKAGE,
+            type_name: T::NAME,
             field_name,
         }
     }
+
+    #[allow(clippy::needless_pass_by_value)] // false-positive
+    #[inline]
+    pub fn invalid_field<T: prost::Name>(field_name: &'static str, reason: &impl ToString) -> Self {
+        Self::InvalidField {
+            type_name: T::NAME,
+            field_name,
+            reason: reason.to_string(),
+        }
+    }
+}
+
+#[macro_export]
+macro_rules! missing_field {
+    ($type:ty, $field:expr $(,)?) => {
+        $crate::TypeConversionError::missing_field::<$type>($field)
+    };
+}
+
+#[macro_export]
+macro_rules! invalid_field {
+    ($type:ty, $field:expr, $reason:expr $(,)?) => {
+        $crate::TypeConversionError::invalid_field::<$type>($field, &$reason)
+    };
 }
