@@ -12,7 +12,7 @@ README = """\
 
 [Background issue](https://github.com/rerun-io/rerun/issues/5742)
 
-* Expand all the "TEST" space view.
+* Expand all the "TEST" view.
 * Check that you can select each of its children.
 """
 

@@ -33,7 +33,7 @@ pub struct TensorView {
 
 impl ::re_types_core::View for TensorView {
     #[inline]
-    fn identifier() -> ::re_types_core::SpaceViewClassIdentifier {
+    fn identifier() -> ::re_types_core::ViewClassIdentifier {
         "Tensor".into()
     }
 }

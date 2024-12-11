@@ -12,14 +12,14 @@ import rerun.blueprint as rrb
 README = """\
 # Context Menu - Test the origin selection heuristics
 
-Repeat these steps for each of the following entities and space view class:
+Repeat these steps for each of the following entities and view class:
 - right-click the entity (either in the blueprint or streams tree)
-- select "Add to new space view" and create the space view of the listed class
-- check that the created space view has the expected origin
-- delete the space view
+- select "Add to new view" and create the view of the listed class
+- check that the created view has the expected origin
+- delete the view
 
 
-check that for the given space view class, the resulting suggested origin is as expected.
+check that for the given view class, the resulting suggested origin is as expected.
 
 ```plaintext
 ===========================================================
@@ -52,7 +52,7 @@ def blueprint() -> rrb.BlueprintLike:
     )
 
 
-def log_some_space_views() -> None:
+def log_some_views() -> None:
     rr.set_time_sequence("frame_nr", 0)
     rr.log("/", rr.Boxes3D(centers=[0, 0, 0], half_sizes=[1, 1, 1]))
     rr.log("/world", rr.ViewCoordinates.RIGHT_HAND_Y_DOWN, static=True)
@@ -79,7 +79,7 @@ def run(args: Namespace) -> None:
     rr.script_setup(args, f"{os.path.basename(__file__)}", recording_id=uuid4(), default_blueprint=blueprint())
 
     log_readme()
-    log_some_space_views()
+    log_some_views()
 
 
 if __name__ == "__main__":

@@ -285,7 +285,7 @@ def test_lint_line() -> None:
 
     should_pass = [
         "hello world",
-        "this is a 2D spaceview",
+        "this is a 2D view",
         "todo lowercase is fine",
         'todo!("Macro is ok with text")',
         "TODO_TOKEN",
@@ -368,7 +368,7 @@ def test_lint_line() -> None:
     ]
 
     should_error = [
-        "this is a 2d spaceview",
+        "this is a 2d view",
         "FIXME",
         "HACK",
         "TODO",
@@ -393,7 +393,7 @@ def test_lint_line() -> None:
         r'println!("Problem: \"{}\"", string)',
         r'println!("Problem: \"{0}\"")',
         r'println!("Problem: \"{string}\"")',
-        'ui.label("This uses ugly title casing for Space View.")',
+        'ui.label("This uses ugly title casing for View.")',
         "trailing whitespace ",
         "rr_stream",
         "rec_stream",
@@ -1223,7 +1223,7 @@ def main() -> None:
         "./.pytest_cache",
         "./CODE_STYLE.md",
         "./crates/build/re_types_builder/src/reflection.rs",  # auto-generated
-        "./crates/store/re_protos/src/v0/rerun.remote_store.v0.rs",  # auto-generated
+        "./crates/store/re_protos/src/v0",  # auto-generated
         "./docs/content/concepts/app-model.md",  # this really needs custom letter casing
         "./docs/content/reference/cli.md",  # auto-generated
         "./docs/snippets/all/tutorials/custom-application-id.cpp",  # nuh-uh, I don't want rerun_example_ here

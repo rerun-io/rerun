@@ -13,8 +13,8 @@ README = """\
 
 * Single-select the horizontal container, check that it disallow adding a horizontal container inside it.
 * Same for the vertical container.
-* Single select a space view inside a horizontal container, check that it disallow moving to a new horizontal container.
-* Same for a space view inside a vertical container.
+* Single select a view inside a horizontal container, check that it disallow moving to a new horizontal container.
+* Same for a view inside a vertical container.
 """
 
 
@@ -38,7 +38,7 @@ def blueprint() -> rrb.BlueprintLike:
     )
 
 
-def log_some_space_views() -> None:
+def log_some_views() -> None:
     rr.set_time_sequence("frame_nr", 0)
 
     rr.log("boxes3d", rr.Boxes3D(centers=[[0, 0, 0], [1, 1.5, 1.15], [3, 2, 1]], half_sizes=[0.5, 1, 0.5] * 3))
@@ -49,7 +49,7 @@ def run(args: Namespace) -> None:
     rr.script_setup(args, f"{os.path.basename(__file__)}", recording_id=uuid4(), default_blueprint=blueprint())
 
     log_readme()
-    log_some_space_views()
+    log_some_views()
 
 
 if __name__ == "__main__":

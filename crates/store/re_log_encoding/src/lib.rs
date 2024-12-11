@@ -5,6 +5,8 @@ pub mod decoder;
 #[cfg(feature = "encoder")]
 pub mod encoder;
 
+pub mod codec;
+
 #[cfg(feature = "encoder")]
 #[cfg(not(target_arch = "wasm32"))]
 mod file_sink;

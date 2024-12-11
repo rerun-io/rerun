@@ -21,7 +21,7 @@ impl ContextMenuAction for MoveContentsToNewContainerAction {
         }
 
         ctx.selection.iter().all(|(item, _)| match item {
-            Item::SpaceView(_) => true,
+            Item::View(_) => true,
             Item::Container(container_id) => ctx.viewport_blueprint.root_container != *container_id,
             _ => false,
         })
@@ -33,7 +33,7 @@ impl ContextMenuAction for MoveContentsToNewContainerAction {
 
     fn supports_item(&self, ctx: &ContextMenuContext<'_>, item: &Item) -> bool {
         match item {
-            Item::SpaceView(_) => true,
+            Item::View(_) => true,
             Item::Container(container_id) => ctx.viewport_blueprint.root_container != *container_id,
             _ => false,
         }
