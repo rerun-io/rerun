@@ -23,9 +23,9 @@ from .api import (
     PanelState as PanelState,
     PanelStateLike as PanelStateLike,
     SelectionPanel as SelectionPanel,
-    SpaceView as SpaceView,
     TimePanel as TimePanel,
     TopPanel as TopPanel,
+    View as View,
 )
 from .archetypes import (
     Background as Background,

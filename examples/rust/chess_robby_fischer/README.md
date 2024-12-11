@@ -224,7 +224,7 @@ impl PieceModelInfo {
 
 ### Image
 
-To see the image projection in the 3D space view we must log the cameras transformation and it's intrinsic parameters.
+To see the image projection in the 3D view we must log the cameras transformation and it's intrinsic parameters.
 
 ```rust
 // Computes the transformation `camera_to_a8` that goes from camera coordinates to board coordinates using the fiducial markers located at the corners of the board.
@@ -279,7 +279,7 @@ import rerun as rr
 import rerun.blueprint as rrb
 import argparse
 
-space_view_defaults = [
+view_defaults = [
     rr.components.AxisLength(0.0), # To hide the axes of all the transformations.
     rr.components.ImagePlaneDistance(0.3),
 ]
@@ -305,15 +305,15 @@ blueprint = rrb.Blueprint(
             rrb.Spatial3DView(
                 origin="/arm.urdf/base_link/glid_platta_1/bas_1/gemensam_vagg_1/botten_snurr_1/kortarm_kopia_1/led_1/led_axel_1/lang_arm_1/mount_1/ram_1",
                 contents="/**",
-                defaults=space_view_defaults
+                defaults=view_defaults
             )
         ),
         rrb.Spatial3DView(
-            defaults=space_view_defaults
+            defaults=view_defaults
         ),
         column_shares=[2,2,3]
     ),
-    auto_space_views=False,
+    auto_views=False,
     collapse_panels=True,
 )
 

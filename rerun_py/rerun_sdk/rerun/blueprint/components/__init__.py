@@ -5,7 +5,7 @@ from __future__ import annotations
 from .active_tab import ActiveTab, ActiveTabBatch
 from .apply_latest_at import ApplyLatestAt, ApplyLatestAtBatch
 from .auto_layout import AutoLayout, AutoLayoutBatch
-from .auto_space_views import AutoSpaceViews, AutoSpaceViewsBatch
+from .auto_views import AutoViews, AutoViewsBatch
 from .background_kind import BackgroundKind, BackgroundKindArrayLike, BackgroundKindBatch, BackgroundKindLike
 from .column_share import ColumnShare, ColumnShareBatch
 from .component_column_selector import ComponentColumnSelector, ComponentColumnSelectorBatch
@@ -29,12 +29,12 @@ from .query_expression import QueryExpression, QueryExpressionBatch
 from .root_container import RootContainer, RootContainerBatch
 from .row_share import RowShare, RowShareBatch
 from .selected_columns import SelectedColumns, SelectedColumnsBatch
-from .space_view_class import SpaceViewClass, SpaceViewClassBatch
-from .space_view_maximized import SpaceViewMaximized, SpaceViewMaximizedBatch
-from .space_view_origin import SpaceViewOrigin, SpaceViewOriginBatch
 from .tensor_dimension_index_slider import TensorDimensionIndexSlider, TensorDimensionIndexSliderBatch
 from .timeline_name import TimelineName, TimelineNameBatch
+from .view_class import ViewClass, ViewClassBatch
 from .view_fit import ViewFit, ViewFitArrayLike, ViewFitBatch, ViewFitLike
+from .view_maximized import ViewMaximized, ViewMaximizedBatch
+from .view_origin import ViewOrigin, ViewOriginBatch
 from .viewer_recommendation_hash import ViewerRecommendationHash, ViewerRecommendationHashBatch
 from .visible import Visible, VisibleBatch
 from .visible_time_range import VisibleTimeRange, VisibleTimeRangeBatch
@@ -49,8 +49,8 @@ __all__ = [
     "ApplyLatestAtBatch",
     "AutoLayout",
     "AutoLayoutBatch",
-    "AutoSpaceViews",
-    "AutoSpaceViewsBatch",
+    "AutoViews",
+    "AutoViewsBatch",
     "BackgroundKind",
     "BackgroundKindArrayLike",
     "BackgroundKindBatch",
@@ -107,20 +107,20 @@ __all__ = [
     "RowShareBatch",
     "SelectedColumns",
     "SelectedColumnsBatch",
-    "SpaceViewClass",
-    "SpaceViewClassBatch",
-    "SpaceViewMaximized",
-    "SpaceViewMaximizedBatch",
-    "SpaceViewOrigin",
-    "SpaceViewOriginBatch",
     "TensorDimensionIndexSlider",
     "TensorDimensionIndexSliderBatch",
     "TimelineName",
     "TimelineNameBatch",
+    "ViewClass",
+    "ViewClassBatch",
     "ViewFit",
     "ViewFitArrayLike",
     "ViewFitBatch",
     "ViewFitLike",
+    "ViewMaximized",
+    "ViewMaximizedBatch",
+    "ViewOrigin",
+    "ViewOriginBatch",
     "ViewerRecommendationHash",
     "ViewerRecommendationHashBatch",
     "Visible",

@@ -30,19 +30,26 @@ impl ChunkStore {
     pub fn insert_chunk(&mut self, chunk: &Arc<Chunk>) -> ChunkStoreResult<Vec<ChunkStoreEvent>> {
         if self.chunks_per_chunk_id.contains_key(&chunk.id()) {
             // We assume that chunk IDs are unique, and that reinserting a chunk has no effect.
-            re_log::warn_once!(
+            re_log::debug_once!(
                 "Chunk #{} was inserted more than once (this has no effect)",
                 chunk.id()
             );
             return Ok(Vec::new());
         }
 
+        // NOTE: It is very easy to end in a situation where one pulls an old blueprint from
+        // somewhere, and then modifies it at runtime, therefore ending with both tagged and
+        // untagged components in the data.
+        // I'd like to keep this debug assertion a tiny bit longer just in case, so for we just
+        // ignore blueprints.
         #[cfg(debug_assertions)]
-        for (component_name, per_desc) in chunk.components().iter() {
-            assert!(
-                per_desc.len() <= 1,
-                "Insert Chunk with multiple values for component named `{component_name}`: this is currently UB",
-            );
+        if self.id.kind == re_log_types::StoreKind::Recording {
+            for (component_name, per_desc) in chunk.components().iter() {
+                assert!(
+                    per_desc.len() <= 1,
+                    "[DEBUG ONLY] Insert Chunk with multiple values for component named `{component_name}`: this is currently UB",
+                );
+            }
         }
 
         if !chunk.is_sorted() {

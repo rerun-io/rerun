@@ -1,14 +1,14 @@
-# Space views
+# Views
 Status: Mostly implemented.
 
 
-## What are space views
-Space Views visualize a Data Blueprint, i.e. a set of entities with given properties.
+## What are views
+Views visualize a Data Blueprint, i.e. a set of entities with given properties.
 They are represented as freely arrangeable tiles in the Viewport.
-Most Space Views are interactive, allowing their data to be explored freely.
+Most Views are interactive, allowing their data to be explored freely.
 
 
-## Properties of a space view
+## Properties of a view
 All properties are saved as part of the blueprint.
 
 Changing discards Space View State:
@@ -27,22 +27,22 @@ Freely mutable:
 * available at various stages of UI drawing & system execution build-up (see below)
 
 
-## Space view state
-In addition to blueprint stored data, a space view has a class specific `SpaceViewState`
+## View state
+In addition to blueprint stored data, a view has a class specific `SpaceViewState`
 which stored ephemeral state that is not persisted as part of the blueprint.
 This is typically used for animation/transition state.
 
 ⚠️ As of writing, we're using this also for state that *should* be persisted and needs to be moved to
 blueprint components.
 
-## Space view class
+## View class
 Each Space View refers to an immutable Space View Class, implemented by `SpaceViewClass`.
 It defines:
 * which data it can display and how it is displayed
 * how it is interacted with
 * what properties are read from the blueprint store and how they are exposed in the UI
 
-### What space view classes are there?
+### What view classes are there?
 Space View differ only in class when they are **fundamentally different** in the way they display data.
 Naturally, this means that there are only ever very few distinct Space View classes.
 
@@ -54,9 +54,9 @@ As of writing we have:
 * Text Document
 * Time Series
 
-#### Future space view class distinction
+#### Future view class distinction
 
-The fundamental difference between different space views lies in the kinds of axes a view has.
+The fundamental difference between different views lies in the kinds of axes a view has.
 - Data Table (currently text views) have rows and columns with text
 - Text Log have rows with logs sorted in time (not 100% sure this is fundamentally different than Data Table)
 - Spatial 2D has two orthogonal axes with defined spatial relationships
@@ -65,15 +65,15 @@ The fundamental difference between different space views lies in the kinds of ax
 - Rich Text is a rich text document (linear in top to bottom with wraparound in horizontal)
 
 ##### On merging bar chart with spatial 2D
-It might take some time to get the Archetype Queries + defaults expressive and easy to use enough that it makes sense to merge bar chart with spatial 2D. Right now we have the state that the bar chart space view takes a single 1-D tensor and draws a bar chart with x-axis = tensor indices and y-axis = tensor values. It draws boxes with width 1, centered on integers in x, y-min = 0 and y-max = tensor value.
+It might take some time to get the Archetype Queries + defaults expressive and easy to use enough that it makes sense to merge bar chart with spatial 2D. Right now we have the state that the bar chart view takes a single 1-D tensor and draws a bar chart with x-axis = tensor indices and y-axis = tensor values. It draws boxes with width 1, centered on integers in x, y-min = 0 and y-max = tensor value.
 
 With the right set of primitives a user should be able to manually build a bar chart in a spatial 2D view. For example they might want a stacked bar chart. Talking about bringing in 3D into a bar chart doesn't likely make sense since there probably doesn't exist a camera projection that maps between 3D and the tensor indices axis (x).
 
 One could imagine that we would have heuristics that generate a Data Blueprint for boxes that creates a bar chart from 1-D tensors.
 
-##### On why 2D and 3D space views shouldn't be the same
-In the early prototype 2D and 3D Space Views were separate since they would use different
-renderers - 3D Space Views were driven by `three-d`, 2D Space Views by egui directly.
+##### On why 2D and 3D views shouldn't be the same
+In the early prototype 2D and 3D Views were separate since they would use different
+renderers - 3D Views were driven by `three-d`, 2D Views by egui directly.
 With the advent or `re_renderer`, this distinction was no longer necessary and indeed a hindrance.
 Like most modern renderer, `re_renderer` does not distinguish 2D and 3D rendering at a fundamental level
 (albeit we might add some limited awareness in the future) since shader, hardware acceleration and
@@ -120,7 +120,7 @@ in a generic fashion.
 
 Example:
 The `Points2DPart` queries the `Points2D` archetype upon execution and produces as a result `re_renderer::PointCloudDrawData`.
-Since points can have UI labels, it also stores `UiLabel` in its own state which the space view class of `ui`
+Since points can have UI labels, it also stores `UiLabel` in its own state which the view class of `ui`
 can read out via `Points2DPart::data()` to draw UI labels.
 
 Note on naming:
@@ -132,8 +132,8 @@ i.e. an object or function that queries a set of components (an Archetype) and e
 
 ### Registration
 Registration is done via `SpaceViewSystemRegistry` which `SpaceViewClassRegistry` stores for each class.
-Space view classes can register their built-in systems upon their own registration via their `on_register` method.
-As with space view classes themselves, new systems may be added at runtime.
+View classes can register their built-in systems upon their own registration via their `on_register` method.
+As with view classes themselves, new systems may be added at runtime.
 
 ### Frame lifecycle
 * `SpaceViewClass::prepare_ui`
@@ -147,23 +147,23 @@ As with space view classes themselves, new systems may be added at runtime.
     * this typically requires iterating over all `ViewPartSystem` and extract some data either in a generic fashion via `ViewPartSystem::data` or with knowledge of the concrete `ViewPartSystem` types
   * currently, we also pass in all `re_renderer` data since the build up of the `re_renderer` view via `ViewBuilder` is not (yet?) unified
 
-### Space view class registry
-Despite being few in numbers, Space Views Classes are registered on startup.
+### View class registry
+Despite being few in numbers, Views Classes are registered on startup.
 This is desirable since:
 * forces decoupling from other aspects of the Viewer (Viewer should be composable)
-* allows for user defined space views
+* allows for user defined views
 
 <!-- https://www.figma.com/file/uFpsPdnEjKbdEv9fQif5mU/Space-View-Structure?type=whiteboard&node-id=603-139&t=B8lmYdoC9j99ZmxJ-4 -->
 ![Overview diagram of how the basic traits related to each other](https://github.com/rerun-io/rerun/assets/1220815/ffdb1cdf-7efe-47a0-ac38-30262d770e69)
 
 
-#### User defined space view classes
+#### User defined view classes
 Rust developers can use the Class Registry to register their own Space View types.
 We do *not* expect this to be a common workflow, but more of a last resort / highest level
 extensibility hooks.
 
-These user defined Space Views have no limitations over built-in Space Views and are able
-to completely reimplement existing Space Views if desired.
+These user defined Views have no limitations over built-in Views and are able
+to completely reimplement existing Views if desired.
 
 In the future A more common extension point will be to add custom systems to an existing Space View
 emitting re_renderer drawables.

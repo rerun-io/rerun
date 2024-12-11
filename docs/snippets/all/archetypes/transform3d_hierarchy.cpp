@@ -8,7 +8,7 @@ int main() {
     const auto rec = rerun::RecordingStream("rerun_example_transform3d_hierarchy");
     rec.spawn().exit_on_failure();
 
-    // TODO(#5521): log two space views as in the python example
+    // TODO(#5521): log two views as in the python example
 
     rec.set_time_seconds("sim_time", 0.0);
 
