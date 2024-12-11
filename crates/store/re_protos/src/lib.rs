@@ -52,15 +52,16 @@ pub mod remote_store {
 
 #[derive(Debug, thiserror::Error)]
 pub enum TypeConversionError {
-    #[error("missing required field: {type_name}.{field_name}")]
+    #[error("missing required field: {package_name}.{type_name}.{field_name}")]
     MissingField {
         package_name: &'static str,
         type_name: &'static str,
         field_name: &'static str,
     },
 
-    #[error("invalid value for field {type_name}.{field_name}: {reason}")]
+    #[error("invalid value for field {package_name}.{type_name}.{field_name}: {reason}")]
     InvalidField {
+        package_name: &'static str,
         type_name: &'static str,
         field_name: &'static str,
         reason: String,
@@ -90,6 +91,7 @@ impl TypeConversionError {
     #[inline]
     pub fn invalid_field<T: prost::Name>(field_name: &'static str, reason: &impl ToString) -> Self {
         Self::InvalidField {
+            package_name: T::PACKAGE,
             type_name: T::NAME,
             field_name,
             reason: reason.to_string(),

@@ -1,6 +1,5 @@
-use re_protos::invalid_field;
-use re_protos::missing_field;
 use re_protos::TypeConversionError;
+use re_protos::{invalid_field, missing_field};
 use std::sync::Arc;
 
 impl From<crate::EntityPath> for re_protos::common::v0::EntityPath {
@@ -15,11 +14,8 @@ impl TryFrom<re_protos::common::v0::EntityPath> for crate::EntityPath {
     type Error = TypeConversionError;
 
     fn try_from(value: re_protos::common::v0::EntityPath) -> Result<Self, Self::Error> {
-        Self::parse_strict(&value.path).map_err(|err| TypeConversionError::InvalidField {
-            type_name: "rerun.common.v0.EntityPath",
-            field_name: "path",
-            reason: err.to_string(),
-        })
+        Self::parse_strict(&value.path)
+            .map_err(|err| invalid_field!(re_protos::common::v0::EntityPath, "path", err))
     }
 }
 
@@ -301,11 +297,7 @@ impl TryFrom<re_protos::log_msg::v0::StoreSource> for crate::StoreSource {
                     .extra
                     .ok_or(missing_field!(re_protos::log_msg::v0::StoreSource, "extra"))?;
                 let description = String::from_utf8(description.payload).map_err(|err| {
-                    invalid_field!(
-                        re_protos::log_msg::v0::StoreSource,
-                        "extra",
-                        err.to_string()
-                    )
+                    invalid_field!(re_protos::log_msg::v0::StoreSource, "extra", err)
                 })?;
                 Ok(Self::Other(description))
             }
@@ -379,11 +371,11 @@ impl TryFrom<re_protos::log_msg::v0::FileSource> for crate::FileSource {
                 force_store_info: false,
             }),
             FileSourceKind::Sdk => Ok(Self::Sdk),
-            FileSourceKind::UnknownSource => Err(TypeConversionError::InvalidField {
-                type_name: "rerun.log_msg.v0.FileSource",
-                field_name: "kind",
-                reason: "unknown kind".to_owned(),
-            }),
+            FileSourceKind::UnknownSource => Err(invalid_field!(
+                re_protos::log_msg::v0::FileSource,
+                "kind",
+                "unknown kind",
+            )),
         }
     }
 }
