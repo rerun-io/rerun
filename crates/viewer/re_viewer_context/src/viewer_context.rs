@@ -82,6 +82,10 @@ pub struct ViewerContext<'a> {
     pub focused_item: &'a Option<crate::Item>,
 
     /// If a selection contains any `undraggable_items`, it may not be dragged.
+    ///
+    /// This is a rather ugly workaround to handle the case of the root container not being
+    /// draggable, but also being unknown to the drag-and-drop machinery in `re_viewer_context`.
+    //TODO(ab): figure out a way to deal with that in a cleaner way.
     pub undraggable_items: &'a ItemCollection,
 }
 
@@ -138,7 +142,7 @@ impl ViewerContext<'_> {
     /// Consistently handle the selection, hover, drag start interactions for a given set of items.
     ///
     /// The `draggable` parameter controls whether a drag can be initiated from this item. When a UI
-    /// element represents an [`Item`], one must make the call whether this element should be
+    /// element represents an [`crate::Item`], one must make the call whether this element should be
     /// meaningfully draggable by the users. This is ultimately a subjective decision, but some here
     /// are some guidelines:
     /// - Is there a meaningful destination for the dragged payload? For example, dragging stuff out
