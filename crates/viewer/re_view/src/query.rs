@@ -85,7 +85,7 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
     component_names: impl IntoIterator<Item = ComponentName>,
     query_shadowed_defaults: bool,
 ) -> HybridLatestAtResults<'a> {
-    re_tracing::profile_function!(data_result.entity_path.to_string());
+    // This is called very frequently, don't put a profile scope here.
 
     let mut component_set = component_names.into_iter().collect::<IntSet<_>>();
 

@@ -48,7 +48,7 @@ impl QueryCache {
         entity_path: &EntityPath,
         component_descrs: impl IntoIterator<Item = impl Into<Cow<'d, ComponentDescriptor>>>,
     ) -> LatestAtResults {
-        re_tracing::profile_function!(entity_path.to_string());
+        // This is called very frequently, don't put a profile scope here.
 
         let store = self.store.read();
 
@@ -87,8 +87,6 @@ impl QueryCache {
         // the data.
         let mut max_clear_index = (TimeInt::MIN, RowId::ZERO);
         {
-            re_tracing::profile_scope!("clears");
-
             let potential_clears = self.might_require_clearing.read();
 
             let mut clear_entity_path = entity_path.clone();

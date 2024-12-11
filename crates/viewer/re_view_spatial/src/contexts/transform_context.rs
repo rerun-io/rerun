@@ -734,7 +734,7 @@ fn transforms_at(
     pinhole_image_plane_distance: impl Fn(&EntityPath) -> f32,
     encountered_pinhole: &mut Option<EntityPath>,
 ) -> Result<TransformsAtEntity, UnreachableTransformReason> {
-    re_tracing::profile_function!();
+    // This is called very frequently, don't put a profile scope here.
 
     let potential_transform_components =
         TransformComponentTrackerStoreSubscriber::access(&entity_db.store_id(), |tracker| {
