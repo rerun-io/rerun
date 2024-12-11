@@ -135,7 +135,7 @@ pub enum HybridResults<'a> {
 
 impl HybridResults<'_> {
     pub fn query_result_hash(&self) -> Hash64 {
-        re_tracing::profile_function!();
+        // This is called very frequently, don't put a profile scope here.
         // TODO(andreas): We should be able to do better than this and determine hashes for queries on the fly.
 
         match self {

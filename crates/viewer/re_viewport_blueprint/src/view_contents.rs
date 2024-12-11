@@ -393,8 +393,6 @@ impl DataQueryPropertyResolver<'_> {
 
                 // Update visualizers from overrides.
                 if !node.data_result.visualizers.is_empty() {
-                    re_tracing::profile_scope!("Update visualizers from overrides");
-
                     // If the user has overridden the visualizers, update which visualizers are used.
                     if let Some(viz_override) = blueprint
                         .latest_at_component::<VisualizerOverrides>(
@@ -524,7 +522,7 @@ impl DataQueryPropertyResolver<'_> {
         query_result: &mut DataQueryResult,
         view_states: &mut ViewStates,
     ) {
-        re_tracing::profile_function!();
+        // This is called very frequently, don't put a profile scope here.
 
         if let Some(root) = query_result.tree.root_handle() {
             let recursive_property_overrides = Default::default();
