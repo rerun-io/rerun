@@ -19,7 +19,7 @@ pub(crate) fn encode(
             let set_store_info: SetStoreInfo = set_store_info.clone().into();
             let header = MessageHeader {
                 kind: MessageKind::SetStoreInfo,
-                len: set_store_info.encoded_len() as u32,
+                len: set_store_info.encoded_len() as u64,
             };
             header.encode(buf)?;
             set_store_info.encode(buf)?;
@@ -38,7 +38,7 @@ pub(crate) fn encode(
             };
             let header = MessageHeader {
                 kind: MessageKind::ArrowMsg,
-                len: arrow_msg.encoded_len() as u32,
+                len: arrow_msg.encoded_len() as u64,
             };
             header.encode(buf)?;
             arrow_msg.encode(buf)?;
@@ -48,7 +48,7 @@ pub(crate) fn encode(
                 blueprint_activation_command.clone().into();
             let header = MessageHeader {
                 kind: MessageKind::BlueprintActivationCommand,
-                len: blueprint_activation_command.encoded_len() as u32,
+                len: blueprint_activation_command.encoded_len() as u64,
             };
             header.encode(buf)?;
             blueprint_activation_command.encode(buf)?;

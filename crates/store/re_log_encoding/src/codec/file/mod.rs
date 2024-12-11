@@ -17,7 +17,7 @@ pub(crate) enum MessageKind {
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct MessageHeader {
     pub(crate) kind: MessageKind,
-    pub(crate) len: u32,
+    pub(crate) len: u64,
 }
 
 impl MessageKind {
@@ -66,9 +66,9 @@ impl MessageHeader {
         data: &mut impl std::io::Read,
     ) -> Result<Self, crate::decoder::DecodeError> {
         let kind = MessageKind::decode(data)?;
-        let mut buf = [0; 4];
+        let mut buf = [0; 8];
         data.read_exact(&mut buf)?;
-        let len = u32::from_le_bytes(buf);
+        let len = u64::from_le_bytes(buf);
 
         Ok(Self { kind, len })
     }

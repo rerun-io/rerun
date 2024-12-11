@@ -11,7 +11,7 @@ pub(crate) fn decode(data: &mut impl std::io::Read) -> Result<(u64, Option<LogMs
 
     let mut read_bytes = 0u64;
     let header = MessageHeader::decode(data)?;
-    read_bytes += std::mem::size_of::<MessageHeader>() as u64 + header.len as u64;
+    read_bytes += std::mem::size_of::<MessageHeader>() as u64 + header.len;
 
     let mut buf = vec![0; header.len as usize];
     data.read_exact(&mut buf[..])?;
