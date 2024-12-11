@@ -1,6 +1,3 @@
-use crate::decoder::DecodeError;
-use crate::encoder::EncodeError;
-
 use super::CodecError;
 
 use arrow2::array::Array as Arrow2Array;
@@ -52,16 +49,18 @@ pub(crate) fn read_arrow_from_bytes<R: std::io::Read>(
     }
 }
 
+#[cfg(feature = "encoder")]
 pub(crate) struct Payload {
     pub uncompressed_size: usize,
     pub data: Vec<u8>,
 }
 
+#[cfg(feature = "encoder")]
 pub(crate) fn encode_arrow(
     schema: &Arrow2Schema,
     chunk: &Arrow2Chunk,
     compression: crate::Compression,
-) -> Result<Payload, EncodeError> {
+) -> Result<Payload, crate::encoder::EncodeError> {
     let mut uncompressed = Vec::new();
     write_arrow_to_bytes(&mut uncompressed, schema, chunk)?;
     let uncompressed_size = uncompressed.len();
@@ -77,11 +76,12 @@ pub(crate) fn encode_arrow(
     })
 }
 
+#[cfg(feature = "decoder")]
 pub(crate) fn decode_arrow(
     data: &[u8],
     uncompressed_size: usize,
     compression: crate::Compression,
-) -> Result<(Arrow2Schema, Arrow2Chunk), DecodeError> {
+) -> Result<(Arrow2Schema, Arrow2Chunk), crate::decoder::DecodeError> {
     let mut uncompressed = Vec::new();
     let data = match compression {
         crate::Compression::Off => data,
