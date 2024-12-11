@@ -6,11 +6,11 @@ use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
 use re_types::components::Name;
 use re_types::{blueprint::components::Visible, Archetype as _};
-use re_types_blueprint::blueprint::archetypes as blueprint_archetypes;
-use re_types_blueprint::blueprint::components::{ContainerKind, GridColumns};
+use re_types::blueprint::archetypes as blueprint_archetypes;
+use re_types::blueprint::components::{ContainerKind, GridColumns};
 use re_viewer_context::{ContainerId, Contents, ContentsName, ViewId, ViewerContext};
 
-/// The native version of a [`re_types_blueprint::blueprint::archetypes::ContainerBlueprint`].
+/// The native version of a [`re_types::blueprint::archetypes::ContainerBlueprint`].
 ///
 /// This represents a single container in the blueprint. On each frame, it is
 /// used to populate an [`egui_tiles::Container`]. Each child in `contents` can
@@ -181,7 +181,7 @@ impl ContainerBlueprint {
 
         let container_kind = crate::container_kind_from_egui(*container_kind);
         let mut arch =
-            re_types_blueprint::blueprint::archetypes::ContainerBlueprint::new(container_kind)
+            re_types::blueprint::archetypes::ContainerBlueprint::new(container_kind)
                 .with_contents(&contents)
                 .with_col_shares(col_shares.clone())
                 .with_row_shares(row_shares.clone())

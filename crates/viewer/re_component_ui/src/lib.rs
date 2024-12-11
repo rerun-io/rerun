@@ -47,7 +47,7 @@ use re_types::{
     },
     Component as _,
 };
-use re_types_blueprint::blueprint::components::{RootContainer, ViewMaximized};
+use re_types::blueprint::components::{RootContainer, ViewMaximized};
 use re_viewer_context::gpu_bridge::colormap_edit_or_view_ui;
 
 /// Default number of ui points to show a number.

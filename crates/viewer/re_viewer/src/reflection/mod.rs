@@ -5,7 +5,6 @@
 #![allow(unused_imports)]
 use re_types::blueprint::components::*;
 use re_types::components::*;
-use re_types_blueprint::blueprint::components::*;
 use re_types_core::components::*;
 use re_types_core::{
     reflection::{
@@ -54,7 +53,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <AutoLayout as Component>::name(),
             ComponentReflection {
                 docstring_md: "Whether the viewport layout is determined automatically.",
-                custom_placeholder: Some(AutoLayout::default().to_arrow2()?),
+                custom_placeholder: None,
                 datatype: AutoLayout::arrow2_datatype(),
             },
         ),

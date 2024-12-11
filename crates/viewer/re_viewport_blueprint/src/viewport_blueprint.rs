@@ -17,7 +17,7 @@ use re_entity_db::EntityPath;
 use re_types::{
     blueprint::components::ViewerRecommendationHash, Archetype as _, ViewClassIdentifier,
 };
-use re_types_blueprint::blueprint::{
+use re_types::blueprint::{
     archetypes as blueprint_archetypes,
     components::{AutoLayout, AutoViews, RootContainer, ViewMaximized},
 };

@@ -5698,7 +5698,6 @@ dependencies = [
  "re_log_types",
  "re_tracing",
  "re_types",
- "re_types_blueprint",
  "re_types_core",
  "re_ui",
  "re_viewer_context",
@@ -6295,7 +6294,6 @@ dependencies = [
  "re_log_types",
  "re_tracing",
  "re_types",
- "re_types_blueprint",
  "re_types_core",
  "re_ui",
  "re_view",
@@ -6421,18 +6419,6 @@ dependencies = [
  "smallvec",
  "thiserror",
  "uuid",
-]
-
-[[package]]
-name = "re_types_blueprint"
-version = "0.21.0-alpha.1+dev"
-dependencies = [
- "arrow",
- "once_cell",
- "re_arrow2",
- "re_tracing",
- "re_types",
- "re_types_core",
 ]
 
 [[package]]
@@ -6828,7 +6814,6 @@ dependencies = [
  "re_time_panel",
  "re_tracing",
  "re_types",
- "re_types_blueprint",
  "re_types_core",
  "re_ui",
  "re_video",
@@ -6932,7 +6917,6 @@ dependencies = [
  "re_renderer",
  "re_tracing",
  "re_types",
- "re_types_blueprint",
  "re_ui",
  "re_view",
  "re_viewer_context",
@@ -6957,7 +6941,6 @@ dependencies = [
  "re_log_types",
  "re_tracing",
  "re_types",
- "re_types_blueprint",
  "re_types_core",
  "re_ui",
  "re_viewer_context",

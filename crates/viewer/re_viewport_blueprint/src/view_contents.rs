@@ -6,6 +6,7 @@ use re_entity_db::{external::re_chunk_store::LatestAtQuery, EntityDb, EntityTree
 use re_log_types::{
     path::RuleEffect, EntityPath, EntityPathFilter, EntityPathRule, EntityPathSubs, Timeline,
 };
+use re_types::blueprint::components::VisualizerOverrides;
 use re_types::{
     blueprint::{
         archetypes as blueprint_archetypes, components as blueprint_components,
@@ -13,7 +14,6 @@ use re_types::{
     },
     Archetype as _, ViewClassIdentifier,
 };
-use re_types_blueprint::blueprint::components::VisualizerOverrides;
 use re_types_core::ComponentName;
 use re_viewer_context::{
     ApplicableEntities, DataQueryResult, DataResult, DataResultHandle, DataResultNode,
