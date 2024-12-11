@@ -150,7 +150,7 @@ impl ViewportUi {
                     };
 
                     if let Some((view_id, entities)) = candidate_drop_of_entities_in_view {
-                        self.handle_entities_drop(ctx, ui, view_id, entities);
+                        self.handle_entities_drop(ctx, view_id, entities);
                     }
 
                     // We want the rectangle to be on top of everything in the viewport,
@@ -210,15 +210,14 @@ impl ViewportUi {
     fn handle_entities_drop(
         &self,
         ctx: &ViewerContext<'_>,
-        ui: &mut egui::Ui,
         view_id: ViewId,
         entities: &[EntityPath],
     ) {
-        if !ui.input(|i| i.pointer.any_released()) {
+        if !ctx.egui_ctx.input(|i| i.pointer.any_released()) {
             return;
         }
 
-        egui::DragAndDrop::clear_payload(ui.ctx());
+        egui::DragAndDrop::clear_payload(ctx.egui_ctx);
 
         let Some(view) = self.blueprint.view(&view_id) else {
             return;
