@@ -54,7 +54,7 @@ This exclusively affects the Python blueprint sdk:
 * `SpaceViewMaximized` -> `ViewMaximized`
 
 
-### 3D Transform arrow visualization show up less often by default
+### 3D transform arrow visualization show up less often by default
 
 Previously, the viewer would show 3 arrows for every logged transform if any of the following was true:
 * enabled visualizer via `VisualizerOverrides` or ui
