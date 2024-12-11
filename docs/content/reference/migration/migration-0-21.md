@@ -25,3 +25,43 @@ rr.send_blueprint(
 )
 ```
 
+
+### Types and fields got renamed from `.*space_view.*`/`.*SpaceView.*` to `.*view.*`/`.*View.*`
+
+Various types and fields got changed to refer to "views" rather than "space views".
+This exclusively affects the Python blueprint sdk:
+
+#### Field/argument changes:
+* `ViewportBlueprint(...auto_views=...)` -> `ViewportBlueprint(...auto_views=...)`
+* `Blueprint(...auto_views=...)` -> `Blueprint(...auto_views=...)`
+
+#### Type changes
+
+##### Utilities
+
+* `SpaceView` -> `View`
+
+##### Archetypes
+
+* `SpaceViewBlueprint` -> `ViewBlueprint`
+* `SpaceViewContents` -> `ViewContents`
+
+##### Components
+
+* `AutoSpaceViews` -> `AutoViews`
+* `SpaceViewClass` -> `ViewClass`
+* `SpaceViewOrigin` -> `ViewOrigin`
+* `SpaceViewMaximized` -> `ViewMaximized`
+
+
+### 3D transform arrow visualization show up less often by default
+
+Previously, the viewer would show 3 arrows for every logged transform if any of the following was true:
+* enabled visualizer via `VisualizerOverrides` or ui
+* `AxisLength` component is present as well
+* there's a pinhole camera at the same path
+* no other visualizer would be active by default on the path
+
+For many usecases this led to too many arrows being shown by default.
+We therefore removed the last condition - arrows will no longer show by default if they're the only visualizer.
+The easiest way to opt-in to transform arrows is to set `AxisLength` (`axis_length` field on the `Transform3D` archetype) on your transforms.

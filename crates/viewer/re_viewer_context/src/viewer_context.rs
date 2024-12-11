@@ -8,7 +8,7 @@ use re_query::StorageEngineReadGuard;
 use crate::{
     query_context::DataQueryResult, AppOptions, ApplicableEntities, ApplicationSelectionState,
     Caches, CommandSender, ComponentUiRegistry, IndicatedEntities, ItemCollection, PerVisualizer,
-    SpaceViewClassRegistry, SpaceViewId, StoreContext, SystemCommandSender as _, TimeControl,
+    StoreContext, SystemCommandSender as _, TimeControl, ViewClassRegistry, ViewId,
 };
 
 /// Common things needed by many parts of the viewer.
@@ -18,7 +18,7 @@ pub struct ViewerContext<'a> {
 
     /// Things that need caching and are shared across the whole viewer.
     ///
-    /// Use this only for things that you expected be shared across different panels and/or space views.
+    /// Use this only for things that you expected be shared across different panels and/or views.
     pub cache: &'a Caches,
 
     /// Runtime info about components and archetypes.
@@ -33,8 +33,8 @@ pub struct ViewerContext<'a> {
     /// How to display components.
     pub component_ui_registry: &'a ComponentUiRegistry,
 
-    /// Registry of all known classes of space views.
-    pub space_view_class_registry: &'a SpaceViewClassRegistry,
+    /// Registry of all known classes of views.
+    pub view_class_registry: &'a ViewClassRegistry,
 
     /// The current view of the store
     pub store_context: &'a StoreContext<'a>,
@@ -51,7 +51,7 @@ pub struct ViewerContext<'a> {
     pub indicated_entities_per_visualizer: &'a PerVisualizer<IndicatedEntities>,
 
     /// All the query results for this frame.
-    pub query_results: &'a HashMap<SpaceViewId, DataQueryResult>,
+    pub query_results: &'a HashMap<ViewId, DataQueryResult>,
 
     /// UI config for the current recording (found in [`EntityDb`]).
     pub rec_cfg: &'a RecordingConfig,

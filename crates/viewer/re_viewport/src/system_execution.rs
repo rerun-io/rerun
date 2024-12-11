@@ -5,18 +5,18 @@ use rayon::prelude::*;
 
 use re_log_types::TimeInt;
 use re_viewer_context::{
-    PerSystemDataResults, SpaceViewId, SpaceViewState, SystemExecutionOutput,
-    ViewContextCollection, ViewQuery, ViewStates, ViewerContext, VisualizerCollection,
+    PerSystemDataResults, SystemExecutionOutput, ViewContextCollection, ViewId, ViewQuery,
+    ViewState, ViewStates, ViewerContext, VisualizerCollection,
 };
 
-use crate::space_view_highlights::highlights_for_space_view;
-use re_viewport_blueprint::SpaceViewBlueprint;
+use crate::view_highlights::highlights_for_view;
+use re_viewport_blueprint::ViewBlueprint;
 
-fn run_space_view_systems(
+fn run_view_systems(
     ctx: &ViewerContext<'_>,
-    view: &SpaceViewBlueprint,
+    view: &ViewBlueprint,
     query: &ViewQuery<'_>,
-    view_state: &dyn SpaceViewState,
+    view_state: &dyn ViewState,
     context_systems: &mut ViewContextCollection,
     view_systems: &mut VisualizerCollection,
 ) -> Vec<re_renderer::QueueableDrawData> {
@@ -53,15 +53,15 @@ fn run_space_view_systems(
         .collect()
 }
 
-pub fn execute_systems_for_space_view<'a>(
+pub fn execute_systems_for_view<'a>(
     ctx: &'a ViewerContext<'_>,
-    view: &'a SpaceViewBlueprint,
+    view: &'a ViewBlueprint,
     latest_at: TimeInt,
-    view_state: &dyn SpaceViewState,
+    view_state: &dyn ViewState,
 ) -> (ViewQuery<'a>, SystemExecutionOutput) {
     re_tracing::profile_function!(view.class_identifier().as_str());
 
-    let highlights = highlights_for_space_view(ctx, view.id);
+    let highlights = highlights_for_view(ctx, view.id);
 
     let query_result = ctx.lookup_query_result(view.id);
 
@@ -81,7 +81,7 @@ pub fn execute_systems_for_space_view<'a>(
     }
 
     let query = re_viewer_context::ViewQuery {
-        space_view_id: view.id,
+        view_id: view.id,
         space_origin: &view.space_origin,
         per_visualizer_data_results,
         timeline: *ctx.rec_cfg.time_ctrl.read().timeline(),
@@ -90,13 +90,13 @@ pub fn execute_systems_for_space_view<'a>(
     };
 
     let mut context_systems = ctx
-        .space_view_class_registry
+        .view_class_registry
         .new_context_collection(view.class_identifier());
     let mut view_systems = ctx
-        .space_view_class_registry
+        .view_class_registry
         .new_visualizer_collection(view.class_identifier());
 
-    let draw_data = run_space_view_systems(
+    let draw_data = run_view_systems(
         ctx,
         view,
         &query,
@@ -117,10 +117,10 @@ pub fn execute_systems_for_space_view<'a>(
 
 pub fn execute_systems_for_all_views<'a>(
     ctx: &'a ViewerContext<'a>,
-    tree: &egui_tiles::Tree<SpaceViewId>,
-    views: &'a BTreeMap<SpaceViewId, SpaceViewBlueprint>,
+    tree: &egui_tiles::Tree<ViewId>,
+    views: &'a BTreeMap<ViewId, ViewBlueprint>,
     view_states: &mut ViewStates,
-) -> HashMap<SpaceViewId, (ViewQuery<'a>, SystemExecutionOutput)> {
+) -> HashMap<ViewId, (ViewQuery<'a>, SystemExecutionOutput)> {
     let Some(time_int) = ctx.rec_cfg.time_ctrl.read().time_int() else {
         return Default::default();
     };
@@ -129,7 +129,7 @@ pub fn execute_systems_for_all_views<'a>(
 
     // During system execution we only have read access to the view states, so we need to ensure they exist ahead of time.
     for (view_id, view) in views {
-        view_states.ensure_state_exists(*view_id, view.class(ctx.space_view_class_registry));
+        view_states.ensure_state_exists(*view_id, view.class(ctx.view_class_registry));
     }
 
     tree.active_tiles()
@@ -142,7 +142,7 @@ pub fn execute_systems_for_all_views<'a>(
                         return None;
                     };
 
-                    let result = execute_systems_for_space_view(ctx, view, time_int, view_state);
+                    let result = execute_systems_for_view(ctx, view, time_int, view_state);
                     Some((*view_id, result))
                 }),
                 egui_tiles::Tile::Container(_) => None,

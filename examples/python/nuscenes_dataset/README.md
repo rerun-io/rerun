@@ -136,7 +136,7 @@ GPS coordinates are added to the annotations similarly to the vehicle.
 The default blueprint for this example is created by the following code:
 
 ```python
-sensor_space_views = [
+sensor_views = [
     rrb.Spatial2DView(
         name=sensor_name,
         origin=f"world/ego_vehicle/{sensor_name}",
@@ -162,7 +162,7 @@ blueprint = rrb.Vertical(
         ),
         column_shares=[3, 1],
     ),
-    rrb.Grid(*sensor_space_views),
+    rrb.Grid(*sensor_views),
     row_shares=[4, 2],
 )
 ```

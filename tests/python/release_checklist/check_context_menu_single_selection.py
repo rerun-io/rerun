@@ -24,7 +24,7 @@ ITEM                      CONTEXT MENU CONTENT
 'group/' entity           Expand all
                           Collapse all
 
-                          Add to new space view
+                          Add to new view
 -------------------------------------------------
 Component                 <no action available>
 =================================================
@@ -32,9 +32,9 @@ Component                 <no action available>
 
 #### Tile title UI
 
-- Multi-select the 3D space view and the Vertical container in the Blueprint tree.
-- Right-click on the 3D space view tab title:
-  - The selection is set to the space view _only_.
+- Multi-select the 3D view and the Vertical container in the Blueprint tree.
+- Right-click on the 3D view tab title:
+  - The selection is set to the view _only_.
   - The context menu content is as per the following table.
 
 
@@ -42,7 +42,7 @@ Component                 <no action available>
 =================================================
 ITEM                      CONTEXT MENU CONTENT
 =================================================
-space view (tab title)    Hide
+view (tab title)    Hide
                           Remove
 
                           Expand all
@@ -58,7 +58,7 @@ space view (tab title)    Hide
 #### Container selection panel child list
 
 - Select the Vertical container.
-- In the selection panel, right-click on the 3D space view, and check that:
+- In the selection panel, right-click on the 3D view, and check that:
   - The selection remains unchanged.
   - The context menu content is as per the following table.
 
@@ -66,7 +66,7 @@ space view (tab title)    Hide
 =================================================
 ITEM                      CONTEXT MENU CONTENT
 =================================================
-space view (child list)   Hide
+view (child list)   Hide
                           Remove
 
                           Expand all
@@ -96,7 +96,7 @@ def blueprint() -> rrb.BlueprintLike:
     )
 
 
-def log_some_space_views() -> None:
+def log_some_views() -> None:
     rr.set_time_sequence("frame_nr", 0)
 
     rr.log("group/boxes3d", rr.Boxes3D(centers=[[0, 0, 0], [1, 1.5, 1.15], [3, 2, 1]], half_sizes=[0.5, 1, 0.5] * 3))
@@ -106,7 +106,7 @@ def run(args: Namespace) -> None:
     rr.script_setup(args, f"{os.path.basename(__file__)}", recording_id=uuid4(), default_blueprint=blueprint())
 
     log_readme()
-    log_some_space_views()
+    log_some_views()
 
 
 if __name__ == "__main__":
