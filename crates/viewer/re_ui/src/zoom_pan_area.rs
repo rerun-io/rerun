@@ -5,7 +5,7 @@
 //! * `view`-space: The space where the pan-and-zoom area is drawn.
 //! * `scene`-space: The space where the actual content is drawn.
 
-use egui::{emath::TSTransform, Rect, Response, Ui, UiBuilder};
+use egui::{emath::TSTransform, Area, Rect, Response, Ui, UiBuilder, UiKind};
 
 /// Helper function to handle pan and zoom interactions on a response.
 fn register_pan_and_zoom(ui: &Ui, resp: &Response, ui_from_scene: &mut TSTransform) {
@@ -58,42 +58,45 @@ pub fn fit_to_rect_in_scene(rect_in_ui: Rect, rect_in_scene: Rect) -> TSTransfor
 
 /// Provides a zoom-pan area for a given view.
 pub fn zoom_pan_area(
-    ui: &mut Ui,
+    ui: &Ui,
     view_bounds_in_ui: Rect,
     ui_from_scene: &mut TSTransform,
     draw_contents: impl FnOnce(&mut Ui),
 ) -> Response {
-    let zoom_pan_layer_id = egui::LayerId::new(ui.layer_id().order, ui.id().with("zoom_pan_area"));
+    let area_resp = Area::new(ui.id().with("zoom_pan_area"))
+        .constrain_to(view_bounds_in_ui)
+        .order(ui.layer_id().order)
+        .kind(UiKind::GenericArea)
+        .show(ui.ctx(), |ui| {
+            // Transform to the scene space:
+            let visible_rect_in_scene = ui_from_scene.inverse() * view_bounds_in_ui;
 
-    // Put the layer directly on-top of the main layer of the ui:
-    ui.ctx().set_sublayer(ui.layer_id(), zoom_pan_layer_id);
+            // set proper clip-rect so we can interact with the background.
+            ui.set_clip_rect(visible_rect_in_scene);
 
-    let mut ui = ui.new_child(
-        UiBuilder::new()
-            .layer_id(zoom_pan_layer_id)
-            .max_rect(view_bounds_in_ui)
-            .sense(egui::Sense::click_and_drag()),
-    );
+            // A Ui for sensing drag-to-pan, scroll-to-zoom, etc
+            let mut drag_sense_ui = ui.new_child(
+                egui::UiBuilder::new()
+                    .sense(egui::Sense::click_and_drag())
+                    .max_rect(visible_rect_in_scene),
+            );
 
-    // Transform to the scene space:
-    let visible_rect_in_scene = ui_from_scene.inverse() * view_bounds_in_ui;
+            drag_sense_ui.set_min_size(visible_rect_in_scene.size());
+            let pan_response = drag_sense_ui.response();
 
-    // set proper clip-rect so we can interact with the background:
-    ui.set_clip_rect(visible_rect_in_scene);
+            // Update the transform based on the interactions:
+            register_pan_and_zoom(ui, &pan_response, ui_from_scene);
 
-    let pan_response = ui.response();
+            // Update the clip-rect with the new transform, to avoid frame-delays
+            ui.set_clip_rect(ui_from_scene.inverse() * view_bounds_in_ui);
 
-    // Update the transform based on the interactions:
-    register_pan_and_zoom(&ui, &pan_response, ui_from_scene);
-
-    // Update the clip-rect with the new transform, to avoid frame-delays
-    ui.set_clip_rect(ui_from_scene.inverse() * view_bounds_in_ui);
-
-    // Add the actual contents to the area:
-    draw_contents(&mut ui);
+            // Add the actual contents to the area:
+            draw_contents(ui);
+            pan_response
+        });
 
     ui.ctx()
-        .set_transform_layer(zoom_pan_layer_id, *ui_from_scene);
+        .set_transform_layer(area_resp.response.layer_id, *ui_from_scene);
 
-    pan_response
+    area_resp.inner
 }
