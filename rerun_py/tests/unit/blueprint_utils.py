@@ -5,7 +5,7 @@ from typing import Any
 import rerun.blueprint as rrb
 
 
-def assert_blueprint_contents_are_equal(*contents: rrb.SpaceView | rrb.Container) -> None:
+def assert_blueprint_contents_are_equal(*contents: rrb.View | rrb.Container) -> None:
     """
     Check for equivalence between blueprint contents (views and containers).
 

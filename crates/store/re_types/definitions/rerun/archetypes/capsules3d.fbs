@@ -9,7 +9,7 @@ namespace rerun.archetypes;
 /// Capsules in other orientations may be produced by applying a rotation to the entity or
 /// instances.
 ///
-/// \example archetypes/capsule3d_batch title="Batch of capsules" image="https://static.rerun.io/capsule3d_batch/6e6a4acafcf528359372147d7247f85d84434101/1200w.png"
+/// \example archetypes/capsules3d_batch title="Batch of capsules" image="https://static.rerun.io/capsule3d_batch/6e6a4acafcf528359372147d7247f85d84434101/1200w.png"
 //
 // TODO(#1361): This archetype should eventually generalize to cylinders without caps, truncated
 // cones, and tapered capsules -- all common shapes based on expanding a line segment circularly.

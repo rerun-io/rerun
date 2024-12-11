@@ -66,7 +66,7 @@ pub enum LabelStyle {
     #[default]
     Normal,
 
-    /// Label displaying the placeholder text for a yet unnamed item (e.g. an unnamed space view).
+    /// Label displaying the placeholder text for a yet unnamed item (e.g. an unnamed view).
     Unnamed,
 }
 

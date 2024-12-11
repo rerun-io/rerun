@@ -12,10 +12,10 @@ from ... import datatypes
 from ..._baseclasses import AsComponents, ComponentBatchLike
 from ...datatypes import EntityPathLike, Utf8Like
 from .. import archetypes as blueprint_archetypes, components as blueprint_components
-from ..api import SpaceView, SpaceViewContentsLike
+from ..api import View, ViewContentsLike
 
 
-class TensorView(SpaceView):
+class TensorView(View):
     """
     **View**: A view on a tensor of any dimensionality.
 
@@ -75,7 +75,7 @@ class TensorView(SpaceView):
         self,
         *,
         origin: EntityPathLike = "/",
-        contents: SpaceViewContentsLike = "$origin/**",
+        contents: ViewContentsLike = "$origin/**",
         name: Utf8Like | None = None,
         visible: datatypes.BoolLike | None = None,
         defaults: list[Union[AsComponents, ComponentBatchLike]] = [],
@@ -95,7 +95,7 @@ class TensorView(SpaceView):
         contents:
             The contents of the view specified as a query expression.
             This is either a single expression, or a list of multiple expressions.
-            See [rerun.blueprint.archetypes.SpaceViewContents][].
+            See [rerun.blueprint.archetypes.ViewContents][].
         name:
             The display name of the view.
         visible:
@@ -103,11 +103,11 @@ class TensorView(SpaceView):
 
             Defaults to true if not specified.
         defaults:
-            List of default components or component batches to add to the space view. When an archetype
+            List of default components or component batches to add to the view. When an archetype
             in the view is missing a component included in this set, the value of default will be used
             instead of the normal fallback for the visualizer.
         overrides:
-            Dictionary of overrides to apply to the space view. The key is the path to the entity where the override
+            Dictionary of overrides to apply to the view. The key is the path to the entity where the override
             should be applied. The value is a list of component or component batches to apply to the entity.
 
             Important note: the path must be a fully qualified entity path starting at the root. The override paths

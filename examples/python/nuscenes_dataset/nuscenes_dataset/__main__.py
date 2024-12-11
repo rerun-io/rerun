@@ -310,7 +310,7 @@ def main() -> None:
     nusc = nuscenes.NuScenes(version=args.dataset_version, dataroot=args.root_dir, verbose=True)
 
     # Set up the Rerun Blueprint (how the visualization is organized):
-    sensor_space_views = [
+    sensor_views = [
         rrb.Spatial2DView(
             name=sensor_name,
             origin=f"world/ego_vehicle/{sensor_name}",
@@ -343,7 +343,7 @@ def main() -> None:
                 ),
                 column_shares=[3, 1],
             ),
-            rrb.Grid(*sensor_space_views),
+            rrb.Grid(*sensor_views),
             row_shares=[4, 2],
         ),
         rrb.TimePanel(state="collapsed"),

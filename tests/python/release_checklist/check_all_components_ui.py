@@ -253,7 +253,7 @@ def log_readme() -> None:
     rr.log("readme", rr.TextDocument(README, media_type=rr.MediaType.MARKDOWN), static=True)
 
 
-def log_some_space_views() -> None:
+def log_some_views() -> None:
     # check that we didn't forget a component
     missing_components = set(c for c in dir(rr.components) if c.endswith("Batch")) - set(ALL_COMPONENTS.keys())
     assert (
@@ -297,7 +297,7 @@ def run(args: Namespace) -> None:
     rr.script_setup(args, f"{os.path.basename(__file__)}", recording_id=uuid4())
 
     log_readme()
-    log_some_space_views()
+    log_some_views()
 
 
 if __name__ == "__main__":

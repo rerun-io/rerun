@@ -17,7 +17,7 @@ pub struct ErrorEntry {
     last_occurred_frame_index: u64,
 
     /// Description of the error.
-    // TODO(#4507): Expecting to need this once we use this in space views. Also very useful for debugging.
+    // TODO(#4507): Expecting to need this once we use this in views. Also very useful for debugging.
     #[allow(dead_code)]
     description: String,
 }

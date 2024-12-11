@@ -1,6 +1,8 @@
 //! All the APIs used specifically for `re_dataframe`.
 
 use std::collections::{BTreeMap, BTreeSet};
+use std::ops::Deref;
+use std::ops::DerefMut;
 
 use arrow2::{
     array::ListArray as ArrowListArray,
@@ -10,9 +12,7 @@ use itertools::Itertools;
 
 use re_chunk::TimelineName;
 use re_log_types::{ComponentPath, EntityPath, ResolvedTimeRange, TimeInt, Timeline};
-use re_types_core::{
-    ArchetypeFieldName, ArchetypeName, ComponentDescriptor, ComponentName, ComponentNameSet,
-};
+use re_types_core::{ArchetypeFieldName, ArchetypeName, ComponentDescriptor, ComponentName};
 
 use crate::{ChunkStore, ColumnMetadata};
 
@@ -493,7 +493,38 @@ impl std::fmt::Display for SparseFillStrategy {
 ///
 // TODO(cmc): we need to be able to build that easily in a command-line context, otherwise it's just
 // very annoying. E.g. `--with /world/points:[rr.Position3D, rr.Radius] --with /cam:[rr.Pinhole]`.
-pub type ViewContentsSelector = BTreeMap<EntityPath, Option<ComponentNameSet>>;
+#[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ViewContentsSelector(pub BTreeMap<EntityPath, Option<BTreeSet<ComponentName>>>);
+
+impl ViewContentsSelector {
+    pub fn into_inner(self) -> BTreeMap<EntityPath, Option<BTreeSet<ComponentName>>> {
+        self.0
+    }
+}
+
+impl Deref for ViewContentsSelector {
+    type Target = BTreeMap<EntityPath, Option<BTreeSet<ComponentName>>>;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for ViewContentsSelector {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl FromIterator<(EntityPath, Option<BTreeSet<ComponentName>>)> for ViewContentsSelector {
+    fn from_iter<T: IntoIterator<Item = (EntityPath, Option<BTreeSet<ComponentName>>)>>(
+        iter: T,
+    ) -> Self {
+        Self(iter.into_iter().collect())
+    }
+}
 
 // TODO(cmc): Ultimately, this shouldn't be hardcoded to `Timeline`, but to a generic `I: Index`.
 //            `Index` in this case should also be implemented on tuples (`(I1, I2, ...)`).
