@@ -137,7 +137,15 @@ impl ViewerContext<'_> {
 
     /// Consistently handle the selection, hover, drag start interactions for a given set of items.
     ///
-    /// The drag start interaction is optional and controlled by the `draggable` parameter.
+    /// The `draggable` parameter controls whether a drag can be initiated from this item. When a UI
+    /// element represents an [`Item`], one must make the call whether this element should be
+    /// meaningfully draggable by the users. This is ultimately a subjective decision, but some here
+    /// are some guidelines:
+    /// - Is there a meaningful destination for the dragged payload? For example, dragging stuff out
+    ///   of a modal dialog is by definition meaningless.
+    /// - Even if a drag destination exists, would that be obvious for the user?
+    /// - Is it expected for that kind of UI element to be draggable? For example, buttons aren't
+    ///   typically draggable.
     pub fn handle_select_hover_drag_interactions(
         &self,
         response: &egui::Response,

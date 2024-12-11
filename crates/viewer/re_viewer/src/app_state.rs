@@ -512,7 +512,7 @@ impl AppState {
         //
 
         add_view_or_container_modal_ui(&ctx, &viewport_ui.blueprint, ui);
-        drag_and_drop_payload_cursor_ui(ui);
+        drag_and_drop_payload_cursor_ui(ctx.egui_ctx);
 
         // Process deferred layout operations and apply updates back to blueprint:
         viewport_ui.save_to_blueprint_store(&ctx, view_class_registry);

@@ -54,9 +54,9 @@ impl std::fmt::Display for DragAndDropPayload {
 /// Display the currently dragged payload as a pill in the UI.
 ///
 /// This should be called once per frame.
-pub fn drag_and_drop_payload_cursor_ui(ui: &mut egui::Ui) {
-    if let Some(payload) = egui::DragAndDrop::payload::<DragAndDropPayload>(ui.ctx()) {
-        if let Some(pointer_pos) = ui.ctx().pointer_interact_pos() {
+pub fn drag_and_drop_payload_cursor_ui(ctx: &egui::Context) {
+    if let Some(payload) = egui::DragAndDrop::payload::<DragAndDropPayload>(ctx) {
+        if let Some(pointer_pos) = ctx.pointer_interact_pos() {
             let icon = match payload.as_ref() {
                 DragAndDropPayload::Contents { .. } => &re_ui::icons::DND_MOVE,
                 // don't draw anything for invalid selection
@@ -67,31 +67,33 @@ pub fn drag_and_drop_payload_cursor_ui(ui: &mut egui::Ui) {
                 egui::Order::Tooltip,
                 egui::Id::new("drag_and_drop_payload_layer"),
             );
-            let response = ui
-                .scope_builder(egui::UiBuilder::new().layer_id(layer_id), |ui| {
-                    ui.set_opacity(0.7);
 
-                    drag_pill_frame(matches!(
-                        payload.as_ref(),
-                        &DragAndDropPayload::Invalid { .. }
-                    ))
-                    .show(ui, |ui| {
-                        let text_color = ui.visuals().widgets.inactive.text_color();
+            let mut ui = egui::Ui::new(
+                ctx.clone(),
+                egui::Id::new("rerun_drag_and_drop_payload_ui"),
+                egui::UiBuilder::new().layer_id(layer_id),
+            );
 
-                        ui.horizontal(|ui| {
-                            ui.spacing_mut().item_spacing.x = 2.0;
+            ui.set_opacity(0.7);
 
-                            ui.small_icon(icon, Some(text_color));
-                            ui.label(egui::RichText::new(payload.to_string()).color(text_color));
-                        });
-                    })
-                    .response
-                })
-                .response;
+            let response = drag_pill_frame(matches!(
+                payload.as_ref(),
+                &DragAndDropPayload::Invalid { .. }
+            ))
+            .show(&mut ui, |ui| {
+                let text_color = ui.visuals().widgets.inactive.text_color();
+
+                ui.horizontal(|ui| {
+                    ui.spacing_mut().item_spacing.x = 2.0;
+
+                    ui.small_icon(icon, Some(text_color));
+                    ui.label(egui::RichText::new(payload.to_string()).color(text_color));
+                });
+            })
+            .response;
 
             let delta = pointer_pos - response.rect.right_bottom();
-            ui.ctx()
-                .transform_layer_shapes(layer_id, emath::TSTransform::from_translation(delta));
+            ctx.transform_layer_shapes(layer_id, emath::TSTransform::from_translation(delta));
         }
     }
 }

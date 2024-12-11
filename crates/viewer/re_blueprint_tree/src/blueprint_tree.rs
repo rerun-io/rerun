@@ -805,8 +805,8 @@ impl BlueprintTree {
     ) {
         // We cannot allow the target location to be "inside" any of the dragged items, because that
         // would amount to moving myself inside of me.
-        if dragged_contents.iter().any(|dragged_contents| {
-            if let Contents::Container(dragged_container_id) = dragged_contents {
+        let parent_contains_dragged_content = |content: &Contents| {
+            if let Contents::Container(dragged_container_id) = content {
                 if viewport
                     .is_contents_in_container(&drop_target.target_parent_id, dragged_container_id)
                 {
@@ -814,7 +814,8 @@ impl BlueprintTree {
                 }
             }
             false
-        }) {
+        };
+        if dragged_contents.iter().any(parent_contains_dragged_content) {
             return;
         }
 
@@ -831,7 +832,7 @@ impl BlueprintTree {
 
         if ui.input(|i| i.pointer.any_released()) {
             viewport.move_contents(
-                dragged_contents,
+                dragged_contents.to_vec(),
                 target_container_id,
                 drop_target.target_position_index,
             );
