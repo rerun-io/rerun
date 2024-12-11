@@ -2283,7 +2283,7 @@ async fn async_save_dialog(
 
     let bytes = re_log_encoding::encoder::encode_as_bytes(
         rrd_version,
-        re_log_encoding::EncodingOptions::COMPRESSED,
+        re_log_encoding::EncodingOptions::MSGPACK_COMPRESSED,
         messages,
     )?;
     file_handle.write(&bytes).await.context("Failed to save")
