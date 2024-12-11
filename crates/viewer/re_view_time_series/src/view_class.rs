@@ -112,12 +112,18 @@ Display time series data in a plot.
 - Scroll + {aspect_scroll_modifier} to zoom only the temporal axis while holding the y-range fixed.
 - Drag with the {selection_rect_zoom_button} to zoom in/out using a selection.
 - Click the {move_time_cursor_button} to move the time cursor.
-- Double-click to reset the view.",
+- Double-click to reset the view.
+
+## Legend interactions
+
+- Click on a series in the legend to show/hide it.
+- {alt_modifier}-Click on a series to show/hide all other series.",
             horizontal_scroll_modifier = ModifiersMarkdown(HORIZONTAL_SCROLL_MODIFIER, egui_ctx),
             zoom_scroll_modifier = ModifiersMarkdown(ZOOM_SCROLL_MODIFIER, egui_ctx),
             aspect_scroll_modifier = ModifiersMarkdown(ASPECT_SCROLL_MODIFIER, egui_ctx),
             selection_rect_zoom_button = MouseButtonMarkdown(SELECTION_RECT_ZOOM_BUTTON),
             move_time_cursor_button = MouseButtonMarkdown(MOVE_TIME_CURSOR_BUTTON),
+            alt_modifier = ModifiersMarkdown(egui::Modifiers::ALT, egui_ctx),
         )
     }
 

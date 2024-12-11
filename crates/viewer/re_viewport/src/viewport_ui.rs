@@ -125,8 +125,15 @@ impl ViewportUi {
                         continue;
                     };
 
-                    ui.painter()
-                        .rect_stroke(rect.shrink(stroke.width / 2.0), 0.0, stroke);
+                    // We want the rectangle to be on top of everything in the viewport,
+                    // including stuff in "zoom-pan areas", like we use in the graph view.
+                    let top_layer_id = egui::LayerId::new(ui.layer_id().order, ui.id().with("child_id"));
+                    ui.ctx().set_sublayer(ui.layer_id(), top_layer_id); // Make sure it is directly on top of the ui layer
+
+                    // We need to shrink a bit so the panel-resize lines don't cover the highlight rectangle.
+                    // This is hacky.
+                    ui.painter().clone().with_layer_id(top_layer_id)
+                        .rect_stroke(rect.shrink(stroke.width), 0.0, stroke);
                 }
             }
 
