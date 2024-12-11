@@ -3,6 +3,7 @@
 mod active_tab;
 mod apply_latest_at;
 mod auto_layout;
+mod auto_layout_ext;
 mod auto_views;
 mod background_kind;
 mod column_share;

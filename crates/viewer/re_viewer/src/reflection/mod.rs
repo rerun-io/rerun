@@ -53,7 +53,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <AutoLayout as Component>::name(),
             ComponentReflection {
                 docstring_md: "Whether the viewport layout is determined automatically.",
-                custom_placeholder: None,
+                custom_placeholder: Some(AutoLayout::default().to_arrow2()?),
                 datatype: AutoLayout::arrow2_datatype(),
             },
         ),

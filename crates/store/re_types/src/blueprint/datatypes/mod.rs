@@ -7,6 +7,7 @@ mod filter_is_not_null;
 mod selected_columns;
 mod tensor_dimension_index_slider;
 mod utf8list;
+mod utf8list_ext;
 
 pub use self::component_column_selector::ComponentColumnSelector;
 pub use self::filter_by_range::FilterByRange;
