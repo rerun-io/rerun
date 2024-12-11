@@ -49,6 +49,7 @@ re_log.workspace = true
 re_protos.workspace = true
 re_smart_channel.workspace = true
 re_tracing.workspace = true
+re_types_core.workspace = true
 
 # External:
 arrow2.workspace = true
@@ -74,6 +75,9 @@ re_types.workspace = true
 criterion.workspace = true
 mimalloc.workspace = true
 serde_test.workspace = true
+
+# TEMP
+pretty_assertions = "1.4.1"
 
 [lib]
 bench = false

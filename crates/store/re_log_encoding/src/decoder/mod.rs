@@ -294,15 +294,13 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
         }
 
         let msg = match self.options.serializer {
-            Serializer::Protobuf => {
-                match decoder::decode(&mut self.read, self.options.compression) {
-                    Ok((read_bytes, msg)) => {
-                        self.size_bytes += read_bytes;
-                        msg
-                    }
-                    Err(err) => return Some(Err(err)),
+            Serializer::Protobuf => match decoder::decode(&mut self.read) {
+                Ok((read_bytes, msg)) => {
+                    self.size_bytes += read_bytes;
+                    msg
                 }
-            }
+                Err(err) => return Some(Err(err)),
+            },
             Serializer::MsgPack => {
                 let header = match MessageHeader::decode(&mut self.read) {
                     Ok(header) => header,
@@ -408,32 +406,73 @@ mod tests {
     use re_build_info::CrateVersion;
     use re_chunk::RowId;
     use re_log_types::{
-        ApplicationId, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource, Time,
+        ApplicationId, ArrowMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource, Time,
     };
 
-    fn fake_log_message() -> LogMsg {
-        LogMsg::SetStoreInfo(SetStoreInfo {
-            row_id: *RowId::new(),
-            info: StoreInfo {
-                application_id: ApplicationId("test".to_owned()),
-                store_id: StoreId::random(StoreKind::Recording),
-                cloned_from: None,
-                is_official_example: true,
-                started: Time::now(),
-                store_source: StoreSource::RustSdk {
-                    rustc_version: String::new(),
-                    llvm_version: String::new(),
+    use pretty_assertions::assert_eq;
+
+    fn fake_log_messages() -> Vec<LogMsg> {
+        let store_id = StoreId::random(StoreKind::Blueprint);
+        vec![
+            LogMsg::SetStoreInfo(SetStoreInfo {
+                row_id: *RowId::new(),
+                info: StoreInfo {
+                    application_id: ApplicationId("test".to_owned()),
+                    store_id: store_id.clone(),
+                    cloned_from: None,
+                    is_official_example: true,
+                    started: Time::now(),
+                    store_source: StoreSource::RustSdk {
+                        rustc_version: String::new(),
+                        llvm_version: String::new(),
+                    },
+                    store_version: Some(CrateVersion::LOCAL),
                 },
-                store_version: Some(CrateVersion::LOCAL),
-            },
-        })
+            }),
+            LogMsg::ArrowMsg(
+                store_id.clone(),
+                re_chunk::Chunk::builder("test_entity".into())
+                    .with_archetype(
+                        re_chunk::RowId::new(),
+                        re_log_types::TimePoint::default().with(
+                            re_log_types::Timeline::new_sequence("blueprint"),
+                            re_log_types::TimeInt::from_milliseconds(re_log_types::NonMinI64::MIN),
+                        ),
+                        &re_types::blueprint::archetypes::Background::new(
+                            re_types::blueprint::components::BackgroundKind::SolidColor,
+                        )
+                        .with_color([255, 0, 0]),
+                    )
+                    .build()
+                    .unwrap()
+                    .to_arrow_msg()
+                    .unwrap(),
+            ),
+            LogMsg::BlueprintActivationCommand(re_log_types::BlueprintActivationCommand {
+                blueprint_id: store_id,
+                make_active: true,
+                make_default: true,
+            }),
+        ]
+    }
+
+    fn clear_arrow_extension_metadata(messages: &mut Vec<LogMsg>) {
+        for msg in messages {
+            if let LogMsg::ArrowMsg(_, arrow_msg) = msg {
+                for field in &mut arrow_msg.schema.fields {
+                    field
+                        .metadata
+                        .retain(|k, _| !k.starts_with("ARROW:extension"));
+                }
+            }
+        }
     }
 
     #[test]
     fn test_encode_decode() {
         let rrd_version = CrateVersion::LOCAL;
 
-        let messages = vec![fake_log_message()];
+        let messages = fake_log_messages();
 
         let options = [
             EncodingOptions {
@@ -459,10 +498,12 @@ mod tests {
             crate::encoder::encode_ref(rrd_version, options, messages.iter().map(Ok), &mut file)
                 .unwrap();
 
-            let decoded_messages = Decoder::new(VersionPolicy::Error, &mut file.as_slice())
+            let mut decoded_messages = Decoder::new(VersionPolicy::Error, &mut file.as_slice())
                 .unwrap()
                 .collect::<Result<Vec<LogMsg>, DecodeError>>()
                 .unwrap();
+
+            clear_arrow_extension_metadata(&mut decoded_messages);
 
             assert_eq!(messages, decoded_messages);
         }
@@ -490,22 +531,20 @@ mod tests {
         ];
 
         for options in options {
+            println!("{options:?}");
+
             let mut data = vec![];
 
             // write "2 files" i.e. 2 streams that end with end-of-stream marker
-            let messages = vec![
-                fake_log_message(),
-                fake_log_message(),
-                fake_log_message(),
-                fake_log_message(),
-            ];
+            let messages = fake_log_messages();
 
             // (2 encoders as each encoder writes a file header)
             let writer = std::io::Cursor::new(&mut data);
             let mut encoder1 =
                 crate::encoder::Encoder::new(CrateVersion::LOCAL, options, writer).unwrap();
-            encoder1.append(&messages[0]).unwrap();
-            encoder1.append(&messages[1]).unwrap();
+            for message in &messages {
+                encoder1.append(message).unwrap();
+            }
             encoder1.finish().unwrap();
 
             let written = data.len() as u64;
@@ -513,9 +552,9 @@ mod tests {
             writer.set_position(written);
             let mut encoder2 =
                 crate::encoder::Encoder::new(CrateVersion::LOCAL, options, writer).unwrap();
-
-            encoder2.append(&messages[2]).unwrap();
-            encoder2.append(&messages[3]).unwrap();
+            for message in &messages {
+                encoder2.append(message).unwrap();
+            }
             encoder2.finish().unwrap();
 
             let decoder = Decoder::new_concatenated(
@@ -524,12 +563,11 @@ mod tests {
             )
             .unwrap();
 
-            let mut decoded_messages = vec![];
-            for msg in decoder {
-                decoded_messages.push(msg.unwrap());
-            }
+            let mut decoded_messages = decoder.into_iter().collect::<Result<Vec<_>, _>>().unwrap();
 
-            assert_eq!(messages, decoded_messages);
+            clear_arrow_extension_metadata(&mut decoded_messages);
+
+            assert_eq!(vec![messages.clone(), messages].concat(), decoded_messages);
         }
     }
 }

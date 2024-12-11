@@ -1,5 +1,5 @@
 use super::{MessageHeader, MessageKind};
-use crate::codec::arrow::write_arrow_to_bytes;
+use crate::codec::arrow::encode_arrow;
 use crate::encoder::EncodeError;
 use crate::Compression;
 use re_log_types::LogMsg;
@@ -41,14 +41,16 @@ pub(crate) fn encode(
             set_store_info.encode(buf)?;
         }
         LogMsg::ArrowMsg(store_id, arrow_msg) => {
+            let payload = encode_arrow(&arrow_msg.schema, &arrow_msg.chunk, compression)?;
             let arrow_msg = ArrowMsg {
                 store_id: Some(store_id.clone().into()),
                 compression: match compression {
                     Compression::Off => proto::Compression::None as i32,
                     Compression::LZ4 => proto::Compression::Lz4 as i32,
                 },
+                uncompressed_size: payload.uncompressed_size as i32,
                 encoding: Encoding::ArrowIpc as i32,
-                payload: encode_arrow(&arrow_msg.schema, &arrow_msg.chunk, compression)?,
+                payload: payload.data,
             };
             let header = MessageHeader {
                 kind: MessageKind::ArrowMsg,
@@ -70,18 +72,4 @@ pub(crate) fn encode(
     }
 
     Ok(())
-}
-
-fn encode_arrow(
-    schema: &arrow2::datatypes::Schema,
-    chunk: &arrow2::chunk::Chunk<Box<dyn re_chunk::Arrow2Array>>,
-    compression: crate::Compression,
-) -> Result<Vec<u8>, EncodeError> {
-    let mut uncompressed = Vec::new();
-    write_arrow_to_bytes(&mut uncompressed, schema, chunk)?;
-
-    match compression {
-        crate::Compression::Off => Ok(uncompressed),
-        crate::Compression::LZ4 => Ok(lz4_flex::block::compress(&uncompressed)),
-    }
 }

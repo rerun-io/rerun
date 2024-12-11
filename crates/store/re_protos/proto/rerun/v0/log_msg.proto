@@ -39,8 +39,10 @@ message ArrowMsg {
     // Compression algorithm used.
     Compression compression = 2;
 
+    int32 uncompressed_size = 3;
+
     // Encoding of the payload.
-    Encoding encoding = 3;
+    Encoding encoding = 4;
 
     // Arrow-IPC encoded schema and chunk, compressed according to the `compression` field.
     bytes payload = 1000;
@@ -136,9 +138,9 @@ enum StoreSourceKind {
 
 // Version of the Python SDK that created the recording.
 message PythonVersion {
-    sint32 major = 1;
-    sint32 minor = 2;
-    sint32 patch = 3;
+    int32 major = 1;
+    int32 minor = 2;
+    int32 patch = 3;
     string suffix = 4;
 }
 

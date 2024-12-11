@@ -8,6 +8,8 @@ pub mod encoder;
 
 pub mod codec;
 
+mod protobuf_conversions;
+
 #[cfg(feature = "encoder")]
 #[cfg(not(target_arch = "wasm32"))]
 mod file_sink;

@@ -154,7 +154,7 @@ impl From<re_protos::common::v0::StoreId> for crate::StoreId {
     #[inline]
     fn from(value: re_protos::common::v0::StoreId) -> Self {
         Self {
-            kind: crate::StoreKind::Recording,
+            kind: value.kind().into(),
             id: Arc::new(value.id),
         }
     }

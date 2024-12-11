@@ -1,3 +1,6 @@
+use crate::decoder::DecodeError;
+use crate::encoder::EncodeError;
+
 use super::CodecError;
 
 // TODO(#8412): try using arrow ipc `compression` option instead of doing our own compression
@@ -51,4 +54,53 @@ pub(crate) fn read_arrow_from_bytes<R: std::io::Read>(
         ipc::read::StreamState::Waiting => Err(CodecError::UnexpectedStreamState),
         ipc::read::StreamState::Some(chunk) => Ok((schema, chunk)),
     }
+}
+
+pub(crate) struct Payload {
+    pub uncompressed_size: usize,
+    pub data: Vec<u8>,
+}
+
+pub(crate) fn encode_arrow(
+    schema: &arrow2::datatypes::Schema,
+    chunk: &arrow2::chunk::Chunk<Box<dyn re_chunk::Arrow2Array>>,
+    compression: crate::Compression,
+) -> Result<Payload, EncodeError> {
+    let mut uncompressed = Vec::new();
+    write_arrow_to_bytes(&mut uncompressed, schema, chunk)?;
+    let uncompressed_size = uncompressed.len();
+
+    let data = match compression {
+        crate::Compression::Off => uncompressed,
+        crate::Compression::LZ4 => lz4_flex::block::compress(&uncompressed),
+    };
+
+    Ok(Payload {
+        uncompressed_size,
+        data,
+    })
+}
+
+pub(crate) fn decode_arrow(
+    data: &[u8],
+    uncompressed_size: usize,
+    compression: crate::Compression,
+) -> Result<
+    (
+        arrow2::datatypes::Schema,
+        arrow2::chunk::Chunk<Box<dyn re_chunk::Arrow2Array>>,
+    ),
+    DecodeError,
+> {
+    let mut uncompressed = Vec::new();
+    let data = match compression {
+        crate::Compression::Off => data,
+        crate::Compression::LZ4 => {
+            uncompressed.resize(uncompressed_size, 0);
+            lz4_flex::block::decompress_into(data, &mut uncompressed)?;
+            uncompressed.as_slice()
+        }
+    };
+
+    Ok(read_arrow_from_bytes(&mut &data[..])?)
 }

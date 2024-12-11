@@ -1,7 +1,7 @@
 use super::{MessageHeader, MessageKind};
-use crate::codec::arrow::read_arrow_from_bytes;
+use crate::codec::arrow::decode_arrow;
+use crate::codec::CodecError;
 use crate::decoder::DecodeError;
-use crate::{codec::CodecError, Compression};
 use re_log_types::LogMsg;
 use re_protos::TypeConversionError;
 
@@ -31,10 +31,7 @@ impl MessageHeader {
     }
 }
 
-pub(crate) fn decode(
-    data: &mut impl std::io::Read,
-    compression: Compression,
-) -> Result<(u64, Option<LogMsg>), DecodeError> {
+pub(crate) fn decode(data: &mut impl std::io::Read) -> Result<(u64, Option<LogMsg>), DecodeError> {
     use re_protos::external::prost::Message;
     use re_protos::log_msg::v0::{ArrowMsg, BlueprintActivationCommand, Encoding, SetStoreInfo};
 
@@ -56,7 +53,11 @@ pub(crate) fn decode(
                 return Err(DecodeError::Codec(CodecError::UnsupportedEncoding));
             }
 
-            let (schema, chunk) = decode_arrow(&arrow_msg.payload, compression)?;
+            let (schema, chunk) = decode_arrow(
+                &arrow_msg.payload,
+                arrow_msg.uncompressed_size as usize,
+                arrow_msg.compression().into(),
+            )?;
 
             let store_id: re_log_types::StoreId = arrow_msg
                 .store_id
@@ -82,26 +83,4 @@ pub(crate) fn decode(
     };
 
     Ok((read_bytes, msg))
-}
-
-fn decode_arrow(
-    data: &[u8],
-    compression: crate::Compression,
-) -> Result<
-    (
-        arrow2::datatypes::Schema,
-        arrow2::chunk::Chunk<Box<dyn re_chunk::Arrow2Array>>,
-    ),
-    DecodeError,
-> {
-    let mut uncompressed = Vec::new();
-    let data = match compression {
-        crate::Compression::Off => data,
-        crate::Compression::LZ4 => {
-            lz4_flex::block::decompress_into(data, &mut uncompressed)?;
-            uncompressed.as_slice()
-        }
-    };
-
-    Ok(read_arrow_from_bytes(&mut &data[..])?)
 }

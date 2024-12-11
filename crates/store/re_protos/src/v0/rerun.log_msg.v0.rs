@@ -18,8 +18,10 @@ pub struct ArrowMsg {
     /// Compression algorithm used.
     #[prost(enumeration = "Compression", tag = "2")]
     pub compression: i32,
+    #[prost(int32, tag = "3")]
+    pub uncompressed_size: i32,
     /// Encoding of the payload.
-    #[prost(enumeration = "Encoding", tag = "3")]
+    #[prost(enumeration = "Encoding", tag = "4")]
     pub encoding: i32,
     /// Arrow-IPC encoded schema and chunk, compressed according to the `compression` field.
     #[prost(bytes = "vec", tag = "1000")]
@@ -82,11 +84,11 @@ pub struct StoreSourceExtra {
 /// Version of the Python SDK that created the recording.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct PythonVersion {
-    #[prost(sint32, tag = "1")]
+    #[prost(int32, tag = "1")]
     pub major: i32,
-    #[prost(sint32, tag = "2")]
+    #[prost(int32, tag = "2")]
     pub minor: i32,
-    #[prost(sint32, tag = "3")]
+    #[prost(int32, tag = "3")]
     pub patch: i32,
     #[prost(string, tag = "4")]
     pub suffix: ::prost::alloc::string::String,
