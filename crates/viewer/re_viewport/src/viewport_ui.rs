@@ -70,8 +70,12 @@ impl ViewportUi {
 
         let mut tree = if let Some(view_id) = blueprint.maximized {
             let mut tiles = egui_tiles::Tiles::default();
-            let root = tiles.insert_pane(view_id);
-            egui_tiles::Tree::new("viewport_tree", root, tiles)
+
+            // we must ensure that our temporary tree has the correct tile id, such that the tile id
+            // to view id logic later in this function works correctly
+            let tile_id = Contents::View(view_id).as_tile_id();
+            tiles.insert(tile_id, egui_tiles::Tile::Pane(view_id));
+            egui_tiles::Tree::new("viewport_tree", tile_id, tiles)
         } else {
             blueprint.tree.clone()
         };
