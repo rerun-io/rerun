@@ -1,4 +1,5 @@
 use super::{MessageHeader, MessageKind};
+use crate::codec::arrow::read_arrow_from_bytes;
 use crate::decoder::DecodeError;
 use crate::{codec::CodecError, Compression};
 use re_log_types::LogMsg;
@@ -103,34 +104,4 @@ fn decode_arrow(
     };
 
     Ok(read_arrow_from_bytes(&mut &data[..])?)
-}
-
-/// Helper function that deserializes raw bytes into arrow schema and record batch
-/// using Arrow IPC format.
-fn read_arrow_from_bytes<R: std::io::Read>(
-    reader: &mut R,
-) -> Result<
-    (
-        arrow2::datatypes::Schema,
-        arrow2::chunk::Chunk<Box<dyn re_chunk::Arrow2Array>>,
-    ),
-    CodecError,
-> {
-    use arrow2::io::ipc;
-
-    let metadata =
-        ipc::read::read_stream_metadata(reader).map_err(CodecError::ArrowSerialization)?;
-    let mut stream = ipc::read::StreamReader::new(reader, metadata, None);
-
-    let schema = stream.schema().clone();
-    // there should be at least one record batch in the stream
-    let stream_state = stream
-        .next()
-        .ok_or(CodecError::MissingRecordBatch)?
-        .map_err(CodecError::ArrowSerialization)?;
-
-    match stream_state {
-        ipc::read::StreamState::Waiting => Err(CodecError::UnexpectedStreamState),
-        ipc::read::StreamState::Some(chunk) => Ok((schema, chunk)),
-    }
 }

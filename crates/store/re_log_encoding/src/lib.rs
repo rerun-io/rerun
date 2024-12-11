@@ -6,8 +6,6 @@ pub mod decoder;
 #[cfg(feature = "encoder")]
 pub mod encoder;
 
-mod protobuf;
-
 pub mod codec;
 
 #[cfg(feature = "encoder")]

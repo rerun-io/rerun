@@ -1,6 +1,7 @@
 //! Encoding of [`LogMsg`]es as a binary stream, e.g. to store in an `.rrd` file, or send over network.
 
 use crate::codec;
+use crate::codec::file::{self, encoder};
 use crate::FileHeader;
 use crate::MessageHeader;
 use crate::Serializer;
@@ -155,11 +156,7 @@ impl<W: std::io::Write> Encoder<W> {
         self.uncompressed.clear();
         match self.serializer {
             Serializer::Protobuf => {
-                crate::protobuf::encoder::encode(
-                    &mut self.uncompressed,
-                    message,
-                    self.compression,
-                )?;
+                encoder::encode(&mut self.uncompressed, message, self.compression)?;
 
                 self.write
                     .write_all(&self.uncompressed)
@@ -215,8 +212,8 @@ impl<W: std::io::Write> Encoder<W> {
                 MessageHeader::EndOfStream.encode(&mut self.write)?;
             }
             Serializer::Protobuf => {
-                crate::protobuf::MessageHeader {
-                    kind: crate::protobuf::MessageKind::End,
+                file::MessageHeader {
+                    kind: file::MessageKind::End,
                     len: 0,
                 }
                 .encode(&mut self.write)?;

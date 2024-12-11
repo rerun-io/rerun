@@ -1,5 +1,5 @@
 use super::{MessageHeader, MessageKind};
-use crate::codec::CodecError;
+use crate::codec::arrow::write_arrow_to_bytes;
 use crate::encoder::EncodeError;
 use crate::Compression;
 use re_log_types::LogMsg;
@@ -84,25 +84,4 @@ fn encode_arrow(
         crate::Compression::Off => Ok(uncompressed),
         crate::Compression::LZ4 => Ok(lz4_flex::block::compress(&uncompressed)),
     }
-}
-
-/// Helper function that serializes given arrow schema and record batch into bytes
-/// using Arrow IPC format.
-fn write_arrow_to_bytes<W: std::io::Write>(
-    writer: &mut W,
-    schema: &arrow2::datatypes::Schema,
-    data: &arrow2::chunk::Chunk<Box<dyn re_chunk::Arrow2Array>>,
-) -> Result<(), CodecError> {
-    use arrow2::io::ipc;
-
-    let options = ipc::write::WriteOptions { compression: None };
-    let mut sw = ipc::write::StreamWriter::new(writer, options);
-
-    sw.start(schema, None)
-        .map_err(CodecError::ArrowSerialization)?;
-    sw.write(data, None)
-        .map_err(CodecError::ArrowSerialization)?;
-    sw.finish().map_err(CodecError::ArrowSerialization)?;
-
-    Ok(())
 }

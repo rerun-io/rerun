@@ -1,3 +1,8 @@
+#[cfg(feature = "decoder")]
+pub(crate) mod decoder;
+#[cfg(feature = "encoder")]
+pub(crate) mod encoder;
+
 #[allow(dead_code)] // used in encoder/decoder behind feature flag
 #[derive(Debug, Clone, Copy)]
 #[repr(u32)]
@@ -14,9 +19,3 @@ pub(crate) struct MessageHeader {
     pub(crate) kind: MessageKind,
     pub(crate) len: u32,
 }
-
-#[cfg(feature = "encoder")]
-pub(crate) mod encoder;
-
-#[cfg(feature = "decoder")]
-pub(crate) mod decoder;

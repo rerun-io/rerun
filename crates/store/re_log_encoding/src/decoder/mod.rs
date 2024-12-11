@@ -9,6 +9,7 @@ use re_build_info::CrateVersion;
 use re_log_types::LogMsg;
 
 use crate::codec;
+use crate::codec::file::decoder;
 use crate::FileHeader;
 use crate::MessageHeader;
 use crate::VersionPolicy;
@@ -294,7 +295,7 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
 
         let msg = match self.options.serializer {
             Serializer::Protobuf => {
-                match crate::protobuf::decoder::decode(&mut self.read, self.options.compression) {
+                match decoder::decode(&mut self.read, self.options.compression) {
                     Ok((read_bytes, msg)) => {
                         self.size_bytes += read_bytes;
                         msg
