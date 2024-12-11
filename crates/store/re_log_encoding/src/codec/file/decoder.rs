@@ -5,32 +5,6 @@ use crate::decoder::DecodeError;
 use re_log_types::LogMsg;
 use re_protos::missing_field;
 
-impl MessageKind {
-    pub(crate) fn decode(data: &mut impl std::io::Read) -> Result<Self, DecodeError> {
-        let mut buf = [0; 4];
-        data.read_exact(&mut buf)?;
-
-        match u32::from_le_bytes(buf) {
-            1 => Ok(Self::SetStoreInfo),
-            2 => Ok(Self::ArrowMsg),
-            3 => Ok(Self::BlueprintActivationCommand),
-            255 => Ok(Self::End),
-            _ => Err(DecodeError::Codec(CodecError::UnknownMessageHeader)),
-        }
-    }
-}
-
-impl MessageHeader {
-    pub(crate) fn decode(data: &mut impl std::io::Read) -> Result<Self, DecodeError> {
-        let kind = MessageKind::decode(data)?;
-        let mut buf = [0; 4];
-        data.read_exact(&mut buf)?;
-        let len = u32::from_le_bytes(buf);
-
-        Ok(Self { kind, len })
-    }
-}
-
 pub(crate) fn decode(data: &mut impl std::io::Read) -> Result<(u64, Option<LogMsg>), DecodeError> {
     use re_protos::external::prost::Message;
     use re_protos::log_msg::v0::{ArrowMsg, BlueprintActivationCommand, Encoding, SetStoreInfo};

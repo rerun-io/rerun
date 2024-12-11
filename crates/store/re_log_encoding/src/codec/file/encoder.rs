@@ -4,22 +4,6 @@ use crate::encoder::EncodeError;
 use crate::Compression;
 use re_log_types::LogMsg;
 
-impl MessageKind {
-    pub(crate) fn encode(&self, buf: &mut impl std::io::Write) -> Result<(), EncodeError> {
-        let kind: u32 = *self as u32;
-        buf.write_all(&kind.to_le_bytes())?;
-        Ok(())
-    }
-}
-
-impl MessageHeader {
-    pub(crate) fn encode(&self, buf: &mut impl std::io::Write) -> Result<(), EncodeError> {
-        self.kind.encode(buf)?;
-        buf.write_all(&self.len.to_le_bytes())?;
-        Ok(())
-    }
-}
-
 pub(crate) fn encode(
     buf: &mut Vec<u8>,
     message: &LogMsg,
