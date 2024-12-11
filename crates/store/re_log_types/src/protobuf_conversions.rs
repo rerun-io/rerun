@@ -90,27 +90,39 @@ impl TryFrom<re_protos::common::v0::IndexRange> for crate::ResolvedTimeRange {
     }
 }
 
+impl From<re_protos::common::v0::Timeline> for crate::Timeline {
+    fn from(value: re_protos::common::v0::Timeline) -> Self {
+        // TODO(cmc): QueryExpression::filtered_index gotta be a selector
+        #[allow(clippy::match_same_arms)]
+        match value.name.as_str() {
+            "log_time" => Self::new_temporal(value.name),
+            "log_tick" => Self::new_sequence(value.name),
+            "frame" => Self::new_sequence(value.name),
+            "frame_nr" => Self::new_sequence(value.name),
+            _ => Self::new_temporal(value.name),
+        }
+    }
+}
+
+impl From<crate::Timeline> for re_protos::common::v0::Timeline {
+    fn from(value: crate::Timeline) -> Self {
+        Self {
+            name: value.name().to_string(),
+        }
+    }
+}
+
 impl TryFrom<re_protos::common::v0::IndexColumnSelector> for crate::Timeline {
     type Error = TypeConversionError;
 
     fn try_from(value: re_protos::common::v0::IndexColumnSelector) -> Result<Self, Self::Error> {
-        let timeline_name = value
+        let timeline = value
             .timeline
             .ok_or(TypeConversionError::missing_field(
                 "rerun.common.v0.IndexColumnSelector",
                 "timeline",
             ))?
-            .name;
-
-        // TODO(cmc): QueryExpression::filtered_index gotta be a selector
-        #[allow(clippy::match_same_arms)]
-        let timeline = match timeline_name.as_str() {
-            "log_time" => Self::new_temporal(timeline_name),
-            "log_tick" => Self::new_sequence(timeline_name),
-            "frame" => Self::new_sequence(timeline_name),
-            "frame_nr" => Self::new_sequence(timeline_name),
-            _ => Self::new_temporal(timeline_name),
-        };
+            .into();
 
         Ok(timeline)
     }
@@ -388,6 +400,11 @@ impl From<crate::StoreInfo> for re_protos::log_msg::v0::StoreInfo {
             is_official_example: value.is_official_example,
             started: Some(value.started.into()),
             store_source: Some(value.store_source.into()),
+            store_version: value
+                .store_version
+                .map(|v| re_protos::log_msg::v0::StoreVersion {
+                    crate_version_bits: i32::from_le_bytes(v.to_bytes()),
+                }),
         }
     }
 }
@@ -426,6 +443,9 @@ impl TryFrom<re_protos::log_msg::v0::StoreInfo> for crate::StoreInfo {
                 "store_source",
             ))?
             .try_into()?;
+        let store_version = value
+            .store_version
+            .map(|v| re_build_info::CrateVersion::from_bytes(v.crate_version_bits.to_le_bytes()));
 
         Ok(Self {
             application_id,
@@ -434,7 +454,7 @@ impl TryFrom<re_protos::log_msg::v0::StoreInfo> for crate::StoreInfo {
             is_official_example,
             started,
             store_source,
-            store_version: Some(re_build_info::CrateVersion::LOCAL),
+            store_version,
         })
     }
 }
@@ -506,5 +526,190 @@ impl TryFrom<re_protos::log_msg::v0::BlueprintActivationCommand>
             make_active: value.make_active,
             make_default: value.make_default,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn entity_path_conversion() {
+        let entity_path = crate::EntityPath::parse_strict("a/b/c").unwrap();
+        let proto_entity_path: re_protos::common::v0::EntityPath = entity_path.clone().into();
+        let entity_path2: crate::EntityPath = proto_entity_path.try_into().unwrap();
+        assert_eq!(entity_path, entity_path2);
+    }
+
+    #[test]
+    fn time_conversion() {
+        let time = crate::Time::from_ns_since_epoch(123456789);
+        let proto_time: re_protos::common::v0::Time = time.clone().into();
+        let time2: crate::Time = proto_time.into();
+        assert_eq!(time, time2);
+    }
+
+    #[test]
+    fn time_int_conversion() {
+        let time_int = crate::TimeInt::new_temporal(123456789);
+        let proto_time_int: re_protos::common::v0::TimeInt = time_int.clone().into();
+        let time_int2: crate::TimeInt = proto_time_int.into();
+        assert_eq!(time_int, time_int2);
+    }
+
+    #[test]
+    fn time_range_conversion() {
+        let time_range = crate::ResolvedTimeRange::new(
+            crate::TimeInt::new_temporal(123456789),
+            crate::TimeInt::new_temporal(987654321),
+        );
+        let proto_time_range: re_protos::common::v0::TimeRange = time_range.clone().into();
+        let time_range2: crate::ResolvedTimeRange = proto_time_range.into();
+        assert_eq!(time_range, time_range2);
+    }
+
+    #[test]
+    fn index_range_conversion() {
+        let time_range = crate::ResolvedTimeRange::new(
+            crate::TimeInt::new_temporal(123456789),
+            crate::TimeInt::new_temporal(987654321),
+        );
+        let proto_index_range: re_protos::common::v0::IndexRange = time_range.clone().into();
+        let time_range2: crate::ResolvedTimeRange = proto_index_range.try_into().unwrap();
+        assert_eq!(time_range, time_range2);
+    }
+
+    #[test]
+    fn index_column_selector_conversion() {
+        let timeline = crate::Timeline::new_temporal("log_time");
+        let proto_index_column_selector: re_protos::common::v0::IndexColumnSelector =
+            re_protos::common::v0::IndexColumnSelector {
+                timeline: Some(timeline.into()),
+            };
+        let timeline2: crate::Timeline = proto_index_column_selector.try_into().unwrap();
+        assert_eq!(timeline, timeline2);
+    }
+
+    #[test]
+    fn application_id_conversion() {
+        let application_id = crate::ApplicationId("test".to_owned());
+        let proto_application_id: re_protos::common::v0::ApplicationId =
+            application_id.clone().into();
+        let application_id2: crate::ApplicationId = proto_application_id.into();
+        assert_eq!(application_id, application_id2);
+    }
+
+    #[test]
+    fn store_kind_conversion() {
+        let store_kind = crate::StoreKind::Recording;
+        let proto_store_kind: re_protos::common::v0::StoreKind = store_kind.clone().into();
+        let store_kind2: crate::StoreKind = proto_store_kind.into();
+        assert_eq!(store_kind, store_kind2);
+    }
+
+    #[test]
+    fn store_id_conversion() {
+        let store_id =
+            crate::StoreId::from_string(crate::StoreKind::Recording, "test_recording".to_owned());
+        let proto_store_id: re_protos::common::v0::StoreId = store_id.clone().into();
+        let store_id2: crate::StoreId = proto_store_id.into();
+        assert_eq!(store_id, store_id2);
+    }
+
+    #[test]
+    fn recording_id_conversion() {
+        let store_id =
+            crate::StoreId::from_string(crate::StoreKind::Recording, "test_recording".to_owned());
+        let proto_recording_id: re_protos::common::v0::RecordingId = store_id.clone().into();
+        let store_id2: crate::StoreId = proto_recording_id.into();
+        assert_eq!(store_id, store_id2);
+    }
+
+    #[test]
+    fn store_source_conversion() {
+        let store_source = crate::StoreSource::PythonSdk(crate::PythonVersion {
+            major: 3,
+            minor: 8,
+            patch: 0,
+            suffix: "a".to_owned(),
+        });
+        let proto_store_source: re_protos::log_msg::v0::StoreSource = store_source.clone().into();
+        let store_source2: crate::StoreSource = proto_store_source.try_into().unwrap();
+        assert_eq!(store_source, store_source2);
+    }
+
+    #[test]
+    fn file_source_conversion() {
+        let file_source = crate::FileSource::Uri;
+        let proto_file_source: re_protos::log_msg::v0::FileSource = file_source.clone().into();
+        let file_source2: crate::FileSource = proto_file_source.try_into().unwrap();
+        assert_eq!(file_source, file_source2);
+    }
+
+    #[test]
+    fn store_info_conversion() {
+        let store_info = crate::StoreInfo {
+            application_id: crate::ApplicationId("test".to_owned()),
+            store_id: crate::StoreId::from_string(
+                crate::StoreKind::Recording,
+                "test_recording".to_owned(),
+            ),
+            cloned_from: None,
+            is_official_example: false,
+            started: crate::Time::now(),
+            store_source: crate::StoreSource::PythonSdk(crate::PythonVersion {
+                major: 3,
+                minor: 8,
+                patch: 0,
+                suffix: "a".to_owned(),
+            }),
+            store_version: None,
+        };
+        let proto_store_info: re_protos::log_msg::v0::StoreInfo = store_info.clone().into();
+        let store_info2: crate::StoreInfo = proto_store_info.try_into().unwrap();
+        assert_eq!(store_info, store_info2);
+    }
+
+    #[test]
+    fn set_store_info_conversion() {
+        let set_store_info = crate::SetStoreInfo {
+            row_id: re_tuid::Tuid::new(),
+            info: crate::StoreInfo {
+                application_id: crate::ApplicationId("test".to_owned()),
+                store_id: crate::StoreId::from_string(
+                    crate::StoreKind::Recording,
+                    "test_recording".to_owned(),
+                ),
+                cloned_from: None,
+                is_official_example: false,
+                started: crate::Time::now(),
+                store_source: crate::StoreSource::PythonSdk(crate::PythonVersion {
+                    major: 3,
+                    minor: 8,
+                    patch: 0,
+                    suffix: "a".to_owned(),
+                }),
+                store_version: None,
+            },
+        };
+        let proto_set_store_info: re_protos::log_msg::v0::SetStoreInfo =
+            set_store_info.clone().into();
+        let set_store_info2: crate::SetStoreInfo = proto_set_store_info.try_into().unwrap();
+        assert_eq!(set_store_info, set_store_info2);
+    }
+
+    #[test]
+    fn blueprint_activation_command_conversion() {
+        let blueprint_activation_command = crate::BlueprintActivationCommand {
+            blueprint_id: crate::StoreId::from_string(
+                crate::StoreKind::Blueprint,
+                "test".to_owned(),
+            ),
+            make_active: true,
+            make_default: false,
+        };
+        let proto_blueprint_activation_command: re_protos::log_msg::v0::BlueprintActivationCommand =
+            blueprint_activation_command.clone().into();
+        let blueprint_activation_command2: crate::BlueprintActivationCommand =
+            proto_blueprint_activation_command.try_into().unwrap();
+        assert_eq!(blueprint_activation_command, blueprint_activation_command2);
     }
 }

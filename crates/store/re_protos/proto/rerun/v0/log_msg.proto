@@ -80,6 +80,9 @@ message StoreInfo {
 
     // Where the recording came from.
     StoreSource store_source = 5;
+
+    // Version of the store crate.
+    StoreVersion store_version = 6;
 }
 
 // The source of a recording or blueprint.
@@ -177,4 +180,11 @@ enum FileSourceKind {
 
     // The recording was produced using a data loader, such as when logging a mesh file.
     SDK = 5;
+}
+
+message StoreVersion {
+    // Crate version encoded using our custom scheme.
+    //
+    // See `CrateVersion` in `re_build_info`.
+    int32 crate_version_bits = 1;
 }

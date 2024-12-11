@@ -62,6 +62,9 @@ pub struct StoreInfo {
     /// Where the recording came from.
     #[prost(message, optional, tag = "5")]
     pub store_source: ::core::option::Option<StoreSource>,
+    /// Version of the store crate.
+    #[prost(message, optional, tag = "6")]
+    pub store_version: ::core::option::Option<StoreVersion>,
 }
 /// The source of a recording or blueprint.
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -108,6 +111,14 @@ pub struct CrateInfo {
 pub struct FileSource {
     #[prost(enumeration = "FileSourceKind", tag = "1")]
     pub kind: i32,
+}
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct StoreVersion {
+    /// Crate version encoded using our custom scheme.
+    ///
+    /// See `CrateVersion` in `re_build_info`.
+    #[prost(int32, tag = "1")]
+    pub crate_version_bits: i32,
 }
 /// The type of compression used on the payload.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
