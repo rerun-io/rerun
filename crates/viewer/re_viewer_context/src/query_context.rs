@@ -5,7 +5,7 @@ use smallvec::SmallVec;
 
 use re_log_types::{EntityPath, EntityPathHash};
 
-use crate::{DataResult, ViewContext, ViewId, ViewState, ViewerContext};
+use crate::{blueprint_timeline, DataResult, ViewContext, ViewId, ViewState, ViewerContext};
 
 slotmap::new_key_type! {
     /// Identifier for a [`DataResultNode`]
@@ -49,7 +49,6 @@ impl QueryContext<'_> {
 }
 
 /// The result of executing a single data query
-#[derive(Default)]
 pub struct DataQueryResult {
     /// The [`DataResultTree`] for the query
     pub tree: DataResultTree,
@@ -62,6 +61,25 @@ pub struct DataQueryResult {
     /// This does *not* take into account the actual selection of visualizers
     /// which may be an explicit none for any given entity.
     pub num_visualized_entities: usize,
+
+    /// Latest-at results for all component defaults in this view.
+    pub component_defaults: re_query::LatestAtResults,
+}
+
+impl Default for DataQueryResult {
+    fn default() -> Self {
+        Self {
+            tree: Default::default(),
+            num_matching_entities: 0,
+            num_visualized_entities: 0,
+            component_defaults: re_query::LatestAtResults {
+                entity_path: "<defaults>".into(),
+                query: re_chunk_store::LatestAtQuery::latest(blueprint_timeline()),
+                compound_index: (re_chunk::TimeInt::STATIC, re_chunk::RowId::ZERO),
+                components: Default::default(),
+            },
+        }
+    }
 }
 
 impl DataQueryResult {
@@ -85,6 +103,7 @@ impl Clone for DataQueryResult {
             tree: self.tree.clone(),
             num_matching_entities: self.num_matching_entities,
             num_visualized_entities: self.num_visualized_entities,
+            component_defaults: self.component_defaults.clone(),
         }
     }
 }

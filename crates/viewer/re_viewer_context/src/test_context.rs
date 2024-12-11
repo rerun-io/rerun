@@ -29,7 +29,7 @@ pub struct TestContext {
     pub selection_state: ApplicationSelectionState,
     pub recording_config: RecordingConfig,
 
-    blueprint_query: LatestAtQuery,
+    pub blueprint_query: LatestAtQuery,
     component_ui_registry: ComponentUiRegistry,
 
     command_sender: CommandSender,

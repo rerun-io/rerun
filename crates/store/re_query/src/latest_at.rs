@@ -208,7 +208,7 @@ impl QueryCache {
 ///
 /// Use [`LatestAtResults::get`] and/or [`LatestAtResults::get_required`] in order to access
 /// the results for each individual component.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct LatestAtResults {
     /// The associated [`EntityPath`].
     pub entity_path: EntityPath,
