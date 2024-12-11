@@ -98,7 +98,7 @@ class View:
         Note that although this is an `EntityPath`, is scoped to the blueprint tree and
         not a part of the regular data hierarchy.
         """
-        return f"space_view/{self.id}"
+        return f"view/{self.id}"
 
     def to_container(self) -> Container:
         """Convert this view to a container."""
