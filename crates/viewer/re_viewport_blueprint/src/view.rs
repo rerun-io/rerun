@@ -400,8 +400,8 @@ impl ViewBlueprint {
             viewer_ctx: ctx,
             view_id: self.id,
             view_state,
-            defaults_path: &self.defaults_path,
             visualizer_collection: self.visualizer_collection(ctx),
+            query_result: ctx.lookup_query_result(self.id),
         }
     }
 
@@ -414,8 +414,8 @@ impl ViewBlueprint {
             viewer_ctx: ctx,
             view_id: self.id,
             view_state,
-            defaults_path: &self.defaults_path,
             visualizer_collection: self.visualizer_collection(ctx),
+            query_result: ctx.lookup_query_result(self.id),
         }
     }
 

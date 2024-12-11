@@ -48,7 +48,7 @@ impl QueryContext<'_> {
     }
 }
 
-/// The result of executing a single data query
+/// The result of executing a single data query for a specific view.
 pub struct DataQueryResult {
     /// The [`DataResultTree`] for the query
     pub tree: DataResultTree,

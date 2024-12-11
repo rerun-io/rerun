@@ -266,6 +266,8 @@ impl ViewContents {
 
         // Query defaults for all the components that any visualizer in this view is interested in.
         let component_defaults = {
+            re_tracing::profile_scope!("component_defaults");
+
             let visualizer_collection =
                 view_class_registry.new_visualizer_collection(self.view_class_identifier);
 

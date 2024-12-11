@@ -51,11 +51,7 @@ pub fn range_with_blueprint_resolved_data(
     // This means we over-query for defaults that will never be used.
     // component_set.retain(|component| !results.components.contains_key(component));
 
-    let defaults = ctx.viewer_ctx.blueprint_engine().cache().latest_at(
-        ctx.viewer_ctx.blueprint_query,
-        ctx.defaults_path,
-        component_name_set.iter().copied(),
-    );
+    let defaults = ctx.query_result.component_defaults.clone(); // TODO(andreas): don't clone
 
     HybridRangeResults {
         overrides,
@@ -76,14 +72,14 @@ pub fn range_with_blueprint_resolved_data(
 /// Data should be accessed via the [`crate::RangeResultsExt`] trait which is implemented for
 /// [`crate::HybridResults`].
 ///
-/// If `query_shadowed_defaults` is true, all defaults will be queried, even if they are not used.
+/// If `query_shadowed_components` is true, store components will be queried, even if they are not used.
 pub fn latest_at_with_blueprint_resolved_data<'a>(
     ctx: &'a ViewContext<'a>,
     _annotations: Option<&'a re_viewer_context::Annotations>,
     latest_at_query: &LatestAtQuery,
     data_result: &'a re_viewer_context::DataResult,
     component_names: impl IntoIterator<Item = ComponentName>,
-    query_shadowed_defaults: bool,
+    query_shadowed_components: bool,
 ) -> HybridLatestAtResults<'a> {
     // This is called very frequently, don't put a profile scope here.
 
@@ -92,7 +88,7 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
     let overrides = query_overrides(ctx.viewer_ctx, data_result, component_set.iter());
 
     // No need to query for components that have overrides unless opted in!
-    if !query_shadowed_defaults {
+    if !query_shadowed_components {
         component_set.retain(|component| !overrides.components.contains_key(component));
     }
 
@@ -106,11 +102,7 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
     // This means we over-query for defaults that will never be used.
     // component_set.retain(|component| !results.components.contains_key(component));
 
-    let defaults = ctx.viewer_ctx.blueprint_engine().cache().latest_at(
-        ctx.viewer_ctx.blueprint_query,
-        ctx.defaults_path,
-        component_set.iter().copied(),
-    );
+    let defaults = ctx.query_result.component_defaults.clone(); // TODO(andreas): don't clone
 
     HybridLatestAtResults {
         overrides,
