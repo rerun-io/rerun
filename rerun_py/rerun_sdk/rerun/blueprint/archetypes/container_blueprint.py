@@ -45,7 +45,7 @@ class ContainerBlueprint(Archetype):
         display_name:
             The name of the container.
         contents:
-            `ContainerId`s or `SpaceViewId`s that are children of this container.
+            `ContainerId`s or `ViewId`s that are children of this container.
         col_shares:
             The layout shares of each column in the container.
 
@@ -132,7 +132,7 @@ class ContainerBlueprint(Archetype):
         default=None,
         converter=blueprint_components.IncludedContentBatch._optional,  # type: ignore[misc]
     )
-    # `ContainerId`s or `SpaceViewId`s that are children of this container.
+    # `ContainerId`s or `ViewId`s that are children of this container.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

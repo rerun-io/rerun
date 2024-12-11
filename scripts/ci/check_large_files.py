@@ -12,6 +12,7 @@ FILES_ALLOWED_TO_BE_LARGE = {
     "crates/store/re_types/src/datatypes/tensor_buffer.rs",
     "crates/viewer/re_ui/data/Inter-Medium.otf",
     "crates/viewer/re_viewer/src/reflection/mod.rs",
+    "docs/snippets/INDEX.md",
     "pixi.lock",
     "rerun_cpp/docs/Doxyfile",
 }

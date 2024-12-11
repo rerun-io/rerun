@@ -30,7 +30,7 @@ pub struct MapView {
 
 impl ::re_types_core::View for MapView {
     #[inline]
-    fn identifier() -> ::re_types_core::SpaceViewClassIdentifier {
+    fn identifier() -> ::re_types_core::ViewClassIdentifier {
         "Map".into()
     }
 }

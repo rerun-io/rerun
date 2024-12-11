@@ -32,6 +32,8 @@ mod time;
 mod time_real;
 mod vec_deque_ext;
 
+mod protobuf_conversions;
+
 use std::sync::Arc;
 
 use re_build_info::CrateVersion;
@@ -206,7 +208,7 @@ impl std::fmt::Display for ApplicationId {
 /// This command serves two purposes:
 /// - It is important that a blueprint is never activated before it has been fully
 ///   transmitted. Displaying, or allowing a user to modify, a half-transmitted
-///   blueprint can cause confusion and bad interactions with the space view heuristics.
+///   blueprint can cause confusion and bad interactions with the view heuristics.
 /// - Additionally, this command allows fine-tuning the activation behavior itself
 ///   by specifying whether the blueprint should be immediately activated, or only
 ///   become the default for future activations.
@@ -273,7 +275,7 @@ pub enum LogMsg {
     ///
     /// This is so that the viewer can wait with activating the blueprint until it is
     /// fully transmitted. Showing a half-transmitted blueprint can cause confusion,
-    /// and also lead to problems with space-view heuristics.
+    /// and also lead to problems with view heuristics.
     BlueprintActivationCommand(BlueprintActivationCommand),
 }
 

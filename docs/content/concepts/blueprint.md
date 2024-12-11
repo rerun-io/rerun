@@ -82,8 +82,8 @@ Viewer to be a deterministic function of the blueprint and the recording.
 
 Every frame, the Viewer starts with a minimal context of an "active" blueprint,
 and an "active" recording. The Viewer then uses the current revision on the
-blueprint timeline to query the container and space-view archetypes from the
-blueprint store. The space-view archetypes, in turn, specify the paths types
+blueprint timeline to query the container and view archetypes from the
+blueprint store. The view archetypes, in turn, specify the paths types
 that need to be queried from the recording store in order to render the views.
 
 Any user interactions that modify the blueprint are queued and written back to

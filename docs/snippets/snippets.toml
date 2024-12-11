@@ -1,5 +1,34 @@
 # This file is read in `compare_snippet_output.py` and the `snippets` command in `re_dev_tools`/`build_examples`.
 
+# These snippets will be excluded from the snippet index, unconditionally.
+[snippets_ref.snippets.opt_out]
+"archetypes/manual_indicator" = []
+
+# These archetypes will ignore the associated snippets in the snippet index.
+[snippets_ref.archetypes.opt_out]
+"DataframeQuery" = [
+  "reference/dataframe_save_blueprint"
+]
+
+# These components will ignore the associated snippets in the snippet index.
+[snippets_ref.components.opt_out]
+"ShowLabels" = [
+  "tutorials/data_out",
+]
+
+# These arbitrary feature names will be indexed exactly as written down.
+# Add anything you can think about!
+[snippets_ref.features]
+"Dataframes" = [
+  "reference/dataframe_query",
+  "reference/dataframe_view_query",
+]
+"`AnyValue`" = [
+  "tutorials/any_values",
+  "tutorials/extra_values",
+  "howto/any_values_send_columns",
+]
+
 # These entries won't run at all.
 #
 # You should only ever use this if the test isn't implemented and cannot yet be implemented
@@ -168,7 +197,7 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "py",
   "rust",
 ]
-"archetypes/arrow3d_simple" = [ # TODO(#3206): examples use different RNGs
+"archetypes/arrows3d_simple" = [ # TODO(#3206): examples use different RNGs
   "cpp",
   "py",
   "rust",
@@ -181,12 +210,12 @@ quick_start = [ # These examples don't have exactly the same implementation.
 "archetypes/bar_chart" = [ # On Windows this logs f64 instead of u64 unless a numpy array with explicit type is used.
   "py",
 ]
-"archetypes/capsule3d_batch" = [ # TODO(#3235): Degree to radian conversion is slightly different.
+"archetypes/capsules3d_batch" = [ # TODO(#3235): Degree to radian conversion is slightly different.
   "cpp",
   "py",
   "rust",
 ]
-"archetypes/ellipsoid3d_simple" = [ # TODO(#3206): examples use different RNGs
+"archetypes/ellipsoids3d_simple" = [ # TODO(#3206): examples use different RNGs
   "cpp",
   "py",
   "rust",
@@ -201,12 +230,12 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "py",
   "rust",
 ]
-"archetypes/point2d_random" = [ # TODO(#3206): examples use different RNGs
+"archetypes/points2d_random" = [ # TODO(#3206): examples use different RNGs
   "cpp",
   "py",
   "rust",
 ]
-"archetypes/point3d_random" = [ # TODO(#3206): examples use different RNGs
+"archetypes/points3d_random" = [ # TODO(#3206): examples use different RNGs
   "cpp",
   "py",
   "rust",

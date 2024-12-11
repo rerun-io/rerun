@@ -17,7 +17,7 @@ table ContainerBlueprint (
     /// The name of the container.
     display_name: rerun.components.Name ("attr.rerun.component_optional", nullable, order: 200);
 
-    /// `ContainerId`s or `SpaceViewId`s that are children of this container.
+    /// `ContainerId`s or `ViewId`s that are children of this container.
     contents: [rerun.blueprint.components.IncludedContent] ("attr.rerun.component_optional", nullable, order: 300);
 
     /// The layout shares of each column in the container.

@@ -47,7 +47,7 @@ use re_types::{
     },
     Component as _,
 };
-use re_types_blueprint::blueprint::components::{RootContainer, SpaceViewMaximized};
+use re_types_blueprint::blueprint::components::{RootContainer, ViewMaximized};
 use re_viewer_context::gpu_bridge::colormap_edit_or_view_ui;
 
 /// Default number of ui points to show a number.
@@ -132,7 +132,7 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     registry.add_singleline_edit_or_view::<Scale3D>(edit_or_view_vec3d);
 
     // Components that refer to views:
-    registry.add_singleline_edit_or_view::<SpaceViewMaximized>(view_view_id);
+    registry.add_singleline_edit_or_view::<ViewMaximized>(view_view_id);
 
     registry.add_singleline_edit_or_view::<RootContainer>(view_uuid);
 

@@ -22,12 +22,12 @@ encounter:
 
 -   `Blueprint`: The root object that represents the entire Viewer layout.
 -   `Container`: A layout object that contains other containers or views.
--   `SpaceView`: A view object that represents a single view of the data.
+-   `View`: A view object that represents a single view of the data.
 
-Both containers and spaceviews should be used via typed subclasses instead.:
+Both containers and views should be used via typed subclasses instead.:
 
 -   `Container` has subclasses: `Horizontal`, `Vertical`, `Grid`, and `Tabs`.
--   `SpaceView` has subclasses: `BarChartView`, `Spatial2DView`, `Spatial3DView`, `TensorView`,
+-   `View` has subclasses: `BarChartView`, `Spatial2DView`, `Spatial3DView`, `TensorView`,
     `TextDocumentView`, `TextLogView`, and `TimeSeriesView`.
 
 These paths can be combined hierarchically to create a complex Viewer layout.
@@ -106,9 +106,9 @@ rr.send_blueprint(my_blueprint, make_active=True)
 
 ```
 
-## Customizing space views
+## Customizing views
 
-Any of the space views (`BarChartView`, `Spatial2DView`, `Spatial3DView`, `TensorView`,
+Any of the views (`BarChartView`, `Spatial2DView`, `Spatial3DView`, `TensorView`,
 `TextDocumentView`, `TextLogView`, or `TimeSeriesView`) can be instantiated with no arguments.
 By default these views try to include all compatible entities.
 
@@ -121,7 +121,7 @@ rrb.Blueprint(
 )
 ```
 
-Beyond instantiating the space views, there are 3 parameters you may want to specify: `name`, `origin`, and `contents`.
+Beyond instantiating the views, there are 3 parameters you may want to specify: `name`, `origin`, and `contents`.
 
 `name` is simply the name of the view used as a label in the viewer.
 
@@ -129,13 +129,13 @@ However, both `origin` and `contents` play an important role in determining what
 
 ### `origin`
 
-The `origin` of a space-view is a generalized "frame of reference" for the view. We think of showing all data
-in the space view as relative to the `origin`.
+The `origin` of a view is a generalized "frame of reference" for the view. We think of showing all data
+in the view as relative to the `origin`.
 
 By default, only data that is under the `origin` will be included in the view. As such this is one of the most
-convenient ways of restricting a space-view to a particular subtree.
+convenient ways of restricting a view to a particular subtree.
 
-Because the data in the space-view is relative to the `origin`, the `origin` will be the first entity displayed
+Because the data in the view is relative to the `origin`, the `origin` will be the first entity displayed
 in the blueprint tree, with all entities under the origin shown using relative paths.
 
 For Spatial views such as `Spatial2DView` and `Spatial3DView`, the `origin` plays an additional role with respect
@@ -154,7 +154,7 @@ rrb.Blueprint(
 
 ### `contents`
 
-If you need to further modify the contents of a space view, you can use the `contents` parameter. This parameter is
+If you need to further modify the contents of a view, you can use the `contents` parameter. This parameter is
 a list of [entity query expressions](../../reference/) that are either included or excluded from the
 view.
 
@@ -162,7 +162,7 @@ Each entity expressions starts with "+" for inclusion or "-" for an exclusion. T
 
 When combining multiple expressions, the "most specific" rule wins.
 
-Additionally, these expressions can reference `$origin` to refer to the origin of the space view.
+Additionally, these expressions can reference `$origin` to refer to the origin of the view.
 
 For example:
 
@@ -189,8 +189,8 @@ rrb.Blueprint(
 ## Implicit conversion
 
 For convenience all of the blueprint APIs take a `BlueprintLike` rather than requiring a `Blueprint` object.
-Both `SpaceView`s and `Containers` are considered `BlueprintLike`. Similarly, the `Blueprint` object can
-take a `SpaceView` or `Container` as an argument.
+Both `View`s and `Containers` are considered `BlueprintLike`. Similarly, the `Blueprint` object can
+take a `View` or `Container` as an argument.
 
 All of the following are equivalent:
 
@@ -253,10 +253,10 @@ rrb.Blueprint(
 
 The blueprint has two additional parameters that influence the behavior of the viewer:
 
--   `auto_space_views` controls whether the Viewer will automatically create space views for entities that are not explicitly included in the blueprint.
--   `auto_layout` controls whether the Viewer should automatically layout the containers when introducing new space-views.
+-   `auto_views` controls whether the Viewer will automatically create views for entities that are not explicitly included in the blueprint.
+-   `auto_layout` controls whether the Viewer should automatically layout the containers when introducing new views.
 
-If you pass in your own `SpaceView` or `Container` objects, these will both default to `False` so that the Blueprint
+If you pass in your own `View` or `Container` objects, these will both default to `False` so that the Blueprint
 you get is exactly what you specify. Otherwise they will default to `True` so that you will still get content (this
 matches the default behavior of the Viewer if no blueprint is provided).
 
@@ -270,7 +270,7 @@ and
 
 ```python
 rrb.Blueprint(
-    auto_space_views=True,
+    auto_views=True,
     auto_layout=True
 )
 ```
@@ -281,7 +281,7 @@ If you truly want to create an empty blueprint, you must set both values to `Fal
 
 ```python
 rrb.Blueprint(
-    auto_space_views=False,
+    auto_views=False,
     auto_layout=False
 ),
 ```

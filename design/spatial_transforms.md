@@ -1,6 +1,6 @@
 # Spatial transforms
 
-Spatial transforms are transforms that apply the spatial 2D & 3D space views.
+Spatial transforms are transforms that apply the spatial 2D & 3D views.
 This includes affine 2D/3D transforms as well as camera projections.
 
 Any transform component that is logged a path `parent/entity` it describes the
@@ -15,7 +15,7 @@ the entity path of that camera is in 2D space.
 
 The spatial topology is used to determine which (spatial) visualizers can be used in which contents.
 A 2D visualizer can only ever be applied to an entity when there is a valid transformation
-along the path of the entity to the space view's origin.
+along the path of the entity to the view's origin.
 
 Examples for invalid transformation paths are:
 * mismatched start space
