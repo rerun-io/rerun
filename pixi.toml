@@ -639,7 +639,7 @@ minimal_options = { path = "examples/python/minimal_options", editable = true }
 multiprocess_logging = { path = "examples/python/multiprocess_logging", editable = true }
 multithreading = { path = "examples/python/multithreading", editable = true }
 graph_binary_tree = { path = "examples/python/graph_binary_tree", editable = true }
-graph_lattice = { path = "examples/python/graph_lattice", editable = true }
+graphs = { path = "examples/python/graphs", editable = true }
 nuscenes_dataset = { path = "examples/python/nuscenes_dataset", editable = true }
 nv12 = { path = "examples/python/nv12", editable = true }
 objectron = { path = "examples/python/objectron", editable = true }

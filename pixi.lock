@@ -2550,7 +2550,7 @@ environments:
       - pypi: examples/python/face_tracking
       - pypi: examples/python/gesture_detection
       - pypi: examples/python/graph_binary_tree
-      - pypi: examples/python/graph_lattice
+      - pypi: examples/python/graphs
       - pypi: examples/python/human_pose_tracking
       - pypi: examples/python/incremental_logging
       - pypi: examples/python/lidar
@@ -2954,7 +2954,7 @@ environments:
       - pypi: examples/python/dna
       - pypi: examples/python/drone_lidar
       - pypi: examples/python/graph_binary_tree
-      - pypi: examples/python/graph_lattice
+      - pypi: examples/python/graphs
       - pypi: examples/python/incremental_logging
       - pypi: examples/python/lidar
       - pypi: examples/python/live_camera_edge_detection
@@ -3339,7 +3339,7 @@ environments:
       - pypi: examples/python/face_tracking
       - pypi: examples/python/gesture_detection
       - pypi: examples/python/graph_binary_tree
-      - pypi: examples/python/graph_lattice
+      - pypi: examples/python/graphs
       - pypi: examples/python/human_pose_tracking
       - pypi: examples/python/incremental_logging
       - pypi: examples/python/lidar
@@ -3726,7 +3726,7 @@ environments:
       - pypi: examples/python/face_tracking
       - pypi: examples/python/gesture_detection
       - pypi: examples/python/graph_binary_tree
-      - pypi: examples/python/graph_lattice
+      - pypi: examples/python/graphs
       - pypi: examples/python/human_pose_tracking
       - pypi: examples/python/incremental_logging
       - pypi: examples/python/lidar
@@ -4112,7 +4112,7 @@ environments:
       - pypi: examples/python/face_tracking
       - pypi: examples/python/gesture_detection
       - pypi: examples/python/graph_binary_tree
-      - pypi: examples/python/graph_lattice
+      - pypi: examples/python/graphs
       - pypi: examples/python/human_pose_tracking
       - pypi: examples/python/incremental_logging
       - pypi: examples/python/lidar
@@ -4542,7 +4542,7 @@ environments:
       - pypi: examples/python/face_tracking
       - pypi: examples/python/gesture_detection
       - pypi: examples/python/graph_binary_tree
-      - pypi: examples/python/graph_lattice
+      - pypi: examples/python/graphs
       - pypi: examples/python/human_pose_tracking
       - pypi: examples/python/incremental_logging
       - pypi: examples/python/lidar
@@ -4898,7 +4898,7 @@ environments:
       - pypi: examples/python/dna
       - pypi: examples/python/drone_lidar
       - pypi: examples/python/graph_binary_tree
-      - pypi: examples/python/graph_lattice
+      - pypi: examples/python/graphs
       - pypi: examples/python/incremental_logging
       - pypi: examples/python/lidar
       - pypi: examples/python/live_camera_edge_detection
@@ -5236,7 +5236,7 @@ environments:
       - pypi: examples/python/face_tracking
       - pypi: examples/python/gesture_detection
       - pypi: examples/python/graph_binary_tree
-      - pypi: examples/python/graph_lattice
+      - pypi: examples/python/graphs
       - pypi: examples/python/human_pose_tracking
       - pypi: examples/python/incremental_logging
       - pypi: examples/python/lidar
@@ -5576,7 +5576,7 @@ environments:
       - pypi: examples/python/face_tracking
       - pypi: examples/python/gesture_detection
       - pypi: examples/python/graph_binary_tree
-      - pypi: examples/python/graph_lattice
+      - pypi: examples/python/graphs
       - pypi: examples/python/human_pose_tracking
       - pypi: examples/python/incremental_logging
       - pypi: examples/python/lidar
@@ -5916,7 +5916,7 @@ environments:
       - pypi: examples/python/face_tracking
       - pypi: examples/python/gesture_detection
       - pypi: examples/python/graph_binary_tree
-      - pypi: examples/python/graph_lattice
+      - pypi: examples/python/graphs
       - pypi: examples/python/human_pose_tracking
       - pypi: examples/python/incremental_logging
       - pypi: examples/python/lidar
@@ -9159,7 +9159,7 @@ environments:
       - pypi: examples/python/face_tracking
       - pypi: examples/python/gesture_detection
       - pypi: examples/python/graph_binary_tree
-      - pypi: examples/python/graph_lattice
+      - pypi: examples/python/graphs
       - pypi: examples/python/human_pose_tracking
       - pypi: examples/python/incremental_logging
       - pypi: examples/python/lidar
@@ -9657,7 +9657,7 @@ environments:
       - pypi: examples/python/dna
       - pypi: examples/python/drone_lidar
       - pypi: examples/python/graph_binary_tree
-      - pypi: examples/python/graph_lattice
+      - pypi: examples/python/graphs
       - pypi: examples/python/incremental_logging
       - pypi: examples/python/lidar
       - pypi: examples/python/live_camera_edge_detection
@@ -10135,7 +10135,7 @@ environments:
       - pypi: examples/python/face_tracking
       - pypi: examples/python/gesture_detection
       - pypi: examples/python/graph_binary_tree
-      - pypi: examples/python/graph_lattice
+      - pypi: examples/python/graphs
       - pypi: examples/python/human_pose_tracking
       - pypi: examples/python/incremental_logging
       - pypi: examples/python/lidar
@@ -10615,7 +10615,7 @@ environments:
       - pypi: examples/python/face_tracking
       - pypi: examples/python/gesture_detection
       - pypi: examples/python/graph_binary_tree
-      - pypi: examples/python/graph_lattice
+      - pypi: examples/python/graphs
       - pypi: examples/python/human_pose_tracking
       - pypi: examples/python/incremental_logging
       - pypi: examples/python/lidar
@@ -11074,7 +11074,7 @@ environments:
       - pypi: examples/python/face_tracking
       - pypi: examples/python/gesture_detection
       - pypi: examples/python/graph_binary_tree
-      - pypi: examples/python/graph_lattice
+      - pypi: examples/python/graphs
       - pypi: examples/python/human_pose_tracking
       - pypi: examples/python/incremental_logging
       - pypi: examples/python/lidar
@@ -18052,13 +18052,6 @@ packages:
   requires_dist:
   - rerun-sdk
   editable: true
-- pypi: examples/python/graph_lattice
-  name: graph-lattice
-  version: 0.1.0
-  sha256: f92a889e55062d414fbf9847d0b2b216b8e4bcaf8ee2965476de877102ee52f8
-  requires_dist:
-  - rerun-sdk
-  editable: true
 - conda: https://conda.anaconda.org/conda-forge/linux-64/graphite2-1.3.13-h59595ed_1003.conda
   sha256: 0595b009f20f8f60f13a6398e7cdcbd2acea5f986633adcf85f5a2283c992add
   md5: f87c7b7c2cb45f323ffbce941c78ab7c
@@ -18113,6 +18106,13 @@ packages:
   purls: []
   size: 95406
   timestamp: 1711634622644
+- pypi: examples/python/graphs
+  name: graphs
+  version: 0.1.0
+  sha256: 4e848c8bfec82cd0d79a4080a37ea03ee24c33d3c64019af981b76ba0bd8d10c
+  requires_dist:
+  - rerun-sdk
+  editable: true
 - pypi: https://files.pythonhosted.org/packages/eb/fc/570a1e503e19be24c5642ea8b93f23e3eef1dfa930e761cab72dedc2c2db/griffe-1.4.1-py3-none-any.whl
   name: griffe
   version: 1.4.1

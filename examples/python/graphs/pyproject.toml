@@ -1,11 +1,11 @@
 [project]
-name = "graph_lattice"
+name = "graphs"
 version = "0.1.0"
 readme = "README.md"
 dependencies = ["rerun-sdk"]
 
 [project.scripts]
-graph_lattice = "graph_lattice:main"
+graphs = "graphs:main"
 
 [build-system]
 requires = ["hatchling"]
