@@ -76,9 +76,6 @@ criterion.workspace = true
 mimalloc.workspace = true
 serde_test.workspace = true
 
-# TEMP
-pretty_assertions = "1.4.1"
-
 [lib]
 bench = false
 

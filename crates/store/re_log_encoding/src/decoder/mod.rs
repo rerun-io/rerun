@@ -409,8 +409,6 @@ mod tests {
         ApplicationId, ArrowMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource, Time,
     };
 
-    use pretty_assertions::assert_eq;
-
     fn fake_log_messages() -> Vec<LogMsg> {
         let store_id = StoreId::random(StoreKind::Blueprint);
         vec![
