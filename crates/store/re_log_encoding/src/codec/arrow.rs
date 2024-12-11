@@ -1,5 +1,7 @@
 use super::CodecError;
 
+// TODO(#8412): try using arrow ipc `compression` option instead of doing our own compression
+
 /// Helper function that serializes given arrow schema and record batch into bytes
 /// using Arrow IPC format.
 pub(crate) fn write_arrow_to_bytes<W: std::io::Write>(
