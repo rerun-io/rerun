@@ -6,7 +6,7 @@ order: 300
 ## The definition of a space
 
 Every entity in Rerun exists in some _space_. This is at the core of how Rerun organizes the visualizations of the data
-that you have logged. In the [Rerun Viewer](../reference/viewer.md) you view data by configuring a _space view_, which is a view
+that you have logged. In the [Rerun Viewer](../reference/viewer.md) you view data by configuring a _view_, which is a view
 of a set of entities _as seen from a particular origin._
 
 The origin of a space is, very loosely, a generalization of the idea of a "coordinate system" (sometimes known as a "coordinate frame") to arbitrary data. If a collection of
@@ -18,7 +18,7 @@ For example:
 -   For scalar plots it means they share the same plot axes.
 -   For text logs, it means they share the same conceptual stream.
 
-As explained below, a space view _may_ display data belonging to multiple spaces, but there must be a well-defined
+As explained below, a view _may_ display data belonging to multiple spaces, but there must be a well-defined
 means of transforming the data from one space to another.
 
 Which entities belong to which spaces is a function of the transform system, which uses the following rules to define
@@ -59,7 +59,7 @@ space we have the entities `world/robot` and `world/robot/observed_features`.
 Practically speaking, this means that the position values of the points from `world/mapped_keypoints` and the points
 from `world/robot/observed_features` are not directly comparable. If you were to directly draw these points in a single
 coordinate system the results would be meaningless. As noted above, Rerun can still display these entities in the same
-space view because it is able to automatically transform data between different spaces.
+view because it is able to automatically transform data between different spaces.
 
 ## Space transformations
 

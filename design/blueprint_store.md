@@ -21,9 +21,9 @@ give users explicit control over the details of how data is displayed in the vie
 ### UI state includes:
 
 - Is the selection panel open? how wide?
-- How are my space views organized?
-- What data is shown in each space view
-- Additional configuration / overrides for the data within each space view
+- How are my views organized?
+- What data is shown in each view
+- Additional configuration / overrides for the data within each view
 
 ## Proposal
 
@@ -111,8 +111,8 @@ The assorted objects used in blueprint construction are:
         - `View2D`
         - `View3D`
         - `ViewTimeSeries`
-        - … additional space-views
- - `Data`: A query that builds archetypes to draw in the space view
+        - … additional views
+ - `Data`: A query that builds archetypes to draw in the view
     - `Auto`: A query to automatically build archetypes from an entity path
     - `Points2D`: A query to build a Points2D archetype
     - `Points3D`: A query to build a Points3D archetype
@@ -245,7 +245,7 @@ The UI components are quite specific for the type of blueprint. Here are a few e
     * `children`
     * `type`: "horizontal", "vertical", "auto", …
     * `sizes`: individual sizes of the children
-* Space view
+* View
     * `children` (data blueprints)
     * `category` ("3D", "text", …)
 * Data group

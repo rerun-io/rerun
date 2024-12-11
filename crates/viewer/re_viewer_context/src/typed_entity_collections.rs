@@ -37,14 +37,14 @@ impl std::ops::Deref for IndicatedEntities {
 }
 
 /// List of entities that can be visualized at some point in time on any timeline
-/// by a concrete visualizer in the context of a specific instantiated space view.
+/// by a concrete visualizer in the context of a specific instantiated view.
 ///
-/// It gets invalidated whenever any properties of the respective space view instance
+/// It gets invalidated whenever any properties of the respective view instance
 /// change, e.g. its origin.
-/// TODO(andreas): Unclear if any of the space view's configuring blueprint entities are included in this!
+/// TODO(andreas): Unclear if any of the view's configuring blueprint entities are included in this!
 ///
 /// This is a subset of [`ApplicableEntities`] and differs on a
-/// per space view instance base.
+/// per view instance base.
 #[derive(Default, Clone)]
 pub struct VisualizableEntities(pub IntSet<EntityPath>);
 

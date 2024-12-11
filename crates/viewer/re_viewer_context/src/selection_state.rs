@@ -8,7 +8,7 @@ use crate::{item::resolve_mono_instance_path_item, ViewerContext};
 
 use super::Item;
 
-/// Context information that a space view might attach to an item from [`ItemCollection`] and useful
+/// Context information that a view might attach to an item from [`ItemCollection`] and useful
 /// for how a selection might be displayed and interacted with.
 #[derive(Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
 pub enum ItemSpaceContext {
@@ -45,7 +45,7 @@ pub enum SelectionHighlight {
     None,
 
     /// A closely related object is selected, should apply similar highlight to selection.
-    /// (e.g. data in a different space view)
+    /// (e.g. data in a different view)
     SiblingSelection,
 
     /// Should apply selection highlight (i.e. the exact selection is highlighted).
@@ -340,14 +340,14 @@ impl ApplicationSelectionState {
                 Item::AppId(_)
                 | Item::DataSource(_)
                 | Item::StoreId(_)
-                | Item::SpaceView(_)
+                | Item::View(_)
                 | Item::Container(_) => current == test,
 
                 Item::ComponentPath(component_path) => match test {
                     Item::AppId(_)
                     | Item::DataSource(_)
                     | Item::StoreId(_)
-                    | Item::SpaceView(_)
+                    | Item::View(_)
                     | Item::Container(_) => false,
 
                     Item::ComponentPath(test_component_path) => {
@@ -368,7 +368,7 @@ impl ApplicationSelectionState {
                     | Item::DataSource(_)
                     | Item::StoreId(_)
                     | Item::ComponentPath(_)
-                    | Item::SpaceView(_)
+                    | Item::View(_)
                     | Item::Container(_) => false,
 
                     Item::InstancePath(test_instance_path)
@@ -381,12 +381,12 @@ impl ApplicationSelectionState {
                     }
                 },
 
-                Item::DataResult(_current_space_view_id, current_instance_path) => match test {
+                Item::DataResult(_current_view_id, current_instance_path) => match test {
                     Item::AppId(_)
                     | Item::DataSource(_)
                     | Item::StoreId(_)
                     | Item::ComponentPath(_)
-                    | Item::SpaceView(_)
+                    | Item::View(_)
                     | Item::Container(_) => false,
 
                     Item::InstancePath(test_instance_path)

@@ -38,9 +38,9 @@ attribute "attr.rerun.override_type";
 /// This is used for example to scope blueprint types.
 attribute "attr.rerun.scope";
 
-/// Specifies the type identifier for a space view type.
+/// Specifies the type identifier for a view type.
 ///
-/// This is mandatory for space view types.
+/// This is mandatory for view types.
 attribute "attr.rerun.view_identifier";
 
 /// Marks something as deprecated followed by a (mandatory!) migration note.

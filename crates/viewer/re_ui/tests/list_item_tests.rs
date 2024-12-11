@@ -32,7 +32,7 @@ pub fn test_list_items_should_match_snapshot() {
                 ui.list_item().show_hierarchical(
                     ui,
                     list_item::LabelContent::new("LabelContent with icon")
-                        .with_icon(&re_ui::icons::SPACE_VIEW_TEXT),
+                        .with_icon(&re_ui::icons::VIEW_TEXT),
                 );
 
                 ui.list_item().show_hierarchical(
@@ -74,7 +74,7 @@ pub fn test_list_items_should_match_snapshot() {
                         list_item::LabelContent::new("LabelContent with custom styling")
                             .subdued(true)
                             .italics(true)
-                            .with_icon(&re_ui::icons::SPACE_VIEW_2D),
+                            .with_icon(&re_ui::icons::VIEW_2D),
                     )
                     .on_hover_text("The styling applies to the icon.");
 
@@ -83,7 +83,7 @@ pub fn test_list_items_should_match_snapshot() {
                         ui,
                         list_item::LabelContent::new("LabelContent with LabelStyle")
                             .label_style(re_ui::LabelStyle::Unnamed)
-                            .with_icon(&re_ui::icons::SPACE_VIEW_2D),
+                            .with_icon(&re_ui::icons::VIEW_2D),
                     )
                     .on_hover_text("The LabelStyle doesn't apply to the icon.");
 
@@ -142,7 +142,7 @@ pub fn test_list_items_should_match_snapshot() {
                     ui.list_item().show_hierarchical(
                         ui,
                         list_item::PropertyContent::new("Color")
-                            .with_icon(&re_ui::icons::SPACE_VIEW_TEXT)
+                            .with_icon(&re_ui::icons::VIEW_TEXT)
                             .action_button(&re_ui::icons::ADD, || {
                                 re_log::warn!("Add button clicked");
                             })
@@ -152,7 +152,7 @@ pub fn test_list_items_should_match_snapshot() {
                     ui.list_item().show_hierarchical(
                         ui,
                         list_item::PropertyContent::new("Color (editable)")
-                            .with_icon(&re_ui::icons::SPACE_VIEW_TEXT)
+                            .with_icon(&re_ui::icons::VIEW_TEXT)
                             .action_button(&re_ui::icons::ADD, || {
                                 re_log::warn!("Add button clicked");
                             })

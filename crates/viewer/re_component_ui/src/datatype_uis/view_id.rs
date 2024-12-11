@@ -1,6 +1,6 @@
 use re_data_ui::item_ui;
 use re_types::datatypes::Uuid;
-use re_viewer_context::{MaybeMutRef, SpaceViewId};
+use re_viewer_context::{MaybeMutRef, ViewId};
 
 pub fn view_view_id(
     ctx: &re_viewer_context::ViewerContext<'_>,
@@ -16,6 +16,6 @@ fn view_view_id_impl(
     ui: &mut egui::Ui,
     value: &Uuid,
 ) -> egui::Response {
-    let view = SpaceViewId::from(*value);
+    let view = ViewId::from(*value);
     item_ui::blueprint_entity_path_button_to(ctx, ui, &view.as_entity_path(), view.to_string())
 }

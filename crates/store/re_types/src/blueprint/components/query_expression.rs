@@ -23,7 +23,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// Each expression is either an inclusion or an exclusion expression.
 /// Inclusions start with an optional `+` and exclusions must start with a `-`.
 ///
-/// Multiple expressions are combined together as part of `SpaceViewContents`.
+/// Multiple expressions are combined together as part of [`archetypes::ViewContents`][crate::blueprint::archetypes::ViewContents].
 ///
 /// The `/**` suffix matches the whole subtree, i.e. self and any child, recursively
 /// (`/world/**` matches both `/world` and `/world/car/driver`).
