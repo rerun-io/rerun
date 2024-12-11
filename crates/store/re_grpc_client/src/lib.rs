@@ -151,6 +151,7 @@ async fn stream_recording_async(
             .connect()
             .await?;
 
+        // TODO(#8411): figure out the right size for this
         StorageNodeClient::new(tonic_client).max_decoding_message_size(usize::MAX)
     };
 
