@@ -3,17 +3,17 @@
 //! This crate provides blueprint (i.e. description) for how to render the viewport.
 
 mod container;
-mod space_view;
-mod space_view_contents;
 pub mod ui;
+mod view;
+mod view_contents;
 mod view_properties;
 mod viewport_blueprint;
 mod viewport_command;
 
 pub use container::ContainerBlueprint;
 use re_viewer_context::ViewerContext;
-pub use space_view::SpaceViewBlueprint;
-pub use space_view_contents::SpaceViewContents;
+pub use view::ViewBlueprint;
+pub use view_contents::ViewContents;
 pub use view_properties::{entity_path_for_view_property, ViewProperty, ViewPropertyQueryError};
 pub use viewport_blueprint::ViewportBlueprint;
 pub use viewport_command::ViewportCommand;
@@ -55,21 +55,21 @@ pub fn container_kind_from_egui(
     }
 }
 
-/// List out all space views we generate by default for the available data.
+/// List out all views we generate by default for the available data.
 ///
-/// TODO(andreas): This is transitional. We want to pass on the space view spawn heuristics
+/// TODO(andreas): This is transitional. We want to pass on the view spawn heuristics
 /// directly and make more high level decisions with it.
-pub fn default_created_space_views(ctx: &ViewerContext<'_>) -> Vec<SpaceViewBlueprint> {
+pub fn default_created_views(ctx: &ViewerContext<'_>) -> Vec<ViewBlueprint> {
     re_tracing::profile_function!();
 
-    ctx.space_view_class_registry
+    ctx.view_class_registry
         .iter_registry()
         .flat_map(|entry| {
             let spawn_heuristics = entry.class.spawn_heuristics(ctx);
             spawn_heuristics
                 .into_vec()
                 .into_iter()
-                .map(|recommendation| SpaceViewBlueprint::new(entry.identifier, recommendation))
+                .map(|recommendation| ViewBlueprint::new(entry.identifier, recommendation))
         })
         .collect()
 }

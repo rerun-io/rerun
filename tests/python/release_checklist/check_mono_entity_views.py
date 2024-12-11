@@ -14,7 +14,7 @@ README = """\
 This test checks that mono-entity views work as expected.
 
 - Reset the blueprint to default
-- Check each space view: when titled `ERROR`, they should display an error, and when titled `OK`, they should display the tensor or text document correctly.
+- Check each view: when titled `ERROR`, they should display an error, and when titled `OK`, they should display the tensor or text document correctly.
 
 """
 

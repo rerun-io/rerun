@@ -35,7 +35,7 @@ pub enum ComponentFallbackError {
     UnexpectedEmptyFallback,
 }
 
-/// Provides fallback values for components, implemented typically by [`crate::SpaceViewClass`] and [`crate::VisualizerSystem`].
+/// Provides fallback values for components, implemented typically by [`crate::ViewClass`] and [`crate::VisualizerSystem`].
 ///
 /// Fallbacks can be based on arbitrarily complex & context sensitive heuristics.
 pub trait ComponentFallbackProvider {

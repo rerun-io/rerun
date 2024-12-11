@@ -7,7 +7,7 @@ pub(crate) fn edit_or_view_entity_path(
     path: &mut MaybeMutRef<'_, EntityPath>,
 ) -> egui::Response {
     if let Some(path) = path.as_mut() {
-        // A suggestion mechanism similar to the one in `space_view_space_origin_widget_ui` would be nice.
+        // A suggestion mechanism similar to the one in `view_space_origin_widget_ui` would be nice.
         let mut string = path.to_string();
         let response = ui.text_edit_singleline(&mut string);
         *path = string.into();

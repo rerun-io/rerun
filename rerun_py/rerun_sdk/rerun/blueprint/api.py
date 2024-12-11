@@ -10,16 +10,16 @@ from .._spawn import _spawn_viewer
 from ..datatypes import BoolLike, EntityPathLike, Float32ArrayLike, Utf8ArrayLike, Utf8Like
 from ..memory import MemoryRecording
 from ..recording_stream import RecordingStream
-from .archetypes import ContainerBlueprint, PanelBlueprint, SpaceViewBlueprint, SpaceViewContents, ViewportBlueprint
+from .archetypes import ContainerBlueprint, PanelBlueprint, ViewBlueprint, ViewContents, ViewportBlueprint
 from .components import PanelState, PanelStateLike
 from .components.container_kind import ContainerKindLike
 
-SpaceViewContentsLike = Union[Utf8ArrayLike, SpaceViewContents]
+ViewContentsLike = Union[Utf8ArrayLike, ViewContents]
 
 
-class SpaceView:
+class View:
     """
-    Base class for all space view types.
+    Base class for all view types.
 
     Consider using one of the subclasses instead of this class directly:
 
@@ -31,7 +31,7 @@ class SpaceView:
     - [rerun.blueprint.TextLogView][]
     - [rerun.blueprint.TimeSeriesView][]
 
-    These are ergonomic helpers on top of [rerun.blueprint.archetypes.SpaceViewBlueprint][].
+    These are ergonomic helpers on top of [rerun.blueprint.archetypes.ViewBlueprint][].
     """
 
     def __init__(
@@ -39,7 +39,7 @@ class SpaceView:
         *,
         class_identifier: Utf8Like,
         origin: EntityPathLike,
-        contents: SpaceViewContentsLike,
+        contents: ViewContentsLike,
         name: Utf8Like | None,
         visible: BoolLike | None = None,
         properties: dict[str, AsComponents] = {},
@@ -47,33 +47,33 @@ class SpaceView:
         overrides: dict[EntityPathLike, list[ComponentBatchLike]] = {},
     ):
         """
-        Construct a blueprint for a new space view.
+        Construct a blueprint for a new view.
 
         Parameters
         ----------
         name
-            The name of the space view.
+            The name of the view.
         class_identifier
-            The class of the space view to add. This must correspond to a known space view class.
-            Prefer to use one of the subclasses of `SpaceView` which will populate this for you.
+            The class of the view to add. This must correspond to a known view class.
+            Prefer to use one of the subclasses of `View` which will populate this for you.
         origin
-            The `EntityPath` to use as the origin of this space view. All other entities will be transformed
+            The `EntityPath` to use as the origin of this view. All other entities will be transformed
             to be displayed relative to this origin.
         contents
-            The contents of the space view specified as a query expression. This is either a single expression,
-            or a list of multiple expressions. See [rerun.blueprint.archetypes.SpaceViewContents][].
+            The contents of the view specified as a query expression. This is either a single expression,
+            or a list of multiple expressions. See [rerun.blueprint.archetypes.ViewContents][].
         visible:
-            Whether this space view is visible.
+            Whether this view is visible.
 
             Defaults to true if not specified.
         properties
-            Dictionary of property archetypes to add to space view's internal hierarchy.
+            Dictionary of property archetypes to add to view's internal hierarchy.
         defaults:
-            List of default components or component batches to add to the space view. When an archetype
+            List of default components or component batches to add to the view. When an archetype
             in the view is missing a component included in this set, the value of default will be used
             instead of the normal fallback for the visualizer.
         overrides:
-            Dictionary of overrides to apply to the space view. The key is the path to the entity where the override
+            Dictionary of overrides to apply to the view. The key is the path to the entity where the override
             should be applied. The value is a list of component or component batches to apply to the entity.
 
             Important note: the path must be a fully qualified entity path starting at the root. The override paths
@@ -93,7 +93,7 @@ class SpaceView:
 
     def blueprint_path(self) -> str:
         """
-        The blueprint path where this space view will be logged.
+        The blueprint path where this view will be logged.
 
         Note that although this is an `EntityPath`, is scoped to the blueprint tree and
         not a part of the regular data hierarchy.
@@ -101,27 +101,27 @@ class SpaceView:
         return f"space_view/{self.id}"
 
     def to_container(self) -> Container:
-        """Convert this space view to a container."""
+        """Convert this view to a container."""
         from .containers import Tabs
 
         return Tabs(self)
 
     def to_blueprint(self) -> Blueprint:
-        """Convert this space view to a full blueprint."""
+        """Convert this view to a full blueprint."""
         return Blueprint(self)
 
     def _log_to_stream(self, stream: RecordingStream) -> None:
         """Internal method to convert to an archetype and log to the stream."""
-        if isinstance(self.contents, SpaceViewContents):
-            # If contents is already a SpaceViewContents, we can just use it directly
+        if isinstance(self.contents, ViewContents):
+            # If contents is already a ViewContents, we can just use it directly
             contents = self.contents
         else:
-            # Otherwise we delegate to the SpaceViewContents constructor
-            contents = SpaceViewContents(query=self.contents)  # type: ignore[arg-type]
+            # Otherwise we delegate to the ViewContents constructor
+            contents = ViewContents(query=self.contents)  # type: ignore[arg-type]
 
-        stream.log(self.blueprint_path() + "/SpaceViewContents", contents)  # type: ignore[attr-defined]
+        stream.log(self.blueprint_path() + "/ViewContents", contents)  # type: ignore[attr-defined]
 
-        arch = SpaceViewBlueprint(
+        arch = ViewBlueprint(
             class_identifier=self.class_identifier,
             display_name=self.name,
             space_origin=self.origin,
@@ -143,7 +143,7 @@ class SpaceView:
 
         for path, components in self.overrides.items():
             stream.log(  # type: ignore[attr-defined]
-                f"{self.blueprint_path()}/SpaceViewContents/individual_overrides/{path}", components, recording=stream
+                f"{self.blueprint_path()}/ViewContents/individual_overrides/{path}", components, recording=stream
             )
 
     def _ipython_display_(self) -> None:
@@ -168,8 +168,8 @@ class Container:
 
     def __init__(
         self,
-        *args: Container | SpaceView,
-        contents: Optional[Iterable[Container | SpaceView]] = None,
+        *args: Container | View,
+        contents: Optional[Iterable[Container | View]] = None,
         kind: ContainerKindLike,
         column_shares: Optional[Float32ArrayLike] = None,
         row_shares: Optional[Float32ArrayLike] = None,
@@ -185,7 +185,7 @@ class Container:
         *args:
             All positional arguments are forwarded to the `contents` parameter for convenience.
         contents:
-            The contents of the container. Each item in the iterable must be a `SpaceView` or a `Container`.
+            The contents of the container. Each item in the iterable must be a `View` or a `Container`.
             This can only be used if no positional arguments are provided.
         kind
             The kind of the container. This must correspond to a known container kind.
@@ -225,7 +225,7 @@ class Container:
 
     def blueprint_path(self) -> str:
         """
-        The blueprint path where this space view will be logged.
+        The blueprint path where this view will be logged.
 
         Note that although this is an `EntityPath`, is scoped to the blueprint tree and
         not a part of the regular data hierarchy.
@@ -233,7 +233,7 @@ class Container:
         return f"container/{self.id}"
 
     def to_container(self) -> Container:
-        """Convert this space view to a container."""
+        """Convert this view to a container."""
         return self
 
     def to_blueprint(self) -> Blueprint:
@@ -246,7 +246,7 @@ class Container:
 
         for i, sub in enumerate(self.contents):
             sub._log_to_stream(stream)
-            if i == self.active_tab or (isinstance(sub, SpaceView) and sub.name == self.active_tab):
+            if i == self.active_tab or (isinstance(sub, View) and sub.name == self.active_tab):
                 active_tab_path = sub.blueprint_path()
 
         if self.active_tab is not None and active_tab_path is None:
@@ -316,7 +316,7 @@ class Panel:
 
     def blueprint_path(self) -> str:
         """
-        The blueprint path where this space view will be logged.
+        The blueprint path where this view will be logged.
 
         Note that although this is an `EntityPath`, is scoped to the blueprint tree and
         not a part of the regular data hierarchy.
@@ -413,7 +413,7 @@ class TimePanel(Panel):
         super().__init__(blueprint_path="time_panel", expanded=expanded, state=state)
 
 
-ContainerLike = Union[Container, SpaceView]
+ContainerLike = Union[Container, View]
 """
 A type that can be converted to a container.
 
@@ -434,7 +434,7 @@ class Blueprint:
         self,
         *parts: BlueprintPart,
         auto_layout: bool | None = None,
-        auto_space_views: bool | None = None,
+        auto_views: bool | None = None,
         collapse_panels: bool = False,
     ):
         """
@@ -459,13 +459,13 @@ class Blueprint:
             The parts of the blueprint.
         auto_layout:
             Whether to automatically layout the viewport. If `True`, the container layout will be
-            reset whenever a new space view is added to the viewport. Defaults to `False`.
-            Defaults to `False` unless no Containers or SpaceViews are provided, in which case it defaults to `True`.
+            reset whenever a new view is added to the viewport. Defaults to `False`.
+            Defaults to `False` unless no Containers or Views are provided, in which case it defaults to `True`.
             If you want to create a completely empty Blueprint, you must explicitly set this to `False`.
-        auto_space_views:
-            Whether to automatically add space views to the viewport. If `True`, the viewport will
-            automatically add space views based on content in the data store.
-            Defaults to `False` unless no Containers or SpaceViews are provided, in which case it defaults to `True`.
+        auto_views:
+            Whether to automatically add views to the viewport. If `True`, the viewport will
+            automatically add views based on content in the data store.
+            Defaults to `False` unless no Containers or Views are provided, in which case it defaults to `True`.
             If you want to create a completely empty Blueprint, you must explicitly set this to `False`.
         collapse_panels:
             Whether to collapse panels in the viewer. Defaults to `False`.
@@ -480,7 +480,7 @@ class Blueprint:
         contents: list[ContainerLike] = []
 
         for part in parts:
-            if isinstance(part, (Container, SpaceView)):
+            if isinstance(part, (Container, View)):
                 contents.append(part)
             elif isinstance(part, TopPanel):
                 if hasattr(self, "top_panel"):
@@ -501,13 +501,13 @@ class Blueprint:
             else:
                 raise ValueError(f"Unknown part type: {part}")
 
-        self.auto_space_views = auto_space_views
+        self.auto_views = auto_views
         self.auto_layout = auto_layout
 
         if len(contents) == 0:
-            # If there's no content, switch `auto_layout` and `auto_space_views` defaults to `True`.
-            if self.auto_space_views is None:
-                self.auto_space_views = True
+            # If there's no content, switch `auto_layout` and `auto_views` defaults to `True`.
+            if self.auto_views is None:
+                self.auto_views = True
             if self.auto_layout is None:
                 self.auto_layout = True
         elif len(contents) == 1:
@@ -531,7 +531,7 @@ class Blueprint:
         viewport_arch = ViewportBlueprint(
             root_container=root_container_id,
             auto_layout=self.auto_layout,
-            auto_space_views=self.auto_space_views,
+            auto_views=self.auto_views,
         )
 
         stream.log("viewport", viewport_arch)  # type: ignore[attr-defined]
@@ -657,7 +657,7 @@ class Blueprint:
         self.connect(application_id=application_id, addr=f"127.0.0.1:{port}")
 
 
-BlueprintLike = Union[Blueprint, SpaceView, Container]
+BlueprintLike = Union[Blueprint, View, Container]
 """
 A type that can be converted to a blueprint.
 

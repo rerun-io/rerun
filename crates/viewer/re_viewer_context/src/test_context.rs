@@ -6,7 +6,7 @@ use re_log_types::{StoreId, StoreKind};
 
 use crate::{
     blueprint_timeline, command_channel, ApplicationSelectionState, CommandReceiver, CommandSender,
-    ComponentUiRegistry, RecordingConfig, SpaceViewClassRegistry, StoreContext, SystemCommand,
+    ComponentUiRegistry, RecordingConfig, StoreContext, SystemCommand, ViewClassRegistry,
     ViewerContext,
 };
 
@@ -25,7 +25,7 @@ use crate::{
 pub struct TestContext {
     pub recording_store: EntityDb,
     pub blueprint_store: EntityDb,
-    pub space_view_class_registry: SpaceViewClassRegistry,
+    pub view_class_registry: ViewClassRegistry,
     pub selection_state: ApplicationSelectionState,
     pub recording_config: RecordingConfig,
 
@@ -54,7 +54,7 @@ impl Default for TestContext {
         Self {
             recording_store,
             blueprint_store,
-            space_view_class_registry: Default::default(),
+            view_class_registry: Default::default(),
             selection_state: Default::default(),
             recording_config,
             blueprint_query,
@@ -97,7 +97,7 @@ impl TestContext {
             cache: &Default::default(),
             reflection: &Default::default(),
             component_ui_registry: &self.component_ui_registry,
-            space_view_class_registry: &self.space_view_class_registry,
+            view_class_registry: &self.view_class_registry,
             store_context: &store_context,
             applicable_entities_per_visualizer: &Default::default(),
             indicated_entities_per_visualizer: &Default::default(),

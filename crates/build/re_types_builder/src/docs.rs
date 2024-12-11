@@ -184,10 +184,10 @@ fn find_and_recommend_doclinks(
                 && content.chars().next().unwrap().is_ascii_uppercase()
 
                 // TODO(emilk): support references to things outside the default `rerun.scope`.
-                && !matches!(content, "SpaceViewContents" | "VisibleTimeRanges" | "QueryExpression")
+                && !matches!(content, "ViewContents" | "VisibleTimeRanges" | "QueryExpression")
 
                 // In some blueprint code we refer to stuff in Rerun.
-                && !matches!(content, "ChunkStore" | "ContainerId" | "EntityPathFilter" | "Spatial2DView" | "SpaceViewId" | "SpaceView")
+                && !matches!(content, "ChunkStore" | "ContainerId" | "EntityPathFilter" | "Spatial2DView" | "ViewId" | "View")
 
                 // Doc links to OpenStreetMap may show up
                 && !matches!(content, "OpenStreetMap");

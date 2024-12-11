@@ -16,7 +16,7 @@ This checks the different ways 1D arrays can be visualized.
 
 You should see:
 * a tensor view with 1D data
-  * Note: when selecting the tensor space view, there should be two "Dimension Mapping" widgets, which can be used to
+  * Note: when selecting the tensor view, there should be two "Dimension Mapping" widgets, which can be used to
     display the tensor vertically or horizontally. The "Selectors" list should be empty.
 * an image view with a 1D image
 * a bar chart

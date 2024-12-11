@@ -22,7 +22,7 @@ The timeline panel gives you controls over what point in time you're looking at 
 Additionally, it gives you an overview of all events on a given timeline.
 
 ### [Viewport](viewport.md)
-The viewport is where your visualizations live. It is composed of one or more Space Views that you can arrange freely.
+The viewport is where your visualizations live. It is composed of one or more Views that you can arrange freely.
 
 ### Top bar & menu
 The top bar contains operating system controls and generic information.

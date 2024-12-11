@@ -129,7 +129,7 @@ fn items_to_string<'a>(items: impl Iterator<Item = &'a Item>) -> String {
     for item in items {
         match item {
             Item::Container(_) => container_cnt += 1,
-            Item::SpaceView(_) => view_cnt += 1,
+            Item::View(_) => view_cnt += 1,
             Item::AppId(_) => app_cnt += 1,
             Item::DataSource(_) => data_source_cnt += 1,
             Item::StoreId(_) => store_cnt += 1,

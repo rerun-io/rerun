@@ -1125,7 +1125,7 @@ fn paint_range_highlight(
 }
 
 fn help_button(ui: &mut egui::Ui) {
-    // TODO(andreas): Nicer help text like on space views.
+    // TODO(andreas): Nicer help text like on views.
     ui.help_hover_button().on_hover_text(
         "\
         In the top row you can drag to move the time, or shift-drag to select a loop region.\n\

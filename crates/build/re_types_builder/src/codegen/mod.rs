@@ -57,7 +57,7 @@ mod python;
 mod rust;
 
 pub use self::cpp::CppCodeGenerator;
-pub use self::docs::DocsCodeGenerator;
+pub use self::docs::{DocsCodeGenerator, SnippetsRefCodeGenerator};
 pub use self::fbs::FbsCodeGenerator;
 pub use self::python::PythonCodeGenerator;
 pub use self::rust::RustCodeGenerator;
