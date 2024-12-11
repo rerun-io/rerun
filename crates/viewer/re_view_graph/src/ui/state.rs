@@ -1,4 +1,4 @@
-use egui::Rect;
+use egui::{emath::TSTransform, Rect};
 use re_format::format_f32;
 use re_types::blueprint::components::VisualBounds2D;
 use re_ui::UiExt;
@@ -16,6 +16,8 @@ pub struct GraphViewState {
     pub show_debug: bool,
 
     pub visual_bounds: Option<VisualBounds2D>,
+    pub ui_from_world: Option<TSTransform>,
+    pub rect_in_ui: Option<Rect>,
 }
 
 impl GraphViewState {
