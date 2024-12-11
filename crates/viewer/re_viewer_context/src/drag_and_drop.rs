@@ -146,32 +146,20 @@ fn items_to_string<'a>(items: impl Iterator<Item = &'a Item>) -> String {
         }
     }
 
-    let counts = [
-        &container_cnt,
-        &view_cnt,
-        &app_cnt,
-        &data_source_cnt,
-        &store_cnt,
-        &entity_cnt,
-        &instance_cnt,
-        &component_cnt,
+    let count_and_names = [
+        (container_cnt, "container", "containers"),
+        (view_cnt, "view", "views"),
+        (app_cnt, "app", "apps"),
+        (data_source_cnt, "data source", "data sources"),
+        (store_cnt, "store", "stores"),
+        (entity_cnt, "entity", "entities"),
+        (instance_cnt, "instance", "instances"),
+        (component_cnt, "component", "components"),
     ];
 
-    let names = [
-        ("container", "containers"),
-        ("view", "views"),
-        ("app", "apps"),
-        ("data source", "data sources"),
-        ("store", "stores"),
-        ("entity", "entities"),
-        ("instance", "instances"),
-        ("component", "components"),
-    ];
-
-    counts
-        .iter()
-        .zip(names.iter())
-        .filter_map(|(&&cnt, &name)| {
+    count_and_names
+        .into_iter()
+        .filter_map(|(count, name_singular, name_plural)| {
             if cnt > 0 {
                 Some(format!(
                     "{} {}",
