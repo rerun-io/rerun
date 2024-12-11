@@ -168,6 +168,8 @@ Display a graph of nodes and edges.
 
         let state = state.downcast_mut::<GraphViewState>()?;
 
+        let params = ForceLayoutParams::get(ctx, query, self, state)?;
+
         let bounds_property = ViewProperty::from_archetype::<VisualBounds2D>(
             ctx.blueprint_db(),
             ctx.blueprint_query,
@@ -176,17 +178,28 @@ Display a graph of nodes and edges.
         let rect_in_scene: blueprint::components::VisualBounds2D =
             bounds_property.component_or_fallback(ctx, self, state)?;
 
-        let params = ForceLayoutParams::get(ctx, query, self, state)?;
-
-        let rect_in_ui = ui.max_rect();
-
+        // Perform all layout-related tasks.
         let request = LayoutRequest::from_graphs(graphs.iter());
         let layout_was_empty = state.layout_state.is_none();
         let layout = state.layout_state.get(request, params);
 
-        let mut ui_from_world = fit_to_rect_in_scene(rect_in_ui, rect_in_scene.into());
+        // Prepare the view and the transformations.
+        let prev_rect_in_ui = state.rect_in_ui;
+        let rect_in_ui = *state.rect_in_ui.insert(ui.max_rect());
 
-        let resp = zoom_pan_area(ui, rect_in_ui, &mut ui_from_world, |ui| {
+        let ui_from_world = state
+            .ui_from_world
+            .get_or_insert_with(|| fit_to_rect_in_scene(rect_in_ui, rect_in_scene.into()));
+
+        // We ensure that the view's center is kept during resizing.
+        if let Some(prev) = prev_rect_in_ui {
+            if prev != rect_in_ui {
+                let delta = rect_in_ui.center() - prev.center();
+                ui_from_world.translation += delta;
+            }
+        }
+
+        let resp = zoom_pan_area(ui, rect_in_ui, ui_from_world, |ui| {
             let mut world_bounding_rect = egui::Rect::NOTHING;
 
             for graph in &graphs {
@@ -205,6 +218,7 @@ Display a graph of nodes and edges.
             blueprint::components::VisualBounds2D::from(ui_from_world.inverse() * rect_in_ui);
         if resp.double_clicked() || layout_was_empty {
             bounds_property.reset_blueprint_component::<blueprint::components::VisualBounds2D>(ctx);
+            state.ui_from_world = None;
         } else if rect_in_scene != updated_rect_in_scene {
             bounds_property.save_blueprint_component(ctx, &updated_rect_in_scene);
         }
