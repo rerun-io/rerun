@@ -3,8 +3,8 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::wildcard_imports)]
 #![allow(unused_imports)]
-use re_types::blueprint::components::*;
-use re_types::components::*;
+use crate::blueprint::components::*;
+use crate::components::*;
 use re_types_core::components::*;
 use re_types_core::{
     reflection::{
