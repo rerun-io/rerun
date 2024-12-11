@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use re_chunk::{Chunk, ChunkId, RowId};
 use re_chunk_store::{ChunkStore, ChunkStoreError, LatestAtQuery};
-use re_log_types::example_components::{MyIndex, MyPoint};
+use re_log_types::example_components::{MyColor, MyIndex, MyLabel, MyPoint};
 use re_log_types::{
     build_frame_nr, build_log_time, Duration, EntityPath, Time, TimeInt, TimePoint, TimeType,
     Timeline,
@@ -315,6 +315,58 @@ fn latest_at_emptiness_edge_cases() -> anyhow::Result<()> {
         );
         assert!(chunks.is_empty());
     }
+
+    Ok(())
+}
+
+// TODO: explain
+#[test]
+fn latest_at_tagging_interim() -> anyhow::Result<()> {
+    let mut store = ChunkStore::new(
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        Default::default(),
+    );
+
+    let entity_path: EntityPath = "my/entity".into();
+
+    let row_id1 = RowId::new();
+    let row_id2 = RowId::new();
+    let row_id3 = RowId::new();
+
+    let timepoint1 = [
+        (Timeline::log_time(), 1000),
+        (Timeline::new_sequence("frame"), 1),
+    ];
+    let timepoint2 = [
+        (Timeline::log_time(), 1032),
+        (Timeline::new_sequence("frame"), 3),
+    ];
+    let timepoint3 = [
+        (Timeline::log_time(), 1064),
+        (Timeline::new_sequence("frame"), 5),
+    ];
+
+    let points1 = &[MyPoint::new(1.0, 1.0), MyPoint::new(2.0, 2.0)];
+    let points3 = &[
+        MyPoint::new(3.0, 3.0),
+        MyPoint::new(4.0, 4.0),
+        MyPoint::new(5.0, 5.0),
+    ];
+
+    let colors2 = &[MyColor::from_rgb(1, 1, 1)];
+
+    let labels2 = &[
+        MyLabel("a".into()),
+        MyLabel("b".into()),
+        MyLabel("c".into()),
+    ];
+
+    let chunk = Chunk::builder(entity_path)
+        .with_component_batches(row_id1, timepoint1, [points1 as _])
+        .with_component_batches(row_id2, timepoint2, [colors2 as _, labels2 as _])
+        .with_component_batches(row_id3, timepoint3, [points3 as _])
+        .build()?;
+    store.insert_chunk(&Arc::new(chunk))?;
 
     Ok(())
 }

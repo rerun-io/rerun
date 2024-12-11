@@ -3,7 +3,7 @@ use nohash_hasher::IntMap;
 
 use re_chunk::{Chunk, LatestAtQuery, RowId, TimePoint, Timeline};
 use re_log_types::example_components::{MyColor, MyLabel, MyPoint};
-use re_types_core::{Component as _, ComponentDescriptor, Loggable as _};
+use re_types_core::{Component, ComponentDescriptor, Loggable as _};
 
 // ---
 
@@ -465,6 +465,97 @@ fn static_unsorted() -> anyhow::Result<()> {
             .build_with_datatypes(&datatypes())?;
         query_and_compare((MyLabel::descriptor(), &query), &chunk, &expected);
     }
+
+    Ok(())
+}
+
+// TODO: explain
+#[test]
+fn tagging_interim() -> anyhow::Result<()> {
+    let row_id1 = RowId::new();
+    let row_id2 = RowId::new();
+    let row_id3 = RowId::new();
+    let row_id4 = RowId::new();
+
+    let timepoint1 = [(Timeline::new_sequence("frame"), 1)];
+    let timepoint2 = [(Timeline::new_sequence("frame"), 2)];
+    let timepoint3 = [(Timeline::new_sequence("frame"), 3)];
+    let timepoint4 = [(Timeline::new_sequence("frame"), 4)];
+
+    // TODO: tag those differently now
+    let points1: &dyn re_types_core::ComponentBatch = &[MyPoint::new(1.0, 1.0)];
+    let points2 = &[MyPoint::new(2.0, 2.0)];
+    let points3: &dyn re_types_core::ComponentBatch = &[MyPoint::new(3.0, 3.0)];
+    let points4 = &[MyPoint::new(4.0, 4.0)];
+
+    let mypoint_descriptor_untagged = MyPoint::descriptor();
+    let mypoint_descriptor_tagged = MyPoint::descriptor()
+        .with_archetype_name("rerun.archetypes.MyPoints".into())
+        .with_archetype_field_name("points".into());
+
+    let points2 =
+        re_types_core::ComponentBatch::with_descriptor(points2, mypoint_descriptor_tagged.clone());
+    let points4 =
+        re_types_core::ComponentBatch::with_descriptor(points4, mypoint_descriptor_tagged.clone());
+
+    let chunk = Chunk::builder(ENTITY_PATH.into())
+        .with_component_batches(row_id1, timepoint1, [points1 as _])
+        .with_component_batches(row_id2, timepoint2, [&points2 as _])
+        .with_component_batches(row_id3, timepoint3, [points3 as _])
+        .with_component_batches(row_id4, timepoint4, [&points4 as _])
+        .build()?;
+
+    {
+        let query = LatestAtQuery::new(Timeline::new_sequence("frame"), 1);
+
+        let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH.into())
+            .with_component_batches(row_id1, timepoint1, [points1])
+            .build()?;
+        query_and_compare(
+            (mypoint_descriptor_untagged.clone(), &query),
+            &chunk,
+            &expected,
+        );
+    }
+    // {
+    //     let query = LatestAtQuery::new(Timeline::new_sequence("frame"), 2);
+    //
+    //     // TODO: but what about the expected descriptor then?
+    //     let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH.into())
+    //         .with_component_batches(row_id2, timepoint2, [points2])
+    //         .build()?;
+    //     query_and_compare(
+    //         (mypoint_descriptor_untagged.clone(), &query),
+    //         &chunk,
+    //         &expected,
+    //     );
+    // }
+    // {
+    //     let query = LatestAtQuery::new(Timeline::new_sequence("frame"), 3);
+    //
+    //     // TODO: but what about the expected descriptor then?
+    //     let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH.into())
+    //         .with_component_batches(row_id3, timepoint3, [points3])
+    //         .build()?;
+    //     query_and_compare(
+    //         (mypoint_descriptor_untagged.clone(), &query),
+    //         &chunk,
+    //         &expected,
+    //     );
+    // }
+    // {
+    //     let query = LatestAtQuery::new(Timeline::new_sequence("frame"), 4);
+    //
+    //     // TODO: but what about the expected descriptor then?
+    //     let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH.into())
+    //         .with_component_batches(row_id4, timepoint4, [&points4 as _])
+    //         .build()?;
+    //     query_and_compare(
+    //         (mypoint_descriptor_untagged.clone(), &query),
+    //         &chunk,
+    //         &expected,
+    //     );
+    // }
 
     Ok(())
 }
