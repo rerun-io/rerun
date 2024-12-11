@@ -5985,7 +5985,6 @@ dependencies = [
  "re_smart_channel",
  "re_tracing",
  "re_types",
- "re_types_core",
  "rmp-serde",
  "serde_test",
  "thiserror",
