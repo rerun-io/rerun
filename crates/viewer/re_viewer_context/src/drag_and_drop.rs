@@ -160,11 +160,15 @@ fn items_to_string<'a>(items: impl Iterator<Item = &'a Item>) -> String {
     count_and_names
         .into_iter()
         .filter_map(|(count, name_singular, name_plural)| {
-            if cnt > 0 {
+            if count > 0 {
                 Some(format!(
                     "{} {}",
-                    cnt,
-                    if cnt == 1 { name.0 } else { name.1 },
+                    re_format::format_uint(count),
+                    if count == 1 {
+                        name_singular
+                    } else {
+                        name_plural
+                    },
                 ))
             } else {
                 None
