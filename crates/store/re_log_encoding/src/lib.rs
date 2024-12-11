@@ -70,15 +70,15 @@ pub struct EncodingOptions {
 }
 
 impl EncodingOptions {
-    pub const UNCOMPRESSED: Self = Self {
+    pub const MSGPACK_UNCOMPRESSED: Self = Self {
         compression: Compression::Off,
         serializer: Serializer::MsgPack,
     };
-    pub const COMPRESSED: Self = Self {
+    pub const MSGPACK_COMPRESSED: Self = Self {
         compression: Compression::LZ4,
         serializer: Serializer::MsgPack,
     };
-    pub const PROTOBUF: Self = Self {
+    pub const PROTOBUF_COMPRESSED: Self = Self {
         compression: Compression::LZ4,
         serializer: Serializer::Protobuf,
     };

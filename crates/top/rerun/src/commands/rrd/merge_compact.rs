@@ -215,7 +215,7 @@ fn merge_and_compact(
         .flat_map(|entity_db| entity_db.to_messages(None /* time selection */));
 
     // TODO(cmc): encoding options should match the original.
-    let encoding_options = re_log_encoding::EncodingOptions::COMPRESSED;
+    let encoding_options = re_log_encoding::EncodingOptions::MSGPACK_COMPRESSED;
     let version = entity_dbs
         .values()
         .next()
