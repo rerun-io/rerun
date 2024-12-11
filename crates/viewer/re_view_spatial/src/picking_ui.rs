@@ -82,7 +82,10 @@ pub fn picking(
     // Depth at pointer used for projecting rays from a hovered 2D view to corresponding 3D view(s).
     // TODO(#1818): Depth at pointer only works for depth images so far.
     let mut depth_at_pointer = None;
-    for (hit_idx, hit) in picking_result.hits.iter().enumerate() {
+
+    // We iterate back-to-front, so that we show the furthest hits first,
+    // i.e. the background before the foreground.
+    for (hit_idx, hit) in picking_result.hits.iter().rev().enumerate() {
         let Some(mut instance_path) = hit.instance_path_hash.resolve(ctx.recording()) else {
             // Entity no longer exists in db.
             continue;

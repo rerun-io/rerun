@@ -39,7 +39,9 @@ pub struct PickingRayHit {
 
 #[derive(Clone, PartialEq)]
 pub struct PickingResult {
-    /// Picking ray hits. NOT sorted by distance but rather by source of picking.
+    /// Picking ray hits.
+    ///
+    /// The hits are ROUGHLY sorted front-to-back, i.e. closest hits are first.
     ///
     /// Typically there is only one hit, but there might be several if there are transparent objects
     /// or "aggressive" objects like 2D images which we always want to pick, even if they're in the background.
@@ -141,7 +143,7 @@ impl PickingContext {
         // Start with gpu based picking as baseline. This is our prime source of picking information.
         //
         // ..unless the same object got also picked as part of a textured rect.
-        // Textured rect picks also know where on the rect, making this the better source!
+        // Textured rect picks also know where on the rect they hit, making this the better source!
         // Note that whenever this happens, it means that the same object path has a textured rect and something else
         // e.g. a camera.
         if let Some(gpu_pick) = gpu_pick {
@@ -167,6 +169,14 @@ impl PickingContext {
                 .into_iter()
                 .filter(|ui_hit| !previously_hit_objects.contains(&ui_hit.instance_path_hash)),
         );
+
+        hits.sort_by_key(|hit| match hit.hit_type {
+            PickingHitType::GuiOverlay => 0, // GUI is closest, so always goes on top
+
+            PickingHitType::GpuPickingResult => 1,
+
+            PickingHitType::TexturedRect => 2, // Images are usually behind other things (e.g. an image is behind a bounding rectangle in a 2D view), so we put these last (furthest last)
+        });
 
         PickingResult { hits }
     }
