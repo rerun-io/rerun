@@ -168,6 +168,8 @@ Display a graph of nodes and edges.
 
         let state = state.downcast_mut::<GraphViewState>()?;
 
+        let params = ForceLayoutParams::get(ctx, query, self, state)?;
+
         let bounds_property = ViewProperty::from_archetype::<VisualBounds2D>(
             ctx.blueprint_db(),
             ctx.blueprint_query,
@@ -176,17 +178,26 @@ Display a graph of nodes and edges.
         let rect_in_scene: blueprint::components::VisualBounds2D =
             bounds_property.component_or_fallback(ctx, self, state)?;
 
-        let rect_in_ui = *state.rect_in_ui.insert(ui.max_rect());
-
-        let params = ForceLayoutParams::get(ctx, query, self, state)?;
-
+        // Perform all layout-related tasks.
         let request = LayoutRequest::from_graphs(graphs.iter());
         let layout_was_empty = state.layout_state.is_none();
         let layout = state.layout_state.get(request, params);
 
+        // Prepare the view and the transformations.
+        let prev_rect_in_ui = state.rect_in_ui;
+        let rect_in_ui = *state.rect_in_ui.insert(ui.max_rect());
+
         let ui_from_world = state
             .ui_from_world
             .get_or_insert_with(|| fit_to_rect_in_scene(rect_in_ui, rect_in_scene.into()));
+
+        // We ensure that the view's center is kept during resizing.
+        if let Some(prev) = prev_rect_in_ui {
+            if prev != rect_in_ui {
+                let delta = rect_in_ui.center() - prev.center();
+                ui_from_world.translation += delta;
+            }
+        }
 
         let resp = zoom_pan_area(ui, rect_in_ui, ui_from_world, |ui| {
             let mut world_bounding_rect = egui::Rect::NOTHING;
