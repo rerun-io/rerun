@@ -52,7 +52,7 @@ pub fn diff_component_filter<T: re_types_core::Component>(
         .chunk
         .components()
         .get_by_component_name(&T::descriptor().component_name)
-        .map_or(false, |list_array| {
+        .any(|list_array| {
             list_array
                 .iter()
                 .filter_map(|array| array.and_then(|array| T::from_arrow2(&*array).ok()))

@@ -73,16 +73,16 @@ impl ChunkComponents {
             .insert(component_desc, list_array);
     }
 
-    /// Returns the first list array for the given component name.
-    ///
-    /// It's undefined which one is returned if there are more than one component with this name.
+    /// Returns the all list arrays for the given component name.
     #[inline]
-    pub fn get_by_component_name(
-        &self,
+    pub fn get_by_component_name<'a>(
+        &'a self,
         component_name: &ComponentName,
-    ) -> Option<&Arrow2ListArray<i32>> {
-        self.get(component_name)
-            .and_then(|per_desc| per_desc.values().next())
+    ) -> impl Iterator<Item = &'a Arrow2ListArray<i32>> {
+        self.get(component_name).map_or_else(
+            || itertools::Either::Left(std::iter::empty()),
+            |per_desc| itertools::Either::Right(per_desc.values()),
+        )
     }
 
     #[inline]
