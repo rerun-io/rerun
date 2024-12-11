@@ -238,9 +238,10 @@ Display a 1D tensor as a bar chart.
             if let Some(entity_path) = hovered_plot_item
                 .and_then(|hovered_plot_item| plot_item_id_to_entity_path.get(&hovered_plot_item))
             {
-                ctx.select_hovered_on_click(
+                ctx.handle_select_hover_drag_interactions(
                     &response,
                     re_viewer_context::Item::DataResult(query.view_id, entity_path.clone().into()),
+                    false,
                 );
             }
         });

@@ -87,16 +87,6 @@ impl<'a> ViewContext<'a> {
         self.viewer_ctx.current_query()
     }
 
-    /// Set hover/select/focus for a given selection based on an egui response.
-    #[inline]
-    pub fn select_hovered_on_click(
-        &self,
-        response: &egui::Response,
-        selection: impl Into<crate::ItemCollection>,
-    ) {
-        self.viewer_ctx.select_hovered_on_click(response, selection);
-    }
-
     #[inline]
     pub fn lookup_query_result(&self, id: ViewId) -> &DataQueryResult {
         self.viewer_ctx.lookup_query_result(id)

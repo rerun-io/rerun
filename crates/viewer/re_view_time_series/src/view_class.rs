@@ -539,7 +539,7 @@ Display time series data in a plot.
                     }
                 })
             {
-                ctx.select_hovered_on_click(&response, hovered);
+                ctx.handle_select_hover_drag_interactions(&response, hovered, false);
             }
         }
 

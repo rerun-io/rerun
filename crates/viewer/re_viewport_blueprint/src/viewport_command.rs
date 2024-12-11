@@ -40,7 +40,7 @@ pub enum ViewportCommand {
 
     /// Move some contents to a different container
     MoveContents {
-        contents_to_move: Contents,
+        contents_to_move: Vec<Contents>,
         target_container: ContainerId,
         target_position_in_container: usize,
     },

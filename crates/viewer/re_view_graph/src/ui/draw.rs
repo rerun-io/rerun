@@ -298,9 +298,10 @@ pub fn draw_graph(
 
                 let instance_path =
                     InstancePath::instance(entity_path.clone(), instance.instance_index);
-                ctx.select_hovered_on_click(
+                ctx.handle_select_hover_drag_interactions(
                     &response,
                     Item::DataResult(query.view_id, instance_path.clone()),
+                    false,
                 );
 
                 response = response.on_hover_ui_at_pointer(|ui| {
@@ -345,9 +346,10 @@ pub fn draw_graph(
             let resp = draw_entity_rect(ui, *rect, entity_path, &query.highlights);
             current_rect = current_rect.union(resp.rect);
             let instance_path = InstancePath::entity_all(entity_path.clone());
-            ctx.select_hovered_on_click(
+            ctx.handle_select_hover_drag_interactions(
                 &resp,
-                vec![(Item::DataResult(query.view_id, instance_path), None)].into_iter(),
+                Item::DataResult(query.view_id, instance_path),
+                false,
             );
         }
     }
