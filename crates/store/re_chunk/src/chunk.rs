@@ -73,6 +73,18 @@ impl ChunkComponents {
             .insert(component_desc, list_array);
     }
 
+    /// Returns the first list array for the given component name.
+    ///
+    /// It's undefined which one is returned if there are more than one component with this name.
+    #[inline]
+    pub fn get_by_component_name(
+        &self,
+        component_name: &ComponentName,
+    ) -> Option<&Arrow2ListArray<i32>> {
+        self.get(component_name)
+            .and_then(|per_desc| per_desc.values().next())
+    }
+
     #[inline]
     pub fn get_by_descriptor(
         &self,
