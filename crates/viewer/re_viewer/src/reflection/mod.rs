@@ -2144,7 +2144,8 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.PanelState".into(), display_name :
-                    "State", docstring_md : "", is_required : false, },
+                    "State", docstring_md : "Current state of the panels.", is_required :
+                    false, },
                 ],
             },
         ),

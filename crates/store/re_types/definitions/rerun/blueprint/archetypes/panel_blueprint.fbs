@@ -10,6 +10,8 @@ table PanelBlueprint (
     // --- Required ---
 
     // --- Optional ---
+
+    /// Current state of the panels.
     state: rerun.blueprint.components.PanelState ("attr.rerun.component_optional", nullable, order: 1000);
 
     // TODO(jleibs): Add a float to track how expanded the panel is.
