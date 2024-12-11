@@ -5,7 +5,7 @@ use crate::codec::CodecError;
 use re_chunk::TransportChunk;
 
 impl MessageHeader {
-    fn decode(read: &mut impl std::io::Read) -> Result<Self, CodecError> {
+    pub(crate) fn decode(read: &mut impl std::io::Read) -> Result<Self, CodecError> {
         let mut buffer = [0_u8; Self::SIZE_BYTES];
         read.read_exact(&mut buffer)
             .map_err(CodecError::HeaderDecoding)?;
@@ -17,7 +17,7 @@ impl MessageHeader {
 }
 
 impl TransportMessageV0 {
-    fn from_bytes(data: &[u8]) -> Result<Self, CodecError> {
+    pub(crate) fn from_bytes(data: &[u8]) -> Result<Self, CodecError> {
         let mut reader = std::io::Cursor::new(data);
         let header = MessageHeader::decode(&mut reader)?;
 

@@ -5,7 +5,7 @@ use crate::codec::CodecError;
 use re_chunk::TransportChunk;
 
 impl MessageHeader {
-    fn encode(&self, write: &mut impl std::io::Write) -> Result<(), CodecError> {
+    pub(crate) fn encode(&self, write: &mut impl std::io::Write) -> Result<(), CodecError> {
         write
             .write_all(&[self.0])
             .map_err(CodecError::HeaderEncoding)?;
@@ -15,7 +15,7 @@ impl MessageHeader {
 }
 
 impl TransportMessageV0 {
-    fn to_bytes(&self) -> Result<Vec<u8>, CodecError> {
+    pub(crate) fn to_bytes(&self) -> Result<Vec<u8>, CodecError> {
         match self {
             Self::NoData => {
                 let mut data: Vec<u8> = Vec::new();
