@@ -675,7 +675,7 @@ fn list_existing_data_blueprints(
 
                 // We don't use item_ui::cursor_interact_with_selectable here because the forced
                 // hover background is distracting and not useful.
-                ctx.select_hovered_on_click(&response, item);
+                ctx.handle_select_hover_drag_interactions(&response, item, false);
             }
         }
     }
@@ -926,7 +926,7 @@ fn show_list_item_for_container_child(
         &response,
         SelectionUpdateBehavior::Ignore,
     );
-    ctx.select_hovered_on_click(&response, item);
+    ctx.handle_select_hover_drag_interactions(&response, item, false);
 
     if remove_contents {
         viewport.mark_user_interaction(ctx);

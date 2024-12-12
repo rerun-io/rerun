@@ -8,9 +8,9 @@ use re_smart_channel::ReceiveSet;
 use re_types::blueprint::components::PanelState;
 use re_ui::{ContextExt as _, DesignTokens};
 use re_viewer_context::{
-    AppOptions, ApplicationSelectionState, BlueprintUndoState, CommandSender, ComponentUiRegistry,
-    PlayState, RecordingConfig, StoreContext, StoreHub, SystemCommandSender as _,
-    ViewClassExt as _, ViewClassRegistry, ViewStates, ViewerContext,
+    drag_and_drop_payload_cursor_ui, AppOptions, ApplicationSelectionState, BlueprintUndoState,
+    CommandSender, ComponentUiRegistry, PlayState, RecordingConfig, StoreContext, StoreHub,
+    SystemCommandSender as _, ViewClassExt as _, ViewClassRegistry, ViewStates, ViewerContext,
 };
 use re_viewport::ViewportUi;
 use re_viewport_blueprint::ui::add_view_or_container_modal_ui;
@@ -214,6 +214,10 @@ impl AppState {
             )),
         );
 
+        // The root container cannot be dragged.
+        let undraggable_items =
+            re_viewer_context::Item::Container(viewport_ui.blueprint.root_container).into();
+
         let applicable_entities_per_visualizer =
             view_class_registry.applicable_entities_for_visualizer_systems(&recording.store_id());
         let indicated_entities_per_visualizer =
@@ -241,8 +245,13 @@ impl AppState {
 
                     (
                         view.id,
-                        view.contents
-                            .execute_query(store_context, &visualizable_entities),
+                        view.contents.execute_query(
+                            store_context,
+                            view_class_registry,
+                            &blueprint_query,
+                            view.id,
+                            &visualizable_entities,
+                        ),
                     )
                 })
                 .collect::<_>()
@@ -269,6 +278,7 @@ impl AppState {
             render_ctx: Some(render_ctx),
             command_sender,
             focused_item,
+            undraggable_items: &undraggable_items,
         };
 
         // We move the time at the very start of the frame,
@@ -340,6 +350,7 @@ impl AppState {
             render_ctx: Some(render_ctx),
             command_sender,
             focused_item,
+            undraggable_items: &undraggable_items,
         };
 
         if *show_settings_ui {
@@ -506,6 +517,7 @@ impl AppState {
         //
 
         add_view_or_container_modal_ui(&ctx, &viewport_ui.blueprint, ui);
+        drag_and_drop_payload_cursor_ui(ctx.egui_ctx);
 
         // Process deferred layout operations and apply updates back to blueprint:
         viewport_ui.save_to_blueprint_store(&ctx, view_class_registry);

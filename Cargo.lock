@@ -1934,7 +1934,7 @@ checksum = "0d6ef0072f8a535281e4876be788938b528e9a1d43900b82c2569af7da799125"
 [[package]]
 name = "ecolor"
 version = "0.29.1"
-source = "git+https://github.com/emilk/egui.git?rev=577ee8d22810752540636febac5660a5119c6550#577ee8d22810752540636febac5660a5119c6550"
+source = "git+https://github.com/emilk/egui.git?rev=13352d606496d7b1c5fd6fcfbe3c85baae39c040#13352d606496d7b1c5fd6fcfbe3c85baae39c040"
 dependencies = [
  "bytemuck",
  "color-hex",
@@ -1951,7 +1951,7 @@ checksum = "18aade80d5e09429040243ce1143ddc08a92d7a22820ac512610410a4dd5214f"
 [[package]]
 name = "eframe"
 version = "0.29.1"
-source = "git+https://github.com/emilk/egui.git?rev=577ee8d22810752540636febac5660a5119c6550#577ee8d22810752540636febac5660a5119c6550"
+source = "git+https://github.com/emilk/egui.git?rev=13352d606496d7b1c5fd6fcfbe3c85baae39c040#13352d606496d7b1c5fd6fcfbe3c85baae39c040"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -1990,7 +1990,7 @@ dependencies = [
 [[package]]
 name = "egui"
 version = "0.29.1"
-source = "git+https://github.com/emilk/egui.git?rev=577ee8d22810752540636febac5660a5119c6550#577ee8d22810752540636febac5660a5119c6550"
+source = "git+https://github.com/emilk/egui.git?rev=13352d606496d7b1c5fd6fcfbe3c85baae39c040#13352d606496d7b1c5fd6fcfbe3c85baae39c040"
 dependencies = [
  "accesskit",
  "ahash",
@@ -2007,7 +2007,7 @@ dependencies = [
 [[package]]
 name = "egui-wgpu"
 version = "0.29.1"
-source = "git+https://github.com/emilk/egui.git?rev=577ee8d22810752540636febac5660a5119c6550#577ee8d22810752540636febac5660a5119c6550"
+source = "git+https://github.com/emilk/egui.git?rev=13352d606496d7b1c5fd6fcfbe3c85baae39c040#13352d606496d7b1c5fd6fcfbe3c85baae39c040"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -2026,7 +2026,7 @@ dependencies = [
 [[package]]
 name = "egui-winit"
 version = "0.29.1"
-source = "git+https://github.com/emilk/egui.git?rev=577ee8d22810752540636febac5660a5119c6550#577ee8d22810752540636febac5660a5119c6550"
+source = "git+https://github.com/emilk/egui.git?rev=13352d606496d7b1c5fd6fcfbe3c85baae39c040#13352d606496d7b1c5fd6fcfbe3c85baae39c040"
 dependencies = [
  "accesskit_winit",
  "ahash",
@@ -2068,7 +2068,7 @@ dependencies = [
 [[package]]
 name = "egui_extras"
 version = "0.29.1"
-source = "git+https://github.com/emilk/egui.git?rev=577ee8d22810752540636febac5660a5119c6550#577ee8d22810752540636febac5660a5119c6550"
+source = "git+https://github.com/emilk/egui.git?rev=13352d606496d7b1c5fd6fcfbe3c85baae39c040#13352d606496d7b1c5fd6fcfbe3c85baae39c040"
 dependencies = [
  "ahash",
  "egui",
@@ -2085,7 +2085,7 @@ dependencies = [
 [[package]]
 name = "egui_glow"
 version = "0.29.1"
-source = "git+https://github.com/emilk/egui.git?rev=577ee8d22810752540636febac5660a5119c6550#577ee8d22810752540636febac5660a5119c6550"
+source = "git+https://github.com/emilk/egui.git?rev=13352d606496d7b1c5fd6fcfbe3c85baae39c040#13352d606496d7b1c5fd6fcfbe3c85baae39c040"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -2103,7 +2103,7 @@ dependencies = [
 [[package]]
 name = "egui_kittest"
 version = "0.29.1"
-source = "git+https://github.com/emilk/egui.git?rev=577ee8d22810752540636febac5660a5119c6550#577ee8d22810752540636febac5660a5119c6550"
+source = "git+https://github.com/emilk/egui.git?rev=13352d606496d7b1c5fd6fcfbe3c85baae39c040#13352d606496d7b1c5fd6fcfbe3c85baae39c040"
 dependencies = [
  "dify",
  "egui",
@@ -2172,7 +2172,7 @@ checksum = "60b1af1c220855b6ceac025d3f6ecdd2b7c4894bfe9cd9bda4fbb4bc7c0d4cf0"
 [[package]]
 name = "emath"
 version = "0.29.1"
-source = "git+https://github.com/emilk/egui.git?rev=577ee8d22810752540636febac5660a5119c6550#577ee8d22810752540636febac5660a5119c6550"
+source = "git+https://github.com/emilk/egui.git?rev=13352d606496d7b1c5fd6fcfbe3c85baae39c040#13352d606496d7b1c5fd6fcfbe3c85baae39c040"
 dependencies = [
  "bytemuck",
  "serde",
@@ -2288,7 +2288,7 @@ dependencies = [
 [[package]]
 name = "epaint"
 version = "0.29.1"
-source = "git+https://github.com/emilk/egui.git?rev=577ee8d22810752540636febac5660a5119c6550#577ee8d22810752540636febac5660a5119c6550"
+source = "git+https://github.com/emilk/egui.git?rev=13352d606496d7b1c5fd6fcfbe3c85baae39c040#13352d606496d7b1c5fd6fcfbe3c85baae39c040"
 dependencies = [
  "ab_glyph",
  "ahash",
@@ -2307,7 +2307,7 @@ dependencies = [
 [[package]]
 name = "epaint_default_fonts"
 version = "0.29.1"
-source = "git+https://github.com/emilk/egui.git?rev=577ee8d22810752540636febac5660a5119c6550#577ee8d22810752540636febac5660a5119c6550"
+source = "git+https://github.com/emilk/egui.git?rev=13352d606496d7b1c5fd6fcfbe3c85baae39c040#13352d606496d7b1c5fd6fcfbe3c85baae39c040"
 
 [[package]]
 name = "equivalent"
@@ -2455,9 +2455,9 @@ checksum = "0ce7134b9999ecaf8bcd65542e436736ef32ddca1b3e06094cb6ec5755203b80"
 
 [[package]]
 name = "fjadra"
-version = "0.2.0"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d8d17b174735bd1464bc491c49570fc824466e9140617c371de9a6d86ebd33ec"
+checksum = "c1671b620ba6e60c11c62b0ea5fec4f8621991e7b1229fa13c010a2cd04e4342"
 
 [[package]]
 name = "flatbuffers"
@@ -5698,7 +5698,6 @@ dependencies = [
  "re_log_types",
  "re_tracing",
  "re_types",
- "re_types_blueprint",
  "re_types_core",
  "re_ui",
  "re_viewer_context",
@@ -6295,7 +6294,6 @@ dependencies = [
  "re_log_types",
  "re_tracing",
  "re_types",
- "re_types_blueprint",
  "re_types_core",
  "re_ui",
  "re_view",
@@ -6421,18 +6419,6 @@ dependencies = [
  "smallvec",
  "thiserror",
  "uuid",
-]
-
-[[package]]
-name = "re_types_blueprint"
-version = "0.21.0-alpha.1+dev"
-dependencies = [
- "arrow",
- "once_cell",
- "re_arrow2",
- "re_tracing",
- "re_types",
- "re_types_core",
 ]
 
 [[package]]
@@ -6828,7 +6814,6 @@ dependencies = [
  "re_time_panel",
  "re_tracing",
  "re_types",
- "re_types_blueprint",
  "re_types_core",
  "re_ui",
  "re_video",
@@ -6932,7 +6917,6 @@ dependencies = [
  "re_renderer",
  "re_tracing",
  "re_types",
- "re_types_blueprint",
  "re_ui",
  "re_view",
  "re_viewer_context",
@@ -6957,7 +6941,6 @@ dependencies = [
  "re_log_types",
  "re_tracing",
  "re_types",
- "re_types_blueprint",
  "re_types_core",
  "re_ui",
  "re_viewer_context",

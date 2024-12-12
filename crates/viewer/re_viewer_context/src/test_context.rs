@@ -29,7 +29,7 @@ pub struct TestContext {
     pub selection_state: ApplicationSelectionState,
     pub recording_config: RecordingConfig,
 
-    blueprint_query: LatestAtQuery,
+    pub blueprint_query: LatestAtQuery,
     component_ui_registry: ComponentUiRegistry,
 
     command_sender: CommandSender,
@@ -90,6 +90,8 @@ impl TestContext {
             hub: &Default::default(),
         };
 
+        let undraggable_items = Default::default();
+
         let ctx = ViewerContext {
             app_options: &Default::default(),
             cache: &Default::default(),
@@ -108,6 +110,7 @@ impl TestContext {
             render_ctx: None,
             command_sender: &self.command_sender,
             focused_item: &None,
+            undraggable_items: &undraggable_items,
         };
 
         func(&ctx);
