@@ -144,6 +144,7 @@ fn drag_pill_frame() -> egui::Frame {
         ..Default::default()
     }
 }
+
 /// Helper class to count item types and display them in a human-readable way.
 #[derive(Debug, Default)]
 struct ItemCounter {
