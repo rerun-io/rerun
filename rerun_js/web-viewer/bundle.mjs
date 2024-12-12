@@ -6,12 +6,13 @@
 import { fileURLToPath } from "node:url";
 import * as path from "node:path";
 import * as fs from "node:fs";
+import * as zlib from "node:zlib";
 import * as util from "node:util";
 
 const __filename = path.resolve(fileURLToPath(import.meta.url));
 const __dirname = path.dirname(__filename);
 
-const wasm = fs.readFileSync(path.join(__dirname, "re_viewer_bg.wasm"));
+const wasm = zlib.gzipSync(fs.readFileSync(path.join(__dirname, "re_viewer_bg.wasm")));
 const js = fs.readFileSync(path.join(__dirname, "re_viewer.js"), "utf-8");
 const index = fs.readFileSync(path.join(__dirname, "index.js"), "utf-8");
 
@@ -19,12 +20,17 @@ const INLINE_MARKER = "/*<INLINE-MARKER>*/";
 
 /** @param {Buffer} buffer */
 function buffer_to_data_url(buffer) {
-  return `data:application/wasm;base64,${buffer.toString("base64")}`;
+  return `data:application/octet-stream;gzip;base64,${buffer.toString("base64")}`;
 }
 
-async function data_url_to_buffer(dataUrl) {
-  const response = await fetch(dataUrl);
-  return response.arrayBuffer();
+async function compressed_data_url_to_buffer(dataUrl) {
+    const response = await fetch(dataUrl);
+    const blob = await response.blob();
+
+    let ds = new DecompressionStream("gzip");
+    let decompressedStream = blob.stream().pipeThrough(ds);
+
+    return new Response(decompressedStream).arrayBuffer();
 }
 
 const inlined_js = js.replace("export default function", "return function");
@@ -35,9 +41,9 @@ async function fetch_viewer_js() {
 }
 
 async function fetch_viewer_wasm() {
-  ${data_url_to_buffer.toString()}
+  ${compressed_data_url_to_buffer.toString()}
   const dataUrl = ${JSON.stringify(buffer_to_data_url(wasm))};
-  const buffer = await data_url_to_buffer(dataUrl);
+  const buffer = await compressed_data_url_to_buffer(dataUrl);
   return new Response(buffer, { "headers": { "Content-Type": "application/wasm" } });
 }
 `;

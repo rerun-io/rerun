@@ -238,6 +238,11 @@ pub struct ArchetypeReflection {
     /// e.g. `Spatial3DView`.
     pub view_types: &'static [&'static str],
 
+    /// Does this have a particular scope?
+    ///
+    /// e.g. `"blueprint"`.
+    pub scope: Option<&'static str>,
+
     /// All the component fields of the archetype, in the order they appear in the archetype.
     pub fields: Vec<ArchetypeFieldReflection>,
 }
@@ -253,11 +258,14 @@ impl ArchetypeReflection {
 /// Additional information about an archetype's field.
 #[derive(Clone, Debug)]
 pub struct ArchetypeFieldReflection {
-    /// The type of the field (it's always a component).
-    pub component_name: ComponentName,
+    /// The name of the field (i.e. same as `ComponentDescriptor::archetype_field_name`).
+    pub name: &'static str,
 
     /// The name of the field in human case.
     pub display_name: &'static str,
+
+    /// The type of the field (it's always a component).
+    pub component_name: ComponentName,
 
     /// Markdown docstring for the field (not for the component type).
     pub docstring_md: &'static str,
