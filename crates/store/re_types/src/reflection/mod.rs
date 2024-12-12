@@ -3,9 +3,8 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::wildcard_imports)]
 #![allow(unused_imports)]
-use re_types::blueprint::components::*;
-use re_types::components::*;
-use re_types_blueprint::blueprint::components::*;
+use crate::blueprint::components::*;
+use crate::components::*;
 use re_types_core::components::*;
 use re_types_core::{
     reflection::{
@@ -2145,7 +2144,8 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.PanelState".into(), display_name :
-                    "State", docstring_md : "", is_required : false, },
+                    "State", docstring_md : "Current state of the panels.", is_required :
+                    false, },
                 ],
             },
         ),
