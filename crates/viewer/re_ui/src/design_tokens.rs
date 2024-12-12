@@ -439,7 +439,7 @@ impl DesignTokens {
     /// being hovered (e.g., a container in the blueprint tree)
     #[inline]
     pub fn drop_target_container_stroke(&self) -> egui::Stroke {
-        egui::Stroke::new(1.0, self.color(ColorToken::blue(S350)))
+        egui::Stroke::new(2.0, self.color(ColorToken::blue(S350)))
     }
 }
 
