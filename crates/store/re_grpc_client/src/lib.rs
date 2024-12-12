@@ -15,7 +15,7 @@ use std::error::Error;
 
 use arrow2::array::Utf8Array as Arrow2Utf8Array;
 use arrow2::datatypes::Field as Arrow2Field;
-use re_chunk::{Arrow2Array, Chunk};
+use re_chunk::{Arrow2Array, Chunk, ChunkId, TransportChunk};
 use re_log_encoding::codec::{wire::decode, CodecError};
 use re_log_types::{
     ApplicationId, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource, Time,
@@ -301,7 +301,14 @@ async fn stream_catalog_async(
 
     re_log::info!("Starting to read...");
     while let Some(result) = resp.next().await {
-        let tc = result.map_err(TonicStatusError)?;
+        let mut tc = result.map_err(TonicStatusError)?;
+        // received TransportChunk doesn't have ChunkId, hence we need to add it before converting
+        // to Chunk
+        tc.schema.metadata.insert(
+            TransportChunk::CHUNK_METADATA_KEY_ID.to_owned(),
+            ChunkId::new().to_string(),
+        );
+
         let mut chunk = Chunk::from_transport(&tc)?;
 
         // enrich catalog data with RecordingUri that's based on the ReDap endpoint (that we know)
