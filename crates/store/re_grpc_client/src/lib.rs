@@ -5,8 +5,12 @@ mod address;
 pub use address::{InvalidRedapAddress, RedapAddress};
 use re_chunk::external::arrow2;
 use re_log_types::external::re_types_core::ComponentDescriptor;
+use re_types::blueprint::archetypes::{ViewBlueprint, ViewContents};
 use re_types::components::RecordingUri;
+use re_types::external::uuid;
 use re_types::Component;
+use re_types_blueprint::blueprint::archetypes::{ContainerBlueprint, ViewportBlueprint};
+use re_types_blueprint::blueprint::components::{ContainerKind, RootContainer};
 use url::Url;
 
 // ----------------------------------------------------------------------------
@@ -15,10 +19,13 @@ use std::error::Error;
 
 use arrow2::array::Utf8Array as Arrow2Utf8Array;
 use arrow2::datatypes::Field as Arrow2Field;
-use re_chunk::{Arrow2Array, Chunk};
+use re_chunk::{
+    Arrow2Array, Chunk, ChunkBuilder, ChunkId, EntityPath, RowId, Timeline, TransportChunk,
+};
 use re_log_encoding::codec::{wire::decode, CodecError};
 use re_log_types::{
-    ApplicationId, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource, Time,
+    ApplicationId, BlueprintActivationCommand, EntityPathFilter, LogMsg, SetStoreInfo, StoreId,
+    StoreInfo, StoreKind, StoreSource, Time,
 };
 use re_protos::common::v0::RecordingId;
 use re_protos::remote_store::v0::{
@@ -275,7 +282,12 @@ async fn stream_catalog_async(
 
     drop(client);
 
-    // We need a whole StoreInfo here.
+    if activate_catalog_blueprint(&tx).is_err() {
+        re_log::debug!("Failed to activate catalog blueprint");
+        return Ok(());
+    }
+
+    // Craft the StoreInfo for the actual catalog data
     let store_id = StoreId::from_string(StoreKind::Recording, "catalog".to_owned());
 
     let store_info = StoreInfo {
@@ -301,7 +313,11 @@ async fn stream_catalog_async(
 
     re_log::info!("Starting to read...");
     while let Some(result) = resp.next().await {
-        let tc = result.map_err(TonicStatusError)?;
+        let mut tc = result.map_err(TonicStatusError)?;
+        tc.schema.metadata.insert(
+            TransportChunk::CHUNK_METADATA_KEY_ID.to_owned(),
+            ChunkId::new().to_string(),
+        );
         let mut chunk = Chunk::from_transport(&tc)?;
 
         // enrich catalog data with RecordingUri that's based on the ReDap endpoint (that we know)
@@ -364,6 +380,107 @@ async fn stream_catalog_async(
         if let Some(on_msg) = &on_msg {
             on_msg();
         }
+    }
+
+    Ok(())
+}
+
+// Craft a blueprint from relevant chunks and activate it
+fn activate_catalog_blueprint(
+    tx: &re_smart_channel::Sender<LogMsg>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let blueprint_store_id =
+        StoreId::from_string(StoreKind::Blueprint, "catalog_blueprint".to_owned());
+    let blueprint_store_info = StoreInfo {
+        application_id: ApplicationId::from("redap_catalog"),
+        store_id: blueprint_store_id.clone(),
+        cloned_from: None,
+        is_official_example: false,
+        started: Time::now(),
+        store_source: StoreSource::Unknown,
+        store_version: None,
+    };
+
+    if tx
+        .send(LogMsg::SetStoreInfo(SetStoreInfo {
+            row_id: *re_chunk::RowId::new(),
+            info: blueprint_store_info,
+        }))
+        .is_err()
+    {
+        re_log::debug!("Receiver disconnected");
+        return Ok(());
+    }
+
+    let timepoint = [(Timeline::new_sequence("blueprint"), 1)];
+
+    let vb = ViewBlueprint::new("Dataframe")
+        .with_visible(true)
+        .with_space_origin("/");
+
+    let view_uuid = uuid::Uuid::new_v4();
+    let view_id = format!("/view/{view_uuid}");
+    let view_chunk = ChunkBuilder::new(ChunkId::new(), view_id.clone().into())
+        .with_archetype(RowId::new(), timepoint, &vb)
+        .build()?;
+
+    let epf = EntityPathFilter::parse_forgiving("/**", &Default::default());
+    let vc = ViewContents::new(epf.iter_expressions());
+    let view_contents_chunk = ChunkBuilder::new(
+        ChunkId::new(),
+        format!("{}/ViewContents", view_id.clone()).into(),
+    )
+    .with_archetype(RowId::new(), timepoint, &vc)
+    .build()?;
+
+    let rc = ContainerBlueprint::new(ContainerKind::Grid);
+    let rc = rc
+        .with_contents(&[EntityPath::from(view_id)])
+        .with_visible(true);
+
+    let container_uuid = uuid::Uuid::new_v4();
+    let container_chunk = ChunkBuilder::new(
+        ChunkId::new(),
+        format!("/container/{container_uuid}").into(),
+    )
+    .with_archetype(RowId::new(), timepoint, &rc)
+    .build()?;
+
+    let vp = ViewportBlueprint::new().with_root_container(RootContainer(container_uuid.into()));
+    let viewport_chunk = ChunkBuilder::new(ChunkId::new(), "/viewport".into())
+        .with_archetype(RowId::new(), timepoint, &vp)
+        .build()?;
+
+    for chunk in &[
+        view_chunk,
+        view_contents_chunk,
+        container_chunk,
+        viewport_chunk,
+    ] {
+        if tx
+            .send(LogMsg::ArrowMsg(
+                blueprint_store_id.clone(),
+                chunk.to_arrow_msg()?,
+            ))
+            .is_err()
+        {
+            re_log::debug!("Receiver disconnected");
+            return Ok(());
+        }
+    }
+
+    let blueprint_activation = BlueprintActivationCommand {
+        blueprint_id: blueprint_store_id.clone(),
+        make_active: true,
+        make_default: true,
+    };
+
+    if tx
+        .send(LogMsg::BlueprintActivationCommand(blueprint_activation))
+        .is_err()
+    {
+        re_log::debug!("Receiver disconnected");
+        return Ok(());
     }
 
     Ok(())

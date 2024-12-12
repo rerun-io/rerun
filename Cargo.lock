@@ -5933,6 +5933,7 @@ dependencies = [
  "re_protos",
  "re_smart_channel",
  "re_types",
+ "re_types_blueprint",
  "thiserror",
  "tokio",
  "tokio-stream",
