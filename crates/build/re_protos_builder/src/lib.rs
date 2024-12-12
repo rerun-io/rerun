@@ -16,12 +16,15 @@ pub fn generate_rust_code(
     proto_paths: &[impl AsRef<Path>],
     output_dir: impl AsRef<Path>,
 ) {
+    let mut prost_config = prost_build::Config::new();
+    prost_config.enable_type_names(); // tonic doesn't expose this option
+
     if let Err(err) = tonic_build::configure()
         .out_dir(output_dir.as_ref())
         .build_client(true)
         .build_server(true)
         .build_transport(false) // Small convenience, but doesn't work on web
-        .compile_protos(proto_paths, &[definitions_dir])
+        .compile_protos_with_config(prost_config, proto_paths, &[definitions_dir])
     {
         match err.kind() {
             std::io::ErrorKind::Other => {

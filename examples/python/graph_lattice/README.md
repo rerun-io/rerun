@@ -23,7 +23,7 @@ Since no explicit positions are passed for the nodes, Rerun will layout the grap
 
 ## Run the code
 
-```bash
-pip install -e examples/python/graph_lattice
-python -m graph_lattice
-```
+ ```bash
+ pip install -e examples/python/graph_lattice
+ python -m graph_lattice
+ ```

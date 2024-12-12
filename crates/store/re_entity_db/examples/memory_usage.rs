@@ -66,7 +66,7 @@ fn log_messages() {
 
     fn encode_log_msg(log_msg: &LogMsg) -> Vec<u8> {
         let mut bytes = vec![];
-        let encoding_options = re_log_encoding::EncodingOptions::COMPRESSED;
+        let encoding_options = re_log_encoding::EncodingOptions::MSGPACK_COMPRESSED;
         re_log_encoding::encoder::encode_ref(
             re_build_info::CrateVersion::LOCAL,
             encoding_options,
@@ -78,7 +78,7 @@ fn log_messages() {
     }
 
     fn decode_log_msg(mut bytes: &[u8]) -> LogMsg {
-        let version_policy = re_log_encoding::decoder::VersionPolicy::Error;
+        let version_policy = re_log_encoding::VersionPolicy::Error;
         let mut messages = re_log_encoding::decoder::Decoder::new(version_policy, &mut bytes)
             .unwrap()
             .collect::<Result<Vec<LogMsg>, _>>()

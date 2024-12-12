@@ -1,7 +1,7 @@
 use itertools::Itertools as _;
 
 use crate::EntityDb;
-use re_log_encoding::decoder::VersionPolicy;
+use re_log_encoding::VersionPolicy;
 use re_log_types::{StoreId, StoreKind};
 
 #[derive(thiserror::Error, Debug)]
