@@ -19,8 +19,8 @@ pub struct ViewContext<'a> {
     pub viewer_ctx: &'a crate::ViewerContext<'a>,
     pub view_id: ViewId,
     pub view_state: &'a dyn crate::ViewState,
-    pub defaults_path: &'a EntityPath,
     pub visualizer_collection: Arc<crate::VisualizerCollection>,
+    pub query_result: &'a DataQueryResult,
 }
 
 impl<'a> ViewContext<'a> {
