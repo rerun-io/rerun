@@ -7,7 +7,6 @@ struct AutoViews (
   "attr.rerun.scope": "blueprint",
   "attr.python.aliases": "bool",
   "attr.rust.derive": "Copy, Default, PartialEq, Eq, PartialOrd, Ord",
-  "attr.rust.override_crate": "re_types_blueprint",
   "attr.rust.repr": "transparent",
   "attr.rust.tuple_struct"
 ) {

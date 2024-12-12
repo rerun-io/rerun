@@ -18,6 +18,7 @@
 namespace rerun::blueprint::archetypes {
     /// **Archetype**: Shared state for the 3 collapsible panels.
     struct PanelBlueprint {
+        /// Current state of the panels.
         std::optional<rerun::blueprint::components::PanelState> state;
 
       public:
@@ -31,6 +32,7 @@ namespace rerun::blueprint::archetypes {
         PanelBlueprint() = default;
         PanelBlueprint(PanelBlueprint&& other) = default;
 
+        /// Current state of the panels.
         PanelBlueprint with_state(rerun::blueprint::components::PanelState _state) && {
             state = std::move(_state);
             // See: https://github.com/rerun-io/rerun/issues/4027

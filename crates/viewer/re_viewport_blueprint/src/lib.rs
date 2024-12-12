@@ -21,15 +21,15 @@ pub use viewport_command::ViewportCommand;
 /// The entity path of the viewport blueprint in the blueprint store.
 pub const VIEWPORT_PATH: &str = "viewport";
 
-/// Converts a [`re_types_blueprint::blueprint::components::ContainerKind`] into a [`egui_tiles::ContainerKind`].
+/// Converts a [`re_types::blueprint::components::ContainerKind`] into a [`egui_tiles::ContainerKind`].
 ///
-/// Does not implement the `From`/`To` traits because we don't want `re_types_blueprint` to depend
+/// Does not implement the `From`/`To` traits because we don't want `re_types` to depend
 /// on `egui`, and we cannot do it from here because of orphan rules.
 #[inline]
 pub fn container_kind_to_egui(
-    kind: re_types_blueprint::blueprint::components::ContainerKind,
+    kind: re_types::blueprint::components::ContainerKind,
 ) -> egui_tiles::ContainerKind {
-    use re_types_blueprint::blueprint::components::ContainerKind;
+    use re_types::blueprint::components::ContainerKind;
     match kind {
         ContainerKind::Tabs => egui_tiles::ContainerKind::Tabs,
         ContainerKind::Horizontal => egui_tiles::ContainerKind::Horizontal,
@@ -38,15 +38,15 @@ pub fn container_kind_to_egui(
     }
 }
 
-/// Converts a [`egui_tiles::ContainerKind`] into a [`re_types_blueprint::blueprint::components::ContainerKind`].
+/// Converts a [`egui_tiles::ContainerKind`] into a [`re_types::blueprint::components::ContainerKind`].
 ///
-/// Does not implement the `From`/`To` traits because we don't want `re_types_blueprint` to depend
+/// Does not implement the `From`/`To` traits because we don't want `re_types` to depend
 /// on `egui`, and we cannot do it from here because of orphan rules.
 #[inline]
 pub fn container_kind_from_egui(
     kind: egui_tiles::ContainerKind,
-) -> re_types_blueprint::blueprint::components::ContainerKind {
-    use re_types_blueprint::blueprint::components::ContainerKind;
+) -> re_types::blueprint::components::ContainerKind {
+    use re_types::blueprint::components::ContainerKind;
     match kind {
         egui_tiles::ContainerKind::Tabs => ContainerKind::Tabs,
         egui_tiles::ContainerKind::Horizontal => ContainerKind::Horizontal,

@@ -4,8 +4,7 @@ namespace rerun.blueprint.archetypes;
 
 /// The description of a container.
 table ContainerBlueprint (
-    "attr.rerun.scope": "blueprint",
-    "attr.rust.override_crate": "re_types_blueprint"
+    "attr.rerun.scope": "blueprint"
 ) {
     // --- Required ---
 
