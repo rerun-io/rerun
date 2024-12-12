@@ -173,10 +173,16 @@ impl ViewportUi {
 
                     // We need to shrink a bit so the panel-resize lines don't cover the highlight rectangle.
                     // This is hacky.
-                    ui.painter()
-                        .clone()
-                        .with_layer_id(top_layer_id)
-                        .rect_stroke(rect.shrink(stroke.width), 0.0, stroke);
+                    let painter = ui.painter().clone().with_layer_id(top_layer_id);
+                    painter.rect_stroke(rect.shrink(stroke.width), 0.0, stroke);
+
+                    if should_display_drop_destination_frame {
+                        painter.rect_filled(
+                            rect.shrink(stroke.width),
+                            0.0,
+                            stroke.color.gamma_multiply(0.1),
+                        );
+                    }
                 }
             }
 
@@ -264,6 +270,9 @@ impl ViewportUi {
                     );
                 }
             }
+
+            ctx.selection_state()
+                .set_selection(Item::View(view_blueprint.id));
 
             // drop is completed, no need for highlighting anymore
             false
