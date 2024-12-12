@@ -23,7 +23,15 @@ class PanelBlueprint(Archetype):
     """**Archetype**: Shared state for the 3 collapsible panels."""
 
     def __init__(self: Any, *, state: blueprint_components.PanelStateLike | None = None):
-        """Create a new instance of the PanelBlueprint archetype."""
+        """
+        Create a new instance of the PanelBlueprint archetype.
+
+        Parameters
+        ----------
+        state:
+            Current state of the panels.
+
+        """
 
         # You can define your own __init__ function as a member of PanelBlueprintExt in panel_blueprint_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
@@ -49,5 +57,9 @@ class PanelBlueprint(Archetype):
         default=None,
         converter=blueprint_components.PanelStateBatch._optional,  # type: ignore[misc]
     )
+    # Current state of the panels.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__  # type: ignore[assignment]

@@ -246,6 +246,22 @@ pub mod datatypes {
 /// The blueprint-specific components.
 pub mod blueprint;
 
+/// Run-time reflection for reading meta-data about components and archetypes.
+pub mod reflection {
+
+    // Some reflection types are so fundamental and used everywhere that we want them to be
+    // exposed by `re_types_core` directly; that way we don't force a dependency on the `re_types`
+    // behemoth just so one can use one of these fundamental reflection types.
+    //
+    // To do so, re-inject `re_types_core`'s datatypes into our own module.
+
+    #[path = "../reflection/mod.rs"]
+    mod _reflection;
+
+    pub use self::_reflection::*;
+    pub use re_types_core::reflection::*;
+}
+
 // ---
 
 // One almost never uses `re_types` without `re_types_core`, so we reexport these core types

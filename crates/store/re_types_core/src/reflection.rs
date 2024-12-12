@@ -25,7 +25,7 @@ impl Reflection {
     ///
     /// Useful when the only information available is the short name, e.g. when inferring archetype
     /// names from an indicator component.
-    //TODO( #6889): tagged component will contain a fully qualified archetype name, so this function
+    //TODO(#6889): tagged component will contain a fully qualified archetype name, so this function
     // will be unnecessary.
     pub fn archetype_reflection_from_short_name(
         &self,

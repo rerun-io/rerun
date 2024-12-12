@@ -1,4 +1,4 @@
-use re_types::datatypes::Bool;
+use crate::datatypes::Bool;
 
 use super::AutoLayout;
 

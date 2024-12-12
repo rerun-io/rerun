@@ -25,13 +25,13 @@ use re_viewer_context::{
 ///
 /// Data should be accessed via the [`crate::RangeResultsExt`] trait which is implemented for
 /// [`crate::HybridResults`].
-pub fn range_with_blueprint_resolved_data(
-    ctx: &ViewContext<'_>,
+pub fn range_with_blueprint_resolved_data<'a>(
+    ctx: &ViewContext<'a>,
     _annotations: Option<&re_viewer_context::Annotations>,
     range_query: &RangeQuery,
     data_result: &re_viewer_context::DataResult,
     component_names: impl IntoIterator<Item = ComponentName>,
-) -> HybridRangeResults {
+) -> HybridRangeResults<'a> {
     re_tracing::profile_function!(data_result.entity_path.to_string());
 
     let mut component_name_set = component_names.into_iter().collect::<IntSet<_>>();
@@ -47,20 +47,10 @@ pub fn range_with_blueprint_resolved_data(
         component_name_set.iter(),
     );
 
-    // TODO(jleibs): This doesn't work when the component set contains empty results.
-    // This means we over-query for defaults that will never be used.
-    // component_set.retain(|component| !results.components.contains_key(component));
-
-    let defaults = ctx.viewer_ctx.blueprint_engine().cache().latest_at(
-        ctx.viewer_ctx.blueprint_query,
-        ctx.defaults_path,
-        component_name_set.iter().copied(),
-    );
-
     HybridRangeResults {
         overrides,
         results,
-        defaults,
+        defaults: &ctx.query_result.component_defaults,
     }
 }
 
@@ -76,14 +66,14 @@ pub fn range_with_blueprint_resolved_data(
 /// Data should be accessed via the [`crate::RangeResultsExt`] trait which is implemented for
 /// [`crate::HybridResults`].
 ///
-/// If `query_shadowed_defaults` is true, all defaults will be queried, even if they are not used.
+/// If `query_shadowed_components` is true, store components will be queried, even if they are not used.
 pub fn latest_at_with_blueprint_resolved_data<'a>(
     ctx: &'a ViewContext<'a>,
     _annotations: Option<&'a re_viewer_context::Annotations>,
     latest_at_query: &LatestAtQuery,
     data_result: &'a re_viewer_context::DataResult,
     component_names: impl IntoIterator<Item = ComponentName>,
-    query_shadowed_defaults: bool,
+    query_shadowed_components: bool,
 ) -> HybridLatestAtResults<'a> {
     // This is called very frequently, don't put a profile scope here.
 
@@ -92,7 +82,7 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
     let overrides = query_overrides(ctx.viewer_ctx, data_result, component_set.iter());
 
     // No need to query for components that have overrides unless opted in!
-    if !query_shadowed_defaults {
+    if !query_shadowed_components {
         component_set.retain(|component| !overrides.components.contains_key(component));
     }
 
@@ -102,20 +92,10 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
         component_set.iter().copied(),
     );
 
-    // TODO(jleibs): This doesn't work when the component set contains empty results.
-    // This means we over-query for defaults that will never be used.
-    // component_set.retain(|component| !results.components.contains_key(component));
-
-    let defaults = ctx.viewer_ctx.blueprint_engine().cache().latest_at(
-        ctx.viewer_ctx.blueprint_query,
-        ctx.defaults_path,
-        component_set.iter().copied(),
-    );
-
     HybridLatestAtResults {
         overrides,
         results,
-        defaults,
+        defaults: &ctx.query_result.component_defaults,
         ctx,
         query: latest_at_query.clone(),
         data_result,

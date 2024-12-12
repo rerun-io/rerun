@@ -5,8 +5,7 @@ namespace rerun.blueprint.archetypes;
 /// The top-level description of the viewport.
 table ViewportBlueprint (
     "attr.rerun.scope": "blueprint",
-    "attr.rust.derive": "Default",
-    "attr.rust.override_crate": "re_types_blueprint"
+    "attr.rust.derive": "Default"
 ) {
     // --- Required ---
 

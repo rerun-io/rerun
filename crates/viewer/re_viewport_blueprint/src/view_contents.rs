@@ -1,4 +1,4 @@
-use nohash_hasher::IntMap;
+use nohash_hasher::{IntMap, IntSet};
 use slotmap::SlotMap;
 use smallvec::SmallVec;
 
@@ -6,6 +6,7 @@ use re_entity_db::{external::re_chunk_store::LatestAtQuery, EntityDb, EntityTree
 use re_log_types::{
     path::RuleEffect, EntityPath, EntityPathFilter, EntityPathRule, EntityPathSubs, Timeline,
 };
+use re_types::blueprint::components::VisualizerOverrides;
 use re_types::{
     blueprint::{
         archetypes as blueprint_archetypes, components as blueprint_components,
@@ -13,7 +14,6 @@ use re_types::{
     },
     Archetype as _, ViewClassIdentifier,
 };
-use re_types_blueprint::blueprint::components::VisualizerOverrides;
 use re_types_core::ComponentName;
 use re_viewer_context::{
     ApplicableEntities, DataQueryResult, DataResult, DataResultHandle, DataResultNode,
@@ -232,6 +232,9 @@ impl ViewContents {
     pub fn execute_query(
         &self,
         ctx: &re_viewer_context::StoreContext<'_>,
+        view_class_registry: &re_viewer_context::ViewClassRegistry,
+        blueprint_query: &LatestAtQuery,
+        view_id: ViewId,
         visualizable_entities_for_visualizer_systems: &PerVisualizer<VisualizableEntities>,
     ) -> DataQueryResult {
         re_tracing::profile_function!();
@@ -261,10 +264,37 @@ impl ViewContents {
             )
         };
 
+        // Query defaults for all the components that any visualizer in this view is interested in.
+        let component_defaults = {
+            re_tracing::profile_scope!("component_defaults");
+
+            let visualizer_collection =
+                view_class_registry.new_visualizer_collection(self.view_class_identifier);
+
+            // Figure out which components are relevant.
+            let mut components_for_defaults = IntSet::default();
+            for (visualizer, entities) in visualizable_entities_for_visualizer_systems.iter() {
+                if entities.is_empty() {
+                    continue;
+                }
+                let Ok(visualizer) = visualizer_collection.get_by_identifier(*visualizer) else {
+                    continue;
+                };
+                components_for_defaults.extend(visualizer.visualizer_query_info().queried.iter());
+            }
+
+            ctx.blueprint.latest_at(
+                blueprint_query,
+                &ViewBlueprint::defaults_path(view_id),
+                components_for_defaults,
+            )
+        };
+
         DataQueryResult {
             tree: DataResultTree::new(data_results, root_handle),
             num_matching_entities,
             num_visualized_entities,
+            component_defaults,
         }
     }
 }
@@ -558,7 +588,7 @@ mod tests {
     use re_chunk::{Chunk, RowId};
     use re_entity_db::EntityDb;
     use re_log_types::{example_components::MyPoint, StoreId, TimePoint, Timeline};
-    use re_viewer_context::{StoreContext, StoreHub, VisualizableEntities};
+    use re_viewer_context::{blueprint_timeline, StoreContext, StoreHub, VisualizableEntities};
 
     use super::*;
 
@@ -571,6 +601,7 @@ mod tests {
 
         let timeline_frame = Timeline::new_sequence("frame");
         let timepoint = TimePoint::from_iter([(timeline_frame, 10)]);
+        let view_class_registry = ViewClassRegistry::default();
 
         // Set up a store DB with some entities
         for entity_path in ["parent", "parent/skipped/child1", "parent/skipped/child2"] {
@@ -696,14 +727,20 @@ mod tests {
         ];
 
         for (i, Scenario { filter, outputs }) in scenarios.into_iter().enumerate() {
+            let view_id = ViewId::random();
             let contents = ViewContents::new(
-                ViewId::random(),
+                view_id,
                 "3D".into(),
                 EntityPathFilter::parse_forgiving(filter, &space_env),
             );
 
-            let query_result =
-                contents.execute_query(&ctx, &visualizable_entities_for_visualizer_systems);
+            let query_result = contents.execute_query(
+                &ctx,
+                &view_class_registry,
+                &LatestAtQuery::latest(blueprint_timeline()),
+                view_id,
+                &visualizable_entities_for_visualizer_systems,
+            );
 
             let mut visited = vec![];
             query_result.tree.visit(&mut |node| {

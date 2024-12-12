@@ -11,13 +11,13 @@ mod app_blueprint;
 mod app_state;
 mod background_tasks;
 pub mod env_vars;
-#[cfg(not(target_arch = "wasm32"))]
-mod loading;
-mod reflection;
 mod saving;
 mod screenshotter;
 mod ui;
 mod viewer_analytics;
+
+#[cfg(not(target_arch = "wasm32"))]
+mod loading;
 
 /// Auto-generated blueprint-related types.
 ///
