@@ -30,7 +30,7 @@ async function compressed_data_url_to_buffer(dataUrl) {
     let ds = new DecompressionStream("gzip");
     let decompressedStream = blob.stream().pipeThrough(ds);
 
-    return await new Response(decompressedStream).arrayBuffer();
+    return new Response(decompressedStream).arrayBuffer();
 }
 
 const inlined_js = js.replace("export default function", "return function");
