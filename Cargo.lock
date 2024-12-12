@@ -5931,6 +5931,7 @@ dependencies = [
  "re_log_types",
  "re_protos",
  "re_smart_channel",
+ "re_types",
  "thiserror",
  "tokio",
  "tokio-stream",
