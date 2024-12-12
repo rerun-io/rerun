@@ -8,7 +8,7 @@ use re_types::{
     components::{
         ImagePlaneDistance, PinholeProjection, PoseRotationAxisAngle, PoseRotationQuat,
         PoseScale3D, PoseTransformMat3x3, PoseTranslation3D, RotationAxisAngle, RotationQuat,
-        Scale3D, TransformMat3x3, TransformRelation, Translation3D, ViewCoordinates,
+        Scale3D, TransformMat3x3, Translation3D, ViewCoordinates,
     },
     Archetype, Component as _, ComponentNameSet,
 };
@@ -17,6 +17,7 @@ use re_viewer_context::{IdentifiedViewSystem, ViewContext, ViewContextSystem};
 use vec1::smallvec_v1::SmallVec1;
 
 use crate::{
+    transform_cache::TransformCacheStoreSubscriber,
     transform_component_tracker::TransformComponentTrackerStoreSubscriber,
     visualizers::image_view_coordinates,
 };
@@ -528,66 +529,6 @@ But they are instead ordered like this:\n{actual_order:?}"
 #[cfg(not(debug_assertions))]
 fn debug_assert_transform_field_order(_: &re_types::reflection::Reflection) {}
 
-fn query_and_resolve_tree_transform_at_entity(
-    entity_path: &EntityPath,
-    entity_db: &EntityDb,
-    query: &LatestAtQuery,
-    transform3d_components: impl Iterator<Item = re_types::ComponentName>,
-) -> Option<glam::Affine3A> {
-    // TODO(#6743): Doesn't take into account overrides.
-    let result = entity_db.latest_at(query, entity_path, transform3d_components);
-    if result.components.is_empty() {
-        return None;
-    }
-
-    let mut transform = glam::Affine3A::IDENTITY;
-
-    // Order see `debug_assert_transform_field_order`
-    if let Some(translation) = result.component_instance::<Translation3D>(0) {
-        transform = glam::Affine3A::from(translation);
-    }
-    if let Some(axis_angle) = result.component_instance::<RotationAxisAngle>(0) {
-        if let Ok(axis_angle) = glam::Affine3A::try_from(axis_angle) {
-            transform *= axis_angle;
-        } else {
-            // Invalid transform.
-            return None;
-        }
-    }
-    if let Some(quaternion) = result.component_instance::<RotationQuat>(0) {
-        if let Ok(quaternion) = glam::Affine3A::try_from(quaternion) {
-            transform *= quaternion;
-        } else {
-            // Invalid transform.
-            return None;
-        }
-    }
-    if let Some(scale) = result.component_instance::<Scale3D>(0) {
-        if scale.x() == 0.0 && scale.y() == 0.0 && scale.z() == 0.0 {
-            // Invalid scale.
-            return None;
-        }
-        transform *= glam::Affine3A::from(scale);
-    }
-    if let Some(mat3x3) = result.component_instance::<TransformMat3x3>(0) {
-        let affine_transform = glam::Affine3A::from(mat3x3);
-        if affine_transform.matrix3.determinant() == 0.0 {
-            // Invalid transform.
-            return None;
-        }
-        transform *= affine_transform;
-    }
-
-    if result.component_instance::<TransformRelation>(0) == Some(TransformRelation::ChildFromParent)
-    // TODO(andreas): Should we warn? This might be intentionally caused by zero scale.
-        && transform.matrix3.determinant() != 0.0
-    {
-        transform = transform.inverse();
-    }
-
-    Some(transform)
-}
-
 fn query_and_resolve_instance_poses_at_entity(
     entity_path: &EntityPath,
     entity_db: &EntityDb,
@@ -766,17 +707,13 @@ fn transforms_at(
         .flatten()
         .unwrap_or_default();
 
-    let parent_from_entity_tree_transform = if potential_transform_components.transform3d.is_empty()
-    {
-        None
-    } else {
-        query_and_resolve_tree_transform_at_entity(
-            entity_path,
-            entity_db,
-            query,
-            potential_transform_components.transform3d.iter().copied(),
-        )
-    };
+    // TODO: That's a lot of locking.
+    // TODO: pose transforms?
+    let parent_from_entity_tree_transform =
+        TransformCacheStoreSubscriber::access(&entity_db.store_id(), |tracker| {
+            tracker.latest_at_transforms(entity_path, entity_db, query)
+        });
+
     let entity_from_instance_poses = if potential_transform_components.pose3d.is_empty() {
         Vec::new()
     } else {

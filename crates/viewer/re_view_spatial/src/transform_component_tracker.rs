@@ -10,6 +10,8 @@ use re_types::{Component as _, ComponentName};
 
 // ---
 
+// TODO: remove this file
+
 /// Set of components that an entity ever had over its known lifetime.
 #[derive(Default, Clone)]
 pub struct PotentialTransformComponentSet {
