@@ -62,7 +62,9 @@ impl ChunkStore {
         // * Somebody loads an old .rbl from somewhere and starts logging new blueprint data to it.
         // * Etc.
         if self.id.kind == re_log_types::StoreKind::Blueprint {
-            chunk = Arc::new(chunk.clone_as_untagged());
+            let patched = chunk.patched_for_blueprint_021_compat();
+            let patched = patched.clone_as_untagged();
+            chunk = Arc::new(patched);
         }
 
         #[cfg(debug_assertions)]
