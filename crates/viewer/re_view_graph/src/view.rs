@@ -180,7 +180,6 @@ Display a graph of nodes and edges.
 
         // Perform all layout-related tasks.
         let request = LayoutRequest::from_graphs(graphs.iter());
-        let layout_was_empty = state.layout_state.is_none();
         let layout = state.layout_state.get(request, params);
 
         // Prepare the view and the transformations.
@@ -216,7 +215,7 @@ Display a graph of nodes and edges.
         // Update blueprint if changed
         let updated_rect_in_scene =
             blueprint::components::VisualBounds2D::from(ui_from_world.inverse() * rect_in_ui);
-        if resp.double_clicked() || layout_was_empty {
+        if resp.double_clicked() {
             bounds_property.reset_blueprint_component::<blueprint::components::VisualBounds2D>(ctx);
             state.ui_from_world = None;
         } else if rect_in_scene != updated_rect_in_scene {

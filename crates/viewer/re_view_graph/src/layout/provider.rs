@@ -236,7 +236,7 @@ impl ForceLayoutProvider {
                                 let c1_base = source_pos + delta * 0.25;
                                 let c2_base = source_pos + delta * 0.75;
 
-                                let base_n = Vec2::new(-c1_base.y, c1_base.x).normalized();
+                                let base_n = Vec2::new(-delta.y, delta.x).normalized();
 
                                 let c1_left = c1_base + base_n * (fan_amount / 2.);
                                 let c2_left = c2_base + base_n * (fan_amount / 2.);
