@@ -84,6 +84,7 @@ pub fn picking(
     // TODO(#1818): Depth at pointer only works for depth images so far.
     let mut depth_at_pointer = None;
 
+    // We iterate front-to-back, putting foreground hits on top, like layers in Photoshop:
     for (hit_idx, hit) in picking_result.hits.iter().enumerate() {
         let Some(mut instance_path) = hit.instance_path_hash.resolve(ctx.recording()) else {
             // Entity no longer exists in db.
