@@ -41,7 +41,7 @@ pub struct PickingRayHit {
 pub struct PickingResult {
     /// Picking ray hits.
     ///
-    /// The hits are ROUGHLY sorted front-to-back, i.e. closest hits are first.
+    /// The hits are sorted front-to-back, i.e. closest hits are first.
     ///
     /// Typically there is only one hit, but there might be several if there are transparent objects
     /// or "aggressive" objects like 2D images which we always want to pick, even if they're in the background.
