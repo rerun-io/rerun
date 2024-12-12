@@ -22,6 +22,13 @@ all-features = true
 [features]
 default = []
 
+## Enable conversion to and from arrow-rs types
+arrow = ["arrow2/arrow"]
+
+## Enable migration-related methods, which requires to know about builtin
+## types and reflection.
+migration = ["dep:re_types"]
+
 ## Enable (de)serialization using serde.
 serde = [
   "dep:serde",
@@ -29,9 +36,6 @@ serde = [
   "re_tuid/serde",
   "re_types_core/serde",
 ]
-
-## Enable conversion to and from arrow-rs types
-arrow = ["arrow2/arrow"]
 
 
 [dependencies]
@@ -45,6 +49,8 @@ re_log_types.workspace = true
 re_tracing.workspace = true
 re_tuid.workspace = true
 re_types_core.workspace = true
+
+re_types = { workspace = true, optional = true }
 
 # External
 ahash.workspace = true

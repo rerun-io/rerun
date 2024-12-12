@@ -51,6 +51,7 @@ impl ChunkStore {
 
         let mut chunk = Arc::clone(chunk);
 
+        // TODO: update this comment
         // We're in a transition period during which the Rerun ecosystem is slowly moving over to tagged data.
         //
         // During that time, it is common to end up in situations where the blueprint intermixes both tagged
@@ -62,15 +63,19 @@ impl ChunkStore {
         // * Somebody loads an old .rbl from somewhere and starts logging new blueprint data to it.
         // * Etc.
         if self.id.kind == re_log_types::StoreKind::Blueprint {
-            chunk = Arc::new(chunk.clone_as_untagged());
+            // TODO: only if data <=21, but then again we already check if it's tagged
+            chunk = Arc::new(chunk.autotagged());
         }
 
+        // TODO: add back the note
         #[cfg(debug_assertions)]
-        for (component_name, per_desc) in chunk.components().iter() {
-            assert!(
-                per_desc.len() <= 1,
-                "[DEBUG ONLY] Insert Chunk with multiple values for component named `{component_name}`: this is currently UB",
-            );
+        if self.id.kind == re_log_types::StoreKind::Recording {
+            for (component_name, per_desc) in chunk.components().iter() {
+                assert!(
+                    per_desc.len() <= 1,
+                    "[DEBUG ONLY] Insert Chunk with multiple values for component named `{component_name}`: this is currently UB",
+                );
+            }
         }
 
         let non_compacted_chunk = Arc::clone(&chunk); // we'll need it to create the store event

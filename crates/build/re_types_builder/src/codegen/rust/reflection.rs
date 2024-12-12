@@ -178,6 +178,7 @@ fn generate_archetype_reflection(reporter: &Reporter, objects: &Objects) -> Toke
             let Some(component_name) = field.typ.fqname() else {
                 panic!("archetype field must be an object/union or an array/vector of such")
             };
+            let name = &field.name;
             let display_name = re_case::to_human_case(&field.name);
             let docstring_md = doc_as_lines(
                 reporter,
@@ -193,8 +194,9 @@ fn generate_archetype_reflection(reporter: &Reporter, objects: &Objects) -> Toke
 
             quote! {
                 ArchetypeFieldReflection {
-                    component_name: #component_name.into(),
+                    name: #name,
                     display_name: #display_name,
+                    component_name: #component_name.into(),
                     docstring_md: #docstring_md,
                     is_required: #required,
                 }
@@ -220,6 +222,12 @@ fn generate_archetype_reflection(reporter: &Reporter, objects: &Objects) -> Toke
             .join("\n");
         }
 
+        let scope = if let Some(scope) = obj.scope() {
+            quote!(Some(#scope))
+        } else {
+            quote!(None)
+        };
+
         let quoted_view_types = obj
             .archetype_view_types()
             .unwrap_or_default()
@@ -233,6 +241,8 @@ fn generate_archetype_reflection(reporter: &Reporter, objects: &Objects) -> Toke
         let quoted_archetype_reflection = quote! {
             ArchetypeReflection {
                 display_name: #display_name,
+
+                scope: #scope,
 
                 view_types: &[
                     #(#quoted_view_types,)*

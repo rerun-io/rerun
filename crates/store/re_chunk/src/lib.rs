@@ -23,6 +23,9 @@ mod batcher;
 #[cfg(feature = "arrow")]
 mod arrow;
 
+#[cfg(feature = "migration")]
+mod migration;
+
 pub use self::builder::{ChunkBuilder, TimeColumnBuilder};
 pub use self::chunk::{Chunk, ChunkComponents, ChunkError, ChunkResult, TimeColumn};
 pub use self::helpers::{ChunkShared, UnitChunkShared};

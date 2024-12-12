@@ -27,7 +27,7 @@ deadlock_detection = ["parking_lot/deadlock_detection"]
 
 [dependencies]
 # Rerun dependencies:
-re_chunk.workspace = true
+re_chunk = { workspace = true, features = ["migration"] }
 re_format.workspace = true
 re_log = { workspace = true, features = ["setup"] }
 re_log_encoding = { workspace = true, features = ["decoder"] }
