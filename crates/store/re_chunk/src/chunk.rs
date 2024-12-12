@@ -74,7 +74,7 @@ impl ChunkComponents {
     }
 
     /// Returns all list arrays for the given component name.
-    /// 
+    ///
     /// I.e semantically equivalent to `get("MyComponent:*.*")`
     #[inline]
     pub fn get_by_component_name<'a>(
