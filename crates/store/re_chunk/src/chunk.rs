@@ -73,6 +73,20 @@ impl ChunkComponents {
             .insert(component_desc, list_array);
     }
 
+    /// Returns all list arrays for the given component name.
+    /// 
+    /// I.e semantically equivalent to `get("MyComponent:*.*")`
+    #[inline]
+    pub fn get_by_component_name<'a>(
+        &'a self,
+        component_name: &ComponentName,
+    ) -> impl Iterator<Item = &'a Arrow2ListArray<i32>> {
+        self.get(component_name).map_or_else(
+            || itertools::Either::Left(std::iter::empty()),
+            |per_desc| itertools::Either::Right(per_desc.values()),
+        )
+    }
+
     #[inline]
     pub fn get_by_descriptor(
         &self,
