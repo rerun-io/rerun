@@ -222,7 +222,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <QueryExpression as Component>::name(),
             ComponentReflection {
-                docstring_md: "An individual query expression used to filter a set of [`datatypes.EntityPath`](https://rerun.io/docs/reference/types/datatypes/entity_path)s.\n\nEach expression is either an inclusion or an exclusion expression.\nInclusions start with an optional `+` and exclusions must start with a `-`.\n\nMultiple expressions are combined together as part of [`archetypes.ViewContents`](https://rerun.io/docs/reference/types/archetypes/view_contents).\n\nThe `/**` suffix matches the whole subtree, i.e. self and any child, recursively\n(`/world/**` matches both `/world` and `/world/car/driver`).\nOther uses of `*` are not (yet) supported.",
+                docstring_md: "An individual query expression used to filter a set of [`datatypes.EntityPath`](https://rerun.io/docs/reference/types/datatypes/entity_path)s.\n\nEach expression is either an inclusion or an exclusion expression.\nInclusions start with an optional `+` and exclusions must start with a `-`.\n\nMultiple expressions are combined together as part of archetypes.ViewContents.\n\nThe `/**` suffix matches the whole subtree, i.e. self and any child, recursively\n(`/world/**` matches both `/world` and `/world/car/driver`).\nOther uses of `*` are not (yet) supported.",
                 custom_placeholder: Some(QueryExpression::default().to_arrow2()?),
                 datatype: QueryExpression::arrow2_datatype(),
             },
@@ -1934,11 +1934,11 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     is_required : false, }, ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.ColumnShare".into(), display_name :
                     "Col shares", docstring_md :
-                    "The layout shares of each column in the container.\n\nFor [`components.ContainerKind#Horizontal`](https://rerun.io/docs/reference/types/components/container_kind) containers, the length of this list should always match the number of contents.\n\nIgnored for [`components.ContainerKind#Vertical`](https://rerun.io/docs/reference/types/components/container_kind) containers.",
+                    "The layout shares of each column in the container.\n\nFor components.ContainerKind containers, the length of this list should always match the number of contents.\n\nIgnored for components.ContainerKind containers.",
                     is_required : false, }, ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.RowShare".into(), display_name :
                     "Row shares", docstring_md :
-                    "The layout shares of each row of the container.\n\nFor [`components.ContainerKind#Vertical`](https://rerun.io/docs/reference/types/components/container_kind) containers, the length of this list should always match the number of contents.\n\nIgnored for [`components.ContainerKind#Horizontal`](https://rerun.io/docs/reference/types/components/container_kind) containers.",
+                    "The layout shares of each row of the container.\n\nFor components.ContainerKind containers, the length of this list should always match the number of contents.\n\nIgnored for components.ContainerKind containers.",
                     is_required : false, }, ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.ActiveTab".into(), display_name :
                     "Active tab", docstring_md :
@@ -1950,7 +1950,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     is_required : false, }, ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.GridColumns".into(), display_name :
                     "Grid columns", docstring_md :
-                    "How many columns this grid should have.\n\nIf unset, the grid layout will be auto.\n\nIgnored for [`components.ContainerKind#Horizontal`](https://rerun.io/docs/reference/types/components/container_kind)/[`components.ContainerKind#Vertical`](https://rerun.io/docs/reference/types/components/container_kind) containers.",
+                    "How many columns this grid should have.\n\nIf unset, the grid layout will be auto.\n\nIgnored for components.ContainerKind/components.ContainerKind containers.",
                     is_required : false, },
                 ],
             },
