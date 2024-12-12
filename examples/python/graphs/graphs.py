@@ -77,7 +77,7 @@ def log_lattice(num_nodes) -> None:
             target = y * num_nodes + x
             edges.append((str(source), str(target)))
 
-    rr.log("/lattice", rr.GraphEdges(edges, graph_type="directed"), static=True)
+    rr.log("lattice", rr.GraphEdges(edges, graph_type="directed"), static=True)
 
 
 def log_trees() -> None:
