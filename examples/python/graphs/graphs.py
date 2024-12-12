@@ -4,20 +4,18 @@
 from __future__ import annotations
 
 import argparse
-import random
 import itertools
-import numpy as np
+import random
 
+import numpy as np
 import rerun as rr
 import rerun.blueprint as rrb
-
 from rerun.blueprint.archetypes.force_collision_radius import ForceCollisionRadius
 from rerun.blueprint.archetypes.force_link import ForceLink
 from rerun.blueprint.archetypes.force_many_body import ForceManyBody
 from rerun.components.color import Color
 from rerun.components.radius import Radius
 from rerun.components.show_labels import ShowLabels
-
 
 color_scheme = [
     Color([228, 26, 28]),  # Red
@@ -125,16 +123,19 @@ def log_markov_chain() -> None:
         Color([152, 78, 163]),  # Purple
     ]
 
-    edges = [(state_names[i], state_names[j]) for i in range(len(state_names)) for j in range(len(state_names)) if transition_matrix[i][j] > 0]
+    edges = [
+        (state_names[i], state_names[j])
+        for i in range(len(state_names))
+        for j in range(len(state_names))
+        if transition_matrix[i][j] > 0
+    ]
 
     # We start in state "sunny"
     state = "sunny"
 
     for i in range(50):
         current_state_index = state_names.index(state)
-        next_state_index = np.random.choice(
-            range(len(state_names)), p=transition_matrix[current_state_index]
-        )
+        next_state_index = np.random.choice(range(len(state_names)), p=transition_matrix[current_state_index])
         state = state_names[next_state_index]
         colors = [inactive_color] * len(state_names)
         colors[next_state_index] = active_colors[next_state_index]
@@ -145,9 +146,8 @@ def log_markov_chain() -> None:
         rr.log(
             "markov_chain",
             rr.GraphNodes(state_names, labels=state_names, colors=colors, positions=positions),
-            rr.GraphEdges(edges, graph_type="directed")
+            rr.GraphEdges(edges, graph_type="directed"),
         )
-
 
 
 def log_blueprint() -> None:
@@ -182,7 +182,7 @@ def log_blueprint() -> None:
                         # We don't need any forces for this graph, because the nodes have fixed positions.
                     ),
                     rrb.TextDocumentView(origin="description", name="Description"),
-                )
+                ),
             )
         )
     )
