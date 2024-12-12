@@ -129,6 +129,7 @@ def log_markov_chain() -> None:
         for j in range(len(state_names))
         if transition_matrix[i][j] > 0
     ]
+    edges.append(("start", "sunny"))
 
     # We start in state "sunny"
     state = "sunny"
@@ -139,8 +140,6 @@ def log_markov_chain() -> None:
         state = state_names[next_state_index]
         colors = [inactive_color] * len(state_names)
         colors[next_state_index] = active_colors[next_state_index]
-
-        print(colors)
 
         rr.set_time_sequence("frame", i)
         rr.log(
