@@ -208,9 +208,16 @@ impl DragAndDropManager {
 
                 ui.set_opacity(0.7);
 
-                //TODO: we should handle all 3 states differently.
-                let payload_is_currently_droppable =
-                    *self.feedback.lock() == DragAndDropFeedback::Accept;
+                let feedback = *self.feedback.lock();
+
+                match feedback {
+                    DragAndDropFeedback::Accept | DragAndDropFeedback::Ignore => {
+                        ctx.set_cursor_icon(egui::CursorIcon::Grabbing)
+                    }
+                    DragAndDropFeedback::Reject => ctx.set_cursor_icon(egui::CursorIcon::NoDrop),
+                }
+
+                let payload_is_currently_droppable = feedback == DragAndDropFeedback::Accept;
                 let response = drag_pill_frame(payload_is_currently_droppable)
                     .show(&mut ui, |ui| {
                         let text_color = ui.visuals().widgets.inactive.text_color();
