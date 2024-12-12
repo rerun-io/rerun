@@ -13,7 +13,9 @@ use re_viewer_context::{
     PublishedViewInfo, SystemExecutionOutput, ViewClassRegistry, ViewId, ViewQuery, ViewStates,
     ViewerContext,
 };
-use re_viewport_blueprint::{ViewportBlueprint, ViewportCommand};
+use re_viewport_blueprint::{
+    create_entity_add_info, ViewBlueprint, ViewportBlueprint, ViewportCommand,
+};
 
 use crate::system_execution::{execute_systems_for_all_views, execute_systems_for_view};
 
@@ -132,14 +134,28 @@ impl ViewportUi {
                         hovered = false;
                     }
 
-                    let view_id = contents.as_view_id();
+                    // Handle drag-and-drop if this is a view.
+                    //TODO(#8428): simplify with let-chains
+                    let should_display_drop_destination_frame = 'scope: {
+                        if !ui.rect_contains_pointer(rect) {
+                            break 'scope false;
+                        }
 
-                    //TODO: add visualizabilty criteron here
-                    let candidate_drop_of_entities_in_view = dragged_payload
-                        .and_then(|payload| ui.rect_contains_pointer(rect).then_some(payload))
-                        .and_then(|payload| view_id.map(|view_id| (view_id, payload)));
+                        let Some(view_blueprint) = contents
+                            .as_view_id()
+                            .and_then(|view_id| self.blueprint.view(&view_id))
+                        else {
+                            break 'scope false;
+                        };
 
-                    let stroke = if candidate_drop_of_entities_in_view.is_some() {
+                        let Some(dragged_payload) = dragged_payload else {
+                            break 'scope false;
+                        };
+
+                        Self::handle_drop_entities_to_view(ctx, view_blueprint, dragged_payload)
+                    };
+
+                    let stroke = if should_display_drop_destination_frame {
                         design_tokens().drop_target_container_stroke()
                     } else if hovered {
                         ui.ctx().hover_stroke()
@@ -148,10 +164,6 @@ impl ViewportUi {
                     } else {
                         continue;
                     };
-
-                    if let Some((view_id, entities)) = candidate_drop_of_entities_in_view {
-                        self.handle_entities_drop(ctx, view_id, entities);
-                    }
 
                     // We want the rectangle to be on top of everything in the viewport,
                     // including stuff in "zoom-pan areas", like we use in the graph view.
@@ -207,26 +219,56 @@ impl ViewportUi {
         self.blueprint.set_maximized(maximized, ctx);
     }
 
-    fn handle_entities_drop(
-        &self,
+    /// Handle the entities being dragged over a view.
+    ///
+    /// Returns whether a "drop zone candidate" frame should be displayed to the user.
+    ///
+    /// Design decisions:
+    /// - We accept the drop only if at least one of the entities is visualizable and not already
+    ///   included.
+    /// - When the drop happens, of all dropped entities, we only add those which are visualizable.
+    ///
+    fn handle_drop_entities_to_view(
         ctx: &ViewerContext<'_>,
-        view_id: ViewId,
+        view_blueprint: &ViewBlueprint,
         entities: &[EntityPath],
-    ) {
-        if !ctx.egui_ctx.input(|i| i.pointer.any_released()) {
-            return;
-        }
+    ) -> bool {
+        let add_info = create_entity_add_info(
+            ctx,
+            ctx.recording().tree(),
+            view_blueprint,
+            ctx.lookup_query_result(view_blueprint.id),
+        );
 
-        egui::DragAndDrop::clear_payload(ctx.egui_ctx);
-
-        let Some(view) = self.blueprint.view(&view_id) else {
-            return;
+        // check if any entity or its children are visualizable and not yet included in the view
+        let can_entity_be_added = |entity: &EntityPath| {
+            add_info
+                .get(entity)
+                .is_some_and(|info| info.can_add_self_or_descendant.is_compatible_and_missing())
         };
 
-        for entity in entities {
-            //TODO: do that only visualizable
-            view.contents
-                .raw_add_entity_inclusion(ctx, EntityPathRule::including_subtree(entity.clone()));
+        let any_is_visualizable = entities.iter().any(can_entity_be_added);
+        if !any_is_visualizable {
+            return false;
+        }
+
+        // drop incoming!
+        if ctx.egui_ctx.input(|i| i.pointer.any_released()) {
+            egui::DragAndDrop::clear_payload(ctx.egui_ctx);
+
+            for entity in entities {
+                if can_entity_be_added(entity) {
+                    view_blueprint.contents.raw_add_entity_inclusion(
+                        ctx,
+                        EntityPathRule::including_subtree(entity.clone()),
+                    );
+                }
+            }
+
+            // drop is completed, no need for highlighting anymore
+            false
+        } else {
+            any_is_visualizable
         }
     }
 
