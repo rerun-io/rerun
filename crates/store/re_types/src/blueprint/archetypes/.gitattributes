@@ -13,6 +13,7 @@ line_grid3d.rs linguist-generated=true
 map_background.rs linguist-generated=true
 map_zoom.rs linguist-generated=true
 mod.rs linguist-generated=true
+near_clip_plane.rs linguist-generated=true
 panel_blueprint.rs linguist-generated=true
 plot_legend.rs linguist-generated=true
 scalar_axis.rs linguist-generated=true

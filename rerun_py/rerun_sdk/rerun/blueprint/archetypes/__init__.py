@@ -13,6 +13,7 @@ from .force_position import ForcePosition
 from .line_grid3d import LineGrid3D
 from .map_background import MapBackground
 from .map_zoom import MapZoom
+from .near_clip_plane import NearClipPlane
 from .panel_blueprint import PanelBlueprint
 from .plot_legend import PlotLegend
 from .scalar_axis import ScalarAxis
@@ -37,6 +38,7 @@ __all__ = [
     "LineGrid3D",
     "MapBackground",
     "MapZoom",
+    "NearClipPlane",
     "PanelBlueprint",
     "PlotLegend",
     "ScalarAxis",

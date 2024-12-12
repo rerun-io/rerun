@@ -6,7 +6,7 @@ use re_log_types::EntityPath;
 use re_types::View;
 use re_types::{
     archetypes::{DepthImage, Image},
-    blueprint::archetypes::{Background, VisualBounds2D},
+    blueprint::archetypes::{Background, NearClipPlane, VisualBounds2D},
     Archetype, ComponentName, ViewClassIdentifier,
 };
 use re_ui::UiExt as _;
@@ -246,6 +246,7 @@ impl ViewClass for SpatialView2D {
 
         re_ui::list_item::list_item_scope(ui, "spatial_view2d_selection_ui", |ui| {
             view_property_ui::<VisualBounds2D>(ctx, ui, view_id, self, state);
+            view_property_ui::<NearClipPlane>(ctx, ui, view_id, self, state);
             view_property_ui::<Background>(ctx, ui, view_id, self, state);
         });
 
