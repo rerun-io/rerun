@@ -5,7 +5,7 @@
 //! * `view`-space: The space where the pan-and-zoom area is drawn.
 //! * `scene`-space: The space where the actual content is drawn.
 
-use egui::{emath::TSTransform, Area, Rect, Response, Ui, UiKind};
+use egui::{emath::TSTransform, Area, Rect, Response, Ui, UiKind, Vec2};
 
 /// Helper function to handle pan and zoom interactions on a response.
 fn register_pan_and_zoom(ui: &Ui, resp: &Response, ui_from_scene: &mut TSTransform) {
@@ -19,16 +19,22 @@ fn register_pan_and_zoom(ui: &Ui, resp: &Response, ui_from_scene: &mut TSTransfo
             let zoom_delta = ui.ctx().input(|i| i.zoom_delta());
             let pan_delta = ui.ctx().input(|i| i.smooth_scroll_delta);
 
+            // Most of the time we can return early. This is also important to
+            // avoid `ui_from_scene` to change slightly due to floating point errors.
+            if zoom_delta == 1.0 && pan_delta == Vec2::ZERO {
+                return;
+            }
+
             // Zoom in on pointer, but only if we are not zoomed out too far.
             if zoom_delta < 1.0 || ui_from_scene.scaling < 1.0 {
                 *ui_from_scene = *ui_from_scene
                     * TSTransform::from_translation(pointer_in_scene.to_vec2())
                     * TSTransform::from_scaling(zoom_delta)
                     * TSTransform::from_translation(-pointer_in_scene.to_vec2());
-            }
 
-            // We clamp the resulting scaling to avoid zooming out too far.
-            ui_from_scene.scaling = ui_from_scene.scaling.min(1.0);
+                // We clamp the resulting scaling to avoid zooming out too far.
+                ui_from_scene.scaling = ui_from_scene.scaling.min(1.0);
+            }
 
             // Pan:
             *ui_from_scene = TSTransform::from_translation(pan_delta) * *ui_from_scene;
