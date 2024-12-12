@@ -1,0 +1,55 @@
+name: rerun
+adopt-info: rerun
+summary: Visualize streams of multimodal data
+description: |
+  Rerun is building the multimodal data stack to model,
+  ingest, store, query and view robotics-style data.
+  It's used in areas like robotics, spatial and embodied AI, generative media,
+  industrial processing, simulation, security, and health.
+
+  Rerun is easy to use!
+  Use the Rerun SDK (available for C++, Python and Rust) to log data like images,
+  tensors, point clouds, and text.
+  Logs are streamed to the Rerun Viewer for live visualization or to file for later use.
+
+issues: https://github.com/rerun-io/rerun/issues
+contact: https://github.com/rerun-io/rerun/issues
+source-code: https://github.com/rerun-io/rerun
+website: https://rerun.io/
+license: Apache-2.0
+icon: snap/gui/rerun-icon.png
+
+confinement: strict
+base: core24
+
+apps:
+  rerun:
+    command: rerun
+    extensions: [gnome]
+    plugs:
+      - desktop
+      - home
+      - network
+      - network-bind
+      - removable-media
+
+parts:
+  rerun:
+    plugin: rust
+    source: .
+    build-packages: [nasm]
+    rust-cargo-parameters: ["--package", "rerun-cli"]
+    rust-no-default-features: True
+    rust-features: [grpc, map_view, nasm, native_viewer]
+    override-build: |
+      # Build rerun-cli package
+      cargo build --package rerun-cli --release --no-default-features --features grpc,map_view,nasm,native_viewer
+
+      # Copy the executables to the install dir
+      find "${CRAFT_PART_BUILD}/target/release" -maxdepth 1 -executable -exec install -Dvm755 {} "${CRAFT_PART_INSTALL}" ';'
+
+      git config --global --add safe.directory '*'
+      version="$(git describe --always --tags --exclude='weekly' | sed -e 's/^v//;s/-/+git/;y/-/./')"
+      [ -n "$(echo $version | grep "+git")" ] && grade=devel || grade=stable
+      craftctl set version="$version"
+      craftctl set grade="$grade"

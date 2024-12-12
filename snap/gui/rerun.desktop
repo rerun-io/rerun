@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Rerun
+Exec=rerun
+Icon=${SNAP}/meta/gui/rerun-icon.png
+Comment=Visualize streams of multimodal data
+Terminal=false
+Categories=Development;
+Name[en_US]=Rerun
