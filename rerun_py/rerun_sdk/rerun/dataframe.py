@@ -81,7 +81,9 @@ def send_record_batch(batch: pa.RecordBatch, rec: Optional[RecordingStream] = No
         if SORBET_INDEX_NAME in metadata:
             indexes.append(RawIndexColumn(metadata, batch.column(col.name)))
         else:
-            entity_path = metadata.get(SORBET_ENTITY_PATH, b"/").decode("utf-8")
+            entity_path = metadata.get(SORBET_ENTITY_PATH, col.name.split(":")[0])
+            if isinstance(entity_path, bytes):
+                entity_path = entity_path.decode("utf-8")
             data[entity_path].append(RawComponentBatchLike(metadata, batch.column(col.name)))
             if SORBET_ARCHETYPE_NAME in metadata:
                 archetypes[entity_path].add(metadata[SORBET_ARCHETYPE_NAME].decode("utf-8"))
