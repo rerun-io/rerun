@@ -4,7 +4,7 @@ use re_chunk::{Chunk, RowId};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
-use re_types::{blueprint::components::PanelState, ComponentBatch};
+use re_types::{blueprint::components::PanelState, Archetype, Component};
 use re_viewer_context::{CommandSender, StoreContext, SystemCommand, SystemCommandSender};
 
 const TOP_PANEL_PATH: &str = "top_panel";
@@ -194,8 +194,19 @@ pub fn setup_welcome_screen_blueprint(welcome_screen_blueprint: &mut EntityDb) {
 
         let timepoint = re_viewer_context::blueprint_timepoint_for_writes(welcome_screen_blueprint);
 
+        // TODO: link to some issue.
+        // TODO: we could use reflection here, actually.
+        let value = re_types_core::ComponentBatch::with_descriptor(
+            &value,
+            re_types::ComponentDescriptor {
+                archetype_name: Some(re_types::blueprint::archetypes::PanelBlueprint::name()),
+                archetype_field_name: Some("state".into()),
+                component_name: PanelState::name(),
+            },
+        );
+
         let chunk = Chunk::builder(entity_path)
-            .with_component_batches(RowId::new(), timepoint, [&value as &dyn ComponentBatch])
+            .with_component_batches(RowId::new(), timepoint, [&value as _])
             .build()
             .unwrap(); // Can only fail if we have the wrong number of instances for the component, and we don't
 
@@ -219,8 +230,19 @@ impl AppBlueprint<'_> {
 
             let timepoint = store_ctx.blueprint_timepoint_for_writes();
 
+            // TODO: link to some issue.
+            // TODO: we could use reflection here, actually.
+            let value = re_types_core::ComponentBatch::with_descriptor(
+                &value,
+                re_types::ComponentDescriptor {
+                    archetype_name: Some(re_types::blueprint::archetypes::PanelBlueprint::name()),
+                    archetype_field_name: Some("state".into()),
+                    component_name: PanelState::name(),
+                },
+            );
+
             let chunk = Chunk::builder(entity_path)
-                .with_component_batches(RowId::new(), timepoint, [&value as &dyn ComponentBatch])
+                .with_component_batches(RowId::new(), timepoint, [&value as _])
                 .build()
                 .unwrap(); // Can only fail if we have the wrong number of instances for the component, and we don't
 

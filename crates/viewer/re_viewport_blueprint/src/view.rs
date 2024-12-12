@@ -3,12 +3,12 @@ use std::sync::Arc;
 use ahash::HashMap;
 use itertools::{FoldWhile, Itertools};
 use parking_lot::Mutex;
-use re_types::{ComponentDescriptor, ViewClassIdentifier};
 
-use re_chunk::{Chunk, RowId};
+use re_chunk::{Arrow2Array as _, Chunk, RowId};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, EntityPath};
 use re_log_types::{EntityPathSubs, Timeline};
+use re_types::ViewClassIdentifier;
 use re_types::{
     blueprint::{
         archetypes::{self as blueprint_archetypes},
@@ -260,11 +260,17 @@ impl ViewBlueprint {
                                         .any(|descr| descr.component_name == *component_name)
                             })
                             .filter_map(|component_name| {
-                                let array = blueprint_engine
+                                blueprint_engine
                                     .cache()
                                     .latest_at(query, path, [component_name])
-                                    .component_batch_raw(&component_name);
-                                array.map(|array| (ComponentDescriptor::new(component_name), array))
+                                    .get(&component_name)
+                                    .and_then(|unit| {
+                                        unit.get_first_component(&component_name).map(
+                                            |(desc, list_array)| {
+                                                (desc.clone(), list_array.to_boxed())
+                                            },
+                                        )
+                                    })
                             }),
                     )
                     .build();

@@ -302,3 +302,54 @@ pub use rotation3d::Rotation3D;
 
 #[cfg(feature = "testing")]
 pub mod testing;
+
+// ---
+
+// TODO: move this shit
+
+pub trait ComponentBatchExt<'a>
+where
+    Self: 'a,
+{
+    // TODO
+    fn described_as<A: Archetype>(self) -> ComponentBatchCowWithDescriptor<'a>;
+}
+
+impl<'a> ComponentBatchExt<'a> for &'a dyn ComponentBatch {
+    fn described_as<A: Archetype>(self) -> ComponentBatchCowWithDescriptor<'a> {
+        let reflection = crate::reflection::get(); // lazycell inside
+
+        let mut descriptor = ComponentDescriptor::new(self.name());
+        descriptor.archetype_name = Some(A::name());
+
+        if let Some(arch) = reflection.archetypes.get(&A::name()) {
+            descriptor.archetype_field_name = arch
+                .fields
+                .iter()
+                .find_map(|field| (field.component_name == self.name()).then(|| field.name.into()));
+        }
+
+        ComponentBatchCowWithDescriptor::new(ComponentBatchCow::Ref(self as &dyn ComponentBatch))
+            .with_descriptor_override(descriptor)
+    }
+}
+
+#[test]
+fn huehuehueheuhe() {
+    use std::sync::Arc;
+
+    let state = crate::blueprint::components::PanelState::Collapsed;
+    dbg!(state.descriptor());
+
+    let state: Arc<dyn ComponentBatch> = Arc::new(state);
+    dbg!(state.descriptor());
+
+    let state = state.clone();
+    let state = state.clone();
+    let state = state.clone();
+
+    let state = state.described_as::<crate::blueprint::archetypes::PanelBlueprint>();
+    dbg!(state.descriptor());
+
+    assert!(false); // just to get the output
+}
