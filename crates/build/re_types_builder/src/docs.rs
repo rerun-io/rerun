@@ -417,6 +417,13 @@ mod doclink_translation {
                 }
             }
             Target::WebDocsMarkdown => {
+                let kind_and_type = format!("{kind}.{type_name}");
+
+                // TODO(andreas): We don't show blueprint components & archetypes in the web docs yet.
+                if scope == "blueprint" && (kind == "components" || kind == "archetypes") {
+                    return Ok(kind_and_type);
+                }
+
                 // For instance, https://rerun.io/docs/reference/types/views/spatial2d_view
                 // TODO(emilk): relative links would be nicer for the local markdown files
                 let type_name_snake_case = re_case::to_snake_case(type_name);
@@ -430,9 +437,9 @@ mod doclink_translation {
                     "https://rerun.io/docs/reference/types/{kind}/{type_name_snake_case}{query}"
                 );
                 if let Some(field_or_enum_name) = field_or_enum_name {
-                    format!("[`{kind}.{type_name}#{field_or_enum_name}`]({url})")
+                    format!("[`{kind_and_type}#{field_or_enum_name}`]({url})")
                 } else {
-                    format!("[`{kind}.{type_name}`]({url})")
+                    format!("[`{kind_and_type}`]({url})")
                 }
             }
         })
