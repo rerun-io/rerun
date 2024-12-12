@@ -2,7 +2,7 @@
 title = "Graphs"
 tags = ["Graph", "Layout", "Node-link diagrams", "Bubble charts"]
 thumbnail = "https://static.rerun.io/graphs/1b93c00867821ebf3286653f43a9e5eb993f59ff/480w.png"
-thumbnail_dimensions = [480, 399]
+thumbnail_dimensions = [480, 466]
 channel = "main"
 -->
 
