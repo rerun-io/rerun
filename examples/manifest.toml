@@ -169,6 +169,7 @@ examples = [
   "extend_viewer_ui",
   "external_data_loader",
   "graph_binary_tree",
+  "graph_lattice",
   "incremental_logging",
   "minimal_serve",
   "shared_recording",
