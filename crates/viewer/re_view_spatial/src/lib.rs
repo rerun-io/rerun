@@ -29,6 +29,8 @@ mod view_3d;
 mod view_3d_properties;
 mod visualizers;
 
+mod transform_cache;
+
 pub use view_2d::SpatialView2D;
 pub use view_3d::SpatialView3D;
 
