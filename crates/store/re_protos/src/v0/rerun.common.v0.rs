@@ -11,17 +11,47 @@ pub struct RerunChunk {
     #[prost(bytes = "vec", tag = "1000")]
     pub payload: ::prost::alloc::vec::Vec<u8>,
 }
+impl ::prost::Name for RerunChunk {
+    const NAME: &'static str = "RerunChunk";
+    const PACKAGE: &'static str = "rerun.common.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v0.RerunChunk".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v0.RerunChunk".into()
+    }
+}
 /// unique recording identifier. At this point in time it is the same id as the ChunkStore's StoreId
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RecordingId {
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
 }
+impl ::prost::Name for RecordingId {
+    const NAME: &'static str = "RecordingId";
+    const PACKAGE: &'static str = "rerun.common.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v0.RecordingId".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v0.RecordingId".into()
+    }
+}
 /// A recording can have multiple timelines, each is identified by a name, for example `log_tick`, `log_time`, etc.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Timeline {
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
+}
+impl ::prost::Name for Timeline {
+    const NAME: &'static str = "Timeline";
+    const PACKAGE: &'static str = "rerun.common.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v0.Timeline".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v0.Timeline".into()
+    }
 }
 /// A time range between start and end time points. Each 64 bit number can represent different time point data
 /// depending on the timeline it is associated with. Time range is inclusive for both start and end time points.
@@ -32,11 +62,31 @@ pub struct TimeRange {
     #[prost(int64, tag = "2")]
     pub end: i64,
 }
+impl ::prost::Name for TimeRange {
+    const NAME: &'static str = "TimeRange";
+    const PACKAGE: &'static str = "rerun.common.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v0.TimeRange".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v0.TimeRange".into()
+    }
+}
 /// arrow IPC serialized schema
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Schema {
     #[prost(bytes = "vec", tag = "1")]
     pub arrow_schema: ::prost::alloc::vec::Vec<u8>,
+}
+impl ::prost::Name for Schema {
+    const NAME: &'static str = "Schema";
+    const PACKAGE: &'static str = "rerun.common.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v0.Schema".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v0.Schema".into()
+    }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Query {
@@ -100,10 +150,30 @@ pub struct Query {
     #[prost(enumeration = "SparseFillStrategy", tag = "11")]
     pub sparse_fill_strategy: i32,
 }
+impl ::prost::Name for Query {
+    const NAME: &'static str = "Query";
+    const PACKAGE: &'static str = "rerun.common.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v0.Query".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v0.Query".into()
+    }
+}
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ColumnSelection {
     #[prost(message, repeated, tag = "1")]
     pub columns: ::prost::alloc::vec::Vec<ColumnSelector>,
+}
+impl ::prost::Name for ColumnSelection {
+    const NAME: &'static str = "ColumnSelection";
+    const PACKAGE: &'static str = "rerun.common.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v0.ColumnSelection".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v0.ColumnSelection".into()
+    }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ColumnSelector {
@@ -120,11 +190,31 @@ pub mod column_selector {
         TimeColumn(super::TimeColumnSelector),
     }
 }
+impl ::prost::Name for ColumnSelector {
+    const NAME: &'static str = "ColumnSelector";
+    const PACKAGE: &'static str = "rerun.common.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v0.ColumnSelector".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v0.ColumnSelector".into()
+    }
+}
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct IndexColumnSelector {
     /// TODO(zehiko) we need to add support for other types of index selectors
     #[prost(message, optional, tag = "1")]
     pub timeline: ::core::option::Option<Timeline>,
+}
+impl ::prost::Name for IndexColumnSelector {
+    const NAME: &'static str = "IndexColumnSelector";
+    const PACKAGE: &'static str = "rerun.common.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v0.IndexColumnSelector".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v0.IndexColumnSelector".into()
+    }
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct IndexRange {
@@ -132,16 +222,46 @@ pub struct IndexRange {
     #[prost(message, optional, tag = "1")]
     pub time_range: ::core::option::Option<TimeRange>,
 }
+impl ::prost::Name for IndexRange {
+    const NAME: &'static str = "IndexRange";
+    const PACKAGE: &'static str = "rerun.common.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v0.IndexRange".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v0.IndexRange".into()
+    }
+}
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct IndexValues {
     /// TODO(zehiko) we need to add support for other types of index selectors
     #[prost(message, repeated, tag = "1")]
     pub time_points: ::prost::alloc::vec::Vec<TimeInt>,
 }
+impl ::prost::Name for IndexValues {
+    const NAME: &'static str = "IndexValues";
+    const PACKAGE: &'static str = "rerun.common.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v0.IndexValues".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v0.IndexValues".into()
+    }
+}
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct SampledIndexValues {
     #[prost(message, repeated, tag = "1")]
     pub sample_points: ::prost::alloc::vec::Vec<TimeInt>,
+}
+impl ::prost::Name for SampledIndexValues {
+    const NAME: &'static str = "SampledIndexValues";
+    const PACKAGE: &'static str = "rerun.common.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v0.SampledIndexValues".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v0.SampledIndexValues".into()
+    }
 }
 /// A 64-bit number describing either nanoseconds, sequence numbers or fully static data.
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
@@ -149,10 +269,30 @@ pub struct TimeInt {
     #[prost(int64, tag = "1")]
     pub time: i64,
 }
+impl ::prost::Name for TimeInt {
+    const NAME: &'static str = "TimeInt";
+    const PACKAGE: &'static str = "rerun.common.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v0.TimeInt".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v0.TimeInt".into()
+    }
+}
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ViewContents {
     #[prost(message, repeated, tag = "1")]
     pub contents: ::prost::alloc::vec::Vec<ViewContentsPart>,
+}
+impl ::prost::Name for ViewContents {
+    const NAME: &'static str = "ViewContents";
+    const PACKAGE: &'static str = "rerun.common.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v0.ViewContents".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v0.ViewContents".into()
+    }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ViewContentsPart {
@@ -161,10 +301,30 @@ pub struct ViewContentsPart {
     #[prost(message, optional, tag = "2")]
     pub components: ::core::option::Option<ComponentsSet>,
 }
+impl ::prost::Name for ViewContentsPart {
+    const NAME: &'static str = "ViewContentsPart";
+    const PACKAGE: &'static str = "rerun.common.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v0.ViewContentsPart".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v0.ViewContentsPart".into()
+    }
+}
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ComponentsSet {
     #[prost(message, repeated, tag = "1")]
     pub components: ::prost::alloc::vec::Vec<Component>,
+}
+impl ::prost::Name for ComponentsSet {
+    const NAME: &'static str = "ComponentsSet";
+    const PACKAGE: &'static str = "rerun.common.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v0.ComponentsSet".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v0.ComponentsSet".into()
+    }
 }
 /// The unique identifier of an entity, e.g. `camera/3/points`
 /// See <<https://www.rerun.io/docs/concepts/entity-path>> for more on entity paths.
@@ -173,6 +333,16 @@ pub struct EntityPath {
     #[prost(string, tag = "1")]
     pub path: ::prost::alloc::string::String,
 }
+impl ::prost::Name for EntityPath {
+    const NAME: &'static str = "EntityPath";
+    const PACKAGE: &'static str = "rerun.common.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v0.EntityPath".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v0.EntityPath".into()
+    }
+}
 /// Component describes semantic data that can be used by any number of  rerun's archetypes.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Component {
@@ -180,11 +350,31 @@ pub struct Component {
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
+impl ::prost::Name for Component {
+    const NAME: &'static str = "Component";
+    const PACKAGE: &'static str = "rerun.common.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v0.Component".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v0.Component".into()
+    }
+}
 /// Used to telect a time column.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct TimeColumnSelector {
     #[prost(message, optional, tag = "1")]
     pub timeline: ::core::option::Option<Timeline>,
+}
+impl ::prost::Name for TimeColumnSelector {
+    const NAME: &'static str = "TimeColumnSelector";
+    const PACKAGE: &'static str = "rerun.common.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v0.TimeColumnSelector".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v0.TimeColumnSelector".into()
+    }
 }
 /// Used to select a component based on its EntityPath and Component name.
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -194,10 +384,30 @@ pub struct ComponentColumnSelector {
     #[prost(message, optional, tag = "2")]
     pub component: ::core::option::Option<Component>,
 }
+impl ::prost::Name for ComponentColumnSelector {
+    const NAME: &'static str = "ComponentColumnSelector";
+    const PACKAGE: &'static str = "rerun.common.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v0.ComponentColumnSelector".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v0.ComponentColumnSelector".into()
+    }
+}
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ApplicationId {
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
+}
+impl ::prost::Name for ApplicationId {
+    const NAME: &'static str = "ApplicationId";
+    const PACKAGE: &'static str = "rerun.common.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v0.ApplicationId".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v0.ApplicationId".into()
+    }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct StoreId {
@@ -206,11 +416,31 @@ pub struct StoreId {
     #[prost(string, tag = "2")]
     pub id: ::prost::alloc::string::String,
 }
+impl ::prost::Name for StoreId {
+    const NAME: &'static str = "StoreId";
+    const PACKAGE: &'static str = "rerun.common.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v0.StoreId".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v0.StoreId".into()
+    }
+}
 /// A date-time represented as nanoseconds since unix epoch
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct Time {
     #[prost(int64, tag = "1")]
     pub nanos_since_epoch: i64,
+}
+impl ::prost::Name for Time {
+    const NAME: &'static str = "Time";
+    const PACKAGE: &'static str = "rerun.common.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v0.Time".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v0.Time".into()
+    }
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct Tuid {
@@ -221,6 +451,16 @@ pub struct Tuid {
     /// then incremented for each new `Tuid` being allocated.
     #[prost(fixed64, tag = "2")]
     pub inc: u64,
+}
+impl ::prost::Name for Tuid {
+    const NAME: &'static str = "Tuid";
+    const PACKAGE: &'static str = "rerun.common.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v0.Tuid".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v0.Tuid".into()
+    }
 }
 /// supported encoder versions for encoding data
 /// See `RerunData` and `RerunChunkData` for its usage
