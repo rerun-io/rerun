@@ -45,7 +45,7 @@ The full source code for this example is available
 random.seed(42)
 
 
-def log_lattice(num_nodes) -> None:
+def log_lattice(num_nodes: int) -> None:
     coordinates = itertools.product(range(num_nodes), range(num_nodes))
 
     nodes, colors = zip(*[
