@@ -58,10 +58,9 @@ fn add_entities_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, view: &ViewBluepr
     re_tracing::profile_function!();
 
     let tree = &ctx.recording().tree();
-    // TODO(jleibs): Avoid clone
-    let query_result = ctx.lookup_query_result(view.id).clone();
+    let query_result = ctx.lookup_query_result(view.id);
     let entity_path_filter = &view.contents.entity_path_filter;
-    let entities_add_info = create_entity_add_info(ctx, tree, view, &query_result);
+    let entities_add_info = create_entity_add_info(ctx, tree, view, query_result);
 
     add_entities_tree_ui(
         ctx,
@@ -69,7 +68,7 @@ fn add_entities_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, view: &ViewBluepr
         &tree.path.to_string(),
         tree,
         view,
-        &query_result,
+        query_result,
         entity_path_filter,
         &entities_add_info,
     );
