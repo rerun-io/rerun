@@ -18048,7 +18048,7 @@ packages:
 - pypi: examples/python/graph_lattice
   name: graph-lattice
   version: 0.1.0
-  sha256: 2e1f113e9481bd553a677fca031e2800a4d71acb6326a1990dcbaea66ddeae51
+  sha256: f92a889e55062d414fbf9847d0b2b216b8e4bcaf8ee2965476de877102ee52f8
   requires_dist:
   - rerun-sdk
   editable: true
