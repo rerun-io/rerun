@@ -51,8 +51,7 @@ pub use re_chunk::{
     Chunk, ChunkId, ChunkShared, LatestAtQuery, RangeQuery, RangeQueryOptions, RowId,
     UnitChunkShared,
 };
-#[doc(no_inline)]
-pub use re_log_encoding::decoder::VersionPolicy;
+
 #[doc(no_inline)]
 pub use re_log_types::{ResolvedTimeRange, TimeInt, TimeType, Timeline};
 
@@ -60,7 +59,6 @@ pub mod external {
     pub use arrow2;
 
     pub use re_chunk;
-    pub use re_log_encoding;
 }
 
 // ---

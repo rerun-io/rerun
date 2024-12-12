@@ -14,6 +14,10 @@ use re_log_types::{
     LogMsg, StoreId, StoreKind, TimeInt, TimeType, Timeline,
 };
 
+use re_log_encoding::EncodingOptions;
+const MSGPACK_COMPRESSED: EncodingOptions = EncodingOptions::MSGPACK_COMPRESSED;
+const PROTOBUF_COMPRESSED: EncodingOptions = EncodingOptions::PROTOBUF_COMPRESSED;
+
 use criterion::{criterion_group, criterion_main, Criterion};
 
 #[cfg(not(debug_assertions))]
@@ -31,8 +35,10 @@ criterion_group!(
 );
 criterion_main!(benches);
 
-fn encode_log_msgs(messages: &[LogMsg]) -> Vec<u8> {
-    let encoding_options = re_log_encoding::EncodingOptions::COMPRESSED;
+fn encode_log_msgs(
+    messages: &[LogMsg],
+    encoding_options: re_log_encoding::EncodingOptions,
+) -> Vec<u8> {
     let mut bytes = vec![];
     re_log_encoding::encoder::encode_ref(
         re_build_info::CrateVersion::LOCAL,
@@ -46,7 +52,7 @@ fn encode_log_msgs(messages: &[LogMsg]) -> Vec<u8> {
 }
 
 fn decode_log_msgs(mut bytes: &[u8]) -> Vec<LogMsg> {
-    let version_policy = re_log_encoding::decoder::VersionPolicy::Error;
+    let version_policy = re_log_encoding::VersionPolicy::Error;
     let messages = re_log_encoding::decoder::Decoder::new(version_policy, &mut bytes)
         .unwrap()
         .collect::<Result<Vec<LogMsg>, _>>()
@@ -111,30 +117,67 @@ fn mono_points_arrow(c: &mut Criterion) {
         });
         let messages = generate_messages(&store_id, &chunks);
         group.bench_function("encode_log_msg", |b| {
-            b.iter(|| encode_log_msgs(&messages));
+            b.iter(|| encode_log_msgs(&messages, MSGPACK_COMPRESSED));
+        });
+        group.bench_function("encode_log_msg(protobuf)", |b| {
+            b.iter(|| encode_log_msgs(&messages, PROTOBUF_COMPRESSED));
         });
         group.bench_function("encode_total", |b| {
-            b.iter(|| encode_log_msgs(&generate_messages(&store_id, &generate_chunks())));
+            b.iter(|| {
+                encode_log_msgs(
+                    &generate_messages(&store_id, &generate_chunks()),
+                    MSGPACK_COMPRESSED,
+                )
+            });
+        });
+        group.bench_function("encode_total(protobuf)", |b| {
+            b.iter(|| {
+                encode_log_msgs(
+                    &generate_messages(&store_id, &generate_chunks()),
+                    PROTOBUF_COMPRESSED,
+                )
+            });
         });
 
-        let encoded = encode_log_msgs(&messages);
-        group.bench_function("decode_log_msg", |b| {
-            b.iter(|| {
-                let decoded = decode_log_msgs(&encoded);
-                assert_eq!(decoded.len(), messages.len());
-                decoded
+        {
+            let encoded = encode_log_msgs(&messages, MSGPACK_COMPRESSED);
+            group.bench_function("decode_log_msg", |b| {
+                b.iter(|| {
+                    let decoded = decode_log_msgs(&encoded);
+                    assert_eq!(decoded.len(), messages.len());
+                    decoded
+                });
             });
-        });
-        group.bench_function("decode_message_bundles", |b| {
-            b.iter(|| {
-                let chunks = decode_chunks(&messages);
-                assert_eq!(chunks.len(), messages.len());
-                chunks
+            group.bench_function("decode_message_bundles", |b| {
+                b.iter(|| {
+                    let chunks = decode_chunks(&messages);
+                    assert_eq!(chunks.len(), messages.len());
+                    chunks
+                });
             });
-        });
-        group.bench_function("decode_total", |b| {
-            b.iter(|| decode_chunks(&decode_log_msgs(&encoded)));
-        });
+            group.bench_function("decode_total", |b| {
+                b.iter(|| decode_chunks(&decode_log_msgs(&encoded)));
+            });
+
+            let encoded = encode_log_msgs(&messages, PROTOBUF_COMPRESSED);
+            group.bench_function("decode_log_msg(protobuf)", |b| {
+                b.iter(|| {
+                    let decoded = decode_log_msgs(&encoded);
+                    assert_eq!(decoded.len(), messages.len());
+                    decoded
+                });
+            });
+            group.bench_function("decode_message_bundles(protobuf)", |b| {
+                b.iter(|| {
+                    let chunks = decode_chunks(&messages);
+                    assert_eq!(chunks.len(), messages.len());
+                    chunks
+                });
+            });
+            group.bench_function("decode_total(protobuf)", |b| {
+                b.iter(|| decode_chunks(&decode_log_msgs(&encoded)));
+            });
+        }
     }
 }
 
@@ -167,30 +210,67 @@ fn mono_points_arrow_batched(c: &mut Criterion) {
         });
         let messages = generate_messages(&store_id, &chunks);
         group.bench_function("encode_log_msg", |b| {
-            b.iter(|| encode_log_msgs(&messages));
+            b.iter(|| encode_log_msgs(&messages, MSGPACK_COMPRESSED));
+        });
+        group.bench_function("encode_log_msg(protobuf)", |b| {
+            b.iter(|| encode_log_msgs(&messages, PROTOBUF_COMPRESSED));
         });
         group.bench_function("encode_total", |b| {
-            b.iter(|| encode_log_msgs(&generate_messages(&store_id, &[generate_chunk()])));
+            b.iter(|| {
+                encode_log_msgs(
+                    &generate_messages(&store_id, &[generate_chunk()]),
+                    MSGPACK_COMPRESSED,
+                )
+            });
+        });
+        group.bench_function("encode_total(protobuf)", |b| {
+            b.iter(|| {
+                encode_log_msgs(
+                    &generate_messages(&store_id, &[generate_chunk()]),
+                    PROTOBUF_COMPRESSED,
+                )
+            });
         });
 
-        let encoded = encode_log_msgs(&messages);
-        group.bench_function("decode_log_msg", |b| {
-            b.iter(|| {
-                let decoded = decode_log_msgs(&encoded);
-                assert_eq!(decoded.len(), messages.len());
-                decoded
+        {
+            let encoded = encode_log_msgs(&messages, MSGPACK_COMPRESSED);
+            group.bench_function("decode_log_msg", |b| {
+                b.iter(|| {
+                    let decoded = decode_log_msgs(&encoded);
+                    assert_eq!(decoded.len(), messages.len());
+                    decoded
+                });
             });
-        });
-        group.bench_function("decode_message_bundles", |b| {
-            b.iter(|| {
-                let bundles = decode_chunks(&messages);
-                assert_eq!(bundles.len(), messages.len());
-                bundles
+            group.bench_function("decode_message_bundles", |b| {
+                b.iter(|| {
+                    let bundles = decode_chunks(&messages);
+                    assert_eq!(bundles.len(), messages.len());
+                    bundles
+                });
             });
-        });
-        group.bench_function("decode_total", |b| {
-            b.iter(|| decode_chunks(&decode_log_msgs(&encoded)));
-        });
+            group.bench_function("decode_total", |b| {
+                b.iter(|| decode_chunks(&decode_log_msgs(&encoded)));
+            });
+
+            let encoded = encode_log_msgs(&messages, PROTOBUF_COMPRESSED);
+            group.bench_function("decode_log_msg(protobuf)", |b| {
+                b.iter(|| {
+                    let decoded = decode_log_msgs(&encoded);
+                    assert_eq!(decoded.len(), messages.len());
+                    decoded
+                });
+            });
+            group.bench_function("decode_message_bundles(protobuf)", |b| {
+                b.iter(|| {
+                    let bundles = decode_chunks(&messages);
+                    assert_eq!(bundles.len(), messages.len());
+                    bundles
+                });
+            });
+            group.bench_function("decode_total(protobuf)", |b| {
+                b.iter(|| decode_chunks(&decode_log_msgs(&encoded)));
+            });
+        }
     }
 }
 
@@ -222,30 +302,67 @@ fn batch_points_arrow(c: &mut Criterion) {
         });
         let messages = generate_messages(&store_id, &chunks);
         group.bench_function("encode_log_msg", |b| {
-            b.iter(|| encode_log_msgs(&messages));
+            b.iter(|| encode_log_msgs(&messages, MSGPACK_COMPRESSED));
+        });
+        group.bench_function("encode_log_msg(protobuf)", |b| {
+            b.iter(|| encode_log_msgs(&messages, PROTOBUF_COMPRESSED));
         });
         group.bench_function("encode_total", |b| {
-            b.iter(|| encode_log_msgs(&generate_messages(&store_id, &generate_chunks())));
+            b.iter(|| {
+                encode_log_msgs(
+                    &generate_messages(&store_id, &generate_chunks()),
+                    MSGPACK_COMPRESSED,
+                )
+            });
+        });
+        group.bench_function("encode_total(protobuf)", |b| {
+            b.iter(|| {
+                encode_log_msgs(
+                    &generate_messages(&store_id, &generate_chunks()),
+                    PROTOBUF_COMPRESSED,
+                )
+            });
         });
 
-        let encoded = encode_log_msgs(&messages);
-        group.bench_function("decode_log_msg", |b| {
-            b.iter(|| {
-                let decoded = decode_log_msgs(&encoded);
-                assert_eq!(decoded.len(), messages.len());
-                decoded
+        {
+            let encoded = encode_log_msgs(&messages, MSGPACK_COMPRESSED);
+            group.bench_function("decode_log_msg", |b| {
+                b.iter(|| {
+                    let decoded = decode_log_msgs(&encoded);
+                    assert_eq!(decoded.len(), messages.len());
+                    decoded
+                });
             });
-        });
-        group.bench_function("decode_message_bundles", |b| {
-            b.iter(|| {
-                let chunks = decode_chunks(&messages);
-                assert_eq!(chunks.len(), messages.len());
-                chunks
+            group.bench_function("decode_message_bundles", |b| {
+                b.iter(|| {
+                    let chunks = decode_chunks(&messages);
+                    assert_eq!(chunks.len(), messages.len());
+                    chunks
+                });
             });
-        });
-        group.bench_function("decode_total", |b| {
-            b.iter(|| decode_chunks(&decode_log_msgs(&encoded)));
-        });
+            group.bench_function("decode_total", |b| {
+                b.iter(|| decode_chunks(&decode_log_msgs(&encoded)));
+            });
+
+            let encoded = encode_log_msgs(&messages, PROTOBUF_COMPRESSED);
+            group.bench_function("decode_log_msg(protobuf)", |b| {
+                b.iter(|| {
+                    let decoded = decode_log_msgs(&encoded);
+                    assert_eq!(decoded.len(), messages.len());
+                    decoded
+                });
+            });
+            group.bench_function("decode_message_bundles(protobuf)", |b| {
+                b.iter(|| {
+                    let chunks = decode_chunks(&messages);
+                    assert_eq!(chunks.len(), messages.len());
+                    chunks
+                });
+            });
+            group.bench_function("decode_total(protobuf)", |b| {
+                b.iter(|| decode_chunks(&decode_log_msgs(&encoded)));
+            });
+        }
     }
 }
 

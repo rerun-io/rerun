@@ -157,7 +157,7 @@ fn merge_and_compact(
     );
 
     // TODO(cmc): might want to make this configurable at some point.
-    let version_policy = re_log_encoding::decoder::VersionPolicy::Warn;
+    let version_policy = re_log_encoding::VersionPolicy::Warn;
     let (rx, rx_size_bytes) =
         read_rrd_streams_from_file_or_stdin(version_policy, path_to_input_rrds);
 
@@ -215,7 +215,7 @@ fn merge_and_compact(
         .flat_map(|entity_db| entity_db.to_messages(None /* time selection */));
 
     // TODO(cmc): encoding options should match the original.
-    let encoding_options = re_log_encoding::EncodingOptions::COMPRESSED;
+    let encoding_options = re_log_encoding::EncodingOptions::MSGPACK_COMPRESSED;
     let version = entity_dbs
         .values()
         .next()

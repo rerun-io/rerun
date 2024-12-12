@@ -8,26 +8,15 @@ use std::io::Read;
 use re_build_info::CrateVersion;
 use re_log_types::LogMsg;
 
+use crate::codec;
+use crate::codec::file::decoder;
 use crate::FileHeader;
 use crate::MessageHeader;
+use crate::VersionPolicy;
 use crate::OLD_RRD_HEADERS;
 use crate::{Compression, EncodingOptions, Serializer};
 
 // ----------------------------------------------------------------------------
-
-/// How to handle version mismatches during decoding.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum VersionPolicy {
-    /// Warn if the versions don't match, but continue loading.
-    ///
-    /// We usually use this for loading `.rrd` recordings.
-    Warn,
-
-    /// Return [`DecodeError::IncompatibleRerunVersion`] if the versions aren't compatible.
-    ///
-    /// We usually use this for tests, and for loading `.rbl` blueprint files.
-    Error,
-}
 
 fn warn_on_version_mismatch(
     version_policy: VersionPolicy,
@@ -82,13 +71,28 @@ pub enum DecodeError {
     Options(#[from] crate::OptionsError),
 
     #[error("Failed to read: {0}")]
-    Read(std::io::Error),
+    Read(#[from] std::io::Error),
 
     #[error("lz4 error: {0}")]
-    Lz4(lz4_flex::block::DecompressError),
+    Lz4(#[from] lz4_flex::block::DecompressError),
+
+    #[error("Protobuf error: {0}")]
+    Protobuf(#[from] re_protos::external::prost::DecodeError),
+
+    #[error("Could not convert type from protobuf: {0}")]
+    TypeConversion(#[from] re_protos::TypeConversionError),
+
+    #[error("Failed to read chunk: {0}")]
+    Chunk(#[from] re_chunk::ChunkError),
+
+    #[error("Arrow error: {0}")]
+    Arrow(#[from] arrow2::error::Error),
 
     #[error("MsgPack error: {0}")]
     MsgPack(#[from] rmp_serde::decode::Error),
+
+    #[error("Codec error: {0}")]
+    Codec(#[from] codec::CodecError),
 }
 
 // ----------------------------------------------------------------------------
@@ -129,7 +133,7 @@ pub fn read_options(
     warn_on_version_mismatch(version_policy, version)?;
 
     match options.serializer {
-        Serializer::MsgPack => {}
+        Serializer::MsgPack | Serializer::Protobuf => {}
     }
 
     Ok((CrateVersion::from_bytes(version), options))
@@ -152,7 +156,7 @@ impl<R: std::io::Read> std::io::Read for Reader<R> {
 
 pub struct Decoder<R: std::io::Read> {
     version: CrateVersion,
-    compression: Compression,
+    options: EncodingOptions,
     read: Reader<R>,
     uncompressed: Vec<u8>, // scratch space
     compressed: Vec<u8>,   // scratch space
@@ -179,11 +183,10 @@ impl<R: std::io::Read> Decoder<R> {
         read.read_exact(&mut data).map_err(DecodeError::Read)?;
 
         let (version, options) = read_options(version_policy, &data)?;
-        let compression = options.compression;
 
         Ok(Self {
             version,
-            compression,
+            options,
             read: Reader::Raw(read),
             uncompressed: vec![],
             compressed: vec![],
@@ -217,11 +220,10 @@ impl<R: std::io::Read> Decoder<R> {
         read.read_exact(&mut data).map_err(DecodeError::Read)?;
 
         let (version, options) = read_options(version_policy, &data)?;
-        let compression = options.compression;
 
         Ok(Self {
             version,
-            compression,
+            options,
             read: Reader::Buffered(read),
             uncompressed: vec![],
             compressed: vec![],
@@ -235,6 +237,7 @@ impl<R: std::io::Read> Decoder<R> {
         self.version
     }
 
+    // TODO(jan): stop returning number of read bytes, use cursors wrapping readers instead.
     /// Returns the size in bytes of the data that has been decoded up to now.
     #[inline]
     pub fn size_bytes(&self) -> u64 {
@@ -284,90 +287,114 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
                 Ok(opts) => opts,
                 Err(err) => return Some(Err(err)),
             };
-            let compression = options.compression;
 
             self.version = CrateVersion::max(self.version, version);
-            self.compression = compression;
+            self.options = options;
             self.size_bytes += FileHeader::SIZE as u64;
         }
 
-        let header = match MessageHeader::decode(&mut self.read) {
-            Ok(header) => header,
-            Err(err) => match err {
-                DecodeError::Read(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
-                    return None;
+        let msg = match self.options.serializer {
+            Serializer::Protobuf => match decoder::decode(&mut self.read) {
+                Ok((read_bytes, msg)) => {
+                    self.size_bytes += read_bytes;
+                    msg
                 }
-                other => return Some(Err(other)),
+                Err(err) => return Some(Err(err)),
             },
-        };
-        self.size_bytes += MessageHeader::SIZE as u64;
+            Serializer::MsgPack => {
+                let header = match MessageHeader::decode(&mut self.read) {
+                    Ok(header) => header,
+                    Err(err) => match err {
+                        DecodeError::Read(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
+                            return None;
+                        }
+                        other => return Some(Err(other)),
+                    },
+                };
+                self.size_bytes += MessageHeader::SIZE as u64;
 
-        let (uncompressed_len, compressed_len) = match header {
-            MessageHeader::Data {
-                compressed_len,
-                uncompressed_len,
-            } => (uncompressed_len as usize, compressed_len as usize),
-            MessageHeader::EndOfStream => {
-                // we might have a concatenated stream, so we peek beyond end of file marker to see
-                if self.peek_file_header() {
-                    re_log::debug!("Reached end of stream, but it seems we have a concatenated file, continuing");
-                    return self.next();
-                }
+                match header {
+                    MessageHeader::Data {
+                        compressed_len,
+                        uncompressed_len,
+                    } => {
+                        let uncompressed_len = uncompressed_len as usize;
+                        let compressed_len = compressed_len as usize;
 
-                re_log::debug!("Reached end of stream, iterator complete");
-                return None;
-            }
-        };
+                        self.uncompressed
+                            .resize(self.uncompressed.len().max(uncompressed_len), 0);
 
-        self.uncompressed
-            .resize(self.uncompressed.len().max(uncompressed_len), 0);
+                        match self.options.compression {
+                            Compression::Off => {
+                                re_tracing::profile_scope!("read uncompressed");
+                                if let Err(err) = self
+                                    .read
+                                    .read_exact(&mut self.uncompressed[..uncompressed_len])
+                                {
+                                    return Some(Err(DecodeError::Read(err)));
+                                }
+                                self.size_bytes += uncompressed_len as u64;
+                            }
 
-        match self.compression {
-            Compression::Off => {
-                re_tracing::profile_scope!("read uncompressed");
-                if let Err(err) = self
-                    .read
-                    .read_exact(&mut self.uncompressed[..uncompressed_len])
-                {
-                    return Some(Err(DecodeError::Read(err)));
-                }
-                self.size_bytes += uncompressed_len as u64;
-            }
+                            Compression::LZ4 => {
+                                self.compressed
+                                    .resize(self.compressed.len().max(compressed_len), 0);
 
-            Compression::LZ4 => {
-                self.compressed
-                    .resize(self.compressed.len().max(compressed_len), 0);
+                                {
+                                    re_tracing::profile_scope!("read compressed");
+                                    if let Err(err) =
+                                        self.read.read_exact(&mut self.compressed[..compressed_len])
+                                    {
+                                        return Some(Err(DecodeError::Read(err)));
+                                    }
+                                }
 
-                {
-                    re_tracing::profile_scope!("read compressed");
-                    if let Err(err) = self.read.read_exact(&mut self.compressed[..compressed_len]) {
-                        return Some(Err(DecodeError::Read(err)));
+                                re_tracing::profile_scope!("lz4");
+                                if let Err(err) = lz4_flex::block::decompress_into(
+                                    &self.compressed[..compressed_len],
+                                    &mut self.uncompressed[..uncompressed_len],
+                                ) {
+                                    return Some(Err(DecodeError::Lz4(err)));
+                                }
+
+                                self.size_bytes += compressed_len as u64;
+                            }
+                        }
+
+                        let data = &self.uncompressed[..uncompressed_len];
+                        {
+                            re_tracing::profile_scope!("MsgPack deser");
+                            match rmp_serde::from_slice::<LogMsg>(data) {
+                                Ok(msg) => Some(msg),
+                                Err(err) => return Some(Err(err.into())),
+                            }
+                        }
                     }
+                    MessageHeader::EndOfStream => None,
                 }
-
-                re_tracing::profile_scope!("lz4");
-                if let Err(err) = lz4_flex::block::decompress_into(
-                    &self.compressed[..compressed_len],
-                    &mut self.uncompressed[..uncompressed_len],
-                ) {
-                    return Some(Err(DecodeError::Lz4(err)));
-                }
-
-                self.size_bytes += compressed_len as u64;
             }
+        };
+
+        let Some(mut msg) = msg else {
+            // we might have a concatenated stream, so we peek beyond end of file marker to see
+            if self.peek_file_header() {
+                re_log::debug!(
+                    "Reached end of stream, but it seems we have a concatenated file, continuing"
+                );
+                return self.next();
+            }
+
+            re_log::debug!("Reached end of stream, iterator complete");
+            return None;
+        };
+
+        if let LogMsg::SetStoreInfo(msg) = &mut msg {
+            // Propagate the protocol version from the header into the `StoreInfo` so that all
+            // parts of the app can easily access it.
+            msg.info.store_version = Some(self.version());
         }
 
-        re_tracing::profile_scope!("MsgPack deser");
-        match rmp_serde::from_slice(&self.uncompressed[..uncompressed_len]) {
-            Ok(re_log_types::LogMsg::SetStoreInfo(mut msg)) => {
-                // Propagate the protocol version from the header into the `StoreInfo` so that all
-                // parts of the app can easily access it.
-                msg.info.store_version = Some(self.version());
-                Some(Ok(re_log_types::LogMsg::SetStoreInfo(msg)))
-            }
-            Ok(msg) => Some(Ok(msg)),
-            Err(err) => Some(Err(err.into())),
-        }
+        Some(Ok(msg))
     }
 }
 
@@ -375,6 +402,8 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
 
 #[cfg(all(test, feature = "decoder", feature = "encoder"))]
 mod tests {
+    #![allow(clippy::unwrap_used)] // acceptable for tests
+
     use super::*;
     use re_build_info::CrateVersion;
     use re_chunk::RowId;
@@ -382,29 +411,68 @@ mod tests {
         ApplicationId, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource, Time,
     };
 
-    fn fake_log_message() -> LogMsg {
-        LogMsg::SetStoreInfo(SetStoreInfo {
-            row_id: *RowId::new(),
-            info: StoreInfo {
-                application_id: ApplicationId("test".to_owned()),
-                store_id: StoreId::random(StoreKind::Recording),
-                cloned_from: None,
-                is_official_example: true,
-                started: Time::now(),
-                store_source: StoreSource::RustSdk {
-                    rustc_version: String::new(),
-                    llvm_version: String::new(),
+    fn fake_log_messages() -> Vec<LogMsg> {
+        let store_id = StoreId::random(StoreKind::Blueprint);
+        vec![
+            LogMsg::SetStoreInfo(SetStoreInfo {
+                row_id: *RowId::new(),
+                info: StoreInfo {
+                    application_id: ApplicationId("test".to_owned()),
+                    store_id: store_id.clone(),
+                    cloned_from: None,
+                    is_official_example: true,
+                    started: Time::now(),
+                    store_source: StoreSource::RustSdk {
+                        rustc_version: String::new(),
+                        llvm_version: String::new(),
+                    },
+                    store_version: Some(CrateVersion::LOCAL),
                 },
-                store_version: Some(CrateVersion::LOCAL),
-            },
-        })
+            }),
+            LogMsg::ArrowMsg(
+                store_id.clone(),
+                re_chunk::Chunk::builder("test_entity".into())
+                    .with_archetype(
+                        re_chunk::RowId::new(),
+                        re_log_types::TimePoint::default().with(
+                            re_log_types::Timeline::new_sequence("blueprint"),
+                            re_log_types::TimeInt::from_milliseconds(re_log_types::NonMinI64::MIN),
+                        ),
+                        &re_types::blueprint::archetypes::Background::new(
+                            re_types::blueprint::components::BackgroundKind::SolidColor,
+                        )
+                        .with_color([255, 0, 0]),
+                    )
+                    .build()
+                    .unwrap()
+                    .to_arrow_msg()
+                    .unwrap(),
+            ),
+            LogMsg::BlueprintActivationCommand(re_log_types::BlueprintActivationCommand {
+                blueprint_id: store_id,
+                make_active: true,
+                make_default: true,
+            }),
+        ]
+    }
+
+    fn clear_arrow_extension_metadata(messages: &mut Vec<LogMsg>) {
+        for msg in messages {
+            if let LogMsg::ArrowMsg(_, arrow_msg) = msg {
+                for field in &mut arrow_msg.schema.fields {
+                    field
+                        .metadata
+                        .retain(|k, _| !k.starts_with("ARROW:extension"));
+                }
+            }
+        }
     }
 
     #[test]
     fn test_encode_decode() {
         let rrd_version = CrateVersion::LOCAL;
 
-        let messages = vec![fake_log_message()];
+        let messages = fake_log_messages();
 
         let options = [
             EncodingOptions {
@@ -415,6 +483,14 @@ mod tests {
                 compression: Compression::LZ4,
                 serializer: Serializer::MsgPack,
             },
+            EncodingOptions {
+                compression: Compression::Off,
+                serializer: Serializer::Protobuf,
+            },
+            EncodingOptions {
+                compression: Compression::LZ4,
+                serializer: Serializer::Protobuf,
+            },
         ];
 
         for options in options {
@@ -422,10 +498,12 @@ mod tests {
             crate::encoder::encode_ref(rrd_version, options, messages.iter().map(Ok), &mut file)
                 .unwrap();
 
-            let decoded_messages = Decoder::new(VersionPolicy::Error, &mut file.as_slice())
+            let mut decoded_messages = Decoder::new(VersionPolicy::Error, &mut file.as_slice())
                 .unwrap()
                 .collect::<Result<Vec<LogMsg>, DecodeError>>()
                 .unwrap();
+
+            clear_arrow_extension_metadata(&mut decoded_messages);
 
             assert_eq!(messages, decoded_messages);
         }
@@ -442,25 +520,31 @@ mod tests {
                 compression: Compression::LZ4,
                 serializer: Serializer::MsgPack,
             },
+            EncodingOptions {
+                compression: Compression::Off,
+                serializer: Serializer::Protobuf,
+            },
+            EncodingOptions {
+                compression: Compression::LZ4,
+                serializer: Serializer::Protobuf,
+            },
         ];
 
         for options in options {
+            println!("{options:?}");
+
             let mut data = vec![];
 
             // write "2 files" i.e. 2 streams that end with end-of-stream marker
-            let messages = vec![
-                fake_log_message(),
-                fake_log_message(),
-                fake_log_message(),
-                fake_log_message(),
-            ];
+            let messages = fake_log_messages();
 
             // (2 encoders as each encoder writes a file header)
             let writer = std::io::Cursor::new(&mut data);
             let mut encoder1 =
                 crate::encoder::Encoder::new(CrateVersion::LOCAL, options, writer).unwrap();
-            encoder1.append(&messages[0]).unwrap();
-            encoder1.append(&messages[1]).unwrap();
+            for message in &messages {
+                encoder1.append(message).unwrap();
+            }
             encoder1.finish().unwrap();
 
             let written = data.len() as u64;
@@ -468,9 +552,9 @@ mod tests {
             writer.set_position(written);
             let mut encoder2 =
                 crate::encoder::Encoder::new(CrateVersion::LOCAL, options, writer).unwrap();
-
-            encoder2.append(&messages[2]).unwrap();
-            encoder2.append(&messages[3]).unwrap();
+            for message in &messages {
+                encoder2.append(message).unwrap();
+            }
             encoder2.finish().unwrap();
 
             let decoder = Decoder::new_concatenated(
@@ -479,12 +563,11 @@ mod tests {
             )
             .unwrap();
 
-            let mut decoded_messages = vec![];
-            for msg in decoder {
-                decoded_messages.push(msg.unwrap());
-            }
+            let mut decoded_messages = decoder.into_iter().collect::<Result<Vec<_>, _>>().unwrap();
 
-            assert_eq!(messages, decoded_messages);
+            clear_arrow_extension_metadata(&mut decoded_messages);
+
+            assert_eq!([messages.clone(), messages].concat(), decoded_messages);
         }
     }
 }

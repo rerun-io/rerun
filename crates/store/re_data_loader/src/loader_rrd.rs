@@ -40,7 +40,7 @@ impl crate::DataLoader for RrdLoader {
             "Loading rrd data from filesystem…",
         );
 
-        let version_policy = re_log_encoding::decoder::VersionPolicy::Warn;
+        let version_policy = re_log_encoding::VersionPolicy::Warn;
 
         match extension.as_str() {
             "rbl" => {
@@ -118,7 +118,7 @@ impl crate::DataLoader for RrdLoader {
             return Err(crate::DataLoaderError::Incompatible(filepath));
         }
 
-        let version_policy = re_log_encoding::decoder::VersionPolicy::Warn;
+        let version_policy = re_log_encoding::VersionPolicy::Warn;
         let contents = std::io::Cursor::new(contents);
         let decoder = match re_log_encoding::decoder::Decoder::new(version_policy, contents) {
             Ok(decoder) => decoder,
@@ -308,7 +308,7 @@ impl RetryableFileReader {
 mod tests {
     use re_build_info::CrateVersion;
     use re_chunk::RowId;
-    use re_log_encoding::{decoder, encoder::DroppableEncoder};
+    use re_log_encoding::{encoder::DroppableEncoder, VersionPolicy};
     use re_log_types::{
         ApplicationId, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource, Time,
     };
@@ -341,7 +341,7 @@ mod tests {
 
         let mut encoder = DroppableEncoder::new(
             re_build_info::CrateVersion::LOCAL,
-            re_log_encoding::EncodingOptions::UNCOMPRESSED,
+            re_log_encoding::EncodingOptions::MSGPACK_UNCOMPRESSED,
             rrd_file,
         )
         .unwrap();
@@ -372,7 +372,7 @@ mod tests {
         encoder.flush_blocking().expect("failed to flush messages");
 
         let reader = RetryableFileReader::new(&rrd_file_path).unwrap();
-        let mut decoder = Decoder::new(decoder::VersionPolicy::Warn, reader).unwrap();
+        let mut decoder = Decoder::new(VersionPolicy::Warn, reader).unwrap();
 
         // we should be able to read 5 messages that we wrote
         let decoded_messages = (0..5)

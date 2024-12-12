@@ -7,9 +7,9 @@
 
 use camino::Utf8Path;
 
-const PROTOBUF_DEFINITIONS_DIR_PATH: &str = "crates/store/re_protos/proto";
-const PROTOBUF_REMOTE_STORE_V0_RELATIVE_PATH: &str = "rerun/v0/remote_store.proto";
-const RUST_V0_OUTPUT_DIR_PATH: &str = "crates/store/re_protos/src/v0";
+const PROTOS_DIR: &str = "crates/store/re_protos/proto";
+const INPUT_V0: &[&str] = &["rerun/v0/remote_store.proto", "rerun/v0/log_msg.proto"];
+const OUTPUT_V0_RUST_DIR: &str = "crates/store/re_protos/src/v0";
 
 fn main() {
     re_log::setup_logging();
@@ -26,8 +26,8 @@ fn main() {
         "failed to find workspace root"
     );
 
-    let definitions_dir_path = workspace_dir.join(PROTOBUF_DEFINITIONS_DIR_PATH);
-    let rust_generated_output_dir_path = workspace_dir.join(RUST_V0_OUTPUT_DIR_PATH);
+    let definitions_dir_path = workspace_dir.join(PROTOS_DIR);
+    let rust_generated_output_dir_path = workspace_dir.join(OUTPUT_V0_RUST_DIR);
 
     re_log::info!(
         definitions=?definitions_dir_path,
@@ -37,7 +37,7 @@ fn main() {
 
     re_protos_builder::generate_rust_code(
         definitions_dir_path,
-        &[PROTOBUF_REMOTE_STORE_V0_RELATIVE_PATH],
+        INPUT_V0,
         rust_generated_output_dir_path,
     );
 }

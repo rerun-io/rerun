@@ -1,12 +1,14 @@
 //! Encoding of [`LogMsg`]es as a binary stream, e.g. to store in an `.rrd` file, or send over network.
 
+use crate::codec;
+use crate::codec::file::{self, encoder};
+use crate::FileHeader;
+use crate::MessageHeader;
+use crate::Serializer;
+use crate::{Compression, EncodingOptions};
 use re_build_info::CrateVersion;
 use re_chunk::{ChunkError, ChunkResult};
 use re_log_types::LogMsg;
-
-use crate::FileHeader;
-use crate::MessageHeader;
-use crate::{Compression, EncodingOptions};
 
 // ----------------------------------------------------------------------------
 
@@ -14,13 +16,22 @@ use crate::{Compression, EncodingOptions};
 #[derive(thiserror::Error, Debug)]
 pub enum EncodeError {
     #[error("Failed to write: {0}")]
-    Write(std::io::Error),
+    Write(#[from] std::io::Error),
 
     #[error("lz4 error: {0}")]
-    Lz4(lz4_flex::block::CompressError),
+    Lz4(#[from] lz4_flex::block::CompressError),
 
     #[error("MsgPack error: {0}")]
     MsgPack(#[from] rmp_serde::encode::Error),
+
+    #[error("Protobuf error: {0}")]
+    Protobuf(#[from] re_protos::external::prost::EncodeError),
+
+    #[error("Arrow error: {0}")]
+    Arrow(#[from] arrow2::error::Error),
+
+    #[error("{0}")]
+    Codec(#[from] codec::CodecError),
 
     #[error("Chunk error: {0}")]
     Chunk(#[from] ChunkError),
@@ -109,6 +120,7 @@ impl<W: std::io::Write> std::ops::Drop for DroppableEncoder<W> {
 /// Prefer [`DroppableEncoder`] if possible, make sure to call [`Encoder::finish`] when appropriate
 /// otherwise.
 pub struct Encoder<W: std::io::Write> {
+    serializer: Serializer,
     compression: Compression,
     write: W,
     uncompressed: Vec<u8>,
@@ -128,15 +140,12 @@ impl<W: std::io::Write> Encoder<W> {
         }
         .encode(&mut write)?;
 
-        match options.serializer {
-            crate::Serializer::MsgPack => {}
-        }
-
         Ok(Self {
+            serializer: options.serializer,
             compression: options.compression,
             write,
-            uncompressed: vec![],
-            compressed: vec![],
+            uncompressed: Vec::new(),
+            compressed: Vec::new(),
         })
     }
 
@@ -145,36 +154,51 @@ impl<W: std::io::Write> Encoder<W> {
         re_tracing::profile_function!();
 
         self.uncompressed.clear();
-        rmp_serde::encode::write_named(&mut self.uncompressed, message)?;
+        match self.serializer {
+            Serializer::Protobuf => {
+                encoder::encode(&mut self.uncompressed, message, self.compression)?;
 
-        match self.compression {
-            Compression::Off => {
-                MessageHeader::Data {
-                    uncompressed_len: self.uncompressed.len() as u32,
-                    compressed_len: self.uncompressed.len() as u32,
-                }
-                .encode(&mut self.write)?;
                 self.write
                     .write_all(&self.uncompressed)
                     .map(|_| self.uncompressed.len() as _)
                     .map_err(EncodeError::Write)
             }
+            Serializer::MsgPack => {
+                rmp_serde::encode::write_named(&mut self.uncompressed, message)?;
 
-            Compression::LZ4 => {
-                let max_len = lz4_flex::block::get_maximum_output_size(self.uncompressed.len());
-                self.compressed.resize(max_len, 0);
-                let compressed_len =
-                    lz4_flex::block::compress_into(&self.uncompressed, &mut self.compressed)
+                match self.compression {
+                    Compression::Off => {
+                        MessageHeader::Data {
+                            uncompressed_len: self.uncompressed.len() as u32,
+                            compressed_len: self.uncompressed.len() as u32,
+                        }
+                        .encode(&mut self.write)?;
+                        self.write
+                            .write_all(&self.uncompressed)
+                            .map(|_| self.uncompressed.len() as _)
+                            .map_err(EncodeError::Write)
+                    }
+
+                    Compression::LZ4 => {
+                        let max_len =
+                            lz4_flex::block::get_maximum_output_size(self.uncompressed.len());
+                        self.compressed.resize(max_len, 0);
+                        let compressed_len = lz4_flex::block::compress_into(
+                            &self.uncompressed,
+                            &mut self.compressed,
+                        )
                         .map_err(EncodeError::Lz4)?;
-                MessageHeader::Data {
-                    uncompressed_len: self.uncompressed.len() as u32,
-                    compressed_len: compressed_len as u32,
+                        MessageHeader::Data {
+                            uncompressed_len: self.uncompressed.len() as u32,
+                            compressed_len: compressed_len as u32,
+                        }
+                        .encode(&mut self.write)?;
+                        self.write
+                            .write_all(&self.compressed[..compressed_len])
+                            .map(|_| compressed_len as _)
+                            .map_err(EncodeError::Write)
+                    }
                 }
-                .encode(&mut self.write)?;
-                self.write
-                    .write_all(&self.compressed[..compressed_len])
-                    .map(|_| compressed_len as _)
-                    .map_err(EncodeError::Write)
             }
         }
     }
@@ -183,7 +207,18 @@ impl<W: std::io::Write> Encoder<W> {
     // does a partial move.
     #[inline]
     pub fn finish(&mut self) -> Result<(), EncodeError> {
-        MessageHeader::EndOfStream.encode(&mut self.write)?;
+        match self.serializer {
+            Serializer::MsgPack => {
+                MessageHeader::EndOfStream.encode(&mut self.write)?;
+            }
+            Serializer::Protobuf => {
+                file::MessageHeader {
+                    kind: file::MessageKind::End,
+                    len: 0,
+                }
+                .encode(&mut self.write)?;
+            }
+        }
         Ok(())
     }
 
@@ -247,12 +282,20 @@ pub fn encode_as_bytes(
 
 #[inline]
 pub fn local_encoder() -> Result<DroppableEncoder<Vec<u8>>, EncodeError> {
-    DroppableEncoder::new(CrateVersion::LOCAL, EncodingOptions::COMPRESSED, Vec::new())
+    DroppableEncoder::new(
+        CrateVersion::LOCAL,
+        EncodingOptions::MSGPACK_COMPRESSED,
+        Vec::new(),
+    )
 }
 
 #[inline]
 pub fn local_raw_encoder() -> Result<Encoder<Vec<u8>>, EncodeError> {
-    Encoder::new(CrateVersion::LOCAL, EncodingOptions::COMPRESSED, Vec::new())
+    Encoder::new(
+        CrateVersion::LOCAL,
+        EncodingOptions::MSGPACK_COMPRESSED,
+        Vec::new(),
+    )
 }
 
 #[inline]

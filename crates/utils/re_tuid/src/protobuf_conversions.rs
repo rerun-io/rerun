@@ -15,3 +15,14 @@ impl From<crate::Tuid> for re_protos::common::v0::Tuid {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_tuid_conversion() {
+        let tuid = crate::Tuid::new();
+        let proto_tuid: re_protos::common::v0::Tuid = tuid.into();
+        let tuid2: crate::Tuid = proto_tuid.into();
+        assert_eq!(tuid, tuid2);
+    }
+}

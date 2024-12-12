@@ -29,3 +29,4 @@ camino.workspace = true
 tonic-build = { workspace = true, default-features = false, features = [
   "prost",
 ] }
+prost-build = { workspace = true }
