@@ -674,7 +674,7 @@ mod tests {
                 major: 3,
                 minor: 11,
                 patch: 0,
-                suffix: "".to_owned(),
+                suffix: String::new(),
             }
         );
         assert_parse_ok!(
