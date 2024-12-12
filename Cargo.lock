@@ -2916,15 +2916,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "graph_binary_tree"
-version = "0.21.0-alpha.1+dev"
-dependencies = [
- "anyhow",
- "clap",
- "rerun",
-]
-
-[[package]]
 name = "graph_lattice"
 version = "0.21.0-alpha.1+dev"
 dependencies = [
