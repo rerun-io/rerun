@@ -10,7 +10,7 @@ use re_types::blueprint::components::Visible;
 use re_ui::{drag_and_drop::DropTarget, list_item, ContextExt as _, DesignTokens, UiExt as _};
 use re_viewer_context::{
     contents_name_style, icon_for_container_kind, CollapseScope, Contents, DataResultNodeOrPath,
-    SystemCommandSender,
+    DragAndDropPayload, SystemCommandSender,
 };
 use re_viewer_context::{
     ContainerId, DataQueryResult, DataResultNode, HoverHighlight, Item, ViewId, ViewerContext,
@@ -168,7 +168,7 @@ impl BlueprintTree {
         let item_response = ui
             .list_item()
             .selected(ctx.selection().contains_item(&item))
-            .draggable(false)
+            .draggable(true) // allowed for consistency but results in an invalid drag
             .drop_target_style(self.is_candidate_drop_parent_container(&container_id))
             .show_flat(
                 ui,
@@ -189,7 +189,7 @@ impl BlueprintTree {
             SelectionUpdateBehavior::UseSelection,
         );
         self.scroll_to_me_if_needed(ui, &item, &item_response);
-        ctx.select_hovered_on_click(&item_response, item);
+        ctx.handle_select_hover_drag_interactions(&item_response, item, true);
 
         self.handle_root_container_drag_and_drop_interaction(
             viewport,
@@ -270,12 +270,11 @@ impl BlueprintTree {
             SelectionUpdateBehavior::UseSelection,
         );
         self.scroll_to_me_if_needed(ui, &item, &response);
-        ctx.select_hovered_on_click(&response, item);
+        ctx.handle_select_hover_drag_interactions(&response, item, true);
 
         viewport.set_content_visibility(ctx, &content, visible);
 
         self.handle_drag_and_drop_interaction(
-            ctx,
             viewport,
             ui,
             content,
@@ -406,13 +405,12 @@ impl BlueprintTree {
             SelectionUpdateBehavior::UseSelection,
         );
         self.scroll_to_me_if_needed(ui, &item, &response);
-        ctx.select_hovered_on_click(&response, item);
+        ctx.handle_select_hover_drag_interactions(&response, item, true);
 
         let content = Contents::View(*view_id);
 
         viewport.set_content_visibility(ctx, &content, visible);
         self.handle_drag_and_drop_interaction(
-            ctx,
             viewport,
             ui,
             content,
@@ -494,6 +492,7 @@ impl BlueprintTree {
 
         let list_item = ui
             .list_item()
+            .draggable(true)
             .selected(is_selected)
             .force_hovered(is_item_hovered);
 
@@ -596,7 +595,7 @@ impl BlueprintTree {
             SelectionUpdateBehavior::UseSelection,
         );
         self.scroll_to_me_if_needed(ui, &item, &response);
-        ctx.select_hovered_on_click(&response, item);
+        ctx.handle_select_hover_drag_interactions(&response, item, true);
     }
 
     /// Add a button to trigger the addition of a new view or container.
@@ -636,16 +635,21 @@ impl BlueprintTree {
         response: &egui::Response,
     ) {
         //
-        // check if a drag is in progress and set the cursor accordingly
+        // check if a drag with acceptable content is in progress
         //
 
-        let Some(dragged_item_id) = egui::DragAndDrop::payload(ui.ctx()).map(|payload| *payload)
+        let Some(dragged_payload) = egui::DragAndDrop::payload::<DragAndDropPayload>(ui.ctx())
         else {
-            // nothing is being dragged, so nothing to do
             return;
         };
 
-        ui.ctx().set_cursor_icon(egui::CursorIcon::Grabbing);
+        let DragAndDropPayload::Contents {
+            contents: dragged_contents,
+        } = dragged_payload.as_ref()
+        else {
+            // nothing we care about is being dragged
+            return;
+        };
 
         //
         // find the drop target
@@ -668,13 +672,12 @@ impl BlueprintTree {
         );
 
         if let Some(drop_target) = drop_target {
-            self.handle_drop_target(viewport, ui, dragged_item_id, &drop_target);
+            self.handle_contents_drop_target(viewport, ui, dragged_contents, &drop_target);
         }
     }
 
     fn handle_drag_and_drop_interaction(
         &mut self,
-        ctx: &ViewerContext<'_>,
         viewport: &ViewportBlueprint,
         ui: &egui::Ui,
         contents: Contents,
@@ -682,25 +685,21 @@ impl BlueprintTree {
         body_response: Option<&egui::Response>,
     ) {
         //
-        // initiate drag and force single-selection
+        // check if a drag with acceptable content is in progress
         //
 
-        if response.drag_started() {
-            ctx.selection_state().set_selection(contents.as_item());
-            egui::DragAndDrop::set_payload(ui.ctx(), contents);
-        }
-
-        //
-        // check if a drag is in progress and set the cursor accordingly
-        //
-
-        let Some(dragged_item_id) = egui::DragAndDrop::payload(ui.ctx()).map(|payload| *payload)
+        let Some(dragged_payload) = egui::DragAndDrop::payload::<DragAndDropPayload>(ui.ctx())
         else {
-            // nothing is being dragged, so nothing to do
             return;
         };
 
-        ui.ctx().set_cursor_icon(egui::CursorIcon::Grabbing);
+        let DragAndDropPayload::Contents {
+            contents: dragged_contents,
+        } = dragged_payload.as_ref()
+        else {
+            // nothing we care about is being dragged
+            return;
+        };
 
         //
         // find our parent, our position within parent, and the previous container (if any)
@@ -752,7 +751,7 @@ impl BlueprintTree {
         );
 
         if let Some(drop_target) = drop_target {
-            self.handle_drop_target(viewport, ui, dragged_item_id, &drop_target);
+            self.handle_contents_drop_target(viewport, ui, dragged_contents, &drop_target);
         }
     }
 
@@ -763,16 +762,21 @@ impl BlueprintTree {
         empty_space: egui::Rect,
     ) {
         //
-        // check if a drag is in progress and set the cursor accordingly
+        // check if a drag with acceptable content is in progress
         //
 
-        let Some(dragged_item_id) = egui::DragAndDrop::payload(ui.ctx()).map(|payload| *payload)
+        let Some(dragged_payload) = egui::DragAndDrop::payload::<DragAndDropPayload>(ui.ctx())
         else {
-            // nothing is being dragged, so nothing to do
             return;
         };
 
-        ui.ctx().set_cursor_icon(egui::CursorIcon::Grabbing);
+        let DragAndDropPayload::Contents {
+            contents: dragged_contents,
+        } = dragged_payload.as_ref()
+        else {
+            // nothing we care about is being dragged
+            return;
+        };
 
         //
         // prepare a drop target corresponding to "insert last in root container"
@@ -788,25 +792,31 @@ impl BlueprintTree {
                 usize::MAX,
             );
 
-            self.handle_drop_target(viewport, ui, dragged_item_id, &drop_target);
+            self.handle_contents_drop_target(viewport, ui, dragged_contents, &drop_target);
         }
     }
 
-    fn handle_drop_target(
+    fn handle_contents_drop_target(
         &mut self,
         viewport: &ViewportBlueprint,
         ui: &Ui,
-        dragged_item_id: Contents,
+        dragged_contents: &[Contents],
         drop_target: &DropTarget<Contents>,
     ) {
-        // We cannot allow the target location to be "inside" the dragged item, because that would amount moving
-        // myself inside of me.
-        if let Contents::Container(dragged_container_id) = &dragged_item_id {
-            if viewport
-                .is_contents_in_container(&drop_target.target_parent_id, dragged_container_id)
-            {
-                return;
+        // We cannot allow the target location to be "inside" any of the dragged items, because that
+        // would amount to moving myself inside of me.
+        let parent_contains_dragged_content = |content: &Contents| {
+            if let Contents::Container(dragged_container_id) = content {
+                if viewport
+                    .is_contents_in_container(&drop_target.target_parent_id, dragged_container_id)
+                {
+                    return true;
+                }
             }
+            false
+        };
+        if dragged_contents.iter().any(parent_contains_dragged_content) {
+            return;
         }
 
         ui.painter().hline(
@@ -822,7 +832,7 @@ impl BlueprintTree {
 
         if ui.input(|i| i.pointer.any_released()) {
             viewport.move_contents(
-                dragged_item_id,
+                dragged_contents.to_vec(),
                 target_container_id,
                 drop_target.target_position_index,
             );

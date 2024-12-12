@@ -385,15 +385,21 @@ fn apply_viewport_command(
                         {target_position_in_container}"
             );
 
-            let contents_tile_id = contents_to_move.as_tile_id();
-            let target_container_tile_id = blueprint_id_to_tile_id(&target_container);
+            // TODO(ab): the `rev()` is better preserve ordering when moving a group of items. There
+            // remains some ordering (and possibly insertion point error) edge cases when dragging
+            // multiple item within the same container. This should be addressed by egui_tiles:
+            // https://github.com/rerun-io/egui_tiles/issues/90
+            for contents in contents_to_move.iter().rev() {
+                let contents_tile_id = contents.as_tile_id();
+                let target_container_tile_id = blueprint_id_to_tile_id(&target_container);
 
-            bp.tree.move_tile_to_container(
-                contents_tile_id,
-                target_container_tile_id,
-                target_position_in_container,
-                true,
-            );
+                bp.tree.move_tile_to_container(
+                    contents_tile_id,
+                    target_container_tile_id,
+                    target_position_in_container,
+                    true,
+                );
+            }
         }
 
         ViewportCommand::MoveContentsToNewContainer {
@@ -600,7 +606,8 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
                 &response,
                 SelectionUpdateBehavior::OverrideSelection,
             );
-            self.ctx.select_hovered_on_click(&response, item);
+            self.ctx
+                .handle_select_hover_drag_interactions(&response, item, false);
         }
 
         response

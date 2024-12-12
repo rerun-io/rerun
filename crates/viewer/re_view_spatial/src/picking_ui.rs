@@ -77,11 +77,14 @@ pub fn picking(
     );
     state.previous_picking_result = Some(picking_result.clone());
 
-    let mut hovered_items = Vec::new();
+    let mut hovered_image_items = Vec::new();
+    let mut hovered_non_image_items = Vec::new();
 
     // Depth at pointer used for projecting rays from a hovered 2D view to corresponding 3D view(s).
     // TODO(#1818): Depth at pointer only works for depth images so far.
     let mut depth_at_pointer = None;
+
+    // We iterate front-to-back, putting foreground hits on top, like layers in Photoshop:
     for (hit_idx, hit) in picking_result.hits.iter().enumerate() {
         let Some(mut instance_path) = hit.instance_path_hash.resolve(ctx.recording()) else {
             // Entity no longer exists in db.
@@ -161,13 +164,34 @@ pub fn picking(
             })
         };
 
-        hovered_items.push(Item::DataResult(query.view_id, instance_path.clone()));
+        let item = Item::DataResult(query.view_id, instance_path.clone());
+
+        if hit.hit_type == PickingHitType::TexturedRect {
+            hovered_image_items.push(item);
+        } else {
+            hovered_non_image_items.push(item);
+        }
     }
 
-    if hovered_items.is_empty() {
-        // If we hover nothing, we are hovering the view itself.
-        hovered_items.push(Item::View(query.view_id));
-    }
+    let hovered_items: Vec<Item> = {
+        // Due to how our picking works, if we are hovering a point on top of an RGB and segmentation image,
+        // we are actually hovering all three things (RGB, segmentation, point).
+        // For the hovering preview (handled above) this is desierable: we want to zoom in on the
+        // underlying image(s), even if the mouse slips over a point or some other geometric primitive.
+        // However, when clicking we assume the users wants to only select the top-most thing.
+        //
+        // So we apply the following logic: if the hovered items are a mix of images and non-images,
+        // then we only select the non-images on click.
+
+        if !hovered_non_image_items.is_empty() {
+            hovered_non_image_items
+        } else if !hovered_image_items.is_empty() {
+            hovered_image_items
+        } else {
+            // If we aren't hovering anything, we are hovering the view itself.
+            vec![Item::View(query.view_id)]
+        }
+    };
 
     // Associate the hovered space with the first item in the hovered item list.
     // If we were to add several, views might render unnecessary additional hints.
@@ -209,7 +233,7 @@ pub fn picking(
         });
     };
 
-    ctx.select_hovered_on_click(&response, hovered_items.into_iter());
+    ctx.handle_select_hover_drag_interactions(&response, hovered_items.into_iter(), false);
 
     Ok(response)
 }

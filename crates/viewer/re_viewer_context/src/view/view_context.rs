@@ -19,8 +19,8 @@ pub struct ViewContext<'a> {
     pub viewer_ctx: &'a crate::ViewerContext<'a>,
     pub view_id: ViewId,
     pub view_state: &'a dyn crate::ViewState,
-    pub defaults_path: &'a EntityPath,
     pub visualizer_collection: Arc<crate::VisualizerCollection>,
+    pub query_result: &'a DataQueryResult,
 }
 
 impl<'a> ViewContext<'a> {
@@ -85,16 +85,6 @@ impl<'a> ViewContext<'a> {
     #[inline]
     pub fn current_query(&self) -> LatestAtQuery {
         self.viewer_ctx.current_query()
-    }
-
-    /// Set hover/select/focus for a given selection based on an egui response.
-    #[inline]
-    pub fn select_hovered_on_click(
-        &self,
-        response: &egui::Response,
-        selection: impl Into<crate::ItemCollection>,
-    ) {
-        self.viewer_ctx.select_hovered_on_click(response, selection);
     }
 
     #[inline]

@@ -6,10 +6,9 @@ namespace rerun.blueprint.components;
 /// Whether the viewport layout is determined automatically.
 struct AutoLayout (
   "attr.arrow.transparent",
-  "attr.rerun.scope": "blueprint",
   "attr.python.aliases": "bool",
+  "attr.rerun.scope": "blueprint",
   "attr.rust.derive": "Copy",
-  "attr.rust.override_crate": "re_types_blueprint",
   "attr.rust.repr": "transparent",
   "attr.rust.tuple_struct"
 ) {

@@ -2,6 +2,7 @@
 
 .gitattributes linguist-generated=true
 background.rs linguist-generated=true
+container_blueprint.rs linguist-generated=true
 dataframe_query.rs linguist-generated=true
 force_center.rs linguist-generated=true
 force_collision_radius.rs linguist-generated=true
@@ -12,6 +13,7 @@ line_grid3d.rs linguist-generated=true
 map_background.rs linguist-generated=true
 map_zoom.rs linguist-generated=true
 mod.rs linguist-generated=true
+panel_blueprint.rs linguist-generated=true
 plot_legend.rs linguist-generated=true
 scalar_axis.rs linguist-generated=true
 tensor_scalar_mapping.rs linguist-generated=true
@@ -19,5 +21,6 @@ tensor_slice_selection.rs linguist-generated=true
 tensor_view_fit.rs linguist-generated=true
 view_blueprint.rs linguist-generated=true
 view_contents.rs linguist-generated=true
+viewport_blueprint.rs linguist-generated=true
 visible_time_ranges.rs linguist-generated=true
 visual_bounds2d.rs linguist-generated=true

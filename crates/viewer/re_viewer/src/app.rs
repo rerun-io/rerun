@@ -296,7 +296,7 @@ impl App {
 
         let panel_state_overrides = startup_options.panel_state_overrides;
 
-        let reflection = crate::reflection::generate_reflection().unwrap_or_else(|err| {
+        let reflection = re_types::reflection::generate_reflection().unwrap_or_else(|err| {
             re_log::error!(
                 "Failed to create list of serialized default values for components: {err}"
             );

@@ -20,7 +20,6 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: Whether a view is maximized.
 #[derive(Clone, Debug, Default)]
-#[repr(transparent)]
 pub struct ViewMaximized(pub crate::datatypes::Uuid);
 
 impl ::re_types_core::Component for ViewMaximized {
