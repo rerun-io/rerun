@@ -187,7 +187,7 @@ Display a graph of nodes and edges.
 
         let mut ui_from_world = fit_to_rect_in_scene(rect_in_ui, rect_in_scene.into());
 
-        // We store a copy o the transformation to see if it has changed.
+        // We store a copy of the transformation to see if it has changed.
         let ui_from_world_ref = ui_from_world;
 
         let resp = zoom_pan_area(ui, rect_in_ui, &mut ui_from_world, |ui| {
