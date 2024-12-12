@@ -53,7 +53,7 @@ pub use self::{
     component_ui_registry::{ComponentUiRegistry, ComponentUiTypes, UiLayout},
     contents::{blueprint_id_to_tile_id, Contents, ContentsName},
     data_result_node_or_path::DataResultNodeOrPath,
-    drag_and_drop::{drag_and_drop_payload_cursor_ui, DragAndDropPayload},
+    drag_and_drop::{DragAndDropFeedback, DragAndDropManager, DragAndDropPayload},
     file_dialog::santitize_file_name,
     image_info::{ColormapWithRange, ImageInfo},
     item::Item,

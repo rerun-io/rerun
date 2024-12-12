@@ -10,7 +10,7 @@ use re_types::blueprint::components::Visible;
 use re_ui::{drag_and_drop::DropTarget, list_item, ContextExt as _, DesignTokens, UiExt as _};
 use re_viewer_context::{
     contents_name_style, icon_for_container_kind, CollapseScope, Contents, DataResultNodeOrPath,
-    DragAndDropPayload, SystemCommandSender,
+    DragAndDropFeedback, DragAndDropPayload, SystemCommandSender,
 };
 use re_viewer_context::{
     ContainerId, DataQueryResult, DataResultNode, HoverHighlight, Item, ViewId, ViewerContext,
@@ -101,6 +101,7 @@ impl BlueprintTree {
 
                     // handle drag and drop interaction on empty space
                     self.handle_empty_space_drag_and_drop_interaction(
+                        ctx,
                         viewport,
                         ui,
                         empty_space_response.rect,
@@ -192,6 +193,7 @@ impl BlueprintTree {
         ctx.handle_select_hover_drag_interactions(&item_response, item, true);
 
         self.handle_root_container_drag_and_drop_interaction(
+            ctx,
             viewport,
             ui,
             Contents::Container(container_id),
@@ -275,6 +277,7 @@ impl BlueprintTree {
         viewport.set_content_visibility(ctx, &content, visible);
 
         self.handle_drag_and_drop_interaction(
+            ctx,
             viewport,
             ui,
             content,
@@ -411,6 +414,7 @@ impl BlueprintTree {
 
         viewport.set_content_visibility(ctx, &content, visible);
         self.handle_drag_and_drop_interaction(
+            ctx,
             viewport,
             ui,
             content,
@@ -629,6 +633,7 @@ impl BlueprintTree {
 
     fn handle_root_container_drag_and_drop_interaction(
         &mut self,
+        ctx: &ViewerContext<'_>,
         viewport: &ViewportBlueprint,
         ui: &egui::Ui,
         contents: Contents,
@@ -672,12 +677,13 @@ impl BlueprintTree {
         );
 
         if let Some(drop_target) = drop_target {
-            self.handle_contents_drop_target(viewport, ui, dragged_contents, &drop_target);
+            self.handle_contents_drop_target(ctx, viewport, ui, dragged_contents, &drop_target);
         }
     }
 
     fn handle_drag_and_drop_interaction(
         &mut self,
+        ctx: &ViewerContext<'_>,
         viewport: &ViewportBlueprint,
         ui: &egui::Ui,
         contents: Contents,
@@ -751,12 +757,13 @@ impl BlueprintTree {
         );
 
         if let Some(drop_target) = drop_target {
-            self.handle_contents_drop_target(viewport, ui, dragged_contents, &drop_target);
+            self.handle_contents_drop_target(ctx, viewport, ui, dragged_contents, &drop_target);
         }
     }
 
     fn handle_empty_space_drag_and_drop_interaction(
         &mut self,
+        ctx: &ViewerContext<'_>,
         viewport: &ViewportBlueprint,
         ui: &egui::Ui,
         empty_space: egui::Rect,
@@ -792,12 +799,13 @@ impl BlueprintTree {
                 usize::MAX,
             );
 
-            self.handle_contents_drop_target(viewport, ui, dragged_contents, &drop_target);
+            self.handle_contents_drop_target(ctx, viewport, ui, dragged_contents, &drop_target);
         }
     }
 
     fn handle_contents_drop_target(
         &mut self,
+        ctx: &ViewerContext<'_>,
         viewport: &ViewportBlueprint,
         ui: &Ui,
         dragged_contents: &[Contents],
@@ -816,6 +824,8 @@ impl BlueprintTree {
             false
         };
         if dragged_contents.iter().any(parent_contains_dragged_content) {
+            ctx.drag_and_drop_manager
+                .set_feedback(DragAndDropFeedback::Reject);
             return;
         }
 
@@ -826,7 +836,9 @@ impl BlueprintTree {
         );
 
         let Contents::Container(target_container_id) = drop_target.target_parent_id else {
-            // this shouldn't append
+            // this shouldn't happen
+            ctx.drag_and_drop_manager
+                .set_feedback(DragAndDropFeedback::Reject);
             return;
         };
 
@@ -839,6 +851,8 @@ impl BlueprintTree {
 
             egui::DragAndDrop::clear_payload(ui.ctx());
         } else {
+            ctx.drag_and_drop_manager
+                .set_feedback(DragAndDropFeedback::Accept);
             self.next_candidate_drop_parent_container_id = Some(target_container_id);
         }
     }

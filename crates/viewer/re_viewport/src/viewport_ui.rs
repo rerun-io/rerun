@@ -9,9 +9,9 @@ use re_context_menu::{context_menu_ui_for_item, SelectionUpdateBehavior};
 use re_log_types::{EntityPath, EntityPathRule};
 use re_ui::{design_tokens, ContextExt as _, DesignTokens, Icon, UiExt as _};
 use re_viewer_context::{
-    blueprint_id_to_tile_id, icon_for_container_kind, Contents, DragAndDropPayload, Item,
-    PublishedViewInfo, SystemExecutionOutput, ViewClassRegistry, ViewId, ViewQuery, ViewStates,
-    ViewerContext,
+    blueprint_id_to_tile_id, icon_for_container_kind, Contents, DragAndDropFeedback,
+    DragAndDropPayload, Item, PublishedViewInfo, SystemExecutionOutput, ViewClassRegistry, ViewId,
+    ViewQuery, ViewStates, ViewerContext,
 };
 use re_viewport_blueprint::{
     create_entity_add_info, ViewBlueprint, ViewportBlueprint, ViewportCommand,
@@ -254,6 +254,14 @@ impl ViewportUi {
         };
 
         let any_is_visualizable = entities.iter().any(can_entity_be_added);
+
+        ctx.drag_and_drop_manager
+            .set_feedback(if any_is_visualizable {
+                DragAndDropFeedback::Accept
+            } else {
+                DragAndDropFeedback::Reject
+            });
+
         if !any_is_visualizable {
             return false;
         }

@@ -8,8 +8,9 @@ use re_query::StorageEngineReadGuard;
 use crate::drag_and_drop::DragAndDropPayload;
 use crate::{
     query_context::DataQueryResult, AppOptions, ApplicableEntities, ApplicationSelectionState,
-    Caches, CommandSender, ComponentUiRegistry, IndicatedEntities, ItemCollection, PerVisualizer,
-    StoreContext, SystemCommandSender as _, TimeControl, ViewClassRegistry, ViewId,
+    Caches, CommandSender, ComponentUiRegistry, DragAndDropManager, IndicatedEntities,
+    ItemCollection, PerVisualizer, StoreContext, SystemCommandSender as _, TimeControl,
+    ViewClassRegistry, ViewId,
 };
 
 /// Common things needed by many parts of the viewer.
@@ -81,12 +82,8 @@ pub struct ViewerContext<'a> {
     /// that last several frames.
     pub focused_item: &'a Option<crate::Item>,
 
-    /// If a selection contains any `undraggable_items`, it may not be dragged.
-    ///
-    /// This is a rather ugly workaround to handle the case of the root container not being
-    /// draggable, but also being unknown to the drag-and-drop machinery in `re_viewer_context`.
-    //TODO(ab): figure out a way to deal with that in a cleaner way.
-    pub undraggable_items: &'a ItemCollection,
+    /// Helper object to manage drag-and-drop operations.
+    pub drag_and_drop_manager: &'a DragAndDropManager,
 }
 
 impl ViewerContext<'_> {
@@ -180,9 +177,8 @@ impl ViewerContext<'_> {
             }
 
             let selection_may_be_dragged = self
-                .undraggable_items
-                .iter_items()
-                .all(|item| !selected_items.contains_item(item));
+                .drag_and_drop_manager
+                .are_items_draggable(&selected_items);
 
             let payload = if selection_may_be_dragged {
                 DragAndDropPayload::from_items(&selected_items)

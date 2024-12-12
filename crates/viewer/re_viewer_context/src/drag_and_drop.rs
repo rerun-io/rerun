@@ -1,9 +1,46 @@
-//! Implement a global drag-and-drop payload type that enable dragging from various parts of the UI
-//! (e.g., from the streams tree to the viewport, etc.).
+//! Support for viewer-wide drag-and-drop of [`crate::Item`]s.
+//!
+//! ## Theory of operation
+//!
+//! ### Setup
+//!
+//! A [`DragAndDropManager`] should be created at the start of the frame and made available to the
+//! entire UI code.
+//!
+//!
+//! ### Initiating a drag
+//!
+//! Any UI representation of an [`crate::Item`] may initiate a drag.
+//! [`crate::ViewerContext::handle_select_hover_drag_interactions`] will handle that automatically
+//! when passed `true` for its `draggable` argument.
+//!
+//!
+//! ### Reacting to a drag and accepting a drop
+//!
+//! This part of the process is more involved and typically includes the following steps:
+//!
+//! 1. When hovered, the receiving UI element should check for a compatible payload using
+//!    [`egui::DragAndDrop::payload`] and matching one or more variants of the returned
+//!    [`DragAndDropPayload`], if any.
+//!
+//! 2. If an acceptable payload type is being dragged, the UI element should provide appropriate
+//!    visual feedback. This includes:
+//!    - Calling [`DragAndDropManager::set_feedback`] with the appropriate feedback.
+//!    - Drawing a frame around the target container with
+//!      [`re_ui::DesignToken::drop_target_container_stroke`].
+//!    - Optionally provide more feedback, e.g., where exactly the payload will be inserted within
+//!      the container.
+//!
+//! 3. If the mouse is released (using [`egui::PointerState::any_released`]), the payload must be
+//!    actually transferred to the container and [`egui::DragAndDrop::clear_payload`] must be
+//!    called.
 
 use std::fmt::{Display, Formatter};
+use std::sync::Arc;
 
 use itertools::Itertools;
+use parking_lot::Mutex;
+
 use re_entity_db::InstancePath;
 use re_log_types::EntityPath;
 use re_ui::{
@@ -14,7 +51,6 @@ use re_ui::{
 
 use crate::{Contents, Item, ItemCollection};
 
-//TODO(ab): add more type of things we can drag, in particular entity paths
 #[derive(Debug)]
 pub enum DragAndDropPayload {
     /// The dragged content is made only of [`Contents`].
@@ -80,53 +116,123 @@ impl std::fmt::Display for DragAndDropPayload {
     }
 }
 
-/// Display the currently dragged payload as a pill in the UI.
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DragAndDropFeedback {
+    /// The payload type is irrelevant to me.
+    ///
+    /// For example, dropping a view and/or contain onto an existing view in the viewport is
+    /// irrelevant.
+    ///
+    /// This is the default displayed feedback, unless explicitly set otherwise by some UI hovered
+    /// UI element.
+    #[default]
+    Ignore,
+
+    /// The payload type is acceptable and could successfully be dropped at the current location.
+    Accept,
+
+    /// The payload type is correct, but it's content cannot be accepted by the current drop location.
+    ///
+    /// For example, a view might reject an entity because it already contains it.
+    Reject,
+}
+
+/// Helper to handle drag-and-drop operations.
 ///
-/// This should be called once per frame.
-pub fn drag_and_drop_payload_cursor_ui(ctx: &egui::Context) {
-    if let Some(payload) = egui::DragAndDrop::payload::<DragAndDropPayload>(ctx) {
-        if let Some(pointer_pos) = ctx.pointer_interact_pos() {
-            let icon = match payload.as_ref() {
-                DragAndDropPayload::Contents { .. } => &re_ui::icons::DND_MOVE,
-                DragAndDropPayload::Entities { .. } => &re_ui::icons::DND_ADD_TO_EXISTING,
-                // don't draw anything for invalid selection
-                DragAndDropPayload::Invalid => return,
-            };
+/// This helper should be constructed at the beginning of the frame and disposed of at the end.
+/// Its [`Self::payload_cursor_ui`] method should be called late during the frame (after the rest of
+/// the UI has a chance to update the feedback).
+pub struct DragAndDropManager {
+    /// Items that may not be dragged, e.g., because they are not movable nor copiable.
+    undraggable_items: ItemCollection,
 
-            let layer_id = egui::LayerId::new(
-                egui::Order::Tooltip,
-                egui::Id::new("drag_and_drop_payload_layer"),
-            );
+    feedback: Arc<Mutex<DragAndDropFeedback>>,
+}
 
-            let mut ui = egui::Ui::new(
-                ctx.clone(),
-                egui::Id::new("rerun_drag_and_drop_payload_ui"),
-                egui::UiBuilder::new().layer_id(layer_id),
-            );
+impl DragAndDropManager {
+    /// Create a [`DragAndDropManager`] by providing a list of undraggable items.
+    pub fn new(undraggable_items: impl Into<ItemCollection>) -> Self {
+        Self {
+            undraggable_items: undraggable_items.into(),
+            feedback: Default::default(),
+        }
+    }
 
-            ui.set_opacity(0.7);
+    /// Set the feedback to display to the user based on drop acceptability for the UI currently
+    /// hovered.
+    ///
+    /// By default, the feedback is unset and the pill/cursor are displayed in a "neutral" way,
+    /// indicating that the current drag-and-drop payload is valid but not hovered over a related
+    /// UI.
+    ///
+    /// If the payload type is compatible with the hovered UI element, that element should set the
+    /// feedback to either [`DragAndDropFeedback::Accept`] or [`DragAndDropFeedback::Reject`], based
+    /// on whether the actual payload content may meaningfully be dropped.
+    ///
+    /// For example, a view generally accepts a dragged entity but may occasionally reject it if
+    /// it already contains it.
+    pub fn set_feedback(&self, feedback: DragAndDropFeedback) {
+        *self.feedback.lock() = feedback;
+    }
 
-            let response = drag_pill_frame()
-                .show(&mut ui, |ui| {
-                    let text_color = ui.visuals().widgets.inactive.text_color();
+    /// Checks if items are draggable based on the list of undraggable items.
+    pub fn are_items_draggable(&self, items: &ItemCollection) -> bool {
+        self.undraggable_items
+            .iter_items()
+            .all(|item| !items.contains_item(item))
+    }
 
-                    ui.horizontal(|ui| {
-                        ui.spacing_mut().item_spacing.x = 2.0;
+    /// Display the currently dragged payload as a pill in the UI.
+    ///
+    /// This should be called once per frame.
+    pub fn payload_cursor_ui(&self, ctx: &egui::Context) {
+        if let Some(payload) = egui::DragAndDrop::payload::<DragAndDropPayload>(ctx) {
+            if let Some(pointer_pos) = ctx.pointer_interact_pos() {
+                let icon = match payload.as_ref() {
+                    DragAndDropPayload::Contents { .. } => &re_ui::icons::DND_MOVE,
+                    DragAndDropPayload::Entities { .. } => &re_ui::icons::DND_ADD_TO_EXISTING,
+                    // don't draw anything for invalid selection
+                    DragAndDropPayload::Invalid => return,
+                };
 
-                        ui.small_icon(icon, Some(text_color));
-                        ui.label(egui::RichText::new(payload.to_string()).color(text_color));
-                    });
-                })
-                .response;
+                let layer_id = egui::LayerId::new(
+                    egui::Order::Tooltip,
+                    egui::Id::new("drag_and_drop_payload_layer"),
+                );
 
-            let delta = pointer_pos - response.rect.right_bottom();
-            ctx.transform_layer_shapes(layer_id, emath::TSTransform::from_translation(delta));
+                let mut ui = egui::Ui::new(
+                    ctx.clone(),
+                    egui::Id::new("rerun_drag_and_drop_payload_ui"),
+                    egui::UiBuilder::new().layer_id(layer_id),
+                );
+
+                ui.set_opacity(0.7);
+
+                //TODO: we should handle all 3 states differently.
+                let payload_is_currently_droppable =
+                    *self.feedback.lock() == DragAndDropFeedback::Accept;
+                let response = drag_pill_frame(payload_is_currently_droppable)
+                    .show(&mut ui, |ui| {
+                        let text_color = ui.visuals().widgets.inactive.text_color();
+
+                        ui.horizontal(|ui| {
+                            ui.spacing_mut().item_spacing.x = 2.0;
+
+                            ui.small_icon(icon, Some(text_color));
+                            ui.label(egui::RichText::new(payload.to_string()).color(text_color));
+                        });
+                    })
+                    .response;
+
+                let delta = pointer_pos - response.rect.right_bottom();
+                ctx.transform_layer_shapes(layer_id, emath::TSTransform::from_translation(delta));
+            }
         }
     }
 }
 
-fn drag_pill_frame() -> egui::Frame {
-    let hue = Hue::Blue;
+fn drag_pill_frame(droppable: bool) -> egui::Frame {
+    let hue = if droppable { Hue::Blue } else { Hue::Gray };
 
     egui::Frame {
         fill: re_ui::design_tokens().color(ColorToken::new(hue, S325)),
@@ -134,7 +240,7 @@ fn drag_pill_frame() -> egui::Frame {
             1.0,
             re_ui::design_tokens().color(ColorToken::new(hue, S375)),
         ),
-        rounding: (2.0).into(),
+        rounding: 2.0.into(),
         inner_margin: egui::Margin {
             left: 6.0,
             right: 9.0,

@@ -6,8 +6,8 @@ use re_log_types::{StoreId, StoreKind};
 
 use crate::{
     blueprint_timeline, command_channel, ApplicationSelectionState, CommandReceiver, CommandSender,
-    ComponentUiRegistry, RecordingConfig, StoreContext, SystemCommand, ViewClassRegistry,
-    ViewerContext,
+    ComponentUiRegistry, ItemCollection, RecordingConfig, StoreContext, SystemCommand,
+    ViewClassRegistry, ViewerContext,
 };
 
 /// Harness to execute code that rely on [`crate::ViewerContext`].
@@ -90,7 +90,7 @@ impl TestContext {
             hub: &Default::default(),
         };
 
-        let undraggable_items = Default::default();
+        let drag_and_drop_helper = crate::DragAndDropManager::new(ItemCollection::default());
 
         let ctx = ViewerContext {
             app_options: &Default::default(),
@@ -110,7 +110,7 @@ impl TestContext {
             render_ctx: None,
             command_sender: &self.command_sender,
             focused_item: &None,
-            undraggable_items: &undraggable_items,
+            drag_and_drop_manager: &drag_and_drop_helper,
         };
 
         func(&ctx);
