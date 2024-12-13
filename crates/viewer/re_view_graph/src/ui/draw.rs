@@ -181,15 +181,18 @@ fn draw_rect_label(ui: &mut Ui, label: &TextLabel, highlight: InteractionHighlig
         .unwrap_or_else(|| visuals.text_color())
         .gamma_multiply(0.5);
 
-    frame
-        .stroke(stroke)
-        .fill(bg)
-        .show(ui, |ui| {
-            let (resp, painter) = ui.allocate_painter(galley.rect.size(), Sense::click());
-            painter.rect_filled(resp.rect, 0.0, fill_color);
-            resp
-        })
-        .inner
+    let total_size = galley.rect.size() + frame.inner_margin.sum() + frame.outer_margin.sum();
+
+    let (resp, painter) = ui.allocate_painter(total_size, Sense::click());
+    painter.rect_filled(resp.rect, 0.0, stroke.color.gamma_multiply(0.5));
+    painter.rect_filled(
+        resp.rect
+            .shrink2(frame.inner_margin.sum() + frame.outer_margin.sum()),
+        0.0,
+        fill_color,
+    );
+
+    resp
 }
 
 /// Draws a node at the given position.
