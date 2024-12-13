@@ -106,7 +106,8 @@ def send_record_batch(batch: pa.RecordBatch, rec: Optional[RecordingStream] = No
             entity_path,
             indexes,
             columns,
-            recording=rec,
+            # This is fine, send_columns will handle the conversion
+            recording=rec,  # NOLINT
         )
 
 
