@@ -1,19 +1,19 @@
 <!--[metadata]
 title = "Graphs"
 tags = ["Graph", "Layout", "Node-link diagrams", "Bubble charts"]
-thumbnail = "https://static.rerun.io/graphs/1b93c00867821ebf3286653f43a9e5eb993f59ff/480w.png"
-thumbnail_dimensions = [480, 466]
+thumbnail = "https://static.rerun.io/graphs/c1070214bed5e50c9e7d452835f32759b991383e/480w.png"
+thumbnail_dimensions = [480, 480]
 channel = "main"
 -->
 
 This example shows different types of graphs (and layouts) that you can visualize using Rerun.
 
 <picture>
-  <img src="https://static.rerun.io/graphs/1b93c00867821ebf3286653f43a9e5eb993f59ff/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/graphs/1b93c00867821ebf3286653f43a9e5eb993f59ff/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/graphs/1b93c00867821ebf3286653f43a9e5eb993f59ff/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/graphs/1b93c00867821ebf3286653f43a9e5eb993f59ff/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/graphs/1b93c00867821ebf3286653f43a9e5eb993f59ff/1200w.png">
+  <img src="https://static.rerun.io/graphs/c1070214bed5e50c9e7d452835f32759b991383e/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/graphs/c1070214bed5e50c9e7d452835f32759b991383e/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/graphs/c1070214bed5e50c9e7d452835f32759b991383e/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/graphs/c1070214bed5e50c9e7d452835f32759b991383e/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/graphs/c1070214bed5e50c9e7d452835f32759b991383e/1200w.png">
 </picture>
 
 Rerun ships with an integrated engine to produce [force-based layouts](https://en.wikipedia.org/wiki/Force-directed_graph_drawing) to visualize graphs.
@@ -30,7 +30,7 @@ This example shows different types of layouts:
 
 ## Force-based layouts
 
-To compute the graph layouts, Rerun implements a physics-simulation that is very similar to [`d3-force`](https://d3js.org/d3-force). In particular, we implement the following forces:
+To compute the graph layouts, Rerun implements a physics simulation that is very similar to [`d3-force`](https://d3js.org/d3-force). In particular, we implement the following forces:
 
 * Centering force, which shifts the center of mass of the entire graph.
 * Collision radius force, which resolves collisions between nodes in the graph, taking their radius into account.
@@ -40,7 +40,7 @@ To compute the graph layouts, Rerun implements a physics-simulation that is very
 
 If you want to learn more about these forces, we recommend looking at the [D3 documentation](https://d3js.org/d3-force) as well.
 
-The physics simulation that we implemented called _Fjädra_ and can be found on [GitHub](https://github.com/grtlr/fjadra) and on [`crates.io`](https://crates.io/crates/fjadra).
+Our implementation of the physics simulation is called _Fjädra_. You can find it on [GitHub](https://github.com/grtlr/fjadra) and on [`crates.io`](https://crates.io/crates/fjadra).
 
 ## Run the code
 
