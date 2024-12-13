@@ -174,7 +174,7 @@ namespace rerun::archetypes {
         ///
         /// Specifies that the entity path at which this is logged is spatially disconnected from its parent,
         /// making it impossible to transform the entity path into its parent's space and vice versa.
-        /// This can be useful for instance to express temporily unknown transforms.
+        /// This can be useful for instance to express temporarily unknown transforms.
         ///
         /// By default all transforms are considered valid.
         std::optional<rerun::components::InvalidTransform> invalid;
@@ -574,7 +574,7 @@ namespace rerun::archetypes {
         ///
         /// Specifies that the entity path at which this is logged is spatially disconnected from its parent,
         /// making it impossible to transform the entity path into its parent's space and vice versa.
-        /// This can be useful for instance to express temporily unknown transforms.
+        /// This can be useful for instance to express temporarily unknown transforms.
         ///
         /// By default all transforms are considered valid.
         Transform3D with_invalid(rerun::components::InvalidTransform _invalid) && {

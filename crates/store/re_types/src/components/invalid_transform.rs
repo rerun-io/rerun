@@ -22,7 +22,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// Specifies that the entity path at which this is logged is spatially disconnected from its parent,
 /// making it impossible to transform the entity path into its parent's space and vice versa.
-/// This can be useful for instance to express temporily unknown transforms.
+/// This can be useful for instance to express temporarily unknown transforms.
 ///
 /// Note that by default all transforms are considered valid.
 #[derive(Clone, Debug, Copy, PartialEq, Eq)]

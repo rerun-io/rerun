@@ -554,7 +554,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <InvalidTransform as Component>::name(),
             ComponentReflection {
-                docstring_md: "Flags the transform at its entity path as invalid.\n\nSpecifies that the entity path at which this is logged is spatially disconnected from its parent,\nmaking it impossible to transform the entity path into its parent's space and vice versa.\nThis can be useful for instance to express temporily unknown transforms.\n\nNote that by default all transforms are considered valid.",
+                docstring_md: "Flags the transform at its entity path as invalid.\n\nSpecifies that the entity path at which this is logged is spatially disconnected from its parent,\nmaking it impossible to transform the entity path into its parent's space and vice versa.\nThis can be useful for instance to express temporarily unknown transforms.\n\nNote that by default all transforms are considered valid.",
                 custom_placeholder: None,
                 datatype: InvalidTransform::arrow2_datatype(),
             },
@@ -1911,7 +1911,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     is_required : false, }, ArchetypeFieldReflection { name : "invalid",
                     display_name : "Invalid", component_name :
                     "rerun.components.InvalidTransform".into(), docstring_md :
-                    "Optionally flags the transform as invalid.\n\nSpecifies that the entity path at which this is logged is spatially disconnected from its parent,\nmaking it impossible to transform the entity path into its parent's space and vice versa.\nThis can be useful for instance to express temporily unknown transforms.\n\nBy default all transforms are considered valid.",
+                    "Optionally flags the transform as invalid.\n\nSpecifies that the entity path at which this is logged is spatially disconnected from its parent,\nmaking it impossible to transform the entity path into its parent's space and vice versa.\nThis can be useful for instance to express temporarily unknown transforms.\n\nBy default all transforms are considered valid.",
                     is_required : false, }, ArchetypeFieldReflection { name :
                     "axis_length", display_name : "Axis length", component_name :
                     "rerun.components.AxisLength".into(), docstring_md :
