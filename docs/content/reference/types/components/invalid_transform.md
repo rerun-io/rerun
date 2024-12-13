@@ -21,9 +21,9 @@ boolean
 ```
 
 ## API reference links
- * 🌊 [C++ API docs for `InvalidTransform`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1InvalidTransform.html)
- * 🐍 [Python API docs for `InvalidTransform`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.InvalidTransform)
- * 🦀 [Rust API docs for `InvalidTransform`](https://docs.rs/rerun/latest/rerun/components/struct.InvalidTransform.html)
+ * 🌊 [C++ API docs for `InvalidTransform`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1InvalidTransform.html?speculative-link)
+ * 🐍 [Python API docs for `InvalidTransform`](https://ref.rerun.io/docs/python/stable/common/components?speculative-link#rerun.components.InvalidTransform)
+ * 🦀 [Rust API docs for `InvalidTransform`](https://docs.rs/rerun/latest/rerun/components/struct.InvalidTransform.html?speculative-link)
 
 
 ## Used by

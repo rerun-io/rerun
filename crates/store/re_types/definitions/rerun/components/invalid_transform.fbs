@@ -8,6 +8,7 @@ namespace rerun.components;
 ///
 /// Note that by default all transforms are considered valid.
 struct InvalidTransform (
+  "attr.docs.unreleased",
   "attr.python.aliases": "bool",
   "attr.python.array_aliases": "bool, npt.NDArray[np.bool_]",
   "attr.rust.derive": "Copy, PartialEq, Eq"
