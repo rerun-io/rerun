@@ -1,12 +1,12 @@
 use once_cell::sync::OnceCell;
 
-use nohash_hasher::{IntMap, IntSet};
+use nohash_hasher::IntMap;
 use re_chunk_store::{
     ChunkStore, ChunkStoreDiffKind, ChunkStoreEvent, ChunkStoreSubscriberHandle,
     PerStoreChunkSubscriber,
 };
 use re_log_types::{EntityPath, EntityPathHash, StoreId};
-use re_types::{Component as _, ComponentName};
+use re_types::Component as _;
 
 // ---
 
@@ -15,12 +15,6 @@ use re_types::{Component as _, ComponentName};
 /// Set of components that an entity ever had over its known lifetime.
 #[derive(Default, Clone)]
 pub struct PotentialTransformComponentSet {
-    /// All transform components ever present.
-    pub transform3d: IntSet<ComponentName>,
-
-    /// All pose transform components ever present.
-    pub pose3d: IntSet<ComponentName>,
-
     /// Whether the entity ever had a pinhole camera.
     pub pinhole: bool,
 }
@@ -33,26 +27,13 @@ pub struct PotentialTransformComponentSet {
 /// data there.
 /// This is a huge performance improvement in practice, especially in recordings with many entities.
 pub struct TransformComponentTrackerStoreSubscriber {
-    /// The components of interest.
-    transform_components: IntSet<ComponentName>,
-    pose_components: IntSet<ComponentName>,
-
     components_per_entity: IntMap<EntityPathHash, PotentialTransformComponentSet>,
 }
 
 impl Default for TransformComponentTrackerStoreSubscriber {
     #[inline]
     fn default() -> Self {
-        use re_types::Archetype as _;
         Self {
-            transform_components: re_types::archetypes::Transform3D::all_components()
-                .iter()
-                .map(|descr| descr.component_name)
-                .collect(),
-            pose_components: re_types::archetypes::InstancePoses3D::all_components()
-                .iter()
-                .map(|descr| descr.component_name)
-                .collect(),
             components_per_entity: Default::default(),
         }
     }
@@ -109,24 +90,6 @@ impl PerStoreChunkSubscriber for TransformComponentTrackerStoreSubscriber {
             };
 
             for component_name in event.chunk.component_names() {
-                if self.transform_components.contains(&component_name)
-                    && contains_non_zero_component_array(component_name)
-                {
-                    self.components_per_entity
-                        .entry(entity_path_hash)
-                        .or_default()
-                        .transform3d
-                        .insert(component_name);
-                }
-                if self.pose_components.contains(&component_name)
-                    && contains_non_zero_component_array(component_name)
-                {
-                    self.components_per_entity
-                        .entry(entity_path_hash)
-                        .or_default()
-                        .pose3d
-                        .insert(component_name);
-                }
                 if component_name == re_types::components::PinholeProjection::name()
                     && contains_non_zero_component_array(component_name)
                 {

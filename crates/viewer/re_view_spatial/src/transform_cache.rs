@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use ahash::HashMap;
+use itertools::Either;
 use nohash_hasher::{IntMap, IntSet};
 
 use once_cell::sync::OnceCell;
@@ -71,7 +72,7 @@ pub enum ResolvedInstancePoses {
     Cached(Vec<glam::Affine3A>),
 
     /// There are instance poses, but we don't have anything cached.
-    Invalidated,
+    Uncached,
 
     /// There are no instance poses.
     #[default]
@@ -116,6 +117,40 @@ impl PerTimelinePerEntityTransforms {
                 }
             }
             ResolvedTreeTransform::None => None,
+        }
+    }
+
+    pub fn latest_at_instance_poses(
+        &mut self, // TODO: make this immutable
+        entity_db: &EntityDb,
+        query: &LatestAtQuery,
+        // TODO(andreas): A Cow or reference would be nice here instead of cloning a Vec. At least this is somewhat rare right now?
+    ) -> Vec<glam::Affine3A> {
+        debug_assert!(query.timeline() == self.timeline);
+
+        let Some(pose_transforms) = self
+            .pose_transforms
+            .range_mut(..query.at())
+            .next_back()
+            .map(|(_time, transform)| transform)
+        else {
+            return Vec::new();
+        };
+
+        match pose_transforms {
+            ResolvedInstancePoses::Cached(poses) => poses.clone(),
+            ResolvedInstancePoses::Uncached => {
+                let poses =
+                    query_and_resolve_instance_poses_at_entity(&self.entity_path, entity_db, query);
+                if !poses.is_empty() {
+                    *pose_transforms = ResolvedInstancePoses::Cached(poses.clone());
+                    poses
+                } else {
+                    *pose_transforms = ResolvedInstancePoses::None;
+                    Vec::new()
+                }
+            }
+            ResolvedInstancePoses::None => Vec::new(),
         }
     }
 }
@@ -215,7 +250,7 @@ impl PerStoreChunkSubscriber for TransformCacheStoreSubscriber {
                     for time in time_column.times() {
                         per_entity
                             .pose_transforms
-                            .insert(time, ResolvedInstancePoses::Invalidated);
+                            .insert(time, ResolvedInstancePoses::Uncached);
                     }
                 }
             }
@@ -282,4 +317,107 @@ fn query_and_resolve_tree_transform_at_entity(
     }
 
     Some(transform)
+}
+
+fn query_and_resolve_instance_poses_at_entity(
+    entity_path: &EntityPath,
+    entity_db: &EntityDb,
+    query: &LatestAtQuery,
+) -> Vec<glam::Affine3A> {
+    // TODO(andreas): Filter out the components we're actually interested in?
+    let components = re_types::archetypes::InstancePoses3D::all_components();
+    let component_names = components.iter().map(|descr| descr.component_name);
+    let result = entity_db.latest_at(query, entity_path, component_names);
+
+    let max_count = result
+        .components
+        .iter()
+        .map(|(name, row)| row.num_instances(name))
+        .max()
+        .unwrap_or(0) as usize;
+
+    if max_count == 0 {
+        return Vec::new();
+    }
+
+    #[inline]
+    pub fn clamped_or_nothing<T: Clone>(
+        values: Vec<T>,
+        clamped_len: usize,
+    ) -> impl Iterator<Item = T> {
+        let Some(last) = values.last() else {
+            return Either::Left(std::iter::empty());
+        };
+        let last = last.clone();
+        Either::Right(
+            values
+                .into_iter()
+                .chain(std::iter::repeat(last))
+                .take(clamped_len),
+        )
+    }
+
+    let mut iter_translation = clamped_or_nothing(
+        result
+            .component_batch::<components::PoseTranslation3D>()
+            .unwrap_or_default(),
+        max_count,
+    );
+    let mut iter_rotation_quat = clamped_or_nothing(
+        result
+            .component_batch::<components::PoseRotationQuat>()
+            .unwrap_or_default(),
+        max_count,
+    );
+    let mut iter_rotation_axis_angle = clamped_or_nothing(
+        result
+            .component_batch::<components::PoseRotationAxisAngle>()
+            .unwrap_or_default(),
+        max_count,
+    );
+    let mut iter_scale = clamped_or_nothing(
+        result
+            .component_batch::<components::PoseScale3D>()
+            .unwrap_or_default(),
+        max_count,
+    );
+    let mut iter_mat3x3 = clamped_or_nothing(
+        result
+            .component_batch::<components::PoseTransformMat3x3>()
+            .unwrap_or_default(),
+        max_count,
+    );
+
+    let mut transforms = Vec::with_capacity(max_count);
+    for _ in 0..max_count {
+        // Order see `debug_assert_transform_field_order`
+        let mut transform = glam::Affine3A::IDENTITY;
+        if let Some(translation) = iter_translation.next() {
+            transform = glam::Affine3A::from(translation);
+        }
+        if let Some(rotation_quat) = iter_rotation_quat.next() {
+            if let Ok(rotation_quat) = glam::Affine3A::try_from(rotation_quat) {
+                transform *= rotation_quat;
+            } else {
+                transform = glam::Affine3A::ZERO;
+            }
+        }
+        if let Some(rotation_axis_angle) = iter_rotation_axis_angle.next() {
+            if let Ok(axis_angle) = glam::Affine3A::try_from(rotation_axis_angle) {
+                transform *= axis_angle;
+            } else {
+                transform = glam::Affine3A::ZERO;
+            }
+        }
+        if let Some(scale) = iter_scale.next() {
+            transform *= glam::Affine3A::from(scale);
+        }
+        if let Some(mat3x3) = iter_mat3x3.next() {
+            transform *= glam::Affine3A::from(mat3x3);
+        }
+
+        transforms.push(transform);
+    }
+
+    transforms
 }

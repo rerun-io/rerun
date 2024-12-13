@@ -552,106 +552,6 @@ But they are instead ordered like this:\n{actual_order:?}"
 #[cfg(not(debug_assertions))]
 fn debug_assert_transform_field_order(_: &re_types::reflection::Reflection) {}
 
-fn query_and_resolve_instance_poses_at_entity(
-    entity_path: &EntityPath,
-    entity_db: &EntityDb,
-    query: &LatestAtQuery,
-    pose3d_components: impl Iterator<Item = re_types::ComponentName>,
-) -> Vec<glam::Affine3A> {
-    // TODO(#6743): Doesn't take into account overrides.
-    let result = entity_db.latest_at(query, entity_path, pose3d_components);
-
-    let max_count = result
-        .components
-        .iter()
-        .map(|(name, row)| row.num_instances(name))
-        .max()
-        .unwrap_or(0) as usize;
-
-    if max_count == 0 {
-        return Vec::new();
-    }
-
-    #[inline]
-    pub fn clamped_or_nothing<T: Clone>(
-        values: Vec<T>,
-        clamped_len: usize,
-    ) -> impl Iterator<Item = T> {
-        let Some(last) = values.last() else {
-            return Either::Left(std::iter::empty());
-        };
-        let last = last.clone();
-        Either::Right(
-            values
-                .into_iter()
-                .chain(std::iter::repeat(last))
-                .take(clamped_len),
-        )
-    }
-
-    let mut iter_translation = clamped_or_nothing(
-        result
-            .component_batch::<PoseTranslation3D>()
-            .unwrap_or_default(),
-        max_count,
-    );
-    let mut iter_rotation_quat = clamped_or_nothing(
-        result
-            .component_batch::<PoseRotationQuat>()
-            .unwrap_or_default(),
-        max_count,
-    );
-    let mut iter_rotation_axis_angle = clamped_or_nothing(
-        result
-            .component_batch::<PoseRotationAxisAngle>()
-            .unwrap_or_default(),
-        max_count,
-    );
-    let mut iter_scale = clamped_or_nothing(
-        result.component_batch::<PoseScale3D>().unwrap_or_default(),
-        max_count,
-    );
-    let mut iter_mat3x3 = clamped_or_nothing(
-        result
-            .component_batch::<PoseTransformMat3x3>()
-            .unwrap_or_default(),
-        max_count,
-    );
-
-    let mut transforms = Vec::with_capacity(max_count);
-    for _ in 0..max_count {
-        // Order see `debug_assert_transform_field_order`
-        let mut transform = glam::Affine3A::IDENTITY;
-        if let Some(translation) = iter_translation.next() {
-            transform = glam::Affine3A::from(translation);
-        }
-        if let Some(rotation_quat) = iter_rotation_quat.next() {
-            if let Ok(rotation_quat) = glam::Affine3A::try_from(rotation_quat) {
-                transform *= rotation_quat;
-            } else {
-                transform = glam::Affine3A::ZERO;
-            }
-        }
-        if let Some(rotation_axis_angle) = iter_rotation_axis_angle.next() {
-            if let Ok(axis_angle) = glam::Affine3A::try_from(rotation_axis_angle) {
-                transform *= axis_angle;
-            } else {
-                transform = glam::Affine3A::ZERO;
-            }
-        }
-        if let Some(scale) = iter_scale.next() {
-            transform *= glam::Affine3A::from(scale);
-        }
-        if let Some(mat3x3) = iter_mat3x3.next() {
-            transform *= glam::Affine3A::from(mat3x3);
-        }
-
-        transforms.push(transform);
-    }
-
-    transforms
-}
-
 fn query_and_resolve_obj_from_pinhole_image_plane(
     entity_path: &EntityPath,
     entity_db: &EntityDb,
@@ -740,17 +640,8 @@ fn transforms_at(
     };
     let parent_from_entity_tree_transform =
         entity_transforms.latest_at_tree_transform(entity_db, query);
+    let entity_from_instance_poses = entity_transforms.latest_at_instance_poses(entity_db, query);
 
-    let entity_from_instance_poses = if potential_transform_components.pose3d.is_empty() {
-        Vec::new()
-    } else {
-        query_and_resolve_instance_poses_at_entity(
-            entity_path,
-            entity_db,
-            query,
-            potential_transform_components.pose3d.iter().copied(),
-        )
-    };
     let instance_from_pinhole_image_plane = if potential_transform_components.pinhole {
         query_and_resolve_obj_from_pinhole_image_plane(
             entity_path,
