@@ -190,7 +190,7 @@ Display a graph of nodes and edges.
         // We store a copy of the transformation to see if it has changed.
         let ui_from_world_ref = ui_from_world;
 
-        let resp = zoom_pan_area(ui, rect_in_ui, &mut ui_from_world, |ui| {
+        let resp = zoom_pan_area(ui, &mut ui_from_world, |ui| {
             let mut world_bounding_rect = egui::Rect::NOTHING;
 
             for graph in &graphs {
