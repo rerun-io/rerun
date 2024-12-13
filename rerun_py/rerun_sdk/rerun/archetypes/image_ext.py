@@ -38,9 +38,13 @@ if TYPE_CHECKING:
 
 
 def _to_numpy(tensor: ImageLike) -> npt.NDArray[Any]:
+    from PIL import Image as PILImage
+
     # isinstance is 4x faster than catching AttributeError
     if isinstance(tensor, np.ndarray):
         return tensor
+    if isinstance(tensor, PILImage.Image):
+        return np.array(tensor, copy=False)
 
     try:
         # Make available to the cpu
