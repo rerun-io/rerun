@@ -21,4 +21,5 @@ boolean
 
 * [`ClearIsRecursive`](../components/clear_is_recursive.md)
 * [`DisconnectedSpace`](../components/disconnected_space.md)
+* [`InvalidTransform`](../components/invalid_transform.md)
 * [`ShowLabels`](../components/show_labels.md)

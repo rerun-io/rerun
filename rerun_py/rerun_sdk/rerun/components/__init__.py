@@ -37,6 +37,7 @@ from .half_size3d import HalfSize3D, HalfSize3DBatch
 from .image_buffer import ImageBuffer, ImageBufferBatch
 from .image_format import ImageFormat, ImageFormatBatch
 from .image_plane_distance import ImagePlaneDistance, ImagePlaneDistanceBatch
+from .invalid_transform import InvalidTransform, InvalidTransformBatch
 from .keypoint_id import KeypointId, KeypointIdBatch
 from .lat_lon import LatLon, LatLonBatch
 from .length import Length, LengthBatch
@@ -157,6 +158,8 @@ __all__ = [
     "ImageFormatBatch",
     "ImagePlaneDistance",
     "ImagePlaneDistanceBatch",
+    "InvalidTransform",
+    "InvalidTransformBatch",
     "KeypointId",
     "KeypointIdBatch",
     "LatLon",

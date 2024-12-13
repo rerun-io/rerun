@@ -14,7 +14,7 @@ namespace rerun {
     ) {
         using namespace archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(8);
+        cells.reserve(9);
 
         {
             auto result = ComponentBatch::from_loggable(
@@ -83,6 +83,18 @@ namespace rerun {
                     "rerun.archetypes.Transform3D",
                     "relation",
                     "rerun.components.TransformRelation"
+                )
+            );
+            RR_RETURN_NOT_OK(result.error);
+            cells.push_back(std::move(result.value));
+        }
+        {
+            auto result = ComponentBatch::from_loggable(
+                archetype.invalid,
+                ComponentDescriptor(
+                    "rerun.archetypes.Transform3D",
+                    "invalid",
+                    "rerun.components.InvalidTransform"
                 )
             );
             RR_RETURN_NOT_OK(result.error);

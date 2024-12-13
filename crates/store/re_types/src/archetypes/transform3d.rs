@@ -186,6 +186,15 @@ pub struct Transform3D {
     /// Specifies the relation this transform establishes between this entity and its parent.
     pub relation: Option<crate::components::TransformRelation>,
 
+    /// Optionally flags the transform as invalid.
+    ///
+    /// Specifies that the entity path at which this is logged is spatially disconnected from its parent,
+    /// making it impossible to transform the entity path into its parent's space and vice versa.
+    /// This can be useful for instance to express temporily unknown transforms.
+    ///
+    /// By default all transforms are considered valid.
+    pub invalid: Option<crate::components::InvalidTransform>,
+
     /// Visual length of the 3 axes.
     ///
     /// The length is interpreted in the local coordinate system of the transform.
@@ -205,7 +214,7 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usiz
         }]
     });
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 7usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 8usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             ComponentDescriptor {
@@ -240,13 +249,18 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 7usize]>
             },
             ComponentDescriptor {
                 archetype_name: Some("rerun.archetypes.Transform3D".into()),
+                component_name: "rerun.components.InvalidTransform".into(),
+                archetype_field_name: Some("invalid".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.Transform3D".into()),
                 component_name: "rerun.components.AxisLength".into(),
                 archetype_field_name: Some("axis_length".into()),
             },
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 8usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 9usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             ComponentDescriptor {
@@ -286,6 +300,11 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 8usize]> =
             },
             ComponentDescriptor {
                 archetype_name: Some("rerun.archetypes.Transform3D".into()),
+                component_name: "rerun.components.InvalidTransform".into(),
+                archetype_field_name: Some("invalid".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.Transform3D".into()),
                 component_name: "rerun.components.AxisLength".into(),
                 archetype_field_name: Some("axis_length".into()),
             },
@@ -293,8 +312,8 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 8usize]> =
     });
 
 impl Transform3D {
-    /// The total number of components in the archetype: 0 required, 1 recommended, 7 optional
-    pub const NUM_COMPONENTS: usize = 8usize;
+    /// The total number of components in the archetype: 0 required, 1 recommended, 8 optional
+    pub const NUM_COMPONENTS: usize = 9usize;
 }
 
 /// Indicator component for the [`Transform3D`] [`::re_types_core::Archetype`]
@@ -406,6 +425,15 @@ impl ::re_types_core::Archetype for Transform3D {
         } else {
             None
         };
+        let invalid = if let Some(array) = arrays_by_name.get("rerun.components.InvalidTransform") {
+            <crate::components::InvalidTransform>::from_arrow2_opt(&**array)
+                .with_context("rerun.archetypes.Transform3D#invalid")?
+                .into_iter()
+                .next()
+                .flatten()
+        } else {
+            None
+        };
         let axis_length = if let Some(array) = arrays_by_name.get("rerun.components.AxisLength") {
             <crate::components::AxisLength>::from_arrow2_opt(&**array)
                 .with_context("rerun.archetypes.Transform3D#axis_length")?
@@ -422,6 +450,7 @@ impl ::re_types_core::Archetype for Transform3D {
             scale,
             mat3x3,
             relation,
+            invalid,
             axis_length,
         })
     }
@@ -493,6 +522,16 @@ impl ::re_types_core::AsComponents for Transform3D {
                     }),
                 }
             }),
+            (Some(&self.invalid as &dyn ComponentBatch)).map(|batch| {
+                ::re_types_core::ComponentBatchCowWithDescriptor {
+                    batch: batch.into(),
+                    descriptor_override: Some(ComponentDescriptor {
+                        archetype_name: Some("rerun.archetypes.Transform3D".into()),
+                        archetype_field_name: Some(("invalid").into()),
+                        component_name: ("rerun.components.InvalidTransform").into(),
+                    }),
+                }
+            }),
             (Some(&self.axis_length as &dyn ComponentBatch)).map(|batch| {
                 ::re_types_core::ComponentBatchCowWithDescriptor {
                     batch: batch.into(),
@@ -523,6 +562,7 @@ impl Transform3D {
             scale: None,
             mat3x3: None,
             relation: None,
+            invalid: None,
             axis_length: None,
         }
     }
@@ -581,6 +621,19 @@ impl Transform3D {
         self
     }
 
+    /// Optionally flags the transform as invalid.
+    ///
+    /// Specifies that the entity path at which this is logged is spatially disconnected from its parent,
+    /// making it impossible to transform the entity path into its parent's space and vice versa.
+    /// This can be useful for instance to express temporily unknown transforms.
+    ///
+    /// By default all transforms are considered valid.
+    #[inline]
+    pub fn with_invalid(mut self, invalid: impl Into<crate::components::InvalidTransform>) -> Self {
+        self.invalid = Some(invalid.into());
+        self
+    }
+
     /// Visual length of the 3 axes.
     ///
     /// The length is interpreted in the local coordinate system of the transform.
@@ -604,6 +657,7 @@ impl ::re_types_core::SizeBytes for Transform3D {
             + self.scale.heap_size_bytes()
             + self.mat3x3.heap_size_bytes()
             + self.relation.heap_size_bytes()
+            + self.invalid.heap_size_bytes()
             + self.axis_length.heap_size_bytes()
     }
 
@@ -615,6 +669,7 @@ impl ::re_types_core::SizeBytes for Transform3D {
             && <Option<crate::components::Scale3D>>::is_pod()
             && <Option<crate::components::TransformMat3x3>>::is_pod()
             && <Option<crate::components::TransformRelation>>::is_pod()
+            && <Option<crate::components::InvalidTransform>>::is_pod()
             && <Option<crate::components::AxisLength>>::is_pod()
     }
 }

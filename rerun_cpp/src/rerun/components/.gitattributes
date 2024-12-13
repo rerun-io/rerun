@@ -32,6 +32,7 @@ half_size3d.hpp linguist-generated=true
 image_buffer.hpp linguist-generated=true
 image_format.hpp linguist-generated=true
 image_plane_distance.hpp linguist-generated=true
+invalid_transform.hpp linguist-generated=true
 keypoint_id.hpp linguist-generated=true
 lat_lon.hpp linguist-generated=true
 length.hpp linguist-generated=true

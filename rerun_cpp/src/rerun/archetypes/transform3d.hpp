@@ -7,6 +7,7 @@
 #include "../compiler_utils.hpp"
 #include "../component_batch.hpp"
 #include "../components/axis_length.hpp"
+#include "../components/invalid_transform.hpp"
 #include "../components/rotation_axis_angle.hpp"
 #include "../components/rotation_quat.hpp"
 #include "../components/scale3d.hpp"
@@ -168,6 +169,15 @@ namespace rerun::archetypes {
 
         /// Specifies the relation this transform establishes between this entity and its parent.
         std::optional<rerun::components::TransformRelation> relation;
+
+        /// Optionally flags the transform as invalid.
+        ///
+        /// Specifies that the entity path at which this is logged is spatially disconnected from its parent,
+        /// making it impossible to transform the entity path into its parent's space and vice versa.
+        /// This can be useful for instance to express temporily unknown transforms.
+        ///
+        /// By default all transforms are considered valid.
+        std::optional<rerun::components::InvalidTransform> invalid;
 
         /// Visual length of the 3 axes.
         ///
@@ -556,6 +566,19 @@ namespace rerun::archetypes {
         /// Specifies the relation this transform establishes between this entity and its parent.
         Transform3D with_relation(rerun::components::TransformRelation _relation) && {
             relation = std::move(_relation);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// Optionally flags the transform as invalid.
+        ///
+        /// Specifies that the entity path at which this is logged is spatially disconnected from its parent,
+        /// making it impossible to transform the entity path into its parent's space and vice versa.
+        /// This can be useful for instance to express temporily unknown transforms.
+        ///
+        /// By default all transforms are considered valid.
+        Transform3D with_invalid(rerun::components::InvalidTransform _invalid) && {
+            invalid = std::move(_invalid);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

@@ -11,6 +11,7 @@
 #![allow(clippy::redundant_closure)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
+#![allow(deprecated)]
 
 use ::re_types_core::external::arrow2;
 use ::re_types_core::SerializationResult;
@@ -62,6 +63,9 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// </picture>
 /// </center>
 #[derive(Clone, Debug, Copy, PartialEq, Eq)]
+#[deprecated(
+    note = "Use [archetypes.Transform3D] with [rerun.components.InvalidTransform] instead."
+)]
 pub struct DisconnectedSpace {
     /// Whether the entity path at which this is logged is disconnected from its parent.
     pub disconnected_space: crate::components::DisconnectedSpace,

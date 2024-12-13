@@ -146,6 +146,7 @@ class Transform3D(Transform3DExt, Archetype):
             scale=None,  # type: ignore[arg-type]
             mat3x3=None,  # type: ignore[arg-type]
             relation=None,  # type: ignore[arg-type]
+            invalid=None,  # type: ignore[arg-type]
             axis_length=None,  # type: ignore[arg-type]
         )
 
@@ -207,6 +208,21 @@ class Transform3D(Transform3DExt, Archetype):
         converter=components.TransformRelationBatch._required,  # type: ignore[misc]
     )
     # Specifies the relation this transform establishes between this entity and its parent.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    invalid: components.InvalidTransformBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=components.InvalidTransformBatch._required,  # type: ignore[misc]
+    )
+    # Optionally flags the transform as invalid.
+    #
+    # Specifies that the entity path at which this is logged is spatially disconnected from its parent,
+    # making it impossible to transform the entity path into its parent's space and vice versa.
+    # This can be useful for instance to express temporily unknown transforms.
+    #
+    # By default all transforms are considered valid.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

@@ -23,7 +23,7 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`Color`](components/color.md): An RGBA color with unmultiplied/separate alpha, in sRGB gamma space with linear alpha.
 * [`Colormap`](components/colormap.md): Colormap for mapping scalar values within a given range to a color.
 * [`DepthMeter`](components/depth_meter.md): The world->depth map scaling factor.
-* [`DisconnectedSpace`](components/disconnected_space.md): Spatially disconnect this entity from its parent.
+* ⚠️ _deprecated_ [`DisconnectedSpace`](components/disconnected_space.md): Spatially disconnect this entity from its parent.
 * [`DrawOrder`](components/draw_order.md): Draw order of 2D elements. Higher values are drawn on top of lower values.
 * [`EntityPath`](components/entity_path.md): A path to an entity, usually to reference some data that is part of the target entity.
 * [`FillMode`](components/fill_mode.md): How a geometric shape is drawn and colored.
@@ -38,6 +38,7 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`ImageBuffer`](components/image_buffer.md): A buffer that is known to store image data.
 * [`ImageFormat`](components/image_format.md): The metadata describing the contents of a [`components.ImageBuffer`](https://rerun.io/docs/reference/types/components/image_buffer).
 * [`ImagePlaneDistance`](components/image_plane_distance.md): The distance from the camera origin to the image plane when the projection is shown in a 3D viewer.
+* [`InvalidTransform`](components/invalid_transform.md): Flags the transform at its entity path as invalid.
 * [`KeypointId`](components/keypoint_id.md): A 16-bit ID representing a type of semantic keypoint within a class.
 * [`LatLon`](components/lat_lon.md): A geospatial position expressed in [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees).
 * [`Length`](components/length.md): Length, or one-dimensional size.

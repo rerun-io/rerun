@@ -65,3 +65,14 @@ Previously, the viewer would show 3 arrows for every logged transform if any of 
 For many usecases this led to too many arrows being shown by default.
 We therefore removed the last condition - arrows will no longer show by default if they're the only visualizer.
 The easiest way to opt-in to transform arrows is to set `AxisLength` (`axis_length` field on the `Transform3D` archetype) on your transforms.
+
+### `DisconnectedSpace` archetype/component deprecated in favor of `InvalidTransform`
+
+The `DisconnectedSpace` archetype and `DisconnectedSpace` component have been deprecated in favor of the `InvalidTransform` component which is part of the `Transform3D` component.
+
+Previously, the `DisconnectedSpace` archetype played a double role by governing view spawn heuristics & being used as a transform placeholder.
+This caused a lot of complexity and often broke or caused confusion (see https://github.com/rerun-io/rerun/issues/6817, https://github.com/rerun-io/rerun/issues/4465, https://github.com/rerun-io/rerun/issues/4221).
+By now, explicit blueprints offer a better way to express which views should be spawned and what content they should query.
+(you can learn more about blueprints [here](https://rerun.io/docs/getting-started/configure-the-viewer/through-code-tutorial)).
+
+`DisconnectedSpace` will be removed in a future release.
