@@ -206,15 +206,22 @@ impl DragAndDropManager {
                     egui::UiBuilder::new().layer_id(layer_id),
                 );
 
-                ui.set_opacity(0.7);
-
                 let feedback = *self.feedback.lock();
 
                 match feedback {
-                    DragAndDropFeedback::Accept | DragAndDropFeedback::Ignore => {
-                        ctx.set_cursor_icon(egui::CursorIcon::Grabbing)
+                    DragAndDropFeedback::Accept => {
+                        ctx.set_cursor_icon(egui::CursorIcon::Grabbing);
+                        ui.set_opacity(0.8);
                     }
-                    DragAndDropFeedback::Reject => ctx.set_cursor_icon(egui::CursorIcon::NoDrop),
+
+                    DragAndDropFeedback::Ignore => {
+                        ctx.set_cursor_icon(egui::CursorIcon::Grabbing);
+                        ui.set_opacity(0.5);
+                    }
+                    DragAndDropFeedback::Reject => {
+                        ctx.set_cursor_icon(egui::CursorIcon::NoDrop);
+                        ui.set_opacity(0.5);
+                    }
                 }
 
                 let payload_is_currently_droppable = feedback == DragAndDropFeedback::Accept;
@@ -254,6 +261,8 @@ fn drag_pill_frame(droppable: bool) -> egui::Frame {
             top: 5.0,
             bottom: 4.0,
         },
+        //TODO(ab): needed to avoid the pill being cropped, not sure why?
+        outer_margin: egui::Margin::same(1.0),
         ..Default::default()
     }
 }
