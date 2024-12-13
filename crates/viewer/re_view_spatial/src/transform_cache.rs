@@ -49,6 +49,8 @@ pub struct CachedTransformsPerTimeline {
 pub struct PerTimelinePerEntityTransforms {
     timeline: Timeline,
     entity_path: EntityPath,
+
+    // TODO: some of these are exceedingly rare. do we need all that memory?
     tree_transforms: BTreeMap<TimeInt, CacheEntry<glam::Affine3A>>,
     pose_transforms: BTreeMap<TimeInt, CacheEntry<Vec<glam::Affine3A>>>,
     pinhole_projections: BTreeMap<TimeInt, CacheEntry<ResolvedPinholeProjection>>,
@@ -220,15 +222,16 @@ impl PerStoreChunkSubscriber for TransformCacheStoreSubscriber {
         re_tracing::profile_function!();
 
         for event in events {
-            // TODO:???
-            // if event.compacted.is_some() {
-            //     // Compactions don't change the data.
-            //     continue;
-            // }
+            if event.compacted.is_some() {
+                // Compactions don't change the data.
+                continue;
+            }
             if event.kind == re_chunk_store::ChunkStoreDiffKind::Deletion {
                 // Not participating in GC for now.
                 continue;
             }
+
+            // TODO: do a quicker check for nothing happening.
 
             let has_tree_transforms = event
                 .chunk
@@ -238,7 +241,6 @@ impl PerStoreChunkSubscriber for TransformCacheStoreSubscriber {
                 .chunk
                 .component_names()
                 .any(|component_name| self.pose_components.contains(&component_name));
-
             let has_pinhole_or_view_coordinates =
                 event.chunk.component_names().any(|component_name| {
                     component_name == components::PinholeProjection::name()
