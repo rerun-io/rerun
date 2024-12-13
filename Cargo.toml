@@ -560,13 +560,13 @@ significant_drop_tightening = "allow" # An update of parking_lot made this trigg
 # As a last resport, patch with a commit to our own repository.
 # ALWAYS document what PR the commit hash is part of, or when it was merged into the upstream trunk.
 
-ecolor = { git = "https://github.com/emilk/egui.git", rev = "13352d606496d7b1c5fd6fcfbe3c85baae39c040" }       # egui master 2024-12-09
-eframe = { git = "https://github.com/emilk/egui.git", rev = "13352d606496d7b1c5fd6fcfbe3c85baae39c040" }       # egui master 2024-12-09
-egui = { git = "https://github.com/emilk/egui.git", rev = "13352d606496d7b1c5fd6fcfbe3c85baae39c040" }         # egui master 2024-12-09
-egui_extras = { git = "https://github.com/emilk/egui.git", rev = "13352d606496d7b1c5fd6fcfbe3c85baae39c040" }  # egui master 2024-12-09
-egui_kittest = { git = "https://github.com/emilk/egui.git", rev = "13352d606496d7b1c5fd6fcfbe3c85baae39c040" } # egui master 2024-12-09
-egui-wgpu = { git = "https://github.com/emilk/egui.git", rev = "13352d606496d7b1c5fd6fcfbe3c85baae39c040" }    # egui master 2024-12-09
-emath = { git = "https://github.com/emilk/egui.git", rev = "13352d606496d7b1c5fd6fcfbe3c85baae39c040" }        # egui master 2024-12-09
+ecolor = { git = "https://github.com/emilk/egui.git", rev = "87a4f5d299f2e7075bf541c60cdef6d5a19a60dd" }       # TODO: update to egui master
+eframe = { git = "https://github.com/emilk/egui.git", rev = "87a4f5d299f2e7075bf541c60cdef6d5a19a60dd" }       # TODO: update to egui master
+egui = { git = "https://github.com/emilk/egui.git", rev = "87a4f5d299f2e7075bf541c60cdef6d5a19a60dd" }         # TODO: update to egui master
+egui_extras = { git = "https://github.com/emilk/egui.git", rev = "87a4f5d299f2e7075bf541c60cdef6d5a19a60dd" }  # TODO: update to egui master
+egui_kittest = { git = "https://github.com/emilk/egui.git", rev = "87a4f5d299f2e7075bf541c60cdef6d5a19a60dd" } # TODO: update to egui master
+egui-wgpu = { git = "https://github.com/emilk/egui.git", rev = "87a4f5d299f2e7075bf541c60cdef6d5a19a60dd" }    # TODO: update to egui master
+emath = { git = "https://github.com/emilk/egui.git", rev = "87a4f5d299f2e7075bf541c60cdef6d5a19a60dd" }        # TODO: update to egui master
 
 # Useful while developing:
 # ecolor = { path = "../../egui/crates/ecolor" }
