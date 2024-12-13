@@ -666,7 +666,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <PoseRotationQuat as Component>::name(),
             ComponentReflection {
-                docstring_md: "A 3D rotation expressed as a quaternion that doesn't propagate in the transform hierarchy.\n\nNote: although the x,y,z,w components of the quaternion will be passed through to the\ndatastore as provided, when used in the Viewer, quaternions will always be normalized.",
+                docstring_md: "A 3D rotation expressed as a quaternion that doesn't propagate in the transform hierarchy.\n\nNote: although the x,y,z,w components of the quaternion will be passed through to the\ndatastore as provided, when used in the Viewer, quaternions will always be normalized.\nIf normalization fails the rotation is silently ignored.",
                 custom_placeholder: Some(PoseRotationQuat::default().to_arrow2()?),
                 datatype: PoseRotationQuat::arrow2_datatype(),
             },
@@ -754,7 +754,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <RotationQuat as Component>::name(),
             ComponentReflection {
-                docstring_md: "A 3D rotation expressed as a quaternion.\n\nNote: although the x,y,z,w components of the quaternion will be passed through to the\ndatastore as provided, when used in the Viewer, quaternions will always be normalized.",
+                docstring_md: "A 3D rotation expressed as a quaternion.\n\nNote: although the x,y,z,w components of the quaternion will be passed through to the\ndatastore as provided, when used in the Viewer, quaternions will always be normalized.\nIf normalization fails the rotation is silently ignored.",
                 custom_placeholder: Some(RotationQuat::default().to_arrow2()?),
                 datatype: RotationQuat::arrow2_datatype(),
             },

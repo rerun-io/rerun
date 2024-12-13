@@ -36,8 +36,10 @@ impl Quaternion {
 impl From<Quaternion> for glam::Quat {
     #[inline]
     fn from(q: Quaternion) -> Self {
-        let [x, y, z, w] = q.0;
-        Self::from_xyzw(x, y, z, w).normalize()
+        let Some(normalized) = glam::Vec4::from(q.0).try_normalize() else {
+            return Self::IDENTITY;
+        };
+        Self::from_vec4(normalized)
     }
 }
 

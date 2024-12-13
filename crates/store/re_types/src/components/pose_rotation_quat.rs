@@ -22,6 +22,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// Note: although the x,y,z,w components of the quaternion will be passed through to the
 /// datastore as provided, when used in the Viewer, quaternions will always be normalized.
+/// If normalization fails the rotation is silently ignored.
 #[derive(Clone, Debug, Default, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(transparent)]
 pub struct PoseRotationQuat(pub crate::datatypes::Quaternion);

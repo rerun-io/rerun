@@ -24,8 +24,8 @@ pub struct RotationAxisAngle {
     /// Axis to rotate around.
     ///
     /// This is not required to be normalized.
-    /// If normalization fails (typically because the vector is length zero), the rotation is silently
-    /// ignored.
+    /// If normalization fails (typically because the vector is length zero),
+    /// the rotation is silently ignored.
     pub axis: crate::datatypes::Vec3D,
 
     /// How much to rotate around the axis.

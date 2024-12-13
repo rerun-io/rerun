@@ -12,8 +12,8 @@ Type: [`Vec3D`](../datatypes/vec3d.md)
 Axis to rotate around.
 
 This is not required to be normalized.
-If normalization fails (typically because the vector is length zero), the rotation is silently
-ignored.
+If normalization fails (typically because the vector is length zero),
+the rotation is silently ignored.
 
 #### `angle`
 Type: [`Angle`](../datatypes/angle.md)

@@ -36,8 +36,8 @@ class RotationAxisAngle(RotationAxisAngleExt):
     # Axis to rotate around.
     #
     # This is not required to be normalized.
-    # If normalization fails (typically because the vector is length zero), the rotation is silently
-    # ignored.
+    # If normalization fails (typically because the vector is length zero),
+    # the rotation is silently ignored.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
