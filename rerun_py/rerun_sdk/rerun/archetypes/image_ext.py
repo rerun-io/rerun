@@ -48,7 +48,7 @@ def _to_numpy(tensor: ImageLike) -> npt.NDArray[Any]:
 
     try:
         # Make available to the cpu
-        return tensor.numpy(force=True)  # type: ignore[union-attr]
+        return tensor.numpy(force=True)  # type: ignore[union-attr, no-any-return]
     except AttributeError:
         return np.array(tensor, copy=False)
 
