@@ -315,6 +315,8 @@ async fn stream_catalog_async(
     re_log::info!("Starting to read...");
     while let Some(result) = resp.next().await {
         let mut tc = result.map_err(TonicStatusError)?;
+        // received TransportChunk doesn't have ChunkId, hence we need to add it before converting
+        // to Chunk
         tc.schema.metadata.insert(
             TransportChunk::CHUNK_METADATA_KEY_ID.to_owned(),
             ChunkId::new().to_string(),
