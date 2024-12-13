@@ -1,7 +1,7 @@
+use re_protos::missing_field;
+use re_protos::TypeConversionError;
 use std::collections::BTreeMap;
 use std::collections::BTreeSet;
-
-use re_protos::TypeConversionError;
 
 impl TryFrom<re_protos::common::v0::ComponentColumnSelector> for crate::ComponentColumnSelector {
     type Error = TypeConversionError;
@@ -11,16 +11,16 @@ impl TryFrom<re_protos::common::v0::ComponentColumnSelector> for crate::Componen
     ) -> Result<Self, Self::Error> {
         let entity_path = value
             .entity_path
-            .ok_or(TypeConversionError::missing_field(
-                "rerun.common.v0.ComponentColumnSelector",
+            .ok_or(missing_field!(
+                re_protos::common::v0::ComponentColumnSelector,
                 "entity_path",
             ))?
             .try_into()?;
 
         let component_name = value
             .component
-            .ok_or(TypeConversionError::missing_field(
-                "rerun.common.v0.ComponentColumnSelector",
+            .ok_or(missing_field!(
+                re_protos::common::v0::ComponentColumnSelector,
                 "component",
             ))?
             .name;
@@ -36,8 +36,8 @@ impl TryFrom<re_protos::common::v0::TimeColumnSelector> for crate::TimeColumnSel
     type Error = TypeConversionError;
 
     fn try_from(value: re_protos::common::v0::TimeColumnSelector) -> Result<Self, Self::Error> {
-        let timeline = value.timeline.ok_or(TypeConversionError::missing_field(
-            "rerun.common.v0.TimeColumnSelector",
+        let timeline = value.timeline.ok_or(missing_field!(
+            re_protos::common::v0::TimeColumnSelector,
             "timeline",
         ))?;
 
@@ -51,12 +51,10 @@ impl TryFrom<re_protos::common::v0::ColumnSelector> for crate::ColumnSelector {
     type Error = TypeConversionError;
 
     fn try_from(value: re_protos::common::v0::ColumnSelector) -> Result<Self, Self::Error> {
-        match value
-            .selector_type
-            .ok_or(TypeConversionError::missing_field(
-                "rerun.common.v0.ColumnSelector",
-                "selector_type",
-            ))? {
+        match value.selector_type.ok_or(missing_field!(
+            re_protos::common::v0::ColumnSelector,
+            "selector_type",
+        ))? {
             re_protos::common::v0::column_selector::SelectorType::ComponentColumn(
                 component_column_selector,
             ) => {
@@ -115,8 +113,8 @@ impl TryFrom<re_protos::common::v0::ViewContents> for crate::ViewContentsSelecto
             .map(|part| {
                 let entity_path: re_log_types::EntityPath = part
                     .path
-                    .ok_or(TypeConversionError::missing_field(
-                        "rerun.common.v0.ViewContentsPart",
+                    .ok_or(missing_field!(
+                        re_protos::common::v0::ViewContentsPart,
                         "path",
                     ))?
                     .try_into()?;
@@ -139,8 +137,8 @@ impl TryFrom<re_protos::common::v0::Query> for crate::QueryExpression {
     fn try_from(value: re_protos::common::v0::Query) -> Result<Self, Self::Error> {
         let filtered_index = value
             .filtered_index
-            .ok_or(TypeConversionError::missing_field(
-                "rerun.common.v0.Query",
+            .ok_or(missing_field!(
+                re_protos::common::v0::Query,
                 "filtered_index",
             ))?
             .try_into()?;

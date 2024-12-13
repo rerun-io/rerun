@@ -56,8 +56,6 @@ impl MeshCache {
         mesh: AnyMesh<'_>,
         render_ctx: &RenderContext,
     ) -> Option<Arc<LoadedMesh>> {
-        re_tracing::profile_function!();
-
         self.0
             .entry(key.versioned_instance_path_hash.row_id)
             .or_default()

@@ -94,7 +94,7 @@ fn draw_circle_label(
     let &CircleLabel { radius, color } = label;
     let visuals = &ui.style().visuals.clone();
 
-    let (resp, painter) = ui.allocate_painter(Vec2::splat(radius * 2.0), Sense::click());
+    let (resp, painter) = ui.allocate_painter(Vec2::splat(radius * 2.0), Sense::hover());
     painter.circle(
         resp.rect.center(),
         radius,
@@ -132,13 +132,9 @@ fn draw_text_label(ui: &mut Ui, label: &TextLabel, highlight: InteractionHighlig
         .stroke(stroke)
         .fill(bg)
         .show(ui, |ui| {
-            ui.add(
-                egui::Label::new(galley.clone())
-                    .selectable(false)
-                    .sense(Sense::click()),
-            )
+            ui.add(egui::Label::new(galley.clone()).selectable(false))
         })
-        .response
+        .inner
 }
 
 /// Draws a node at the given position.
@@ -148,15 +144,18 @@ fn draw_node(
     node: &DrawableLabel,
     highlight: InteractionHighlight,
 ) -> Response {
-    let builder = UiBuilder::new().max_rect(Rect::from_center_size(center, node.size()));
-    let mut node_ui = ui.new_child(builder);
+    let builder = UiBuilder::new()
+        .max_rect(Rect::from_center_size(center, node.size()))
+        .sense(Sense::click());
 
-    // TODO(grtlr): handle highlights
+    let mut node_ui = ui.new_child(builder);
 
     match node {
         DrawableLabel::Circle(label) => draw_circle_label(&mut node_ui, label, highlight),
         DrawableLabel::Text(label) => draw_text_label(&mut node_ui, label, highlight),
-    }
+    };
+
+    node_ui.response()
 }
 
 /// Draws a bounding box, as well as a basic coordinate system.
@@ -299,9 +298,10 @@ pub fn draw_graph(
 
                 let instance_path =
                     InstancePath::instance(entity_path.clone(), instance.instance_index);
-                ctx.select_hovered_on_click(
+                ctx.handle_select_hover_drag_interactions(
                     &response,
                     Item::DataResult(query.view_id, instance_path.clone()),
+                    false,
                 );
 
                 response = response.on_hover_ui_at_pointer(|ui| {
@@ -346,9 +346,10 @@ pub fn draw_graph(
             let resp = draw_entity_rect(ui, *rect, entity_path, &query.highlights);
             current_rect = current_rect.union(resp.rect);
             let instance_path = InstancePath::entity_all(entity_path.clone());
-            ctx.select_hovered_on_click(
+            ctx.handle_select_hover_drag_interactions(
                 &resp,
-                vec![(Item::DataResult(query.view_id, instance_path), None)].into_iter(),
+                Item::DataResult(query.view_id, instance_path),
+                false,
             );
         }
     }

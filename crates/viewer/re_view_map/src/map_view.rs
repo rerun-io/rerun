@@ -481,9 +481,10 @@ fn handle_ui_interactions(
             });
         });
 
-        ctx.select_hovered_on_click(
+        ctx.handle_select_hover_drag_interactions(
             &map_response,
             Item::DataResult(query.view_id, instance_path.clone()),
+            false,
         );
 
         // double click selects the entire entity

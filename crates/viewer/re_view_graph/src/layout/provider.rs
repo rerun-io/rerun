@@ -218,9 +218,6 @@ impl ForceLayoutProvider {
                             // Multiple edges occupy the same space, so we fan them out.
                             let num_edges = edges.len();
 
-                            // Controls the amount of space (in scene coordinates) that a slot can occupy.
-                            let fan_amount = 20.0;
-
                             for (i, edge) in edges.iter().enumerate() {
                                 let source_rect = layout.nodes[slot_source];
                                 let target_rect = layout.nodes[slot_target];
@@ -230,24 +227,22 @@ impl ForceLayoutProvider {
                                 let source_pos = source_rect.intersects_ray_from_center(d);
                                 let target_pos = target_rect.intersects_ray_from_center(-d);
 
+                                let delta = target_pos - source_pos;
+
+                                // Controls the amount of space (in scene coordinates) that a slot can occupy.
+                                let fan_amount = (delta.length() * 0.3).min(40.);
+
                                 // How far along the edge should the control points be?
-                                let c1_base = source_pos + (target_pos - source_pos) * 0.25;
-                                let c2_base = source_pos + (target_pos - source_pos) * 0.75;
+                                let c1_base = source_pos + delta * 0.25;
+                                let c2_base = source_pos + delta * 0.75;
 
-                                let c1_base_n = Vec2::new(-c1_base.y, c1_base.x).normalized();
-                                let mut c2_base_n = Vec2::new(-c2_base.y, c2_base.x).normalized();
+                                let base_n = Vec2::new(-delta.y, delta.x).normalized();
 
-                                // Make sure both point to the same side of the edge.
-                                if c1_base_n.dot(c2_base_n) < 0.0 {
-                                    // If they point in opposite directions, flip one of them.
-                                    c2_base_n = -c2_base_n;
-                                }
+                                let c1_left = c1_base + base_n * (fan_amount / 2.);
+                                let c2_left = c2_base + base_n * (fan_amount / 2.);
 
-                                let c1_left = c1_base + c1_base_n * (fan_amount / 2.);
-                                let c2_left = c2_base + c2_base_n * (fan_amount / 2.);
-
-                                let c1_right = c1_base - c1_base_n * (fan_amount / 2.);
-                                let c2_right = c2_base - c2_base_n * (fan_amount / 2.);
+                                let c1_right = c1_base - base_n * (fan_amount / 2.);
+                                let c2_right = c2_base - base_n * (fan_amount / 2.);
 
                                 // Calculate an offset for the control points based on index `i`, spreading points equidistantly.
                                 let t = (i as f32) / (num_edges - 1) as f32;

@@ -380,17 +380,15 @@ SECTION_TABLE: Final[list[Section]] = [
         mod_path="rerun.utilities",
         show_submodules=True,
     ),
-    Section(
-        title="Experimental",
-        func_list=[
-            "add_space_view",
-            "new_blueprint",
-            "set_auto_views",
-            "set_panels",
-        ],
-        show_tables=False,
-        mod_path="rerun.experimental",
-    ),
+    # We don't have any experimental apis right now, but when you add one again, you should add this here:
+    # Section(
+    #     title="Experimental",
+    #     func_list=[
+    #         "my_experimental_function",
+    #     ],
+    #     show_tables=False,
+    #     mod_path="rerun.experimental",
+    # ),
 ]
 
 

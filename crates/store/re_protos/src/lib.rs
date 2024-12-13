@@ -24,6 +24,9 @@ mod v0 {
     #[path = "./rerun.common.v0.rs"]
     pub mod rerun_common_v0;
 
+    #[path = "./rerun.log_msg.v0.rs"]
+    pub mod rerun_log_msg_v0;
+
     #[path = "./rerun.remote_store.v0.rs"]
     pub mod rerun_remote_store_v0;
 }
@@ -31,6 +34,12 @@ mod v0 {
 pub mod common {
     pub mod v0 {
         pub use crate::v0::rerun_common_v0::*;
+    }
+}
+
+pub mod log_msg {
+    pub mod v0 {
+        pub use crate::v0::rerun_log_msg_v0::*;
     }
 }
 
@@ -43,14 +52,16 @@ pub mod remote_store {
 
 #[derive(Debug, thiserror::Error)]
 pub enum TypeConversionError {
-    #[error("missing required field: {type_name}.{field_name}")]
+    #[error("missing required field: {package_name}.{type_name}.{field_name}")]
     MissingField {
+        package_name: &'static str,
         type_name: &'static str,
         field_name: &'static str,
     },
 
-    #[error("invalid value for field {type_name}.{field_name}: {reason}")]
+    #[error("invalid value for field {package_name}.{type_name}.{field_name}: {reason}")]
     InvalidField {
+        package_name: &'static str,
         type_name: &'static str,
         field_name: &'static str,
         reason: String,
@@ -67,10 +78,37 @@ pub enum TypeConversionError {
 }
 
 impl TypeConversionError {
-    pub fn missing_field(type_name: &'static str, field_name: &'static str) -> Self {
+    #[inline]
+    pub fn missing_field<T: prost::Name>(field_name: &'static str) -> Self {
         Self::MissingField {
-            type_name,
+            package_name: T::PACKAGE,
+            type_name: T::NAME,
             field_name,
         }
     }
+
+    #[allow(clippy::needless_pass_by_value)] // false-positive
+    #[inline]
+    pub fn invalid_field<T: prost::Name>(field_name: &'static str, reason: &impl ToString) -> Self {
+        Self::InvalidField {
+            package_name: T::PACKAGE,
+            type_name: T::NAME,
+            field_name,
+            reason: reason.to_string(),
+        }
+    }
+}
+
+#[macro_export]
+macro_rules! missing_field {
+    ($type:ty, $field:expr $(,)?) => {
+        $crate::TypeConversionError::missing_field::<$type>($field)
+    };
+}
+
+#[macro_export]
+macro_rules! invalid_field {
+    ($type:ty, $field:expr, $reason:expr $(,)?) => {
+        $crate::TypeConversionError::invalid_field::<$type>($field, &$reason)
+    };
 }

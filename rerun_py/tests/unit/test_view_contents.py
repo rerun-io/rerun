@@ -8,7 +8,7 @@ from rerun.blueprint.components.query_expression import QueryExpression, QueryEx
 from rerun.datatypes.utf8 import Utf8ArrayLike
 
 
-def test_space_view_contents() -> None:
+def test_view_contents() -> None:
     query_array = [
         [
             "+ /**",

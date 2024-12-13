@@ -5,12 +5,12 @@ mod address;
 pub use address::{InvalidRedapAddress, RedapAddress};
 use re_chunk::external::arrow2;
 use re_log_types::external::re_types_core::ComponentDescriptor;
+use re_types::blueprint::archetypes::{ContainerBlueprint, ViewportBlueprint};
 use re_types::blueprint::archetypes::{ViewBlueprint, ViewContents};
+use re_types::blueprint::components::{ContainerKind, RootContainer};
 use re_types::components::RecordingUri;
 use re_types::external::uuid;
 use re_types::Component;
-use re_types_blueprint::blueprint::archetypes::{ContainerBlueprint, ViewportBlueprint};
-use re_types_blueprint::blueprint::components::{ContainerKind, RootContainer};
 use url::Url;
 
 // ----------------------------------------------------------------------------
@@ -167,7 +167,8 @@ async fn stream_recording_async(
             .connect()
             .await?;
 
-        StorageNodeClient::new(tonic_client)
+        // TODO(#8411): figure out the right size for this
+        StorageNodeClient::new(tonic_client).max_decoding_message_size(usize::MAX)
     };
 
     re_log::debug!("Fetching {recording_id}…");

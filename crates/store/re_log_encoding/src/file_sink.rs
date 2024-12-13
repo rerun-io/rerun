@@ -61,7 +61,7 @@ impl FileSink {
     /// Start writing log messages to a file at the given path.
     pub fn new(path: impl Into<std::path::PathBuf>) -> Result<Self, FileSinkError> {
         // We always compress on disk
-        let encoding_options = crate::EncodingOptions::COMPRESSED;
+        let encoding_options = crate::EncodingOptions::MSGPACK_COMPRESSED;
 
         let (tx, rx) = std::sync::mpsc::channel();
 
@@ -91,7 +91,7 @@ impl FileSink {
 
     /// Start writing log messages to standard output.
     pub fn stdout() -> Result<Self, FileSinkError> {
-        let encoding_options = crate::EncodingOptions::COMPRESSED;
+        let encoding_options = crate::EncodingOptions::MSGPACK_COMPRESSED;
 
         let (tx, rx) = std::sync::mpsc::channel();
 

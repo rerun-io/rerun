@@ -14,7 +14,7 @@ use re_chunk_store::RangeQuery;
 use re_log_types::{ComponentPath, ResolvedTimeRange, TimeInt, Timeline};
 use re_viewer_context::{Item, TimeControl, UiLayout, ViewerContext};
 
-use crate::recursive_chunks_per_timeline_subscriber::PathRecursiveChunksPerTimeline;
+use crate::recursive_chunks_per_timeline_subscriber::PathRecursiveChunksPerTimelineStoreSubscriber;
 use crate::TimePanelItem;
 
 use super::time_ranges_ui::TimeRangesUi;
@@ -472,27 +472,33 @@ pub fn build_density_graph<'a>(
                 total_num_events,
             )
         } else {
-            PathRecursiveChunksPerTimeline::access(&store.id(), |chunks_per_timeline| {
-                let Some(info) = chunks_per_timeline
-                    .path_recursive_chunks_for_entity_and_timeline(&item.entity_path, &timeline)
-                else {
-                    return Default::default();
-                };
+            PathRecursiveChunksPerTimelineStoreSubscriber::access(
+                &store.id(),
+                |chunks_per_timeline| {
+                    let Some(info) = chunks_per_timeline
+                        .path_recursive_chunks_for_entity_and_timeline(
+                            &item.entity_path,
+                            &timeline,
+                        )
+                    else {
+                        return Default::default();
+                    };
 
-                (
-                    info.recursive_chunks_info
-                        .values()
-                        .map(|info| {
-                            (
-                                info.chunk.clone(),
-                                info.resolved_time_range,
-                                info.num_events,
-                            )
-                        })
-                        .collect(),
-                    info.total_num_events,
-                )
-            })
+                    (
+                        info.recursive_chunks_info
+                            .values()
+                            .map(|info| {
+                                (
+                                    info.chunk.clone(),
+                                    info.resolved_time_range,
+                                    info.num_events,
+                                )
+                            })
+                            .collect(),
+                        info.total_num_events,
+                    )
+                },
+            )
             .unwrap_or_default()
         }
     };

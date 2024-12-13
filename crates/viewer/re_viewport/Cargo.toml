@@ -32,7 +32,6 @@ re_renderer = { workspace = true, default-features = false, features = [
 re_view.workspace = true
 re_tracing.workspace = true
 re_types.workspace = true
-re_types_blueprint.workspace = true
 re_ui.workspace = true
 re_viewer_context.workspace = true
 re_viewport_blueprint.workspace = true

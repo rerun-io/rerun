@@ -25,7 +25,7 @@ pub fn load_blueprint_file(
 
         // Blueprint files change often. Be strict about the version, and then ignore any errors.
         // See https://github.com/rerun-io/rerun/issues/2830
-        let version_policy = re_log_encoding::decoder::VersionPolicy::Error;
+        let version_policy = re_log_encoding::VersionPolicy::Error;
 
         Ok(StoreBundle::from_rrd(version_policy, file)?)
     }

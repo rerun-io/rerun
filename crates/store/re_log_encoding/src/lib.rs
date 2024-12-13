@@ -2,10 +2,13 @@
 
 #[cfg(feature = "decoder")]
 pub mod decoder;
+
 #[cfg(feature = "encoder")]
 pub mod encoder;
 
 pub mod codec;
+
+mod protobuf_conversions;
 
 #[cfg(feature = "encoder")]
 #[cfg(not(target_arch = "wasm32"))]
@@ -13,6 +16,20 @@ mod file_sink;
 
 #[cfg(feature = "stream_from_http")]
 pub mod stream_rrd_from_http;
+
+/// How to handle version mismatches during decoding.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum VersionPolicy {
+    /// Warn if the versions don't match, but continue loading.
+    ///
+    /// We usually use this for loading `.rrd` recordings.
+    Warn,
+
+    /// Return an error if the versions aren't compatible.
+    ///
+    /// We usually use this for tests, and for loading `.rbl` blueprint files.
+    Error,
+}
 
 // ---------------------------------------------------------------------
 
@@ -45,6 +62,7 @@ pub enum Compression {
 #[repr(u8)]
 pub enum Serializer {
     MsgPack = 1,
+    Protobuf = 2,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -54,13 +72,17 @@ pub struct EncodingOptions {
 }
 
 impl EncodingOptions {
-    pub const UNCOMPRESSED: Self = Self {
+    pub const MSGPACK_UNCOMPRESSED: Self = Self {
         compression: Compression::Off,
         serializer: Serializer::MsgPack,
     };
-    pub const COMPRESSED: Self = Self {
+    pub const MSGPACK_COMPRESSED: Self = Self {
         compression: Compression::LZ4,
         serializer: Serializer::MsgPack,
+    };
+    pub const PROTOBUF_COMPRESSED: Self = Self {
+        compression: Compression::LZ4,
+        serializer: Serializer::Protobuf,
     };
 
     pub fn from_bytes(bytes: [u8; 4]) -> Result<Self, OptionsError> {
@@ -73,6 +95,7 @@ impl EncodingOptions {
                 };
                 let serializer = match serializer {
                     1 => Serializer::MsgPack,
+                    2 => Serializer::Protobuf,
                     _ => return Err(OptionsError::UnknownSerializer(serializer)),
                 };
                 Ok(Self {

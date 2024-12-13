@@ -28,7 +28,6 @@ re_log_types.workspace = true
 re_protos.workspace = true
 re_smart_channel.workspace = true
 re_types.workspace = true
-re_types_blueprint.workspace = true
 
 thiserror.workspace = true
 tokio-stream.workspace = true

@@ -60,7 +60,7 @@ impl FilterCommand {
             .collect();
 
         // TODO(cmc): might want to make this configurable at some point.
-        let version_policy = re_log_encoding::decoder::VersionPolicy::Warn;
+        let version_policy = re_log_encoding::VersionPolicy::Warn;
         let (rx_decoder, rx_size_bytes) =
             read_rrd_streams_from_file_or_stdin(version_policy, path_to_input_rrds);
 
@@ -83,7 +83,7 @@ impl FilterCommand {
                 let mut encoder = {
                     // TODO(cmc): encoding options & version should match the original.
                     let version = CrateVersion::LOCAL;
-                    let options = re_log_encoding::EncodingOptions::COMPRESSED;
+                    let options = re_log_encoding::EncodingOptions::MSGPACK_COMPRESSED;
                     re_log_encoding::encoder::DroppableEncoder::new(version, options, &mut rrd_out)
                         .context("couldn't init encoder")?
                 };

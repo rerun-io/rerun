@@ -21,6 +21,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Archetype**: Shared state for the 3 collapsible panels.
 #[derive(Clone, Debug, Default)]
 pub struct PanelBlueprint {
+    /// Current state of the panels.
     pub state: Option<crate::blueprint::components::PanelState>,
 }
 
@@ -166,6 +167,7 @@ impl PanelBlueprint {
         Self { state: None }
     }
 
+    /// Current state of the panels.
     #[inline]
     pub fn with_state(
         mut self,
