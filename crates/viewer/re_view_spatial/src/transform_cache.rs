@@ -12,7 +12,7 @@ use re_entity_db::EntityDb;
 use re_log_types::{EntityPath, EntityPathHash, StoreId, TimeInt, Timeline};
 use re_types::{
     components::{self},
-    Archetype as _, ComponentName,
+    Archetype as _, Component, ComponentName,
 };
 
 /// Store subscriber that resolves all transform components at a given entity to an affine transform.
@@ -49,34 +49,22 @@ pub struct CachedTransformsPerTimeline {
 pub struct PerTimelinePerEntityTransforms {
     timeline: Timeline,
     entity_path: EntityPath,
-    tree_transforms: BTreeMap<TimeInt, ResolvedTreeTransform>,
-    pose_transforms: BTreeMap<TimeInt, ResolvedInstancePoses>,
+    tree_transforms: BTreeMap<TimeInt, CacheEntry<glam::Affine3A>>,
+    pose_transforms: BTreeMap<TimeInt, CacheEntry<Vec<glam::Affine3A>>>,
+    pinhole_projections: BTreeMap<TimeInt, CacheEntry<ResolvedPinholeProjection>>,
 }
 
-#[derive(Default, Clone)]
-pub enum ResolvedTreeTransform {
-    /// There is a tree transform, and we have a cached value.
-    Cached(glam::Affine3A),
-
-    /// There is a tree transform, but we don't have anything cached.
+enum CacheEntry<T> {
+    Cached(T),
     Uncached,
-
-    /// There is no tree transform.
-    #[default]
+    // TODO: explain why we can't avoid this.
     None,
 }
 
-#[derive(Default, Clone)]
-pub enum ResolvedInstancePoses {
-    /// There are instance poses, and we have a cached value.
-    Cached(Vec<glam::Affine3A>),
-
-    /// There are instance poses, but we don't have anything cached.
-    Uncached,
-
-    /// There are no instance poses.
-    #[default]
-    None,
+#[derive(Clone)]
+pub struct ResolvedPinholeProjection {
+    pub image_from_camera: components::PinholeProjection,
+    pub view_coordinates: components::ViewCoordinates,
 }
 
 impl CachedTransformsPerTimeline {
@@ -104,19 +92,19 @@ impl PerTimelinePerEntityTransforms {
             .map(|(_time, transform)| transform)?;
 
         match tree_transform {
-            ResolvedTreeTransform::Cached(transform) => Some(*transform),
-            ResolvedTreeTransform::Uncached => {
+            CacheEntry::Cached(transform) => Some(*transform),
+            CacheEntry::Uncached => {
                 let transform =
                     query_and_resolve_tree_transform_at_entity(&self.entity_path, entity_db, query);
                 if let Some(transform) = transform {
-                    *tree_transform = ResolvedTreeTransform::Cached(transform);
+                    *tree_transform = CacheEntry::Cached(transform);
                     Some(transform)
                 } else {
-                    *tree_transform = ResolvedTreeTransform::None;
+                    *tree_transform = CacheEntry::None;
                     None
                 }
             }
-            ResolvedTreeTransform::None => None,
+            CacheEntry::None => None,
         }
     }
 
@@ -138,19 +126,59 @@ impl PerTimelinePerEntityTransforms {
         };
 
         match pose_transforms {
-            ResolvedInstancePoses::Cached(poses) => poses.clone(),
-            ResolvedInstancePoses::Uncached => {
+            CacheEntry::Cached(poses) => poses.clone(),
+            CacheEntry::Uncached => {
                 let poses =
                     query_and_resolve_instance_poses_at_entity(&self.entity_path, entity_db, query);
                 if !poses.is_empty() {
-                    *pose_transforms = ResolvedInstancePoses::Cached(poses.clone());
+                    *pose_transforms = CacheEntry::Cached(poses.clone());
                     poses
                 } else {
-                    *pose_transforms = ResolvedInstancePoses::None;
+                    *pose_transforms = CacheEntry::None;
                     Vec::new()
                 }
             }
-            ResolvedInstancePoses::None => Vec::new(),
+            CacheEntry::None => Vec::new(),
+        }
+    }
+
+    pub fn latest_at_pinhole(
+        &mut self, // TODO: make this immutable
+        entity_db: &EntityDb,
+        query: &LatestAtQuery,
+    ) -> Option<ResolvedPinholeProjection> {
+        debug_assert!(query.timeline() == self.timeline);
+
+        let pinhole_projections = self
+            .pinhole_projections
+            .range_mut(..query.at())
+            .next_back()
+            .map(|(_time, transform)| transform)?;
+
+        match pinhole_projections {
+            CacheEntry::Cached(pinhole) => Some(pinhole.clone()),
+            CacheEntry::Uncached => {
+                // TODO: can we do more resolving than this?
+                if let Some(resolved_pinhole_projection) = entity_db
+                    .latest_at_component::<components::PinholeProjection>(&self.entity_path, query)
+                    .map(|(_index, image_from_camera)| ResolvedPinholeProjection {
+                        image_from_camera,
+                        view_coordinates: entity_db
+                            .latest_at_component::<components::ViewCoordinates>(
+                                &self.entity_path,
+                                query,
+                            )
+                            .map_or(components::ViewCoordinates::RDF, |(_index, res)| res),
+                    })
+                {
+                    *pinhole_projections = CacheEntry::Cached(resolved_pinhole_projection.clone());
+                    Some(resolved_pinhole_projection)
+                } else {
+                    *pinhole_projections = CacheEntry::None;
+                    None
+                }
+            }
+            CacheEntry::None => None,
         }
     }
 }
@@ -211,7 +239,13 @@ impl PerStoreChunkSubscriber for TransformCacheStoreSubscriber {
                 .component_names()
                 .any(|component_name| self.pose_components.contains(&component_name));
 
-            if !has_instance_poses && !has_tree_transforms {
+            let has_pinhole_or_view_coordinates =
+                event.chunk.component_names().any(|component_name| {
+                    component_name == components::PinholeProjection::name()
+                        || component_name == components::ViewCoordinates::name()
+                });
+
+            if !has_instance_poses && !has_tree_transforms && !has_pinhole_or_view_coordinates {
                 continue;
             }
 
@@ -235,14 +269,18 @@ impl PerStoreChunkSubscriber for TransformCacheStoreSubscriber {
                         timeline: *timeline,
                         tree_transforms: Default::default(),
                         pose_transforms: Default::default(),
+                        pinhole_projections: Default::default(),
                     });
 
+                // Cache lazily since all of these require complex latest-at queries that...
+                // - we don't want to do more often than needed
+                // - would require a lot more context (we could inject that here, but it's not entirely straight forward)
                 if has_tree_transforms {
                     // TODO: invalidate things forward in time.
                     for time in time_column.times() {
                         per_entity
                             .tree_transforms
-                            .insert(time, ResolvedTreeTransform::Uncached);
+                            .insert(time, CacheEntry::Uncached);
                     }
                 }
                 if has_instance_poses {
@@ -250,7 +288,14 @@ impl PerStoreChunkSubscriber for TransformCacheStoreSubscriber {
                     for time in time_column.times() {
                         per_entity
                             .pose_transforms
-                            .insert(time, ResolvedInstancePoses::Uncached);
+                            .insert(time, CacheEntry::Uncached);
+                    }
+                }
+                if has_pinhole_or_view_coordinates {
+                    for time in time_column.times() {
+                        per_entity
+                            .pinhole_projections
+                            .insert(time, CacheEntry::Uncached);
                     }
                 }
             }

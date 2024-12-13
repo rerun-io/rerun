@@ -1,14 +1,10 @@
-use itertools::Either;
 use nohash_hasher::IntMap;
 
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, EntityPath, EntityTree};
 use re_types::{
     archetypes::{InstancePoses3D, Pinhole, Transform3D},
-    components::{
-        ImagePlaneDistance, PinholeProjection, PoseRotationAxisAngle, PoseRotationQuat,
-        PoseScale3D, PoseTransformMat3x3, PoseTranslation3D, ViewCoordinates,
-    },
+    components::{ImagePlaneDistance, PinholeProjection},
     Archetype, Component as _, ComponentNameSet,
 };
 use re_view::DataResultQuery as _;
@@ -16,8 +12,9 @@ use re_viewer_context::{IdentifiedViewSystem, ViewContext, ViewContextSystem};
 use vec1::smallvec_v1::SmallVec1;
 
 use crate::{
-    transform_cache::{CachedTransformsPerTimeline, TransformCacheStoreSubscriber},
-    transform_component_tracker::TransformComponentTrackerStoreSubscriber,
+    transform_cache::{
+        CachedTransformsPerTimeline, ResolvedPinholeProjection, TransformCacheStoreSubscriber,
+    },
     visualizers::image_view_coordinates,
 };
 
@@ -552,58 +549,50 @@ But they are instead ordered like this:\n{actual_order:?}"
 #[cfg(not(debug_assertions))]
 fn debug_assert_transform_field_order(_: &re_types::reflection::Reflection) {}
 
-fn query_and_resolve_obj_from_pinhole_image_plane(
+fn pinhole_with_image_plane_to_transform(
     entity_path: &EntityPath,
-    entity_db: &EntityDb,
-    query: &LatestAtQuery,
+    resolved_pinhole_projection: &ResolvedPinholeProjection,
     pinhole_image_plane_distance: impl Fn(&EntityPath) -> f32,
-) -> Option<glam::Affine3A> {
-    entity_db
-        .latest_at_component::<PinholeProjection>(entity_path, query)
-        .map(|(_index, image_from_camera)| {
-            (
-                image_from_camera,
-                entity_db
-                    .latest_at_component::<ViewCoordinates>(entity_path, query)
-                    .map_or(ViewCoordinates::RDF, |(_index, res)| res),
-            )
-        })
-        .map(|(image_from_camera, view_coordinates)| {
-            // Everything under a pinhole camera is a 2D projection, thus doesn't actually have a proper 3D representation.
-            // Our visualization interprets this as looking at a 2D image plane from a single point (the pinhole).
+) -> glam::Affine3A {
+    let ResolvedPinholeProjection {
+        image_from_camera,
+        view_coordinates,
+    } = resolved_pinhole_projection;
 
-            // Center the image plane and move it along z, scaling the further the image plane is.
-            let distance = pinhole_image_plane_distance(entity_path);
-            let focal_length = image_from_camera.focal_length_in_pixels();
-            let focal_length = glam::vec2(focal_length.x(), focal_length.y());
-            let scale = distance / focal_length;
-            let translation = (-image_from_camera.principal_point() * scale).extend(distance);
+    // Everything under a pinhole camera is a 2D projection, thus doesn't actually have a proper 3D representation.
+    // Our visualization interprets this as looking at a 2D image plane from a single point (the pinhole).
 
-            let image_plane3d_from_2d_content = glam::Affine3A::from_translation(translation)
+    // Center the image plane and move it along z, scaling the further the image plane is.
+    let distance = pinhole_image_plane_distance(entity_path);
+    let focal_length = image_from_camera.focal_length_in_pixels();
+    let focal_length = glam::vec2(focal_length.x(), focal_length.y());
+    let scale = distance / focal_length;
+    let translation = (-image_from_camera.principal_point() * scale).extend(distance);
+
+    let image_plane3d_from_2d_content = glam::Affine3A::from_translation(translation)
             // We want to preserve any depth that might be on the pinhole image.
             // Use harmonic mean of x/y scale for those.
             * glam::Affine3A::from_scale(
                 scale.extend(2.0 / (1.0 / scale.x + 1.0 / scale.y)),
             );
 
-            // Our interpretation of the pinhole camera implies that the axis semantics, i.e. ViewCoordinates,
-            // determine how the image plane is oriented.
-            // (see also `CamerasPart` where the frustum lines are set up)
-            let obj_from_image_plane3d = view_coordinates.from_other(&image_view_coordinates());
+    // Our interpretation of the pinhole camera implies that the axis semantics, i.e. ViewCoordinates,
+    // determine how the image plane is oriented.
+    // (see also `CamerasPart` where the frustum lines are set up)
+    let obj_from_image_plane3d = view_coordinates.from_other(&image_view_coordinates());
 
-            glam::Affine3A::from_mat3(obj_from_image_plane3d) * image_plane3d_from_2d_content
+    glam::Affine3A::from_mat3(obj_from_image_plane3d) * image_plane3d_from_2d_content
 
-            // Above calculation is nice for a certain kind of visualizing a projected image plane,
-            // but the image plane distance is arbitrary and there might be other, better visualizations!
+    // Above calculation is nice for a certain kind of visualizing a projected image plane,
+    // but the image plane distance is arbitrary and there might be other, better visualizations!
 
-            // TODO(#1025):
-            // As such we don't ever want to invert this matrix!
-            // However, currently our 2D views require do to exactly that since we're forced to
-            // build a relationship between the 2D plane and the 3D world, when actually the 2D plane
-            // should have infinite depth!
-            // The inverse of this matrix *is* working for this, but quickly runs into precision issues.
-            // See also `ui_2d.rs#setup_target_config`
-        })
+    // TODO(#1025):
+    // As such we don't ever want to invert this matrix!
+    // However, currently our 2D views require do to exactly that since we're forced to
+    // build a relationship between the 2D plane and the 3D world, when actually the 2D plane
+    // should have infinite depth!
+    // The inverse of this matrix *is* working for this, but quickly runs into precision issues.
+    // See also `ui_2d.rs#setup_target_config`
 }
 
 /// Resolved transforms at an entity.
@@ -624,34 +613,26 @@ fn transforms_at(
 ) -> Result<TransformsAtEntity, UnreachableTransformReason> {
     // This is called very frequently, don't put a profile scope here.
 
-    let potential_transform_components =
-        TransformComponentTrackerStoreSubscriber::access(&entity_db.store_id(), |tracker| {
-            tracker.potential_transform_components(entity_path).cloned()
-        })
-        .flatten()
-        .unwrap_or_default();
-
     // TODO: That's a lot of locking.
     // TODO: pose transforms?
 
     let Some(entity_transforms) = transforms_per_timeline.entity_transforms(entity_path) else {
-        // TODO: this skips over pinhole & disconnected.
+        // TODO: this skips over disconnected.
         return Ok(TransformsAtEntity::default());
     };
+
     let parent_from_entity_tree_transform =
         entity_transforms.latest_at_tree_transform(entity_db, query);
     let entity_from_instance_poses = entity_transforms.latest_at_instance_poses(entity_db, query);
-
-    let instance_from_pinhole_image_plane = if potential_transform_components.pinhole {
-        query_and_resolve_obj_from_pinhole_image_plane(
-            entity_path,
-            entity_db,
-            query,
-            pinhole_image_plane_distance,
-        )
-    } else {
-        None
-    };
+    let instance_from_pinhole_image_plane = entity_transforms
+        .latest_at_pinhole(entity_db, query)
+        .map(|resolved_pinhole_projection| {
+            pinhole_with_image_plane_to_transform(
+                entity_path,
+                &resolved_pinhole_projection,
+                pinhole_image_plane_distance,
+            )
+        });
 
     let transforms_at_entity = TransformsAtEntity {
         parent_from_entity_tree_transform,

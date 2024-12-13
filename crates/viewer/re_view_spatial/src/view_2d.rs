@@ -68,7 +68,6 @@ impl ViewClass for SpatialView2D {
     ) -> Result<(), ViewClassRegistryError> {
         // Ensure spatial topology & max image dimension is registered.
         crate::spatial_topology::SpatialTopologyStoreSubscriber::subscription_handle();
-        crate::transform_component_tracker::TransformComponentTrackerStoreSubscriber::subscription_handle();
         crate::max_image_dimension_subscriber::MaxImageDimensionsStoreSubscriber::subscription_handle();
 
         register_spatial_contexts(system_registry)?;
