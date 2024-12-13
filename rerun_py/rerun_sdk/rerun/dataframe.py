@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Optional
+from typing import Any, Optional
 
 import pyarrow as pa
 from rerun_bindings import (
@@ -39,7 +39,7 @@ RERUN_KIND_INDEX = b"time"
 
 
 class RawIndexColumn(TimeColumnLike):
-    def __init__(self, metadata: dict, col: pa.Array):
+    def __init__(self, metadata: dict[bytes, bytes], col: pa.Array):
         self.metadata = metadata
         self.col = col
 
@@ -54,7 +54,7 @@ class RawIndexColumn(TimeColumnLike):
 
 
 class RawComponentBatchLike(ComponentColumn):
-    def __init__(self, metadata: dict, col: pa.Array):
+    def __init__(self, metadata: dict[bytes, bytes], col: pa.Array):
         self.metadata = metadata
         self.col = col
 
@@ -76,12 +76,12 @@ class RawComponentBatchLike(ComponentColumn):
         return self.col
 
 
-def send_record_batch(batch: pa.RecordBatch, rec: Optional[RecordingStream] = None):
+def send_record_batch(batch: pa.RecordBatch, rec: Optional[RecordingStream] = None) -> None:
     """Coerce a single pyarrow `RecordBatch` to Rerun structure."""
 
     indexes = []
-    data = defaultdict(list)
-    archetypes = defaultdict(set)
+    data: defaultdict[str, list[Any]] = defaultdict(list)
+    archetypes: defaultdict[str, set[Any]] = defaultdict(set)
     for col in batch.schema:
         metadata = col.metadata or {}
         if metadata.get(RERUN_KIND) == RERUN_KIND_CONTROL:
@@ -97,8 +97,8 @@ def send_record_batch(batch: pa.RecordBatch, rec: Optional[RecordingStream] = No
             data[entity_path].append(RawComponentBatchLike(metadata, batch.column(col.name)))
             if SORBET_ARCHETYPE_NAME in metadata:
                 archetypes[entity_path].add(metadata[SORBET_ARCHETYPE_NAME].decode("utf-8"))
-    for entity_path, archetypes in archetypes.items():
-        for archetype in archetypes:
+    for entity_path, archetype_set in archetypes.items():
+        for archetype in archetype_set:
             data[entity_path].append(IndicatorComponentBatch("rerun.archetypes." + archetype))
 
     for entity_path, columns in data.items():
@@ -111,7 +111,7 @@ def send_record_batch(batch: pa.RecordBatch, rec: Optional[RecordingStream] = No
         )
 
 
-def send_dataframe(df: pa.RecordBatchReader | pa.Table, rec: Optional[RecordingStream] = None):
+def send_dataframe(df: pa.RecordBatchReader | pa.Table, rec: Optional[RecordingStream] = None) -> None:
     """Coerce a pyarrow `RecordBatchReader` or `Table` to Rerun structure."""
     if isinstance(df, pa.Table):
         df = df.to_reader()
