@@ -1,4 +1,4 @@
-use egui::{emath::TSTransform, Rect};
+use egui::Rect;
 use re_format::format_f32;
 use re_types::blueprint::components::VisualBounds2D;
 use re_ui::UiExt;
@@ -16,7 +16,6 @@ pub struct GraphViewState {
     pub show_debug: bool,
 
     pub visual_bounds: Option<VisualBounds2D>,
-    pub ui_from_world: Option<TSTransform>,
     pub rect_in_ui: Option<Rect>,
 }
 
@@ -25,7 +24,7 @@ impl GraphViewState {
         let Some(rect) = self.layout_state.bounding_rect() else {
             return;
         };
-        ui.grid_left_hand_label("Layout")
+        ui.grid_left_hand_label("Bounding box")
             .on_hover_text("The bounding box encompassing all entities in the view right now");
         ui.vertical(|ui| {
             ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
