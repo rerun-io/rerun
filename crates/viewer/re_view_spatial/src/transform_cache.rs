@@ -11,7 +11,7 @@ use re_entity_db::EntityDb;
 use re_log_types::{EntityPath, EntityPathHash, StoreId, TimeInt, Timeline};
 use re_types::{
     components::{self},
-    ComponentName,
+    Archetype as _, ComponentName,
 };
 
 /// Store subscriber that resolves all transform components at a given entity to an affine transform.
@@ -19,7 +19,7 @@ pub struct TransformCacheStoreSubscriber {
     /// The components of interest.
     transform_components: IntSet<ComponentName>,
     pose_components: IntSet<ComponentName>,
-    transforms_per_timeline: HashMap<Timeline, TransformsPerTimeline>,
+    per_timeline: HashMap<Timeline, CachedTransformsPerTimeline>,
 }
 
 impl Default for TransformCacheStoreSubscriber {
@@ -36,18 +36,20 @@ impl Default for TransformCacheStoreSubscriber {
                 .iter()
                 .map(|descr| descr.component_name)
                 .collect(),
-            transforms_per_timeline: Default::default(),
+            per_timeline: Default::default(),
         }
     }
 }
 
-#[derive(Default)]
-struct TransformsPerTimeline {
-    // Separate maps since we very often only have either for a given entity!
-    tree_transforms_per_entity_per_time:
-        IntMap<EntityPathHash, BTreeMap<TimeInt, ResolvedTreeTransform>>,
-    pose_transforms_per_entity_per_time:
-        IntMap<EntityPathHash, BTreeMap<TimeInt, ResolvedInstancePoses>>,
+pub struct CachedTransformsPerTimeline {
+    per_entity: IntMap<EntityPathHash, PerTimelinePerEntityTransforms>,
+}
+
+pub struct PerTimelinePerEntityTransforms {
+    timeline: Timeline,
+    entity_path: EntityPath,
+    tree_transforms: BTreeMap<TimeInt, ResolvedTreeTransform>,
+    pose_transforms: BTreeMap<TimeInt, ResolvedInstancePoses>,
 }
 
 #[derive(Default, Clone)]
@@ -76,6 +78,48 @@ pub enum ResolvedInstancePoses {
     None,
 }
 
+impl CachedTransformsPerTimeline {
+    #[inline]
+    pub fn entity_transforms(
+        &mut self,
+        entity_path: &EntityPath,
+    ) -> Option<&mut PerTimelinePerEntityTransforms> {
+        self.per_entity.get_mut(&entity_path.hash())
+    }
+}
+
+impl PerTimelinePerEntityTransforms {
+    pub fn latest_at_tree_transform(
+        &mut self, // TODO: make this immutable
+        entity_db: &EntityDb,
+        query: &LatestAtQuery,
+    ) -> Option<glam::Affine3A> {
+        debug_assert!(query.timeline() == self.timeline);
+
+        let tree_transform = self
+            .tree_transforms
+            .range_mut(..query.at())
+            .next_back()
+            .map(|(_time, transform)| transform)?;
+
+        match tree_transform {
+            ResolvedTreeTransform::Cached(transform) => Some(*transform),
+            ResolvedTreeTransform::Uncached => {
+                let transform =
+                    query_and_resolve_tree_transform_at_entity(&self.entity_path, entity_db, query);
+                if let Some(transform) = transform {
+                    *tree_transform = ResolvedTreeTransform::Cached(transform);
+                    Some(transform)
+                } else {
+                    *tree_transform = ResolvedTreeTransform::None;
+                    None
+                }
+            }
+            ResolvedTreeTransform::None => None,
+        }
+    }
+}
+
 impl TransformCacheStoreSubscriber {
     /// Accesses the global store subscriber.
     ///
@@ -92,47 +136,15 @@ impl TransformCacheStoreSubscriber {
         ChunkStore::with_per_store_subscriber_mut(Self::subscription_handle(), store_id, f)
     }
 
-    pub fn latest_at_transforms(
-        &mut self, // TODO: make this immutable
-        entity_path: &EntityPath,
-        entity_db: &EntityDb,
-        query: &LatestAtQuery,
-    ) -> glam::Affine3A {
-        // TODO: also handle pose transforms
-        // TODO: do this only once for a batch of entities.
-        let Some(transforms_per_timeline) = self.transforms_per_timeline.get_mut(&query.timeline())
-        else {
-            return glam::Affine3A::IDENTITY;
-        };
-
-        let Some(tree_transform) = transforms_per_timeline
-            .tree_transforms_per_entity_per_time
-            .get_mut(&entity_path.hash())
-            .and_then(|transforms_per_time| {
-                transforms_per_time
-                    .range_mut(..query.at())
-                    .next_back()
-                    .map(|(_time, transform)| transform)
-            })
-        else {
-            return glam::Affine3A::IDENTITY;
-        };
-
-        match tree_transform {
-            ResolvedTreeTransform::Cached(transform) => *transform,
-            ResolvedTreeTransform::Uncached => {
-                let transform = query_and_resolve_tree_transform_at_entity(
-                    entity_path,
-                    entity_db,
-                    query,
-                    self.transform_components.iter().copied(), //potential_transform_components.transform3d.iter().copied(),
-                )
-                .unwrap_or(glam::Affine3A::IDENTITY);
-                *tree_transform = ResolvedTreeTransform::Cached(transform);
-                transform
-            }
-            ResolvedTreeTransform::None => glam::Affine3A::IDENTITY,
-        }
+    /// Accesses the transform component tracking data for a given timeline.
+    ///
+    /// Returns `None` if the timeline doesn't have any transforms at all.
+    #[inline]
+    pub fn transforms_per_timeline(
+        &mut self,
+        timeline: Timeline,
+    ) -> Option<&mut CachedTransformsPerTimeline> {
+        self.per_timeline.get_mut(&timeline)
     }
 }
 
@@ -168,34 +180,42 @@ impl PerStoreChunkSubscriber for TransformCacheStoreSubscriber {
                 continue;
             }
 
-            let entity_path_hash = event.chunk.entity_path().hash();
+            let entity_path = event.chunk.entity_path();
+            let entity_path_hash = entity_path.hash();
 
             for (timeline, time_column) in event.diff.chunk.timelines() {
                 // Components may only show up on some of the timelines.
                 // But being overly conservative here is doesn't hurt us much and makes this a lot easier.
-                let transforms_per_entity =
-                    self.transforms_per_timeline.entry(*timeline).or_default();
+                let per_timeline = self.per_timeline.entry(*timeline).or_insert_with(|| {
+                    CachedTransformsPerTimeline {
+                        per_entity: Default::default(),
+                    }
+                });
+
+                let per_entity = per_timeline
+                    .per_entity
+                    .entry(entity_path_hash)
+                    .or_insert_with(|| PerTimelinePerEntityTransforms {
+                        entity_path: entity_path.clone(),
+                        timeline: *timeline,
+                        tree_transforms: Default::default(),
+                        pose_transforms: Default::default(),
+                    });
 
                 if has_tree_transforms {
-                    let tree_transforms_per_time = transforms_per_entity
-                        .tree_transforms_per_entity_per_time
-                        .entry(entity_path_hash)
-                        .or_default();
-
                     // TODO: invalidate things forward in time.
                     for time in time_column.times() {
-                        tree_transforms_per_time.insert(time, ResolvedTreeTransform::Uncached);
+                        per_entity
+                            .tree_transforms
+                            .insert(time, ResolvedTreeTransform::Uncached);
                     }
                 }
                 if has_instance_poses {
-                    let instance_poses_per_time = transforms_per_entity
-                        .pose_transforms_per_entity_per_time
-                        .entry(entity_path_hash)
-                        .or_default();
-
                     // TODO: invalidate things forward in time.
                     for time in time_column.times() {
-                        instance_poses_per_time.insert(time, ResolvedInstancePoses::Invalidated);
+                        per_entity
+                            .pose_transforms
+                            .insert(time, ResolvedInstancePoses::Invalidated);
                     }
                 }
             }
@@ -207,9 +227,11 @@ fn query_and_resolve_tree_transform_at_entity(
     entity_path: &EntityPath,
     entity_db: &EntityDb,
     query: &LatestAtQuery,
-    transform3d_components: impl Iterator<Item = re_types::ComponentName>,
 ) -> Option<glam::Affine3A> {
-    let result = entity_db.latest_at(query, entity_path, transform3d_components);
+    // TODO(andreas): Filter out the components we're actually interested in?
+    let components = re_types::archetypes::Transform3D::all_components();
+    let component_names = components.iter().map(|descr| descr.component_name);
+    let result = entity_db.latest_at(query, entity_path, component_names);
     if result.components.is_empty() {
         return None;
     }
