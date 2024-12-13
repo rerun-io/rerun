@@ -7,7 +7,7 @@ use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
 use re_types::{
     archetypes::Pinhole,
     blueprint::{
-        archetypes::{Background, VisualBounds2D},
+        archetypes::{Background, NearClipPlane, VisualBounds2D},
         components as blueprint_components,
     },
     components::ViewCoordinates,
@@ -168,12 +168,17 @@ impl SpatialView2D {
             ctx.blueprint_query,
             query.view_id,
         );
+        let clip_property = ViewProperty::from_archetype::<NearClipPlane>(
+            ctx.blueprint_db(),
+            ctx.blueprint_query,
+            query.view_id,
+        );
 
         // Convert ui coordinates to/from scene coordinates.
         let ui_from_scene = ui_from_scene(ctx, &response, self, state, &bounds_property);
         let scene_from_ui = ui_from_scene.inverse();
 
-        let near_clip_plane: blueprint_components::NearClipPlane = bounds_property
+        let near_clip_plane: blueprint_components::NearClipPlane = clip_property
             .component_or_fallback(ctx, self, state)
             .ok_or_log_error()
             .unwrap_or_default();

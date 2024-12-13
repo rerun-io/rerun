@@ -31,11 +31,6 @@ pub struct VisualBounds2D {
     ///
     /// Use this to control pan & zoom of the view.
     pub range: crate::blueprint::components::VisualBounds2D,
-
-    /// Controls the distance to the near clip plane in 3D scene units.
-    ///
-    /// Content closer than this distance will not be visible.
-    pub near_clip_plane: crate::blueprint::components::NearClipPlane,
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
@@ -56,16 +51,10 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usiz
         }]
     });
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.VisualBounds2D".into()),
-            component_name: "rerun.blueprint.components.NearClipPlane".into(),
-            archetype_field_name: Some("near_clip_plane".into()),
-        }]
-    });
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             ComponentDescriptor {
@@ -78,17 +67,12 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
                 component_name: "rerun.blueprint.components.VisualBounds2DIndicator".into(),
                 archetype_field_name: None,
             },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.VisualBounds2D".into()),
-                component_name: "rerun.blueprint.components.NearClipPlane".into(),
-                archetype_field_name: Some("near_clip_plane".into()),
-            },
         ]
     });
 
 impl VisualBounds2D {
-    /// The total number of components in the archetype: 1 required, 1 recommended, 1 optional
-    pub const NUM_COMPONENTS: usize = 3usize;
+    /// The total number of components in the archetype: 1 required, 1 recommended, 0 optional
+    pub const NUM_COMPONENTS: usize = 2usize;
 }
 
 /// Indicator component for the [`VisualBounds2D`] [`::re_types_core::Archetype`]
@@ -156,23 +140,7 @@ impl ::re_types_core::Archetype for VisualBounds2D {
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.blueprint.archetypes.VisualBounds2D#range")?
         };
-        let near_clip_plane = {
-            let array = arrays_by_name
-                .get("rerun.blueprint.components.NearClipPlane")
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.blueprint.archetypes.VisualBounds2D#near_clip_plane")?;
-            <crate::blueprint::components::NearClipPlane>::from_arrow2_opt(&**array)
-                .with_context("rerun.blueprint.archetypes.VisualBounds2D#near_clip_plane")?
-                .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.blueprint.archetypes.VisualBounds2D#near_clip_plane")?
-        };
-        Ok(Self {
-            range,
-            near_clip_plane,
-        })
+        Ok(Self { range })
     }
 }
 
@@ -192,16 +160,6 @@ impl ::re_types_core::AsComponents for VisualBounds2D {
                     }),
                 }
             }),
-            (Some(&self.near_clip_plane as &dyn ComponentBatch)).map(|batch| {
-                ::re_types_core::ComponentBatchCowWithDescriptor {
-                    batch: batch.into(),
-                    descriptor_override: Some(ComponentDescriptor {
-                        archetype_name: Some("rerun.blueprint.archetypes.VisualBounds2D".into()),
-                        archetype_field_name: Some(("near_clip_plane").into()),
-                        component_name: ("rerun.blueprint.components.NearClipPlane").into(),
-                    }),
-                }
-            }),
         ]
         .into_iter()
         .flatten()
@@ -214,13 +172,9 @@ impl ::re_types_core::ArchetypeReflectionMarker for VisualBounds2D {}
 impl VisualBounds2D {
     /// Create a new `VisualBounds2D`.
     #[inline]
-    pub fn new(
-        range: impl Into<crate::blueprint::components::VisualBounds2D>,
-        near_clip_plane: impl Into<crate::blueprint::components::NearClipPlane>,
-    ) -> Self {
+    pub fn new(range: impl Into<crate::blueprint::components::VisualBounds2D>) -> Self {
         Self {
             range: range.into(),
-            near_clip_plane: near_clip_plane.into(),
         }
     }
 }
@@ -228,12 +182,11 @@ impl VisualBounds2D {
 impl ::re_types_core::SizeBytes for VisualBounds2D {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.range.heap_size_bytes() + self.near_clip_plane.heap_size_bytes()
+        self.range.heap_size_bytes()
     }
 
     #[inline]
     fn is_pod() -> bool {
         <crate::blueprint::components::VisualBounds2D>::is_pod()
-            && <crate::blueprint::components::NearClipPlane>::is_pod()
     }
 }
