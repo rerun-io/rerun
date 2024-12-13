@@ -33,6 +33,9 @@ SORBET_ENTITY_PATH = b"sorbet.path"
 SORBET_ARCHETYPE_NAME = b"sorbet.semantic_family"
 SORBET_ARCHETYPE_FIELD = b"sorbet.logical_type"
 SORBET_COMPONENT_NAME = b"sorbet.semantic_type"
+RERUN_KIND = b"rerun.kind"
+RERUN_KIND_CONTROL = b"control"
+RERUN_KIND_INDEX = b"time"
 
 
 class RawIndexColumn(TimeColumnLike):
@@ -41,7 +44,10 @@ class RawIndexColumn(TimeColumnLike):
         self.col = col
 
     def timeline_name(self) -> str:
-        return self.metadata[SORBET_INDEX_NAME].decode("utf-8")
+        name = self.metadata.get(SORBET_INDEX_NAME, "unknown")
+        if isinstance(name, bytes):
+            name = name.decode("utf-8")
+        return name
 
     def as_arrow_array(self) -> pa.Array:
         return self.col
@@ -78,7 +84,11 @@ def send_record_batch(batch: pa.RecordBatch, rec: Optional[RecordingStream] = No
     archetypes = defaultdict(set)
     for col in batch.schema:
         metadata = col.metadata or {}
-        if SORBET_INDEX_NAME in metadata:
+        if metadata.get(RERUN_KIND) == RERUN_KIND_CONTROL:
+            continue
+        if SORBET_INDEX_NAME in metadata or metadata.get(RERUN_KIND) == RERUN_KIND_INDEX:
+            if SORBET_INDEX_NAME not in metadata:
+                metadata[SORBET_INDEX_NAME] = col.name
             indexes.append(RawIndexColumn(metadata, batch.column(col.name)))
         else:
             entity_path = metadata.get(SORBET_ENTITY_PATH, col.name.split(":")[0])
