@@ -62,14 +62,16 @@ impl ChunkStore {
         // * Somebody loads an old .rbl from somewhere and starts logging new blueprint data to it.
         // * Etc.
         if self.id.kind == re_log_types::StoreKind::Blueprint {
-            chunk = Arc::new(chunk.clone_as_untagged());
+            let patched = chunk.patched_for_blueprint_021_compat();
+            let patched = patched.clone_as_untagged();
+            chunk = Arc::new(patched);
         }
 
         #[cfg(debug_assertions)]
         for (component_name, per_desc) in chunk.components().iter() {
             assert!(
                 per_desc.len() <= 1,
-                "[DEBUG ONLY] Insert Chunk with multiple values for component named `{component_name}`: this is currently UB",
+                "[DEBUG ONLY] Insert Chunk with multiple values for component named `{component_name}`: this is currently UB\n{chunk}",
             );
         }
 
