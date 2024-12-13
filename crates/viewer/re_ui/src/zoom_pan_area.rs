@@ -5,7 +5,7 @@
 //! * `view`-space: The space where the pan-and-zoom area is drawn.
 //! * `scene`-space: The space where the actual content is drawn.
 
-use egui::{emath::TSTransform, Color32, Rect, Response, Ui, UiBuilder, Vec2};
+use egui::{emath::TSTransform, Rect, Response, Ui, UiBuilder, Vec2};
 
 /// Helper function to handle pan and zoom interactions on a response.
 fn register_pan_and_zoom(ui: &Ui, resp: &Response, ui_from_scene: &mut TSTransform) {
@@ -70,6 +70,7 @@ pub fn zoom_pan_area(
     to_global: &mut TSTransform,
     draw_contents: impl FnOnce(&mut Ui),
 ) -> Response {
+    // Create a new egui paint layer, where we can draw our contents:
     let zoom_pan_layer_id = egui::LayerId::new(
         parent_ui.layer_id().order,
         parent_ui.id().with("zoom_pan_area"),
@@ -88,17 +89,15 @@ pub fn zoom_pan_area(
             .max_rect(to_global.inverse() * global_view_bounds)
             .sense(egui::Sense::click_and_drag()),
     );
-    local_ui.set_min_size(local_ui.max_rect().size()); // Allocate all space
+    local_ui.set_min_size(local_ui.max_rect().size()); // Allocate all available space
 
     // Set proper clip-rect so we can interact with the background:
     local_ui.set_clip_rect(local_ui.max_rect());
 
     let pan_response = local_ui.response();
 
-
-
-    // Update the transform based on the interactions:
-    register_pan_and_zoom(&local_ui, &pan_response, to_global); // Changes the transform!
+    // Update the `to_global` transform based on use interaction:
+    register_pan_and_zoom(&local_ui, &pan_response, to_global);
 
     // Update the clip-rect with the new transform, to avoid frame-delays
     local_ui.set_clip_rect(to_global.inverse() * global_view_bounds);
@@ -106,6 +105,7 @@ pub fn zoom_pan_area(
     // Add the actual contents to the area:
     draw_contents(&mut local_ui);
 
+    // Tell egui to apply the transform on the layer:
     local_ui
         .ctx()
         .set_transform_layer(zoom_pan_layer_id, *to_global);
