@@ -7,8 +7,7 @@ use re_types::{
     archetypes::{InstancePoses3D, Pinhole, Transform3D},
     components::{
         ImagePlaneDistance, PinholeProjection, PoseRotationAxisAngle, PoseRotationQuat,
-        PoseScale3D, PoseTransformMat3x3, PoseTranslation3D, RotationAxisAngle, RotationQuat,
-        Scale3D, TransformMat3x3, Translation3D, ViewCoordinates,
+        PoseScale3D, PoseTransformMat3x3, PoseTranslation3D, ViewCoordinates,
     },
     Archetype, Component as _, ComponentNameSet,
 };
@@ -17,7 +16,7 @@ use re_viewer_context::{IdentifiedViewSystem, ViewContext, ViewContextSystem};
 use vec1::smallvec_v1::SmallVec1;
 
 use crate::{
-    transform_cache::TransformCacheStoreSubscriber,
+    transform_cache::{CachedTransformsPerTimeline, TransformCacheStoreSubscriber},
     transform_component_tracker::TransformComponentTrackerStoreSubscriber,
     visualizers::image_view_coordinates,
 };
@@ -198,19 +197,36 @@ impl ViewContextSystem for TransformContext {
 
         let time_query = ctx.current_query();
 
-        // Child transforms of this space
-        self.gather_descendants_transforms(
-            ctx,
-            query,
-            current_tree,
-            ctx.recording(),
-            &time_query,
-            // Ignore potential pinhole camera at the root of the view, since it regarded as being "above" this root.
-            TransformInfo::default(),
-        );
+        // TODO: this holds a write lock for way too long!
+        TransformCacheStoreSubscriber::access(&ctx.recording().store_id(), |cache| {
+            let Some(transforms_per_timeline) = cache.transforms_per_timeline(query.timeline)
+            else {
+                // No transforms on this timeline at all. Nothing to do here!
+                return;
+            };
 
-        // Walk up from the reference to the highest reachable parent.
-        self.gather_parent_transforms(ctx, query, current_tree, &time_query);
+            // Child transforms of this space
+            self.gather_descendants_transforms(
+                ctx,
+                query,
+                current_tree,
+                ctx.recording(),
+                &time_query,
+                // Ignore potential pinhole camera at the root of the view, since it regarded as being "above" this root.
+                TransformInfo::default(),
+                transforms_per_timeline,
+            );
+
+            // Walk up from the reference to the highest reachable parent.
+            self.gather_parent_transforms(
+                ctx,
+                query,
+                current_tree,
+                &time_query,
+                transforms_per_timeline,
+            );
+        })
+        .expect("No transform cache found");
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
@@ -226,6 +242,7 @@ impl TransformContext {
         query: &re_viewer_context::ViewQuery<'_>,
         mut current_tree: &'a EntityTree,
         time_query: &LatestAtQuery,
+        transforms_per_timeline: &mut CachedTransformsPerTimeline,
     ) {
         re_tracing::profile_function!();
 
@@ -254,6 +271,7 @@ impl TransformContext {
                 // and the fact that there is no meaningful image plane distance for 3D->2D views.
                 |_| 500.0,
                 &mut encountered_pinhole,
+                transforms_per_timeline,
             ) {
                 Err(unreachable_reason) => {
                     self.first_unreachable_parent =
@@ -276,6 +294,7 @@ impl TransformContext {
                 ctx.recording(),
                 time_query,
                 new_transform,
+                transforms_per_timeline,
             );
 
             current_tree = parent_tree;
@@ -291,6 +310,7 @@ impl TransformContext {
         entity_db: &EntityDb,
         query: &LatestAtQuery,
         transform: TransformInfo,
+        transforms_per_timeline: &mut CachedTransformsPerTimeline,
     ) {
         let twod_in_threed_info = transform.twod_in_threed_info.clone();
         let reference_from_parent = transform.reference_from_entity;
@@ -332,6 +352,7 @@ impl TransformContext {
                 query,
                 lookup_image_plane,
                 &mut encountered_pinhole,
+                transforms_per_timeline,
             ) {
                 Err(unreachable_reason) => {
                     self.unreachable_descendants
@@ -354,6 +375,7 @@ impl TransformContext {
                 entity_db,
                 query,
                 new_transform,
+                transforms_per_timeline,
             );
         }
     }
@@ -492,15 +514,16 @@ fn transform_info_for_downward_propagation(
 
 #[cfg(debug_assertions)]
 fn debug_assert_transform_field_order(reflection: &re_types::reflection::Reflection) {
+    use re_types::{components, Archetype as _};
+
     let expected_order = vec![
-        Translation3D::name(),
-        RotationAxisAngle::name(),
-        RotationQuat::name(),
-        Scale3D::name(),
-        TransformMat3x3::name(),
+        components::Translation3D::name(),
+        components::RotationAxisAngle::name(),
+        components::RotationQuat::name(),
+        components::Scale3D::name(),
+        components::TransformMat3x3::name(),
     ];
 
-    use re_types::Archetype as _;
     let transform3d_reflection = reflection
         .archetypes
         .get(&re_types::archetypes::Transform3D::name())
@@ -697,6 +720,7 @@ fn transforms_at(
     query: &LatestAtQuery,
     pinhole_image_plane_distance: impl Fn(&EntityPath) -> f32,
     encountered_pinhole: &mut Option<EntityPath>,
+    transforms_per_timeline: &mut CachedTransformsPerTimeline,
 ) -> Result<TransformsAtEntity, UnreachableTransformReason> {
     // This is called very frequently, don't put a profile scope here.
 
@@ -709,10 +733,13 @@ fn transforms_at(
 
     // TODO: That's a lot of locking.
     // TODO: pose transforms?
+
+    let Some(entity_transforms) = transforms_per_timeline.entity_transforms(entity_path) else {
+        // TODO: this skips over pinhole & disconnected.
+        return Ok(TransformsAtEntity::default());
+    };
     let parent_from_entity_tree_transform =
-        TransformCacheStoreSubscriber::access(&entity_db.store_id(), |tracker| {
-            tracker.latest_at_transforms(entity_path, entity_db, query)
-        });
+        entity_transforms.latest_at_tree_transform(entity_db, query);
 
     let entity_from_instance_poses = if potential_transform_components.pose3d.is_empty() {
         Vec::new()
