@@ -74,7 +74,6 @@ impl ViewClass for SpatialView3D {
     ) -> Result<(), ViewClassRegistryError> {
         // Ensure spatial topology is registered.
         crate::spatial_topology::SpatialTopologyStoreSubscriber::subscription_handle();
-        crate::transform_component_tracker::TransformComponentTrackerStoreSubscriber::subscription_handle();
         crate::transform_cache::TransformCacheStoreSubscriber::subscription_handle();
 
         register_spatial_contexts(system_registry)?;

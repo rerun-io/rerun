@@ -49,9 +49,12 @@ pub struct CachedTransformsPerTimeline {
 pub struct PerTimelinePerEntityTransforms {
     timeline: Timeline,
     entity_path: EntityPath,
+
+    // TODO: some of these are exceedingly rare. do we need all that memory?
     tree_transforms: BTreeMap<TimeInt, CacheEntry<glam::Affine3A>>,
     pose_transforms: BTreeMap<TimeInt, CacheEntry<Vec<glam::Affine3A>>>,
     pinhole_projections: BTreeMap<TimeInt, CacheEntry<ResolvedPinholeProjection>>,
+    disconnected_space: bool,
 }
 
 enum CacheEntry<T> {
@@ -181,6 +184,11 @@ impl PerTimelinePerEntityTransforms {
             CacheEntry::None => None,
         }
     }
+
+    #[inline]
+    pub fn disconnected_space(&self) -> bool {
+        self.disconnected_space
+    }
 }
 
 impl TransformCacheStoreSubscriber {
@@ -220,15 +228,16 @@ impl PerStoreChunkSubscriber for TransformCacheStoreSubscriber {
         re_tracing::profile_function!();
 
         for event in events {
-            // TODO:???
-            // if event.compacted.is_some() {
-            //     // Compactions don't change the data.
-            //     continue;
-            // }
+            if event.compacted.is_some() {
+                // Compactions don't change the data.
+                continue;
+            }
             if event.kind == re_chunk_store::ChunkStoreDiffKind::Deletion {
                 // Not participating in GC for now.
                 continue;
             }
+
+            // TODO: do a quicker check for nothing happening.
 
             let has_tree_transforms = event
                 .chunk
@@ -238,14 +247,22 @@ impl PerStoreChunkSubscriber for TransformCacheStoreSubscriber {
                 .chunk
                 .component_names()
                 .any(|component_name| self.pose_components.contains(&component_name));
-
             let has_pinhole_or_view_coordinates =
                 event.chunk.component_names().any(|component_name| {
                     component_name == components::PinholeProjection::name()
                         || component_name == components::ViewCoordinates::name()
                 });
+            // TODO(#7868): Disconnected space should be deprecated.
+            let has_disconnected_space = event
+                .chunk
+                .component_names()
+                .any(|component_name| component_name == components::DisconnectedSpace::name());
 
-            if !has_instance_poses && !has_tree_transforms && !has_pinhole_or_view_coordinates {
+            if !has_instance_poses
+                && !has_tree_transforms
+                && !has_pinhole_or_view_coordinates
+                && !has_disconnected_space
+            {
                 continue;
             }
 
@@ -270,7 +287,15 @@ impl PerStoreChunkSubscriber for TransformCacheStoreSubscriber {
                         tree_transforms: Default::default(),
                         pose_transforms: Default::default(),
                         pinhole_projections: Default::default(),
+                        disconnected_space: has_disconnected_space,
                     });
+
+                // TODO: this still isn't quite right. Need to check if this was set to true?
+                // TODO(#7868): Disconnected space should be deprecated.
+                // TODO(#7121): Once a space is disconnected, it can't be re-connected again.
+                if has_disconnected_space {
+                    per_entity.disconnected_space = true;
+                }
 
                 // Cache lazily since all of these require complex latest-at queries that...
                 // - we don't want to do more often than needed

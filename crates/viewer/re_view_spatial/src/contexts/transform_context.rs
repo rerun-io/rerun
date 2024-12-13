@@ -1,25 +1,20 @@
-use itertools::Either;
 use nohash_hasher::IntMap;
 
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, EntityPath, EntityTree};
 use re_types::{
-    archetypes::{InstancePoses3D, Pinhole, Transform3D},
-    components::{
-        DisconnectedSpace, ImagePlaneDistance, PinholeProjection, PoseRotationAxisAngle,
-        PoseRotationQuat, PoseScale3D, PoseTransformMat3x3, PoseTranslation3D, ViewCoordinates,
-    },
+    archetypes::{InstancePoses3D, Transform3D},
+    components::{DisconnectedSpace, ImagePlaneDistance, PinholeProjection},
     Archetype, Component as _, ComponentNameSet,
 };
 use re_view::DataResultQuery as _;
-use re_viewer_context::{IdentifiedViewSystem, ViewContext, ViewContextSystem};
+use re_viewer_context::{DataResultTree, IdentifiedViewSystem, ViewContext, ViewContextSystem};
 use vec1::smallvec_v1::SmallVec1;
 
 use crate::{
     transform_cache::{
         CachedTransformsPerTimeline, ResolvedPinholeProjection, TransformCacheStoreSubscriber,
     },
-    transform_component_tracker::TransformComponentTrackerStoreSubscriber,
     visualizers::image_view_coordinates,
 };
 
@@ -190,6 +185,8 @@ impl ViewContextSystem for TransformContext {
         debug_assert_transform_field_order(ctx.viewer_ctx.reflection);
 
         let entity_tree = ctx.recording().tree();
+        let query_result = ctx.viewer_ctx.lookup_query_result(query.view_id);
+        let data_result_tree = &query_result.tree;
 
         self.space_origin = query.space_origin.clone();
 
@@ -212,21 +209,25 @@ impl ViewContextSystem for TransformContext {
             };
 
             // Child transforms of this space
-            self.gather_descendants_transforms(
-                ctx,
-                query,
-                current_tree,
-                ctx.recording(),
-                &time_query,
-                // Ignore potential pinhole camera at the root of the view, since it regarded as being "above" this root.
-                TransformInfo::default(),
-                transforms_per_timeline,
-            );
+            {
+                re_tracing::profile_scope!("gather_descendants_transforms");
+
+                self.gather_descendants_transforms(
+                    ctx,
+                    data_result_tree,
+                    current_tree,
+                    ctx.recording(),
+                    &time_query,
+                    // Ignore potential pinhole camera at the root of the view, since it regarded as being "above" this root.
+                    TransformInfo::default(),
+                    transforms_per_timeline,
+                );
+            }
 
             // Walk up from the reference to the highest reachable parent.
             self.gather_parent_transforms(
                 ctx,
-                query,
+                data_result_tree,
                 current_tree,
                 &time_query,
                 transforms_per_timeline,
@@ -245,7 +246,7 @@ impl TransformContext {
     fn gather_parent_transforms<'a>(
         &mut self,
         ctx: &'a ViewContext<'a>,
-        query: &re_viewer_context::ViewQuery<'_>,
+        data_result_tree: &DataResultTree,
         mut current_tree: &'a EntityTree,
         time_query: &LatestAtQuery,
         transforms_per_timeline: &mut CachedTransformsPerTimeline,
@@ -260,9 +261,8 @@ impl TransformContext {
             let Some(parent_tree) = entity_tree.subtree(&parent_path) else {
                 // Unlike not having the space path in the hierarchy, this should be impossible.
                 re_log::error_once!(
-                    "Path {} is not part of the global entity tree whereas its child {} is",
-                    parent_path,
-                    query.space_origin
+                    "Path {} is not part of the global entity tree whereas its child is",
+                    parent_path
                 );
                 return;
             };
@@ -295,7 +295,7 @@ impl TransformContext {
             // (this skips over everything at and under `current_tree` automatically)
             self.gather_descendants_transforms(
                 ctx,
-                query,
+                data_result_tree,
                 parent_tree,
                 ctx.recording(),
                 time_query,
@@ -311,7 +311,7 @@ impl TransformContext {
     fn gather_descendants_transforms(
         &mut self,
         ctx: &ViewContext<'_>,
-        view_query: &re_viewer_context::ViewQuery<'_>,
+        data_result_tree: &DataResultTree,
         subtree: &EntityTree,
         entity_db: &EntityDb,
         query: &LatestAtQuery,
@@ -332,22 +332,8 @@ impl TransformContext {
         for child_tree in subtree.children.values() {
             let child_path = &child_tree.path;
 
-            let lookup_image_plane = |p: &_| {
-                let query_result = ctx.viewer_ctx.lookup_query_result(view_query.view_id);
-
-                query_result
-                    .tree
-                    .lookup_result_by_path(p)
-                    .cloned()
-                    .map(|data_result| {
-                        let results = data_result
-                            .latest_at_with_blueprint_resolved_data::<Pinhole>(ctx, query);
-
-                        results.get_mono_with_fallback::<ImagePlaneDistance>()
-                    })
-                    .unwrap_or_default()
-                    .into()
-            };
+            let lookup_image_plane =
+                |p: &_| lookup_image_plane_distance(ctx, data_result_tree, p, query);
 
             let mut encountered_pinhole = twod_in_threed_info
                 .as_ref()
@@ -376,7 +362,7 @@ impl TransformContext {
 
             self.gather_descendants_transforms(
                 ctx,
-                view_query,
+                data_result_tree,
                 child_tree,
                 entity_db,
                 query,
@@ -396,6 +382,28 @@ impl TransformContext {
     pub fn transform_info_for_entity(&self, ent_path: &EntityPath) -> Option<&TransformInfo> {
         self.transform_per_entity.get(ent_path)
     }
+}
+
+fn lookup_image_plane_distance(
+    ctx: &ViewContext<'_>,
+    data_result_tree: &DataResultTree,
+    entity_path: &EntityPath,
+    query: &LatestAtQuery,
+) -> f32 {
+    re_tracing::profile_function!();
+
+    data_result_tree
+        .lookup_result_by_path(entity_path)
+        .cloned()
+        .map(|data_result| {
+            data_result
+                .latest_at_with_blueprint_resolved_data_for_component::<ImagePlaneDistance>(
+                    ctx, query,
+                )
+                .get_mono_with_fallback::<ImagePlaneDistance>()
+        })
+        .unwrap_or_default()
+        .into()
 }
 
 /// Compute transform info for when we walk up the tree from the reference.
@@ -622,18 +630,7 @@ fn transforms_at(
 ) -> Result<TransformsAtEntity, UnreachableTransformReason> {
     // This is called very frequently, don't put a profile scope here.
 
-    let potential_transform_components =
-        TransformComponentTrackerStoreSubscriber::access(&entity_db.store_id(), |tracker| {
-            tracker.potential_transform_components(entity_path).cloned()
-        })
-        .flatten()
-        .unwrap_or_default();
-
-    // TODO: That's a lot of locking.
-    // TODO: pose transforms?
-
     let Some(entity_transforms) = transforms_per_timeline.entity_transforms(entity_path) else {
-        // TODO: this skips over disconnected.
         return Ok(TransformsAtEntity::default());
     };
 
@@ -677,12 +674,7 @@ fn transforms_at(
             .instance_from_pinhole_image_plane
             .is_none();
 
-    if no_other_transforms
-        && potential_transform_components.disconnected_space
-        && entity_db
-            .latest_at_component::<DisconnectedSpace>(entity_path, query)
-            .map_or(false, |(_index, res)| **res)
-    {
+    if no_other_transforms && entity_transforms.disconnected_space() {
         Err(UnreachableTransformReason::DisconnectedSpace)
     } else {
         Ok(transforms_at_entity)
