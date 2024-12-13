@@ -18,6 +18,8 @@ from ..datatypes import (
 from ..error_utils import _send_warning_or_raise, catch_and_log_exceptions
 
 if TYPE_CHECKING:
+    from PIL import Image as PILImage
+
     ImageLike = Union[
         npt.NDArray[np.float16],
         npt.NDArray[np.float32],
@@ -30,6 +32,7 @@ if TYPE_CHECKING:
         npt.NDArray[np.uint32],
         npt.NDArray[np.uint64],
         npt.NDArray[np.uint8],
+        PILImage.Image,
     ]
     from . import EncodedImage, Image
 
