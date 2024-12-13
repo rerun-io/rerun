@@ -9,6 +9,7 @@
 "DataframeQuery" = [
   "reference/dataframe_save_blueprint"
 ]
+"Boxes2D" = ["concepts/viscomp-visualizer-override-multiple"]
 
 # These components will ignore the associated snippets in the snippet index.
 [snippets_ref.components.opt_out]
@@ -27,6 +28,9 @@
   "tutorials/any_values",
   "tutorials/extra_values",
   "howto/any_values_send_columns",
+]
+"Using descriptors" = [
+"descriptors/descr_custom_component"
 ]
 
 # These entries won't run at all.
