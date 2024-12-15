@@ -82,25 +82,10 @@ impl FFmpegVersion {
     ///
     /// Internally caches the result per path together with its modification time to re-run/parse the version only if the file has changed.
     pub fn for_executable(path: Option<&std::path::Path>) -> FfmpegVersionResult {
-        static CACHE: Lazy<Mutex<VersionMap>> =
-            Lazy::new(|| Mutex::new(VersionMap::default()));
-
         re_tracing::profile_function!();
 
-        // Retrieve file modification time first.
-        let modification_time = if let Some(path) = path {
-            path.metadata()
-                .map_err(|err| {
-                    FFmpegVersionParseError::RetrieveFileModificationTime(err.to_string())
-                })?
-                .modified()
-                .ok()
-        } else {
-            None
-        };
-
-        // Check first if we already have the version cached.
-        CACHE.lock().version(path, modification_time).clone()
+        let modification_time = file_modification_time(path)?;
+        VersionCache::global(|cache| cache.version(path, modification_time).clone())
     }
 
     /// Returns true if this version is compatible with Rerun's minimum requirements.
@@ -111,10 +96,29 @@ impl FFmpegVersion {
     }
 }
 
-#[derive(Default)]
-struct VersionMap(HashMap<PathBuf, (Option<std::time::SystemTime>, FfmpegVersionResult)>);
+fn file_modification_time(path: Option<&std::path::Path>) -> Result<Option<std::time::SystemTime>, FFmpegVersionParseError> {
+    Ok(if let Some(path) = path {
+        path.metadata()
+            .map_err(|err| {
+                FFmpegVersionParseError::RetrieveFileModificationTime(err.to_string())
+            })?
+            .modified()
+            .ok()
+    } else {
+        None
+    })
+}
 
-impl VersionMap {
+#[derive(Default)]
+struct VersionCache(HashMap<PathBuf, (Option<std::time::SystemTime>, FfmpegVersionResult)>);
+
+impl VersionCache {
+    fn global<R>(f: impl FnOnce(&mut Self) -> R) -> R {
+        static CACHE: Lazy<Mutex<VersionCache>> = Lazy::new(|| Mutex::new(VersionCache::default()));
+        f(&mut CACHE.lock())
+    }
+
+
     fn version(
         &mut self,
         path: Option<&std::path::Path>,
