@@ -1,6 +1,6 @@
 use egui::{emath::Float, pos2, Align2, Color32, Mesh, Rect, Shape, Vec2};
 
-use crate::toasts::SUCCESS_COLOR;
+use crate::SUCCESS_COLOR;
 use crate::{DesignTokens, TopBarStyle};
 
 /// Extension trait for [`egui::Context`].

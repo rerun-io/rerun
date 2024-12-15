@@ -1,5 +1,6 @@
 //! Capture log messages and send them to some receiver over a channel.
 
+#[derive(Clone)]
 pub struct LogMsg {
     /// The verbosity level.
     pub level: log::Level,
