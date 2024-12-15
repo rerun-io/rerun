@@ -93,7 +93,7 @@ impl FFmpegVersion {
         })
     }
 
-    /// Like [`for_executable_polling`], but blocks until the version is ready.
+    /// Like [`Self::for_executable_poll`], but blocks until the version is ready.
     ///
     /// WARNING: this blocks for half a second on Mac, maybe more on other platforms.
     pub fn for_executable_blocking(path: Option<&std::path::Path>) -> FfmpegVersionResult {
