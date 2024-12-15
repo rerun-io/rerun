@@ -13,10 +13,7 @@ enum BlueprintLoadError {
 ///
 /// The file must be of a matching version of rerun.
 #[must_use]
-pub fn load_blueprint_file(
-    path: &std::path::Path,
-    with_notifications: bool,
-) -> Option<StoreBundle> {
+pub fn load_blueprint_file(path: &std::path::Path) -> Option<StoreBundle> {
     fn load_file_path_impl(path: &std::path::Path) -> Result<StoreBundle, BlueprintLoadError> {
         re_tracing::profile_function!();
 
@@ -32,10 +29,6 @@ pub fn load_blueprint_file(
 
     match load_file_path_impl(path) {
         Ok(mut rrd) => {
-            if with_notifications {
-                re_log::info!("Loaded {path:?}");
-            }
-
             for entity_db in rrd.entity_dbs_mut() {
                 entity_db.data_source =
                     Some(re_smart_channel::SmartChannelSource::File(path.into()));
@@ -45,16 +38,9 @@ pub fn load_blueprint_file(
         Err(err) => {
             let msg = format!("Failed loading {path:?}: {err}");
 
-            if with_notifications {
-                re_log::error!("{msg}");
-                rfd::MessageDialog::new()
-                    .set_level(rfd::MessageLevel::Error)
-                    .set_description(&msg)
-                    .show();
-            } else {
-                // Silently ignore
-                re_log::debug!("{msg}");
-            }
+            // Silently ignore
+            re_log::debug!("{msg}");
+
             None
         }
     }

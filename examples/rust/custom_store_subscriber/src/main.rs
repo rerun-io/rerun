@@ -8,7 +8,7 @@
 //!
 //! # Log any kind of data from another terminal:
 //! $ cargo r -p objectron -- --connect
-//! ```
+//! ````
 
 use std::collections::BTreeMap;
 
@@ -19,14 +19,20 @@ use rerun::{
 };
 
 fn main() -> anyhow::Result<std::process::ExitCode> {
+    let main_thread_token = rerun::MainThreadToken::i_promise_i_am_on_the_main_thread();
     re_log::setup_logging();
 
     let _handle = re_chunk_store::ChunkStore::register_subscriber(Box::<Orchestrator>::default());
     // Could use the returned handle to get a reference to the view if needed.
 
     let build_info = re_build_info::build_info!();
-    rerun::run(build_info, rerun::CallSource::Cli, std::env::args())
-        .map(std::process::ExitCode::from)
+    rerun::run(
+        main_thread_token,
+        build_info,
+        rerun::CallSource::Cli,
+        std::env::args(),
+    )
+    .map(std::process::ExitCode::from)
 }
 
 // ---

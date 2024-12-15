@@ -1,0 +1,35 @@
+[package]
+name = "re_capabilities"
+authors.workspace = true
+description = "Capability tokens for the Rerun code base."
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+license.workspace = true
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+
+
+[features]
+default = []
+
+## Enable constructing the [`MainThreadToken`] from an [`egui::Ui`].
+egui = ["dep:egui"]
+
+
+[dependencies]
+# Internal dependencies:
+
+# External dependencies:
+document-features.workspace = true
+egui = { workspace = true, default-features = false, optional = true }
+static_assertions.workspace = true

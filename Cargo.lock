@@ -5593,6 +5593,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_capabilities"
+version = "0.21.0-alpha.1+dev"
+dependencies = [
+ "document-features",
+ "egui",
+ "static_assertions",
+]
+
+[[package]]
 name = "re_case"
 version = "0.21.0-alpha.1+dev"
 dependencies = [
@@ -5788,6 +5797,7 @@ dependencies = [
  "image",
  "itertools 0.13.0",
  "nohash-hasher",
+ "re_capabilities",
  "re_chunk_store",
  "re_entity_db",
  "re_format",
@@ -6785,6 +6795,7 @@ dependencies = [
  "re_blueprint_tree",
  "re_build_info",
  "re_build_tools",
+ "re_capabilities",
  "re_chunk",
  "re_chunk_store",
  "re_chunk_store_ui",
@@ -6866,6 +6877,7 @@ dependencies = [
  "nohash-hasher",
  "once_cell",
  "parking_lot",
+ "re_capabilities",
  "re_chunk",
  "re_chunk_store",
  "re_data_source",
@@ -7166,6 +7178,7 @@ dependencies = [
  "re_analytics",
  "re_build_info",
  "re_build_tools",
+ "re_capabilities",
  "re_chunk",
  "re_chunk_store",
  "re_crash_handler",

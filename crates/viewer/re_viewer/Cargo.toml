@@ -48,6 +48,7 @@ grpc = ["re_data_source/grpc", "dep:re_grpc_client"]
 # Internal:
 re_blueprint_tree.workspace = true
 re_build_info.workspace = true
+re_capabilities.workspace = true
 re_chunk.workspace = true
 re_chunk_store.workspace = true
 re_component_ui.workspace = true
