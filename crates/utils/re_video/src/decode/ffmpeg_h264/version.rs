@@ -1,13 +1,16 @@
-use std::{collections::HashMap, path::PathBuf};
+use std::{collections::HashMap, path::PathBuf, sync::Arc};
 
 use once_cell::sync::Lazy;
-use parking_lot::Mutex;
+use parking_lot::Mutex;`
 
 // FFmpeg 5.1 "Riemann" is from 2022-07-22.
 // It's simply the oldest I tested manually as of writing. We might be able to go lower.
 // However, we also know that FFmpeg 4.4 is already no longer working.
 pub const FFMPEG_MINIMUM_VERSION_MAJOR: u32 = 5;
 pub const FFMPEG_MINIMUM_VERSION_MINOR: u32 = 1;
+
+
+pub type FfmpegVersionResult = Result<FFmpegVersion, FFmpegVersionParseError>;
 
 /// A successfully parsed `FFmpeg` version.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -78,8 +81,9 @@ impl FFmpegVersion {
     /// version string. Since version strings can get pretty wild, we don't want to fail in this case.
     ///
     /// Internally caches the result per path together with its modification time to re-run/parse the version only if the file has changed.
-    pub fn for_executable(path: Option<&std::path::Path>) -> Result<Self, FFmpegVersionParseError> {
-        static CACHE: Lazy<Mutex<VersionMap>> = Lazy::new(|| Mutex::new(VersionMap::default()));
+    pub fn for_executable(path: Option<&std::path::Path>) -> FfmpegVersionResult {
+        static CACHE: Lazy<Arc<Mutex<VersionMap>>> =
+            Lazy::new(|| Arc::new(Mutex::new(VersionMap::default())));
 
         re_tracing::profile_function!();
 
@@ -96,7 +100,7 @@ impl FFmpegVersion {
         };
 
         // Check first if we already have the version cached.
-        CACHE.lock().version(path, modification_time)
+        CACHE.lock().version(path, modification_time).clone()
     }
 
     /// Returns true if this version is compatible with Rerun's minimum requirements.
@@ -108,53 +112,40 @@ impl FFmpegVersion {
 }
 
 #[derive(Default)]
-struct VersionMap(
-    HashMap<
-        PathBuf,
-        (
-            Option<std::time::SystemTime>,
-            Result<FFmpegVersion, FFmpegVersionParseError>,
-        ),
-    >,
-);
+struct VersionMap(HashMap<PathBuf, (Option<std::time::SystemTime>, FfmpegVersionResult)>);
 
 impl VersionMap {
     fn version(
         &mut self,
         path: Option<&std::path::Path>,
         modification_time: Option<std::time::SystemTime>,
-    ) -> Result<FFmpegVersion, FFmpegVersionParseError> {
+    ) -> &FfmpegVersionResult {
         let Self(cache) = self;
 
-        let cache_key = path.unwrap_or(std::path::Path::new("ffmpeg"));
-        if let Some(cached) = cache.get(cache_key) {
-            if modification_time == cached.0 {
-                return cached.1.clone();
+        let cache_key = path.unwrap_or(std::path::Path::new("ffmpeg")).to_path_buf();
+
+        match cache.entry(cache_key) {
+            std::collections::hash_map::Entry::Occupied(entry) => &entry.into_mut().1,
+            std::collections::hash_map::Entry::Vacant(entry) => {
+                let version = ffmpeg_version(path);
+                &entry.insert((modification_time, version)).1
             }
         }
-
-        let version = ffmpeg_version(path);
-
-        cache.insert(
-            cache_key.to_path_buf(),
-            (modification_time, version.clone()),
-        );
-
-        version
     }
 }
 
 fn ffmpeg_version(
     path: Option<&std::path::Path>,
 ) -> Result<FFmpegVersion, FFmpegVersionParseError> {
+    re_tracing::profile_function!("ffmpeg_version_with_path");
+
     let raw_version = if let Some(path) = path {
-        re_tracing::profile_scope!("ffmpeg_version_with_path");
         ffmpeg_sidecar::version::ffmpeg_version_with_path(path)
     } else {
-        re_tracing::profile_scope!("ffmpeg_version");
         ffmpeg_sidecar::version::ffmpeg_version()
     }
     .map_err(|err| FFmpegVersionParseError::RunFFmpeg(err.to_string()))?;
+
     if let Some(version) = FFmpegVersion::parse(&raw_version) {
         Ok(version)
     } else {
