@@ -82,8 +82,8 @@ impl FFmpegVersion {
     ///
     /// Internally caches the result per path together with its modification time to re-run/parse the version only if the file has changed.
     pub fn for_executable(path: Option<&std::path::Path>) -> FfmpegVersionResult {
-        static CACHE: Lazy<Arc<Mutex<VersionMap>>> =
-            Lazy::new(|| Arc::new(Mutex::new(VersionMap::default())));
+        static CACHE: Lazy<Mutex<VersionMap>> =
+            Lazy::new(|| Mutex::new(VersionMap::default()));
 
         re_tracing::profile_function!();
 
