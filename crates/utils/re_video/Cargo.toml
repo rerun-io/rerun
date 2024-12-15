@@ -53,6 +53,7 @@ econtext.workspace = true
 itertools.workspace = true
 once_cell.workspace = true
 parking_lot.workspace = true
+poll-promise.workspace = true
 re_mp4.workspace = true
 thiserror.workspace = true
 

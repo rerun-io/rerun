@@ -6512,6 +6512,7 @@ dependencies = [
  "js-sys",
  "once_cell",
  "parking_lot",
+ "poll-promise",
  "re_build_info",
  "re_build_tools",
  "re_log",

@@ -111,21 +111,7 @@ impl FFmpegVersion {
             }
         }
 
-        // Run FFmpeg (or whatever was passed to us) to get the version.
-        let raw_version = if let Some(path) = path {
-            ffmpeg_sidecar::version::ffmpeg_version_with_path(path)
-        } else {
-            ffmpeg_sidecar::version::ffmpeg_version()
-        }
-        .map_err(|err| FFmpegVersionParseError::RunFFmpeg(err.to_string()))?;
-
-        let version = if let Some(version) = Self::parse(&raw_version) {
-            Ok(version)
-        } else {
-            Err(FFmpegVersionParseError::ParseVersion {
-                raw_version: raw_version.clone(),
-            })
-        };
+        let version = ffmpeg_version(path);
 
         cache.insert(
             cache_key.to_path_buf(),
@@ -140,6 +126,26 @@ impl FFmpegVersion {
         self.major > FFMPEG_MINIMUM_VERSION_MAJOR
             || (self.major == FFMPEG_MINIMUM_VERSION_MAJOR
                 && self.minor >= FFMPEG_MINIMUM_VERSION_MINOR)
+    }
+}
+
+fn ffmpeg_version(
+    path: Option<&std::path::Path>,
+) -> Result<FFmpegVersion, FFmpegVersionParseError> {
+    let raw_version = if let Some(path) = path {
+        re_tracing::profile_scope!("ffmpeg_version_with_path");
+        ffmpeg_sidecar::version::ffmpeg_version_with_path(path)
+    } else {
+        re_tracing::profile_scope!("ffmpeg_version");
+        ffmpeg_sidecar::version::ffmpeg_version()
+    }
+    .map_err(|err| FFmpegVersionParseError::RunFFmpeg(err.to_string()))?;
+    if let Some(version) = FFmpegVersion::parse(&raw_version) {
+        Ok(version)
+    } else {
+        Err(FFmpegVersionParseError::ParseVersion {
+            raw_version: raw_version.clone(),
+        })
     }
 }
 
