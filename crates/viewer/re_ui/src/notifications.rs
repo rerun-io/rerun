@@ -1,5 +1,7 @@
 use std::time::Duration;
 
+use egui::hex_color;
+use jiff::{Unit, Zoned};
 pub use re_log::Level;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -30,7 +32,9 @@ fn is_relevant(level: re_log::Level) -> bool {
 struct Notification {
     level: NotificationLevel,
     text: String,
-    ttl_sec: f64,
+
+    created_at: Zoned,
+    ttl: Duration,
 }
 
 pub struct NotificationUi {
@@ -69,7 +73,9 @@ impl NotificationUi {
         self.data.push(Notification {
             level: level.into(),
             text: text.into(),
-            ttl_sec: TOAST_TTL_SEC,
+
+            created_at: Zoned::now(),
+            ttl: base_ttl(),
         });
     }
 
@@ -77,24 +83,30 @@ impl NotificationUi {
         self.data.push(Notification {
             level: NotificationLevel::Success,
             text: text.into(),
-            ttl_sec: TOAST_TTL_SEC,
+
+            created_at: Zoned::now(),
+            ttl: base_ttl(),
         });
     }
 
     pub fn show(&mut self, egui_ctx: &egui::Context) {
-        self.panel.show(egui_ctx, &self.data[..]);
-
         if self.panel.is_visible {
             for notification in &mut self.data {
-                notification.ttl_sec = 0.0;
+                notification.ttl = Duration::ZERO;
             }
-
-            self.toasts.show(egui_ctx, &mut self.data[..]);
         }
 
+        let mut to_dismiss = None;
+        self.panel.show(egui_ctx, &self.data[..], &mut to_dismiss);
+        if let Some(i) = to_dismiss {
+            self.data.remove(i);
+        }
+
+        self.toasts.show(egui_ctx, &mut self.data[..]);
+
         if let Some(notification) = self.data.last() {
-            if notification.ttl_sec.is_finite() && notification.ttl_sec > 0.0 {
-                egui_ctx.request_repaint_after(Duration::from_secs_f64(notification.ttl_sec));
+            if !notification.ttl.is_zero() {
+                egui_ctx.request_repaint_after(notification.ttl);
             }
         }
     }
@@ -113,13 +125,41 @@ impl NotificationPanel {
         }
     }
 
-    fn show(&self, egui_ctx: &egui::Context, notifications: &[Notification]) {
+    fn show(
+        &self,
+        egui_ctx: &egui::Context,
+        notifications: &[Notification],
+        to_dismiss: &mut Option<usize>,
+    ) {
         if !self.is_visible {
             return;
         }
 
-        let panel_width = 400.0;
+        let panel_width = 358.0;
         let panel_max_height = 320.0;
+
+        let notification_list = |ui: &mut egui::Ui| {
+            if notifications.is_empty() {
+                ui.label(
+                    egui::RichText::new("Nothing here!")
+                        .weak()
+                        .color(hex_color!("#636b6f")),
+                );
+
+                return;
+            }
+
+            for (i, notification) in notifications.iter().enumerate().rev() {
+                if let Some(action) = show_notification(ui, notification, DisplayMode::Panel).action
+                {
+                    match action {
+                        Action::Dismiss => {
+                            *to_dismiss = Some(i);
+                        }
+                    }
+                };
+            }
+        };
 
         egui::Area::new(self.id)
             .anchor(egui::Align2::RIGHT_TOP, egui::vec2(-8.0, 32.0))
@@ -128,6 +168,7 @@ impl NotificationPanel {
             .movable(false)
             .show(egui_ctx, |ui| {
                 egui::Frame::window(ui.style())
+                    .fill(hex_color!("#141819"))
                     .rounding(0.0)
                     .show(ui, |ui| {
                         ui.set_width(panel_width);
@@ -137,23 +178,15 @@ impl NotificationPanel {
                                 egui::scroll_area::ScrollBarVisibility::AlwaysVisible,
                             )
                             .min_scrolled_height(panel_max_height)
-                            .show(ui, |ui| {
-                                for Notification { level, text, .. } in notifications.iter().rev() {
-                                    ui.horizontal(|ui| {
-                                        ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
-                                        ui.set_max_width(panel_width);
-                                        ui.spacing_mut().item_spacing = egui::Vec2::splat(5.0);
-                                        log_level_icon(ui, *level);
-                                        ui.label(format!("{level:?}: {text}"));
-                                    });
-                                }
-                            });
+                            .show(ui, notification_list);
                     });
             });
     }
 }
 
-const TOAST_TTL_SEC: f64 = 4.0;
+fn base_ttl() -> Duration {
+    Duration::from_secs_f64(4.0)
+}
 
 struct Toasts {
     id: egui::Id,
@@ -176,12 +209,12 @@ impl Toasts {
     fn show(&mut self, egui_ctx: &egui::Context, notifications: &mut [Notification]) {
         let Self { id } = self;
 
-        let dt = egui_ctx.input(|i| i.unstable_dt) as f64;
-        let mut offset = egui::vec2(-8.0, 8.0);
+        let dt = Duration::from_secs_f32(egui_ctx.input(|i| i.unstable_dt));
+        let mut offset = egui::vec2(-8.0, 32.0);
 
         for (i, notification) in notifications
             .iter_mut()
-            .filter(|n| n.ttl_sec > 0.0)
+            .filter(|n| n.ttl > Duration::ZERO)
             .enumerate()
         {
             let response = egui::Area::new(id.with(i))
@@ -190,19 +223,23 @@ impl Toasts {
                 .interactable(true)
                 .movable(false)
                 .show(egui_ctx, |ui| {
-                    show_notification_toast(ui, notification);
+                    show_notification(ui, notification, DisplayMode::Toast).response
                 })
                 .response;
 
             if !response.hovered() {
-                notification.ttl_sec = (notification.ttl_sec - dt).max(0.0);
+                if notification.ttl < dt {
+                    notification.ttl = Duration::ZERO;
+                } else {
+                    notification.ttl -= dt;
+                }
             }
 
             let response = response.on_hover_text("Click to close and copy contents");
 
             if response.clicked() {
                 egui_ctx.output_mut(|o| o.copied_text = notification.text.clone());
-                notification.ttl_sec = 0.0;
+                notification.ttl = Duration::ZERO;
             }
 
             offset.y += response.rect.height() + 8.0;
@@ -210,27 +247,117 @@ impl Toasts {
     }
 }
 
-fn show_notification_toast(ui: &mut egui::Ui, notification: &Notification) -> egui::Response {
-    egui::Frame::window(ui.style())
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum DisplayMode {
+    Panel,
+    Toast,
+}
+
+#[derive(Debug, Clone, Copy)]
+enum Action {
+    Dismiss,
+}
+
+struct NotificationResponse {
+    response: egui::Response,
+    action: Option<Action>,
+}
+
+fn show_notification(
+    ui: &mut egui::Ui,
+    notification: &Notification,
+    mode: DisplayMode,
+) -> NotificationResponse {
+    let mut action = None;
+
+    let response = egui::Frame::window(ui.style())
+        .rounding(4.0)
         .inner_margin(10.0)
+        .fill(hex_color!("#1c2123"))
         .show(ui, |ui| {
-            ui.horizontal(|ui| {
-                ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
-                ui.set_max_width(400.0);
-                ui.spacing_mut().item_spacing = egui::Vec2::splat(5.0);
-                log_level_icon(ui, notification.level);
-                ui.label(notification.text.clone());
+            ui.vertical_centered(|ui| {
+                let text_response = ui
+                    .horizontal_top(|ui| {
+                        ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
+                        ui.set_max_width(300.0);
+                        ui.spacing_mut().item_spacing.x = 8.0;
+                        log_level_icon(ui, notification.level);
+                        ui.label(
+                            egui::RichText::new(notification.text.clone())
+                                .color(hex_color!("#cad8de"))
+                                .weak(),
+                        );
+
+                        ui.spacing_mut().item_spacing.x = 4.0;
+                        if mode == DisplayMode::Panel {
+                            notification_age_label(ui, notification);
+                        }
+                    })
+                    .response;
+
+                let controls_response = ui
+                    .horizontal_top(|ui| {
+                        if mode != DisplayMode::Panel {
+                            return;
+                        }
+
+                        ui.add_space(17.0);
+                        if ui.button("Dismiss").clicked() {
+                            action = Some(Action::Dismiss);
+                        }
+                    })
+                    .response;
+
+                text_response.union(controls_response)
             })
         })
-        .response
+        .response;
+
+    NotificationResponse { response, action }
+}
+
+fn notification_age_label(ui: &mut egui::Ui, notification: &Notification) {
+    let Ok(age) = (&Zoned::now() - &notification.created_at).total(Unit::Second) else {
+        return;
+    };
+
+    let formatted = if age <= 9.0 {
+        ui.ctx().request_repaint_after(Duration::from_secs(1));
+
+        "just now".to_owned()
+    } else if age <= 59.0 {
+        ui.ctx().request_repaint_after(Duration::from_secs(1));
+
+        format!("{age:.0}s")
+    } else {
+        ui.ctx().request_repaint_after(Duration::from_secs(60));
+
+        notification.created_at.time().strftime("%H:%M").to_string()
+    };
+
+    ui.horizontal_top(|ui| {
+        ui.set_min_width(52.0);
+        ui.with_layout(egui::Layout::top_down(egui::Align::Max), |ui| {
+            ui.label(
+                egui::RichText::new(formatted)
+                    .weak()
+                    .color(hex_color!("#636b6f")),
+            )
+            .on_hover_text(format!("{}", notification.created_at));
+        });
+    });
 }
 
 fn log_level_icon(ui: &mut egui::Ui, level: NotificationLevel) {
-    let (icon, icon_color) = match level {
-        NotificationLevel::Info => ("ℹ", crate::INFO_COLOR),
-        NotificationLevel::Warning => ("⚠", ui.style().visuals.warn_fg_color),
-        NotificationLevel::Error => ("❗", ui.style().visuals.error_fg_color),
-        NotificationLevel::Success => ("✔", crate::SUCCESS_COLOR),
+    let color = match level {
+        NotificationLevel::Info => crate::INFO_COLOR,
+        NotificationLevel::Warning => ui.style().visuals.warn_fg_color,
+        NotificationLevel::Error => ui.style().visuals.error_fg_color,
+        NotificationLevel::Success => crate::SUCCESS_COLOR,
     };
-    ui.label(egui::RichText::new(icon).color(icon_color));
+
+    let (rect, _) = ui.allocate_exact_size(egui::vec2(10.0, 10.0), egui::Sense::hover());
+    let mut pos = rect.center();
+    pos.y += 2.0;
+    ui.painter().circle_filled(pos, 5.0, color);
 }

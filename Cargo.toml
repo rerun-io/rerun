@@ -206,6 +206,7 @@ indicatif = "0.17.7" # Progress bar
 infer = "0.16" # infer MIME type by checking the magic number signaturefer MIME type by checking the magic number signature
 insta = "1.23"
 itertools = "0.13"
+jiff = "0.1.15"
 js-sys = "0.3"
 libc = "0.2"
 linked-hash-map = { version = "0.5", default-features = false }
