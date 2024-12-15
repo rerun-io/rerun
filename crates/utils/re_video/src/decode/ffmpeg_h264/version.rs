@@ -79,14 +79,7 @@ impl FFmpegVersion {
     ///
     /// Internally caches the result per path together with its modification time to re-run/parse the version only if the file has changed.
     pub fn for_executable(path: Option<&std::path::Path>) -> Result<Self, FFmpegVersionParseError> {
-        type VersionMap = HashMap<
-            PathBuf,
-            (
-                Option<std::time::SystemTime>,
-                Result<FFmpegVersion, FFmpegVersionParseError>,
-            ),
-        >;
-        static CACHE: Lazy<Mutex<VersionMap>> = Lazy::new(|| Mutex::new(HashMap::new()));
+        static CACHE: Lazy<Mutex<VersionMap>> = Lazy::new(|| Mutex::new(VersionMap::default()));
 
         re_tracing::profile_function!();
 
@@ -103,7 +96,36 @@ impl FFmpegVersion {
         };
 
         // Check first if we already have the version cached.
-        let mut cache = CACHE.lock();
+        CACHE.lock().version(path, modification_time)
+    }
+
+    /// Returns true if this version is compatible with Rerun's minimum requirements.
+    pub fn is_compatible(&self) -> bool {
+        self.major > FFMPEG_MINIMUM_VERSION_MAJOR
+            || (self.major == FFMPEG_MINIMUM_VERSION_MAJOR
+                && self.minor >= FFMPEG_MINIMUM_VERSION_MINOR)
+    }
+}
+
+#[derive(Default)]
+struct VersionMap(
+    HashMap<
+        PathBuf,
+        (
+            Option<std::time::SystemTime>,
+            Result<FFmpegVersion, FFmpegVersionParseError>,
+        ),
+    >,
+);
+
+impl VersionMap {
+    fn version(
+        &mut self,
+        path: Option<&std::path::Path>,
+        modification_time: Option<std::time::SystemTime>,
+    ) -> Result<FFmpegVersion, FFmpegVersionParseError> {
+        let Self(cache) = self;
+
         let cache_key = path.unwrap_or(std::path::Path::new("ffmpeg"));
         if let Some(cached) = cache.get(cache_key) {
             if modification_time == cached.0 {
@@ -119,13 +141,6 @@ impl FFmpegVersion {
         );
 
         version
-    }
-
-    /// Returns true if this version is compatible with Rerun's minimum requirements.
-    pub fn is_compatible(&self) -> bool {
-        self.major > FFMPEG_MINIMUM_VERSION_MAJOR
-            || (self.major == FFMPEG_MINIMUM_VERSION_MAJOR
-                && self.minor >= FFMPEG_MINIMUM_VERSION_MINOR)
     }
 }
 
