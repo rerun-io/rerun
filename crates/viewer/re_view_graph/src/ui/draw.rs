@@ -209,10 +209,13 @@ fn draw_node(
 
     match node {
         DrawableLabel::Circle(label) => draw_circle_label(&mut node_ui, label, highlight),
-        DrawableLabel::Text(label) if lod == LevelOfDetail::Full => {
-            draw_text_label(&mut node_ui, label, highlight)
+        DrawableLabel::Text(label) => {
+            if lod == LevelOfDetail::Full {
+                draw_text_label(&mut node_ui, label, highlight)
+            } else {
+                draw_rect_label(&mut node_ui, label, highlight)
+            }
         }
-        DrawableLabel::Text(label) => draw_rect_label(&mut node_ui, label, highlight),
     };
 
     node_ui.response()
