@@ -117,6 +117,12 @@ impl NotificationUi {
 
     pub fn ui(&mut self, egui_ctx: &egui::Context, is_panel_visible: &mut bool) {
         if *is_panel_visible {
+            let escape_pressed =
+                egui_ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape));
+            if escape_pressed {
+                *is_panel_visible = false;
+            }
+
             self.has_unread_notifications = false;
         }
 
@@ -159,6 +165,8 @@ impl NotificationPanel {
         let panel_width = 356.0;
         let panel_max_height = 320.0;
 
+        let mut to_dismiss = None;
+
         let notification_list = |ui: &mut egui::Ui| {
             if notifications.is_empty() {
                 ui.label(
@@ -170,16 +178,14 @@ impl NotificationPanel {
                 return;
             }
 
-            let mut to_dismiss = None;
             for (i, notification) in notifications.iter().enumerate().rev() {
                 show_notification(ui, notification, DisplayMode::Panel, || {
                     to_dismiss = Some(i);
                 });
             }
-            if let Some(to_dismiss) = to_dismiss {
-                notifications.remove(to_dismiss);
-            }
         };
+
+        let mut clear = false;
 
         egui::Area::new(self.id)
             .anchor(egui::Align2::RIGHT_TOP, egui::vec2(-8.0, 32.0))
@@ -204,8 +210,22 @@ impl NotificationPanel {
                         egui::ScrollArea::vertical()
                             .min_scrolled_height(panel_max_height)
                             .show(ui, notification_list);
+
+                        if !notifications.is_empty() {
+                            ui.horizontal_top(|ui| {
+                                if ui.button("Clear all").clicked() {
+                                    clear = true;
+                                };
+                            });
+                        }
                     });
             });
+
+        if clear {
+            notifications.clear();
+        } else if let Some(to_dismiss) = to_dismiss {
+            notifications.remove(to_dismiss);
+        }
     }
 }
 
