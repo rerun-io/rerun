@@ -59,6 +59,11 @@ impl ContextMenuAction for ScreenshotAction {
 
         let rect = rect.shrink(1.75); // Hacky: Shrink so we don't accidentally include the border of the view.
 
+        if !rect.is_positive() {
+            re_log::info!("View too small for a screenshot");
+            return;
+        }
+
         let target = match self {
             #[cfg(not(target_arch = "wasm32"))] // TODO(#8264): copy-to-screenshot on web
             Self::CopyScreenshot => ScreenshotTarget::CopyToClipboard,
