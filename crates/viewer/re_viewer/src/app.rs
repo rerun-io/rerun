@@ -1596,7 +1596,6 @@ impl App {
         false
     }
 
-    #[cfg(not(target_arch = "wasm32"))] // TODO(#8264): screenshotting on web
     fn process_screenshot_result(
         &mut self,
         image: &Arc<egui::ColorImage>,
@@ -1623,8 +1622,8 @@ impl App {
             };
 
             match target {
+                #[cfg(not(target_arch = "wasm32"))] // TODO(#8264): copy-to-screenshot on web
                 re_viewer_context::ScreenshotTarget::CopyToClipboard => {
-                    #[cfg(not(target_arch = "wasm32"))] // TODO(#8264): screenshotting on web
                     re_viewer_context::Clipboard::with(|clipboard| {
                         clipboard.set_image(
                             [rgba.width(), rgba.height()],
@@ -1656,6 +1655,7 @@ impl App {
                 }
             }
         } else {
+            #[cfg(not(target_arch = "wasm32"))] // no full-app screenshotting on web
             self.screenshotter.save(image);
         }
     }
@@ -1951,7 +1951,6 @@ impl eframe::App for App {
         self.store_hub = Some(store_hub);
 
         // Check for returned screenshot:
-        #[cfg(not(target_arch = "wasm32"))] // TODO(#8264): screenshotting on web
         egui_ctx.input(|i| {
             for event in &i.raw.events {
                 if let egui::Event::Screenshot {
