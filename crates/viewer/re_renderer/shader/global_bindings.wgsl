@@ -31,10 +31,11 @@ struct FrameUniformBuffer {
 var<uniform> frame: FrameUniformBuffer;
 
 @group(0) @binding(1)
-var nearest_sampler: sampler;
-
+var nearest_sampler_repeat: sampler;
 @group(0) @binding(2)
-var trilinear_sampler: sampler;
+var nearest_sampler_clamped: sampler;
+@group(0) @binding(3)
+var trilinear_sampler_repeat: sampler;
 
 // See config.rs#DeviceTier
 const DEVICE_TIER_GLES = 0u;
