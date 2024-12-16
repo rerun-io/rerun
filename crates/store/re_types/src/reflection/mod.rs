@@ -1417,7 +1417,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     is_required : true, }, ArchetypeFieldReflection { name :
                     "graph_type", display_name : "Graph type", component_name :
                     "rerun.components.GraphType".into(), docstring_md :
-                    "Specifies if the graph is directed or undirected.\n\nIf no [`components.GraphType`](https://rerun.io/docs/reference/types/components/graph_type?speculative-link) is provided, the graph is assumed to be undirected.\n\n⚠\u{fe0f} **This type is experimental and may be removed in future versions**",
+                    "Specifies if the graph is directed or undirected.\n\nIf no [`components.GraphType`](https://rerun.io/docs/reference/types/components/graph_type) is provided, the graph is assumed to be undirected.\n\n⚠\u{fe0f} **This type is experimental and may be removed in future versions**",
                     is_required : false, },
                 ],
             },

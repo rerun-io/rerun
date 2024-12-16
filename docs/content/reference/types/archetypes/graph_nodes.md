@@ -19,9 +19,9 @@ A list of nodes in a graph with optional labels, colors, etc.
 * [DataframeView](../views/dataframe_view.md)
 
 ## API reference links
- * 🌊 [C++ API docs for `GraphNodes`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1GraphNodes.html?speculative-link)
- * 🐍 [Python API docs for `GraphNodes`](https://ref.rerun.io/docs/python/stable/common/archetypes?speculative-link#rerun.archetypes.GraphNodes)
- * 🦀 [Rust API docs for `GraphNodes`](https://docs.rs/rerun/latest/rerun/archetypes/struct.GraphNodes.html?speculative-link)
+ * 🌊 [C++ API docs for `GraphNodes`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1GraphNodes.html)
+ * 🐍 [Python API docs for `GraphNodes`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.GraphNodes)
+ * 🦀 [Rust API docs for `GraphNodes`](https://docs.rs/rerun/latest/rerun/archetypes/struct.GraphNodes.html)
 
 ## Examples
 

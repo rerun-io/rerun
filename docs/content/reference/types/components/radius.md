@@ -37,7 +37,7 @@ float32
 * [`Ellipsoids3D`](../archetypes/ellipsoids3d.md)
 * [`GeoLineStrings`](../archetypes/geo_line_strings.md)
 * [`GeoPoints`](../archetypes/geo_points.md)
-* [`GraphNodes`](../archetypes/graph_nodes.md?speculative-link)
+* [`GraphNodes`](../archetypes/graph_nodes.md)
 * [`LineStrips2D`](../archetypes/line_strips2d.md)
 * [`LineStrips3D`](../archetypes/line_strips3d.md)
 * [`Points2D`](../archetypes/points2d.md)

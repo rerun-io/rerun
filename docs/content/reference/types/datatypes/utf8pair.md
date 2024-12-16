@@ -26,11 +26,11 @@ Struct {
 ```
 
 ## API reference links
- * 🌊 [C++ API docs for `Utf8Pair`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1Utf8Pair.html?speculative-link)
- * 🐍 [Python API docs for `Utf8Pair`](https://ref.rerun.io/docs/python/stable/common/datatypes?speculative-link#rerun.datatypes.Utf8Pair)
- * 🦀 [Rust API docs for `Utf8Pair`](https://docs.rs/rerun/latest/rerun/datatypes/struct.Utf8Pair.html?speculative-link)
+ * 🌊 [C++ API docs for `Utf8Pair`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1Utf8Pair.html)
+ * 🐍 [Python API docs for `Utf8Pair`](https://ref.rerun.io/docs/python/stable/common/datatypes#rerun.datatypes.Utf8Pair)
+ * 🦀 [Rust API docs for `Utf8Pair`](https://docs.rs/rerun/latest/rerun/datatypes/struct.Utf8Pair.html)
 
 
 ## Used by
 
-* [`GraphEdge`](../components/graph_edge.md?speculative-link)
+* [`GraphEdge`](../components/graph_edge.md)

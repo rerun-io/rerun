@@ -41,7 +41,7 @@ Tries to move the center of mass of the graph to the origin.
 * `strength`: The strength of the force.
 
 ## API reference links
- * 🐍 [Python API docs for `GraphView`](https://ref.rerun.io/docs/python/stable/common/blueprint_views?speculative-link#rerun.blueprint.views.GraphView)
+ * 🐍 [Python API docs for `GraphView`](https://ref.rerun.io/docs/python/stable/common/blueprint_views#rerun.blueprint.views.GraphView)
 
 ## Example
 
