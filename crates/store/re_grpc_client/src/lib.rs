@@ -10,7 +10,7 @@ use re_types::blueprint::archetypes::{ViewBlueprint, ViewContents};
 use re_types::blueprint::components::{ContainerKind, RootContainer};
 use re_types::components::RecordingUri;
 use re_types::external::uuid;
-use re_types::Component;
+use re_types::{Archetype, Component};
 use url::Url;
 
 // ----------------------------------------------------------------------------
@@ -83,6 +83,10 @@ enum StreamError {
 }
 
 // ----------------------------------------------------------------------------
+
+const CATALOG_BP_STORE_ID: &str = "catalog_blueprint";
+const CATALOG_REC_STORE_ID: &str = "catalog";
+const CATALOG_APPLICATION_ID: &str = "redap_catalog";
 
 /// Stream an rrd file or metadsasta catalog over gRPC from a Rerun Data Platform server.
 ///
@@ -289,10 +293,10 @@ async fn stream_catalog_async(
     }
 
     // Craft the StoreInfo for the actual catalog data
-    let store_id = StoreId::from_string(StoreKind::Recording, "catalog".to_owned());
+    let store_id = StoreId::from_string(StoreKind::Recording, CATALOG_REC_STORE_ID.to_owned());
 
     let store_info = StoreInfo {
-        application_id: ApplicationId::from("redap_catalog"),
+        application_id: ApplicationId::from(CATALOG_APPLICATION_ID),
         store_id: store_id.clone(),
         cloned_from: None,
         is_official_example: false,
@@ -389,13 +393,15 @@ async fn stream_catalog_async(
 }
 
 // Craft a blueprint from relevant chunks and activate it
+// TODO(zehiko) - manual crafting of the blueprint as we have below will go away and be replaced
+// by either a blueprint crafted using rust Blueprint API or a blueprint fetched from ReDap (#8470)
 fn activate_catalog_blueprint(
     tx: &re_smart_channel::Sender<LogMsg>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let blueprint_store_id =
-        StoreId::from_string(StoreKind::Blueprint, "catalog_blueprint".to_owned());
+        StoreId::from_string(StoreKind::Blueprint, CATALOG_BP_STORE_ID.to_owned());
     let blueprint_store_info = StoreInfo {
-        application_id: ApplicationId::from("redap_catalog"),
+        application_id: ApplicationId::from(CATALOG_APPLICATION_ID),
         store_id: blueprint_store_id.clone(),
         cloned_from: None,
         is_official_example: false,
@@ -421,9 +427,10 @@ fn activate_catalog_blueprint(
         .with_visible(true)
         .with_space_origin("/");
 
+    // TODO(zehiko) we shouldn't really be creating all these ids and entity paths manually... (#8470)
     let view_uuid = uuid::Uuid::new_v4();
-    let view_id = format!("/view/{view_uuid}");
-    let view_chunk = ChunkBuilder::new(ChunkId::new(), view_id.clone().into())
+    let view_entity_path = format!("/view/{view_uuid}");
+    let view_chunk = ChunkBuilder::new(ChunkId::new(), view_entity_path.clone().into())
         .with_archetype(RowId::new(), timepoint, &vb)
         .build()?;
 
@@ -431,14 +438,18 @@ fn activate_catalog_blueprint(
     let vc = ViewContents::new(epf.iter_expressions());
     let view_contents_chunk = ChunkBuilder::new(
         ChunkId::new(),
-        format!("{}/ViewContents", view_id.clone()).into(),
+        format!(
+            "{}/{}",
+            view_entity_path.clone(),
+            ViewContents::name().short_name()
+        )
+        .into(),
     )
     .with_archetype(RowId::new(), timepoint, &vc)
     .build()?;
 
-    let rc = ContainerBlueprint::new(ContainerKind::Grid);
-    let rc = rc
-        .with_contents(&[EntityPath::from(view_id)])
+    let rc = ContainerBlueprint::new(ContainerKind::Grid)
+        .with_contents(&[EntityPath::from(view_entity_path)])
         .with_visible(true);
 
     let container_uuid = uuid::Uuid::new_v4();
