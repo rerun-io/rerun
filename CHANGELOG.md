@@ -2,7 +2,7 @@
 
 ## [Unreleased](https://github.com/rerun-io/rerun/compare/latest...HEAD)
 
-## [0.21.0](https://github.com/rerun-io/rerun/compare/0.20.3...0.21.0) - Graph view, Undo/Redo & 3D grid
+## [0.21.0](https://github.com/rerun-io/rerun/compare/0.20.3...0.21.0) - Graph view, 3D Grid & Undo/Redo
 
 TODO: add link to release video
 
@@ -12,7 +12,11 @@ TODO: add link to release video
 
 ### ✨ Overview & highlights
 
-We've added two new logging primitives: [`GraphNodes`](TODO) and [`GraphEdges`](TODO) that can be used to visualize node-link diagrams. For this, we have implemented a new Graph View that uses force-based layouts to draw graphs.
+#### Graph view
+
+TODO: add Jochen to not-contributors
+
+We've added two new logging primitives: [`GraphNodes`](https://rerun.io/docs/reference/types/archetypes/graph_nodes) and [`GraphEdges`](https://rerun.io/docs/reference/types/archetypes/graph_edges) that can be used to visualize node-link diagrams. For this, we have implemented a new Graph View that uses force-based layouts to draw graphs.
 
 <p align="center">
   <picture>
@@ -20,11 +24,44 @@ We've added two new logging primitives: [`GraphNodes`](TODO) and [`GraphEdges`](
   </picture>
 </p>
 
-TODO: blurbs:
-* undo/redo
-* 3d grid
+TODO: link to https://github.com/rerun-io/rerun/pull/7500 for the curious
+
+#### 3D Grid
+
+The 3D view now offers an infinite 3D grid, enabled by default. Further controls and settings are available as usual through the [blueprint](TODO) and/or the selection panel.
+
+<p align="center">
+  <picture>
+    <img src="https://static.rerun.io/changelog_grid/f8bc043a18de0409b12a05a245d50de19fdf9375/480w.png" alt="">
+  </picture>
+</p>
+
+TODO: link to
+* https://github.com/rerun-io/rerun/pull/8230
+* https://github.com/rerun-io/rerun/pull/8234
+
+#### Undo/Redo
+
+TODO: embed somehow emil's loom about it
+
+#### Drag-n-drop
+
+TODO: drag-n-drop????
+
+#### View screenshots
+
+TODO: is screenshotting a highlight?
+
+#### Breadcrumbs and other UI/UX improvements
+
+TODO: Katya's loom
+TODO: breadcrumbs?
+
 
 ### ⚠️ Breaking changes
+
+TODO: mention migration kernel
+
 TODO: fill in
 🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-21
 
@@ -47,10 +84,10 @@ TODO: fill in
 - Add utility to `rr.components.Color` to generate colors from any string (and use it in the air traffic data example) [#8458](https://github.com/rerun-io/rerun/pull/8458)
 
 #### 🦀 Rust API
-- Fix `Loggable` pretending to have semantics [#8082](https://github.com/rerun-io/rerun/pull/8082)
+- Update MSRV to 1.80 [#8178](https://github.com/rerun-io/rerun/pull/8178)
+- Remove `Loggable::NAME` -- Loggables do not have any semantics [#8082](https://github.com/rerun-io/rerun/pull/8082)
 - Never direct users towards using `RecordingStream::log_component_batches` [#8149](https://github.com/rerun-io/rerun/pull/8149)
 - Rust API: be explicit about when we're using the arrow2 crate [#8194](https://github.com/rerun-io/rerun/pull/8194)
-- Update MSRV to 1.80 [#8178](https://github.com/rerun-io/rerun/pull/8178)
 - Add `from_gray16` for `DepthImage` [#8213](https://github.com/rerun-io/rerun/pull/8213) (thanks [@fawdlstty](https://github.com/fawdlstty)!)
 - Rust: more `impl<AsComponents>` helpers [#8401](https://github.com/rerun-io/rerun/pull/8401)
 
@@ -60,10 +97,10 @@ TODO: fill in
 
 #### 🌁 Viewer improvements
 - World grid part 1/2: add world grid renderer to `re_renderer` [#8230](https://github.com/rerun-io/rerun/pull/8230)
+- World grid part 2/2: Integrate into Viewer [#8234](https://github.com/rerun-io/rerun/pull/8234)
 - Add Undo/Redo support in the viewer [#7546](https://github.com/rerun-io/rerun/pull/7546)
 - Space view screenshotting in native viewer [#8258](https://github.com/rerun-io/rerun/pull/8258)
 - Remove selection history [#8296](https://github.com/rerun-io/rerun/pull/8296)
-- World grid part 2/2: Integrate into Viewer [#8234](https://github.com/rerun-io/rerun/pull/8234)
 - Make the near clipping plane editable in 2D views [#8348](https://github.com/rerun-io/rerun/pull/8348)
 - Don't show transform arrows on all entities without any other visualizer [#8387](https://github.com/rerun-io/rerun/pull/8387)
 - Do query for default components only once per view [#8424](https://github.com/rerun-io/rerun/pull/8424)
@@ -74,8 +111,8 @@ TODO: fill in
 - Add a new "Air Traffic Data" example [#5449](https://github.com/rerun-io/rerun/pull/5449)
 - Use video logging api in `detect_and_track` example [#8261](https://github.com/rerun-io/rerun/pull/8261) (thanks [@oxkitsune](https://github.com/oxkitsune)!)
 - Add hloc_glomap example and update manifest [#8352](https://github.com/rerun-io/rerun/pull/8352) (thanks [@pablovela5620](https://github.com/pablovela5620)!)
-- Snippet index: implement codegen foundations [#8383](https://github.com/rerun-io/rerun/pull/8383)
-- Create a more convincing example of the graph view [#8421](https://github.com/rerun-io/rerun/pull/8421) (thanks [@grtlr](https://github.com/grtlr)!)
+- Introduce the Snippet Index [#8383](https://github.com/rerun-io/rerun/pull/8383)
+- Implement complete Graph View example [#8421](https://github.com/rerun-io/rerun/pull/8421) (thanks [@grtlr](https://github.com/grtlr)!)
 
 #### 📚 Docs
 - Update wheel build instruction [#8235](https://github.com/rerun-io/rerun/pull/8235)
@@ -99,13 +136,13 @@ TODO: fill in
 - Update egui to latest, update wgpu to 23.0.0 [#8183](https://github.com/rerun-io/rerun/pull/8183)
 
 #### ✨ Other enhancement
-- Improved 'rrd print' [#8392](https://github.com/rerun-io/rerun/pull/8392)
-- `re_types_blueprint` -> `re_types::blueprint` [#8419](https://github.com/rerun-io/rerun/pull/8419)
-- Improved reflection [#8432](https://github.com/rerun-io/rerun/pull/8432)
+- Improve `rrd print`'s verbosity modes [#8392](https://github.com/rerun-io/rerun/pull/8392)
+- Miscellaneous improvements to archetype reflection [#8432](https://github.com/rerun-io/rerun/pull/8432)
 - Migration kernel for the blueprint space-view-related breaking changes [#8439](https://github.com/rerun-io/rerun/pull/8439)
 
 #### 🗣 Refactors
 - Add arrow(1)-interface on top of `Loggable` and `ArrowBuffer` [#8197](https://github.com/rerun-io/rerun/pull/8197)
+- `re_types_blueprint` -> `re_types::blueprint` [#8419](https://github.com/rerun-io/rerun/pull/8419)
 - `re_viewer::reflection` -> `re_types::reflection` [#8420](https://github.com/rerun-io/rerun/pull/8420)
 
 #### 📦 Dependencies
