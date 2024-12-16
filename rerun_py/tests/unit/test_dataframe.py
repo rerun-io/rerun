@@ -380,3 +380,19 @@ class TestDataframe:
             table = pa.Table.from_batches(batches, batches.schema)
             assert table.num_columns == 3
             assert table.num_rows == 0
+
+    def test_roundtrip_send(self) -> None:
+        df = self.recording.view(index="my_index", contents="/**").select().read_all()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            rrd = tmpdir + "/tmp.rrd"
+
+            rr.init("rerun_example_test_recording")
+            rr.dataframe.send_dataframe(df)
+            rr.save(rrd)
+
+            round_trip_recording = rr.dataframe.load_recording(rrd)
+
+        df_round_trip = round_trip_recording.view(index="my_index", contents="/**").select().read_all()
+
+        assert df == df_round_trip
