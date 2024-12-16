@@ -8,7 +8,7 @@ TODO: add link to release video
 
 📖 Release blogpost: TODO: add link
 
-🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-21?speculative-link
+🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-21
 
 ### ✨ Overview & highlights
 
@@ -26,7 +26,7 @@ TODO: blurbs:
 
 ### ⚠️ Breaking changes
 TODO: fill in
-🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-21?speculative-link
+🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-21
 
 ### 🔎 Details
 
