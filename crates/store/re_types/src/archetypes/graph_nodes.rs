@@ -20,8 +20,6 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: A list of nodes in a graph with optional labels, colors, etc.
 ///
-/// ⚠️ **This type is experimental and may be removed in future versions**
-///
 /// ## Example
 ///
 /// ### Simple directed graph

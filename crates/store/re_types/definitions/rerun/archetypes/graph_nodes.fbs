@@ -9,8 +9,7 @@ namespace rerun.archetypes;
 table GraphNodes (
   "attr.docs.category": "Graph",
   "attr.docs.view_types": "GraphView",
-  "attr.rust.derive": "PartialEq",
-  "attr.rerun.experimental"
+  "attr.rust.derive": "PartialEq"
 ) {
   // --- Required ---
 

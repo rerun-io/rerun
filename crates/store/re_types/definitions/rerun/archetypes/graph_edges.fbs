@@ -11,8 +11,7 @@ namespace rerun.archetypes;
 table GraphEdges (
   "attr.docs.category": "Graph",
   "attr.docs.view_types": "GraphView",
-  "attr.rust.derive": "PartialEq, Eq",
-  "attr.rerun.experimental"
+  "attr.rust.derive": "PartialEq, Eq"
 ) {
   // --- Required ---
 
