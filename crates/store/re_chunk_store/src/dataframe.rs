@@ -110,11 +110,10 @@ impl TimeColumnDescriptor {
             datatype: _,
         } = self;
 
-        [
-            Some(("sorbet.index_name".to_owned(), timeline.name().to_string())),
-            Some(("sorbet.index_type".to_owned(), timeline.typ().to_string())),
-        ]
-        .into_iter()
+        std::iter::once(Some((
+            "sorbet.index_name".to_owned(),
+            timeline.name().to_string(),
+        )))
         .flatten()
         .collect()
     }
