@@ -2,7 +2,7 @@
 
 ## [Unreleased](https://github.com/rerun-io/rerun/compare/latest...HEAD)
 
-## [0.21.0](https://github.com/rerun-io/rerun/compare/0.20.3...0.21.0) - Graph view, 3D Grid & Undo/Redo
+## [0.21.0](https://github.com/rerun-io/rerun/compare/0.20.3...0.21.0) - Graph view, 3D Grid & UI/UX improvements
 
 TODO: add link to release video
 
@@ -14,8 +14,6 @@ TODO: add link to release video
 
 #### Graph view
 
-TODO: add Jochen to not-contributors
-
 We've added two new logging primitives: [`GraphNodes`](https://rerun.io/docs/reference/types/archetypes/graph_nodes) and [`GraphEdges`](https://rerun.io/docs/reference/types/archetypes/graph_edges) that can be used to visualize node-link diagrams. For this, we have implemented a new Graph View that uses force-based layouts to draw graphs.
 
 <p align="center">
@@ -24,11 +22,11 @@ We've added two new logging primitives: [`GraphNodes`](https://rerun.io/docs/ref
   </picture>
 </p>
 
-TODO: link to https://github.com/rerun-io/rerun/pull/7500 for the curious
+Have a look at https://github.com/rerun-io/rerun/pull/7500 if you want to learn to more.
 
 #### 3D Grid
 
-The 3D view now offers an infinite 3D grid, enabled by default. Further controls and settings are available as usual through the [blueprint](TODO) and/or the selection panel.
+The 3D view now offers an infinite 3D grid, enabled by default. Further controls and settings are available as usual through the blueprint and/or the selection panel.
 
 <p align="center">
   <picture>
@@ -36,34 +34,27 @@ The 3D view now offers an infinite 3D grid, enabled by default. Further controls
   </picture>
 </p>
 
-TODO: link to
+All the nitty gritty details in:
 * https://github.com/rerun-io/rerun/pull/8230
 * https://github.com/rerun-io/rerun/pull/8234
 
-#### Undo/Redo
+### UI/UX improvements
 
+* Undo/Redo
 TODO: embed somehow emil's loom about it
-
-#### Drag-n-drop
-
-TODO: drag-n-drop????
-
-#### View screenshots
-
-TODO: is screenshotting a highlight?
-
-#### Breadcrumbs and other UI/UX improvements
-
+* Drag-n-drop
+* View screenshots
+* Breadcrumbs and other UI/UX improvements
 TODO: Katya's loom
 TODO: breadcrumbs?
 
-
 ### ⚠️ Breaking changes
 
-TODO: mention migration kernel
+* Near clip plane for `Spatial2D` views now defaults to `0.1` in 3D scene units.
+* Blueprint: Types and fields got renamed from `.*space_view.*`/`.*SpaceView.*` to `.*view.*`/`.*View.*`.
+* 3D transform arrow visualization show up less often by default.
 
-TODO: fill in
-🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-21
+Read our 🧳 migration guide for more detailed information: https://rerun.io/docs/reference/migration/migration-0-21.
 
 ### 🔎 Details
 
