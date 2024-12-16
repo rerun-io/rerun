@@ -152,7 +152,7 @@ arboard = { version = "3.2", default-features = false }
 argh = "0.1.12"
 array-init = "2.1"
 arrow = { version = "53.1", default-features = false }
-arrow2 = { package = "re_arrow2", version = "0.17" }
+arrow2 = { package = "re_arrow2", version = "0.18" }
 async-executor = "1.0"
 backtrace = "0.3"
 bincode = "1.3"
@@ -580,9 +580,5 @@ egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", rev = "48e0ef5664
 # egui_commonmark = { git = "https://github.com/rerun-io/egui_commonmark", rev = "7a9dc755bfa351a3796274cb8ca87129b051c084" } # https://github.com/lampsitter/egui_commonmark/pull/65
 
 # walkers = { git = "https://github.com/rerun-io/walkers", rev = "8939cceb3fa49ca8648ee16fe1d8432f5ab0bdcc" } # https://github.com/podusowski/walkers/pull/222
-
-# commit on `rerun-io/re_arrow2` `main` branch
-# https://github.com/rerun-io/re_arrow2/commit/79ba149e823c88c1baa770a33c6ea8b6244d0597
-re_arrow2 = { git = "https://github.com/rerun-io/re_arrow2", rev = "79ba149e823c88c1baa770a33c6ea8b6244d0597" }
 
 # dav1d = { path = "/home/cmc/dev/rerun-io/rav1d", package = "re_rav1d", version = "0.1.1" }
