@@ -18,6 +18,8 @@ from ..datatypes import (
 from ..error_utils import _send_warning_or_raise, catch_and_log_exceptions
 
 if TYPE_CHECKING:
+    from PIL import Image as PILImage
+
     ImageLike = Union[
         npt.NDArray[np.float16],
         npt.NDArray[np.float32],
@@ -30,18 +32,23 @@ if TYPE_CHECKING:
         npt.NDArray[np.uint32],
         npt.NDArray[np.uint64],
         npt.NDArray[np.uint8],
+        PILImage.Image,
     ]
     from . import EncodedImage, Image
 
 
 def _to_numpy(tensor: ImageLike) -> npt.NDArray[Any]:
+    from PIL import Image as PILImage
+
     # isinstance is 4x faster than catching AttributeError
     if isinstance(tensor, np.ndarray):
         return tensor
+    if isinstance(tensor, PILImage.Image):
+        return np.array(tensor, copy=False)
 
     try:
         # Make available to the cpu
-        return tensor.numpy(force=True)  # type: ignore[union-attr]
+        return tensor.numpy(force=True)  # type: ignore[union-attr, no-any-return]
     except AttributeError:
         return np.array(tensor, copy=False)
 

@@ -13,6 +13,7 @@ force_position.py linguist-generated=true
 line_grid3d.py linguist-generated=true
 map_background.py linguist-generated=true
 map_zoom.py linguist-generated=true
+near_clip_plane.py linguist-generated=true
 panel_blueprint.py linguist-generated=true
 plot_legend.py linguist-generated=true
 scalar_axis.py linguist-generated=true

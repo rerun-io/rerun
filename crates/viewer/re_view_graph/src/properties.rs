@@ -55,7 +55,7 @@ impl TypedComponentFallbackProvider<ForceDistance> for GraphView {
 impl TypedComponentFallbackProvider<ForceStrength> for GraphView {
     fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> ForceStrength {
         match ctx.archetype_name {
-            Some(name) if name == archetypes::ForceManyBody::name() => (-60.).into(),
+            Some(name) if name == archetypes::ForceManyBody::name() => (-60.0).into(),
             Some(name) if name == archetypes::ForcePosition::name() => (0.01).into(),
             _ => (1.0).into(),
         }
