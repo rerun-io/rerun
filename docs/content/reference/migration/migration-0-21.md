@@ -32,6 +32,9 @@ Various types and fields got changed to refer to "views" rather than "space view
 This exclusively affects the Python blueprint sdk:
 
 #### Field/argument changes:
+
+TODO: search and replaced too far
+
 * `ViewportBlueprint(...auto_views=...)` -> `ViewportBlueprint(...auto_views=...)`
 * `Blueprint(...auto_views=...)` -> `Blueprint(...auto_views=...)`
 

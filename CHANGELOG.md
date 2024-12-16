@@ -2,6 +2,109 @@
 
 ## [Unreleased](https://github.com/rerun-io/rerun/compare/latest...HEAD)
 
+## [0.21.0](https://github.com/rerun-io/rerun/compare/0.20.3...0.21.0) - Graph view & Undo/Redo
+
+TODO: add link to release video
+
+📖 Release blogpost: TODO: add link
+
+🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-21?speculative-link
+
+### ✨ Overview & highlights
+TODO: fill in
+
+### ⚠️ Breaking changes
+TODO: fill in
+🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-21?speculative-link
+
+### 🔎 Details
+
+#### 🪵 Log API
+- End-to-end tagging: Rust [#8304](https://github.com/rerun-io/rerun/pull/8304)
+- Encode `LogMsg` using protobuf [#8347](https://github.com/rerun-io/rerun/pull/8347)
+
+#### 🌊 C++ API
+- End-to-end tagging: C++ [#8316](https://github.com/rerun-io/rerun/pull/8316)
+
+#### 🐍 Python API
+- Never direct users towards using `rr.log_components` [#8151](https://github.com/rerun-io/rerun/pull/8151)
+- Make it possible to log custom components using `rr.send_columns` [#8163](https://github.com/rerun-io/rerun/pull/8163)
+- Lint and fix python SDK `(Py)RecordingStream` upcasting issues [#8184](https://github.com/rerun-io/rerun/pull/8184)
+- End-to-end tagging: Python [#8298](https://github.com/rerun-io/rerun/pull/8298)
+- Rename space view to view everywhere [#8396](https://github.com/rerun-io/rerun/pull/8396)
+- Fix broken notebook loading on firefox by compressing the encoded wasm payload [#8426](https://github.com/rerun-io/rerun/pull/8426)
+- Add utility to `rr.components.Color` to generate colors from any string (and use it in the air traffic data example) [#8458](https://github.com/rerun-io/rerun/pull/8458)
+
+#### 🦀 Rust API
+- Fix `Loggable` pretending to have semantics [#8082](https://github.com/rerun-io/rerun/pull/8082)
+- Never direct users towards using `RecordingStream::log_component_batches` [#8149](https://github.com/rerun-io/rerun/pull/8149)
+- Rust API: be explicit about when we're using the arrow2 crate [#8194](https://github.com/rerun-io/rerun/pull/8194)
+- Update MSRV to 1.80 [#8178](https://github.com/rerun-io/rerun/pull/8178)
+- Add `from_gray16` for `DepthImage` [#8213](https://github.com/rerun-io/rerun/pull/8213) (thanks [@fawdlstty](https://github.com/fawdlstty)!)
+- Rust: more `impl<AsComponents>` helpers [#8401](https://github.com/rerun-io/rerun/pull/8401)
+
+#### 🪳 Bug fixes
+- Fix outlines for lines having more preceived aliasing since 0.20 [#8317](https://github.com/rerun-io/rerun/pull/8317)
+- Fix handling unnormalized axis for (Pose)RotationAxisAngle [#8341](https://github.com/rerun-io/rerun/pull/8341)
+
+#### 🌁 Viewer improvements
+- World grid part 1/2: add world grid renderer to `re_renderer` [#8230](https://github.com/rerun-io/rerun/pull/8230)
+- Add Undo/Redo support in the viewer [#7546](https://github.com/rerun-io/rerun/pull/7546)
+- Space view screenshotting in native viewer [#8258](https://github.com/rerun-io/rerun/pull/8258)
+- Remove selection history [#8296](https://github.com/rerun-io/rerun/pull/8296)
+- World grid part 2/2: Integrate into Viewer [#8234](https://github.com/rerun-io/rerun/pull/8234)
+- Make the near clipping plane editable in 2D views [#8348](https://github.com/rerun-io/rerun/pull/8348)
+- Don't show transform arrows on all entities without any other visualizer [#8387](https://github.com/rerun-io/rerun/pull/8387)
+- Do query for default components only once per view [#8424](https://github.com/rerun-io/rerun/pull/8424)
+- Improve hovered order in 2D views [#8405](https://github.com/rerun-io/rerun/pull/8405)
+- Remove wait-time when opening settings panel [#8464](https://github.com/rerun-io/rerun/pull/8464)
+
+#### 🧑‍🏫 Examples
+- Add a new "Air Traffic Data" example [#5449](https://github.com/rerun-io/rerun/pull/5449)
+- Use video logging api in `detect_and_track` example [#8261](https://github.com/rerun-io/rerun/pull/8261) (thanks [@oxkitsune](https://github.com/oxkitsune)!)
+- Add hloc_glomap example and update manifest [#8352](https://github.com/rerun-io/rerun/pull/8352) (thanks [@pablovela5620](https://github.com/pablovela5620)!)
+- Snippet index: implement codegen foundations [#8383](https://github.com/rerun-io/rerun/pull/8383)
+- Create a more convincing example of the graph view [#8421](https://github.com/rerun-io/rerun/pull/8421) (thanks [@grtlr](https://github.com/grtlr)!)
+
+#### 📚 Docs
+- Update wheel build instruction [#8235](https://github.com/rerun-io/rerun/pull/8235)
+- Fix various doc links in SDKs [#8331](https://github.com/rerun-io/rerun/pull/8331)
+
+#### 🖼 UI improvements
+- Implement graph components and archetypes [#7500](https://github.com/rerun-io/rerun/pull/7500) (thanks [@grtlr](https://github.com/grtlr)!)
+- Add support for Bezier-curve multi (self-)edges [#8256](https://github.com/rerun-io/rerun/pull/8256) (thanks [@grtlr](https://github.com/grtlr)!)
+- Implement incremental graph layouts [#8308](https://github.com/rerun-io/rerun/pull/8308) (thanks [@grtlr](https://github.com/grtlr)!)
+- Revert label background color to that in 0.19 [#8337](https://github.com/rerun-io/rerun/pull/8337)
+- Add selection hierarchy breadcrumbs [#8319](https://github.com/rerun-io/rerun/pull/8319)
+- More compact selection panel when multiple items selected [#8351](https://github.com/rerun-io/rerun/pull/8351)
+- Make Position2D components editable in selection panel [#8357](https://github.com/rerun-io/rerun/pull/8357) (thanks [@grtlr](https://github.com/grtlr)!)
+- Dynamic configuration of graph layout forces through blueprints [#8299](https://github.com/rerun-io/rerun/pull/8299) (thanks [@grtlr](https://github.com/grtlr)!)
+- Document legend interaction in the timeseries view help text [#8406](https://github.com/rerun-io/rerun/pull/8406)
+- Allow drag-and-dropping multiple containers and views in the blueprint tree [#8334](https://github.com/rerun-io/rerun/pull/8334)
+- Improve picking in 2D views [#8404](https://github.com/rerun-io/rerun/pull/8404)
+- Make our collapsing triangle thinner for more consistency with our icons [#8408](https://github.com/rerun-io/rerun/pull/8408)
+
+#### 🎨 Renderer improvements
+- Update egui to latest, update wgpu to 23.0.0 [#8183](https://github.com/rerun-io/rerun/pull/8183)
+
+#### ✨ Other enhancement
+- Improved 'rrd print' [#8392](https://github.com/rerun-io/rerun/pull/8392)
+- `re_types_blueprint` -> `re_types::blueprint` [#8419](https://github.com/rerun-io/rerun/pull/8419)
+- Improved reflection [#8432](https://github.com/rerun-io/rerun/pull/8432)
+- Migration kernel for the blueprint space-view-related breaking changes [#8439](https://github.com/rerun-io/rerun/pull/8439)
+
+#### 🗣 Refactors
+- Add arrow(1)-interface on top of `Loggable` and `ArrowBuffer` [#8197](https://github.com/rerun-io/rerun/pull/8197)
+- `re_viewer::reflection` -> `re_types::reflection` [#8420](https://github.com/rerun-io/rerun/pull/8420)
+
+#### 📦 Dependencies
+- Numpy 2.0 allowed in pyproject.toml [#8306](https://github.com/rerun-io/rerun/pull/8306) (thanks [@Ipuch](https://github.com/Ipuch)!)
+
+#### 🤷‍ Other
+- Deprecate `--serve`, add `--serve-web` [#8144](https://github.com/rerun-io/rerun/pull/8144)
+- Clean up pass over all superfluous hashing happening on the query path [#8207](https://github.com/rerun-io/rerun/pull/8207)
+- Improve performance of time panel [#8224](https://github.com/rerun-io/rerun/pull/8224)
+
 ## [0.20.3](https://github.com/rerun-io/rerun/compare/0.20.2...0.20.3) - Web viewer fix
 
 ### 🔎 Details
