@@ -57,6 +57,7 @@ impl ViewerContext<'_> {
             ));
     }
 
+    // TODO: this also should be banned
     pub fn save_blueprint_component(
         &self,
         entity_path: &EntityPath,
@@ -82,6 +83,7 @@ impl ViewerContext<'_> {
             ));
     }
 
+    // TODO: this also should be banned
     pub fn save_blueprint_array(
         &self,
         entity_path: &EntityPath,
@@ -160,12 +162,12 @@ impl ViewerContext<'_> {
     ) {
         let blueprint = &self.store_context.blueprint;
 
-        let Some(datatype) = blueprint
+        let Some((desc, datatype)) = blueprint
             .latest_at(self.blueprint_query, entity_path, [component_name])
             .get(&component_name)
             .and_then(|unit| {
-                unit.component_batch_raw(&component_name)
-                    .map(|array| array.data_type().clone())
+                unit.get_first_component(&component_name)
+                    .map(|(desc, list_array)| (desc.clone(), list_array.data_type().clone()))
             })
         else {
             // There's no component at this path yet, so there's nothing to clear.
@@ -177,10 +179,12 @@ impl ViewerContext<'_> {
             .with_row(
                 RowId::new(),
                 timepoint,
-                [(
-                    ComponentDescriptor::new(component_name),
-                    re_chunk::external::arrow2::array::new_empty_array(datatype),
-                )],
+                [
+                    (
+                        desc,
+                        re_chunk::external::arrow2::array::new_empty_array(datatype),
+                    ), //
+                ],
             )
             .build();
 

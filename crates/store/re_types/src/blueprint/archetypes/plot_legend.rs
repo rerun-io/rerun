@@ -211,6 +211,15 @@ impl PlotLegend {
         }
     }
 
+    /// Create an empty `PlotLegend`.
+    #[inline]
+    pub fn update() -> Self {
+        Self {
+            corner: None,
+            visible: None,
+        }
+    }
+
     /// To what corner the legend is aligned.
     ///
     /// Defaults to the right bottom corner.

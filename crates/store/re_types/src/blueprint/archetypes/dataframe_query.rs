@@ -325,6 +325,18 @@ impl DataframeQuery {
         }
     }
 
+    /// Create an empty `DataframeQuery`.
+    #[inline]
+    pub fn update() -> Self {
+        Self {
+            timeline: None,
+            filter_by_range: None,
+            filter_is_not_null: None,
+            apply_latest_at: None,
+            select: None,
+        }
+    }
+
     /// The timeline for this query.
     ///
     /// If unset, the timeline currently active on the time panel is used.

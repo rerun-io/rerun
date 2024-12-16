@@ -177,6 +177,8 @@ impl ViewProperty {
         fallback_provider.fallback_for(&self.query_context(ctx, view_state), component_name)
     }
 
+    // TODO: we should probably just ban this method tbh.
+    //
     /// Save change to a blueprint component.
     pub fn save_blueprint_component(
         &self,
@@ -186,6 +188,7 @@ impl ViewProperty {
         ctx.save_blueprint_component(&self.blueprint_store_path, components);
     }
 
+    // TODO: same for this one...
     /// Clears a blueprint component.
     pub fn clear_blueprint_component<C: re_types::Component>(&self, ctx: &ViewerContext<'_>) {
         ctx.clear_blueprint_component_by_name(&self.blueprint_store_path, C::name());

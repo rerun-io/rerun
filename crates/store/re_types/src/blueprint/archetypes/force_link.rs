@@ -249,6 +249,16 @@ impl ForceLink {
         }
     }
 
+    /// Create an empty `ForceLink`.
+    #[inline]
+    pub fn update() -> Self {
+        Self {
+            enabled: None,
+            distance: None,
+            iterations: None,
+        }
+    }
+
     /// Whether the force is enabled.
     #[inline]
     pub fn with_enabled(

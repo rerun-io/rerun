@@ -350,7 +350,8 @@ impl Chunk {
             return self.clone();
         }
 
-        let Some(component_list_array) = self.get_first_component(&component_name_pov) else {
+        let Some((_desc, component_list_array)) = self.get_first_component(&component_name_pov)
+        else {
             return self.clone();
         };
 

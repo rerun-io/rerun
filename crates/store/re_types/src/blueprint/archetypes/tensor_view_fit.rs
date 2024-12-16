@@ -167,6 +167,12 @@ impl TensorViewFit {
         Self { scaling: None }
     }
 
+    /// Create an empty `TensorViewFit`.
+    #[inline]
+    pub fn update() -> Self {
+        Self { scaling: None }
+    }
+
     /// How the image is scaled to fit the view.
     #[inline]
     pub fn with_scaling(

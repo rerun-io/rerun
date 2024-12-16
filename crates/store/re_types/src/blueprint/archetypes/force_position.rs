@@ -246,6 +246,16 @@ impl ForcePosition {
         }
     }
 
+    /// Create an empty `ForcePosition`.
+    #[inline]
+    pub fn update() -> Self {
+        Self {
+            enabled: None,
+            strength: None,
+            position: None,
+        }
+    }
+
     /// Whether the force is enabled.
     #[inline]
     pub fn with_enabled(

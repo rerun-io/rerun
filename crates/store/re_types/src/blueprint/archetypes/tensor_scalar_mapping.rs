@@ -254,6 +254,16 @@ impl TensorScalarMapping {
         }
     }
 
+    /// Create an empty `TensorScalarMapping`.
+    #[inline]
+    pub fn update() -> Self {
+        Self {
+            mag_filter: None,
+            colormap: None,
+            gamma: None,
+        }
+    }
+
     /// Filter used when zooming in on the tensor.
     ///
     /// Note that the filter is applied to the scalar values *before* they are mapped to color.

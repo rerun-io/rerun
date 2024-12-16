@@ -406,6 +406,18 @@ impl InstancePoses3D {
         }
     }
 
+    /// Create an empty `InstancePoses3D`.
+    #[inline]
+    pub fn update() -> Self {
+        Self {
+            translations: None,
+            rotation_axis_angles: None,
+            quaternions: None,
+            scales: None,
+            mat3x3: None,
+        }
+    }
+
     /// Translation vectors.
     #[inline]
     pub fn with_translations(

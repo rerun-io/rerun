@@ -306,6 +306,17 @@ impl TensorSliceSelection {
         }
     }
 
+    /// Create an empty `TensorSliceSelection`.
+    #[inline]
+    pub fn update() -> Self {
+        Self {
+            width: None,
+            height: None,
+            indices: None,
+            slider: None,
+        }
+    }
+
     /// Which dimension to map to width.
     ///
     /// If not specified, the height will be determined automatically based on the name and index of the dimension.

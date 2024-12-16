@@ -250,6 +250,16 @@ impl ForceCollisionRadius {
         }
     }
 
+    /// Create an empty `ForceCollisionRadius`.
+    #[inline]
+    pub fn update() -> Self {
+        Self {
+            enabled: None,
+            strength: None,
+            iterations: None,
+        }
+    }
+
     /// Whether the force is enabled.
     #[inline]
     pub fn with_enabled(

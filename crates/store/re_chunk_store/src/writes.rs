@@ -28,6 +28,17 @@ impl ChunkStore {
     /// * Inserting a duplicated [`ChunkId`] will result in a no-op.
     /// * Inserting an empty [`Chunk`] will result in a no-op.
     pub fn insert_chunk(&mut self, chunk: &Arc<Chunk>) -> ChunkStoreResult<Vec<ChunkStoreEvent>> {
+        // TODO: allow_untagged config?
+        if false {
+            for (_component_name, per_desc) in chunk.components().iter() {
+                if per_desc.keys().any(|desc| {
+                    desc.archetype_name.is_none() || desc.archetype_field_name.is_none()
+                }) {
+                    panic!("untagged data yo");
+                }
+            }
+        }
+
         if self.chunks_per_chunk_id.contains_key(&chunk.id()) {
             // We assume that chunk IDs are unique, and that reinserting a chunk has no effect.
             re_log::debug_once!(

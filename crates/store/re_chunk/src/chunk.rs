@@ -242,10 +242,10 @@ impl Chunk {
     pub fn get_first_component(
         &self,
         component_name: &ComponentName,
-    ) -> Option<&Arrow2ListArray<i32>> {
+    ) -> Option<(&ComponentDescriptor, &Arrow2ListArray<i32>)> {
         self.components
             .get(component_name)
-            .and_then(|per_desc| per_desc.values().next())
+            .and_then(|per_desc| per_desc.iter().next())
     }
 }
 
@@ -655,12 +655,13 @@ impl Chunk {
     #[inline]
     pub fn num_events_for_component(&self, component_name: ComponentName) -> Option<u64> {
         // Reminder: component columns are sparse, we must check validity bitmap.
-        self.get_first_component(&component_name).map(|list_array| {
-            list_array.validity().map_or_else(
-                || list_array.len() as u64,
-                |validity| validity.len() as u64 - validity.unset_bits() as u64,
-            )
-        })
+        self.get_first_component(&component_name)
+            .map(|(_desc, list_array)| {
+                list_array.validity().map_or_else(
+                    || list_array.len() as u64,
+                    |validity| validity.len() as u64 - validity.unset_bits() as u64,
+                )
+            })
     }
 
     /// Computes the `RowId` range covered by each individual component column on each timeline.
@@ -1172,7 +1173,7 @@ impl Chunk {
         &self,
         component_name: &ComponentName,
     ) -> impl Iterator<Item = RowId> + '_ {
-        let Some(list_array) = self.get_first_component(component_name) else {
+        let Some((_desc, list_array)) = self.get_first_component(component_name) else {
             return Either::Left(std::iter::empty());
         };
 

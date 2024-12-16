@@ -207,6 +207,15 @@ impl ForceCenter {
         }
     }
 
+    /// Create an empty `ForceCenter`.
+    #[inline]
+    pub fn update() -> Self {
+        Self {
+            enabled: None,
+            strength: None,
+        }
+    }
+
     /// Whether the force is enabled.
     #[inline]
     pub fn with_enabled(

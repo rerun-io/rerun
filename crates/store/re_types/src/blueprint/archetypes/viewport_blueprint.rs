@@ -342,6 +342,18 @@ impl ViewportBlueprint {
         }
     }
 
+    /// Create an empty `ViewportBlueprint`.
+    #[inline]
+    pub fn update() -> Self {
+        Self {
+            root_container: None,
+            maximized: None,
+            auto_layout: None,
+            auto_views: None,
+            past_viewer_recommendations: None,
+        }
+    }
+
     /// The layout of the views
     #[inline]
     pub fn with_root_container(

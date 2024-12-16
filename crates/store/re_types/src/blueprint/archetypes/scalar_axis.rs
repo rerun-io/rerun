@@ -209,6 +209,15 @@ impl ScalarAxis {
         }
     }
 
+    /// Create an empty `ScalarAxis`.
+    #[inline]
+    pub fn update() -> Self {
+        Self {
+            range: None,
+            zoom_lock: None,
+        }
+    }
+
     /// The range of the axis.
     ///
     /// If unset, the range well be automatically determined based on the queried data.

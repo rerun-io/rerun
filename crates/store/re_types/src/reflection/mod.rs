@@ -3,6 +3,8 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::wildcard_imports)]
 #![allow(unused_imports)]
+use std::sync::LazyLock;
+
 use crate::blueprint::components::*;
 use crate::components::*;
 use re_types_core::components::*;
@@ -13,6 +15,15 @@ use re_types_core::{
     },
     ArchetypeName, Component, ComponentName, Loggable as _, LoggableBatch as _, SerializationError,
 };
+
+// TODO: should make a PR for this really
+pub fn get() -> &'static Reflection {
+    // TODO: log an error or something
+    static REFLECTION: LazyLock<Reflection> =
+        LazyLock::new(|| generate_reflection().unwrap_or_default());
+
+    &REFLECTION
+}
 
 /// Generates reflection about all known components.
 ///

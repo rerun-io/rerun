@@ -335,6 +335,17 @@ impl SeriesLine {
         }
     }
 
+    /// Create an empty `SeriesLine`.
+    #[inline]
+    pub fn update() -> Self {
+        Self {
+            color: None,
+            width: None,
+            name: None,
+            aggregation_policy: None,
+        }
+    }
+
     /// Color for the corresponding series.
     #[inline]
     pub fn with_color(mut self, color: impl Into<crate::components::Color>) -> Self {

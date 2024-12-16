@@ -330,6 +330,18 @@ impl LineGrid3D {
         }
     }
 
+    /// Create an empty `LineGrid3D`.
+    #[inline]
+    pub fn update() -> Self {
+        Self {
+            visible: None,
+            spacing: None,
+            plane: None,
+            stroke_width: None,
+            color: None,
+        }
+    }
+
     /// Whether the grid is visible.
     ///
     /// Defaults to true.

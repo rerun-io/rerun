@@ -22,7 +22,7 @@ impl Chunk {
         row_index: usize,
     ) -> Option<ChunkResult<Box<dyn Arrow2Array>>> {
         self.get_first_component(component_name)
-            .and_then(|list_array| {
+            .and_then(|(_desc, list_array)| {
                 if list_array.len() > row_index {
                     list_array
                         .is_valid(row_index)
@@ -268,7 +268,7 @@ impl UnitChunkShared {
     ) -> Option<Box<dyn Arrow2Array>> {
         debug_assert!(self.num_rows() == 1);
         self.get_first_component(component_name)
-            .and_then(|list_array| list_array.is_valid(0).then(|| list_array.value(0)))
+            .and_then(|(_desc, list_array)| list_array.is_valid(0).then(|| list_array.value(0)))
     }
 
     /// Returns the deserialized data for the specified component.

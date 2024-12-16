@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 
 use anyhow::Context as _;
 use camino::{Utf8Path, Utf8PathBuf};
-use itertools::Itertools as _;
+use itertools::Itertools;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
@@ -1540,16 +1540,19 @@ fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) 
 
     let fn_new = {
         // fn new()
-        let quoted_params = required.iter().map(|field| {
-            let field_name = format_ident!("{}", field.name);
-            let (typ, unwrapped) = quote_field_type_from_typ(&field.typ, true);
-            if unwrapped {
-                // This was originally a vec/array!
-                quote!(#field_name: impl IntoIterator<Item = impl Into<#typ>>)
-            } else {
-                quote!(#field_name: impl Into<#typ>)
-            }
-        });
+        let quoted_params = required
+            .iter()
+            .map(|field| {
+                let field_name = format_ident!("{}", field.name);
+                let (typ, unwrapped) = quote_field_type_from_typ(&field.typ, true);
+                if unwrapped {
+                    // This was originally a vec/array!
+                    quote!(#field_name: impl IntoIterator<Item = impl Into<#typ>>)
+                } else {
+                    quote!(#field_name: impl Into<#typ>)
+                }
+            })
+            .collect_vec();
 
         let quoted_required = required.iter().map(|field| {
             let field_name = format_ident!("{}", field.name);
@@ -1562,10 +1565,13 @@ fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) 
             }
         });
 
-        let quoted_optional = optional.iter().map(|field| {
-            let field_name = format_ident!("{}", field.name);
-            quote!(#field_name: None)
-        });
+        let quoted_optional = optional
+            .iter()
+            .map(|field| {
+                let field_name = format_ident!("{}", field.name);
+                quote!(#field_name: None)
+            })
+            .collect_vec();
 
         let fn_new_pub = if obj.is_attr_set(ATTR_RUST_NEW_PUB_CRATE) {
             quote!(pub(crate))
@@ -1590,6 +1596,21 @@ fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) 
         } else {
             let docstring = quote_doc_line(&format!("Create a new `{name}`."));
 
+            // TODO: makes no difference, but for now we're just trying to make semantics clearer
+            // by reflecting them in the function name...
+            let fn_update = required.is_empty().then(|| {
+                let docstring = quote_doc_line(&format!("Create an empty `{name}`."));
+                quote! {
+                    #docstring
+                    #[inline]
+                    #fn_new_pub fn update(#(#quoted_params,)*) -> Self {
+                        Self {
+                            #(#quoted_optional,)*
+                        }
+                    }
+                }
+            });
+
             quote! {
                 #docstring
                 #[inline]
@@ -1599,6 +1620,8 @@ fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) 
                         #(#quoted_optional,)*
                     }
                 }
+
+                #fn_update
             }
         }
     };

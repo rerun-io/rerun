@@ -4,7 +4,7 @@ use re_chunk::{Chunk, RowId};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
-use re_types::{blueprint::components::PanelState, ComponentBatch};
+use re_types::blueprint::{archetypes::PanelBlueprint, components::PanelState};
 use re_viewer_context::{CommandSender, StoreContext, SystemCommand, SystemCommandSender};
 
 const TOP_PANEL_PATH: &str = "top_panel";
@@ -195,7 +195,11 @@ pub fn setup_welcome_screen_blueprint(welcome_screen_blueprint: &mut EntityDb) {
         let timepoint = re_viewer_context::blueprint_timepoint_for_writes(welcome_screen_blueprint);
 
         let chunk = Chunk::builder(entity_path)
-            .with_component_batches(RowId::new(), timepoint, [&value as &dyn ComponentBatch])
+            .with_archetype(
+                RowId::new(),
+                timepoint,
+                &PanelBlueprint::update().with_state(value),
+            )
             .build()
             .unwrap(); // Can only fail if we have the wrong number of instances for the component, and we don't
 
@@ -220,7 +224,11 @@ impl AppBlueprint<'_> {
             let timepoint = store_ctx.blueprint_timepoint_for_writes();
 
             let chunk = Chunk::builder(entity_path)
-                .with_component_batches(RowId::new(), timepoint, [&value as &dyn ComponentBatch])
+                .with_archetype(
+                    RowId::new(),
+                    timepoint,
+                    &PanelBlueprint::update().with_state(value),
+                )
                 .build()
                 .unwrap(); // Can only fail if we have the wrong number of instances for the component, and we don't
 
@@ -238,6 +246,8 @@ fn load_panel_state(
     query: &LatestAtQuery,
 ) -> Option<PanelState> {
     re_tracing::profile_function!();
+    // TODO: that'll be interesting for sure... I guess we don't really care which one, do we?
+    // Queries should really automatically degrade, shouldn't they?
     blueprint_db
         .latest_at_component_quiet::<PanelState>(path, query)
         .map(|(_index, p)| p)

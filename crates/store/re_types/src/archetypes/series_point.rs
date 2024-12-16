@@ -332,6 +332,17 @@ impl SeriesPoint {
         }
     }
 
+    /// Create an empty `SeriesPoint`.
+    #[inline]
+    pub fn update() -> Self {
+        Self {
+            color: None,
+            marker: None,
+            name: None,
+            marker_size: None,
+        }
+    }
+
     /// Color for the corresponding series.
     #[inline]
     pub fn with_color(mut self, color: impl Into<crate::components::Color>) -> Self {

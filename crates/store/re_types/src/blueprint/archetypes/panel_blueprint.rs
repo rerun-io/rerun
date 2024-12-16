@@ -167,6 +167,12 @@ impl PanelBlueprint {
         Self { state: None }
     }
 
+    /// Create an empty `PanelBlueprint`.
+    #[inline]
+    pub fn update() -> Self {
+        Self { state: None }
+    }
+
     /// Current state of the panels.
     #[inline]
     pub fn with_state(

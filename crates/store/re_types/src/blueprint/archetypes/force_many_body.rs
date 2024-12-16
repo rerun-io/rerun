@@ -211,6 +211,15 @@ impl ForceManyBody {
         }
     }
 
+    /// Create an empty `ForceManyBody`.
+    #[inline]
+    pub fn update() -> Self {
+        Self {
+            enabled: None,
+            strength: None,
+        }
+    }
+
     /// Whether the force is enabled.
     #[inline]
     pub fn with_enabled(

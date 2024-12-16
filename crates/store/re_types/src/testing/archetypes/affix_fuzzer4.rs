@@ -820,6 +820,31 @@ impl AffixFuzzer4 {
         }
     }
 
+    /// Create an empty `AffixFuzzer4`.
+    #[inline]
+    pub fn update() -> Self {
+        Self {
+            fuzz2101: None,
+            fuzz2102: None,
+            fuzz2103: None,
+            fuzz2104: None,
+            fuzz2105: None,
+            fuzz2106: None,
+            fuzz2107: None,
+            fuzz2108: None,
+            fuzz2109: None,
+            fuzz2110: None,
+            fuzz2111: None,
+            fuzz2112: None,
+            fuzz2113: None,
+            fuzz2114: None,
+            fuzz2115: None,
+            fuzz2116: None,
+            fuzz2117: None,
+            fuzz2118: None,
+        }
+    }
+
     #[inline]
     pub fn with_fuzz2101(
         mut self,
