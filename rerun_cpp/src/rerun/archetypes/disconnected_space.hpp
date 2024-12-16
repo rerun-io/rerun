@@ -30,6 +30,9 @@ namespace rerun::archetypes {
     /// ```cpp
     /// #include <rerun.hpp>
     ///
+    /// // DisconnectedSpace is deprecated and will be removed in the future.
+    /// RR_DISABLE_DEPRECATION_WARNING
+    ///
     /// int main() {
     ///     const auto rec = rerun::RecordingStream("rerun_example_disconnected_space");
     ///     rec.spawn().exit_on_failure();

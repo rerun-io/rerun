@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../compiler_utils.hpp"
 #include "../component_descriptor.hpp"
 #include "../datatypes/bool.hpp"
 #include "../result.hpp"
@@ -51,6 +52,9 @@ namespace rerun::components {
     };
 } // namespace rerun::components
 
+RR_PUSH_WARNINGS
+RR_DISABLE_DEPRECATION_WARNING
+
 namespace rerun {
     static_assert(sizeof(rerun::datatypes::Bool) == sizeof(components::DisconnectedSpace));
 
@@ -84,3 +88,5 @@ namespace rerun {
         }
     };
 } // namespace rerun
+
+RR_POP_WARNINGS

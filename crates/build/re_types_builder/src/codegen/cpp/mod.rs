@@ -2591,7 +2591,22 @@ fn quote_loggable_hpp_and_cpp(
 
     hpp_includes.insert_rerun("component_descriptor.hpp");
 
+    let (deprecation_ignore_start, deprecation_ignore_end) = if obj.deprecation_notice().is_some() {
+        hpp_includes.insert_rerun("compiler_utils.hpp");
+        (
+            quote! {
+                RR_PUSH_WARNINGS #NEWLINE_TOKEN
+                RR_DISABLE_DEPRECATION_WARNING #NEWLINE_TOKEN
+            },
+            quote! { RR_POP_WARNINGS },
+        )
+    } else {
+        (quote!(), quote!())
+    };
+
     let hpp = quote! {
+        #deprecation_ignore_start
+
         namespace rerun {
             #predeclarations_and_static_assertions
 
@@ -2604,6 +2619,8 @@ fn quote_loggable_hpp_and_cpp(
                 #(#methods_hpp)*
             };
         }
+
+        #deprecation_ignore_end
     };
 
     let cpp = if methods.iter().any(|m| !m.inline) {
