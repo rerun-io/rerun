@@ -1,10 +1,11 @@
 //! Modal for adding a new view of container to an existing target container.
 
-use crate::{ViewBlueprint, ViewportBlueprint};
 use re_ui::UiExt as _;
 use re_viewer_context::{
     blueprint_id_to_tile_id, icon_for_container_kind, ContainerId, RecommendedView, ViewerContext,
 };
+
+use crate::{ViewBlueprint, ViewportBlueprint};
 
 #[derive(Default)]
 pub struct AddViewOrContainerModal {
