@@ -81,7 +81,7 @@ pub struct PyStorageNodeClient {
 
 #[pymethods]
 impl PyStorageNodeClient {
-    /// Query the recordings metadata catalog.
+    /// Get the metadata for all recordings in the storage node.
     fn query_catalog(&mut self) -> PyResult<PyArrowType<Box<dyn RecordBatchReader + Send>>> {
         let reader = self.runtime.block_on(async {
             // TODO(jleibs): Support column projection and filtering
