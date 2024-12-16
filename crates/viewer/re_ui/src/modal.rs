@@ -1,5 +1,6 @@
-use crate::{DesignTokens, UiExt as _};
 use eframe::emath::NumExt;
+
+use crate::{DesignTokens, UiExt as _};
 
 /// Helper object to handle a [`ModalWrapper`] window.
 ///
