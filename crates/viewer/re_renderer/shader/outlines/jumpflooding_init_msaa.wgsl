@@ -3,8 +3,13 @@
 @group(0) @binding(0)
 var mask_texture: texture_multisampled_2d<u32>;
 
-fn has_edge(closest_center_sample: vec2u, sample_coord: vec2i, sample_idx: i32) -> vec2f {
-    let mask_neighbor = textureLoad(mask_texture, sample_coord, sample_idx).xy;
+fn has_edge(max_coord: vec2i, closest_center_sample: vec2u, sample_coord: vec2i, sample_idx: i32) -> vec2f {
+    // Note that `textureLoad` calls with out-of-bounds coordinates are allowed to return *any*
+    // value on the texture or "transparent"/"opaque" zero.
+    // See https://www.w3.org/TR/WGSL/#textureload
+    // Therefore, if we want consistent behavior, we have to do the clamp ourselves.
+    let clamped_coord = clamp(sample_coord, vec2i(0), max_coord);
+    let mask_neighbor = textureLoad(mask_texture, clamped_coord, sample_idx).xy;
     return vec2f(closest_center_sample != mask_neighbor);
 }
 
@@ -49,6 +54,7 @@ fn has_edge(closest_center_sample: vec2u, sample_coord: vec2i, sample_idx: i32) 
 fn main(in: FragmentInput) -> @location(0) vec4f {
     let resolution = textureDimensions(mask_texture).xy;
     let center_coord = vec2i(vec2f(resolution) * in.texcoord);
+    let max_coord = vec2i(resolution) - vec2i(1);
 
     //let num_samples = textureNumSamples(mask_texture);
     // TODO(andreas): Should we assert somehow on textureNumSamples here?
@@ -73,25 +79,25 @@ fn main(in: FragmentInput) -> @location(0) vec4f {
 
     // Sample closest neighbors top/bottom/left/right
     { // right
-        let edge = has_edge(mask_right_top, center_coord + vec2i(1, 0), 2);
+        let edge = has_edge(max_coord, mask_right_top, center_coord + vec2i(1, 0), 2);
         let edge_pos = vec2f(1.0, 0.5);
         edge_pos_a_and_b += vec4f(edge_pos, edge_pos) * edge.xxyy;
         num_edges_a_and_b += edge;
     }
     { // bottom
-        let edge = has_edge(mask_bottom_right, center_coord + vec2i(0, 1), 0);
+        let edge = has_edge(max_coord, mask_bottom_right, center_coord + vec2i(0, 1), 0);
         let edge_pos = vec2f(0.5, 1.0);
         edge_pos_a_and_b += vec4f(edge_pos, edge_pos) * edge.xxyy;
         num_edges_a_and_b += edge;
     }
     { // left
-        let edge = has_edge(mask_left_bottom, center_coord + vec2i(-1, 0), 1);
+        let edge = has_edge(max_coord, mask_left_bottom, center_coord + vec2i(-1, 0), 1);
         let edge_pos = vec2f(0.0, 0.5);
         edge_pos_a_and_b += vec4f(edge_pos, edge_pos) * edge.xxyy;
         num_edges_a_and_b += edge;
     }
     { // top
-        let edge = has_edge(mask_top_left, center_coord + vec2i(0, -1), 3);
+        let edge = has_edge(max_coord, mask_top_left, center_coord + vec2i(0, -1), 3);
         let edge_pos = vec2f(0.5, 0.0);
         edge_pos_a_and_b += vec4f(edge_pos, edge_pos) * edge.xxyy;
         num_edges_a_and_b += edge;
@@ -100,25 +106,25 @@ fn main(in: FragmentInput) -> @location(0) vec4f {
     // Sample closest neighbors diagonally.
     // This is not strictly necessary, but empirically the result looks a lot better!
     { // top-right
-        let edge = has_edge(mask_right_top, center_coord + vec2i(1, -1), 2);
+        let edge = has_edge(max_coord, mask_right_top, center_coord + vec2i(1, -1), 2);
         let edge_pos = vec2f(1.0, 0.0);
         edge_pos_a_and_b += vec4f(edge_pos, edge_pos) * edge.xxyy;
         num_edges_a_and_b += edge;
     }
     { // bottom-right
-        let edge = has_edge(mask_bottom_right, center_coord + vec2i(1, 1), 0);
+        let edge = has_edge(max_coord, mask_bottom_right, center_coord + vec2i(1, 1), 0);
         let edge_pos = vec2f(1.0, 1.0);
         edge_pos_a_and_b += vec4f(edge_pos, edge_pos) * edge.xxyy;
         num_edges_a_and_b += edge;
     }
     { // bottom-left
-        let edge = has_edge(mask_left_bottom, center_coord + vec2i(-1, 1), 1);
+        let edge = has_edge(max_coord, mask_left_bottom, center_coord + vec2i(-1, 1), 1);
         let edge_pos = vec2f(0.0, 1.0);
         edge_pos_a_and_b += vec4f(edge_pos, edge_pos) * edge.xxyy;
         num_edges_a_and_b += edge;
     }
     { // top-left
-        let edge = has_edge(mask_top_left, center_coord + vec2i(-1, -1), 3);
+        let edge = has_edge(max_coord, mask_top_left, center_coord + vec2i(-1, -1), 3);
         let edge_pos = vec2f(0.0, 0.0);
         //edge_pos_a_and_b += vec4f(edge_pos, edge_pos) * edge.xxyy; // multiplied by zero, optimize out
         num_edges_a_and_b += edge;
