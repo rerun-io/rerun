@@ -3672,6 +3672,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "db69f08d4fb10524cacdb074c10b296299d71274ddbc830a8ee65666867002e9"
 dependencies = [
  "jiff-tzdb-platform",
+ "js-sys",
+ "wasm-bindgen",
  "windows-sys 0.59.0",
 ]
 

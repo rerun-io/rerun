@@ -53,5 +53,9 @@ sublime_fuzzy.workspace = true
 jiff.workspace = true
 
 
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+jiff = { workspace = true, features = ["js"] }
+
+
 [dev-dependencies]
 egui_kittest.workspace = true
