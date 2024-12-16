@@ -64,7 +64,7 @@ pub fn fit_to_rect_in_scene(rect_in_ui: Rect, rect_in_scene: Rect) -> TSTransfor
 
 /// Provides a zoom-pan area for a given view.
 ///
-/// Will fill the entire [`parent_ui`] `max_rect`.
+/// Will fill the entire `max_rect` of the `parent_ui`.
 pub fn zoom_pan_area(
     parent_ui: &mut Ui,
     to_global: &mut TSTransform,
