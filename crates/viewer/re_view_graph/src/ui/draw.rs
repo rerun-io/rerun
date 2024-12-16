@@ -7,7 +7,6 @@ use egui::{
 use re_chunk::EntityPath;
 use re_data_ui::{item_ui, DataUi as _};
 use re_entity_db::InstancePath;
-use re_log_types::Instance;
 use re_types::ArrowString;
 use re_ui::list_item;
 use re_viewer_context::{
