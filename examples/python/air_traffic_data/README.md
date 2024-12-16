@@ -3,7 +3,7 @@ title = "Air traffic data"
 tags = ["2D", "3D", "map", "crs"]
 description = "Display aircraft traffic data"
 thumbnail = "https://static.rerun.io/air_traffic_data/348dd2def3a55fd0bf481a35a0765eeacfa20b6f/480w.png"
-thumbnail_dimensions = [480, 294]
+thumbnail_dimensions = [480, 480]
 channel = "nightly"
 -->
 
