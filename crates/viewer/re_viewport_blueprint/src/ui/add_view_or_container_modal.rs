@@ -30,6 +30,7 @@ impl AddViewOrContainerModal {
                 re_ui::modal::ModalWrapper::new("Add view or container")
                     .min_width(500.0)
                     .full_span_content(true)
+                    .scrollable([false, true])
             },
             |ui, keep_open| modal_ui(ui, ctx, viewport, self.target_container, keep_open),
         );

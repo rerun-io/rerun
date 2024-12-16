@@ -1,4 +1,3 @@
-use egui::NumExt as _;
 use itertools::Itertools;
 use nohash_hasher::IntMap;
 
@@ -37,6 +36,7 @@ impl ViewEntityPicker {
                 re_ui::modal::ModalWrapper::new("Add/remove Entities")
                     .default_height(640.0)
                     .full_span_content(true)
+                    .scrollable([false, true])
             },
             |ui, open| {
                 let Some(view_id) = &self.view_id else {
@@ -49,21 +49,7 @@ impl ViewEntityPicker {
                     return;
                 };
 
-                // Make the modal size less jumpy and work around https://github.com/emilk/egui/issues/5138
-                // TODO(ab): move that boilerplate to `ModalWrapper` by adding a `scrollable` flag.
-                let max_height = 0.85 * ui.ctx().screen_rect().height();
-                let min_height = 0.3 * ui.ctx().screen_rect().height().at_most(max_height);
-
-                egui::ScrollArea::vertical()
-                    .min_scrolled_height(max_height)
-                    .max_height(max_height)
-                    .show(ui, |ui| {
-                        add_entities_ui(ctx, ui, view);
-
-                        if ui.min_rect().height() < min_height {
-                            ui.add_space(min_height - ui.min_rect().height());
-                        }
-                    });
+                add_entities_ui(ctx, ui, view);
             },
         );
     }
