@@ -19,7 +19,7 @@ use re_view::{
     view_property_ui,
 };
 use re_viewer_context::{
-    IdentifiedViewSystem as _, RecommendedView, SystemExecutionOutput, ViewClass,
+    IdentifiedViewSystem as _, Item, RecommendedView, SystemExecutionOutput, ViewClass,
     ViewClassLayoutPriority, ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics,
     ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewSystemRegistrator, ViewerContext,
 };
@@ -205,6 +205,12 @@ Display a graph of nodes and edges.
                 draw_debug(ui, world_bounding_rect);
             }
         });
+
+        if resp.clicked() {
+            // clicked elsewhere, select the view
+            ctx.selection_state()
+                .set_selection(Item::View(query.view_id));
+        }
 
         // Update blueprint if changed
         let updated_rect_in_scene =
