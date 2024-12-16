@@ -158,6 +158,7 @@ fn draw_text_label(ui: &mut Ui, label: &TextLabel, highlight: InteractionHighlig
         .inner
 }
 
+/// Draw a rectangle to "fake" a label at small scales, where actual text would be unreadable anyways.
 fn draw_rect_label(ui: &mut Ui, label: &TextLabel, highlight: InteractionHighlight) -> Response {
     let TextLabel {
         galley,
