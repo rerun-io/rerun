@@ -7,6 +7,7 @@ use egui::{
 use re_chunk::EntityPath;
 use re_data_ui::{item_ui, DataUi as _};
 use re_entity_db::InstancePath;
+use re_log_types::Instance;
 use re_types::ArrowString;
 use re_ui::list_item;
 use re_viewer_context::{
@@ -298,11 +299,6 @@ pub fn draw_graph(
 
                 let instance_path =
                     InstancePath::instance(entity_path.clone(), instance.instance_index);
-                ctx.handle_select_hover_drag_interactions(
-                    &response,
-                    Item::DataResult(query.view_id, instance_path.clone()),
-                    false,
-                );
 
                 response = response.on_hover_ui_at_pointer(|ui| {
                     list_item::list_item_scope(ui, "graph_node_hover", |ui| {
@@ -318,6 +314,21 @@ pub fn draw_graph(
                         instance_path.data_ui_recording(ctx, ui, UiLayout::Tooltip);
                     });
                 });
+
+                ctx.handle_select_hover_drag_interactions(
+                    &response,
+                    Item::DataResult(query.view_id, instance_path.clone()),
+                    false,
+                );
+
+                // double click selects the entire entity
+                if response.double_clicked() {
+                    // Select the entire entity
+                    ctx.selection_state().set_selection(Item::DataResult(
+                        query.view_id,
+                        instance_path.entity_path.clone().into(),
+                    ));
+                }
 
                 response
             }
