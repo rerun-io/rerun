@@ -15,6 +15,7 @@ namespace rerun {
         // <CODEGEN_COPY_TO_HEADER>
 
         RERUN_SDK_EXPORT static const Quaternion IDENTITY;
+        RERUN_SDK_EXPORT static const Quaternion INVALID;
 
         /// Construct Quaternion from x/y/z/w values.
         static Quaternion from_xyzw(float x, float y, float z, float w) {
@@ -68,5 +69,6 @@ namespace rerun {
 #endif
 
         const Quaternion Quaternion::IDENTITY = Quaternion::from_xyzw(0.0f, 0.0f, 0.0f, 1.0f);
+        const Quaternion Quaternion::INVALID = Quaternion::from_xyzw(0.0f, 0.0f, 0.0f, 0.0f);
     } // namespace datatypes
 } // namespace rerun

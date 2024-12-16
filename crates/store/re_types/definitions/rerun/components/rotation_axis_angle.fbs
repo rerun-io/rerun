@@ -1,6 +1,8 @@
 namespace rerun.components;
 
 /// 3D rotation represented by a rotation around a given axis.
+///
+/// If normalization of the rotation axis fails the rotation is treated as an invalid transform.
 table RotationAxisAngle (
   "attr.rust.derive": "Default, Copy, PartialEq",
   "attr.rust.repr": "transparent"
@@ -9,6 +11,8 @@ table RotationAxisAngle (
 }
 
 /// 3D rotation represented by a rotation around a given axis that doesn't propagate in the transform hierarchy.
+///
+/// If normalization of the rotation axis fails the rotation is treated as an invalid transform.
 table PoseRotationAxisAngle (
   "attr.rust.derive": "Default, Copy, PartialEq",
   "attr.rust.repr": "transparent"

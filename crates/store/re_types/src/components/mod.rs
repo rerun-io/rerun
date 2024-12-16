@@ -136,7 +136,6 @@ pub use self::class_id::ClassId;
 pub use self::color::Color;
 pub use self::colormap::Colormap;
 pub use self::depth_meter::DepthMeter;
-pub use self::disconnected_space::DisconnectedSpace;
 pub use self::draw_order::DrawOrder;
 pub use self::entity_path::EntityPath;
 pub use self::fill_mode::FillMode;
@@ -197,3 +196,6 @@ pub use self::vector2d::Vector2D;
 pub use self::vector3d::Vector3D;
 pub use self::video_timestamp::VideoTimestamp;
 pub use self::view_coordinates::ViewCoordinates;
+
+#[allow(deprecated)]
+pub use self::disconnected_space::DisconnectedSpace;

@@ -6,9 +6,9 @@ use re_entity_db::{EntityDb, EntityPath, EntityTree};
 use re_types::{
     archetypes::{InstancePoses3D, Pinhole, Transform3D},
     components::{
-        DisconnectedSpace, ImagePlaneDistance, PinholeProjection, PoseRotationAxisAngle,
-        PoseRotationQuat, PoseScale3D, PoseTransformMat3x3, PoseTranslation3D, RotationAxisAngle,
-        RotationQuat, Scale3D, TransformMat3x3, TransformRelation, Translation3D, ViewCoordinates,
+        self, ImagePlaneDistance, PinholeProjection, PoseRotationAxisAngle, PoseRotationQuat,
+        PoseScale3D, PoseTransformMat3x3, PoseTranslation3D, RotationAxisAngle, RotationQuat,
+        Scale3D, TransformMat3x3, TransformRelation, Translation3D, ViewCoordinates,
     },
     Archetype, Component as _, ComponentNameSet,
 };
@@ -169,7 +169,8 @@ impl ViewContextSystem for TransformContext {
                 .map(|descr| descr.component_name)
                 .collect(),
             std::iter::once(PinholeProjection::name()).collect(),
-            std::iter::once(DisconnectedSpace::name()).collect(),
+            #[allow(deprecated)] // `DisconnectedSpace` is on the way out.
+            std::iter::once(components::DisconnectedSpace::name()).collect(),
         ]
     }
 
@@ -550,17 +551,36 @@ fn query_and_resolve_tree_transform_at_entity(
     if let Some(translation) = result.component_instance::<Translation3D>(0) {
         transform = glam::Affine3A::from(translation);
     }
-    if let Some(rotation_quat) = result.component_instance::<RotationAxisAngle>(0) {
-        transform *= glam::Affine3A::from(rotation_quat);
+    if let Some(axis_angle) = result.component_instance::<RotationAxisAngle>(0) {
+        if let Ok(axis_angle) = glam::Affine3A::try_from(axis_angle) {
+            transform *= axis_angle;
+        } else {
+            // Invalid transform.
+            return None;
+        }
     }
-    if let Some(rotation_axis_angle) = result.component_instance::<RotationQuat>(0) {
-        transform *= glam::Affine3A::from(rotation_axis_angle);
+    if let Some(quaternion) = result.component_instance::<RotationQuat>(0) {
+        if let Ok(quaternion) = glam::Affine3A::try_from(quaternion) {
+            transform *= quaternion;
+        } else {
+            // Invalid transform.
+            return None;
+        }
     }
     if let Some(scale) = result.component_instance::<Scale3D>(0) {
+        if scale.x() == 0.0 && scale.y() == 0.0 && scale.z() == 0.0 {
+            // Invalid scale.
+            return None;
+        }
         transform *= glam::Affine3A::from(scale);
     }
     if let Some(mat3x3) = result.component_instance::<TransformMat3x3>(0) {
-        transform *= glam::Affine3A::from(mat3x3);
+        let affine_transform = glam::Affine3A::from(mat3x3);
+        if affine_transform.matrix3.determinant() == 0.0 {
+            // Invalid transform.
+            return None;
+        }
+        transform *= affine_transform;
     }
 
     if result.component_instance::<TransformRelation>(0) == Some(TransformRelation::ChildFromParent)
@@ -647,10 +667,18 @@ fn query_and_resolve_instance_poses_at_entity(
             transform = glam::Affine3A::from(translation);
         }
         if let Some(rotation_quat) = iter_rotation_quat.next() {
-            transform *= glam::Affine3A::from(rotation_quat);
+            if let Ok(rotation_quat) = glam::Affine3A::try_from(rotation_quat) {
+                transform *= rotation_quat;
+            } else {
+                transform = glam::Affine3A::ZERO;
+            }
         }
         if let Some(rotation_axis_angle) = iter_rotation_axis_angle.next() {
-            transform *= glam::Affine3A::from(rotation_axis_angle);
+            if let Ok(axis_angle) = glam::Affine3A::try_from(rotation_axis_angle) {
+                transform *= axis_angle;
+            } else {
+                transform = glam::Affine3A::ZERO;
+            }
         }
         if let Some(scale) = iter_scale.next() {
             transform *= glam::Affine3A::from(scale);
@@ -802,10 +830,11 @@ fn transforms_at(
             .instance_from_pinhole_image_plane
             .is_none();
 
+    #[allow(deprecated)] // `DisconnectedSpace` is on the way out.
     if no_other_transforms
         && potential_transform_components.disconnected_space
         && entity_db
-            .latest_at_component::<DisconnectedSpace>(entity_path, query)
+            .latest_at_component::<components::DisconnectedSpace>(entity_path, query)
             .map_or(false, |(_index, res)| **res)
     {
         Err(UnreachableTransformReason::DisconnectedSpace)

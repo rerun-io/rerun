@@ -5,6 +5,9 @@
 
 #include "../collection_adapter_builtins.hpp"
 
+RR_PUSH_WARNINGS
+RR_DISABLE_DEPRECATION_WARNING
+
 namespace rerun::archetypes {}
 
 namespace rerun {
@@ -38,3 +41,5 @@ namespace rerun {
         return cells;
     }
 } // namespace rerun
+
+RR_POP_WARNINGS

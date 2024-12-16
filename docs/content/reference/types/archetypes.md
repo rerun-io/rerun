@@ -73,5 +73,5 @@ This page lists all built-in archetypes.
 
 * [`AnnotationContext`](archetypes/annotation_context.md): The annotation context provides additional information on how to display entities.
 * [`Clear`](archetypes/clear.md): Empties all the components of an entity.
-* [`DisconnectedSpace`](archetypes/disconnected_space.md): Spatially disconnect this entity from its parent.
+* ⚠️ _deprecated_ [`DisconnectedSpace`](archetypes/disconnected_space.md): Spatially disconnect this entity from its parent.
 

@@ -16,7 +16,11 @@ __all__ = ["RotationAxisAngle", "RotationAxisAngleBatch"]
 
 
 class RotationAxisAngle(datatypes.RotationAxisAngle, ComponentMixin):
-    """**Component**: 3D rotation represented by a rotation around a given axis."""
+    """
+    **Component**: 3D rotation represented by a rotation around a given axis.
+
+    If normalization of the rotation axis fails the rotation is treated as an invalid transform.
+    """
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of RotationAxisAngleExt in rotation_axis_angle_ext.py

@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
+
 from .. import datatypes
 from .._baseclasses import (
     ComponentBatchMixin,
@@ -16,6 +18,7 @@ from .disconnected_space_ext import DisconnectedSpaceExt
 __all__ = ["DisconnectedSpace", "DisconnectedSpaceBatch"]
 
 
+@deprecated("""Use [archetypes.Transform3D] with an invalid transform instead.""")
 class DisconnectedSpace(DisconnectedSpaceExt, datatypes.Bool, ComponentMixin):
     """
     **Component**: Spatially disconnect this entity from its parent.

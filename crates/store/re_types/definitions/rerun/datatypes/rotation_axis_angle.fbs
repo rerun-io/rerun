@@ -9,8 +9,8 @@ table RotationAxisAngle (
   /// Axis to rotate around.
   ///
   /// This is not required to be normalized.
-  /// If normalization fails (typically because the vector is length zero), the rotation is silently
-  /// ignored.
+  /// However, if normalization of the rotation axis fails (typically due to a zero vector)
+  /// the rotation is treated as an invalid transform.
   axis: rerun.datatypes.Vec3D (order: 100);
 
   /// How much to rotate around the axis.
