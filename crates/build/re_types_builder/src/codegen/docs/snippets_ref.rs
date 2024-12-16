@@ -631,9 +631,8 @@ fn is_speculative(any_name: &str) -> anyhow::Result<bool> {
         let minor: u32 = env!("CARGO_PKG_VERSION_MINOR")
             .parse()
             .context("couldn't parse minor crate version")?;
-        let pre = env!("CARGO_PKG_VERSION_PRE");
 
-        minor < 21 || !pre.is_empty()
+        minor < 21
     };
 
     const RELEASED_IN_0_21: &[&str] = &[
