@@ -29,6 +29,7 @@ OFFICIAL_RERUN_DEVS = [
     "abey79",
     "emilk",
     "gavrelina",
+    "grtlr",
     "jleibs",
     "jprochazk",
     "nikolausWest",
