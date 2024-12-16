@@ -193,13 +193,13 @@ pub(crate) fn wgpu_options(force_wgpu_backend: Option<String>) -> egui_wgpu::Wgp
                     egui_wgpu::SurfaceErrorAction::SkipFrame
                 }
             }),
-            // TODO(andreas): It would be great to use `egui_wgpu::WgpuSetup::Existing` and put the
+            // TODO(#8475): It would be great to use `egui_wgpu::WgpuSetup::Existing` and put the
             // full control of adapter creation into the hands of `re_renderer`.
             // However, we generally need to take into account the _surface_ as well:
             // * this is a strict *requirement* when using WebGL
             // * on OpenGL & Linux it _helps_ to know the surface because either Vulkan or OpenGL may not be happy with all surfaces
             //
-            // TODO(andreas): Next better thing that we should aspire for is to allow rejecting adapters on native in egui.
+            // Next better thing that we should aspire for is to allow rejecting adapters on native in egui.
             // I.e. instead of always providing a device descriptor, we should allow it to fail for a given device.
             // This rejection should happen with reason-message so it's tractable why a given adapter wasn't chosen.
             // Which is obviously what we want to show when we're rejecting all adapters, but it would
