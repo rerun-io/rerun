@@ -2,7 +2,6 @@
 // Based on "crates/store/re_types/definitions/rerun/datatypes/annotation_info.fbs".
 
 #include "annotation_info.hpp"
-
 #include "rgba32.hpp"
 #include "utf8.hpp"
 

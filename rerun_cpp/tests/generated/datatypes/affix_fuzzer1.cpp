@@ -2,7 +2,6 @@
 // Based on "crates/store/re_types/definitions/rerun/testing/datatypes/fuzzy.fbs".
 
 #include "affix_fuzzer1.hpp"
-
 #include "flattened_scalar.hpp"
 
 #include <arrow/builder.h>

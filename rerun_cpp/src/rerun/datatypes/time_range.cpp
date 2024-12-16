@@ -2,7 +2,6 @@
 // Based on "crates/store/re_types/definitions/rerun/datatypes/visible_time_range.fbs".
 
 #include "time_range.hpp"
-
 #include "time_range_boundary.hpp"
 
 #include <arrow/builder.h>

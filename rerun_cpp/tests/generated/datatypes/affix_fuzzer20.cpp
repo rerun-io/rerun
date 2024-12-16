@@ -2,7 +2,6 @@
 // Based on "crates/store/re_types/definitions/rerun/testing/datatypes/fuzzy.fbs".
 
 #include "affix_fuzzer20.hpp"
-
 #include "primitive_component.hpp"
 #include "string_component.hpp"
 
