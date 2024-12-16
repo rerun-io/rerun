@@ -16,7 +16,7 @@ class ColorExt:
     @staticmethod
     def from_string(s: str) -> Color:
         """
-        Generate a random yet color based on a string.
+        Generate a random yet deterministic color based on a string.
 
         The color is guaranteed to be identical for the same input string.
         """
