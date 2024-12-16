@@ -5,7 +5,7 @@
 //! * `view`-space: The space where the pan-and-zoom area is drawn.
 //! * `scene`-space: The space where the actual content is drawn.
 
-use egui::{emath::TSTransform, Area, Rect, Response, Ui, UiKind, Vec2};
+use egui::{emath::TSTransform, Rect, Response, Ui, UiBuilder, Vec2};
 
 /// Helper function to handle pan and zoom interactions on a response.
 fn register_pan_and_zoom(ui: &Ui, resp: &Response, ui_from_scene: &mut TSTransform) {
@@ -63,46 +63,52 @@ pub fn fit_to_rect_in_scene(rect_in_ui: Rect, rect_in_scene: Rect) -> TSTransfor
 }
 
 /// Provides a zoom-pan area for a given view.
+///
+/// Will fill the entire `max_rect` of the `parent_ui`.
 pub fn zoom_pan_area(
-    ui: &Ui,
-    view_bounds_in_ui: Rect,
-    ui_from_scene: &mut TSTransform,
+    parent_ui: &mut Ui,
+    to_global: &mut TSTransform,
     draw_contents: impl FnOnce(&mut Ui),
 ) -> Response {
-    let area_resp = Area::new(ui.id().with("zoom_pan_area"))
-        .constrain_to(view_bounds_in_ui)
-        .order(ui.layer_id().order)
-        .kind(UiKind::GenericArea)
-        .show(ui.ctx(), |ui| {
-            // Transform to the scene space:
-            let visible_rect_in_scene = ui_from_scene.inverse() * view_bounds_in_ui;
+    // Create a new egui paint layer, where we can draw our contents:
+    let zoom_pan_layer_id = egui::LayerId::new(
+        parent_ui.layer_id().order,
+        parent_ui.id().with("zoom_pan_area"),
+    );
 
-            // set proper clip-rect so we can interact with the background.
-            ui.set_clip_rect(visible_rect_in_scene);
+    // Put the layer directly on-top of the main layer of the ui:
+    parent_ui
+        .ctx()
+        .set_sublayer(parent_ui.layer_id(), zoom_pan_layer_id);
 
-            // A Ui for sensing drag-to-pan, scroll-to-zoom, etc
-            let mut drag_sense_ui = ui.new_child(
-                egui::UiBuilder::new()
-                    .sense(egui::Sense::click_and_drag())
-                    .max_rect(visible_rect_in_scene),
-            );
+    let global_view_bounds = parent_ui.max_rect();
 
-            drag_sense_ui.set_min_size(visible_rect_in_scene.size());
-            let pan_response = drag_sense_ui.response();
+    let mut local_ui = parent_ui.new_child(
+        UiBuilder::new()
+            .layer_id(zoom_pan_layer_id)
+            .max_rect(to_global.inverse() * global_view_bounds)
+            .sense(egui::Sense::click_and_drag()),
+    );
+    local_ui.set_min_size(local_ui.max_rect().size()); // Allocate all available space
 
-            // Update the transform based on the interactions:
-            register_pan_and_zoom(ui, &pan_response, ui_from_scene);
+    // Set proper clip-rect so we can interact with the background:
+    local_ui.set_clip_rect(local_ui.max_rect());
 
-            // Update the clip-rect with the new transform, to avoid frame-delays
-            ui.set_clip_rect(ui_from_scene.inverse() * view_bounds_in_ui);
+    let pan_response = local_ui.response();
 
-            // Add the actual contents to the area:
-            draw_contents(ui);
-            pan_response
-        });
+    // Update the `to_global` transform based on use interaction:
+    register_pan_and_zoom(&local_ui, &pan_response, to_global);
 
-    ui.ctx()
-        .set_transform_layer(area_resp.response.layer_id, *ui_from_scene);
+    // Update the clip-rect with the new transform, to avoid frame-delays
+    local_ui.set_clip_rect(to_global.inverse() * global_view_bounds);
 
-    area_resp.inner
+    // Add the actual contents to the area:
+    draw_contents(&mut local_ui);
+
+    // Tell egui to apply the transform on the layer:
+    local_ui
+        .ctx()
+        .set_transform_layer(zoom_pan_layer_id, *to_global);
+
+    pan_response
 }

@@ -2194,6 +2194,21 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
+            ArchetypeName::new("rerun.blueprint.archetypes.NearClipPlane"),
+            ArchetypeReflection {
+                display_name: "Near clip plane",
+                scope: Some("blueprint"),
+                view_types: &[],
+                fields: vec![
+                    ArchetypeFieldReflection { name : "near_clip_plane", display_name :
+                    "Near clip plane", component_name :
+                    "rerun.blueprint.components.NearClipPlane".into(), docstring_md :
+                    "Controls the distance to the near clip plane in 3D scene units.\n\nContent closer than this distance will not be visible.",
+                    is_required : false, },
+                ],
+            },
+        ),
+        (
             ArchetypeName::new("rerun.blueprint.archetypes.PanelBlueprint"),
             ArchetypeReflection {
                 display_name: "Panel blueprint",
@@ -2411,11 +2426,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     component_name : "rerun.blueprint.components.VisualBounds2D".into(),
                     docstring_md :
                     "Controls the visible range of a 2D view.\n\nUse this to control pan & zoom of the view.",
-                    is_required : true, }, ArchetypeFieldReflection { name :
-                    "near_clip_plane", display_name : "Near clip plane", component_name :
-                    "rerun.blueprint.components.NearClipPlane".into(), docstring_md :
-                    "Controls the distance to the near clip plane in 3D scene units.\n\nContent closer than this distance will not be visible.",
-                    is_required : false, },
+                    is_required : true, },
                 ],
             },
         ),

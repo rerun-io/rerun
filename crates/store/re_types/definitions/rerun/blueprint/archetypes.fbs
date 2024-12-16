@@ -11,6 +11,7 @@ include "./archetypes/force_position.fbs";
 include "./archetypes/line_grid3d.fbs";
 include "./archetypes/map_background.fbs";
 include "./archetypes/map_zoom.fbs";
+include "./archetypes/near_clip_plane.fbs";
 include "./archetypes/panel_blueprint.fbs";
 include "./archetypes/plot_legend.fbs";
 include "./archetypes/scalar_axis.fbs";
