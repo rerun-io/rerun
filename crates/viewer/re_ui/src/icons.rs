@@ -96,18 +96,18 @@ pub const CONTAINER_GRID: Icon = icon_from_path!("../data/icons/container_grid.p
 pub const CONTAINER_TABS: Icon = icon_from_path!("../data/icons/container_tabs.png");
 pub const CONTAINER_VERTICAL: Icon = icon_from_path!("../data/icons/container_vertical.png");
 
-pub const SPACE_VIEW_2D: Icon = icon_from_path!("../data/icons/spaceview_2d.png");
-pub const SPACE_VIEW_3D: Icon = icon_from_path!("../data/icons/spaceview_3d.png");
-pub const SPACE_VIEW_DATAFRAME: Icon = icon_from_path!("../data/icons/spaceview_dataframe.png");
-pub const SPACE_VIEW_GRAPH: Icon = icon_from_path!("../data/icons/spaceview_graph.png");
-pub const SPACE_VIEW_GENERIC: Icon = icon_from_path!("../data/icons/spaceview_generic.png");
-pub const SPACE_VIEW_HISTOGRAM: Icon = icon_from_path!("../data/icons/spaceview_histogram.png");
-pub const SPACE_VIEW_LOG: Icon = icon_from_path!("../data/icons/spaceview_log.png");
-pub const SPACE_VIEW_MAP: Icon = icon_from_path!("../data/icons/spaceview_map.png");
-pub const SPACE_VIEW_TENSOR: Icon = icon_from_path!("../data/icons/spaceview_tensor.png");
-pub const SPACE_VIEW_TEXT: Icon = icon_from_path!("../data/icons/spaceview_text.png");
-pub const SPACE_VIEW_TIMESERIES: Icon = icon_from_path!("../data/icons/spaceview_timeseries.png");
-pub const SPACE_VIEW_UNKNOWN: Icon = icon_from_path!("../data/icons/spaceview_unknown.png");
+pub const VIEW_2D: Icon = icon_from_path!("../data/icons/view_2d.png");
+pub const VIEW_3D: Icon = icon_from_path!("../data/icons/view_3d.png");
+pub const VIEW_DATAFRAME: Icon = icon_from_path!("../data/icons/view_dataframe.png");
+pub const VIEW_GRAPH: Icon = icon_from_path!("../data/icons/view_graph.png");
+pub const VIEW_GENERIC: Icon = icon_from_path!("../data/icons/view_generic.png");
+pub const VIEW_HISTOGRAM: Icon = icon_from_path!("../data/icons/view_histogram.png");
+pub const VIEW_LOG: Icon = icon_from_path!("../data/icons/view_log.png");
+pub const VIEW_MAP: Icon = icon_from_path!("../data/icons/view_map.png");
+pub const VIEW_TENSOR: Icon = icon_from_path!("../data/icons/view_tensor.png");
+pub const VIEW_TEXT: Icon = icon_from_path!("../data/icons/view_text.png");
+pub const VIEW_TIMESERIES: Icon = icon_from_path!("../data/icons/view_timeseries.png");
+pub const VIEW_UNKNOWN: Icon = icon_from_path!("../data/icons/view_unknown.png");
 
 pub const GROUP: Icon = icon_from_path!("../data/icons/group.png");
 pub const ENTITY: Icon = icon_from_path!("../data/icons/entity.png");
@@ -127,6 +127,11 @@ pub const BLUEPRINT: Icon = icon_from_path!("../data/icons/blueprint.png");
 pub const GITHUB: Icon = icon_from_path!("../data/icons/github.png");
 
 pub const VIDEO_ERROR: Icon = icon_from_path!("../data/icons/video_error.png");
+
+// drag and drop icons
+pub const DND_ADD_NEW: Icon = icon_from_path!("../data/icons/dnd_add_new.png");
+pub const DND_ADD_TO_EXISTING: Icon = icon_from_path!("../data/icons/dnd_add_to_existing.png");
+pub const DND_MOVE: Icon = icon_from_path!("../data/icons/dnd_move.png");
 
 /// `>`
 pub const BREADCRUMBS_SEPARATOR: Icon = icon_from_path!("../data/icons/breadcrumbs_separator.png");

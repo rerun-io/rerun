@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Iterable, Protocol, TypeVar, Union
+from typing import Iterable, Protocol, TypeVar
 
 import pyarrow as pa
 import rerun_bindings as bindings
@@ -121,7 +121,7 @@ TArchetype = TypeVar("TArchetype", bound=Archetype)
 def send_columns(
     entity_path: str,
     times: Iterable[TimeColumnLike],
-    components: Iterable[Union[ComponentBatchLike]],
+    components: Iterable[ComponentBatchLike],
     recording: RecordingStream | None = None,
     strict: bool | None = None,
 ) -> None:

@@ -30,7 +30,7 @@ pub struct GraphEdges {
 
     /// Specifies if the graph is directed or undirected.
     ///
-    /// If no `GraphType` is provided, the graph is assumed to be undirected.
+    /// If no [`components::GraphType`][crate::components::GraphType] is provided, the graph is assumed to be undirected.
     pub graph_type: Option<crate::components::GraphType>,
 }
 
@@ -53,7 +53,7 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usiz
             },
             ComponentDescriptor {
                 archetype_name: Some("rerun.archetypes.GraphEdges".into()),
-                component_name: "GraphEdgesIndicator".into(),
+                component_name: "rerun.components.GraphEdgesIndicator".into(),
                 archetype_field_name: None,
             },
         ]
@@ -77,7 +77,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
             },
             ComponentDescriptor {
                 archetype_name: Some("rerun.archetypes.GraphEdges".into()),
-                component_name: "GraphEdgesIndicator".into(),
+                component_name: "rerun.components.GraphEdgesIndicator".into(),
                 archetype_field_name: None,
             },
         ]
@@ -214,7 +214,7 @@ impl GraphEdges {
 
     /// Specifies if the graph is directed or undirected.
     ///
-    /// If no `GraphType` is provided, the graph is assumed to be undirected.
+    /// If no [`components::GraphType`][crate::components::GraphType] is provided, the graph is assumed to be undirected.
     #[inline]
     pub fn with_graph_type(mut self, graph_type: impl Into<crate::components::GraphType>) -> Self {
         self.graph_type = Some(graph_type.into());

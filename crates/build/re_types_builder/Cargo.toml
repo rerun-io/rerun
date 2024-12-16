@@ -38,6 +38,7 @@ arrow.workspace = true
 arrow2 = { workspace = true, features = ["arrow"] }
 camino.workspace = true
 clang-format.workspace = true
+colored.workspace = true
 flatbuffers.workspace = true
 indent.workspace = true
 itertools.workspace = true
@@ -46,8 +47,10 @@ proc-macro2.workspace = true
 quote.workspace = true
 rayon.workspace = true
 rust-format.workspace = true
+serde = { workspace = true, features = ["derive"] }
 syn.workspace = true
 tempfile.workspace = true
+toml = { workspace = true, features = ["parse", "preserve_order"] }
 unindent.workspace = true
 xshell.workspace = true
 

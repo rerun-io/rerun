@@ -16,16 +16,15 @@ use re_ui::{
 };
 use re_viewer_context::{
     contents_name_style, icon_for_container_kind, ContainerId, Contents, DataQueryResult,
-    DataResult, HoverHighlight, Item, SpaceViewId, UiLayout, ViewContext, ViewStates,
-    ViewerContext,
+    DataResult, HoverHighlight, Item, UiLayout, ViewContext, ViewId, ViewStates, ViewerContext,
 };
-use re_viewport_blueprint::{ui::show_add_space_view_or_container_modal, ViewportBlueprint};
+use re_viewport_blueprint::{ui::show_add_view_or_container_modal, ViewportBlueprint};
 
 use crate::{
     defaults_ui::view_components_defaults_section_ui,
     item_heading_no_breadcrumbs::item_title_list_item,
     item_heading_with_breadcrumbs::item_heading_with_breadcrumbs,
-    space_view_entity_picker::SpaceViewEntityPicker,
+    view_entity_picker::ViewEntityPicker,
     visible_time_range_ui::{
         visible_time_range_ui_for_data_result, visible_time_range_ui_for_view,
     },
@@ -43,7 +42,7 @@ fn default_selection_panel_width(screen_width: f32) -> f32 {
 pub struct SelectionPanel {
     #[serde(skip)]
     /// State for the "Add entity" modal.
-    space_view_entity_modal: SpaceViewEntityPicker,
+    view_entity_modal: ViewEntityPicker,
 }
 
 impl SelectionPanel {
@@ -92,7 +91,7 @@ impl SelectionPanel {
         });
 
         // run modals (these are noop if the modals are not active)
-        self.space_view_entity_modal.ui(ui.ctx(), ctx, viewport);
+        self.view_entity_modal.ui(ui.ctx(), ctx, viewport);
     }
 
     #[allow(clippy::unused_self)]
@@ -223,7 +222,7 @@ impl SelectionPanel {
                 container_children(ctx, viewport, ui, container_id);
             }
 
-            Item::SpaceView(view_id) => {
+            Item::View(view_id) => {
                 if let Some(view) = viewport.view(view_id) {
                     view_top_level_properties(ctx, ui, view);
                 }
@@ -298,7 +297,7 @@ impl SelectionPanel {
         }
 
         match item {
-            Item::SpaceView(view_id) => {
+            Item::View(view_id) => {
                 self.view_selection_ui(ctx, ui, viewport, view_id, view_states);
             }
 
@@ -325,7 +324,7 @@ impl SelectionPanel {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         viewport: &ViewportBlueprint,
-        view_id: &SpaceViewId,
+        view_id: &ViewId,
         view_states: &mut ViewStates,
     ) {
         let markdown = r#"
@@ -365,13 +364,13 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
     "#
         .trim();
 
-        clone_space_view_button_ui(ctx, ui, viewport, *view_id);
+        clone_view_button_ui(ctx, ui, viewport, *view_id);
 
         if let Some(view) = viewport.view(view_id) {
             ui.section_collapsing_header("Entity path filter")
                 .button(
                     list_item::ItemActionButton::new(&re_ui::icons::EDIT, || {
-                        self.space_view_entity_modal.open(*view_id);
+                        self.view_entity_modal.open(*view_id);
                     })
                     .hover_text("Modify the entity query using the editor"),
                 )
@@ -399,7 +398,7 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
         }
 
         if let Some(view) = viewport.view(view_id) {
-            let view_class = view.class(ctx.space_view_class_registry);
+            let view_class = view.class(ctx.view_class_registry);
             let view_state = view_states.get_mut_or_create(view.id, view_class);
 
             ui.section_collapsing_header("View properties")
@@ -437,7 +436,7 @@ fn entity_selection_ui(
     ui: &mut egui::Ui,
     entity_path: &EntityPath,
     viewport: &ViewportBlueprint,
-    view_id: &SpaceViewId,
+    view_id: &ViewId,
     view_states: &mut ViewStates,
 ) {
     let query_result = ctx.lookup_query_result(*view_id);
@@ -456,18 +455,17 @@ fn entity_selection_ui(
     }
 }
 
-fn clone_space_view_button_ui(
+fn clone_view_button_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     viewport: &ViewportBlueprint,
-    view_id: SpaceViewId,
+    view_id: ViewId,
 ) {
     ui.list_item_flat_noninteractive(
         list_item::ButtonContent::new("Clone this view")
             .on_click(|| {
-                if let Some(new_space_view_id) = viewport.duplicate_space_view(&view_id, ctx) {
-                    ctx.selection_state()
-                        .set_selection(Item::SpaceView(new_space_view_id));
+                if let Some(new_view_id) = viewport.duplicate_view(&view_id, ctx) {
+                    ctx.selection_state().set_selection(Item::View(new_view_id));
                     viewport.mark_user_interaction(ctx);
                 }
             })
@@ -479,7 +477,7 @@ fn clone_space_view_button_ui(
 fn entity_path_filter_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    view_id: SpaceViewId,
+    view_id: ViewId,
     filter: &EntityPathFilter,
     origin: &EntityPath,
 ) -> Option<EntityPathFilter> {
@@ -597,9 +595,9 @@ fn container_children(
     ui.section_collapsing_header("Contents")
         .button(
             list_item::ItemActionButton::new(&re_ui::icons::ADD, || {
-                show_add_space_view_or_container_modal(*container_id);
+                show_add_view_or_container_modal(*container_id);
             })
-            .hover_text("Add a new space view or container to this container"),
+            .hover_text("Add a new view or container to this container"),
         )
         .show(ui, show_content);
 }
@@ -614,19 +612,19 @@ fn data_section_ui(item: &Item) -> Option<Box<dyn DataUi>> {
             Some(Box::new(instance_path.clone()))
         }
         // Skip data ui since we don't know yet what to show for these.
-        Item::SpaceView(_) | Item::Container(_) => None,
+        Item::View(_) | Item::Container(_) => None,
     }
 }
 
-fn space_view_button(
+fn view_button(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    view: &re_viewport_blueprint::SpaceViewBlueprint,
+    view: &re_viewport_blueprint::ViewBlueprint,
 ) -> egui::Response {
-    let item = Item::SpaceView(view.id);
+    let item = Item::View(view.id);
     let is_selected = ctx.selection().contains_item(&item);
     let view_name = view.display_name_or_default();
-    let class = view.class(ctx.space_view_class_registry);
+    let class = view.class(ctx.view_class_registry);
 
     let response = ui
         .selectable_label_with_icon(
@@ -646,20 +644,19 @@ fn list_existing_data_blueprints(
     ui: &mut egui::Ui,
     instance_path: &InstancePath,
 ) {
-    let space_views_with_path =
-        viewport.space_views_containing_entity_path(ctx, &instance_path.entity_path);
+    let views_with_path = viewport.views_containing_entity_path(ctx, &instance_path.entity_path);
 
     let (query, db) = guess_query_and_db_for_selected_entity(ctx, &instance_path.entity_path);
 
-    if space_views_with_path.is_empty() {
+    if views_with_path.is_empty() {
         ui.weak("(Not shown in any view)");
     } else {
-        for &view_id in &space_views_with_path {
+        for &view_id in &views_with_path {
             if let Some(view) = viewport.view(&view_id) {
                 let response = ui.list_item().show_flat(
                     ui,
                     PropertyContent::new("Shown in").value_fn(|ui, _| {
-                        space_view_button(ctx, ui, view);
+                        view_button(ctx, ui, view);
                     }),
                 );
 
@@ -678,7 +675,7 @@ fn list_existing_data_blueprints(
 
                 // We don't use item_ui::cursor_interact_with_selectable here because the forced
                 // hover background is distracting and not useful.
-                ctx.select_hovered_on_click(&response, item);
+                ctx.handle_select_hover_drag_interactions(&response, item, false);
             }
         }
     }
@@ -692,7 +689,7 @@ fn list_existing_data_blueprints(
 fn view_top_level_properties(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    view: &re_viewport_blueprint::SpaceViewBlueprint,
+    view: &re_viewport_blueprint::ViewBlueprint,
 ) {
     ui.list_item_flat_noninteractive(PropertyContent::new("Name").value_fn(|ui, _| {
         ui.spacing_mut().text_edit_width = ui
@@ -711,7 +708,7 @@ fn view_top_level_properties(
             .text_edit_width
             .at_least(ui.available_width());
 
-        super::space_view_space_origin_ui::space_view_space_origin_widget_ui(ui, ctx, view);
+        super::view_space_origin_ui::view_space_origin_widget_ui(ui, ctx, view);
     }))
     .on_hover_text(
         "The origin entity for this view. For spatial views, the space \
@@ -721,7 +718,7 @@ fn view_top_level_properties(
 
     ui.list_item_flat_noninteractive(
         PropertyContent::new("View type")
-            .value_text(view.class(ctx.space_view_class_registry).display_name()),
+            .value_text(view.class(ctx.view_class_registry).display_name()),
     )
     .on_hover_text("The type of this view");
 }
@@ -861,7 +858,7 @@ fn show_list_item_for_container_child(
 ) -> bool {
     let mut remove_contents = false;
     let (item, list_item_content) = match child_contents {
-        Contents::SpaceView(view_id) => {
+        Contents::View(view_id) => {
             let Some(view) = viewport.view(view_id) else {
                 re_log::warn_once!("Could not find view with ID {view_id:?}",);
                 return false;
@@ -869,10 +866,10 @@ fn show_list_item_for_container_child(
 
             let view_name = view.display_name_or_default();
             (
-                Item::SpaceView(*view_id),
+                Item::View(*view_id),
                 list_item::LabelContent::new(view_name.as_ref())
                     .label_style(contents_name_style(&view_name))
-                    .with_icon(view.class(ctx.space_view_class_registry).icon())
+                    .with_icon(view.class(ctx.view_class_registry).icon())
                     .with_buttons(|ui| {
                         let response = ui
                             .small_icon_button(&icons::REMOVE)
@@ -929,7 +926,7 @@ fn show_list_item_for_container_child(
         &response,
         SelectionUpdateBehavior::Ignore,
     );
-    ctx.select_hovered_on_click(&response, item);
+    ctx.handle_select_hover_drag_interactions(&response, item, false);
 
     if remove_contents {
         viewport.mark_user_interaction(ctx);

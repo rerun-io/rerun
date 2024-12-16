@@ -1,8 +1,7 @@
 use std::hash::Hash;
 
 use egui::{
-    emath::Rot2, pos2, Align2, CollapsingResponse, Color32, NumExt, Rangef, Rect, Shape, Vec2,
-    Widget,
+    emath::Rot2, pos2, Align2, CollapsingResponse, Color32, NumExt, Rangef, Rect, Vec2, Widget,
 };
 
 use crate::{
@@ -129,6 +128,21 @@ pub trait UiExt {
                 .fit_to_exact_size(DesignTokens::small_icon_size())
                 .tint(self.ui().visuals().widgets.inactive.fg_stroke.color),
         )
+    }
+
+    /// Adds a non-interactive, optionally tinted small icon.
+    ///
+    /// Uses [`DesignTokens::small_icon_size`]. Returns the rect where the icon was painted.
+    fn small_icon(&mut self, icon: &Icon, tint: Option<egui::Color32>) -> egui::Rect {
+        let ui = self.ui_mut();
+        let (_, rect) = ui.allocate_space(DesignTokens::small_icon_size());
+        let mut image = icon.as_image();
+        if let Some(tint) = tint {
+            image = image.tint(tint);
+        }
+        image.paint_at(ui, rect);
+
+        rect
     }
 
     fn medium_icon_toggle_button(&mut self, icon: &Icon, selected: &mut bool) -> egui::Response {
@@ -539,7 +553,7 @@ pub trait UiExt {
         }
     }
 
-    /// Paint a collapsing triangle with rounded corners.
+    /// Paint a collapsing triangle in the Rerun's style.
     ///
     /// Alternative to [`egui::collapsing_header::paint_default_icon`]. Note that the triangle is
     /// painted with a fixed size.
@@ -554,21 +568,17 @@ pub trait UiExt {
         static TRIANGLE_SIZE: f32 = 8.0;
 
         // Normalized in [0, 1]^2 space.
-        // Note on how these coords have been computed: https://github.com/rerun-io/rerun/pull/2920
-        // Discussion on the future of icons:  https://github.com/rerun-io/rerun/issues/2960
+        //
+        // Note on how these coords were originally computed: https://github.com/rerun-io/rerun/pull/2920
+        // Since then, the coordinates have been manually updated to Look Good(tm).
+        //
+        // Discussion on the future of icons: https://github.com/rerun-io/rerun/issues/2960
         let mut points = vec![
-            pos2(0.80387, 0.470537),
-            pos2(0.816074, 0.5),
-            pos2(0.80387, 0.529463),
-            pos2(0.316248, 1.017085),
-            pos2(0.286141, 1.029362),
-            pos2(0.257726, 1.017592),
-            pos2(0.245118, 0.987622),
-            pos2(0.245118, 0.012378),
-            pos2(0.257726, -0.017592),
-            pos2(0.286141, -0.029362),
-            pos2(0.316248, -0.017085),
-            pos2(0.80387, 0.470537),
+            pos2(0.306248, -0.017085), // top left end
+            pos2(0.79387, 0.470537),   // ┐
+            pos2(0.806074, 0.5),       // ├ "rounded" corner
+            pos2(0.79387, 0.529463),   // ┘
+            pos2(0.306248, 1.017085),  // bottom left end
         ];
 
         use std::f32::consts::TAU;
@@ -577,11 +587,9 @@ pub trait UiExt {
             *p = center + rotation * (*p - pos2(0.5, 0.5)) * TRIANGLE_SIZE;
         }
 
-        self.ui().painter().add(Shape::convex_polygon(
-            points,
-            visuals.fg_stroke.color,
-            egui::Stroke::NONE,
-        ));
+        self.ui()
+            .painter()
+            .line(points, (1.0, visuals.fg_stroke.color));
     }
 
     /// Workaround for putting a label into a grid at the top left of its row.

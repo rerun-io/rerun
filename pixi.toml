@@ -125,10 +125,8 @@ check-env = "python scripts/check_env.py"
 # Run the codegen. Optionally pass `--profile` argument if you want.
 codegen = "cargo --quiet run --package re_types_builder -- "
 
-# Deprecated: use `codegen-proto` instead.
-codegen-rstore = "echo '⚠️ Deprecated: use `codegen-proto` instead ⚠️' ; pixi run codegen-proto"
-# Run the codegen for our Protobuf/gRPC definitions.
-codegen-proto = "cargo --quiet run --package re_protos_builder && pixi run -e cpp format"
+# Run the codegen for protobuf types.
+codegen-protos = "cargo --quiet run --package re_protos_builder && cargo fmt --all"
 
 # Generate the Rerun CLI manual.
 
@@ -640,8 +638,8 @@ minimal = { path = "examples/python/minimal", editable = true }
 minimal_options = { path = "examples/python/minimal_options", editable = true }
 multiprocess_logging = { path = "examples/python/multiprocess_logging", editable = true }
 multithreading = { path = "examples/python/multithreading", editable = true }
-graph_binary_tree = { path = "examples/python/graph_binary_tree", editable = true }
 graph_lattice = { path = "examples/python/graph_lattice", editable = true }
+graphs = { path = "examples/python/graphs", editable = true }
 nuscenes_dataset = { path = "examples/python/nuscenes_dataset", editable = true }
 nv12 = { path = "examples/python/nv12", editable = true }
 objectron = { path = "examples/python/objectron", editable = true }

@@ -25,43 +25,27 @@ pub struct GraphView {
     ///
     /// Somethings outside of these bounds may also be visible due to letterboxing.
     pub visual_bounds: crate::blueprint::archetypes::VisualBounds2D,
+
+    /// Allows to control the interaction between two nodes connected by an edge.
+    pub force_link: crate::blueprint::archetypes::ForceLink,
+
+    /// A force between each pair of nodes that ressembles an electrical charge.
+    pub force_many_body: crate::blueprint::archetypes::ForceManyBody,
+
+    /// Similar to gravity, this force pulls nodes towards a specific position.
+    pub force_position: crate::blueprint::archetypes::ForcePosition,
+
+    /// Resolves collisions between the bounding spheres, according to the radius of the nodes.
+    pub force_collision_radius: crate::blueprint::archetypes::ForceCollisionRadius,
+
+    /// Tries to move the center of mass of the graph to the origin.
+    pub force_center: crate::blueprint::archetypes::ForceCenter,
 }
 
 impl ::re_types_core::View for GraphView {
     #[inline]
-    fn identifier() -> ::re_types_core::SpaceViewClassIdentifier {
+    fn identifier() -> ::re_types_core::ViewClassIdentifier {
         "Graph".into()
-    }
-}
-
-impl<T: Into<crate::blueprint::archetypes::VisualBounds2D>> From<T> for GraphView {
-    fn from(v: T) -> Self {
-        Self {
-            visual_bounds: v.into(),
-        }
-    }
-}
-
-impl std::borrow::Borrow<crate::blueprint::archetypes::VisualBounds2D> for GraphView {
-    #[inline]
-    fn borrow(&self) -> &crate::blueprint::archetypes::VisualBounds2D {
-        &self.visual_bounds
-    }
-}
-
-impl std::ops::Deref for GraphView {
-    type Target = crate::blueprint::archetypes::VisualBounds2D;
-
-    #[inline]
-    fn deref(&self) -> &crate::blueprint::archetypes::VisualBounds2D {
-        &self.visual_bounds
-    }
-}
-
-impl std::ops::DerefMut for GraphView {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::blueprint::archetypes::VisualBounds2D {
-        &mut self.visual_bounds
     }
 }
 
@@ -69,10 +53,20 @@ impl ::re_types_core::SizeBytes for GraphView {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.visual_bounds.heap_size_bytes()
+            + self.force_link.heap_size_bytes()
+            + self.force_many_body.heap_size_bytes()
+            + self.force_position.heap_size_bytes()
+            + self.force_collision_radius.heap_size_bytes()
+            + self.force_center.heap_size_bytes()
     }
 
     #[inline]
     fn is_pod() -> bool {
         <crate::blueprint::archetypes::VisualBounds2D>::is_pod()
+            && <crate::blueprint::archetypes::ForceLink>::is_pod()
+            && <crate::blueprint::archetypes::ForceManyBody>::is_pod()
+            && <crate::blueprint::archetypes::ForcePosition>::is_pod()
+            && <crate::blueprint::archetypes::ForceCollisionRadius>::is_pod()
+            && <crate::blueprint::archetypes::ForceCenter>::is_pod()
     }
 }

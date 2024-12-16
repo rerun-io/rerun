@@ -45,19 +45,19 @@ class ContainerBlueprint(Archetype):
         display_name:
             The name of the container.
         contents:
-            `ContainerId`s or `SpaceViewId`s that are children of this container.
+            `ContainerId`s or `ViewId`s that are children of this container.
         col_shares:
             The layout shares of each column in the container.
 
-            For `Horizontal` containers, the length of this list should always match the number of contents.
+            For [`components.ContainerKind.Horizontal`][rerun.blueprint.components.ContainerKind.Horizontal] containers, the length of this list should always match the number of contents.
 
-            Ignored for `Vertical` containers.
+            Ignored for [`components.ContainerKind.Vertical`][rerun.blueprint.components.ContainerKind.Vertical] containers.
         row_shares:
             The layout shares of each row of the container.
 
-            For `Vertical` containers, the length of this list should always match the number of contents.
+            For [`components.ContainerKind.Vertical`][rerun.blueprint.components.ContainerKind.Vertical] containers, the length of this list should always match the number of contents.
 
-            Ignored for `Horizontal` containers.
+            Ignored for [`components.ContainerKind.Horizontal`][rerun.blueprint.components.ContainerKind.Horizontal] containers.
         active_tab:
             Which tab is active.
 
@@ -71,7 +71,7 @@ class ContainerBlueprint(Archetype):
 
             If unset, the grid layout will be auto.
 
-            Ignored for `Horizontal`/`Vertical` containers.
+            Ignored for [`components.ContainerKind.Horizontal`][rerun.blueprint.components.ContainerKind.Horizontal]/[`components.ContainerKind.Vertical`][rerun.blueprint.components.ContainerKind.Vertical] containers.
 
         """
 
@@ -132,7 +132,7 @@ class ContainerBlueprint(Archetype):
         default=None,
         converter=blueprint_components.IncludedContentBatch._optional,  # type: ignore[misc]
     )
-    # `ContainerId`s or `SpaceViewId`s that are children of this container.
+    # `ContainerId`s or `ViewId`s that are children of this container.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -143,9 +143,9 @@ class ContainerBlueprint(Archetype):
     )
     # The layout shares of each column in the container.
     #
-    # For `Horizontal` containers, the length of this list should always match the number of contents.
+    # For [`components.ContainerKind.Horizontal`][rerun.blueprint.components.ContainerKind.Horizontal] containers, the length of this list should always match the number of contents.
     #
-    # Ignored for `Vertical` containers.
+    # Ignored for [`components.ContainerKind.Vertical`][rerun.blueprint.components.ContainerKind.Vertical] containers.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -156,9 +156,9 @@ class ContainerBlueprint(Archetype):
     )
     # The layout shares of each row of the container.
     #
-    # For `Vertical` containers, the length of this list should always match the number of contents.
+    # For [`components.ContainerKind.Vertical`][rerun.blueprint.components.ContainerKind.Vertical] containers, the length of this list should always match the number of contents.
     #
-    # Ignored for `Horizontal` containers.
+    # Ignored for [`components.ContainerKind.Horizontal`][rerun.blueprint.components.ContainerKind.Horizontal] containers.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -193,7 +193,7 @@ class ContainerBlueprint(Archetype):
     #
     # If unset, the grid layout will be auto.
     #
-    # Ignored for `Horizontal`/`Vertical` containers.
+    # Ignored for [`components.ContainerKind.Horizontal`][rerun.blueprint.components.ContainerKind.Horizontal]/[`components.ContainerKind.Vertical`][rerun.blueprint.components.ContainerKind.Vertical] containers.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

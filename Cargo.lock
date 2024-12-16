@@ -1731,21 +1731,21 @@ dependencies = [
 ]
 
 [[package]]
-name = "custom_space_view"
+name = "custom_store_subscriber"
+version = "0.21.0-alpha.1+dev"
+dependencies = [
+ "re_build_tools",
+ "rerun",
+]
+
+[[package]]
+name = "custom_view"
 version = "0.21.0-alpha.1+dev"
 dependencies = [
  "mimalloc",
  "re_crash_handler",
  "re_sdk_comms",
  "re_viewer",
-]
-
-[[package]]
-name = "custom_store_subscriber"
-version = "0.21.0-alpha.1+dev"
-dependencies = [
- "re_build_tools",
- "rerun",
 ]
 
 [[package]]
@@ -1934,7 +1934,7 @@ checksum = "0d6ef0072f8a535281e4876be788938b528e9a1d43900b82c2569af7da799125"
 [[package]]
 name = "ecolor"
 version = "0.29.1"
-source = "git+https://github.com/emilk/egui.git?rev=577ee8d22810752540636febac5660a5119c6550#577ee8d22810752540636febac5660a5119c6550"
+source = "git+https://github.com/emilk/egui.git?rev=f7efb2186d529ddc9e69f7173c6ae3ae5f403d0b#f7efb2186d529ddc9e69f7173c6ae3ae5f403d0b"
 dependencies = [
  "bytemuck",
  "color-hex",
@@ -1951,7 +1951,7 @@ checksum = "18aade80d5e09429040243ce1143ddc08a92d7a22820ac512610410a4dd5214f"
 [[package]]
 name = "eframe"
 version = "0.29.1"
-source = "git+https://github.com/emilk/egui.git?rev=577ee8d22810752540636febac5660a5119c6550#577ee8d22810752540636febac5660a5119c6550"
+source = "git+https://github.com/emilk/egui.git?rev=f7efb2186d529ddc9e69f7173c6ae3ae5f403d0b#f7efb2186d529ddc9e69f7173c6ae3ae5f403d0b"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -1972,7 +1972,7 @@ dependencies = [
  "parking_lot",
  "percent-encoding",
  "pollster 0.4.0",
- "puffin",
+ "profiling",
  "raw-window-handle",
  "ron",
  "serde",
@@ -1990,7 +1990,7 @@ dependencies = [
 [[package]]
 name = "egui"
 version = "0.29.1"
-source = "git+https://github.com/emilk/egui.git?rev=577ee8d22810752540636febac5660a5119c6550#577ee8d22810752540636febac5660a5119c6550"
+source = "git+https://github.com/emilk/egui.git?rev=f7efb2186d529ddc9e69f7173c6ae3ae5f403d0b#f7efb2186d529ddc9e69f7173c6ae3ae5f403d0b"
 dependencies = [
  "accesskit",
  "ahash",
@@ -1999,7 +1999,7 @@ dependencies = [
  "epaint",
  "log",
  "nohash-hasher",
- "puffin",
+ "profiling",
  "ron",
  "serde",
 ]
@@ -2007,7 +2007,7 @@ dependencies = [
 [[package]]
 name = "egui-wgpu"
 version = "0.29.1"
-source = "git+https://github.com/emilk/egui.git?rev=577ee8d22810752540636febac5660a5119c6550#577ee8d22810752540636febac5660a5119c6550"
+source = "git+https://github.com/emilk/egui.git?rev=f7efb2186d529ddc9e69f7173c6ae3ae5f403d0b#f7efb2186d529ddc9e69f7173c6ae3ae5f403d0b"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -2015,7 +2015,7 @@ dependencies = [
  "egui",
  "epaint",
  "log",
- "puffin",
+ "profiling",
  "thiserror",
  "type-map",
  "web-time",
@@ -2026,14 +2026,14 @@ dependencies = [
 [[package]]
 name = "egui-winit"
 version = "0.29.1"
-source = "git+https://github.com/emilk/egui.git?rev=577ee8d22810752540636febac5660a5119c6550#577ee8d22810752540636febac5660a5119c6550"
+source = "git+https://github.com/emilk/egui.git?rev=f7efb2186d529ddc9e69f7173c6ae3ae5f403d0b#f7efb2186d529ddc9e69f7173c6ae3ae5f403d0b"
 dependencies = [
  "accesskit_winit",
  "ahash",
  "arboard",
  "egui",
  "log",
- "puffin",
+ "profiling",
  "raw-window-handle",
  "serde",
  "smithay-clipboard",
@@ -2068,7 +2068,7 @@ dependencies = [
 [[package]]
 name = "egui_extras"
 version = "0.29.1"
-source = "git+https://github.com/emilk/egui.git?rev=577ee8d22810752540636febac5660a5119c6550#577ee8d22810752540636febac5660a5119c6550"
+source = "git+https://github.com/emilk/egui.git?rev=f7efb2186d529ddc9e69f7173c6ae3ae5f403d0b#f7efb2186d529ddc9e69f7173c6ae3ae5f403d0b"
 dependencies = [
  "ahash",
  "egui",
@@ -2077,7 +2077,7 @@ dependencies = [
  "image",
  "log",
  "mime_guess2",
- "puffin",
+ "profiling",
  "resvg",
  "serde",
 ]
@@ -2085,16 +2085,15 @@ dependencies = [
 [[package]]
 name = "egui_glow"
 version = "0.29.1"
-source = "git+https://github.com/emilk/egui.git?rev=577ee8d22810752540636febac5660a5119c6550#577ee8d22810752540636febac5660a5119c6550"
+source = "git+https://github.com/emilk/egui.git?rev=f7efb2186d529ddc9e69f7173c6ae3ae5f403d0b#f7efb2186d529ddc9e69f7173c6ae3ae5f403d0b"
 dependencies = [
  "ahash",
  "bytemuck",
  "egui",
- "egui-winit",
  "glow 0.16.0",
  "log",
  "memoffset",
- "puffin",
+ "profiling",
  "wasm-bindgen",
  "web-sys",
  "winit",
@@ -2103,7 +2102,7 @@ dependencies = [
 [[package]]
 name = "egui_kittest"
 version = "0.29.1"
-source = "git+https://github.com/emilk/egui.git?rev=577ee8d22810752540636febac5660a5119c6550#577ee8d22810752540636febac5660a5119c6550"
+source = "git+https://github.com/emilk/egui.git?rev=f7efb2186d529ddc9e69f7173c6ae3ae5f403d0b#f7efb2186d529ddc9e69f7173c6ae3ae5f403d0b"
 dependencies = [
  "dify",
  "egui",
@@ -2172,7 +2171,7 @@ checksum = "60b1af1c220855b6ceac025d3f6ecdd2b7c4894bfe9cd9bda4fbb4bc7c0d4cf0"
 [[package]]
 name = "emath"
 version = "0.29.1"
-source = "git+https://github.com/emilk/egui.git?rev=577ee8d22810752540636febac5660a5119c6550#577ee8d22810752540636febac5660a5119c6550"
+source = "git+https://github.com/emilk/egui.git?rev=f7efb2186d529ddc9e69f7173c6ae3ae5f403d0b#f7efb2186d529ddc9e69f7173c6ae3ae5f403d0b"
 dependencies = [
  "bytemuck",
  "serde",
@@ -2288,7 +2287,7 @@ dependencies = [
 [[package]]
 name = "epaint"
 version = "0.29.1"
-source = "git+https://github.com/emilk/egui.git?rev=577ee8d22810752540636febac5660a5119c6550#577ee8d22810752540636febac5660a5119c6550"
+source = "git+https://github.com/emilk/egui.git?rev=f7efb2186d529ddc9e69f7173c6ae3ae5f403d0b#f7efb2186d529ddc9e69f7173c6ae3ae5f403d0b"
 dependencies = [
  "ab_glyph",
  "ahash",
@@ -2299,7 +2298,7 @@ dependencies = [
  "log",
  "nohash-hasher",
  "parking_lot",
- "puffin",
+ "profiling",
  "rayon",
  "serde",
 ]
@@ -2307,7 +2306,7 @@ dependencies = [
 [[package]]
 name = "epaint_default_fonts"
 version = "0.29.1"
-source = "git+https://github.com/emilk/egui.git?rev=577ee8d22810752540636febac5660a5119c6550#577ee8d22810752540636febac5660a5119c6550"
+source = "git+https://github.com/emilk/egui.git?rev=f7efb2186d529ddc9e69f7173c6ae3ae5f403d0b#f7efb2186d529ddc9e69f7173c6ae3ae5f403d0b"
 
 [[package]]
 name = "equivalent"
@@ -2455,9 +2454,9 @@ checksum = "0ce7134b9999ecaf8bcd65542e436736ef32ddca1b3e06094cb6ec5755203b80"
 
 [[package]]
 name = "fjadra"
-version = "0.1.0"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ccc0416b27f53bba6c9bd564260f27d4784c5f430926eb16a519356be7d66bbc"
+checksum = "c1671b620ba6e60c11c62b0ea5fec4f8621991e7b1229fa13c010a2cd04e4342"
 
 [[package]]
 name = "flatbuffers"
@@ -2913,15 +2912,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fdf242682df893b86f33a73828fb09ca4b2d3bb6cc95249707fc684d27484b91"
 dependencies = [
  "bitflags 2.6.0",
-]
-
-[[package]]
-name = "graph_binary_tree"
-version = "0.21.0-alpha.1+dev"
-dependencies = [
- "anyhow",
- "clap",
- "rerun",
 ]
 
 [[package]]
@@ -5537,8 +5527,9 @@ dependencies = [
 
 [[package]]
 name = "re_arrow2"
-version = "0.17.6"
-source = "git+https://github.com/rerun-io/re_arrow2?rev=79ba149e823c88c1baa770a33c6ea8b6244d0597#79ba149e823c88c1baa770a33c6ea8b6244d0597"
+version = "0.18.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2f046c5679b0f305d610f80d93fd51ad702cfc077bbe16d9553a1660a2505160"
 dependencies = [
  "ahash",
  "arrow-array",
@@ -5659,6 +5650,7 @@ dependencies = [
  "re_log",
  "re_log_encoding",
  "re_log_types",
+ "re_protos",
  "re_tracing",
  "re_types",
  "re_types_core",
@@ -5697,7 +5689,6 @@ dependencies = [
  "re_log_types",
  "re_tracing",
  "re_types",
- "re_types_blueprint",
  "re_types_core",
  "re_ui",
  "re_viewer_context",
@@ -5825,6 +5816,7 @@ dependencies = [
  "re_chunk",
  "re_chunk_store",
  "re_log",
+ "re_log_encoding",
  "re_log_types",
  "re_query",
  "re_tracing",
@@ -5927,9 +5919,11 @@ dependencies = [
  "re_chunk",
  "re_error",
  "re_log",
+ "re_log_encoding",
  "re_log_types",
  "re_protos",
  "re_smart_channel",
+ "re_types",
  "thiserror",
  "tokio",
  "tokio-stream",
@@ -5973,10 +5967,12 @@ dependencies = [
  "lz4_flex",
  "mimalloc",
  "parking_lot",
+ "re_arrow2",
  "re_build_info",
  "re_chunk",
  "re_log",
  "re_log_types",
+ "re_protos",
  "re_smart_channel",
  "re_tracing",
  "re_types",
@@ -5999,7 +5995,6 @@ dependencies = [
  "bytemuck",
  "clean-path",
  "criterion",
- "crossbeam",
  "document-features",
  "fixed",
  "half",
@@ -6013,6 +6008,7 @@ dependencies = [
  "re_build_info",
  "re_format",
  "re_log",
+ "re_protos",
  "re_string_interner",
  "re_tracing",
  "re_tuid",
@@ -6078,9 +6074,6 @@ name = "re_protos"
 version = "0.21.0-alpha.1+dev"
 dependencies = [
  "prost",
- "re_arrow2",
- "re_dataframe",
- "re_log_types",
  "thiserror",
  "tonic",
  "tonic-web-wasm-client",
@@ -6091,6 +6084,7 @@ name = "re_protos_builder"
 version = "0.21.0-alpha.1+dev"
 dependencies = [
  "camino",
+ "prost-build",
  "re_log",
  "tonic-build",
 ]
@@ -6292,12 +6286,11 @@ dependencies = [
  "re_format",
  "re_log",
  "re_log_types",
- "re_space_view",
  "re_tracing",
  "re_types",
- "re_types_blueprint",
  "re_types_core",
  "re_ui",
+ "re_view",
  "re_viewer_context",
  "re_viewport_blueprint",
  "serde",
@@ -6313,244 +6306,6 @@ dependencies = [
  "re_tracing",
  "serde",
  "web-time",
-]
-
-[[package]]
-name = "re_space_view"
-version = "0.21.0-alpha.1+dev"
-dependencies = [
- "ahash",
- "arrow",
- "bytemuck",
- "egui",
- "glam",
- "itertools 0.13.0",
- "nohash-hasher",
- "re_chunk_store",
- "re_entity_db",
- "re_log",
- "re_log_types",
- "re_query",
- "re_renderer",
- "re_tracing",
- "re_types",
- "re_types_core",
- "re_ui",
- "re_viewer_context",
- "re_viewport_blueprint",
-]
-
-[[package]]
-name = "re_space_view_bar_chart"
-version = "0.21.0-alpha.1+dev"
-dependencies = [
- "egui",
- "egui_plot",
- "re_chunk_store",
- "re_entity_db",
- "re_log_types",
- "re_renderer",
- "re_space_view",
- "re_tracing",
- "re_types",
- "re_ui",
- "re_viewer_context",
- "re_viewport_blueprint",
-]
-
-[[package]]
-name = "re_space_view_dataframe"
-version = "0.21.0-alpha.1+dev"
-dependencies = [
- "anyhow",
- "egui",
- "egui_table",
- "itertools 0.13.0",
- "re_chunk_store",
- "re_dataframe",
- "re_format",
- "re_log",
- "re_log_types",
- "re_renderer",
- "re_tracing",
- "re_types",
- "re_types_core",
- "re_ui",
- "re_viewer_context",
- "re_viewport_blueprint",
- "thiserror",
-]
-
-[[package]]
-name = "re_space_view_graph"
-version = "0.21.0-alpha.1+dev"
-dependencies = [
- "ahash",
- "egui",
- "fjadra",
- "nohash-hasher",
- "re_chunk",
- "re_data_ui",
- "re_entity_db",
- "re_format",
- "re_log_types",
- "re_query",
- "re_renderer",
- "re_space_view",
- "re_tracing",
- "re_types",
- "re_ui",
- "re_viewer_context",
- "re_viewport_blueprint",
-]
-
-[[package]]
-name = "re_space_view_map"
-version = "0.21.0-alpha.1+dev"
-dependencies = [
- "bytemuck",
- "egui",
- "glam",
- "itertools 0.13.0",
- "re_data_ui",
- "re_entity_db",
- "re_log",
- "re_log_types",
- "re_math",
- "re_query",
- "re_renderer",
- "re_space_view",
- "re_tracing",
- "re_types",
- "re_ui",
- "re_viewer_context",
- "re_viewport_blueprint",
- "walkers",
-]
-
-[[package]]
-name = "re_space_view_spatial"
-version = "0.21.0-alpha.1+dev"
-dependencies = [
- "ahash",
- "anyhow",
- "arrow",
- "bitflags 2.6.0",
- "bytemuck",
- "criterion",
- "egui",
- "glam",
- "hexasphere",
- "image",
- "itertools 0.13.0",
- "mimalloc",
- "nohash-hasher",
- "once_cell",
- "ordered-float",
- "re_arrow2",
- "re_chunk_store",
- "re_data_ui",
- "re_entity_db",
- "re_error",
- "re_format",
- "re_log",
- "re_log_types",
- "re_math",
- "re_query",
- "re_renderer",
- "re_space_view",
- "re_tracing",
- "re_types",
- "re_ui",
- "re_video",
- "re_viewer_context",
- "re_viewport_blueprint",
- "serde",
- "smallvec",
- "thiserror",
- "vec1",
- "web-time",
-]
-
-[[package]]
-name = "re_space_view_tensor"
-version = "0.21.0-alpha.1+dev"
-dependencies = [
- "anyhow",
- "bytemuck",
- "egui",
- "half",
- "ndarray",
- "re_chunk_store",
- "re_data_ui",
- "re_log_types",
- "re_query",
- "re_renderer",
- "re_space_view",
- "re_tracing",
- "re_types",
- "re_ui",
- "re_viewer_context",
- "re_viewport_blueprint",
- "thiserror",
- "wgpu",
-]
-
-[[package]]
-name = "re_space_view_text_document"
-version = "0.21.0-alpha.1+dev"
-dependencies = [
- "egui",
- "egui_commonmark",
- "re_chunk_store",
- "re_renderer",
- "re_space_view",
- "re_tracing",
- "re_types",
- "re_ui",
- "re_viewer_context",
-]
-
-[[package]]
-name = "re_space_view_text_log"
-version = "0.21.0-alpha.1+dev"
-dependencies = [
- "egui",
- "egui_extras",
- "itertools 0.13.0",
- "re_chunk_store",
- "re_data_ui",
- "re_entity_db",
- "re_log_types",
- "re_query",
- "re_renderer",
- "re_space_view",
- "re_tracing",
- "re_types",
- "re_ui",
- "re_viewer_context",
-]
-
-[[package]]
-name = "re_space_view_time_series"
-version = "0.21.0-alpha.1+dev"
-dependencies = [
- "egui",
- "egui_plot",
- "itertools 0.13.0",
- "rayon",
- "re_chunk_store",
- "re_format",
- "re_log",
- "re_log_types",
- "re_query",
- "re_renderer",
- "re_space_view",
- "re_tracing",
- "re_types",
- "re_ui",
- "re_viewer_context",
- "re_viewport_blueprint",
 ]
 
 [[package]]
@@ -6613,6 +6368,7 @@ dependencies = [
  "document-features",
  "getrandom",
  "once_cell",
+ "re_protos",
  "serde",
  "web-time",
 ]
@@ -6660,18 +6416,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "re_types_blueprint"
-version = "0.21.0-alpha.1+dev"
-dependencies = [
- "arrow",
- "once_cell",
- "re_arrow2",
- "re_tracing",
- "re_types",
- "re_types_core",
-]
-
-[[package]]
 name = "re_types_builder"
 version = "0.21.0-alpha.1+dev"
 dependencies = [
@@ -6679,6 +6423,7 @@ dependencies = [
  "arrow",
  "camino",
  "clang-format",
+ "colored",
  "flatbuffers",
  "indent",
  "itertools 0.13.0",
@@ -6693,8 +6438,10 @@ dependencies = [
  "re_log",
  "re_tracing",
  "rust-format",
+ "serde",
  "syn 2.0.85",
  "tempfile",
+ "toml",
  "unindent",
  "xshell",
 ]
@@ -6765,6 +6512,7 @@ dependencies = [
  "js-sys",
  "once_cell",
  "parking_lot",
+ "poll-promise",
  "re_build_info",
  "re_build_tools",
  "re_log",
@@ -6775,6 +6523,245 @@ dependencies = [
  "thiserror",
  "wasm-bindgen",
  "web-sys",
+]
+
+[[package]]
+name = "re_view"
+version = "0.21.0-alpha.1+dev"
+dependencies = [
+ "ahash",
+ "arrow",
+ "bytemuck",
+ "egui",
+ "glam",
+ "itertools 0.13.0",
+ "nohash-hasher",
+ "re_chunk_store",
+ "re_entity_db",
+ "re_log",
+ "re_log_types",
+ "re_query",
+ "re_renderer",
+ "re_tracing",
+ "re_types",
+ "re_types_core",
+ "re_ui",
+ "re_viewer_context",
+ "re_viewport_blueprint",
+]
+
+[[package]]
+name = "re_view_bar_chart"
+version = "0.21.0-alpha.1+dev"
+dependencies = [
+ "egui",
+ "egui_plot",
+ "re_chunk_store",
+ "re_entity_db",
+ "re_log_types",
+ "re_renderer",
+ "re_tracing",
+ "re_types",
+ "re_ui",
+ "re_view",
+ "re_viewer_context",
+ "re_viewport_blueprint",
+]
+
+[[package]]
+name = "re_view_dataframe"
+version = "0.21.0-alpha.1+dev"
+dependencies = [
+ "anyhow",
+ "egui",
+ "egui_table",
+ "itertools 0.13.0",
+ "re_chunk_store",
+ "re_dataframe",
+ "re_format",
+ "re_log",
+ "re_log_types",
+ "re_renderer",
+ "re_tracing",
+ "re_types",
+ "re_types_core",
+ "re_ui",
+ "re_viewer_context",
+ "re_viewport_blueprint",
+ "thiserror",
+]
+
+[[package]]
+name = "re_view_graph"
+version = "0.21.0-alpha.1+dev"
+dependencies = [
+ "ahash",
+ "egui",
+ "fjadra",
+ "nohash-hasher",
+ "re_chunk",
+ "re_data_ui",
+ "re_entity_db",
+ "re_format",
+ "re_log",
+ "re_log_types",
+ "re_query",
+ "re_renderer",
+ "re_tracing",
+ "re_types",
+ "re_ui",
+ "re_view",
+ "re_viewer_context",
+ "re_viewport_blueprint",
+]
+
+[[package]]
+name = "re_view_map"
+version = "0.21.0-alpha.1+dev"
+dependencies = [
+ "bytemuck",
+ "egui",
+ "glam",
+ "itertools 0.13.0",
+ "re_data_ui",
+ "re_entity_db",
+ "re_log",
+ "re_log_types",
+ "re_math",
+ "re_query",
+ "re_renderer",
+ "re_tracing",
+ "re_types",
+ "re_ui",
+ "re_view",
+ "re_viewer_context",
+ "re_viewport_blueprint",
+ "walkers",
+]
+
+[[package]]
+name = "re_view_spatial"
+version = "0.21.0-alpha.1+dev"
+dependencies = [
+ "ahash",
+ "anyhow",
+ "arrow",
+ "bitflags 2.6.0",
+ "bytemuck",
+ "criterion",
+ "egui",
+ "glam",
+ "hexasphere",
+ "image",
+ "itertools 0.13.0",
+ "mimalloc",
+ "nohash-hasher",
+ "once_cell",
+ "ordered-float",
+ "re_arrow2",
+ "re_chunk_store",
+ "re_data_ui",
+ "re_entity_db",
+ "re_error",
+ "re_format",
+ "re_log",
+ "re_log_types",
+ "re_math",
+ "re_query",
+ "re_renderer",
+ "re_tracing",
+ "re_types",
+ "re_ui",
+ "re_video",
+ "re_view",
+ "re_viewer_context",
+ "re_viewport_blueprint",
+ "serde",
+ "smallvec",
+ "thiserror",
+ "vec1",
+ "web-time",
+]
+
+[[package]]
+name = "re_view_tensor"
+version = "0.21.0-alpha.1+dev"
+dependencies = [
+ "anyhow",
+ "bytemuck",
+ "egui",
+ "half",
+ "ndarray",
+ "re_chunk_store",
+ "re_data_ui",
+ "re_log_types",
+ "re_query",
+ "re_renderer",
+ "re_tracing",
+ "re_types",
+ "re_ui",
+ "re_view",
+ "re_viewer_context",
+ "re_viewport_blueprint",
+ "thiserror",
+ "wgpu",
+]
+
+[[package]]
+name = "re_view_text_document"
+version = "0.21.0-alpha.1+dev"
+dependencies = [
+ "egui",
+ "egui_commonmark",
+ "re_chunk_store",
+ "re_renderer",
+ "re_tracing",
+ "re_types",
+ "re_ui",
+ "re_view",
+ "re_viewer_context",
+]
+
+[[package]]
+name = "re_view_text_log"
+version = "0.21.0-alpha.1+dev"
+dependencies = [
+ "egui",
+ "egui_extras",
+ "itertools 0.13.0",
+ "re_chunk_store",
+ "re_data_ui",
+ "re_entity_db",
+ "re_log_types",
+ "re_query",
+ "re_renderer",
+ "re_tracing",
+ "re_types",
+ "re_ui",
+ "re_view",
+ "re_viewer_context",
+]
+
+[[package]]
+name = "re_view_time_series"
+version = "0.21.0-alpha.1+dev"
+dependencies = [
+ "egui",
+ "egui_plot",
+ "itertools 0.13.0",
+ "rayon",
+ "re_chunk_store",
+ "re_format",
+ "re_log",
+ "re_log_types",
+ "re_query",
+ "re_renderer",
+ "re_tracing",
+ "re_types",
+ "re_ui",
+ "re_view",
+ "re_viewer_context",
+ "re_viewport_blueprint",
 ]
 
 [[package]]
@@ -6819,22 +6806,21 @@ dependencies = [
  "re_sdk_comms",
  "re_selection_panel",
  "re_smart_channel",
- "re_space_view_bar_chart",
- "re_space_view_dataframe",
- "re_space_view_graph",
- "re_space_view_map",
- "re_space_view_spatial",
- "re_space_view_tensor",
- "re_space_view_text_document",
- "re_space_view_text_log",
- "re_space_view_time_series",
  "re_time_panel",
  "re_tracing",
  "re_types",
- "re_types_blueprint",
  "re_types_core",
  "re_ui",
  "re_video",
+ "re_view_bar_chart",
+ "re_view_dataframe",
+ "re_view_graph",
+ "re_view_map",
+ "re_view_spatial",
+ "re_view_tensor",
+ "re_view_text_document",
+ "re_view_text_log",
+ "re_view_time_series",
  "re_viewer_context",
  "re_viewport",
  "re_viewport_blueprint",
@@ -6924,11 +6910,10 @@ dependencies = [
  "re_log",
  "re_log_types",
  "re_renderer",
- "re_space_view",
  "re_tracing",
  "re_types",
- "re_types_blueprint",
  "re_ui",
+ "re_view",
  "re_viewer_context",
  "re_viewport_blueprint",
 ]
@@ -6951,7 +6936,6 @@ dependencies = [
  "re_log_types",
  "re_tracing",
  "re_types",
- "re_types_blueprint",
  "re_types_core",
  "re_ui",
  "re_viewer_context",
@@ -7270,6 +7254,7 @@ dependencies = [
  "re_chunk_store",
  "re_dataframe",
  "re_log",
+ "re_log_encoding",
  "re_log_types",
  "re_memory",
  "re_protos",

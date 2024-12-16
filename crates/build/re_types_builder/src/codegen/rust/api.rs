@@ -580,7 +580,7 @@ fn quote_enum(
             &field.virtpath,
             &field.fqname,
             &field.docs,
-            Target::Rust,
+            Target::WebDocsMarkdown,
             false,
         )
         .join("\n");
@@ -1084,6 +1084,8 @@ fn quote_trait_impls_for_archetype(obj: &Object) -> TokenStream {
     let quoted_indicator_name = format_ident!("{indicator_name}");
     let quoted_indicator_doc =
         format!("Indicator component for the [`{name}`] [`::re_types_core::Archetype`]");
+    let indicator_component_name =
+        format!("{}Indicator", fqname.replace("archetypes", "components"));
 
     let (num_required_descriptors, required_descriptors) =
         compute_component_descriptors(obj, ATTR_RERUN_COMPONENT_REQUIRED);
@@ -1097,7 +1099,7 @@ fn quote_trait_impls_for_archetype(obj: &Object) -> TokenStream {
         #recommended_descriptors
         ComponentDescriptor {
             archetype_name: Some(#archetype_name.into()),
-            component_name: #indicator_name.into(),
+            component_name: #indicator_component_name.into(),
             archetype_field_name: None,
         },
     };
@@ -1376,7 +1378,7 @@ fn quote_trait_impls_for_view(reporter: &Reporter, obj: &Object) -> TokenStream 
     quote! {
         impl ::re_types_core::View for #name {
             #[inline]
-            fn identifier() -> ::re_types_core::SpaceViewClassIdentifier {
+            fn identifier() -> ::re_types_core::ViewClassIdentifier {
                 #identifier .into()
             }
         }

@@ -360,6 +360,26 @@ pub struct Object {
     pub datatype: Option<crate::LazyDatatype>,
 }
 
+impl PartialEq for Object {
+    fn eq(&self, other: &Self) -> bool {
+        self.fqname == other.fqname
+    }
+}
+
+impl Eq for Object {}
+
+impl Ord for Object {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.fqname.cmp(&other.fqname)
+    }
+}
+
+impl PartialOrd for Object {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
 impl Object {
     /// Resolves a raw [`crate::Object`] into a higher-level representation that can be easily
     /// interpreted and manipulated.
@@ -391,7 +411,7 @@ impl Object {
             "Bad filepath: {filepath:?}"
         );
 
-        let docs = Docs::from_raw_docs(obj.documentation());
+        let docs = Docs::from_raw_docs(reporter, &virtpath, obj.name(), obj.documentation());
         let attrs = Attributes::from_raw_attrs(obj.attributes());
         let kind = ObjectKind::from_pkg_name(&pkg_name, &attrs);
 
@@ -478,7 +498,7 @@ impl Object {
             .unwrap();
         let filepath = filepath_from_declaration_file(include_dir_path, &virtpath);
 
-        let docs = Docs::from_raw_docs(enm.documentation());
+        let docs = Docs::from_raw_docs(reporter, &virtpath, enm.name(), enm.documentation());
         let attrs = Attributes::from_raw_attrs(enm.attributes());
         let kind = ObjectKind::from_pkg_name(&pkg_name, &attrs);
 
@@ -772,7 +792,7 @@ impl ObjectField {
             .unwrap();
         let filepath = filepath_from_declaration_file(include_dir_path, &virtpath);
 
-        let docs = Docs::from_raw_docs(field.documentation());
+        let docs = Docs::from_raw_docs(reporter, &virtpath, field.name(), field.documentation());
 
         let attrs = Attributes::from_raw_attrs(field.attributes());
 
@@ -832,7 +852,7 @@ impl ObjectField {
             .unwrap();
         let filepath = filepath_from_declaration_file(include_dir_path, &virtpath);
 
-        let docs = Docs::from_raw_docs(val.documentation());
+        let docs = Docs::from_raw_docs(reporter, &virtpath, val.name(), val.documentation());
 
         let attrs = Attributes::from_raw_attrs(val.attributes());
 

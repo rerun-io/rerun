@@ -3,7 +3,7 @@ title: Entity Queries
 order: 100
 ---
 
-Many space views are made up of visualizations that include more than one
+Many views are made up of visualizations that include more than one
 entity.
 
 Rather that requiring you to specify each entity individually, Rerun supports
@@ -48,7 +48,7 @@ Consider the following example:
 
 In the viewer, an entity query is typically displayed as a multi-line
 edit box, with each query expression shown on its own line. You can find the
-query editor in the right-hand selection panel when selecting a space view.
+query editor in the right-hand selection panel when selecting a view.
 
 <picture>
   <img src="https://static.rerun.io/helix_query/e39ed9fa364724d201f19a0ae54f34d4df761c5b/full.png" alt="">
@@ -76,7 +76,7 @@ rrb.Spatial3DView(
 ## `origin` substitution
 
 Query expressions also allow you to use the variable `$origin` to refer to the
-origin of the space-view that the query belongs to.
+origin of the view that the query belongs to.
 
 For example, the above query could be rewritten as:
 

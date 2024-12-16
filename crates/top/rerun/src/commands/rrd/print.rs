@@ -1,5 +1,5 @@
 use anyhow::Context;
-use itertools::Itertools as _;
+use itertools::Itertools;
 
 use re_log_types::{LogMsg, SetStoreInfo};
 use re_sdk::log::Chunk;
@@ -15,8 +15,18 @@ pub struct PrintCommand {
     path_to_input_rrds: Vec<String>,
 
     /// If set, print out table contents.
-    #[clap(long, short, default_value_t = false)]
-    verbose: bool,
+    ///
+    /// This can be specified more than once to toggle more and more verbose levels (e.g. -vvv):
+    ///
+    /// * default: summary with short names.
+    ///
+    /// * `-v`: summary with fully-qualified names.
+    ///
+    /// * `-vv`: show all chunk metadata headers, keep the data hidden.
+    ///
+    /// * `-vvv`: show all chunk metadata headers as well as the data itself.
+    #[clap(long, short, action = clap::ArgAction::Count)]
+    verbose: u8,
 
     /// If set, will try to proceed even in the face of IO and/or decoding errors in the input data.
     #[clap(long = "continue-on-error", default_value_t = true)]
@@ -32,7 +42,7 @@ impl PrintCommand {
         } = self;
 
         // TODO(cmc): might want to make this configurable at some point.
-        let version_policy = re_log_encoding::decoder::VersionPolicy::Warn;
+        let version_policy = re_log_encoding::VersionPolicy::Warn;
         let (rx, _) = read_rrd_streams_from_file_or_stdin(version_policy, path_to_input_rrds);
 
         for res in rx {
@@ -63,7 +73,7 @@ impl PrintCommand {
     }
 }
 
-fn print_msg(verbose: bool, msg: LogMsg) -> anyhow::Result<()> {
+fn print_msg(verbose: u8, msg: LogMsg) -> anyhow::Result<()> {
     match msg {
         LogMsg::SetStoreInfo(msg) => {
             let SetStoreInfo { row_id: _, info } = msg;
@@ -73,21 +83,31 @@ fn print_msg(verbose: bool, msg: LogMsg) -> anyhow::Result<()> {
         LogMsg::ArrowMsg(_row_id, arrow_msg) => {
             let chunk = Chunk::from_arrow_msg(&arrow_msg).context("skipped corrupt chunk")?;
 
-            if verbose {
-                println!("{chunk}");
-            } else {
+            print!(
+                "Chunk({}) with {} rows ({}) - {:?} - ",
+                chunk.id(),
+                chunk.num_rows(),
+                re_format::format_bytes(chunk.total_size_bytes() as _),
+                chunk.entity_path(),
+            );
+
+            if verbose == 0 {
                 let column_names = chunk
                     .component_names()
                     .map(|name| name.short_name())
                     .join(" ");
-
-                println!(
-                    "Chunk({}) with {} rows ({}) - {:?} - columns: [{column_names}]",
-                    chunk.id(),
-                    chunk.num_rows(),
-                    re_format::format_bytes(chunk.total_size_bytes() as _),
-                    chunk.entity_path(),
-                );
+                println!("columns: [{column_names}]");
+            } else if verbose == 1 {
+                let column_descriptors = chunk
+                    .component_descriptors()
+                    .map(|descr| descr.short_name())
+                    .collect_vec()
+                    .join(" ");
+                println!("columns: [{column_descriptors}]",);
+            } else if verbose == 2 {
+                println!("\n{}", chunk.emptied()); // headers only
+            } else {
+                println!("\n{chunk}");
             }
         }
 

@@ -12,12 +12,12 @@ use re_viewer_context::{
     blueprint_timeline, ComponentUiTypes, QueryContext, SystemCommand, SystemCommandSender as _,
     UiLayout, ViewContext, ViewSystemIdentifier,
 };
-use re_viewport_blueprint::SpaceViewBlueprint;
+use re_viewport_blueprint::ViewBlueprint;
 
 pub fn view_components_defaults_section_ui(
     ctx: &ViewContext<'_>,
     ui: &mut egui::Ui,
-    view: &SpaceViewBlueprint,
+    view: &ViewBlueprint,
 ) {
     let db = ctx.viewer_ctx.blueprint_db();
     let query = ctx.viewer_ctx.blueprint_query;
@@ -81,7 +81,7 @@ fn active_default_ui(
     ui: &mut egui::Ui,
     active_defaults: &ComponentNameSet,
     component_to_vis: &BTreeMap<ComponentName, ViewSystemIdentifier>,
-    view: &SpaceViewBlueprint,
+    view: &ViewBlueprint,
     query: &LatestAtQuery,
     db: &re_entity_db::EntityDb,
 ) {
@@ -185,7 +185,7 @@ fn component_to_vis(ctx: &ViewContext<'_>) -> BTreeMap<ComponentName, ViewSystem
 
 fn active_defaults(
     ctx: &ViewContext<'_>,
-    view: &SpaceViewBlueprint,
+    view: &ViewBlueprint,
     db: &re_entity_db::EntityDb,
     query: &LatestAtQuery,
 ) -> ComponentNameSet {

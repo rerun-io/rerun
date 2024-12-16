@@ -3,7 +3,6 @@ title = "Graph lattice"
 tags = ["Graph", "Layout"]
 thumbnail = "https://static.rerun.io/graph_lattice/f9169da9c3f35b7260c9d74cd5be5fe710aec6a8/480w.png"
 thumbnail_dimensions = [480, 269]
-channel = "main"
 -->
 
 This example shows different attributes that you can associate with nodes in a graph.
@@ -23,7 +22,7 @@ Since no explicit positions are passed for the nodes, Rerun will layout the grap
 
 ## Run the code
 
-```bash
-pip install -e examples/python/graph_lattice
-python -m graph_lattice
-```
+ ```bash
+ pip install -e examples/python/graph_lattice
+ python -m graph_lattice
+ ```

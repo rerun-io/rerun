@@ -33,7 +33,7 @@ use re_viewer_context::{
 };
 use re_viewport_blueprint::ViewportBlueprint;
 
-use recursive_chunks_per_timeline_subscriber::PathRecursiveChunksPerTimeline;
+use recursive_chunks_per_timeline_subscriber::PathRecursiveChunksPerTimelineStoreSubscriber;
 use time_axis::TimelineAxis;
 use time_control_ui::TimeControlUi;
 use time_ranges_ui::TimeRangesUi;
@@ -147,7 +147,7 @@ impl TimePanel {
     /// This is implicitly called by [`Self::default`], but may need to be explicitly called in,
     /// e.g., testing context.
     pub fn ensure_registered_subscribers() {
-        PathRecursiveChunksPerTimeline::ensure_registered();
+        PathRecursiveChunksPerTimelineStoreSubscriber::ensure_registered();
     }
 
     pub fn new_blueprint_panel() -> Self {
@@ -726,7 +726,7 @@ impl TimePanel {
             &response,
             SelectionUpdateBehavior::UseSelection,
         );
-        ctx.select_hovered_on_click(&response, item.to_item());
+        ctx.handle_select_hover_drag_interactions(&response, item.to_item(), false);
 
         let is_closed = body_response.is_none();
         let response_rect = response.rect;
@@ -854,7 +854,7 @@ impl TimePanel {
                     &response,
                     SelectionUpdateBehavior::UseSelection,
                 );
-                ctx.select_hovered_on_click(&response, item.to_item());
+                ctx.handle_select_hover_drag_interactions(&response, item.to_item(), false);
 
                 let response_rect = response.rect;
 
@@ -1125,7 +1125,7 @@ fn paint_range_highlight(
 }
 
 fn help_button(ui: &mut egui::Ui) {
-    // TODO(andreas): Nicer help text like on space views.
+    // TODO(andreas): Nicer help text like on views.
     ui.help_hover_button().on_hover_text(
         "\
         In the top row you can drag to move the time, or shift-drag to select a loop region.\n\

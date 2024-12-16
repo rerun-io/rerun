@@ -409,12 +409,14 @@ impl QuotedObject {
         match obj.class {
             ObjectClass::Struct => match obj.kind {
                 ObjectKind::Datatype | ObjectKind::Component => Ok(Self::from_struct(
+                    reporter,
                     objects,
                     obj,
                     hpp_includes,
                     hpp_type_extensions,
                 )),
                 ObjectKind::Archetype => Ok(Self::from_archetype(
+                    reporter,
                     objects,
                     obj,
                     hpp_includes,
@@ -429,9 +431,10 @@ impl QuotedObject {
                 if !hpp_type_extensions.is_empty() {
                     reporter.error(&obj.virtpath, &obj.fqname, "C++ enums cannot have type extensions, because C++ enums doesn't support member functions");
                 }
-                Ok(Self::from_enum(objects, obj, hpp_includes))
+                Ok(Self::from_enum(reporter, objects, obj, hpp_includes))
             }
             ObjectClass::Union => Ok(Self::from_union(
+                reporter,
                 objects,
                 obj,
                 hpp_includes,
@@ -441,13 +444,14 @@ impl QuotedObject {
     }
 
     fn from_archetype(
+        reporter: &Reporter,
         objects: &Objects,
         obj: &Object,
         mut hpp_includes: Includes,
         hpp_type_extensions: &TokenStream,
     ) -> Self {
         let type_ident = obj.ident();
-        let quoted_docs = quote_obj_docs(objects, obj);
+        let quoted_docs = quote_obj_docs(reporter, objects, obj);
 
         let mut cpp_includes = Includes::new(obj.fqname.clone(), obj.scope());
         cpp_includes.insert_rerun("collection_adapter_builtins.hpp");
@@ -458,7 +462,7 @@ impl QuotedObject {
             .fields
             .iter()
             .map(|obj_field| {
-                let docstring = quote_field_docs(objects, obj_field);
+                let docstring = quote_field_docs(reporter, objects, obj_field);
                 let field_name = field_name_identifier(obj_field);
                 let field_type = quote_archetype_field_type(&mut hpp_includes, obj_field);
                 let field_type = if obj_field.is_nullable {
@@ -549,11 +553,11 @@ impl QuotedObject {
         };
 
         let serialize_method = archetype_serialize(&type_ident, obj, &mut hpp_includes);
-        let serialize_hpp = serialize_method.to_hpp_tokens(objects);
+        let serialize_hpp = serialize_method.to_hpp_tokens(reporter, objects);
         let serialize_cpp =
             serialize_method.to_cpp_tokens(&quote!(AsComponents<#quoted_namespace::#type_ident>));
 
-        let methods_hpp = methods.iter().map(|m| m.to_hpp_tokens(objects));
+        let methods_hpp = methods.iter().map(|m| m.to_hpp_tokens(reporter, objects));
         let methods_cpp = methods
             .iter()
             .map(|m| m.to_cpp_tokens(&quote!(#type_ident)));
@@ -648,6 +652,7 @@ impl QuotedObject {
     }
 
     fn from_struct(
+        reporter: &Reporter,
         objects: &Objects,
         obj: &Object,
         mut hpp_includes: Includes,
@@ -663,7 +668,7 @@ impl QuotedObject {
         };
 
         let type_ident = obj.ident();
-        let quoted_docs = quote_obj_docs(objects, obj);
+        let quoted_docs = quote_obj_docs(reporter, objects, obj);
         let deprecation_notice = quote_deprecation_notice(obj);
 
         let mut cpp_includes = Includes::new(obj.fqname.clone(), obj.scope());
@@ -674,6 +679,7 @@ impl QuotedObject {
             .iter()
             .map(|obj_field| {
                 let declaration = quote_variable_with_docstring(
+                    reporter,
                     objects,
                     &mut hpp_includes,
                     obj_field,
@@ -721,9 +727,10 @@ impl QuotedObject {
             }
         }
 
-        let methods_hpp = methods.iter().map(|m| m.to_hpp_tokens(objects));
+        let methods_hpp = methods.iter().map(|m| m.to_hpp_tokens(reporter, objects));
 
         let (hpp_loggable, cpp_loggable) = quote_loggable_hpp_and_cpp(
+            reporter,
             obj,
             objects,
             &mut hpp_includes,
@@ -776,6 +783,7 @@ impl QuotedObject {
     }
 
     fn from_union(
+        reporter: &Reporter,
         objects: &Objects,
         obj: &Object,
         mut hpp_includes: Includes,
@@ -815,7 +823,7 @@ impl QuotedObject {
 
         let pascal_case_name = &obj.name;
         let pascal_case_ident = obj.ident();
-        let quoted_docs = quote_obj_docs(objects, obj);
+        let quoted_docs = quote_obj_docs(reporter, objects, obj);
         let deprecation_notice = quote_deprecation_notice(obj);
 
         let tag_typename = format_ident!("{pascal_case_name}Tag");
@@ -853,6 +861,7 @@ impl QuotedObject {
             .filter(|obj_field| obj_field.typ != Type::Unit)
             .map(|obj_field| {
                 let declaration = quote_variable_with_docstring(
+                    reporter,
                     objects,
                     &mut hpp_includes,
                     obj_field,
@@ -1092,6 +1101,7 @@ impl QuotedObject {
         let hide_from_docs_comment = quote_hide_from_docs();
 
         let (hpp_loggable, cpp_loggable) = quote_loggable_hpp_and_cpp(
+            reporter,
             obj,
             objects,
             &mut hpp_includes,
@@ -1099,7 +1109,7 @@ impl QuotedObject {
             &mut hpp_declarations,
         );
 
-        let methods_hpp = methods.iter().map(|m| m.to_hpp_tokens(objects));
+        let methods_hpp = methods.iter().map(|m| m.to_hpp_tokens(reporter, objects));
         let hpp = quote! {
             #hpp_includes
 
@@ -1211,7 +1221,12 @@ impl QuotedObject {
     }
 
     // C-style enum
-    fn from_enum(objects: &Objects, obj: &Object, mut hpp_includes: Includes) -> Self {
+    fn from_enum(
+        reporter: &Reporter,
+        objects: &Objects,
+        obj: &Object,
+        mut hpp_includes: Includes,
+    ) -> Self {
         // We use a simple `enum class`, which is a type-safe enum.
         // They don't support methods, but we don't need them,
         // since `Loggable` is implemented outside the type.
@@ -1226,7 +1241,7 @@ impl QuotedObject {
         };
 
         let type_ident = obj.ident();
-        let quoted_docs = quote_obj_docs(objects, obj);
+        let quoted_docs = quote_obj_docs(reporter, objects, obj);
         let deprecation_notice = quote_deprecation_notice(obj);
 
         let mut cpp_includes = Includes::new(obj.fqname.clone(), obj.scope());
@@ -1237,7 +1252,7 @@ impl QuotedObject {
             .iter()
             .map(|obj_field| {
                 let enum_value = obj_field.enum_value.unwrap();
-                let docstring = quote_field_docs(objects, obj_field);
+                let docstring = quote_field_docs(reporter, objects, obj_field);
                 let field_name = field_name_identifier(obj_field);
 
                 // We assign the arrow type index to the enum fields to make encoding simpler and faster:
@@ -1252,6 +1267,7 @@ impl QuotedObject {
             .collect_vec();
 
         let (hpp_loggable, cpp_loggable) = quote_loggable_hpp_and_cpp(
+            reporter,
             obj,
             objects,
             &mut hpp_includes,
@@ -2201,6 +2217,7 @@ fn quote_archetype_field_type(hpp_includes: &mut Includes, obj_field: &ObjectFie
 }
 
 fn quote_variable_with_docstring(
+    reporter: &Reporter,
     objects: &Objects,
     includes: &mut Includes,
     obj_field: &ObjectField,
@@ -2208,7 +2225,7 @@ fn quote_variable_with_docstring(
 ) -> TokenStream {
     let quoted = quote_variable(includes, obj_field, name);
 
-    let docstring = quote_field_docs(objects, obj_field);
+    let docstring = quote_field_docs(reporter, objects, obj_field);
 
     let quoted = quote! {
         #docstring
@@ -2318,8 +2335,8 @@ fn quote_fqname_as_type_path(includes: &mut Includes, fqname: &str) -> TokenStre
     quote!(#expr)
 }
 
-fn quote_obj_docs(objects: &Objects, obj: &Object) -> TokenStream {
-    let mut lines = lines_from_docs(objects, &obj.docs);
+fn quote_obj_docs(reporter: &Reporter, objects: &Objects, obj: &Object) -> TokenStream {
+    let mut lines = lines_from_docs(reporter, objects, &obj.docs);
 
     if let Some(first_line) = lines.first_mut() {
         // Prefix with object kind:
@@ -2336,13 +2353,13 @@ fn quote_obj_docs(objects: &Objects, obj: &Object) -> TokenStream {
     quote_doc_lines(&lines)
 }
 
-fn quote_field_docs(objects: &Objects, field: &ObjectField) -> TokenStream {
-    let lines = lines_from_docs(objects, &field.docs);
+fn quote_field_docs(reporter: &Reporter, objects: &Objects, field: &ObjectField) -> TokenStream {
+    let lines = lines_from_docs(reporter, objects, &field.docs);
     quote_doc_lines(&lines)
 }
 
-fn lines_from_docs(objects: &Objects, docs: &Docs) -> Vec<String> {
-    let mut lines = docs.lines_for(objects, Target::Cpp);
+fn lines_from_docs(reporter: &Reporter, objects: &Objects, docs: &Docs) -> Vec<String> {
+    let mut lines = docs.lines_for(reporter, objects, Target::Cpp);
 
     let required = true;
     let examples = collect_snippets_for_api_docs(docs, "cpp", required).unwrap_or_default();
@@ -2515,6 +2532,7 @@ fn quote_arrow_elem_type(
 }
 
 fn quote_loggable_hpp_and_cpp(
+    reporter: &Reporter,
     obj: &Object,
     objects: &Objects,
     hpp_includes: &mut Includes,
@@ -2567,7 +2585,7 @@ fn quote_loggable_hpp_and_cpp(
         }
     };
 
-    let methods_hpp = methods.iter().map(|m| m.to_hpp_tokens(objects));
+    let methods_hpp = methods.iter().map(|m| m.to_hpp_tokens(reporter, objects));
     let methods_cpp = methods.iter().map(|m| m.to_cpp_tokens(&loggable_type_name));
     let hide_from_docs_comment = quote_hide_from_docs();
 

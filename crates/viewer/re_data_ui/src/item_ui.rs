@@ -6,11 +6,11 @@ use re_entity_db::{EntityTree, InstancePath};
 use re_format::format_uint;
 use re_log_types::{ApplicationId, ComponentPath, EntityPath, TimeInt, Timeline};
 use re_ui::{icons, list_item, SyntaxHighlighting, UiExt as _};
-use re_viewer_context::{HoverHighlight, Item, SpaceViewId, UiLayout, ViewerContext};
+use re_viewer_context::{HoverHighlight, Item, UiLayout, ViewId, ViewerContext};
 
 use super::DataUi;
 
-// TODO(andreas): This is where we want to go, but we need to figure out how get the [`re_viewer_context::SpaceViewClass`] from the `SpaceViewId`.
+// TODO(andreas): This is where we want to go, but we need to figure out how get the [`re_viewer_context::ViewClass`] from the `ViewId`.
 // Simply pass in optional icons?
 //
 // Show a button to an [`Item`] with a given text.
@@ -24,11 +24,11 @@ use super::DataUi;
 //         Item::ComponentPath(component_path) => {
 //             component_path_button_to(ctx, ui, text, component_path)
 //         }
-//         Item::SpaceView(space_view_id) => {
-//             space_view_button_to(ctx, ui, text, *space_view_id, space_view_category)
+//         Item::View(view_id) => {
+//             view_button_to(ctx, ui, text, *view_id, view_category)
 //         }
-//         Item::InstancePath(space_view_id, instance_path) => {
-//             instance_path_button_to(ctx, ui, *space_view_id, instance_path, text)
+//         Item::InstancePath(view_id, instance_path) => {
+//             instance_path_button_to(ctx, ui, *view_id, instance_path, text)
 //         }
 //     }
 // }
@@ -39,7 +39,7 @@ pub fn entity_path_button(
     query: &re_chunk_store::LatestAtQuery,
     db: &re_entity_db::EntityDb,
     ui: &mut egui::Ui,
-    space_view_id: Option<SpaceViewId>,
+    view_id: Option<ViewId>,
     entity_path: &EntityPath,
 ) -> egui::Response {
     instance_path_button_to(
@@ -47,7 +47,7 @@ pub fn entity_path_button(
         query,
         db,
         ui,
-        space_view_id,
+        view_id,
         &InstancePath::entity_all(entity_path.clone()),
         entity_path.syntax_highlighted(ui.style()),
     )
@@ -59,7 +59,7 @@ pub fn entity_path_parts_buttons(
     query: &re_chunk_store::LatestAtQuery,
     db: &re_entity_db::EntityDb,
     ui: &mut egui::Ui,
-    space_view_id: Option<SpaceViewId>,
+    view_id: Option<ViewId>,
     entity_path: &EntityPath,
 ) -> egui::Response {
     let with_individual_icons = false; // too much noise with icons in a path
@@ -93,7 +93,7 @@ pub fn entity_path_parts_buttons(
                     query,
                     db,
                     ui,
-                    space_view_id,
+                    view_id,
                     &InstancePath::entity_all(accumulated.clone().into()),
                     part.syntax_highlighted(ui.style()),
                     with_individual_icons,
@@ -114,17 +114,17 @@ pub fn blueprint_entity_path_button_to(
     text: impl Into<egui::WidgetText>,
 ) -> egui::Response {
     // If we're targeting an entity in the blueprint store,
-    // it doesn't make much sense to specify the space view id since space view ids are
+    // it doesn't make much sense to specify the view id since view ids are
     // embedded in entity paths of the blueprint store.
     // I.e. if there is a view relationship that we would care about, we would know that from the path!
-    let space_view_id = None;
+    let view_id = None;
 
     entity_path_button_to(
         ctx,
         ctx.blueprint_query,
         ctx.blueprint_db(),
         ui,
-        space_view_id,
+        view_id,
         entity_path,
         text,
     )
@@ -136,7 +136,7 @@ pub fn entity_path_button_to(
     query: &re_chunk_store::LatestAtQuery,
     db: &re_entity_db::EntityDb,
     ui: &mut egui::Ui,
-    space_view_id: Option<SpaceViewId>,
+    view_id: Option<ViewId>,
     entity_path: &EntityPath,
     text: impl Into<egui::WidgetText>,
 ) -> egui::Response {
@@ -145,7 +145,7 @@ pub fn entity_path_button_to(
         query,
         db,
         ui,
-        space_view_id,
+        view_id,
         &InstancePath::entity_all(entity_path.clone()),
         text,
     )
@@ -157,7 +157,7 @@ pub fn instance_path_button(
     query: &re_chunk_store::LatestAtQuery,
     db: &re_entity_db::EntityDb,
     ui: &mut egui::Ui,
-    space_view_id: Option<SpaceViewId>,
+    view_id: Option<ViewId>,
     instance_path: &InstancePath,
 ) -> egui::Response {
     instance_path_button_to(
@@ -165,7 +165,7 @@ pub fn instance_path_button(
         query,
         db,
         ui,
-        space_view_id,
+        view_id,
         instance_path,
         instance_path.syntax_highlighted(ui.style()),
     )
@@ -237,11 +237,11 @@ pub fn instance_path_button_to(
     query: &re_chunk_store::LatestAtQuery,
     db: &re_entity_db::EntityDb,
     ui: &mut egui::Ui,
-    space_view_id: Option<SpaceViewId>,
+    view_id: Option<ViewId>,
     instance_path: &InstancePath,
     text: impl Into<egui::WidgetText>,
 ) -> egui::Response {
-    instance_path_button_to_ex(ctx, query, db, ui, space_view_id, instance_path, text, true)
+    instance_path_button_to_ex(ctx, query, db, ui, view_id, instance_path, text, true)
 }
 
 /// Show an instance id and make it selectable.
@@ -251,13 +251,13 @@ fn instance_path_button_to_ex(
     query: &re_chunk_store::LatestAtQuery,
     db: &re_entity_db::EntityDb,
     ui: &mut egui::Ui,
-    space_view_id: Option<SpaceViewId>,
+    view_id: Option<ViewId>,
     instance_path: &InstancePath,
     text: impl Into<egui::WidgetText>,
     with_icon: bool,
 ) -> egui::Response {
-    let item = if let Some(space_view_id) = space_view_id {
-        Item::DataResult(space_view_id, instance_path.clone())
+    let item = if let Some(view_id) = view_id {
+        Item::DataResult(view_id, instance_path.clone())
     } else {
         Item::InstancePath(instance_path.clone())
     };
@@ -287,7 +287,7 @@ pub fn instance_path_parts_buttons(
     query: &re_chunk_store::LatestAtQuery,
     db: &re_entity_db::EntityDb,
     ui: &mut egui::Ui,
-    space_view_id: Option<SpaceViewId>,
+    view_id: Option<ViewId>,
     instance_path: &InstancePath,
 ) -> egui::Response {
     let with_icon = false; // too much noise with icons in a path
@@ -308,7 +308,7 @@ pub fn instance_path_parts_buttons(
                 query,
                 db,
                 ui,
-                space_view_id,
+                view_id,
                 &InstancePath::entity_all(accumulated.clone().into()),
                 part.syntax_highlighted(ui.style()),
                 with_icon,
@@ -322,7 +322,7 @@ pub fn instance_path_parts_buttons(
                 query,
                 db,
                 ui,
-                space_view_id,
+                view_id,
                 instance_path,
                 instance_path.instance.syntax_highlighted(ui.style()),
                 with_icon,
@@ -521,10 +521,10 @@ pub fn data_blueprint_button_to(
     db: &re_entity_db::EntityDb,
     ui: &mut egui::Ui,
     text: impl Into<egui::WidgetText>,
-    space_view_id: SpaceViewId,
+    view_id: ViewId,
     entity_path: &EntityPath,
 ) -> egui::Response {
-    let item = Item::DataResult(space_view_id, InstancePath::entity_all(entity_path.clone()));
+    let item = Item::DataResult(view_id, InstancePath::entity_all(entity_path.clone()));
     let response = ui
         .selectable_label(ctx.selection().contains_item(&item), text)
         .on_hover_ui(|ui| {
@@ -596,7 +596,7 @@ pub fn cursor_interact_with_selectable(
     let is_item_hovered =
         ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
 
-    ctx.select_hovered_on_click(&response, item);
+    ctx.handle_select_hover_drag_interactions(&response, item, false);
     // TODO(andreas): How to deal with shift click for selecting ranges?
 
     if is_item_hovered {

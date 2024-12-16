@@ -71,7 +71,7 @@ impl Client {
         // We don't compress the stream because we assume the SDK
         // and server are on the same machine and compression
         // can be expensive, see https://github.com/rerun-io/rerun/issues/2216
-        let encoding_options = re_log_encoding::EncodingOptions::UNCOMPRESSED;
+        let encoding_options = re_log_encoding::EncodingOptions::MSGPACK_UNCOMPRESSED;
 
         let encode_join = std::thread::Builder::new()
             .name("msg_encoder".into())

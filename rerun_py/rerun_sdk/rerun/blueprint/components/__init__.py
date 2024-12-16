@@ -5,31 +5,36 @@ from __future__ import annotations
 from .active_tab import ActiveTab, ActiveTabBatch
 from .apply_latest_at import ApplyLatestAt, ApplyLatestAtBatch
 from .auto_layout import AutoLayout, AutoLayoutBatch
-from .auto_space_views import AutoSpaceViews, AutoSpaceViewsBatch
+from .auto_views import AutoViews, AutoViewsBatch
 from .background_kind import BackgroundKind, BackgroundKindArrayLike, BackgroundKindBatch, BackgroundKindLike
 from .column_share import ColumnShare, ColumnShareBatch
 from .component_column_selector import ComponentColumnSelector, ComponentColumnSelectorBatch
 from .container_kind import ContainerKind, ContainerKindArrayLike, ContainerKindBatch, ContainerKindLike
 from .corner2d import Corner2D, Corner2DArrayLike, Corner2DBatch, Corner2DLike
+from .enabled import Enabled, EnabledBatch
 from .filter_by_range import FilterByRange, FilterByRangeBatch
 from .filter_is_not_null import FilterIsNotNull, FilterIsNotNullBatch
+from .force_distance import ForceDistance, ForceDistanceBatch
+from .force_iterations import ForceIterations, ForceIterationsBatch
+from .force_strength import ForceStrength, ForceStrengthBatch
 from .grid_columns import GridColumns, GridColumnsBatch
 from .grid_spacing import GridSpacing, GridSpacingBatch
 from .included_content import IncludedContent, IncludedContentBatch
 from .interactive import Interactive, InteractiveBatch
 from .lock_range_during_zoom import LockRangeDuringZoom, LockRangeDuringZoomBatch
 from .map_provider import MapProvider, MapProviderArrayLike, MapProviderBatch, MapProviderLike
+from .near_clip_plane import NearClipPlane, NearClipPlaneBatch
 from .panel_state import PanelState, PanelStateArrayLike, PanelStateBatch, PanelStateLike
 from .query_expression import QueryExpression, QueryExpressionBatch
 from .root_container import RootContainer, RootContainerBatch
 from .row_share import RowShare, RowShareBatch
 from .selected_columns import SelectedColumns, SelectedColumnsBatch
-from .space_view_class import SpaceViewClass, SpaceViewClassBatch
-from .space_view_maximized import SpaceViewMaximized, SpaceViewMaximizedBatch
-from .space_view_origin import SpaceViewOrigin, SpaceViewOriginBatch
 from .tensor_dimension_index_slider import TensorDimensionIndexSlider, TensorDimensionIndexSliderBatch
 from .timeline_name import TimelineName, TimelineNameBatch
+from .view_class import ViewClass, ViewClassBatch
 from .view_fit import ViewFit, ViewFitArrayLike, ViewFitBatch, ViewFitLike
+from .view_maximized import ViewMaximized, ViewMaximizedBatch
+from .view_origin import ViewOrigin, ViewOriginBatch
 from .viewer_recommendation_hash import ViewerRecommendationHash, ViewerRecommendationHashBatch
 from .visible import Visible, VisibleBatch
 from .visible_time_range import VisibleTimeRange, VisibleTimeRangeBatch
@@ -44,8 +49,8 @@ __all__ = [
     "ApplyLatestAtBatch",
     "AutoLayout",
     "AutoLayoutBatch",
-    "AutoSpaceViews",
-    "AutoSpaceViewsBatch",
+    "AutoViews",
+    "AutoViewsBatch",
     "BackgroundKind",
     "BackgroundKindArrayLike",
     "BackgroundKindBatch",
@@ -62,10 +67,18 @@ __all__ = [
     "Corner2DArrayLike",
     "Corner2DBatch",
     "Corner2DLike",
+    "Enabled",
+    "EnabledBatch",
     "FilterByRange",
     "FilterByRangeBatch",
     "FilterIsNotNull",
     "FilterIsNotNullBatch",
+    "ForceDistance",
+    "ForceDistanceBatch",
+    "ForceIterations",
+    "ForceIterationsBatch",
+    "ForceStrength",
+    "ForceStrengthBatch",
     "GridColumns",
     "GridColumnsBatch",
     "GridSpacing",
@@ -80,6 +93,8 @@ __all__ = [
     "MapProviderArrayLike",
     "MapProviderBatch",
     "MapProviderLike",
+    "NearClipPlane",
+    "NearClipPlaneBatch",
     "PanelState",
     "PanelStateArrayLike",
     "PanelStateBatch",
@@ -92,20 +107,20 @@ __all__ = [
     "RowShareBatch",
     "SelectedColumns",
     "SelectedColumnsBatch",
-    "SpaceViewClass",
-    "SpaceViewClassBatch",
-    "SpaceViewMaximized",
-    "SpaceViewMaximizedBatch",
-    "SpaceViewOrigin",
-    "SpaceViewOriginBatch",
     "TensorDimensionIndexSlider",
     "TensorDimensionIndexSliderBatch",
     "TimelineName",
     "TimelineNameBatch",
+    "ViewClass",
+    "ViewClassBatch",
     "ViewFit",
     "ViewFitArrayLike",
     "ViewFitBatch",
     "ViewFitLike",
+    "ViewMaximized",
+    "ViewMaximizedBatch",
+    "ViewOrigin",
+    "ViewOriginBatch",
     "ViewerRecommendationHash",
     "ViewerRecommendationHashBatch",
     "Visible",

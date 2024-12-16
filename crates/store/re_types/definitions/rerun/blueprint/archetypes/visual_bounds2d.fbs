@@ -1,6 +1,5 @@
 namespace rerun.blueprint.archetypes;
 
-
 /// Controls the visual bounds of a 2D view.
 ///
 /// Everything within these bounds are guaranteed to be visible.

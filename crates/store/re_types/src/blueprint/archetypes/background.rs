@@ -24,7 +24,7 @@ pub struct Background {
     /// The type of the background.
     pub kind: crate::blueprint::components::BackgroundKind,
 
-    /// Color used for the `SolidColor` background type.
+    /// Color used for the solid background type.
     pub color: Option<crate::components::Color>,
 }
 
@@ -41,7 +41,7 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usiz
     once_cell::sync::Lazy::new(|| {
         [ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.Background".into()),
-            component_name: "BackgroundIndicator".into(),
+            component_name: "rerun.blueprint.components.BackgroundIndicator".into(),
             archetype_field_name: None,
         }]
     });
@@ -65,7 +65,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
             },
             ComponentDescriptor {
                 archetype_name: Some("rerun.blueprint.archetypes.Background".into()),
-                component_name: "BackgroundIndicator".into(),
+                component_name: "rerun.blueprint.components.BackgroundIndicator".into(),
                 archetype_field_name: None,
             },
             ComponentDescriptor {
@@ -206,7 +206,7 @@ impl Background {
         }
     }
 
-    /// Color used for the `SolidColor` background type.
+    /// Color used for the solid background type.
     #[inline]
     pub fn with_color(mut self, color: impl Into<crate::components::Color>) -> Self {
         self.color = Some(color.into());

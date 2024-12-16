@@ -1,6 +1,6 @@
-use re_viewer_context::{ContainerId, Contents, SpaceViewId};
+use re_viewer_context::{ContainerId, Contents, ViewId};
 
-use crate::SpaceViewBlueprint;
+use crate::ViewBlueprint;
 
 /// Mutation actions to perform on the viewport tree at the end of the frame.
 ///
@@ -8,11 +8,11 @@ use crate::SpaceViewBlueprint;
 #[derive(Clone, Debug)]
 pub enum ViewportCommand {
     /// Set the whole viewport tree.
-    SetTree(egui_tiles::Tree<SpaceViewId>),
+    SetTree(egui_tiles::Tree<ViewId>),
 
-    /// Add a new space view to the provided container (or the root if `None`).
-    AddSpaceView {
-        space_view: SpaceViewBlueprint,
+    /// Add a new view to the provided container (or the root if `None`).
+    AddView {
+        view: ViewBlueprint,
         parent_container: Option<ContainerId>,
         position_in_parent: Option<usize>,
     },
@@ -26,10 +26,10 @@ pub enum ViewportCommand {
     /// Change the kind of a container.
     SetContainerKind(ContainerId, egui_tiles::ContainerKind),
 
-    /// Ensure the tab for the provided space view is focused (see [`egui_tiles::Tree::make_active`]).
-    FocusTab(SpaceViewId),
+    /// Ensure the tab for the provided view is focused (see [`egui_tiles::Tree::make_active`]).
+    FocusTab(ViewId),
 
-    /// Remove a container (recursively) or a space view
+    /// Remove a container (recursively) or a view
     RemoveContents(Contents),
 
     /// Simplify the container with the provided options
@@ -40,7 +40,7 @@ pub enum ViewportCommand {
 
     /// Move some contents to a different container
     MoveContents {
-        contents_to_move: Contents,
+        contents_to_move: Vec<Contents>,
         target_container: ContainerId,
         target_position_in_container: usize,
     },

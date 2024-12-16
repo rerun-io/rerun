@@ -31,21 +31,21 @@ namespace rerun::blueprint::archetypes {
         /// The name of the container.
         std::optional<rerun::components::Name> display_name;
 
-        /// `ContainerId`s or `SpaceViewId`s that are children of this container.
+        /// `ContainerId`s or `ViewId`s that are children of this container.
         std::optional<Collection<rerun::blueprint::components::IncludedContent>> contents;
 
         /// The layout shares of each column in the container.
         ///
-        /// For `Horizontal` containers, the length of this list should always match the number of contents.
+        /// For `components::ContainerKind::Horizontal` containers, the length of this list should always match the number of contents.
         ///
-        /// Ignored for `Vertical` containers.
+        /// Ignored for `components::ContainerKind::Vertical` containers.
         std::optional<Collection<rerun::blueprint::components::ColumnShare>> col_shares;
 
         /// The layout shares of each row of the container.
         ///
-        /// For `Vertical` containers, the length of this list should always match the number of contents.
+        /// For `components::ContainerKind::Vertical` containers, the length of this list should always match the number of contents.
         ///
-        /// Ignored for `Horizontal` containers.
+        /// Ignored for `components::ContainerKind::Horizontal` containers.
         std::optional<Collection<rerun::blueprint::components::RowShare>> row_shares;
 
         /// Which tab is active.
@@ -62,7 +62,7 @@ namespace rerun::blueprint::archetypes {
         ///
         /// If unset, the grid layout will be auto.
         ///
-        /// Ignored for `Horizontal`/`Vertical` containers.
+        /// Ignored for `components::ContainerKind::Horizontal`/`components::ContainerKind::Vertical` containers.
         std::optional<rerun::blueprint::components::GridColumns> grid_columns;
 
       public:
@@ -86,7 +86,7 @@ namespace rerun::blueprint::archetypes {
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
-        /// `ContainerId`s or `SpaceViewId`s that are children of this container.
+        /// `ContainerId`s or `ViewId`s that are children of this container.
         ContainerBlueprint with_contents(
             Collection<rerun::blueprint::components::IncludedContent> _contents
         ) && {
@@ -97,9 +97,9 @@ namespace rerun::blueprint::archetypes {
 
         /// The layout shares of each column in the container.
         ///
-        /// For `Horizontal` containers, the length of this list should always match the number of contents.
+        /// For `components::ContainerKind::Horizontal` containers, the length of this list should always match the number of contents.
         ///
-        /// Ignored for `Vertical` containers.
+        /// Ignored for `components::ContainerKind::Vertical` containers.
         ContainerBlueprint with_col_shares(
             Collection<rerun::blueprint::components::ColumnShare> _col_shares
         ) && {
@@ -110,9 +110,9 @@ namespace rerun::blueprint::archetypes {
 
         /// The layout shares of each row of the container.
         ///
-        /// For `Vertical` containers, the length of this list should always match the number of contents.
+        /// For `components::ContainerKind::Vertical` containers, the length of this list should always match the number of contents.
         ///
-        /// Ignored for `Horizontal` containers.
+        /// Ignored for `components::ContainerKind::Horizontal` containers.
         ContainerBlueprint with_row_shares(
             Collection<rerun::blueprint::components::RowShare> _row_shares
         ) && {
@@ -143,7 +143,7 @@ namespace rerun::blueprint::archetypes {
         ///
         /// If unset, the grid layout will be auto.
         ///
-        /// Ignored for `Horizontal`/`Vertical` containers.
+        /// Ignored for `components::ContainerKind::Horizontal`/`components::ContainerKind::Vertical` containers.
         ContainerBlueprint with_grid_columns(rerun::blueprint::components::GridColumns _grid_columns
         ) && {
             grid_columns = std::move(_grid_columns);

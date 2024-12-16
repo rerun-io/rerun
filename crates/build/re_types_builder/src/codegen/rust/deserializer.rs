@@ -326,11 +326,12 @@ pub fn quote_arrow_deserializer(
                 let quoted_field_deserializers = obj
                     .fields
                     .iter()
-                    .filter(|obj_field|
-                        // For unit fields we don't have to collect any data.
-                        obj_field.typ != crate::Type::Unit)
                     .enumerate()
-                    .map(|(i, obj_field)| {
+                    .filter(|(_, obj_field)| {
+                        // For unit fields we don't have to collect any data.
+                        obj_field.typ != crate::Type::Unit
+                    })
+                    .map(|(type_id, obj_field)| {
                         let data_dst = format_ident!("{}", obj_field.snake_case_name());
 
                         let field_datatype = &arrow_registry.get(&obj_field.fqname);
@@ -344,15 +345,15 @@ pub fn quote_arrow_deserializer(
                             InnerRepr::NativeIterable,
                         );
 
-                        let i = i + 1; // NOTE: +1 to account for `_null_markers` virtual arm
+                        let type_id = Literal::usize_unsuffixed(type_id + 1); // NOTE: +1 to account for `_null_markers` virtual arm
 
                         quote! {
                             let #data_dst = {
                                 // NOTE: `data_src_arrays` is a runtime collection of all of the
-                                // input's payload's union arms, while `#i` is our comptime union
+                                // input's payload's union arms, while `#type_id` is our comptime union
                                 // arm counter… there's no guarantee it's actually there at
                                 // runtime!
-                                if #i >= #data_src_arrays.len() {
+                                if #data_src_arrays.len() <= #type_id {
                                     // By not returning an error but rather defaulting to an empty
                                     // vector, we introduce some kind of light forwards compatibility:
                                     // old clients that don't yet know about the new arms can still
@@ -360,13 +361,13 @@ pub fn quote_arrow_deserializer(
                                     return Ok(Vec::new());
 
                                     // return Err(DeserializationError::missing_union_arm(
-                                    //     #quoted_datatype, #obj_field_fqname, #i,
+                                    //     #quoted_datatype, #obj_field_fqname, #type_id,
                                     // )).with_context(#obj_fqname);
                                 }
 
                                 // NOTE: The array indexing is safe: checked above.
-                                let #data_src = &*#data_src_arrays[#i];
-                                 #quoted_deserializer.collect::<Vec<_>>()
+                                let #data_src = &*#data_src_arrays[#type_id];
+                                #quoted_deserializer.collect::<Vec<_>>()
                             }
                         }
                     });
@@ -583,19 +584,20 @@ fn quote_arrow_field_deserializer(
 
                 let offsets = #data_src.offsets();
                 arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                    offsets.iter().zip(offsets.lengths()),
+                    offsets.windows(2),
                     #data_src.validity(),
                 )
-                .map(|elem| elem.map(|(start, len)| {
+                .map(|elem| elem.map(|window| {
                         // NOTE: Do _not_ use `Buffer::sliced`, it panics on malformed inputs.
 
-                        let start = *start as usize;
-                        let end = start + len;
+                        let start = window[0] as usize;
+                        let end = window[1] as usize;
+                        let len = end - start;
 
                         // NOTE: It is absolutely crucial we explicitly handle the
                         // boundchecks manually first, otherwise rustc completely chokes
                         // when slicing the data (as in: a 100x perf drop)!
-                        if end > #data_src_buf.len() {
+                        if #data_src_buf.len() < end {
                             // error context is appended below during final collection
                             return Err(DeserializationError::offset_slice_oob(
                                 (start, end), #data_src_buf.len(),
@@ -812,19 +814,19 @@ fn quote_arrow_field_deserializer(
 
                     let offsets = #data_src.offsets();
                     arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                        offsets.iter().zip(offsets.lengths()),
+                        offsets.windows(2),
                         #data_src.validity(),
                     )
-                    .map(|elem| elem.map(|(start, len)| {
+                    .map(|elem| elem.map(|window| {
                             // NOTE: Do _not_ use `Buffer::sliced`, it panics on malformed inputs.
 
-                            let start = *start as usize;
-                            let end = start + len;
+                            let start = window[0] as usize;
+                            let end = window[1] as usize;
 
                             // NOTE: It is absolutely crucial we explicitly handle the
                             // boundchecks manually first, otherwise rustc completely chokes
                             // when slicing the data (as in: a 100x perf drop)!
-                            if end  > #data_src_inner.len() {
+                            if #data_src_inner.len() < end {
                                 // error context is appended below during final collection
                                 return Err(DeserializationError::offset_slice_oob(
                                     (start, end), #data_src_inner.len(),

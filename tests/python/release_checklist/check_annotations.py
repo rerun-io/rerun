@@ -14,7 +14,7 @@ This checks whether annotations behave correctly
 
 ### Actions
 
-There should be one space-view with an image and a batch of 2 rectangles.
+There should be one view with an image and a batch of 2 rectangles.
 
 The image should contain a red region and a green region.
 There should be 1 red rectangle and 1 green rectangle.

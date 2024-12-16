@@ -73,6 +73,20 @@ impl ChunkComponents {
             .insert(component_desc, list_array);
     }
 
+    /// Returns all list arrays for the given component name.
+    ///
+    /// I.e semantically equivalent to `get("MyComponent:*.*")`
+    #[inline]
+    pub fn get_by_component_name<'a>(
+        &'a self,
+        component_name: &ComponentName,
+    ) -> impl Iterator<Item = &'a Arrow2ListArray<i32>> {
+        self.get(component_name).map_or_else(
+            || itertools::Either::Left(std::iter::empty()),
+            |per_desc| itertools::Either::Right(per_desc.values()),
+        )
+    }
+
     #[inline]
     pub fn get_by_descriptor(
         &self,
@@ -412,6 +426,32 @@ impl Chunk {
     pub fn into_static(mut self) -> Self {
         self.timelines.clear();
         self
+    }
+
+    /// Clones the chunk into a new chunk where all descriptors are untagged.
+    ///
+    /// Only useful as a migration tool while the Rerun ecosystem slowly moves over
+    /// to always using tags for everything.
+    #[doc(hidden)]
+    #[inline]
+    pub fn clone_as_untagged(&self) -> Self {
+        let mut chunk = self.clone();
+
+        let per_component_name = &mut chunk.components;
+        for (component_name, per_desc) in per_component_name.iter_mut() {
+            if per_desc.len() != 1 {
+                // If there are more than one entry, then we're in the land of UB anyway (for now).
+                continue;
+            }
+
+            let untagged_descriptor = ComponentDescriptor::new(*component_name);
+            *per_desc = std::mem::take(per_desc)
+                .into_values()
+                .map(|list_array| (untagged_descriptor.clone(), list_array))
+                .collect();
+        }
+
+        chunk
     }
 
     /// Clones the chunk into a new chunk where all [`RowId`]s are [`RowId::ZERO`].

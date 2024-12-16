@@ -28,7 +28,7 @@ from ... import datatypes
 from ... import components
 from ..._baseclasses import AsComponents, ComponentBatchLike
 from ...datatypes import EntityPathLike, Utf8Like
-from ..api import SpaceView, SpaceViewContentsLike
+from ..api import View, ViewContentsLike
 ",
         1,
     );
@@ -40,7 +40,7 @@ from ..api import SpaceView, SpaceViewContentsLike
             // Extension class needs to come first, so its __init__ method is called if there is one.
             superclasses.push(ext_class.name.clone());
         }
-        superclasses.push("SpaceView".to_owned());
+        superclasses.push("View".to_owned());
         superclasses.join(",")
     };
     code.push_indented(0, format!("class {}({superclasses}):", obj.name), 1);
@@ -55,7 +55,7 @@ fn init_method(reporter: &Reporter, objects: &Objects, obj: &Object) -> String {
     let mut code = r#"def __init__(
     self, *,
     origin: EntityPathLike = "/",
-    contents: SpaceViewContentsLike = "$origin/**",
+    contents: ViewContentsLike = "$origin/**",
     name: Utf8Like | None = None,
     visible: datatypes.BoolLike | None = None,
     defaults: list[Union[AsComponents, ComponentBatchLike]] = [],
@@ -77,7 +77,7 @@ fn init_method(reporter: &Reporter, objects: &Objects, obj: &Object) -> String {
 
         // Right now we don't create "<ArchetypeName>Like" type aliases for archetypes.
         // So we have to list all the possible types here.
-        // For archetypes in general this would only be confusing, but for Space View properties it
+        // For archetypes in general this would only be confusing, but for View properties it
         // could be useful to make the annotation here shorter.
         let additional_type_annotations = property_type
             .try_get_attr::<String>(ATTR_PYTHON_ALIASES)
@@ -117,7 +117,7 @@ All other entities will be transformed to be displayed relative to this origin."
             "contents",
             "The contents of the view specified as a query expression.
 This is either a single expression, or a list of multiple expressions.
-See [rerun.blueprint.archetypes.SpaceViewContents][]."
+See [rerun.blueprint.archetypes.ViewContents][]."
                 .to_owned(),
         ),
         ("name", "The display name of the view.".to_owned()),
@@ -130,13 +130,13 @@ Defaults to true if not specified."
         ),
         (
             "defaults",
-            "List of default components or component batches to add to the space view. When an archetype
+            "List of default components or component batches to add to the view. When an archetype
 in the view is missing a component included in this set, the value of default will be used
 instead of the normal fallback for the visualizer.".to_owned(),
         ),
         (
             "overrides",
-            "Dictionary of overrides to apply to the space view. The key is the path to the entity where the override
+            "Dictionary of overrides to apply to the view. The key is the path to the entity where the override
 should be applied. The value is a list of component or component batches to apply to the entity.
 
 Important note: the path must be a fully qualified entity path starting at the root. The override paths
@@ -144,7 +144,7 @@ do not yet support `$origin` relative paths or glob expressions.
 This will be addressed in <https://github.com/rerun-io/rerun/issues/6673>.".to_owned(),)
     ];
     for field in &obj.fields {
-        let doc_content = field.docs.lines_for(objects, Target::Python);
+        let doc_content = field.docs.lines_for(reporter, objects, Target::Python);
         if doc_content.is_empty() {
             reporter.error(
                 &field.virtpath,

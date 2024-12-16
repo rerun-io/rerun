@@ -1,23 +1,21 @@
-use re_viewer_context::{
-    Item, PublishedSpaceViewInfo, ScreenshotTarget, SpaceViewId, SpaceViewRectPublisher,
-};
+use re_viewer_context::{Item, PublishedViewInfo, ScreenshotTarget, ViewId, ViewRectPublisher};
 
 use crate::{ContextMenuAction, ContextMenuContext};
 
-/// Space view screenshot action.
+/// View screenshot action.
 #[cfg(not(target_arch = "wasm32"))]
 pub enum ScreenshotAction {
-    /// Screenshot the space view, and copy the results to clipboard.
+    /// Screenshot the view, and copy the results to clipboard.
     CopyScreenshot,
 
-    /// Screenshot the space view, and save the results to disk.
+    /// Screenshot the view, and save the results to disk.
     SaveScreenshot,
 }
 
 impl ContextMenuAction for ScreenshotAction {
     /// Do we have a context menu for this selection?
     fn supports_selection(&self, ctx: &ContextMenuContext<'_>) -> bool {
-        // Allow if there is a single space view selected.
+        // Allow if there is a single view selected.
         ctx.selection.len() == 1
             && ctx
                 .selection
@@ -27,14 +25,14 @@ impl ContextMenuAction for ScreenshotAction {
 
     /// Do we have a context menu for this item?
     fn supports_item(&self, ctx: &ContextMenuContext<'_>, item: &Item) -> bool {
-        let Item::SpaceView(space_view_id) = item else {
+        let Item::View(view_id) = item else {
             return false;
         };
 
         ctx.egui_context.memory_mut(|mem| {
             mem.caches
-                .cache::<SpaceViewRectPublisher>()
-                .get(space_view_id)
+                .cache::<ViewRectPublisher>()
+                .get(view_id)
                 .is_some()
         })
     }
@@ -46,19 +44,19 @@ impl ContextMenuAction for ScreenshotAction {
         }
     }
 
-    fn process_space_view(&self, ctx: &ContextMenuContext<'_>, space_view_id: &SpaceViewId) {
-        let Some(space_view_info) = ctx.egui_context.memory_mut(|mem| {
+    fn process_view(&self, ctx: &ContextMenuContext<'_>, view_id: &ViewId) {
+        let Some(view_info) = ctx.egui_context.memory_mut(|mem| {
             mem.caches
-                .cache::<SpaceViewRectPublisher>()
-                .get(space_view_id)
+                .cache::<ViewRectPublisher>()
+                .get(view_id)
                 .cloned()
         }) else {
             return;
         };
 
-        let PublishedSpaceViewInfo { name, rect } = space_view_info;
+        let PublishedViewInfo { name, rect } = view_info;
 
-        let rect = rect.shrink(1.75); // Hacky: Shrink so we don't accidentally include the border of the space-view.
+        let rect = rect.shrink(1.75); // Hacky: Shrink so we don't accidentally include the border of the view.
 
         let target = match self {
             Self::CopyScreenshot => ScreenshotTarget::CopyToClipboard,

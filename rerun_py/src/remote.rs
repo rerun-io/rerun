@@ -9,13 +9,13 @@ use pyo3::{exceptions::PyRuntimeError, prelude::*, types::PyDict, Bound, PyResul
 use re_chunk::{Chunk, TransportChunk};
 use re_chunk_store::ChunkStore;
 use re_dataframe::ChunkStoreHandle;
+use re_log_encoding::codec::wire::{decode, encode};
 use re_log_types::{StoreInfo, StoreSource};
 use re_protos::{
-    codec::{decode, encode},
-    v0::{
-        storage_node_client::StorageNodeClient, DataframePart, EncoderVersion,
-        FetchRecordingRequest, QueryCatalogRequest, RecordingId, RecordingType,
-        RegisterRecordingRequest, UpdateCatalogRequest,
+    common::v0::{EncoderVersion, RecordingId},
+    remote_store::v0::{
+        storage_node_client::StorageNodeClient, DataframePart, FetchRecordingRequest,
+        QueryCatalogRequest, RecordingType, RegisterRecordingRequest, UpdateCatalogRequest,
     },
 };
 use re_sdk::{ApplicationId, StoreId, StoreKind, Time};
@@ -81,7 +81,7 @@ pub struct PyStorageNodeClient {
 
 #[pymethods]
 impl PyStorageNodeClient {
-    /// Query the recordings metadata catalog.
+    /// Get the metadata for all recordings in the storage node.
     fn query_catalog(&mut self) -> PyResult<PyArrowType<Box<dyn RecordBatchReader + Send>>> {
         let reader = self.runtime.block_on(async {
             // TODO(jleibs): Support column projection and filtering

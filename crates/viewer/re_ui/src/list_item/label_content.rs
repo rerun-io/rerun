@@ -45,7 +45,7 @@ impl<'a> LabelContent<'a> {
     ///
     /// Note: takes precedence over [`Self::weak`] if set.
     // TODO(ab): this is a hack to implement the behavior of the blueprint tree UI, where active
-    // widget are displayed in a subdued state (container, hidden space views/entities). One
+    // widget are displayed in a subdued state (container, hidden views/entities). One
     // slightly more correct way would be to override the color using a (color, index) pair
     // related to the design system table.
     #[inline]

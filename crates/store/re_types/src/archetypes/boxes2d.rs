@@ -104,7 +104,7 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usiz
             },
             ComponentDescriptor {
                 archetype_name: Some("rerun.archetypes.Boxes2D".into()),
-                component_name: "Boxes2DIndicator".into(),
+                component_name: "rerun.components.Boxes2DIndicator".into(),
                 archetype_field_name: None,
             },
         ]
@@ -161,7 +161,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 9usize]> =
             },
             ComponentDescriptor {
                 archetype_name: Some("rerun.archetypes.Boxes2D".into()),
-                component_name: "Boxes2DIndicator".into(),
+                component_name: "rerun.components.Boxes2DIndicator".into(),
                 archetype_field_name: None,
             },
             ComponentDescriptor {

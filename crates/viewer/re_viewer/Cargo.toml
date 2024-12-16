@@ -38,7 +38,7 @@ default = ["analytics", "map_view"]
 analytics = ["dep:re_analytics"]
 
 ## Enable the map view
-map_view = ["dep:re_space_view_map"]
+map_view = ["dep:re_view_map"]
 
 ## Enable the gRPC Rerun Data Platform data source.
 grpc = ["re_data_source/grpc", "dep:re_grpc_client"]
@@ -71,17 +71,16 @@ re_renderer = { workspace = true, default-features = false }
 re_selection_panel.workspace = true
 re_sdk_comms.workspace = true
 re_smart_channel.workspace = true
-re_space_view_bar_chart.workspace = true
-re_space_view_dataframe.workspace = true
-re_space_view_graph.workspace = true
-re_space_view_spatial.workspace = true
-re_space_view_tensor.workspace = true
-re_space_view_text_document.workspace = true
-re_space_view_text_log.workspace = true
-re_space_view_time_series.workspace = true
+re_view_bar_chart.workspace = true
+re_view_dataframe.workspace = true
+re_view_graph.workspace = true
+re_view_spatial.workspace = true
+re_view_tensor.workspace = true
+re_view_text_document.workspace = true
+re_view_text_log.workspace = true
+re_view_time_series.workspace = true
 re_time_panel.workspace = true
 re_tracing = { workspace = true, features = ["server"] }
-re_types_blueprint.workspace = true
 re_types_core.workspace = true
 re_types.workspace = true
 re_ui.workspace = true
@@ -94,7 +93,7 @@ re_ws_comms = { workspace = true, features = ["client"] }
 # Internal (optional):
 re_analytics = { workspace = true, optional = true }
 re_grpc_client = { workspace = true, optional = true }
-re_space_view_map = { workspace = true, optional = true }
+re_view_map = { workspace = true, optional = true }
 
 
 # External
@@ -105,7 +104,6 @@ cfg-if.workspace = true
 eframe = { workspace = true, default-features = false, features = [
   "default_fonts",
   "persistence",
-  "puffin",
   "wgpu",
 ] }
 egui_plot.workspace = true

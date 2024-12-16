@@ -22,7 +22,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// Specifies that the entity path at which this is logged is spatially disconnected from its parent,
 /// making it impossible to transform the entity path into its parent's space and vice versa.
-/// It *only* applies to space views that work with spatial transformations, i.e. 2D & 3D space views.
+/// It *only* applies to views that work with spatial transformations, i.e. 2D & 3D views.
 /// This is useful for specifying that a subgraph is independent of the rest of the scene.
 ///
 /// ## Example
@@ -80,7 +80,7 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usiz
     once_cell::sync::Lazy::new(|| {
         [ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.DisconnectedSpace".into()),
-            component_name: "DisconnectedSpaceIndicator".into(),
+            component_name: "rerun.components.DisconnectedSpaceIndicator".into(),
             archetype_field_name: None,
         }]
     });
@@ -98,7 +98,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
             },
             ComponentDescriptor {
                 archetype_name: Some("rerun.archetypes.DisconnectedSpace".into()),
-                component_name: "DisconnectedSpaceIndicator".into(),
+                component_name: "rerun.components.DisconnectedSpaceIndicator".into(),
                 archetype_field_name: None,
             },
         ]

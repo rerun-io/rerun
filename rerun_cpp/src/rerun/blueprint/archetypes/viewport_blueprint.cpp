@@ -35,7 +35,7 @@ namespace rerun {
                 ComponentDescriptor(
                     "rerun.blueprint.archetypes.ViewportBlueprint",
                     "maximized",
-                    "rerun.blueprint.components.SpaceViewMaximized"
+                    "rerun.blueprint.components.ViewMaximized"
                 )
             );
             RR_RETURN_NOT_OK(result.error);
@@ -53,13 +53,13 @@ namespace rerun {
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
-        if (archetype.auto_space_views.has_value()) {
+        if (archetype.auto_views.has_value()) {
             auto result = ComponentBatch::from_loggable(
-                archetype.auto_space_views.value(),
+                archetype.auto_views.value(),
                 ComponentDescriptor(
                     "rerun.blueprint.archetypes.ViewportBlueprint",
-                    "auto_space_views",
-                    "rerun.blueprint.components.AutoSpaceViews"
+                    "auto_views",
+                    "rerun.blueprint.components.AutoViews"
                 )
             );
             RR_RETURN_NOT_OK(result.error);

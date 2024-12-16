@@ -147,7 +147,7 @@ The query editor allows visually adding and removing entities and entity trees f
 
 ### Adding entities to a new view with context menu
 
-Like with viewport hierarchy, most operations on view data are available from the context menu. In particular, a new view can be created with custom content by selecting one or more entities (either in existing views in the blueprint panel, or in the time panel's streams), and clicking "Add to new space view" in the context menu:
+Like with viewport hierarchy, most operations on view data are available from the context menu. In particular, a new view can be created with custom content by selecting one or more entities (either in existing views in the blueprint panel, or in the time panel's streams), and clicking "Add to new view" in the context menu:
 
 <picture style="zoom: 0.5">
   <img src="https://static.rerun.io/add_to_new_view/87f2d5ffb3ef896c82f398cd3c3d1c7321d59073/full.png" alt="">

@@ -39,7 +39,7 @@ class GraphEdges(Archetype):
         graph_type:
             Specifies if the graph is directed or undirected.
 
-            If no `GraphType` is provided, the graph is assumed to be undirected.
+            If no [`components.GraphType`][rerun.components.GraphType] is provided, the graph is assumed to be undirected.
 
         """
 
@@ -78,7 +78,7 @@ class GraphEdges(Archetype):
     )
     # Specifies if the graph is directed or undirected.
     #
-    # If no `GraphType` is provided, the graph is assumed to be undirected.
+    # If no [`components.GraphType`][rerun.components.GraphType] is provided, the graph is assumed to be undirected.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
