@@ -66,13 +66,23 @@ For many usecases this led to too many arrows being shown by default.
 We therefore removed the last condition - arrows will no longer show by default if they're the only visualizer.
 The easiest way to opt-in to transform arrows is to set `AxisLength` (`axis_length` field on the `Transform3D` archetype) on your transforms.
 
-### `DisconnectedSpace` archetype/component deprecated in favor of `InvalidTransform`
+### `DisconnectedSpace` archetype/component deprecated
 
-The `DisconnectedSpace` archetype and `DisconnectedSpace` component have been deprecated in favor of the `InvalidTransform` component which is part of the `Transform3D` component.
+The `DisconnectedSpace` archetype and `DisconnectedSpace` component have been deprecated.
+To achieve the same effect, you can log any of the following "invalid" transforms:
+* zeroed 3x3 matrix
+* zero scale
+* zeroed quaternion
+* zero axis on axis-angle rotation
 
 Previously, the `DisconnectedSpace` archetype played a double role by governing view spawn heuristics & being used as a transform placeholder.
-This caused a lot of complexity and often broke or caused confusion (see https://github.com/rerun-io/rerun/issues/6817, https://github.com/rerun-io/rerun/issues/4465, https://github.com/rerun-io/rerun/issues/4221).
+This led to a lot of complexity and often broke or caused confusion (see https://github.com/rerun-io/rerun/issues/6817, https://github.com/rerun-io/rerun/issues/4465, https://github.com/rerun-io/rerun/issues/4221).
 By now, explicit blueprints offer a better way to express which views should be spawned and what content they should query.
 (you can learn more about blueprints [here](https://rerun.io/docs/getting-started/configure-the-viewer/through-code-tutorial)).
 
 `DisconnectedSpace` will be removed in a future release.
+
+### `RotationAxisAngle` with zero rotation axis is no longer treated as identity
+
+Previously, `RotationAxisAngle` with a zero rotation axis was treated as identity.
+This is no longer the case, instead it makes the transform invalid in the same way a zeroed transformation matrix does.

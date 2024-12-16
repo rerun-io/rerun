@@ -40,15 +40,6 @@ table Transform3D (
   /// Specifies the relation this transform establishes between this entity and its parent.
   relation: rerun.components.TransformRelation ("attr.rerun.component_optional", nullable, order: 1600);
 
-  /// Optionally flags the transform as invalid.
-  ///
-  /// Specifies that the entity path at which this is logged is spatially disconnected from its parent,
-  /// making it impossible to transform the entity path into its parent's space and vice versa.
-  /// This can be useful for instance to express temporarily unknown transforms.
-  ///
-  /// By default all transforms are considered valid.
-  invalid:  rerun.components.InvalidTransform ("attr.rerun.component_optional", nullable, order: 1700);
-
   // --- visual representation
 
   /// Visual length of the 3 axes.

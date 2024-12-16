@@ -17,7 +17,7 @@ from .disconnected_space_ext import DisconnectedSpaceExt
 __all__ = ["DisconnectedSpace"]
 
 
-@deprecated("""Use [archetypes.Transform3D] with [rerun.components.InvalidTransform] instead.""")
+@deprecated("""Use [archetypes.Transform3D] with an invalid transform instead""")
 @define(str=False, repr=False, init=False)
 class DisconnectedSpace(DisconnectedSpaceExt, Archetype):
     """

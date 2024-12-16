@@ -18,7 +18,7 @@ For transforms that affect only a single entity and do not propagate along the e
 
 ## Components
 
-**Optional**: [`Translation3D`](../components/translation3d.md), [`RotationAxisAngle`](../components/rotation_axis_angle.md), [`RotationQuat`](../components/rotation_quat.md), [`Scale3D`](../components/scale3d.md), [`TransformMat3x3`](../components/transform_mat3x3.md), [`TransformRelation`](../components/transform_relation.md), [`InvalidTransform`](../components/invalid_transform.md), [`AxisLength`](../components/axis_length.md)
+**Optional**: [`Translation3D`](../components/translation3d.md), [`RotationAxisAngle`](../components/rotation_axis_angle.md), [`RotationQuat`](../components/rotation_quat.md), [`Scale3D`](../components/scale3d.md), [`TransformMat3x3`](../components/transform_mat3x3.md), [`TransformRelation`](../components/transform_relation.md), [`AxisLength`](../components/axis_length.md)
 
 ## Shown in
 * [Spatial3DView](../views/spatial3d_view.md)

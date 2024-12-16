@@ -18,7 +18,7 @@ from .disconnected_space_ext import DisconnectedSpaceExt
 __all__ = ["DisconnectedSpace", "DisconnectedSpaceBatch"]
 
 
-@deprecated("""Use [archetypes.Transform3D] with [rerun.components.InvalidTransform] instead.""")
+@deprecated("""Use [archetypes.Transform3D] with an invalid transform instead.""")
 class DisconnectedSpace(DisconnectedSpaceExt, datatypes.Bool, ComponentMixin):
     """
     **Component**: Spatially disconnect this entity from its parent.
