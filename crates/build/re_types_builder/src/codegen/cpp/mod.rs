@@ -366,12 +366,21 @@ fn generate_hpp_cpp(
 ) -> Result<(TokenStream, Option<TokenStream>)> {
     let QuotedObject { hpp, cpp } =
         QuotedObject::new(reporter, objects, obj, hpp_includes, hpp_type_extensions)?;
+    let snake_case_name = obj.snake_case_name();
+    let hash = quote! { # };
     let pragma_once = pragma_once();
+    let header_file_name = format!("{snake_case_name}.hpp");
 
     let hpp = quote! {
         #pragma_once
         #hpp
     };
+    let cpp = cpp.map(|cpp| {
+        quote! {
+            #hash include #header_file_name #NEWLINE_TOKEN #NEWLINE_TOKEN
+            #cpp
+        }
+    });
 
     Ok((hpp, cpp))
 }
@@ -445,7 +454,6 @@ impl QuotedObject {
         let quoted_docs = quote_obj_docs(reporter, objects, obj);
 
         let mut cpp_includes = Includes::new(obj.fqname.clone(), obj.scope());
-        cpp_includes.insert_relative(&format!("{}.hpp", obj.snake_case_name()));
         cpp_includes.insert_rerun("collection_adapter_builtins.hpp");
         hpp_includes.insert_system("utility"); // std::move
         hpp_includes.insert_rerun("indicator_component.hpp");
@@ -559,17 +567,19 @@ impl QuotedObject {
             format!("{}Indicator", obj.fqname).replace("archetypes", "components");
         let doc_hide_comment = quote_hide_from_docs();
         let deprecation_notice = quote_deprecation_notice(obj);
-        let has_deprecation = obj.deprecation_notice().is_some();
         let (deprecation_ignore_start, deprecation_ignore_end) =
-            quote_deprecation_ignore_start_and_end(&mut hpp_includes, has_deprecation);
-
-        let extra_compiler_utils_include = if has_deprecation {
-            let hash = quote! { # };
-            let compiler_utils_path = "../compiler_utils.hpp";
-            quote! { #hash include #compiler_utils_path #NEWLINE_TOKEN }
-        } else {
-            quote! {}
-        };
+            if obj.deprecation_notice().is_some() {
+                hpp_includes.insert_rerun("compiler_utils.hpp");
+                (
+                    quote! {
+                        RR_PUSH_WARNINGS #NEWLINE_TOKEN
+                        RR_DISABLE_DEPRECATION_WARNING #NEWLINE_TOKEN
+                    },
+                    quote! { RR_POP_WARNINGS },
+                )
+            } else {
+                (quote!(), quote!())
+            };
 
         let hpp = quote! {
             #hpp_includes
@@ -618,11 +628,9 @@ impl QuotedObject {
         };
 
         let cpp = quote! {
-            #extra_compiler_utils_include
-            #deprecation_ignore_start
-
             #cpp_includes
 
+            #deprecation_ignore_start
 
             namespace rerun::#quoted_namespace {
                 #(#methods_cpp)*
@@ -664,7 +672,6 @@ impl QuotedObject {
         let deprecation_notice = quote_deprecation_notice(obj);
 
         let mut cpp_includes = Includes::new(obj.fqname.clone(), obj.scope());
-        cpp_includes.insert_relative(&format!("{}.hpp", obj.snake_case_name()));
         let mut hpp_declarations = ForwardDecls::default();
 
         let field_declarations = obj
@@ -845,7 +852,6 @@ impl QuotedObject {
         hpp_includes.insert_system("cstring"); // std::memcpy
 
         let mut cpp_includes = Includes::new(obj.fqname.clone(), obj.scope());
-        cpp_includes.insert_relative(&format!("{}.hpp", obj.snake_case_name()));
         #[allow(unused)]
         let mut hpp_declarations = ForwardDecls::default();
 
@@ -1239,7 +1245,6 @@ impl QuotedObject {
         let deprecation_notice = quote_deprecation_notice(obj);
 
         let mut cpp_includes = Includes::new(obj.fqname.clone(), obj.scope());
-        cpp_includes.insert_relative(&format!("{}.hpp", obj.snake_case_name()));
         let mut hpp_declarations = ForwardDecls::default();
 
         let field_declarations = obj
@@ -2586,8 +2591,18 @@ fn quote_loggable_hpp_and_cpp(
 
     hpp_includes.insert_rerun("component_descriptor.hpp");
 
-    let (deprecation_ignore_start, deprecation_ignore_end) =
-        quote_deprecation_ignore_start_and_end(hpp_includes, obj.deprecation_notice().is_some());
+    let (deprecation_ignore_start, deprecation_ignore_end) = if obj.deprecation_notice().is_some() {
+        hpp_includes.insert_rerun("compiler_utils.hpp");
+        (
+            quote! {
+                RR_PUSH_WARNINGS #NEWLINE_TOKEN
+                RR_DISABLE_DEPRECATION_WARNING #NEWLINE_TOKEN
+            },
+            quote! { RR_POP_WARNINGS },
+        )
+    } else {
+        (quote!(), quote!())
+    };
 
     let hpp = quote! {
         #deprecation_ignore_start
@@ -2629,23 +2644,5 @@ fn quote_deprecation_notice(obj: &Object) -> TokenStream {
         }
     } else {
         quote! {}
-    }
-}
-
-fn quote_deprecation_ignore_start_and_end(
-    includes: &mut Includes,
-    should_deprecate: bool,
-) -> (TokenStream, TokenStream) {
-    if should_deprecate {
-        includes.insert_rerun("compiler_utils.hpp");
-        (
-            quote! {
-                RR_PUSH_WARNINGS #NEWLINE_TOKEN
-                RR_DISABLE_DEPRECATION_WARNING #NEWLINE_TOKEN
-            },
-            quote! { RR_POP_WARNINGS },
-        )
-    } else {
-        (quote!(), quote!())
     }
 }
