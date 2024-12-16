@@ -811,7 +811,7 @@ impl FFmpegCliH264Decoder {
 
         // Check the version once ahead of running FFmpeg.
         // The error is still handled if it happens while running FFmpeg, but it's a bit unclear if we can get it to start in the first place then.
-        match FFmpegVersion::for_executable(ffmpeg_path.as_deref()) {
+        match FFmpegVersion::for_executable_blocking(ffmpeg_path.as_deref()) {
             Ok(version) => {
                 if !version.is_compatible() {
                     return Err(Error::UnsupportedFFmpegVersion {

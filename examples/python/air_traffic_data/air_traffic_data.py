@@ -239,6 +239,7 @@ class MeasurementLogger:
             )
 
         entity_path = f"aircraft/{measurement.icao_id}"
+        color = rr.components.Color.from_string(entity_path)
 
         if (
             measurement.latitude is not None
@@ -247,13 +248,16 @@ class MeasurementLogger:
         ):
             rr.log(
                 entity_path,
-                rr.Points3D([
-                    self._proj.transform(
-                        measurement.longitude,
-                        measurement.latitude,
-                        measurement.barometric_altitude,
-                    )
-                ]),
+                rr.Points3D(
+                    [
+                        self._proj.transform(
+                            measurement.longitude,
+                            measurement.latitude,
+                            measurement.barometric_altitude,
+                        ),
+                    ],
+                    colors=color,
+                ),
                 rr.GeoPoints(lat_lon=[measurement.latitude, measurement.longitude]),
             )
 
@@ -264,6 +268,7 @@ class MeasurementLogger:
             rr.log(
                 entity_path + "/barometric_altitude",
                 rr.Scalar(measurement.barometric_altitude),
+                rr.SeriesLine(color=color),
             )
 
     def flush(self) -> None:
@@ -310,7 +315,13 @@ class MeasurementBatchLogger:
             return
 
         if icao_id not in self._position_indicators:
-            rr.log(entity_path, [rr.archetypes.Points3D.indicator(), rr.archetypes.GeoPoints.indicator()], static=True)
+            color = rr.components.Color.from_string(entity_path)
+            rr.log(
+                entity_path,
+                [rr.archetypes.Points3D.indicator(), rr.archetypes.GeoPoints.indicator(), color],
+                static=True,
+            )
+            rr.log(entity_path + "/barometric_altitude", [rr.archetypes.SeriesLine.indicator(), color], static=True)
             self._position_indicators.add(icao_id)
 
         timestamps = rr.TimeSecondsColumn("unix_time", df["timestamp"].to_numpy())

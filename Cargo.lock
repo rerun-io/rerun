@@ -5527,8 +5527,9 @@ dependencies = [
 
 [[package]]
 name = "re_arrow2"
-version = "0.17.6"
-source = "git+https://github.com/rerun-io/re_arrow2?rev=79ba149e823c88c1baa770a33c6ea8b6244d0597#79ba149e823c88c1baa770a33c6ea8b6244d0597"
+version = "0.18.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2f046c5679b0f305d610f80d93fd51ad702cfc077bbe16d9553a1660a2505160"
 dependencies = [
  "ahash",
  "arrow-array",
@@ -6511,6 +6512,7 @@ dependencies = [
  "js-sys",
  "once_cell",
  "parking_lot",
+ "poll-promise",
  "re_build_info",
  "re_build_tools",
  "re_log",
