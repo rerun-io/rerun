@@ -755,7 +755,11 @@ impl ChunkStore {
             })
             .collect_vec();
 
-        debug_assert!(chunks.iter().map(|chunk| chunk.id()).all_unique());
+        debug_assert!(
+            chunks.iter().map(|chunk| chunk.id()).all_unique(),
+            "{:?}",
+            self.id()
+        );
 
         chunks
     }
