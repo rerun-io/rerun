@@ -165,7 +165,7 @@ fn draw_rect_label(ui: &mut Ui, label: &TextLabel, highlight: InteractionHighlig
         frame,
         color,
     } = label;
-    let visuals = &ui.style().visuals;
+    let visuals = ui.visuals();
 
     let bg = match highlight.hover {
         HoverHighlight::None => visuals.widgets.noninteractive.bg_fill,
