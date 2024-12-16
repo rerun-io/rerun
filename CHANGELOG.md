@@ -13,9 +13,12 @@ TODO: add link to release video
 ### ✨ Overview & highlights
 
 We've added two new logging primitives: [`GraphNodes`](TODO) and [`GraphEdges`](TODO) that can be used to visualize node-link diagrams. For this, we have implemented a new Graph View that uses force-based layouts to draw graphs.
-<picture>
-  <img src="https://static.rerun.io/graphs/c1070214bed5e50c9e7d452835f32759b991383e/480w.png" alt="">
-</picture>
+
+<p align="center">
+  <picture>
+    <img src="https://static.rerun.io/graphs/c1070214bed5e50c9e7d452835f32759b991383e/480w.png" alt="">
+  </picture>
+</p>
 
 TODO: blurbs:
 * undo/redo
