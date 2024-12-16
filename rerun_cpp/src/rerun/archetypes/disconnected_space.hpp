@@ -14,6 +14,9 @@
 #include <utility>
 #include <vector>
 
+RR_PUSH_WARNINGS
+RR_DISABLE_DEPRECATION_WARNING
+
 namespace rerun::archetypes {
     /// **Archetype**: Spatially disconnect this entity from its parent.
     ///
@@ -83,6 +86,6 @@ namespace rerun {
             const archetypes::DisconnectedSpace& archetype
         );
     };
-
-    RR_POP_WARNINGS
 } // namespace rerun
+
+RR_POP_WARNINGS

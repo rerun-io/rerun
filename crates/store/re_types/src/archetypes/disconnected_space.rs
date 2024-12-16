@@ -30,6 +30,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// ### Disconnected space
 /// ```ignore
+/// // `DisconnectedSpace` is deprecated and will be removed in the future.
+/// // Use an invalid transform (e.g. zeroed out 3x3 matrix) instead.
+/// #![allow(deprecated)]
+///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_disconnected_space").spawn()?;
 ///
