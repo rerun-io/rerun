@@ -11,9 +11,6 @@ A graph view to display time-variying, directed or undirected graph visualizatio
 Everything within these bounds is guaranteed to be visible.
 
 Somethings outside of these bounds may also be visible due to letterboxing.
-
-* `range`: Controls the visible range of a 2D view.
-* `near_clip_plane`: Controls the distance to the near clip plane in 3D scene units.
 ### `force_link`
 Allows to control the interaction between two nodes connected by an edge.
 

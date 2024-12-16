@@ -1,6 +1,5 @@
 namespace rerun.blueprint.archetypes;
 
-
 /// Controls the visual bounds of a 2D view.
 ///
 /// Everything within these bounds are guaranteed to be visible.
@@ -16,9 +15,4 @@ table VisualBounds2D (
     ///
     /// Use this to control pan & zoom of the view.
     range: rerun.blueprint.components.VisualBounds2D ("attr.rerun.component_required", order: 1000);
-
-    /// Controls the distance to the near clip plane in 3D scene units.
-    ///
-    /// Content closer than this distance will not be visible.
-    near_clip_plane: rerun.blueprint.components.NearClipPlane ("attr.rerun.component_optional", order: 2000);
 }
