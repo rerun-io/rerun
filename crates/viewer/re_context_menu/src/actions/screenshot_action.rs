@@ -57,7 +57,7 @@ impl ContextMenuAction for ScreenshotAction {
 
         let PublishedViewInfo { name, rect } = view_info;
 
-        let rect = rect.shrink(1.75); // Hacky: Shrink so we don't accidentally include the border of the view.
+        let rect = rect.shrink(2.5); // Hacky: Shrink so we don't accidentally include the border of the view.
 
         if !rect.is_positive() {
             re_log::info!("View too small for a screenshot");
