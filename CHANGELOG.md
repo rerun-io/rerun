@@ -2,7 +2,7 @@
 
 ## [Unreleased](https://github.com/rerun-io/rerun/compare/latest...HEAD)
 
-## [0.21.0](https://github.com/rerun-io/rerun/compare/0.20.3...0.21.0) - Graph view & Undo/Redo
+## [0.21.0](https://github.com/rerun-io/rerun/compare/0.20.3...0.21.0) - Graph view, Undo/Redo & 3D grid
 
 TODO: add link to release video
 
@@ -11,7 +11,19 @@ TODO: add link to release video
 🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-21?speculative-link
 
 ### ✨ Overview & highlights
-TODO: fill in
+
+We've added two new logging primitives: [`GraphNodes`](TODO) and [`GraphEdges`](TODO) that can be used to visualize node-link diagrams. For this, we have implemented a new Graph View that uses force-based layouts to draw graphs.
+<picture>
+  <img src="https://static.rerun.io/graphs/c1070214bed5e50c9e7d452835f32759b991383e/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/graphs/c1070214bed5e50c9e7d452835f32759b991383e/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/graphs/c1070214bed5e50c9e7d452835f32759b991383e/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/graphs/c1070214bed5e50c9e7d452835f32759b991383e/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/graphs/c1070214bed5e50c9e7d452835f32759b991383e/1200w.png">
+</picture>
+
+TODO: blurbs:
+* undo/redo
+* 3d grid
 
 ### ⚠️ Breaking changes
 TODO: fill in
