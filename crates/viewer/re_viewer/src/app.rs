@@ -191,7 +191,8 @@ pub struct App {
     pub(crate) store_hub: Option<StoreHub>,
 
     /// Notification panel.
-    notifications: notifications::NotificationUi,
+    pub(crate) notifications: notifications::NotificationUi,
+    pub(crate) notifications_panel_open: bool,
 
     memory_panel: crate::memory_panel::MemoryPanel,
     memory_panel_open: bool,
@@ -329,6 +330,7 @@ impl App {
                 &crate::app_blueprint::setup_welcome_screen_blueprint,
             )),
             notifications: notifications::NotificationUi::new(),
+            notifications_panel_open: false,
 
             memory_panel: Default::default(),
             memory_panel_open: false,
@@ -1913,7 +1915,8 @@ impl eframe::App for App {
             }
 
             if !self.screenshotter.is_screenshotting() {
-                self.notifications.show(egui_ctx);
+                self.notifications
+                    .ui(egui_ctx, &mut self.notifications_panel_open);
             }
 
             if let Some(cmd) = self.cmd_palette.show(egui_ctx) {

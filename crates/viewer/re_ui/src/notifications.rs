@@ -4,6 +4,9 @@ use egui::hex_color;
 use jiff::{Unit, Zoned};
 pub use re_log::Level;
 
+use crate::icons;
+use crate::UiExt;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum NotificationLevel {
     Info,
@@ -29,6 +32,21 @@ fn is_relevant(level: re_log::Level) -> bool {
     )
 }
 
+pub fn notification_toggle_button(
+    ui: &mut egui::Ui,
+    show_notification_panel: &mut bool,
+    has_unread_notifications: bool,
+) {
+    let response = ui.medium_icon_toggle_button(&icons::NOTIFICATION, show_notification_panel);
+
+    if has_unread_notifications {
+        let mut pos = response.rect.right_top();
+        pos.x -= 2.0;
+        pos.y += 2.0;
+        ui.painter().circle_filled(pos, 3.0, hex_color!("#ab0037"));
+    }
+}
+
 struct Notification {
     level: NotificationLevel,
     text: String,
@@ -42,6 +60,8 @@ pub struct NotificationUi {
     ///
     /// Notifications are stored in order of ascending age, so the latest one is at the end.
     data: Vec<Notification>,
+
+    has_unread_notifications: bool,
 
     /// Panel that shows all notifications.
     panel: NotificationPanel,
@@ -60,9 +80,14 @@ impl NotificationUi {
     pub fn new() -> Self {
         Self {
             data: Vec::new(),
+            has_unread_notifications: false,
             panel: NotificationPanel::new(),
             toasts: Toasts::new(),
         }
+    }
+
+    pub fn has_unread_notifications(&self) -> bool {
+        self.has_unread_notifications
     }
 
     pub fn add(&mut self, level: Level, text: impl Into<String>) {
@@ -77,6 +102,7 @@ impl NotificationUi {
             created_at: Zoned::now(),
             ttl: base_ttl(),
         });
+        self.has_unread_notifications = true;
     }
 
     pub fn success(&mut self, text: impl Into<String>) {
@@ -89,19 +115,12 @@ impl NotificationUi {
         });
     }
 
-    pub fn show(&mut self, egui_ctx: &egui::Context) {
-        if self.panel.is_visible {
-            for notification in &mut self.data {
-                notification.ttl = Duration::ZERO;
-            }
+    pub fn ui(&mut self, egui_ctx: &egui::Context, is_panel_visible: &mut bool) {
+        if *is_panel_visible {
+            self.has_unread_notifications = false;
         }
 
-        let mut to_dismiss = None;
-        self.panel.show(egui_ctx, &self.data[..], &mut to_dismiss);
-        if let Some(i) = to_dismiss {
-            self.data.remove(i);
-        }
-
+        self.panel.show(egui_ctx, &mut self.data, is_panel_visible);
         self.toasts.show(egui_ctx, &mut self.data[..]);
 
         if let Some(notification) = self.data.last() {
@@ -114,28 +133,30 @@ impl NotificationUi {
 
 struct NotificationPanel {
     id: egui::Id,
-    is_visible: bool,
 }
 
 impl NotificationPanel {
     fn new() -> Self {
         Self {
             id: egui::Id::new("__notifications"),
-            is_visible: true,
         }
     }
 
     fn show(
         &self,
         egui_ctx: &egui::Context,
-        notifications: &[Notification],
-        to_dismiss: &mut Option<usize>,
+        notifications: &mut Vec<Notification>,
+        is_panel_visible: &mut bool,
     ) {
-        if !self.is_visible {
+        if !*is_panel_visible {
             return;
         }
 
-        let panel_width = 358.0;
+        for notification in notifications.iter_mut() {
+            notification.ttl = Duration::ZERO;
+        }
+
+        let panel_width = 356.0;
         let panel_max_height = 320.0;
 
         let notification_list = |ui: &mut egui::Ui| {
@@ -149,15 +170,14 @@ impl NotificationPanel {
                 return;
             }
 
+            let mut to_dismiss = None;
             for (i, notification) in notifications.iter().enumerate().rev() {
-                if let Some(action) = show_notification(ui, notification, DisplayMode::Panel).action
-                {
-                    match action {
-                        Action::Dismiss => {
-                            *to_dismiss = Some(i);
-                        }
-                    }
-                };
+                show_notification(ui, notification, DisplayMode::Panel, || {
+                    to_dismiss = Some(i);
+                });
+            }
+            if let Some(to_dismiss) = to_dismiss {
+                notifications.remove(to_dismiss);
             }
         };
 
@@ -169,14 +189,19 @@ impl NotificationPanel {
             .show(egui_ctx, |ui| {
                 egui::Frame::window(ui.style())
                     .fill(hex_color!("#141819"))
-                    .rounding(0.0)
+                    .rounding(8.0)
+                    .inner_margin(8.0)
                     .show(ui, |ui| {
                         ui.set_width(panel_width);
-                        ui.label("Notifications");
+                        ui.horizontal_top(|ui| {
+                            ui.label("Notifications");
+                            ui.with_layout(egui::Layout::top_down(egui::Align::Max), |ui| {
+                                if ui.small_icon_button(&icons::CLOSE).clicked() {
+                                    *is_panel_visible = false;
+                                }
+                            });
+                        });
                         egui::ScrollArea::vertical()
-                            .scroll_bar_visibility(
-                                egui::scroll_area::ScrollBarVisibility::AlwaysVisible,
-                            )
                             .min_scrolled_height(panel_max_height)
                             .show(ui, notification_list);
                     });
@@ -206,24 +231,22 @@ impl Toasts {
     }
 
     /// Shows and updates all toasts
-    fn show(&mut self, egui_ctx: &egui::Context, notifications: &mut [Notification]) {
-        let Self { id } = self;
-
+    fn show(&self, egui_ctx: &egui::Context, notifications: &mut [Notification]) {
         let dt = Duration::from_secs_f32(egui_ctx.input(|i| i.unstable_dt));
         let mut offset = egui::vec2(-8.0, 32.0);
 
         for (i, notification) in notifications
             .iter_mut()
-            .filter(|n| n.ttl > Duration::ZERO)
             .enumerate()
+            .filter(|(_, n)| n.ttl > Duration::ZERO)
         {
-            let response = egui::Area::new(id.with(i))
+            let response = egui::Area::new(self.id.with(i))
                 .anchor(egui::Align2::RIGHT_TOP, offset)
                 .order(egui::Order::Foreground)
                 .interactable(true)
                 .movable(false)
                 .show(egui_ctx, |ui| {
-                    show_notification(ui, notification, DisplayMode::Toast).response
+                    show_notification(ui, notification, DisplayMode::Toast, || {})
                 })
                 .response;
 
@@ -253,24 +276,13 @@ enum DisplayMode {
     Toast,
 }
 
-#[derive(Debug, Clone, Copy)]
-enum Action {
-    Dismiss,
-}
-
-struct NotificationResponse {
-    response: egui::Response,
-    action: Option<Action>,
-}
-
 fn show_notification(
     ui: &mut egui::Ui,
     notification: &Notification,
     mode: DisplayMode,
-) -> NotificationResponse {
-    let mut action = None;
-
-    let response = egui::Frame::window(ui.style())
+    mut on_dismiss: impl FnMut(),
+) -> egui::Response {
+    egui::Frame::window(ui.style())
         .rounding(4.0)
         .inner_margin(10.0)
         .fill(hex_color!("#1c2123"))
@@ -303,7 +315,7 @@ fn show_notification(
 
                         ui.add_space(17.0);
                         if ui.button("Dismiss").clicked() {
-                            action = Some(Action::Dismiss);
+                            on_dismiss();
                         }
                     })
                     .response;
@@ -311,9 +323,7 @@ fn show_notification(
                 text_response.union(controls_response)
             })
         })
-        .response;
-
-    NotificationResponse { response, action }
+        .response
 }
 
 fn notification_age_label(ui: &mut egui::Ui, notification: &Notification) {

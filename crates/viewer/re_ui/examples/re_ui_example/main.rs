@@ -78,6 +78,7 @@ pub struct ExampleApp {
     /// modal with full span mode
     full_span_modal_handler: re_ui::modal::ModalHandler,
 
+    show_notification_panel: bool,
     show_left_panel: bool,
     show_right_panel: bool,
     show_bottom_panel: bool,
@@ -111,6 +112,7 @@ impl ExampleApp {
             modal_handler: Default::default(),
             full_span_modal_handler: Default::default(),
 
+            show_notification_panel: false,
             show_left_panel: true,
             show_right_panel: true,
             show_bottom_panel: true,
@@ -141,7 +143,8 @@ impl eframe::App for ExampleApp {
 
     fn update(&mut self, egui_ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.show_text_logs_as_notifications();
-        self.notifications.show(egui_ctx);
+        self.notifications
+            .ui(egui_ctx, &mut self.show_notification_panel);
 
         self.top_bar(egui_ctx);
 
@@ -413,6 +416,12 @@ impl ExampleApp {
             ui.medium_icon_toggle_button(
                 &re_ui::icons::LEFT_PANEL_TOGGLE,
                 &mut self.show_left_panel,
+            );
+
+            notifications::notification_toggle_button(
+                ui,
+                &mut self.show_notification_panel,
+                self.notifications.has_unread_notifications(),
             );
         });
     }
