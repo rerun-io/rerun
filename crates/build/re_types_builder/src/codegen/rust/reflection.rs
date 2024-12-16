@@ -156,6 +156,7 @@ fn generate_component_reflection(
         #[doc = "Generates reflection about all known components."]
         #[doc = ""]
         #[doc = "Call only once and reuse the results."]
+        #[allow(deprecated)]
         fn generate_component_reflection() -> Result<ComponentReflectionMap, SerializationError> {
             re_tracing::profile_function!();
             let array = [

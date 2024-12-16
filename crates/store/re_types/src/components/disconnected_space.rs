@@ -26,9 +26,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// It *only* applies to views that work with spatial transformations, i.e. 2D & 3D views.
 /// This is useful for specifying that a subgraph is independent of the rest of the scene.
 #[derive(Clone, Debug, Copy, PartialEq, Eq)]
-#[deprecated(
-    note = "Use [archetypes.Transform3D] with [rerun.components.InvalidTransform] instead."
-)]
+#[deprecated(note = "Use [archetypes.Transform3D] with an invalid transform instead.")]
 pub struct DisconnectedSpace(
     /// Whether the entity path at which this is logged is disconnected from its parent.
     ///

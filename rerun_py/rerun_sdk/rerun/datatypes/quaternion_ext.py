@@ -28,6 +28,12 @@ class QuaternionExt:
         return Quaternion(xyzw=np.array([0, 0, 0, 1], dtype=np.float32))
 
     @staticmethod
+    def invalid() -> Quaternion:
+        from . import Quaternion
+
+        return Quaternion(xyzw=np.array([0, 0, 0, 0], dtype=np.float32))
+
+    @staticmethod
     def native_to_pa_array_override(data: QuaternionArrayLike, data_type: pa.DataType) -> pa.Array:
         # TODO(ab): get rid of this once we drop support for Python 3.8. Make sure to pin numpy>=1.25.
         if NUMPY_VERSION < (1, 25):

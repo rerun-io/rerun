@@ -43,8 +43,7 @@ namespace rerun::archetypes {
     ///     rec.log("world/wormhole/point", rerun::Points3D({{2.0f, 2.0f, 2.0f}}));
     /// }
     /// ```
-    struct [[deprecated(
-        "Use [archetypes.Transform3D] with [rerun.components.InvalidTransform] instead."
+    struct [[deprecated("Use [archetypes.Transform3D] with an invalid transform instead"
     )]] DisconnectedSpace {
         /// Whether the entity path at which this is logged is disconnected from its parent.
         rerun::components::DisconnectedSpace disconnected_space;

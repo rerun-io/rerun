@@ -63,9 +63,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// </picture>
 /// </center>
 #[derive(Clone, Debug, Copy, PartialEq, Eq)]
-#[deprecated(
-    note = "Use [archetypes.Transform3D] with [rerun.components.InvalidTransform] instead."
-)]
+#[deprecated(note = "Use [archetypes.Transform3D] with an invalid transform instead")]
 pub struct DisconnectedSpace {
     /// Whether the entity path at which this is logged is disconnected from its parent.
     pub disconnected_space: crate::components::DisconnectedSpace,

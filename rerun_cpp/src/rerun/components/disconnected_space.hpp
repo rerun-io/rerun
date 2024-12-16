@@ -17,8 +17,7 @@ namespace rerun::components {
     /// making it impossible to transform the entity path into its parent's space and vice versa.
     /// It *only* applies to views that work with spatial transformations, i.e. 2D & 3D views.
     /// This is useful for specifying that a subgraph is independent of the rest of the scene.
-    struct [[deprecated(
-        "Use [archetypes.Transform3D] with [rerun.components.InvalidTransform] instead."
+    struct [[deprecated("Use [archetypes.Transform3D] with an invalid transform instead."
     )]] DisconnectedSpace {
         /// Whether the entity path at which this is logged is disconnected from its parent.
         ///
