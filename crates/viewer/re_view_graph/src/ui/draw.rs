@@ -158,6 +158,7 @@ fn draw_node(
     node_ui.response()
 }
 
+#[cfg(debug_assertions)]
 /// Draws a bounding box, as well as a basic coordinate system.
 pub fn draw_debug(ui: &Ui, world_bounding_rect: Rect) {
     let painter = ui.painter();

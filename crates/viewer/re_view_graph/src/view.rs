@@ -131,6 +131,9 @@ Display a graph of nodes and edges.
         ui.selection_grid("graph_view_settings_ui").show(ui, |ui| {
             state.layout_ui(ui);
             state.simulation_ui(ui);
+
+            // Limit debug UI to debug builds.
+            #[cfg(debug_assertions)]
             state.debug_ui(ui);
         });
 
@@ -199,6 +202,7 @@ Display a graph of nodes and edges.
             }
 
             // We need to draw the debug information after the rest to ensure that we have the correct bounding box.
+            #[cfg(debug_assertions)]
             if state.show_debug {
                 draw_debug(ui, world_bounding_rect);
             }
