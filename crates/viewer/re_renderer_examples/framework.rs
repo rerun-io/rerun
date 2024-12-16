@@ -8,7 +8,7 @@ use anyhow::Context as _;
 use web_time::Instant;
 
 use re_renderer::{
-    config::{supported_backends, DeviceCaps, RenderContextConfig},
+    config::{supported_backends, DeviceCaps},
     view_builder::ViewBuilder,
     RenderContext,
 };
@@ -130,8 +130,7 @@ impl<E: Example + 'static> Application<E> {
             .await
             .context("failed to find an appropriate adapter")?;
 
-        let device_caps = DeviceCaps::from_adapter(&adapter);
-        device_caps.check_downlevel_capabilities(&adapter.get_downlevel_capabilities())?;
+        let device_caps = DeviceCaps::from_adapter(&adapter)?;
         let (device, queue) = adapter
             .request_device(
                 &wgpu::DeviceDescriptor {
@@ -150,16 +149,8 @@ impl<E: Example + 'static> Application<E> {
         let output_format_color =
             preferred_framebuffer_format(&surface.get_capabilities(&adapter).formats);
 
-        let re_ctx = RenderContext::new(
-            &adapter,
-            device,
-            queue,
-            RenderContextConfig {
-                output_format_color,
-                device_caps,
-            },
-        )
-        .map_err(|err| anyhow::format_err!("{err}"))?;
+        let re_ctx = RenderContext::new(&adapter, device, queue, output_format_color)
+            .map_err(|err| anyhow::format_err!("{err}"))?;
 
         let example = E::new(&re_ctx);
 
@@ -190,8 +181,8 @@ impl<E: Example + 'static> Application<E> {
             // Use AutoNoVSync if you want to do quick perf checking.
             // Otherwise, use AutoVsync is much more pleasant to use - laptops don't heat up and desktop won't have annoying coil whine on trivial examples.
             present_mode: wgpu::PresentMode::AutoVsync,
-            format: self.re_ctx.config.output_format_color,
-            view_formats: vec![self.re_ctx.config.output_format_color],
+            format: self.re_ctx.output_format_color(),
+            view_formats: vec![self.re_ctx.output_format_color()],
             ..self
                 .surface
                 .get_default_config(&self.adapter, size.width, size.height)
