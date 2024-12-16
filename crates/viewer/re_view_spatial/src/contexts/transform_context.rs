@@ -568,7 +568,7 @@ fn query_and_resolve_tree_transform_at_entity(
         }
     }
     if let Some(scale) = result.component_instance::<Scale3D>(0) {
-        if scale.x() == 0.0 || scale.y() == 0.0 || scale.z() == 0.0 {
+        if scale.x() == 0.0 && scale.y() == 0.0 && scale.z() == 0.0 {
             // Invalid scale.
             return None;
         }
