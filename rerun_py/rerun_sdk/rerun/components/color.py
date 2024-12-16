@@ -11,11 +11,12 @@ from .._baseclasses import (
     ComponentDescriptor,
     ComponentMixin,
 )
+from .color_ext import ColorExt
 
 __all__ = ["Color", "ColorBatch"]
 
 
-class Color(datatypes.Rgba32, ComponentMixin):
+class Color(ColorExt, datatypes.Rgba32, ComponentMixin):
     """
     **Component**: An RGBA color with unmultiplied/separate alpha, in sRGB gamma space with linear alpha.
 
