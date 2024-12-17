@@ -138,12 +138,6 @@ impl NotificationUi {
 
         self.panel.show(egui_ctx, &mut self.data, is_panel_visible);
         self.toasts.show(egui_ctx, &mut self.data[..]);
-
-        if let Some(notification) = self.data.last() {
-            if !notification.toast_ttl.is_zero() {
-                egui_ctx.request_repaint_after(notification.toast_ttl);
-            }
-        }
     }
 }
 
@@ -168,6 +162,7 @@ impl NotificationPanel {
             return;
         }
 
+        // Opening panel is the same as dismissing all toasts
         for notification in notifications.iter_mut() {
             notification.toast_ttl = Duration::ZERO;
         }
@@ -266,11 +261,15 @@ impl Toasts {
         let dt = Duration::from_secs_f32(egui_ctx.input(|i| i.unstable_dt));
         let mut offset = egui::vec2(-8.0, 32.0);
 
+        let mut first_nonzero_ttl = None;
+
         for (i, notification) in notifications
             .iter_mut()
             .enumerate()
             .filter(|(_, n)| n.toast_ttl > Duration::ZERO)
         {
+            first_nonzero_ttl.get_or_insert(notification.toast_ttl);
+
             let response = egui::Area::new(self.id.with(i))
                 .anchor(egui::Align2::RIGHT_TOP, offset)
                 .order(egui::Order::Foreground)
@@ -297,6 +296,10 @@ impl Toasts {
             }
 
             offset.y += response.rect.height() + 8.0;
+        }
+
+        if let Some(first_nonzero_ttl) = first_nonzero_ttl {
+            egui_ctx.request_repaint_after(first_nonzero_ttl);
         }
     }
 }
