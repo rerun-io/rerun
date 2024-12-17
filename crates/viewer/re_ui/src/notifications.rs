@@ -1,6 +1,5 @@
 use std::time::Duration;
 
-use egui::hex_color;
 pub use re_log::Level;
 use time::OffsetDateTime;
 
@@ -79,6 +78,9 @@ struct Notification {
 
     /// Time to live for toasts, the notification itself lives until dismissed.
     toast_ttl: Duration,
+
+    /// Whether this notification has been read.
+    is_unread: bool,
 }
 
 pub struct NotificationUi {
@@ -88,6 +90,8 @@ pub struct NotificationUi {
     notifications: Vec<Notification>,
 
     unread_notification_level: Option<NotificationLevel>,
+
+    was_open_last_frame: bool,
 
     /// Panel that shows all notifications.
     panel: NotificationPanel,
@@ -107,6 +111,7 @@ impl NotificationUi {
         Self {
             notifications: Vec::new(),
             unread_notification_level: None,
+            was_open_last_frame: false,
             panel: NotificationPanel::new(),
             toasts: Toasts::new(),
         }
@@ -135,6 +140,7 @@ impl NotificationUi {
 
             created_at: now(),
             toast_ttl: base_ttl(),
+            is_unread: true,
         });
 
         if Some(level) > self.unread_notification_level {
@@ -150,12 +156,22 @@ impl NotificationUi {
                 *is_panel_visible = false;
             }
 
+            // Opening panel is the same as dismissing all toasts
             self.unread_notification_level = None;
+            for notification in &mut self.notifications {
+                notification.toast_ttl = Duration::ZERO;
+            }
+        } else if self.was_open_last_frame {
+            for notification in &mut self.notifications {
+                notification.is_unread = false;
+            }
         }
 
         self.panel
             .show(egui_ctx, &mut self.notifications, is_panel_visible);
         self.toasts.show(egui_ctx, &mut self.notifications[..]);
+
+        self.was_open_last_frame = *is_panel_visible;
     }
 }
 
@@ -180,13 +196,8 @@ impl NotificationPanel {
             return;
         }
 
-        // Opening panel is the same as dismissing all toasts
-        for notification in notifications.iter_mut() {
-            notification.toast_ttl = Duration::ZERO;
-        }
-
         let panel_width = 356.0;
-        let panel_max_height = 640.0;
+        let panel_max_height = egui_ctx.screen_rect().max.y.min(640.0);
 
         let mut to_dismiss = None;
 
@@ -210,14 +221,14 @@ impl NotificationPanel {
 
         let mut dismiss_all = false;
 
-        let response = egui::Area::new(self.id)
+        egui::Area::new(self.id)
             .anchor(egui::Align2::RIGHT_TOP, egui::vec2(-8.0, 32.0))
             .order(egui::Order::Foreground)
             .interactable(true)
             .movable(false)
             .show(egui_ctx, |ui| {
                 egui::Frame::window(ui.style())
-                    .fill(hex_color!("#141819"))
+                    .fill(design_tokens().color(ColorToken::gray(Scale::S150)))
                     .rounding(8.0)
                     .inner_margin(8.0)
                     .show(ui, |ui| {
@@ -243,12 +254,7 @@ impl NotificationPanel {
                             });
                         }
                     });
-            })
-            .response;
-
-        if response.clicked_elsewhere() {
-            *is_panel_visible = false;
-        }
+            });
 
         if dismiss_all {
             notifications.clear();
@@ -339,10 +345,17 @@ fn show_notification(
     mode: DisplayMode,
     mut on_dismiss: impl FnMut(),
 ) -> egui::Response {
+    let background_color = if notification.is_unread {
+        design_tokens().color(ColorToken::gray(Scale::S200))
+    } else {
+        design_tokens().color(ColorToken::gray(Scale::S150))
+    };
+
     egui::Frame::window(ui.style())
         .rounding(4.0)
         .inner_margin(10.0)
-        .fill(hex_color!("#1c2123"))
+        .fill(background_color)
+        .shadow(egui::Shadow::NONE)
         .show(ui, |ui| {
             ui.vertical_centered(|ui| {
                 ui.horizontal_top(|ui| {
