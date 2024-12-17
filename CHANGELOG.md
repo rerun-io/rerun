@@ -28,7 +28,7 @@ Have a look at https://github.com/rerun-io/rerun/pull/7500 if you want to learn 
 
 This video demonstrates the main UX improvements that went into this release:
 
-[![video going through all the ux improvements](https://img.youtube.com/vi/5Hd0KuLRQIA/0.jpg)](https://www.youtube.com/watch?v=5Hd0KuLRQIA)
+https://github.com/user-attachments/assets/ddda9300-05e4-4e53-9010-6b7e92056904
 
 ###### 3D Grid
 
