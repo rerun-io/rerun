@@ -234,7 +234,11 @@ impl NotificationPanel {
                     .show(ui, |ui| {
                         ui.set_width(panel_width);
                         ui.horizontal_top(|ui| {
-                            ui.label("Notifications");
+                            if !notifications.is_empty() {
+                                ui.label(format!("Notifications ({})", notifications.len()));
+                            } else {
+                                ui.label("Notifications");
+                            }
                             ui.with_layout(egui::Layout::top_down(egui::Align::Max), |ui| {
                                 if ui.small_icon_button(&icons::CLOSE).clicked() {
                                     *is_panel_visible = false;
