@@ -36,10 +36,8 @@
 //!    called.
 
 use std::fmt::{Display, Formatter};
-use std::sync::Arc;
 
 use itertools::Itertools;
-use parking_lot::Mutex;
 
 use re_entity_db::InstancePath;
 use re_log_types::EntityPath;
@@ -82,6 +80,8 @@ fn try_item_collection_to_contents(items: &ItemCollection) -> Option<Vec<Content
 fn try_item_collection_to_entities(items: &ItemCollection) -> Option<Vec<EntityPath>> {
     items
         .iter()
+        // Note: this is not a filter map, because we rely on the implicit "all" semantics of
+        // `collect`: we return `Some<Vec<_>>` only if all iterated items are `Some<_>`.
         .map(|(item, _)| match item {
             Item::InstancePath(instance_path) | Item::DataResult(_, instance_path) => instance_path
                 .is_all()
@@ -139,14 +139,14 @@ pub enum DragAndDropFeedback {
 
 /// Helper to handle drag-and-drop operations.
 ///
-/// This helper should be constructed at the beginning of the frame and disposed of at the end.
+/// This helper must be constructed at the beginning of the frame and disposed of at the end.
 /// Its [`Self::payload_cursor_ui`] method should be called late during the frame (after the rest of
 /// the UI has a chance to update the feedback).
 pub struct DragAndDropManager {
     /// Items that may not be dragged, e.g., because they are not movable nor copiable.
     undraggable_items: ItemCollection,
 
-    feedback: Arc<Mutex<DragAndDropFeedback>>,
+    feedback: crossbeam::atomic::AtomicCell<DragAndDropFeedback>,
 }
 
 impl DragAndDropManager {
@@ -172,7 +172,7 @@ impl DragAndDropManager {
     /// For example, a view generally accepts a dragged entity but may occasionally reject it if
     /// it already contains it.
     pub fn set_feedback(&self, feedback: DragAndDropFeedback) {
-        *self.feedback.lock() = feedback;
+        self.feedback.store(feedback);
     }
 
     /// Checks if items are draggable based on the list of undraggable items.
@@ -206,7 +206,7 @@ impl DragAndDropManager {
                     egui::UiBuilder::new().layer_id(layer_id),
                 );
 
-                let feedback = *self.feedback.lock();
+                let feedback = self.feedback.load();
 
                 match feedback {
                     DragAndDropFeedback::Accept => {

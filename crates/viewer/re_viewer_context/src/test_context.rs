@@ -90,7 +90,7 @@ impl TestContext {
             hub: &Default::default(),
         };
 
-        let drag_and_drop_helper = crate::DragAndDropManager::new(ItemCollection::default());
+        let drag_and_drop_manager = crate::DragAndDropManager::new(ItemCollection::default());
 
         let ctx = ViewerContext {
             app_options: &Default::default(),
@@ -110,7 +110,7 @@ impl TestContext {
             render_ctx: None,
             command_sender: &self.command_sender,
             focused_item: &None,
-            drag_and_drop_manager: &drag_and_drop_helper,
+            drag_and_drop_manager: &drag_and_drop_manager,
         };
 
         func(&ctx);
