@@ -65,7 +65,7 @@ impl DeviceTier {
             },
             limits: Default::default(), // unused so far both here and in wgpu as of writing.
 
-            // Sm3 is missing a lot of features and has a even instruction count limits.
+            // Sm3 is missing a lot of features and even has an instruction count limit.
             // Sm4 is missing storage images and other minor features.
             // Sm5 is WebGPU compliant
             shader_model: wgpu::ShaderModel::Sm4,
@@ -263,7 +263,7 @@ impl DeviceCaps {
             // * https://www.w3.org/TR/webgpu/#limits
             // This is roughly everything post 2014, so still VERY generous.
             //
-            // It's much more likely we end up in here because of...
+            // It's much more likely we end up in here because of…
             // * older software rasterizer
             // * old/missing driver
             // * some VM/container setup with limited graphics capabilities.
