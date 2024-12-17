@@ -81,7 +81,7 @@ pub(crate) fn paint_marker(
         .filled(true);
 
     let bounds = egui_plot::PlotBounds::new_symmetrical(0.5);
-    let transform = egui_plot::PlotTransform::new(rect, bounds, true, true);
+    let transform = egui_plot::PlotTransform::new(rect, bounds, [true, true].into());
 
     let mut shapes = vec![];
     points.shapes(ui, &transform, &mut shapes);
