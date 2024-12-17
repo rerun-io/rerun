@@ -73,6 +73,7 @@ Read our 🧳 migration guide for more detailed information: https://rerun.io/do
 - Rename space view to view everywhere [#8396](https://github.com/rerun-io/rerun/pull/8396)
 - Fix broken notebook loading on firefox by compressing the encoded wasm payload [#8426](https://github.com/rerun-io/rerun/pull/8426)
 - Add utility to `rr.components.Color` to generate colors from any string (and use it in the air traffic data example) [#8458](https://github.com/rerun-io/rerun/pull/8458)
+- Introduce new API to send a dataframe to Rerun [#8461](https://github.com/rerun-io/rerun/pull/8461)
 
 #### 🦀 Rust API
 - Update MSRV to 1.80 [#8178](https://github.com/rerun-io/rerun/pull/8178)
@@ -85,6 +86,7 @@ Read our 🧳 migration guide for more detailed information: https://rerun.io/do
 #### 🪳 Bug fixes
 - Fix outlines for lines having more preceived aliasing since 0.20 [#8317](https://github.com/rerun-io/rerun/pull/8317)
 - Fix handling unnormalized axis for (Pose)RotationAxisAngle [#8341](https://github.com/rerun-io/rerun/pull/8341)
+- Fix 2D/3D view artifacts on view's border when using fractional zoom [#8369](https://github.com/rerun-io/rerun/pull/8369)
 
 #### 🌁 Viewer improvements
 - World grid part 1/2: add world grid renderer to `re_renderer` [#8230](https://github.com/rerun-io/rerun/pull/8230)
@@ -97,6 +99,7 @@ Read our 🧳 migration guide for more detailed information: https://rerun.io/do
 - Do query for default components only once per view [#8424](https://github.com/rerun-io/rerun/pull/8424)
 - Improve hovered order in 2D views [#8405](https://github.com/rerun-io/rerun/pull/8405)
 - Remove wait-time when opening settings panel [#8464](https://github.com/rerun-io/rerun/pull/8464)
+- Deprecate `DisconnectedSpace` archetype/component in favor of implicit invalid transforms [#8459](https://github.com/rerun-io/rerun/pull/8459)
 
 #### 🧑‍🏫 Examples
 - Add a new "Air Traffic Data" example [#5449](https://github.com/rerun-io/rerun/pull/5449)
