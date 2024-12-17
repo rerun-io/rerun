@@ -60,8 +60,11 @@ struct Notification {
     level: NotificationLevel,
     text: String,
 
+    /// When this notification was added to the list.
     created_at: OffsetDateTime,
-    ttl: Duration,
+
+    /// Time to live for toasts, the notification itself lives until dismissed.
+    toast_ttl: Duration,
 }
 
 pub struct NotificationUi {
@@ -117,7 +120,7 @@ impl NotificationUi {
             text,
 
             created_at: now(),
-            ttl: base_ttl(),
+            toast_ttl: base_ttl(),
         });
         self.has_unread_notifications = true;
     }
@@ -137,8 +140,8 @@ impl NotificationUi {
         self.toasts.show(egui_ctx, &mut self.data[..]);
 
         if let Some(notification) = self.data.last() {
-            if !notification.ttl.is_zero() {
-                egui_ctx.request_repaint_after(notification.ttl);
+            if !notification.toast_ttl.is_zero() {
+                egui_ctx.request_repaint_after(notification.toast_ttl);
             }
         }
     }
@@ -166,7 +169,7 @@ impl NotificationPanel {
         }
 
         for notification in notifications.iter_mut() {
-            notification.ttl = Duration::ZERO;
+            notification.toast_ttl = Duration::ZERO;
         }
 
         let panel_width = 356.0;
@@ -266,7 +269,7 @@ impl Toasts {
         for (i, notification) in notifications
             .iter_mut()
             .enumerate()
-            .filter(|(_, n)| n.ttl > Duration::ZERO)
+            .filter(|(_, n)| n.toast_ttl > Duration::ZERO)
         {
             let response = egui::Area::new(self.id.with(i))
                 .anchor(egui::Align2::RIGHT_TOP, offset)
@@ -279,10 +282,10 @@ impl Toasts {
                 .response;
 
             if !response.hovered() {
-                if notification.ttl < dt {
-                    notification.ttl = Duration::ZERO;
+                if notification.toast_ttl < dt {
+                    notification.toast_ttl = Duration::ZERO;
                 } else {
-                    notification.ttl -= dt;
+                    notification.toast_ttl -= dt;
                 }
             }
 
@@ -290,7 +293,7 @@ impl Toasts {
 
             if response.clicked() {
                 egui_ctx.output_mut(|o| o.copied_text = notification.text.clone());
-                notification.ttl = Duration::ZERO;
+                notification.toast_ttl = Duration::ZERO;
             }
 
             offset.y += response.rect.height() + 8.0;
