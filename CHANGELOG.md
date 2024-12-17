@@ -24,7 +24,13 @@ We've added two new logging primitives: [`GraphNodes`](https://rerun.io/docs/ref
 
 Have a look at https://github.com/rerun-io/rerun/pull/7500 if you want to learn to more.
 
-#### 3D Grid
+##### UX improvements
+
+@gavrelina goes through the main UX improvements here:
+
+[![video going through all the ux improvements](https://img.youtube.com/vi/5Hd0KuLRQIA/0.jpg)](https://www.youtube.com/watch?v=5Hd0KuLRQIA)
+
+###### 3D Grid
 
 The 3D view now offers an infinite 3D grid, enabled by default. Further controls and settings are available as usual through the blueprint API and/or the selection panel.
 
@@ -36,21 +42,19 @@ The 3D view now offers an infinite 3D grid, enabled by default. Further controls
 
 All the nitty gritty details in https://github.com/rerun-io/rerun/pull/8230 and https://github.com/rerun-io/rerun/pull/8234.
 
-#### Undo/Redo support in the viewer
+##### Undo/Redo support & many more UI/UX improvements
 
 You can now undo/redo blueprint changes in the viewer!
-This video shows it in action and explains how it works:
+Watch @emilk putting it to action and explains how it works:
 
 [![video demonstrating undo/redo](https://img.youtube.com/vi/HWdv4FZQbqQ/0.jpg)](https://www.youtube.com/watch?v=HWdv4FZQbqQ)
 
-#### More UI/UX improvements
+##### Other UX improvements
 
-* Drag-n-drop\
-TODO: blurb
-* View screenshots\
-TODO: blurb
-* Breadcrumbs and other UI/UX improvements\
-TODO: blurb
+But that's not the only thing that improved in the viewer:
+* Breadcrumbs show up in the selection menu now
+* Take screenshots of views from context menus
+* Entities can now be  dragged from anywhere into views
 
 ### ⚠️ Breaking changes
 
