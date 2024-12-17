@@ -183,7 +183,12 @@ impl ModalWrapper {
                 // Title bar
                 //
 
-                view_padding_frame(true, true, false).show(ui, |ui| {
+                view_padding_frame(&ViewPaddingFrameParams {
+                    left_and_right: true,
+                    top: true,
+                    bottom: false,
+                })
+                .show(ui, |ui| {
                     Self::title_bar(ui, &self.title, &mut open);
                     ui.add_space(DesignTokens::view_padding());
                     ui.full_span_separator();
@@ -197,24 +202,32 @@ impl ModalWrapper {
                     // We always have side margin, but these must happen _inside_ the scroll area
                     // (if any). Otherwise, the scroll bar is not snug with the right border and
                     // may interfere with the action buttons of `ListItem`s.
-                    view_padding_frame(true, false, false)
-                        .show(ui, |ui| {
-                            if self.full_span_content {
-                                // no further spacing for the content UI
-                                content_ui(ui, open)
-                            } else {
-                                // we must restore vertical spacing and add view padding at the bottom
-                                ui.add_space(item_spacing_y);
+                    view_padding_frame(&ViewPaddingFrameParams {
+                        left_and_right: true,
+                        top: false,
+                        bottom: false,
+                    })
+                    .show(ui, |ui| {
+                        if self.full_span_content {
+                            // no further spacing for the content UI
+                            content_ui(ui, open)
+                        } else {
+                            // we must restore vertical spacing and add view padding at the bottom
+                            ui.add_space(item_spacing_y);
 
-                                view_padding_frame(false, false, true)
-                                    .show(ui, |ui| {
-                                        ui.spacing_mut().item_spacing.y = item_spacing_y;
-                                        content_ui(ui, open)
-                                    })
-                                    .inner
-                            }
-                        })
-                        .inner
+                            view_padding_frame(&ViewPaddingFrameParams {
+                                left_and_right: false,
+                                top: false,
+                                bottom: true,
+                            })
+                            .show(ui, |ui| {
+                                ui.spacing_mut().item_spacing.y = item_spacing_y;
+                                content_ui(ui, open)
+                            })
+                            .inner
+                        }
+                    })
+                    .inner
                 };
 
                 //
@@ -273,10 +286,20 @@ impl ModalWrapper {
     }
 }
 
+struct ViewPaddingFrameParams {
+    left_and_right: bool,
+    top: bool,
+    bottom: bool,
+}
+
 /// Utility to produce a [`egui::Frame`] with padding on some sides.
-#[allow(clippy::fn_params_excessive_bools)]
 #[inline]
-fn view_padding_frame(left_and_right: bool, top: bool, bottom: bool) -> egui::Frame {
+fn view_padding_frame(params: &ViewPaddingFrameParams) -> egui::Frame {
+    let ViewPaddingFrameParams {
+        left_and_right,
+        top,
+        bottom,
+    } = *params;
     egui::Frame {
         inner_margin: egui::Margin {
             left: if left_and_right {
