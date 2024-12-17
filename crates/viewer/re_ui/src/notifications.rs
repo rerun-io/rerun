@@ -345,39 +345,33 @@ fn show_notification(
         .fill(hex_color!("#1c2123"))
         .show(ui, |ui| {
             ui.vertical_centered(|ui| {
-                let text_response = ui
-                    .horizontal_top(|ui| {
-                        ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
-                        ui.set_max_width(300.0);
-                        ui.spacing_mut().item_spacing.x = 8.0;
-                        log_level_icon(ui, notification.level);
-                        ui.label(
-                            design_tokens()
-                                .text(notification.text.clone(), ColorToken::gray(Scale::S775))
-                                .weak(),
-                        );
+                ui.horizontal_top(|ui| {
+                    ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
+                    ui.set_max_width(300.0);
+                    ui.spacing_mut().item_spacing.x = 8.0;
+                    log_level_icon(ui, notification.level);
+                    ui.label(
+                        design_tokens()
+                            .text(notification.text.clone(), ColorToken::gray(Scale::S775))
+                            .weak(),
+                    );
 
-                        ui.spacing_mut().item_spacing.x = 4.0;
-                        if mode == DisplayMode::Panel {
-                            notification_age_label(ui, notification);
-                        }
-                    })
-                    .response;
+                    ui.spacing_mut().item_spacing.x = 4.0;
+                    if mode == DisplayMode::Panel {
+                        notification_age_label(ui, notification);
+                    }
+                });
 
-                let controls_response = ui
-                    .horizontal_top(|ui| {
-                        if mode != DisplayMode::Panel {
-                            return;
-                        }
+                ui.horizontal_top(|ui| {
+                    if mode != DisplayMode::Panel {
+                        return;
+                    }
 
-                        ui.add_space(17.0);
-                        if ui.button("Dismiss").clicked() {
-                            on_dismiss();
-                        }
-                    })
-                    .response;
-
-                text_response.union(controls_response)
+                    ui.add_space(17.0);
+                    if ui.button("Dismiss").clicked() {
+                        on_dismiss();
+                    }
+                });
             })
         })
         .response
