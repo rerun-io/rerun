@@ -19,6 +19,7 @@ workspace = true
 all-features = true
 
 [dependencies]
+re_capabilities = { workspace = true, features = ["egui"] }
 re_chunk_store.workspace = true
 re_entity_db.workspace = true
 re_format.workspace = true

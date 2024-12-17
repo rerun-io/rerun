@@ -12,6 +12,8 @@ static GLOBAL: re_memory::AccountingAllocator<mimalloc::MiMalloc> =
     re_memory::AccountingAllocator::new(mimalloc::MiMalloc);
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let main_thread_token = re_viewer::MainThreadToken::i_promise_i_am_on_the_main_thread();
+
     // Direct calls using the `log` crate to stderr. Control with `RUST_LOG=debug` etc.
     re_log::setup_logging();
 
@@ -45,6 +47,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             re_viewer::customize_eframe_and_setup_renderer(cc)?;
 
             let mut rerun_app = re_viewer::App::new(
+                main_thread_token,
                 re_viewer::build_info(),
                 &app_env,
                 startup_options,

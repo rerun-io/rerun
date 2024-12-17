@@ -72,6 +72,7 @@ rerun-cli = { path = "crates/top/rerun-cli", version = "=0.21.0-alpha.1", defaul
 
 # crates/utils:
 re_analytics = { path = "crates/utils/re_analytics", version = "=0.21.0-alpha.1", default-features = false }
+re_capabilities = { path = "crates/utils/re_capabilities", version = "=0.21.0-alpha.1", default-features = false }
 re_case = { path = "crates/utils/re_case", version = "=0.21.0-alpha.1", default-features = false }
 re_crash_handler = { path = "crates/utils/re_crash_handler", version = "=0.21.0-alpha.1", default-features = false }
 re_error = { path = "crates/utils/re_error", version = "=0.21.0-alpha.1", default-features = false }

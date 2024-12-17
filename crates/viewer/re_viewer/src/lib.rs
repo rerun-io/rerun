@@ -30,6 +30,8 @@ pub(crate) use {app_state::AppState, ui::memory_panel};
 
 pub use app::{App, StartupOptions};
 
+pub use re_capabilities::MainThreadToken;
+
 pub mod external {
     pub use {eframe, egui};
     pub use {

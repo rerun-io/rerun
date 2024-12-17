@@ -156,6 +156,7 @@ pub fn blob_preview_and_save_ui(
                 }
 
                 ctx.command_sender.save_file_dialog(
+                    re_capabilities::MainThreadToken::from_egui_ui(ui),
                     &file_name,
                     "Save blob".to_owned(),
                     blob.to_vec(),

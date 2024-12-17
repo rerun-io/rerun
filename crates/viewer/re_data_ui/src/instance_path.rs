@@ -389,8 +389,12 @@ fn image_download_button_ui(
                         .map_or("image", |name| name.unescaped_str())
                         .to_owned()
                 );
-                ctx.command_sender
-                    .save_file_dialog(&file_name, "Save image".to_owned(), png_bytes);
+                ctx.command_sender.save_file_dialog(
+                    re_capabilities::MainThreadToken::from_egui_ui(ui),
+                    &file_name,
+                    "Save image".to_owned(),
+                    png_bytes,
+                );
             }
             Err(err) => {
                 re_log::error!("{err}");

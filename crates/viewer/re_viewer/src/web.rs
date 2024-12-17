@@ -49,6 +49,8 @@ impl WebHandle {
 
     #[wasm_bindgen]
     pub async fn start(&self, canvas: JsValue) -> Result<(), wasm_bindgen::JsValue> {
+        let main_thread_token = crate::MainThreadToken::i_promise_i_am_on_the_main_thread();
+
         let canvas = if let Some(canvas_id) = canvas.as_string() {
             // For backwards compatibility with old JS/HTML written before 2024-08-30
             let document = web_sys::window().unwrap().document().unwrap();
@@ -80,7 +82,7 @@ impl WebHandle {
             .start(
                 canvas,
                 web_options,
-                Box::new(move |cc| Ok(Box::new(create_app(cc, app_options)?))),
+                Box::new(move |cc| Ok(Box::new(create_app(main_thread_token, cc, app_options)?))),
             )
             .await?;
 
@@ -356,6 +358,7 @@ impl From<PanelStateOverrides> for crate::app_blueprint::PanelStateOverrides {
 }
 
 fn create_app(
+    main_thread_token: crate::MainThreadToken,
     cc: &eframe::CreationContext<'_>,
     app_options: AppOptions,
 ) -> Result<crate::App, re_renderer::RenderContextError> {
@@ -408,6 +411,7 @@ fn create_app(
     crate::customize_eframe_and_setup_renderer(cc)?;
 
     let mut app = crate::App::new(
+        main_thread_token,
         build_info,
         &app_env,
         startup_options,
