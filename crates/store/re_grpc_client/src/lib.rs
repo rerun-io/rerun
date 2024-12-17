@@ -16,6 +16,7 @@ use url::Url;
 // ----------------------------------------------------------------------------
 
 use std::error::Error;
+use std::sync::Arc;
 
 use arrow2::array::Utf8Array as Arrow2Utf8Array;
 use arrow2::datatypes::Field as Arrow2Field;
@@ -318,16 +319,88 @@ async fn stream_catalog_async(
 
     re_log::info!("Starting to read...");
     while let Some(result) = resp.next().await {
-        let mut tc = result.map_err(TonicStatusError)?;
-        // received TransportChunk doesn't have ChunkId, hence we need to add it before converting
-        // to Chunk
+        let input = result.map_err(TonicStatusError)?;
+
+        // Catalog received from the ReDap server isn't suitable for direct conversion to a Rerun Chunk:
+        // - conversion expects "data" columns to be ListArrays, hence we need to convert any individual row column data to ListArray
+        // - conversion expects the input TransportChunk to have a ChunkId so we need to add that piece of metadata
+
+        let mut fields = Vec::new();
+        let mut arrays = Vec::new();
+        // add the (row id) control field
+        let (row_id_field, row_id_data) = input.controls().next().ok_or(
+            StreamError::ChunkError(re_chunk::ChunkError::Malformed {
+                reason: "no control field found".to_owned(),
+            }),
+        )?;
+
+        fields.push(
+            Arrow2Field::new(
+                RowId::name().to_string(), // need to rename to Rerun Chunk expected control field
+                row_id_field.data_type().clone(),
+                false, /* not nullable */
+            )
+            .with_metadata(TransportChunk::field_metadata_control_column()),
+        );
+        arrays.push(row_id_data.clone());
+
+        // next add any timeline field
+        for (field, data) in input.timelines() {
+            fields.push(field.clone());
+            arrays.push(data.clone());
+        }
+
+        // now add all the 'data' fields - we slice each column array into individual arrays and then convert the whole lot into a ListArray
+        for (field, data) in input.components() {
+            let data_field_inner =
+                Arrow2Field::new("item", field.data_type().clone(), true /* nullable */);
+
+            let data_field = Arrow2Field::new(
+                field.name.clone(),
+                arrow2::datatypes::DataType::List(Arc::new(data_field_inner.clone())),
+                false, /* not nullable */
+            )
+            .with_metadata(TransportChunk::field_metadata_data_column());
+
+            let mut sliced: Vec<Box<dyn Arrow2Array>> = Vec::new();
+            for idx in 0..data.len() {
+                let mut array = data.clone();
+                array.slice(idx, 1);
+                sliced.push(array);
+            }
+
+            let data_arrays = sliced.iter().map(|e| Some(e.as_ref())).collect::<Vec<_>>();
+            #[allow(clippy::unwrap_used)] // we know we've given the right field type
+            let data_field_array: arrow2::array::ListArray<i32> =
+                re_chunk::util::arrays_to_list_array(
+                    data_field_inner.data_type().clone(),
+                    &data_arrays,
+                )
+                .unwrap();
+
+            fields.push(data_field);
+            arrays.push(Box::new(data_field_array));
+        }
+
+        let mut schema = arrow2::datatypes::Schema::from(fields);
+        schema.metadata.insert(
+            TransportChunk::CHUNK_METADATA_KEY_ENTITY_PATH.to_owned(),
+            "catalog".to_owned(),
+        );
+
+        // modified and enriched TransportChunk
+        let mut tc = TransportChunk {
+            schema,
+            data: arrow2::chunk::Chunk::new(arrays),
+        };
+
         tc.schema.metadata.insert(
             TransportChunk::CHUNK_METADATA_KEY_ID.to_owned(),
             ChunkId::new().to_string(),
         );
         let mut chunk = Chunk::from_transport(&tc)?;
 
-        // enrich catalog data with RecordingUri that's based on the ReDap endpoint (that we know)
+        // finally, enrich catalog data with RecordingUri that's based on the ReDap endpoint (that we know)
         // and the recording id (that we have in the catalog data)
         let host = redap_endpoint
             .host()
