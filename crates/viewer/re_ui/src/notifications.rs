@@ -85,7 +85,7 @@ pub struct NotificationUi {
     /// State of every notification.
     ///
     /// Notifications are stored in order of ascending `created_at`, so the latest one is at the end.
-    data: Vec<Notification>,
+    notifications: Vec<Notification>,
 
     unread_notification_level: Option<NotificationLevel>,
 
@@ -105,7 +105,7 @@ impl Default for NotificationUi {
 impl NotificationUi {
     pub fn new() -> Self {
         Self {
-            data: Vec::new(),
+            notifications: Vec::new(),
             unread_notification_level: None,
             panel: NotificationPanel::new(),
             toasts: Toasts::new(),
@@ -129,7 +129,7 @@ impl NotificationUi {
     }
 
     fn push(&mut self, level: NotificationLevel, text: String) {
-        self.data.push(Notification {
+        self.notifications.push(Notification {
             level,
             text,
 
@@ -153,8 +153,9 @@ impl NotificationUi {
             self.unread_notification_level = None;
         }
 
-        self.panel.show(egui_ctx, &mut self.data, is_panel_visible);
-        self.toasts.show(egui_ctx, &mut self.data[..]);
+        self.panel
+            .show(egui_ctx, &mut self.notifications, is_panel_visible);
+        self.toasts.show(egui_ctx, &mut self.notifications[..]);
     }
 }
 
