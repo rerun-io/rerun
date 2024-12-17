@@ -163,7 +163,7 @@ impl NotificationPanel {
         }
 
         let panel_width = 356.0;
-        let panel_max_height = 320.0;
+        let panel_max_height = 640.0;
 
         let mut to_dismiss = None;
 
@@ -209,6 +209,7 @@ impl NotificationPanel {
                         });
                         egui::ScrollArea::vertical()
                             .min_scrolled_height(panel_max_height)
+                            .max_height(panel_max_height)
                             .show(ui, notification_list);
 
                         if !notifications.is_empty() {
