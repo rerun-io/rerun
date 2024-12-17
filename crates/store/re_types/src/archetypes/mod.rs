@@ -68,7 +68,6 @@ pub use self::boxes2d::Boxes2D;
 pub use self::boxes3d::Boxes3D;
 pub use self::capsules3d::Capsules3D;
 pub use self::depth_image::DepthImage;
-pub use self::disconnected_space::DisconnectedSpace;
 pub use self::ellipsoids3d::Ellipsoids3D;
 pub use self::encoded_image::EncodedImage;
 pub use self::geo_line_strings::GeoLineStrings;
@@ -93,3 +92,6 @@ pub use self::text_log::TextLog;
 pub use self::transform3d::Transform3D;
 pub use self::video_frame_reference::VideoFrameReference;
 pub use self::view_coordinates::ViewCoordinates;
+
+#[allow(deprecated)]
+pub use self::disconnected_space::DisconnectedSpace;

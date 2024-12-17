@@ -19,7 +19,7 @@ use re_view::{
     view_property_ui,
 };
 use re_viewer_context::{
-    IdentifiedViewSystem as _, RecommendedView, SystemExecutionOutput, ViewClass,
+    IdentifiedViewSystem as _, Item, RecommendedView, SystemExecutionOutput, ViewClass,
     ViewClassLayoutPriority, ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics,
     ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewSystemRegistrator, ViewerContext,
 };
@@ -28,7 +28,7 @@ use re_viewport_blueprint::ViewProperty;
 use crate::{
     graph::Graph,
     layout::{ForceLayoutParams, LayoutRequest},
-    ui::{draw_graph, view_property_force_ui, GraphViewState},
+    ui::{draw_graph, view_property_force_ui, GraphViewState, LevelOfDetail},
     visualizers::{merge, EdgesVisualizer, NodeVisualizer},
 };
 
@@ -189,14 +189,26 @@ Display a graph of nodes and edges.
         // We store a copy of the transformation to see if it has changed.
         let ui_from_world_ref = ui_from_world;
 
+        let level_of_detail = LevelOfDetail::from_scaling(ui_from_world.scaling);
+
         let resp = zoom_pan_area(ui, &mut ui_from_world, |ui| {
             let mut world_bounding_rect = egui::Rect::NOTHING;
 
             for graph in &graphs {
-                let graph_rect = draw_graph(ui, ctx, graph, layout, query);
+                let graph_rect = draw_graph(ui, ctx, graph, layout, query, level_of_detail);
                 world_bounding_rect = world_bounding_rect.union(graph_rect);
             }
         });
+
+        if resp.hovered() {
+            ctx.selection_state().set_hovered(Item::View(query.view_id));
+        }
+
+        if resp.clicked() {
+            // clicked elsewhere, select the view
+            ctx.selection_state()
+                .set_selection(Item::View(query.view_id));
+        }
 
         // Update blueprint if changed
         let updated_rect_in_scene =

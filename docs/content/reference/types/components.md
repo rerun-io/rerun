@@ -23,7 +23,7 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`Color`](components/color.md): An RGBA color with unmultiplied/separate alpha, in sRGB gamma space with linear alpha.
 * [`Colormap`](components/colormap.md): Colormap for mapping scalar values within a given range to a color.
 * [`DepthMeter`](components/depth_meter.md): The world->depth map scaling factor.
-* [`DisconnectedSpace`](components/disconnected_space.md): Spatially disconnect this entity from its parent.
+* ⚠️ _deprecated_ [`DisconnectedSpace`](components/disconnected_space.md): Spatially disconnect this entity from its parent.
 * [`DrawOrder`](components/draw_order.md): Draw order of 2D elements. Higher values are drawn on top of lower values.
 * [`EntityPath`](components/entity_path.md): A path to an entity, usually to reference some data that is part of the target entity.
 * [`FillMode`](components/fill_mode.md): How a geometric shape is drawn and colored.

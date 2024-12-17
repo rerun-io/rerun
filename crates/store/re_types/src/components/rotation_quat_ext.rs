@@ -6,12 +6,17 @@ impl RotationQuat {
     /// Keep in mind that logging an identity rotation is different from logging no rotation at all
     /// in thus far that it will write data to the store.
     pub const IDENTITY: Self = Self(crate::datatypes::Quaternion::IDENTITY);
+
+    /// A rotation that represents an invalid transform.
+    pub const INVALID: Self = Self(crate::datatypes::Quaternion::INVALID);
 }
 
 #[cfg(feature = "glam")]
-impl From<RotationQuat> for glam::Affine3A {
+impl TryFrom<RotationQuat> for glam::Affine3A {
+    type Error = ();
+
     #[inline]
-    fn from(val: RotationQuat) -> Self {
-        Self::from_quat(val.0.into())
+    fn try_from(val: RotationQuat) -> Result<Self, Self::Error> {
+        Ok(Self::from_quat(glam::Quat::try_from(val.0)?))
     }
 }

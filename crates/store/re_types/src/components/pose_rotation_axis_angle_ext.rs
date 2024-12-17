@@ -14,14 +14,14 @@ impl PoseRotationAxisAngle {
 }
 
 #[cfg(feature = "glam")]
-impl From<PoseRotationAxisAngle> for glam::Affine3A {
+impl TryFrom<PoseRotationAxisAngle> for glam::Affine3A {
+    type Error = ();
+
     #[inline]
-    fn from(val: PoseRotationAxisAngle) -> Self {
-        if let Some(normalized) = glam::Vec3::from(val.0.axis).try_normalize() {
-            Self::from_axis_angle(normalized, val.0.angle.radians())
-        } else {
-            // If the axis is zero length, we can't normalize it, so we just use the identity rotation.
-            Self::IDENTITY
-        }
+    fn try_from(val: PoseRotationAxisAngle) -> Result<Self, Self::Error> {
+        glam::Vec3::from(val.0.axis)
+            .try_normalize()
+            .map(|normalized| Self::from_axis_angle(normalized, val.0.angle.radians()))
+            .ok_or(())
     }
 }

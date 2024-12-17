@@ -1,10 +1,12 @@
 use egui::Label;
 
+use egui::Sense;
 use re_types::View;
 use re_types::ViewClassIdentifier;
 use re_ui::UiExt as _;
 use re_view::suggest_view_for_each_entity;
 
+use re_viewer_context::Item;
 use re_viewer_context::{
     external::re_log_types::EntityPath, ViewClass, ViewClassRegistryError, ViewId, ViewQuery,
     ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext,
@@ -111,17 +113,16 @@ Displays text from a text component, as raw text or markdown."
 
     fn ui(
         &self,
-        _ctx: &ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn ViewState,
-
-        _query: &ViewQuery<'_>,
+        query: &ViewQuery<'_>,
         system_output: re_viewer_context::SystemExecutionOutput,
     ) -> Result<(), ViewSystemExecutionError> {
         let state = state.downcast_mut::<TextDocumentViewState>()?;
         let text_document = system_output.view_systems.get::<TextDocumentSystem>()?;
 
-        egui::Frame {
+        let response = egui::Frame {
             inner_margin: re_ui::DesignTokens::view_padding().into(),
             ..egui::Frame::default()
         }
@@ -176,7 +177,18 @@ Displays text from a text component, as raw text or markdown."
                     })
             })
             .response
-        });
+        })
+        .response
+        .interact(Sense::click());
+
+        if response.hovered() {
+            ctx.selection_state().set_hovered(Item::View(query.view_id));
+        }
+
+        if response.clicked() {
+            ctx.selection_state()
+                .set_selection(Item::View(query.view_id));
+        }
 
         Ok(())
     }

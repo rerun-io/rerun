@@ -104,6 +104,20 @@ impl Ord for TimeColumnDescriptor {
 }
 
 impl TimeColumnDescriptor {
+    fn metadata(&self) -> arrow2::datatypes::Metadata {
+        let Self {
+            timeline,
+            datatype: _,
+        } = self;
+
+        std::iter::once(Some((
+            "sorbet.index_name".to_owned(),
+            timeline.name().to_string(),
+        )))
+        .flatten()
+        .collect()
+    }
+
     #[inline]
     // Time column must be nullable since static data doesn't have a time.
     pub fn to_arrow_field(&self) -> Arrow2Field {
@@ -113,6 +127,7 @@ impl TimeColumnDescriptor {
             datatype.clone(),
             true, /* nullable */
         )
+        .with_metadata(self.metadata())
     }
 }
 
