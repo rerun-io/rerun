@@ -374,17 +374,18 @@ fn show_notification(
         .show(ui, |ui| {
             ui.vertical_centered(|ui| {
                 ui.horizontal_top(|ui| {
-                    ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
-                    ui.set_width(300.0);
-                    ui.spacing_mut().item_spacing.x = 8.0;
                     log_level_icon(ui, notification.level);
-                    ui.label(
-                        design_tokens()
-                            .text(notification.text.clone(), ColorToken::gray(Scale::S775))
-                            .weak(),
-                    );
+                    ui.horizontal_top(|ui| {
+                        ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
+                        ui.set_width(270.0);
+                        ui.label(
+                            design_tokens()
+                                .text(notification.text.clone(), ColorToken::gray(Scale::S775))
+                                .weak(),
+                        );
+                    });
 
-                    ui.spacing_mut().item_spacing.x = 4.0;
+                    ui.add_space(4.0);
                     if mode == DisplayMode::Panel {
                         notification_age_label(ui, notification);
                     }
@@ -411,7 +412,7 @@ fn notification_age_label(ui: &mut egui::Ui, notification: &Notification) {
     let formatted = if age < 10.0 {
         ui.ctx().request_repaint_after(Duration::from_secs(1));
 
-        "just now".to_owned()
+        "now".to_owned()
     } else if age < 60.0 {
         ui.ctx().request_repaint_after(Duration::from_secs(1));
 
@@ -426,7 +427,7 @@ fn notification_age_label(ui: &mut egui::Ui, notification: &Notification) {
     };
 
     ui.horizontal_top(|ui| {
-        ui.set_min_width(52.0);
+        ui.set_min_width(30.0);
         ui.with_layout(egui::Layout::top_down(egui::Align::Max), |ui| {
             ui.label(
                 design_tokens()
