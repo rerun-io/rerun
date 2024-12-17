@@ -1074,6 +1074,14 @@ impl App {
                     ui,
                 );
 
+                // NOTE: We do this here because the `notifications` UI is on top,
+                //       and may want to consume some key events.
+                self.show_text_logs_as_notifications();
+                if !self.screenshotter.is_screenshotting() {
+                    self.notifications
+                        .ui(egui_ctx, &mut self.notifications_panel_open);
+                }
+
                 self.memory_panel_ui(ui, gpu_resource_stats, store_stats);
 
                 self.egui_debug_panel_ui(ui);
@@ -1856,7 +1864,6 @@ impl eframe::App for App {
             store_hub.begin_frame(renderer_active_frame_idx);
         }
 
-        self.show_text_logs_as_notifications();
         self.receive_messages(&mut store_hub, egui_ctx);
 
         if self.app_options().blueprint_gc {
@@ -1915,11 +1922,6 @@ impl eframe::App for App {
             if re_ui::CUSTOM_WINDOW_DECORATIONS {
                 // Paint the main window frame on top of everything else
                 paint_native_window_frame(egui_ctx);
-            }
-
-            if !self.screenshotter.is_screenshotting() {
-                self.notifications
-                    .ui(egui_ctx, &mut self.notifications_panel_open);
             }
 
             if let Some(cmd) = self.cmd_palette.show(egui_ctx) {
