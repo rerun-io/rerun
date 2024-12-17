@@ -26,7 +26,8 @@ impl Tensor {
     ///
     /// Any existing names will be overwritten.
     ///
-    /// If too few or too many names are provided, this function will warn and return.
+    /// If the wrong number of names are given, a warning will be logged,
+    /// and the names might not show up correctly.
     pub fn with_dim_names(
         mut self,
         names: impl IntoIterator<Item = impl Into<ArrowString>>,

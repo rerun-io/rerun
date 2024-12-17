@@ -35,6 +35,8 @@ namespace rerun::datatypes {
         /// The names of the dimensions of the tensor (optional).
         ///
         /// If set, should be the same length as `datatypes::TensorData::shape`.
+        /// If it has a different length your names may show up improperly,
+        /// and some constructors may produce a warning or even an error.
         ///
         /// Example: `["height", "width", "channel", "batch"]`.
         std::optional<rerun::Collection<std::string>> names;

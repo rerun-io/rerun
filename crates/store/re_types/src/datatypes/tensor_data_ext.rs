@@ -27,21 +27,24 @@ impl TensorData {
     ///
     /// Any existing names will be overwritten.
     ///
-    /// If too few or too many names are provided, this function will warn and return.
+    /// If the wrong number of names are given, a warning will be logged,
+    /// and the names might not show up correctly.
     pub fn with_dim_names(
         mut self,
         names: impl IntoIterator<Item = impl Into<ArrowString>>,
     ) -> Self {
         let names: Vec<ArrowString> = names.into_iter().map(|x| x.into()).collect();
-        if names.len() == self.shape.len() {
-            self.names = Some(names);
-        } else {
+
+        if names.len() != self.shape.len() {
             re_log::warn_once!(
-                "Wrong number of names provided for tensor dimension. {} provided but {} expected.",
+                "Wrong number of names provided for tensor dimension. {} provided but {} expected. The names will be ignored.",
                 names.len(),
                 self.shape.len(),
             );
         }
+
+        self.names = Some(names);
+
         self
     }
 
