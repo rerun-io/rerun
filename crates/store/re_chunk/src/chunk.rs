@@ -90,8 +90,6 @@ impl ChunkComponents {
         component_desc: ComponentDescriptor,
         list_array: Arrow2ListArray<i32>,
     ) -> Option<Arrow2ListArray<i32>> {
-        // TODO(cmc): revert me
-        let component_desc = component_desc.untagged();
         self.0
             .entry(component_desc.component_name)
             .or_default()
