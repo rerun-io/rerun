@@ -26,7 +26,7 @@ Have a look at https://github.com/rerun-io/rerun/pull/7500 if you want to learn 
 
 ##### UX improvements
 
-@gavrelina goes through the main UX improvements here:
+This video demonstrates the main UX improvements that went into this release:
 
 [![video going through all the ux improvements](https://img.youtube.com/vi/5Hd0KuLRQIA/0.jpg)](https://www.youtube.com/watch?v=5Hd0KuLRQIA)
 
