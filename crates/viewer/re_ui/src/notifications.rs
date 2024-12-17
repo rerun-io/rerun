@@ -29,7 +29,12 @@ impl From<re_log::Level> for NotificationLevel {
     }
 }
 
-fn is_relevant(level: re_log::Level) -> bool {
+fn is_relevant(target: &str, level: re_log::Level) -> bool {
+    let is_rerun_crate = target.starts_with("rerun") || target.starts_with("re_");
+    if !is_rerun_crate {
+        return false;
+    }
+
     matches!(
         level,
         re_log::Level::Warn | re_log::Level::Error | re_log::Level::Info
@@ -94,29 +99,27 @@ impl NotificationUi {
         self.has_unread_notifications
     }
 
-    pub fn add(&mut self, level: Level, text: impl Into<String>) {
-        if !is_relevant(level) {
+    pub fn add_log(&mut self, target: &str, level: Level, text: impl Into<String>) {
+        if !is_relevant(target, level) {
             return;
         }
 
+        self.push(level.into(), text.into());
+    }
+
+    pub fn success(&mut self, text: impl Into<String>) {
+        self.push(NotificationLevel::Success, text.into());
+    }
+
+    fn push(&mut self, level: NotificationLevel, text: String) {
         self.data.push(Notification {
-            level: level.into(),
-            text: text.into(),
+            level,
+            text,
 
             created_at: now(),
             ttl: base_ttl(),
         });
         self.has_unread_notifications = true;
-    }
-
-    pub fn success(&mut self, text: impl Into<String>) {
-        self.data.push(Notification {
-            level: NotificationLevel::Success,
-            text: text.into(),
-
-            created_at: now(),
-            ttl: base_ttl(),
-        });
     }
 
     pub fn ui(&mut self, egui_ctx: &egui::Context, is_panel_visible: &mut bool) {
