@@ -330,7 +330,7 @@ pub fn draw_graph(
     layout: &Layout,
     query: &ViewQuery<'_>,
     lod: LevelOfDetail,
-    hovered: &mut Option<Item>,
+    hover_click_item: &mut Option<(Item, Response)>,
 ) -> Rect {
     let entity_path = graph.entity();
     let entity_highlights = query.highlights.entity_highlight(entity_path.hash());
@@ -364,20 +364,17 @@ pub fn draw_graph(
                     });
                 });
 
-                if response.hovered() {
-                    *hovered = Some(Item::DataResult(query.view_id, instance_path.clone()));
-                }
-
-                if response.clicked() {
-                    ctx.selection_state()
-                        .set_selection(Item::DataResult(query.view_id, instance_path.clone()));
-                }
-
+                // Warning! The order is very important here.
                 if response.double_clicked() {
                     // Select the entire entity
                     ctx.selection_state().set_selection(Item::DataResult(
                         query.view_id,
                         instance_path.entity_path.clone().into(),
+                    ));
+                } else if response.hovered() || response.clicked() {
+                    *hover_click_item = Some((
+                        Item::DataResult(query.view_id, instance_path.clone()),
+                        response.clone(),
                     ));
                 }
 
