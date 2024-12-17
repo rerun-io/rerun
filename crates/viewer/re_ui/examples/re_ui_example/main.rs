@@ -170,16 +170,16 @@ impl eframe::App for ExampleApp {
                 }
                 if ui.button("Log warn").clicked() {
                     re_log::warn!(
-                        "A lot of text on warn level.\nA lot of text in fact. So \
-                            much that we should ideally be auto-wrapping it at some point, much \
-                            earlier than this."
+                        "A lot of text on warn level.\nA lot of text in fact."
                     );
                 }
                 if ui.button("Log error").clicked() {
                     re_log::error!(
                         "A lot of text on error level.\nA lot of text in fact. \
                             So much that we should ideally be auto-wrapping it at some point, much \
-                            earlier than this."
+                            earlier than this. Lorem ipsum sit dolor amet.  Lorem ipsum sit dolor amet. \
+                            Lorem ipsum sit dolor amet. Lorem ipsum sit dolor amet. Lorem ipsum sit dolor amet. \
+                            Lorem ipsum sit dolor amet."
                     );
                 }
             });
