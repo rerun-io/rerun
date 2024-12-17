@@ -1,11 +1,15 @@
 use std::time::Duration;
 
 use egui::hex_color;
-use jiff::{Unit, Zoned};
 pub use re_log::Level;
+use time::OffsetDateTime;
 
 use crate::icons;
 use crate::UiExt;
+
+fn now() -> OffsetDateTime {
+    OffsetDateTime::now_local().unwrap_or_else(|_| OffsetDateTime::now_utc())
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum NotificationLevel {
@@ -51,7 +55,7 @@ struct Notification {
     level: NotificationLevel,
     text: String,
 
-    created_at: Zoned,
+    created_at: OffsetDateTime,
     ttl: Duration,
 }
 
@@ -99,7 +103,7 @@ impl NotificationUi {
             level: level.into(),
             text: text.into(),
 
-            created_at: Zoned::now(),
+            created_at: now(),
             ttl: base_ttl(),
         });
         self.has_unread_notifications = true;
@@ -110,7 +114,7 @@ impl NotificationUi {
             level: NotificationLevel::Success,
             text: text.into(),
 
-            created_at: Zoned::now(),
+            created_at: now(),
             ttl: base_ttl(),
         });
     }
@@ -348,22 +352,23 @@ fn show_notification(
 }
 
 fn notification_age_label(ui: &mut egui::Ui, notification: &Notification) {
-    let Ok(age) = (&Zoned::now() - &notification.created_at).total(Unit::Second) else {
-        return;
-    };
+    let age = (now() - notification.created_at).as_seconds_f64();
 
-    let formatted = if age <= 9.0 {
+    let formatted = if age < 10.0 {
         ui.ctx().request_repaint_after(Duration::from_secs(1));
 
         "just now".to_owned()
-    } else if age <= 59.0 {
+    } else if age < 60.0 {
         ui.ctx().request_repaint_after(Duration::from_secs(1));
 
         format!("{age:.0}s")
     } else {
         ui.ctx().request_repaint_after(Duration::from_secs(60));
 
-        notification.created_at.time().strftime("%H:%M").to_string()
+        notification
+            .created_at
+            .format(&time::macros::format_description!("[hour]:[minute]"))
+            .unwrap_or_default()
     };
 
     ui.horizontal_top(|ui| {
