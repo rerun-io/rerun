@@ -149,6 +149,7 @@ Read our 🧳 migration guide for more detailed information: https://rerun.io/do
 
 #### 📦 Dependencies
 - Numpy 2.0 allowed in pyproject.toml [#8306](https://github.com/rerun-io/rerun/pull/8306) (thanks [@Ipuch](https://github.com/Ipuch)!)
+- Upgrade to egui 0.30 (+ ecosystem) [#8516](https://github.com/rerun-io/rerun/pull/8516)
 
 #### 🧑‍💻 Dev-experience
 - Add `MainThreadToken` to ensure file-dialogs only run on the main thread [#8467](https://github.com/rerun-io/rerun/pull/8467)
