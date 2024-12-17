@@ -144,8 +144,6 @@ def run(args: Namespace) -> None:
             grid_columns=3,
             column_shares=[1, 1, 1],
         ),
-        rrb.BlueprintPanel(state="collapsed"),
-        rrb.TimePanel(state="collapsed"),
     )
     rr.send_blueprint(blueprint, make_active=True, make_default=True)
 

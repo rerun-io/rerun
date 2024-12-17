@@ -75,7 +75,6 @@ def run(args: Namespace) -> None:
             rrb.Spatial2DView(origin="h265", name="H.265"),
             rrb.Spatial2DView(origin="vp9", name="VP9"),
         ),
-        rrb.TimePanel(state="collapsed"),
     )
 
     rr.send_blueprint(blueprint, make_active=True, make_default=True)

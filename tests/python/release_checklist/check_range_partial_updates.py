@@ -98,10 +98,6 @@ def blueprint() -> rrb.BlueprintLike:
             ],
             grid_columns=3,
         ),
-        # NOTE: It looks nice but it's very annoying when going through several checklists.
-        # rrb.BlueprintPanel(state="collapsed"),
-        # rrb.TimePanel(state="collapsed"),
-        # rrb.SelectionPanel(state="collapsed"),
     )
 
 

@@ -37,9 +37,6 @@ def log_external_blueprint() -> None:
                 rrb.TextDocumentView(origin="readme"),
                 column_shares=[3, 2],
             ),
-            rrb.BlueprintPanel(state="collapsed"),
-            rrb.SelectionPanel(state="collapsed"),
-            rrb.TimePanel(state="collapsed"),
         ).save("some_unrelated_blueprint_app_id", tmp.name)
 
         rr.log_file_from_path(tmp.name)
