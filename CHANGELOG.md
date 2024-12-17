@@ -39,8 +39,11 @@ All the nitty gritty details in https://github.com/rerun-io/rerun/pull/8230 and 
 ### Undo/Redo support in the viewer
 
 You can now undo/redo blueprint changes in the viewer!
+This video shows it in action and explains how it works:
 
-TODO: embed somehow emil's loom about it
+<p align="center">
+  <video src="https://storage.googleapis.com/rerun-static-img/changelog_0.21_undoredo.mp4" width="600" controls></video>
+</p>
 
 ### More UI/UX improvements
 
