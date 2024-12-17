@@ -384,13 +384,10 @@ impl ListItem {
             let bg_rect_to_paint = ui.painter().round_rect_to_pixels(bg_rect);
 
             if drag_target {
+                let stroke = crate::design_tokens().drop_target_container_stroke();
                 ui.painter().set(
                     background_frame,
-                    Shape::rect_stroke(
-                        bg_rect_to_paint.expand(-1.0),
-                        0.0,
-                        egui::Stroke::new(1.0, ui.visuals().selection.bg_fill),
-                    ),
+                    Shape::rect_stroke(bg_rect_to_paint.shrink(stroke.width), 0.0, stroke),
                 );
             }
 

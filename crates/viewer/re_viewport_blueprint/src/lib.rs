@@ -3,6 +3,7 @@
 //! This crate provides blueprint (i.e. description) for how to render the viewport.
 
 mod container;
+mod entity_add_info;
 pub mod ui;
 mod view;
 mod view_contents;
@@ -11,6 +12,7 @@ mod viewport_blueprint;
 mod viewport_command;
 
 pub use container::ContainerBlueprint;
+pub use entity_add_info::{create_entity_add_info, CanAddToView, EntityAddInfo};
 use re_viewer_context::ViewerContext;
 pub use view::ViewBlueprint;
 pub use view_contents::ViewContents;

@@ -11,8 +11,16 @@ pub fn santitize_file_name(file_name: &str) -> String {
 
 impl CommandSender {
     /// Save some bytes to disk, after first showing a save dialog.
+    ///
+    /// [This may only be called on the main thread](https://docs.rs/rfd/latest/rfd/#macos-non-windowed-applications-async-and-threading).
     #[allow(clippy::unused_self)] // Not used on Wasm
-    pub fn save_file_dialog(&self, file_name: &str, title: String, data: Vec<u8>) {
+    pub fn save_file_dialog(
+        &self,
+        _: re_capabilities::MainThreadToken,
+        file_name: &str,
+        title: String,
+        data: Vec<u8>,
+    ) {
         re_tracing::profile_function!();
 
         let file_name = santitize_file_name(file_name);

@@ -3,7 +3,6 @@ use re_chunk::LatestAtQuery;
 use re_log_types::{EntityPath, Instance};
 use re_query::{clamped_zip_2x4, range_zip_1x4};
 use re_types::components::{Color, Radius, ShowLabels};
-use re_types::datatypes::Float32;
 use re_types::{
     self, archetypes,
     components::{self},
@@ -22,6 +21,8 @@ use crate::graph::NodeId;
 pub struct NodeVisualizer {
     pub data: ahash::HashMap<EntityPath, NodeData>,
 }
+
+pub const FALLBACK_RADIUS: f32 = 4.0;
 
 /// The label information of a [`re_types::archetypes::GraphNodes`].
 #[derive(Clone)]
@@ -120,7 +121,8 @@ impl VisualizerSystem for NodeVisualizer {
                             color,
                         },
                         _ => Label::Circle {
-                            radius: radius.unwrap_or(4.0),
+                            // Radius is negative for UI radii, but we don't handle this here.
+                            radius: radius.unwrap_or(FALLBACK_RADIUS).abs(),
                             color,
                         },
                     };
@@ -160,7 +162,7 @@ impl TypedComponentFallbackProvider<ShowLabels> for NodeVisualizer {
 
 impl TypedComponentFallbackProvider<Radius> for NodeVisualizer {
     fn fallback_for(&self, _ctx: &QueryContext<'_>) -> Radius {
-        Radius(Float32(4.0f32))
+        FALLBACK_RADIUS.into()
     }
 }
 

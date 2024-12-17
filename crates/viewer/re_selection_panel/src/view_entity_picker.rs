@@ -1,4 +1,3 @@
-use egui::NumExt as _;
 use itertools::Itertools;
 use nohash_hasher::IntMap;
 
@@ -6,8 +5,10 @@ use re_data_ui::item_ui;
 use re_entity_db::{EntityPath, EntityTree, InstancePath};
 use re_log_types::{EntityPathFilter, EntityPathRule};
 use re_ui::{list_item, UiExt as _};
-use re_viewer_context::{DataQueryResult, ViewClassExt as _, ViewId, ViewerContext};
-use re_viewport_blueprint::{ViewBlueprint, ViewportBlueprint};
+use re_viewer_context::{DataQueryResult, ViewId, ViewerContext};
+use re_viewport_blueprint::{
+    create_entity_add_info, CanAddToView, EntityAddInfo, ViewBlueprint, ViewportBlueprint,
+};
 
 /// Window for adding/removing entities from a view.
 ///
@@ -37,6 +38,7 @@ impl ViewEntityPicker {
                 re_ui::modal::ModalWrapper::new("Add/remove Entities")
                     .default_height(640.0)
                     .full_span_content(true)
+                    .scrollable([false, true])
             },
             |ui, open| {
                 let Some(view_id) = &self.view_id else {
@@ -49,21 +51,7 @@ impl ViewEntityPicker {
                     return;
                 };
 
-                // Make the modal size less jumpy and work around https://github.com/emilk/egui/issues/5138
-                // TODO(ab): move that boilerplate to `ModalWrapper` by adding a `scrollable` flag.
-                let max_height = 0.85 * ui.ctx().screen_rect().height();
-                let min_height = 0.3 * ui.ctx().screen_rect().height().at_most(max_height);
-
-                egui::ScrollArea::vertical()
-                    .min_scrolled_height(max_height)
-                    .max_height(max_height)
-                    .show(ui, |ui| {
-                        add_entities_ui(ctx, ui, view);
-
-                        if ui.min_rect().height() < min_height {
-                            ui.add_space(min_height - ui.min_rect().height());
-                        }
-                    });
+                add_entities_ui(ctx, ui, view);
             },
         );
     }
@@ -73,10 +61,9 @@ fn add_entities_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, view: &ViewBluepr
     re_tracing::profile_function!();
 
     let tree = &ctx.recording().tree();
-    // TODO(jleibs): Avoid clone
-    let query_result = ctx.lookup_query_result(view.id).clone();
+    let query_result = ctx.lookup_query_result(view.id);
     let entity_path_filter = &view.contents.entity_path_filter;
-    let entities_add_info = create_entity_add_info(ctx, tree, view, &query_result);
+    let entities_add_info = create_entity_add_info(ctx, tree, view, query_result);
 
     list_item::list_item_scope(ui, "view_entity_picker", |ui| {
         add_entities_tree_ui(
@@ -85,7 +72,7 @@ fn add_entities_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, view: &ViewBluepr
             &tree.path.to_string(),
             tree,
             view,
-            &query_result,
+            query_result,
             entity_path_filter,
             &entities_add_info,
         );
@@ -262,117 +249,4 @@ fn add_entities_line_ui(
             });
         }
     });
-}
-
-/// Describes if an entity path can be added to a view.
-#[derive(Clone, PartialEq, Eq)]
-enum CanAddToView {
-    Compatible { already_added: bool },
-    No { reason: String },
-}
-
-impl Default for CanAddToView {
-    fn default() -> Self {
-        Self::Compatible {
-            already_added: false,
-        }
-    }
-}
-
-impl CanAddToView {
-    /// Can be generally added but view might already have this element.
-    pub fn is_compatible(&self) -> bool {
-        match self {
-            Self::Compatible { .. } => true,
-            Self::No { .. } => false,
-        }
-    }
-
-    /// Can be added and view doesn't have it already.
-    pub fn is_compatible_and_missing(&self) -> bool {
-        self == &Self::Compatible {
-            already_added: false,
-        }
-    }
-
-    pub fn join(&self, other: &Self) -> Self {
-        match self {
-            Self::Compatible { already_added } => {
-                let already_added = if let Self::Compatible {
-                    already_added: already_added_other,
-                } = other
-                {
-                    *already_added && *already_added_other
-                } else {
-                    *already_added
-                };
-                Self::Compatible { already_added }
-            }
-            Self::No { .. } => other.clone(),
-        }
-    }
-}
-
-#[derive(Default)]
-#[allow(dead_code)]
-struct EntityAddInfo {
-    can_add: CanAddToView,
-    can_add_self_or_descendant: CanAddToView,
-}
-
-fn create_entity_add_info(
-    ctx: &ViewerContext<'_>,
-    tree: &EntityTree,
-    view: &ViewBlueprint,
-    query_result: &DataQueryResult,
-) -> IntMap<EntityPath, EntityAddInfo> {
-    let mut meta_data: IntMap<EntityPath, EntityAddInfo> = IntMap::default();
-
-    // TODO(andreas): This should be state that is already available because it's part of the view's state.
-    let class = view.class(ctx.view_class_registry);
-    let visualizable_entities = class.determine_visualizable_entities(
-        ctx.applicable_entities_per_visualizer,
-        ctx.recording(),
-        &ctx.view_class_registry
-            .new_visualizer_collection(view.class_identifier()),
-        &view.space_origin,
-    );
-
-    tree.visit_children_recursively(|entity_path| {
-        let can_add: CanAddToView =
-            if visualizable_entities.iter().any(|(_, entities)| entities.contains(entity_path)) {
-                CanAddToView::Compatible {
-                    already_added: query_result.contains_entity(entity_path),
-                }
-            } else {
-                // TODO(#6321): This shouldn't necessarily prevent us from adding it.
-                CanAddToView::No {
-                    reason: format!(
-                        "Entity can't be displayed by any of the available visualizers in this class of view ({}).",
-                        view.class_identifier()
-                    ),
-                }
-            };
-
-        if can_add.is_compatible() {
-            // Mark parents aware that there is some descendant that is compatible
-            let mut path = entity_path.clone();
-            while let Some(parent) = path.parent() {
-                let data = meta_data.entry(parent.clone()).or_default();
-                data.can_add_self_or_descendant = data.can_add_self_or_descendant.join(&can_add);
-                path = parent;
-            }
-        }
-
-        let can_add_self_or_descendant = can_add.clone();
-        meta_data.insert(
-            entity_path.clone(),
-            EntityAddInfo {
-                can_add,
-                can_add_self_or_descendant,
-            },
-        );
-    });
-
-    meta_data
 }

@@ -151,6 +151,8 @@ pub use re_entity_db::external::re_chunk_store::{
 };
 pub use re_log_types::StoreKind;
 
+pub use re_capabilities::MainThreadToken;
+
 /// To register a new external data loader, simply add an executable in your $PATH whose name
 /// starts with this prefix.
 // NOTE: this constant is duplicated in `re_data_source` to avoid an extra dependency here.

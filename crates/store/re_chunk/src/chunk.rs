@@ -66,11 +66,13 @@ impl ChunkComponents {
         &mut self,
         component_desc: ComponentDescriptor,
         list_array: Arrow2ListArray<i32>,
-    ) {
+    ) -> Option<Arrow2ListArray<i32>> {
+        // TODO(cmc): revert me
+        let component_desc = component_desc.untagged();
         self.0
             .entry(component_desc.component_name)
             .or_default()
-            .insert(component_desc, list_array);
+            .insert(component_desc, list_array)
     }
 
     /// Returns all list arrays for the given component name.
@@ -144,9 +146,7 @@ impl FromIterator<(ComponentDescriptor, Arrow2ListArray<i32>)> for ChunkComponen
         let mut this = Self::default();
         {
             for (component_desc, list_array) in iter {
-                this.entry(component_desc.component_name)
-                    .or_default()
-                    .insert(component_desc, list_array);
+                this.insert_descriptor(component_desc, list_array);
             }
         }
         this

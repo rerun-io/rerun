@@ -32,7 +32,9 @@ class ForceCenter(Archetype):
         Parameters
         ----------
         enabled:
-            Whether the force is enabled.
+            Whether the center force is enabled.
+
+            The center force tries to move the center of mass of the graph towards the origin.
         strength:
             The strength of the force.
 
@@ -63,7 +65,9 @@ class ForceCenter(Archetype):
         default=None,
         converter=blueprint_components.EnabledBatch._optional,  # type: ignore[misc]
     )
-    # Whether the force is enabled.
+    # Whether the center force is enabled.
+    #
+    # The center force tries to move the center of mass of the graph towards the origin.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

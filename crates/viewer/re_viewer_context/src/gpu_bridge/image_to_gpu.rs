@@ -222,7 +222,9 @@ pub fn required_shader_decode(
         || color_model == ColorModel::BGRA
     {
         // U8 can be converted to RGBA without the shader's help since there's a format for it.
-        if image_format.datatype() == ChannelDatatype::U8 && device_caps.support_bgra_textures() {
+        if image_format.datatype() == ChannelDatatype::U8
+            && device_caps.tier.support_bgra_textures()
+        {
             None
         } else {
             Some(ShaderDecoding::Bgr)

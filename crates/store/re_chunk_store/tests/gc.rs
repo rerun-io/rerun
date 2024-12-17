@@ -387,6 +387,8 @@ fn protected_time_ranges() -> anyhow::Result<()> {
         }
     }
 
+    eprintln!("{store}");
+
     let (events, _) = store.gc(&protect_time_range(ResolvedTimeRange::new(1, 4)));
     assert_eq!(events.len(), 0);
 

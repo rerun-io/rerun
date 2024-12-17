@@ -4,7 +4,9 @@ namespace rerun.blueprint.archetypes;
 struct ForceLink (
     "attr.rerun.scope": "blueprint"
 ) {
-    /// Whether the force is enabled.
+    /// Whether the link force is enabled.
+    ///
+    /// The link force aims to achieve a target distance between two nodes that are connected by one ore more edges.
     enabled: rerun.blueprint.components.Enabled ("attr.rerun.component_optional", nullable, order: 100);
 
     /// The target distance between two nodes.

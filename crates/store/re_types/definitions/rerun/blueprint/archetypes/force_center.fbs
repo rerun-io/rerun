@@ -4,7 +4,9 @@ namespace rerun.blueprint.archetypes;
 struct ForceCenter (
     "attr.rerun.scope": "blueprint"
 ) {
-    /// Whether the force is enabled.
+    /// Whether the center force is enabled.
+    ///
+    /// The center force tries to move the center of mass of the graph towards the origin.
     enabled: rerun.blueprint.components.Enabled ("attr.rerun.component_optional", nullable, order: 100);
 
     /// The strength of the force.

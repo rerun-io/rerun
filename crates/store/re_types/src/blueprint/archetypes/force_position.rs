@@ -21,7 +21,9 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Archetype**: Similar to gravity, this force pulls nodes towards a specific position.
 #[derive(Clone, Debug)]
 pub struct ForcePosition {
-    /// Whether the force is enabled.
+    /// Whether the position force is enabled.
+    ///
+    /// The position force pulls nodes towards a specific position, similar to gravity.
     pub enabled: Option<crate::blueprint::components::Enabled>,
 
     /// The strength of the force.
@@ -246,7 +248,9 @@ impl ForcePosition {
         }
     }
 
-    /// Whether the force is enabled.
+    /// Whether the position force is enabled.
+    ///
+    /// The position force pulls nodes towards a specific position, similar to gravity.
     #[inline]
     pub fn with_enabled(
         mut self,

@@ -539,6 +539,7 @@ enum Command {
 // It would be nice to use [`std::process::ExitCode`] here but
 // then there's no good way to get back at the exit code from python
 pub fn run<I, T>(
+    main_thread_token: crate::MainThreadToken,
     build_info: re_build_info::BuildInfo,
     call_source: CallSource,
     args: I,
@@ -595,7 +596,7 @@ where
             }
         }
     } else {
-        run_impl(build_info, call_source, args)
+        run_impl(main_thread_token, build_info, call_source, args)
     };
 
     match res {
@@ -620,6 +621,7 @@ where
 }
 
 fn run_impl(
+    main_thread_token: crate::MainThreadToken,
     _build_info: re_build_info::BuildInfo,
     call_source: CallSource,
     args: Args,
@@ -836,8 +838,10 @@ fn run_impl(
     } else {
         #[cfg(feature = "native_viewer")]
         return re_viewer::run_native_app(
+            main_thread_token,
             Box::new(move |cc| {
                 let mut app = re_viewer::App::new(
+                    main_thread_token,
                     _build_info,
                     &call_source.app_env(),
                     startup_options,

@@ -6,12 +6,16 @@ use ahash::HashMap;
 use egui_tiles::{Behavior as _, EditAction};
 
 use re_context_menu::{context_menu_ui_for_item, SelectionUpdateBehavior};
-use re_ui::{ContextExt as _, DesignTokens, Icon, UiExt as _};
+use re_log_types::{EntityPath, EntityPathRule};
+use re_ui::{design_tokens, ContextExt as _, DesignTokens, Icon, UiExt as _};
 use re_viewer_context::{
-    blueprint_id_to_tile_id, icon_for_container_kind, Contents, Item, PublishedViewInfo,
-    SystemExecutionOutput, ViewClassRegistry, ViewId, ViewQuery, ViewStates, ViewerContext,
+    blueprint_id_to_tile_id, icon_for_container_kind, Contents, DragAndDropFeedback,
+    DragAndDropPayload, Item, PublishedViewInfo, SystemExecutionOutput, ViewClassRegistry, ViewId,
+    ViewQuery, ViewStates, ViewerContext,
 };
-use re_viewport_blueprint::{ViewportBlueprint, ViewportCommand};
+use re_viewport_blueprint::{
+    create_entity_add_info, ViewBlueprint, ViewportBlueprint, ViewportCommand,
+};
 
 use crate::system_execution::{execute_systems_for_all_views, execute_systems_for_view};
 
@@ -68,8 +72,12 @@ impl ViewportUi {
 
         let mut tree = if let Some(view_id) = blueprint.maximized {
             let mut tiles = egui_tiles::Tiles::default();
-            let root = tiles.insert_pane(view_id);
-            egui_tiles::Tree::new("viewport_tree", root, tiles)
+
+            // we must ensure that our temporary tree has the correct tile id, such that the tile id
+            // to view id logic later in this function works correctly
+            let tile_id = Contents::View(view_id).as_tile_id();
+            tiles.insert(tile_id, egui_tiles::Tile::Pane(view_id));
+            egui_tiles::Tree::new("viewport_tree", tile_id, tiles)
         } else {
             blueprint.tree.clone()
         };
@@ -100,6 +108,15 @@ impl ViewportUi {
 
             tree.ui(&mut egui_tiles_delegate, ui);
 
+            let dragged_payload = egui::DragAndDrop::payload::<DragAndDropPayload>(ui.ctx());
+            let dragged_payload = dragged_payload.as_ref().and_then(|payload| {
+                if let DragAndDropPayload::Entities { entities } = payload.as_ref() {
+                    Some(entities)
+                } else {
+                    None
+                }
+            });
+
             // Outline hovered & selected tiles:
             for contents in blueprint.contents_iter() {
                 let tile_id = contents.as_tile_id();
@@ -117,7 +134,30 @@ impl ViewportUi {
                         hovered = false;
                     }
 
-                    let stroke = if hovered {
+                    // Handle drag-and-drop if this is a view.
+                    //TODO(#8428): simplify with let-chains
+                    let should_display_drop_destination_frame = 'scope: {
+                        if !ui.rect_contains_pointer(rect) {
+                            break 'scope false;
+                        }
+
+                        let Some(view_blueprint) = contents
+                            .as_view_id()
+                            .and_then(|view_id| self.blueprint.view(&view_id))
+                        else {
+                            break 'scope false;
+                        };
+
+                        let Some(dragged_payload) = dragged_payload else {
+                            break 'scope false;
+                        };
+
+                        Self::handle_drop_entities_to_view(ctx, view_blueprint, dragged_payload)
+                    };
+
+                    let stroke = if should_display_drop_destination_frame {
+                        design_tokens().drop_target_container_stroke()
+                    } else if hovered {
                         ui.ctx().hover_stroke()
                     } else if selected {
                         ui.ctx().selection_stroke()
@@ -127,13 +167,22 @@ impl ViewportUi {
 
                     // We want the rectangle to be on top of everything in the viewport,
                     // including stuff in "zoom-pan areas", like we use in the graph view.
-                    let top_layer_id = egui::LayerId::new(ui.layer_id().order, ui.id().with("child_id"));
+                    let top_layer_id =
+                        egui::LayerId::new(ui.layer_id().order, ui.id().with("child_id"));
                     ui.ctx().set_sublayer(ui.layer_id(), top_layer_id); // Make sure it is directly on top of the ui layer
 
                     // We need to shrink a bit so the panel-resize lines don't cover the highlight rectangle.
                     // This is hacky.
-                    ui.painter().clone().with_layer_id(top_layer_id)
-                        .rect_stroke(rect.shrink(stroke.width), 0.0, stroke);
+                    let painter = ui.painter().clone().with_layer_id(top_layer_id);
+                    painter.rect_stroke(rect.shrink(stroke.width), 0.0, stroke);
+
+                    if should_display_drop_destination_frame {
+                        painter.rect_filled(
+                            rect.shrink(stroke.width),
+                            0.0,
+                            stroke.color.gamma_multiply(0.1),
+                        );
+                    }
                 }
             }
 
@@ -144,7 +193,8 @@ impl ViewportUi {
                 if egui_tiles_delegate.edited || is_dragging_a_tile {
                     if blueprint.auto_layout() {
                         re_log::trace!(
-                            "The user is manipulating the egui_tiles tree - will no longer auto-layout"
+                            "The user is manipulating the egui_tiles tree - will no longer \
+                            auto-layout"
                         );
                     }
 
@@ -164,12 +214,79 @@ impl ViewportUi {
                         });
                     }
 
-                    self.blueprint.deferred_commands.lock().push(ViewportCommand::SetTree(tree));
+                    self.blueprint
+                        .deferred_commands
+                        .lock()
+                        .push(ViewportCommand::SetTree(tree));
                 }
             }
         });
 
         self.blueprint.set_maximized(maximized, ctx);
+    }
+
+    /// Handle the entities being dragged over a view.
+    ///
+    /// Returns whether a "drop zone candidate" frame should be displayed to the user.
+    ///
+    /// Design decisions:
+    /// - We accept the drop only if at least one of the entities is visualizable and not already
+    ///   included.
+    /// - When the drop happens, of all dropped entities, we only add those which are visualizable.
+    ///
+    fn handle_drop_entities_to_view(
+        ctx: &ViewerContext<'_>,
+        view_blueprint: &ViewBlueprint,
+        entities: &[EntityPath],
+    ) -> bool {
+        let add_info = create_entity_add_info(
+            ctx,
+            ctx.recording().tree(),
+            view_blueprint,
+            ctx.lookup_query_result(view_blueprint.id),
+        );
+
+        // check if any entity or its children are visualizable and not yet included in the view
+        let can_entity_be_added = |entity: &EntityPath| {
+            add_info
+                .get(entity)
+                .is_some_and(|info| info.can_add_self_or_descendant.is_compatible_and_missing())
+        };
+
+        let any_is_visualizable = entities.iter().any(can_entity_be_added);
+
+        ctx.drag_and_drop_manager
+            .set_feedback(if any_is_visualizable {
+                DragAndDropFeedback::Accept
+            } else {
+                DragAndDropFeedback::Reject
+            });
+
+        if !any_is_visualizable {
+            return false;
+        }
+
+        // drop incoming!
+        if ctx.egui_ctx.input(|i| i.pointer.any_released()) {
+            egui::DragAndDrop::clear_payload(ctx.egui_ctx);
+
+            for entity in entities {
+                if can_entity_be_added(entity) {
+                    view_blueprint.contents.raw_add_entity_inclusion(
+                        ctx,
+                        EntityPathRule::including_subtree(entity.clone()),
+                    );
+                }
+            }
+
+            ctx.selection_state()
+                .set_selection(Item::View(view_blueprint.id));
+
+            // drop is completed, no need for highlighting anymore
+            false
+        } else {
+            any_is_visualizable
+        }
     }
 
     pub fn on_frame_start(&self, ctx: &ViewerContext<'_>) {
@@ -544,7 +661,7 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
                         *view_id,
                         PublishedViewInfo {
                             name: view_blueprint.display_name_or_default().as_ref().to_owned(),
-                            rect: ui.min_rect(),
+                            rect: ui.max_rect(),
                         },
                     );
             });
