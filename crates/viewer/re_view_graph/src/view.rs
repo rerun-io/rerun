@@ -28,7 +28,7 @@ use re_viewport_blueprint::ViewProperty;
 use crate::{
     graph::Graph,
     layout::{ForceLayoutParams, LayoutRequest},
-    ui::{draw_debug, draw_graph, view_property_force_ui, GraphViewState},
+    ui::{draw_graph, view_property_force_ui, GraphViewState},
     visualizers::{merge, EdgesVisualizer, NodeVisualizer},
 };
 
@@ -131,10 +131,6 @@ Display a graph of nodes and edges.
         ui.selection_grid("graph_view_settings_ui").show(ui, |ui| {
             state.layout_ui(ui);
             state.simulation_ui(ui);
-
-            // Limit debug UI to debug builds.
-            #[cfg(debug_assertions)]
-            state.debug_ui(ui);
         });
 
         re_ui::list_item::list_item_scope(ui, "graph_selection_ui", |ui| {
@@ -199,12 +195,6 @@ Display a graph of nodes and edges.
             for graph in &graphs {
                 let graph_rect = draw_graph(ui, ctx, graph, layout, query);
                 world_bounding_rect = world_bounding_rect.union(graph_rect);
-            }
-
-            // We need to draw the debug information after the rest to ensure that we have the correct bounding box.
-            #[cfg(debug_assertions)]
-            if state.show_debug {
-                draw_debug(ui, world_bounding_rect);
             }
         });
 

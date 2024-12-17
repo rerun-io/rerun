@@ -158,29 +158,6 @@ fn draw_node(
     node_ui.response()
 }
 
-#[cfg(debug_assertions)]
-/// Draws a bounding box, as well as a basic coordinate system.
-pub fn draw_debug(ui: &Ui, world_bounding_rect: Rect) {
-    let painter = ui.painter();
-
-    // Paint coordinate system at the world origin
-    let origin = Pos2::new(0.0, 0.0);
-    let x_axis = Pos2::new(100.0, 0.0);
-    let y_axis = Pos2::new(0.0, 100.0);
-
-    painter.line_segment([origin, x_axis], Stroke::new(1.0, Color32::RED));
-    painter.line_segment([origin, y_axis], Stroke::new(1.0, Color32::GREEN));
-
-    if world_bounding_rect.is_positive() {
-        painter.rect(
-            world_bounding_rect,
-            0.0,
-            Color32::from_rgba_unmultiplied(255, 0, 255, 8),
-            Stroke::new(1.0, Color32::from_rgb(255, 0, 255)),
-        );
-    }
-}
-
 /// Helper function to draw an arrow at the end of the edge
 fn draw_arrow(painter: &Painter, tip: Pos2, direction: Vec2, color: Color32) {
     let arrow_size = 10.0; // Adjust size as needed
