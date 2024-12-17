@@ -151,12 +151,6 @@ impl NotificationUi {
 
     pub fn ui(&mut self, egui_ctx: &egui::Context, is_panel_visible: &mut bool) {
         if *is_panel_visible {
-            let escape_pressed =
-                egui_ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape));
-            if escape_pressed {
-                *is_panel_visible = false;
-            }
-
             // Opening panel is the same as dismissing all toasts
             self.unread_notification_level = None;
             for notification in &mut self.notifications {
@@ -172,6 +166,14 @@ impl NotificationUi {
         self.panel
             .show(egui_ctx, &mut self.notifications, is_panel_visible);
         self.toasts.show(egui_ctx, &mut self.notifications[..]);
+
+        if *is_panel_visible {
+            let escape_pressed =
+                egui_ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape));
+            if escape_pressed {
+                *is_panel_visible = false;
+            }
+        }
     }
 }
 
@@ -358,7 +360,7 @@ fn show_notification(
     mode: DisplayMode,
     mut on_dismiss: impl FnMut(),
 ) -> egui::Response {
-    let background_color = if notification.is_unread {
+    let background_color = if mode == DisplayMode::Toast || notification.is_unread {
         design_tokens().color(ColorToken::gray(Scale::S200))
     } else {
         design_tokens().color(ColorToken::gray(Scale::S150))
