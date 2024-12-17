@@ -206,6 +206,10 @@ Display a graph of nodes and edges.
             }
         });
 
+        if resp.hovered() {
+            ctx.selection_state().set_hovered(Item::View(query.view_id));
+        }
+
         if resp.clicked() {
             // clicked elsewhere, select the view
             ctx.selection_state()
