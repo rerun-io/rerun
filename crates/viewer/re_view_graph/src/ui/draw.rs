@@ -368,7 +368,11 @@ pub fn draw_graph(
                     *hovered = Some(Item::DataResult(query.view_id, instance_path.clone()));
                 }
 
-                // double click selects the entire entity
+                if response.clicked() {
+                    ctx.selection_state()
+                        .set_selection(Item::DataResult(query.view_id, instance_path.clone()));
+                }
+
                 if response.double_clicked() {
                     // Select the entire entity
                     ctx.selection_state().set_selection(Item::DataResult(
