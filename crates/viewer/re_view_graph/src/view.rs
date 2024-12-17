@@ -200,7 +200,9 @@ Display a graph of nodes and edges.
             }
         });
 
-        if resp.hovered() {
+        // Don't set the view to hovered if something else was already hovered.
+        // (this can only mean that a graph node/edge was hovered)
+        if resp.hovered() && ctx.selection_state().hovered_items().is_empty() {
             ctx.selection_state().set_hovered(Item::View(query.view_id));
         }
 
