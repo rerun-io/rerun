@@ -150,6 +150,7 @@ pub struct ScreenshotInfo {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ScreenshotTarget {
     /// The screenshot will be copied to the clipboard.
+    #[cfg(not(target_arch = "wasm32"))] // TODO(#8264): copy-to-screenshot on web
     CopyToClipboard,
 
     /// The screenshot will be saved to disk.

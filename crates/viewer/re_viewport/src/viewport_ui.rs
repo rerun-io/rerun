@@ -544,7 +544,7 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
                         *view_id,
                         PublishedViewInfo {
                             name: view_blueprint.display_name_or_default().as_ref().to_owned(),
-                            rect: ui.min_rect(),
+                            rect: ui.max_rect(),
                         },
                     );
             });
