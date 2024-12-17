@@ -246,6 +246,10 @@ impl NotificationPanel {
             })
             .response;
 
+        if response.clicked_elsewhere() {
+            *is_panel_visible = false;
+        }
+
         if dismiss_all {
             notifications.clear();
         } else if let Some(to_dismiss) = to_dismiss {

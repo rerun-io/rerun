@@ -1065,6 +1065,16 @@ impl App {
 
                 crate::ui::mobile_warning_ui(ui);
 
+                // NOTE: We do this here because the `notifications` UI is on top,
+                //       and may want to consume some key events.
+                // This should come _before_ `top_panel`, otherwise the notification panel
+                // is closed when the toggle button is clicked.
+                self.show_text_logs_as_notifications();
+                if !self.screenshotter.is_screenshotting() {
+                    self.notifications
+                        .ui(egui_ctx, &mut self.notifications_panel_open);
+                }
+
                 crate::ui::top_panel(
                     frame,
                     self,
@@ -1073,14 +1083,6 @@ impl App {
                     gpu_resource_stats,
                     ui,
                 );
-
-                // NOTE: We do this here because the `notifications` UI is on top,
-                //       and may want to consume some key events.
-                self.show_text_logs_as_notifications();
-                if !self.screenshotter.is_screenshotting() {
-                    self.notifications
-                        .ui(egui_ctx, &mut self.notifications_panel_open);
-                }
 
                 self.memory_panel_ui(ui, gpu_resource_stats, store_stats);
 
