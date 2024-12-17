@@ -11,10 +11,11 @@
 /// See also `global_bindings.wgsl`
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DeviceTier {
-    /// Limited feature support as provided by WebGL and native GLES2/OpenGL3(ish).
+    /// Limited feature support as provided by WebGL and typically only by GLES2/OpenGL3(ish).
     ///
     /// Note that we do not distinguish between WebGL & native GL here,
     /// instead, we go with the lowest common denominator.
+    /// In theory this path can also be hit on Vulkan & Metal drivers, but this is exceedingly rare.
     Gles = 0,
 
     /// Full support of WebGPU spec without additional feature requirements.
@@ -24,6 +25,82 @@ pub enum DeviceTier {
     FullWebGpuSupport = 1,
     // Run natively with Vulkan/Metal and require additional features.
     //HighEnd
+}
+
+impl DeviceTier {
+    /// Whether the current device tier supports sampling from textures with a sample count higher than 1.
+    pub fn support_sampling_msaa_texture(&self) -> bool {
+        match self {
+            Self::Gles => false,
+            Self::FullWebGpuSupport => true,
+        }
+    }
+
+    /// Whether the current device tier supports reading back depth textures.
+    ///
+    /// If this returns false, we first have to create a copy of the depth buffer by rendering depth to a different texture.
+    pub fn support_depth_readback(&self) -> bool {
+        match self {
+            Self::Gles => false,
+            Self::FullWebGpuSupport => true,
+        }
+    }
+
+    pub fn support_bgra_textures(&self) -> bool {
+        match self {
+            // TODO(wgpu#3583): Incorrectly reported by wgpu right now.
+            // GLES2 does not support BGRA textures!
+            Self::Gles => false,
+            Self::FullWebGpuSupport => true,
+        }
+    }
+
+    /// Downlevel features required by the given tier.
+    pub fn required_downlevel_capabilities(&self) -> wgpu::DownlevelCapabilities {
+        wgpu::DownlevelCapabilities {
+            flags: match self {
+                Self::Gles => wgpu::DownlevelFlags::empty(),
+                // Require fully WebGPU compliance for the native tier.
+                Self::FullWebGpuSupport => wgpu::DownlevelFlags::all(),
+            },
+            limits: Default::default(), // unused so far both here and in wgpu as of writing.
+
+            // Sm3 is missing a lot of features and even has an instruction count limit.
+            // Sm4 is missing storage images and other minor features.
+            // Sm5 is WebGPU compliant
+            shader_model: wgpu::ShaderModel::Sm4,
+        }
+    }
+
+    /// Required features for the given device tier.
+    #[allow(clippy::unused_self)]
+    pub fn features(&self) -> wgpu::Features {
+        wgpu::Features::empty()
+    }
+
+    /// Check whether the given downlevel caps are sufficient for this tier.
+    pub fn check_required_downlevel_capabilities(
+        &self,
+        downlevel_caps: &wgpu::DownlevelCapabilities,
+    ) -> Result<(), InsufficientDeviceCapabilities> {
+        let required_downlevel_caps_webgpu = self.required_downlevel_capabilities();
+        if downlevel_caps.shader_model < required_downlevel_caps_webgpu.shader_model {
+            Err(InsufficientDeviceCapabilities::TooLowShaderModel {
+                required: required_downlevel_caps_webgpu.shader_model,
+                actual: downlevel_caps.shader_model,
+            })
+        } else if !downlevel_caps
+            .flags
+            .contains(required_downlevel_caps_webgpu.flags)
+        {
+            Err(InsufficientDeviceCapabilities::MissingCapabilitiesFlags {
+                required: required_downlevel_caps_webgpu.flags,
+                actual: downlevel_caps.flags,
+            })
+        } else {
+            Ok(())
+        }
+    }
 }
 
 /// Type of Wgpu backend.
@@ -44,17 +121,20 @@ pub enum WgpuBackendType {
 
 #[derive(thiserror::Error, Debug)]
 pub enum InsufficientDeviceCapabilities {
-    #[error("Adapter does not support the minimum shader model required. Supported is {actual:?} but required is {required:?}")]
+    #[error("Adapter does not support the minimum shader model required. Supported is {actual:?} but required is {required:?}.")]
     TooLowShaderModel {
         required: wgpu::ShaderModel,
         actual: wgpu::ShaderModel,
     },
 
-    #[error("Adapter does not have all the required capability flags required. Supported are {actual:?} but required are {required:?}")]
+    #[error("Adapter does not have all the required capability flags required. Supported are {actual:?} but required are {required:?}.")]
     MissingCapabilitiesFlags {
         required: wgpu::DownlevelFlags,
         actual: wgpu::DownlevelFlags,
     },
+
+    #[error("Adapter does not support drawing to texture format {format:?}")]
+    CantDrawToTexture { format: wgpu::TextureFormat },
 }
 
 /// Capabilities of a given device.
@@ -85,47 +165,27 @@ pub struct DeviceCaps {
 }
 
 impl DeviceCaps {
-    /// Whether the current device tier supports sampling from textures with a sample count higher than 1.
-    pub fn support_sampling_msaa_texture(&self) -> bool {
-        match self.tier {
-            DeviceTier::Gles => false,
-            DeviceTier::FullWebGpuSupport => true,
-        }
-    }
-
-    /// Whether the current device tier supports sampling from textures with a sample count higher than 1.
-    pub fn support_depth_readback(&self) -> bool {
-        match self.tier {
-            DeviceTier::Gles => false,
-            DeviceTier::FullWebGpuSupport => true,
-        }
-    }
-
-    pub fn support_bgra_textures(&self) -> bool {
-        match self.tier {
-            // TODO(wgpu#3583): Incorrectly reported by wgpu right now.
-            // GLES2 does not support BGRA textures!
-            DeviceTier::Gles => false,
-            DeviceTier::FullWebGpuSupport => true,
-        }
-    }
-
-    /// Picks the highest possible tier for a given adapter.
+    /// Picks the highest possible tier for a given adapter, but doesn't validate that all the capabilities needed are there.
     ///
-    /// Note that it is always possible to pick a lower tier!
-    pub fn from_adapter(adapter: &wgpu::Adapter) -> Self {
-        let backend = adapter.get_info().backend;
+    /// This is really only needed for generating a device descriptor for [`Self::device_descriptor`].
+    /// See also use of `egui_wgpu::WgpuSetup::CreateNew`
+    pub fn from_adapter_without_validation(adapter: &wgpu::Adapter) -> Self {
+        let downlevel_caps = adapter.get_downlevel_capabilities();
 
-        let tier = match backend {
-            wgpu::Backend::Vulkan
-            | wgpu::Backend::Metal
-            | wgpu::Backend::Dx12
-            | wgpu::Backend::BrowserWebGpu => DeviceTier::FullWebGpuSupport,
-
-            wgpu::Backend::Gl | wgpu::Backend::Empty => DeviceTier::Gles,
+        // Note that non-GL backend doesn't automatically mean we support all downlevel flags.
+        // (practically that's only the case for a handful of Vulkan/Metal devices and even so that's rare.
+        // Practically all issues are with GL)
+        let tier = if DeviceTier::FullWebGpuSupport
+            .check_required_downlevel_capabilities(&downlevel_caps)
+            .is_ok()
+        {
+            // We pass the WebGPU min-spec!
+            DeviceTier::FullWebGpuSupport
+        } else {
+            DeviceTier::Gles
         };
 
-        let backend_type = match backend {
+        let backend_type = match adapter.get_info().backend {
             wgpu::Backend::Empty
             | wgpu::Backend::Vulkan
             | wgpu::Backend::Metal
@@ -142,13 +202,78 @@ impl DeviceCaps {
                 }
             }
         };
+        let limits = adapter.limits();
 
         Self {
             tier,
-            max_texture_dimension2d: adapter.limits().max_texture_dimension_2d,
-            max_buffer_size: adapter.limits().max_buffer_size,
+            max_texture_dimension2d: limits.max_texture_dimension_2d,
+            max_buffer_size: limits.max_buffer_size,
             backend_type,
         }
+    }
+
+    /// Picks the highest possible tier for a given adapter.
+    ///
+    /// Note that it is always possible to pick a lower tier!
+    pub fn from_adapter(adapter: &wgpu::Adapter) -> Result<Self, InsufficientDeviceCapabilities> {
+        let caps = Self::from_adapter_without_validation(adapter);
+        caps.tier
+            .check_required_downlevel_capabilities(&adapter.get_downlevel_capabilities())?;
+
+        if caps.tier == DeviceTier::Gles {
+            // Check texture format support. If `WEBGPU_TEXTURE_FORMAT_SUPPORT` is enabled, we're generally fine.
+            // This is an implicit requirement for the WebGPU tier and above.
+            if !adapter
+                .get_downlevel_capabilities()
+                .flags
+                .contains(wgpu::DownlevelFlags::WEBGPU_TEXTURE_FORMAT_SUPPORT)
+            {
+                // Otherwise, make sure some basic formats are supported for drawing.
+                // This is far from an exhaustive list, but it's a good sanity check for formats that may be missing.
+                let formats_required_for_drawing = [
+                    crate::ViewBuilder::MAIN_TARGET_COLOR_FORMAT,
+                    // R32f has previously observed being missing on old OpenGL drivers and was fixed by updating the driver.
+                    // https://github.com/rerun-io/rerun/issues/8466
+                    // We use this as a fallback when depth readback is not support, but making this a general requirement
+                    // seems wise as this is a great litmus test for potato drivers.
+                    wgpu::TextureFormat::R32Float,
+                    // The picking layer format is an integer texture. Might be slightly more challenging for some backends.
+                    crate::PickingLayerProcessor::PICKING_LAYER_FORMAT,
+                ];
+
+                for format in formats_required_for_drawing {
+                    if !adapter
+                        .get_texture_format_features(format)
+                        .allowed_usages
+                        .contains(wgpu::TextureUsages::RENDER_ATTACHMENT)
+                    {
+                        return Err(InsufficientDeviceCapabilities::CantDrawToTexture { format });
+                    }
+                }
+            }
+
+            // Alright, this should still basically work.
+            // This is really old though, so if we're not doing WebGL where this is kinda expected, let's issue a warning
+            // in order to let the user know that they might be in trouble.
+            //
+            // In the long run we'd like WebGPU to be our minspec!
+            // To learn more about the WebGPU minspec check:
+            // * https://github.com/gpuweb/gpuweb/issues/1069
+            // * https://www.w3.org/TR/webgpu/#adapter-capability-guarantees
+            // * https://www.w3.org/TR/webgpu/#limits
+            // This is roughly everything post 2014, so still VERY generous.
+            //
+            // It's much more likely we end up in here because of…
+            // * older software rasterizer
+            // * old/missing driver
+            // * some VM/container setup with limited graphics capabilities.
+            //
+            // That's a lot of murky information, so let's keep the actual message crisp for now.
+            #[cfg(not(web))]
+            re_log::warn!("Running on a GPU/graphics driver with very limited abilitites. Consider updating your driver.");
+        };
+
+        Ok(caps)
     }
 
     /// Wgpu limits required by the given device tier.
@@ -160,72 +285,15 @@ impl DeviceCaps {
         }
     }
 
-    /// Required features for the given device tier.
-    #[allow(clippy::unused_self)]
-    pub fn features(&self) -> wgpu::Features {
-        wgpu::Features::empty()
-    }
-
     /// Device descriptor compatible with the given device tier.
     pub fn device_descriptor(&self) -> wgpu::DeviceDescriptor<'static> {
         wgpu::DeviceDescriptor {
             label: Some("re_renderer device"),
-            required_features: self.features(),
+            required_features: self.tier.features(),
             required_limits: self.limits(),
             memory_hints: Default::default(),
         }
     }
-
-    /// Downlevel features required by the given tier.
-    pub fn required_downlevel_capabilities(&self) -> wgpu::DownlevelCapabilities {
-        wgpu::DownlevelCapabilities {
-            flags: match self.tier {
-                DeviceTier::Gles => wgpu::DownlevelFlags::empty(),
-                // Require fully WebGPU compliance for the native tier.
-                DeviceTier::FullWebGpuSupport => wgpu::DownlevelFlags::all(),
-            },
-            limits: Default::default(), // unused so far both here and in wgpu
-            shader_model: wgpu::ShaderModel::Sm4,
-        }
-    }
-
-    /// Checks if passed downlevel capabilities support the given device tier.
-    pub fn check_downlevel_capabilities(
-        &self,
-        capabilities: &wgpu::DownlevelCapabilities,
-    ) -> Result<(), InsufficientDeviceCapabilities> {
-        let wgpu::DownlevelCapabilities {
-            flags,
-            limits: _,
-            shader_model,
-        } = self.required_downlevel_capabilities();
-
-        if capabilities.shader_model < shader_model {
-            Err(InsufficientDeviceCapabilities::TooLowShaderModel {
-                required: shader_model,
-                actual: capabilities.shader_model,
-            })
-        } else if !capabilities.flags.contains(flags) {
-            Err(InsufficientDeviceCapabilities::MissingCapabilitiesFlags {
-                required: flags,
-                actual: capabilities.flags,
-            })
-        } else {
-            Ok(())
-        }
-    }
-}
-
-/// Startup configuration for a [`crate::RenderContext`]
-///
-/// Contains any kind of configuration that doesn't change for the entire lifetime of a [`crate::RenderContext`].
-/// (flipside, if we do want to change any of these, the [`crate::RenderContext`] needs to be re-created)
-pub struct RenderContextConfig {
-    /// The color format used by the eframe output buffer.
-    pub output_format_color: wgpu::TextureFormat,
-
-    /// Hardware capabilities of the device.
-    pub device_caps: DeviceCaps,
 }
 
 /// Backends that are officially supported by `re_renderer`.

@@ -475,7 +475,7 @@ impl ViewBuilder {
             pixel_world_size_from_camera_distance,
             pixels_per_point: config.pixels_per_point,
 
-            device_tier: (ctx.config.device_caps.tier as u32).into(),
+            device_tier: (ctx.device_caps().tier as u32).into(),
         };
         let frame_uniform_buffer = create_and_fill_uniform_buffer(
             ctx,

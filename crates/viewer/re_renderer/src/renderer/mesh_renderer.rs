@@ -388,7 +388,7 @@ impl Renderer for MeshRenderer {
                 fragment_entrypoint: "fs_main_outline_mask".into(),
                 render_targets: smallvec![Some(OutlineMaskProcessor::MASK_FORMAT.into())],
                 depth_stencil: OutlineMaskProcessor::MASK_DEPTH_STATE,
-                multisample: OutlineMaskProcessor::mask_default_msaa_state(&ctx.config.device_caps),
+                multisample: OutlineMaskProcessor::mask_default_msaa_state(ctx.device_caps().tier),
                 ..render_pipeline_shaded_desc
             },
         );

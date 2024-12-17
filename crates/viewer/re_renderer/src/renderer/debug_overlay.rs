@@ -207,7 +207,7 @@ impl Renderer for DebugOverlayRenderer {
                 fragment_entrypoint: "main_fs".into(),
                 fragment_handle: shader_module,
                 vertex_buffers: smallvec![],
-                render_targets: smallvec![Some(ctx.config.output_format_color.into())],
+                render_targets: smallvec![Some(ctx.output_format_color().into())],
                 primitive: wgpu::PrimitiveState {
                     topology: wgpu::PrimitiveTopology::TriangleStrip,
                     cull_mode: None,
