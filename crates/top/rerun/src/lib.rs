@@ -81,12 +81,13 @@
 //! You can buffer the log messages in memory and then show them in an embedded viewer:
 //!
 //! ```no_run
+//! # let main_thread_token = re_capabilities::MainThreadToken::i_promise_i_am_on_the_main_thread();
 //! # fn log_to(rec: &rerun::RecordingStream) {}
 //! let (rec, storage) = rerun::RecordingStreamBuilder::new("rerun_example_app").memory()?;
 //! log_to(&rec);
 //!
 //! // Will block program execution!
-//! rerun::native_viewer::show(storage.take());
+//! rerun::native_viewer::show(main_thread_token, storage.take());
 //!
 //! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
