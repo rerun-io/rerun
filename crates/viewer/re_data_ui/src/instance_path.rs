@@ -67,7 +67,7 @@ impl DataUi for InstancePath {
             .filter(|c| c.is_indicator_component())
             .count();
 
-        let components = latest_at(db, query, entity_path, &components);
+        let mut components = latest_at(db, query, entity_path, &components);
 
         if components.is_empty() {
             ui_layout.label(
@@ -96,6 +96,20 @@ impl DataUi for InstancePath {
                 ),
             );
         } else {
+            // TODO(#7026): Instances today are too poorly defined:
+            // For many archetypes it makes sense to slice through all their component arrays with the same index.
+            // However, there are cases when there are multiple dimensions of slicing that make sense.
+            // This is most obvious for meshes & graph nodes where there are different dimentions for vertices/edges/etc.
+            //
+            // For graph nodes this is particularly glaring since our indicices imply nodes today and
+            // unlike with meshes it's very easy to hover & select individual nodes.
+            // In order to work around the GraphEdges showing up associated with random nodes, we just hide them here.
+            // (this is obviously a hack and these relationships should be formalized such that they are accessible to the UI, see ticket link above)
+            if !self.is_all() {
+                components
+                    .retain(|(component, _chunk)| component != &components::GraphEdge::name());
+            }
+
             component_list_ui(
                 ctx,
                 ui,
