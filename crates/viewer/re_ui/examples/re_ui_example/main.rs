@@ -421,7 +421,7 @@ impl ExampleApp {
             notifications::notification_toggle_button(
                 ui,
                 &mut self.show_notification_panel,
-                self.notifications.has_unread_notifications(),
+                self.notifications.unread_notification_level(),
             );
         });
     }

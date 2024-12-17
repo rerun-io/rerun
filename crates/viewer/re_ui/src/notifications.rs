@@ -14,12 +14,23 @@ fn now() -> OffsetDateTime {
     OffsetDateTime::now_local().unwrap_or_else(|_| OffsetDateTime::now_utc())
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum NotificationLevel {
-    Info,
-    Warning,
-    Error,
-    Success,
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum NotificationLevel {
+    Info = 0,
+    Success = 1,
+    Warning = 2,
+    Error = 3,
+}
+
+impl NotificationLevel {
+    fn color(&self, ui: &egui::Ui) -> egui::Color32 {
+        match self {
+            Self::Info => crate::INFO_COLOR,
+            Self::Warning => ui.style().visuals.warn_fg_color,
+            Self::Error => ui.style().visuals.error_fg_color,
+            Self::Success => crate::SUCCESS_COLOR,
+        }
+    }
 }
 
 impl From<re_log::Level> for NotificationLevel {
@@ -47,15 +58,15 @@ fn is_relevant(target: &str, level: re_log::Level) -> bool {
 pub fn notification_toggle_button(
     ui: &mut egui::Ui,
     show_notification_panel: &mut bool,
-    has_unread_notifications: bool,
+    unread_notification_level: Option<NotificationLevel>,
 ) {
     let response = ui.medium_icon_toggle_button(&icons::NOTIFICATION, show_notification_panel);
 
-    if has_unread_notifications {
-        let mut pos = response.rect.right_top();
-        pos.x -= 2.0;
-        pos.y += 2.0;
-        ui.painter().circle_filled(pos, 3.0, hex_color!("#ab0037"));
+    if let Some(level) = unread_notification_level {
+        let pos = response.rect.right_top() + egui::vec2(-2.0, 2.0);
+        let radius = 3.0;
+        let color = level.color(ui);
+        ui.painter().circle_filled(pos, radius, color);
     }
 }
 
@@ -76,7 +87,7 @@ pub struct NotificationUi {
     /// Notifications are stored in order of ascending `created_at`, so the latest one is at the end.
     data: Vec<Notification>,
 
-    has_unread_notifications: bool,
+    unread_notification_level: Option<NotificationLevel>,
 
     /// Panel that shows all notifications.
     panel: NotificationPanel,
@@ -95,14 +106,14 @@ impl NotificationUi {
     pub fn new() -> Self {
         Self {
             data: Vec::new(),
-            has_unread_notifications: false,
+            unread_notification_level: None,
             panel: NotificationPanel::new(),
             toasts: Toasts::new(),
         }
     }
 
-    pub fn has_unread_notifications(&self) -> bool {
-        self.has_unread_notifications
+    pub fn unread_notification_level(&self) -> Option<NotificationLevel> {
+        self.unread_notification_level
     }
 
     pub fn add_log(&mut self, target: &str, level: Level, text: impl Into<String>) {
@@ -125,7 +136,10 @@ impl NotificationUi {
             created_at: now(),
             toast_ttl: base_ttl(),
         });
-        self.has_unread_notifications = true;
+
+        if Some(level) > self.unread_notification_level {
+            self.unread_notification_level = Some(level);
+        }
     }
 
     pub fn ui(&mut self, egui_ctx: &egui::Context, is_panel_visible: &mut bool) {
@@ -136,7 +150,7 @@ impl NotificationUi {
                 *is_panel_visible = false;
             }
 
-            self.has_unread_notifications = false;
+            self.unread_notification_level = None;
         }
 
         self.panel.show(egui_ctx, &mut self.data, is_panel_visible);

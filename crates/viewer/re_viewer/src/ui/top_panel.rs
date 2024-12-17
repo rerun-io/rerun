@@ -315,7 +315,7 @@ fn panel_buttons_r2l(app: &mut App, app_blueprint: &AppBlueprint<'_>, ui: &mut e
     re_ui::notifications::notification_toggle_button(
         ui,
         &mut app.notifications_panel_open,
-        app.notifications.has_unread_notifications(),
+        app.notifications.unread_notification_level(),
     );
 }
 
