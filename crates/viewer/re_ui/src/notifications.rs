@@ -195,7 +195,7 @@ impl NotificationPanel {
             }
         };
 
-        let mut clear = false;
+        let mut dismiss_all = false;
 
         egui::Area::new(self.id)
             .anchor(egui::Align2::RIGHT_TOP, egui::vec2(-8.0, 32.0))
@@ -224,15 +224,15 @@ impl NotificationPanel {
 
                         if !notifications.is_empty() {
                             ui.horizontal_top(|ui| {
-                                if ui.button("Clear all").clicked() {
-                                    clear = true;
+                                if ui.button("Dismiss all").clicked() {
+                                    dismiss_all = true;
                                 };
                             });
                         }
                     });
             });
 
-        if clear {
+        if dismiss_all {
             notifications.clear();
         } else if let Some(to_dismiss) = to_dismiss {
             notifications.remove(to_dismiss);
