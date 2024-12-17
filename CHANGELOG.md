@@ -84,7 +84,7 @@ Read our 🧳 migration guide for more detailed information: https://rerun.io/do
 - Rust: more `impl<AsComponents>` helpers [#8401](https://github.com/rerun-io/rerun/pull/8401)
 
 #### 🪳 Bug fixes
-- Fix outlines for lines having more preceived aliasing since 0.20 [#8317](https://github.com/rerun-io/rerun/pull/8317)
+- Fix outlines for lines having more perceived aliasing since 0.20 [#8317](https://github.com/rerun-io/rerun/pull/8317)
 - Fix handling unnormalized axis for (Pose)RotationAxisAngle [#8341](https://github.com/rerun-io/rerun/pull/8341)
 - Fix 2D/3D view artifacts on view's border when using fractional zoom [#8369](https://github.com/rerun-io/rerun/pull/8369)
 
