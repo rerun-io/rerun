@@ -53,8 +53,15 @@ Watch @emilk putting it to action and explains how it works:
 
 But that's not the only thing that improved in the viewer:
 * Breadcrumbs show up in the selection menu now
+
+![image](https://github.com/user-attachments/assets/c1d20eb1-f259-4b43-89d4-b9fdc75dc88c)
 * Take screenshots of views from context menus
-* Entities can now be  dragged from anywhere into views
+
+![image](https://github.com/user-attachments/assets/6c50e6f0-330f-43f7-a393-65dd47aa171b)
+* Entities can now be dragged from Blueprint & Streams panel into views
+
+![image](https://github.com/user-attachments/assets/493d9711-c4d1-407e-ab41-eef2e4e51ba8)
+
 
 ### ⚠️ Breaking changes
 
