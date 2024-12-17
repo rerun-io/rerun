@@ -1,3 +1,4 @@
+use re_capabilities::MainThreadToken;
 use re_log_types::LogMsg;
 
 /// Used by `eframe` to decide where to store the app state.
@@ -7,6 +8,8 @@ type AppCreator = Box<dyn FnOnce(&eframe::CreationContext<'_>) -> Box<dyn eframe
 
 // NOTE: the name of this function is hard-coded in `crates/top/rerun/src/crash_handler.rs`!
 pub fn run_native_app(
+    // `eframe::run_native` may only be called on the main thread.
+    _: crate::MainThreadToken,
     app_creator: AppCreator,
     force_wgpu_backend: Option<String>,
 ) -> eframe::Result {
@@ -79,6 +82,7 @@ fn icon_data() -> egui::IconData {
 }
 
 pub fn run_native_viewer_with_messages(
+    main_thread_token: MainThreadToken,
     build_info: re_build_info::BuildInfo,
     app_env: crate::AppEnvironment,
     startup_options: crate::StartupOptions,
@@ -94,8 +98,10 @@ pub fn run_native_viewer_with_messages(
 
     let force_wgpu_backend = startup_options.force_wgpu_backend.clone();
     run_native_app(
+        main_thread_token,
         Box::new(move |cc| {
             let mut app = crate::App::new(
+                main_thread_token,
                 build_info,
                 &app_env,
                 startup_options,

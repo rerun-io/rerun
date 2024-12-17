@@ -26,7 +26,7 @@ fn main(in: FragmentInput) -> @location(0) vec4f {
     // Note that we can't use a simple textureLoad using @builtin(position) here despite the lack of filtering.
     // The issue is that positions provided by @builtin(position) are not dependent on the set viewport,
     // but are about the location of the texel in the target texture.
-    var color = textureSample(color_texture, nearest_sampler, in.texcoord);
+    var color = textureSample(color_texture, nearest_sampler_clamped, in.texcoord);
 
 
     // TODO(andreas): We assume that the color from the texture does *not* have pre-multiplied alpha.
@@ -42,7 +42,7 @@ fn main(in: FragmentInput) -> @location(0) vec4f {
 
     // Outlines
     {
-        let closest_positions = textureSample(outline_voronoi_texture, nearest_sampler, in.texcoord);
+        let closest_positions = textureSample(outline_voronoi_texture, nearest_sampler_clamped, in.texcoord);
 
         let distance_pixel_a = distance(pixel_coordinates, closest_positions.xy);
         let distance_pixel_b = distance(pixel_coordinates, closest_positions.zw);

@@ -1,3 +1,6 @@
+// `DisconnectedSpace` is still around, but to be removed.
+#![allow(deprecated)]
+
 use once_cell::sync::OnceCell;
 
 use ahash::HashMap;

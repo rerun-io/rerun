@@ -35,6 +35,7 @@ namespace rerun::datatypes {
 
       public: // START of extensions from mat3x3_ext.cpp:
         static const Mat3x3 IDENTITY;
+        static const Mat3x3 INVALID;
 
         /// Creates a new 3x3 matrix from 3 *columns* of 3 elements each.
         Mat3x3(const Vec3D (&columns)[3])

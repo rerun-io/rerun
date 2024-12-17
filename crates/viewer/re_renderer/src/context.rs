@@ -8,7 +8,7 @@ use type_map::concurrent::{self, TypeMap};
 
 use crate::{
     allocator::{CpuWriteGpuReadBelt, GpuReadbackBelt},
-    config::{DeviceCaps, DeviceTier, RenderContextConfig},
+    config::{DeviceCaps, DeviceTier},
     error_handling::{ErrorTracker, WgpuErrorScope},
     global_bindings::GlobalBindings,
     renderer::Renderer,
@@ -23,37 +23,9 @@ const STARTUP_FRAME_IDX: u64 = u64::MAX;
 #[derive(thiserror::Error, Debug)]
 pub enum RenderContextError {
     #[error(
-        "The given device doesn't support the required limits for the given hardware caps {device_caps:?}.\n\
-         Required: {required:?}\n\
-         Actual: {actual:?}"
+        "The GPU/graphics driver is lacking some abilities: {0}.\nConsider updating the driver."
     )]
-    Limits {
-        device_caps: DeviceCaps,
-        required: Box<wgpu::Limits>, // boxed because of its size
-        actual: Box<wgpu::Limits>,   // boxed because of its size
-    },
-
-    #[error(
-        "The given device doesn't support the required features for the given hardware caps {device_caps:?}.\n\
-         Required: {required:?}\n\
-         Actual: {actual:?}"
-    )]
-    Features {
-        device_caps: DeviceCaps,
-        required: wgpu::Features,
-        actual: wgpu::Features,
-    },
-
-    #[error(
-        "The given device doesn't support the required downlevel capabilities for the given hardware caps {device_caps:?}.\n\
-         Required: {required:?}\n\
-         Actual: {actual:?}"
-    )]
-    DownlevelCapabilities {
-        device_caps: DeviceCaps,
-        required: wgpu::DownlevelCapabilities,
-        actual: wgpu::DownlevelCapabilities,
-    },
+    InsufficientDeviceCapabilities(#[from] crate::config::InsufficientDeviceCapabilities),
 }
 
 /// Any resource involving wgpu rendering which can be re-used across different scenes.
@@ -62,7 +34,8 @@ pub struct RenderContext {
     pub device: Arc<wgpu::Device>,
     pub queue: Arc<wgpu::Queue>,
 
-    pub config: RenderContextConfig,
+    device_caps: DeviceCaps,
+    output_format_color: wgpu::TextureFormat,
 
     /// Global bindings, always bound to 0 bind group slot zero.
     /// [`Renderer`] are not allowed to use bind group 0 themselves!
@@ -154,9 +127,12 @@ impl RenderContext {
         adapter: &wgpu::Adapter,
         device: Arc<wgpu::Device>,
         queue: Arc<wgpu::Queue>,
-        config: RenderContextConfig,
+        output_format_color: wgpu::TextureFormat,
     ) -> Result<Self, RenderContextError> {
         re_tracing::profile_function!();
+
+        // Validate capabilities of the device.
+        let device_caps = DeviceCaps::from_adapter(adapter)?;
 
         let frame_index_for_uncaptured_errors = Arc::new(AtomicU64::new(STARTUP_FRAME_IDX));
 
@@ -188,33 +164,6 @@ impl RenderContext {
 
         let mut gpu_resources = WgpuResourcePools::default();
         let global_bindings = GlobalBindings::new(&gpu_resources, &device);
-
-        // Validate capabilities of the device.
-        if !config.device_caps.limits().check_limits(&device.limits()) {
-            return Err(RenderContextError::Limits {
-                required: Box::new(config.device_caps.limits()),
-                device_caps: config.device_caps,
-                actual: Box::new(device.limits()),
-            });
-        }
-        if !device.features().contains(config.device_caps.features()) {
-            return Err(RenderContextError::Features {
-                required: config.device_caps.features(),
-                device_caps: config.device_caps,
-                actual: device.features(),
-            });
-        }
-        if !adapter
-            .get_downlevel_capabilities()
-            .flags
-            .contains(config.device_caps.required_downlevel_capabilities().flags)
-        {
-            return Err(RenderContextError::DownlevelCapabilities {
-                required: config.device_caps.required_downlevel_capabilities(),
-                device_caps: config.device_caps,
-                actual: adapter.get_downlevel_capabilities(),
-            });
-        }
 
         let resolver = crate::new_recommended_file_resolver();
         let texture_manager_2d = TextureManager2D::new(&device, &queue, &gpu_resources.textures);
@@ -250,7 +199,8 @@ impl RenderContext {
         Ok(Self {
             device,
             queue,
-            config,
+            device_caps,
+            output_format_color,
             global_bindings,
             renderers: RwLock::new(Renderers {
                 renderers: TypeMap::new(),
@@ -286,7 +236,7 @@ impl RenderContext {
         //          knowing that we're not _actually_ blocking.
         //
         //          For more details check https://github.com/gfx-rs/wgpu/issues/3601
-        if cfg!(target_arch = "wasm32") && self.config.device_caps.tier == DeviceTier::Gles {
+        if cfg!(target_arch = "wasm32") && self.device_caps.tier == DeviceTier::Gles {
             self.device.poll(wgpu::Maintain::Wait);
             return;
         }
@@ -340,7 +290,7 @@ This means, either a call to RenderContext::before_submit was omitted, or the pr
         if let Some(top_level_error_scope) = self.active_frame.top_level_error_scope.take() {
             let frame_index_for_uncaptured_errors = self.frame_index_for_uncaptured_errors.clone();
             self.top_level_error_tracker.handle_error_future(
-                self.config.device_caps.backend_type,
+                self.device_caps.backend_type,
                 top_level_error_scope.end(),
                 self.active_frame.frame_index,
                 move |err_tracker, frame_index| {
@@ -469,7 +419,12 @@ This means, either a call to RenderContext::before_submit was omitted, or the pr
 
     /// Returns the device's capabilities.
     pub fn device_caps(&self) -> &DeviceCaps {
-        &self.config.device_caps
+        &self.device_caps
+    }
+
+    /// Returns the final output format for color (i.e. the surface's format).
+    pub fn output_format_color(&self) -> wgpu::TextureFormat {
+        self.output_format_color
     }
 }
 

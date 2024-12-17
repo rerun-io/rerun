@@ -45,7 +45,7 @@
 
 use crate::{
     allocator::create_and_fill_uniform_buffer_batch,
-    config::DeviceCaps,
+    config::DeviceTier,
     include_shader_module,
     renderer::screen_triangle_vertex_shader,
     view_builder::ViewBuilder,
@@ -177,7 +177,7 @@ impl OutlineMaskProcessor {
     const VORONOI_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 
     /// Default MSAA state for the outline mask target.
-    pub fn mask_default_msaa_state(tier: &DeviceCaps) -> wgpu::MultisampleState {
+    pub fn mask_default_msaa_state(tier: DeviceTier) -> wgpu::MultisampleState {
         wgpu::MultisampleState {
             count: Self::mask_sample_count(tier),
             mask: !0,
@@ -186,7 +186,7 @@ impl OutlineMaskProcessor {
     }
 
     /// Number of MSAA samples used for the outline mask target.
-    pub fn mask_sample_count(tier: &DeviceCaps) -> u32 {
+    pub fn mask_sample_count(tier: DeviceTier) -> u32 {
         if tier.support_sampling_msaa_texture() {
             // The MSAA shader variant deals with *exactly* 4 samples.
             // See `jumpflooding_step_msaa.wgsl`.
@@ -208,7 +208,7 @@ impl OutlineMaskProcessor {
         // ------------- Textures -------------
         let texture_pool = &ctx.gpu_resources.textures;
 
-        let mask_sample_count = Self::mask_sample_count(&ctx.config.device_caps);
+        let mask_sample_count = Self::mask_sample_count(ctx.device_caps().tier);
         let mask_texture_desc = crate::wgpu_resources::TextureDesc {
             label: format!("{instance_label}::mask_texture").into(),
             size: wgpu::Extent3d {

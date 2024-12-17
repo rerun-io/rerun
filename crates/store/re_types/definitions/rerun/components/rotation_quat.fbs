@@ -4,6 +4,7 @@ namespace rerun.components;
 ///
 /// Note: although the x,y,z,w components of the quaternion will be passed through to the
 /// datastore as provided, when used in the Viewer, quaternions will always be normalized.
+/// If normalization fails the rotation is treated as an invalid transform.
 struct RotationQuat (
   "attr.rust.derive": "Default, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable",
   "attr.rust.repr": "transparent"
@@ -15,6 +16,7 @@ struct RotationQuat (
 ///
 /// Note: although the x,y,z,w components of the quaternion will be passed through to the
 /// datastore as provided, when used in the Viewer, quaternions will always be normalized.
+/// If normalization fails the rotation is treated as an invalid transform.
 struct PoseRotationQuat (
   "attr.rust.derive": "Default, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable",
   "attr.rust.repr": "transparent"

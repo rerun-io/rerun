@@ -735,10 +735,7 @@ impl PendingRow {
         for (component_desc, array) in components {
             let list_array = crate::util::arrays_to_list_array_opt(&[Some(&*array as _)]);
             if let Some(list_array) = list_array {
-                per_name
-                    .entry(component_desc.component_name)
-                    .or_default()
-                    .insert(component_desc, list_array);
+                per_name.insert_descriptor(component_desc, list_array);
             }
         }
 
@@ -874,10 +871,7 @@ impl PendingRow {
                                         let list_array =
                                             crate::util::arrays_to_list_array_opt(&arrays);
                                         if let Some(list_array) = list_array {
-                                            per_name
-                                                .entry(component_desc.component_name)
-                                                .or_default()
-                                                .insert(component_desc, list_array);
+                                            per_name.insert_descriptor(component_desc, list_array);
                                         }
                                     }
                                     per_name
@@ -922,10 +916,7 @@ impl PendingRow {
                         for (component_desc, arrays) in components {
                             let list_array = crate::util::arrays_to_list_array_opt(&arrays);
                             if let Some(list_array) = list_array {
-                                per_name
-                                    .entry(component_desc.component_name)
-                                    .or_default()
-                                    .insert(component_desc, list_array);
+                                per_name.insert_descriptor(component_desc, list_array);
                             }
                         }
                         per_name

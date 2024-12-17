@@ -673,6 +673,7 @@ impl TimePanel {
         } = ui
             .list_item()
             .selected(is_selected)
+            .draggable(true)
             .force_hovered(is_item_hovered)
             .show_hierarchical_with_children(
                 ui,
@@ -726,7 +727,7 @@ impl TimePanel {
             &response,
             SelectionUpdateBehavior::UseSelection,
         );
-        ctx.handle_select_hover_drag_interactions(&response, item.to_item(), false);
+        ctx.handle_select_hover_drag_interactions(&response, item.to_item(), true);
 
         let is_closed = body_response.is_none();
         let response_rect = response.rect;

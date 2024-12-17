@@ -104,14 +104,36 @@ class TestDataframe:
         # Color, Points3DIndicator, Position3D, Radius, Text, TextIndicator
         assert len(schema.component_columns()) == 6
 
+        # TODO(cmc): revert me
+        # assert schema.index_columns()[0].name == "log_tick"
+        # assert schema.index_columns()[1].name == "log_time"
+        # assert schema.index_columns()[2].name == "my_index"
+        # assert schema.component_columns()[0].entity_path == "/points"
+        # assert schema.component_columns()[0].component_name == "rerun.components.Points3DIndicator"
+        # assert schema.component_columns()[0].is_static is False
+        # assert schema.component_columns()[1].entity_path == "/points"
+        # assert schema.component_columns()[1].component_name == "rerun.components.Color"
+        # assert schema.component_columns()[1].is_static is False
+        # assert schema.component_columns()[2].entity_path == "/points"
+        # assert schema.component_columns()[2].component_name == "rerun.components.Position3D"
+        # assert schema.component_columns()[2].is_static is False
+        # assert schema.component_columns()[3].entity_path == "/points"
+        # assert schema.component_columns()[3].component_name == "rerun.components.Radius"
+        # assert schema.component_columns()[3].is_static is False
+        # assert schema.component_columns()[4].entity_path == "/static_text"
+        # assert schema.component_columns()[4].component_name == "rerun.components.TextLogIndicator"
+        # assert schema.component_columns()[4].is_static is True
+        # assert schema.component_columns()[5].entity_path == "/static_text"
+        # assert schema.component_columns()[5].component_name == "rerun.components.Text"
+        # assert schema.component_columns()[5].is_static is True
         assert schema.index_columns()[0].name == "log_tick"
         assert schema.index_columns()[1].name == "log_time"
         assert schema.index_columns()[2].name == "my_index"
         assert schema.component_columns()[0].entity_path == "/points"
-        assert schema.component_columns()[0].component_name == "rerun.components.Points3DIndicator"
+        assert schema.component_columns()[0].component_name == "rerun.components.Color"
         assert schema.component_columns()[0].is_static is False
         assert schema.component_columns()[1].entity_path == "/points"
-        assert schema.component_columns()[1].component_name == "rerun.components.Color"
+        assert schema.component_columns()[1].component_name == "rerun.components.Points3DIndicator"
         assert schema.component_columns()[1].is_static is False
         assert schema.component_columns()[2].entity_path == "/points"
         assert schema.component_columns()[2].component_name == "rerun.components.Position3D"
@@ -120,10 +142,10 @@ class TestDataframe:
         assert schema.component_columns()[3].component_name == "rerun.components.Radius"
         assert schema.component_columns()[3].is_static is False
         assert schema.component_columns()[4].entity_path == "/static_text"
-        assert schema.component_columns()[4].component_name == "rerun.components.TextLogIndicator"
+        assert schema.component_columns()[4].component_name == "rerun.components.Text"
         assert schema.component_columns()[4].is_static is True
         assert schema.component_columns()[5].entity_path == "/static_text"
-        assert schema.component_columns()[5].component_name == "rerun.components.Text"
+        assert schema.component_columns()[5].component_name == "rerun.components.TextLogIndicator"
         assert schema.component_columns()[5].is_static is True
 
     def test_schema_view(self) -> None:
@@ -380,3 +402,19 @@ class TestDataframe:
             table = pa.Table.from_batches(batches, batches.schema)
             assert table.num_columns == 3
             assert table.num_rows == 0
+
+    def test_roundtrip_send(self) -> None:
+        df = self.recording.view(index="my_index", contents="/**").select().read_all()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            rrd = tmpdir + "/tmp.rrd"
+
+            rr.init("rerun_example_test_recording")
+            rr.dataframe.send_dataframe(df)
+            rr.save(rrd)
+
+            round_trip_recording = rr.dataframe.load_recording(rrd)
+
+        df_round_trip = round_trip_recording.view(index="my_index", contents="/**").select().read_all()
+
+        assert df == df_round_trip

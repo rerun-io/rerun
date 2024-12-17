@@ -30,6 +30,8 @@ pub(crate) use {app_state::AppState, ui::memory_panel};
 
 pub use app::{App, StartupOptions};
 
+pub use re_capabilities::MainThreadToken;
+
 pub mod external {
     pub use {eframe, egui};
     pub use {
@@ -193,10 +195,20 @@ pub(crate) fn wgpu_options(force_wgpu_backend: Option<String>) -> egui_wgpu::Wgp
                     egui_wgpu::SurfaceErrorAction::SkipFrame
                 }
             }),
+            // TODO(#8475): It would be great to use `egui_wgpu::WgpuSetup::Existing` and put the
+            // full control of adapter creation into the hands of `re_renderer`.
+            // However, we generally need to take into account the _surface_ as well:
+            // * this is a strict *requirement* when using WebGL
+            // * on OpenGL & Linux it _helps_ to know the surface because either Vulkan or OpenGL may not be happy with all surfaces
+            //
+            // Next better thing that we should aspire for is to allow rejecting adapters on native in egui.
+            // I.e. instead of always providing a device descriptor, we should allow it to fail for a given device.
+            // This rejection should happen with reason-message so it's tractable why a given adapter wasn't chosen.
+            // Which is obviously what we want to show when we're rejecting all adapters, but it would
+            // also be great to be able to show that information later on.
             wgpu_setup: egui_wgpu::WgpuSetup::CreateNew {
-                device_descriptor: std::sync::Arc::new(|adapter| re_renderer::config::DeviceCaps::from_adapter(adapter).device_descriptor()),
+                device_descriptor: std::sync::Arc::new(|adapter| re_renderer::config::DeviceCaps::from_adapter_without_validation(adapter).device_descriptor()),
                 supported_backends: supported_graphics_backends(force_wgpu_backend),
-                // TODO(andreas): Use ..Default::default(), please patch egui to have this
                 power_preference: wgpu::util::power_preference_from_env().unwrap_or(wgpu::PowerPreference::HighPerformance),
              },
             ..Default::default()
@@ -210,7 +222,7 @@ pub fn customize_eframe_and_setup_renderer(
     re_tracing::profile_function!();
 
     if let Some(render_state) = &cc.wgpu_render_state {
-        use re_renderer::{config::RenderContextConfig, RenderContext};
+        use re_renderer::RenderContext;
 
         let paint_callback_resources = &mut render_state.renderer.write().callback_resources;
 
@@ -218,10 +230,7 @@ pub fn customize_eframe_and_setup_renderer(
             &render_state.adapter,
             render_state.device.clone(),
             render_state.queue.clone(),
-            RenderContextConfig {
-                output_format_color: render_state.target_format,
-                device_caps: re_renderer::config::DeviceCaps::from_adapter(&render_state.adapter),
-            },
+            render_state.target_format,
         )?;
 
         paint_callback_resources.insert(render_ctx);

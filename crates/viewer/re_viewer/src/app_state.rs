@@ -8,8 +8,8 @@ use re_smart_channel::ReceiveSet;
 use re_types::blueprint::components::PanelState;
 use re_ui::{ContextExt as _, DesignTokens};
 use re_viewer_context::{
-    drag_and_drop_payload_cursor_ui, AppOptions, ApplicationSelectionState, BlueprintUndoState,
-    CommandSender, ComponentUiRegistry, PlayState, RecordingConfig, StoreContext, StoreHub,
+    AppOptions, ApplicationSelectionState, BlueprintUndoState, CommandSender, ComponentUiRegistry,
+    DragAndDropManager, PlayState, RecordingConfig, StoreContext, StoreHub,
     SystemCommandSender as _, ViewClassExt as _, ViewClassRegistry, ViewStates, ViewerContext,
 };
 use re_viewport::ViewportUi;
@@ -215,8 +215,9 @@ impl AppState {
         );
 
         // The root container cannot be dragged.
-        let undraggable_items =
-            re_viewer_context::Item::Container(viewport_ui.blueprint.root_container).into();
+        let drag_and_drop_manager = DragAndDropManager::new(re_viewer_context::Item::Container(
+            viewport_ui.blueprint.root_container,
+        ));
 
         let applicable_entities_per_visualizer =
             view_class_registry.applicable_entities_for_visualizer_systems(&recording.store_id());
@@ -278,7 +279,7 @@ impl AppState {
             render_ctx: Some(render_ctx),
             command_sender,
             focused_item,
-            undraggable_items: &undraggable_items,
+            drag_and_drop_manager: &drag_and_drop_manager,
         };
 
         // We move the time at the very start of the frame,
@@ -350,7 +351,7 @@ impl AppState {
             render_ctx: Some(render_ctx),
             command_sender,
             focused_item,
-            undraggable_items: &undraggable_items,
+            drag_and_drop_manager: &drag_and_drop_manager,
         };
 
         if *show_settings_ui {
@@ -517,7 +518,7 @@ impl AppState {
         //
 
         add_view_or_container_modal_ui(&ctx, &viewport_ui.blueprint, ui);
-        drag_and_drop_payload_cursor_ui(ctx.egui_ctx);
+        drag_and_drop_manager.payload_cursor_ui(ctx.egui_ctx);
 
         // Process deferred layout operations and apply updates back to blueprint:
         viewport_ui.save_to_blueprint_store(&ctx, view_class_registry);

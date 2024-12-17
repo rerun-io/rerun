@@ -72,6 +72,7 @@ rerun-cli = { path = "crates/top/rerun-cli", version = "=0.21.0-alpha.1", defaul
 
 # crates/utils:
 re_analytics = { path = "crates/utils/re_analytics", version = "=0.21.0-alpha.1", default-features = false }
+re_capabilities = { path = "crates/utils/re_capabilities", version = "=0.21.0-alpha.1", default-features = false }
 re_case = { path = "crates/utils/re_case", version = "=0.21.0-alpha.1", default-features = false }
 re_crash_handler = { path = "crates/utils/re_crash_handler", version = "=0.21.0-alpha.1", default-features = false }
 re_error = { path = "crates/utils/re_error", version = "=0.21.0-alpha.1", default-features = false }
@@ -554,13 +555,13 @@ significant_drop_tightening = "allow" # An update of parking_lot made this trigg
 # As a last resport, patch with a commit to our own repository.
 # ALWAYS document what PR the commit hash is part of, or when it was merged into the upstream trunk.
 
-ecolor = { git = "https://github.com/emilk/egui.git", rev = "f7efb2186d529ddc9e69f7173c6ae3ae5f403d0b" }       # egui master 2024-12-16
-eframe = { git = "https://github.com/emilk/egui.git", rev = "f7efb2186d529ddc9e69f7173c6ae3ae5f403d0b" }       # egui master 2024-12-16
-egui = { git = "https://github.com/emilk/egui.git", rev = "f7efb2186d529ddc9e69f7173c6ae3ae5f403d0b" }         # egui master 2024-12-16
-egui_extras = { git = "https://github.com/emilk/egui.git", rev = "f7efb2186d529ddc9e69f7173c6ae3ae5f403d0b" }  # egui master 2024-12-16
-egui_kittest = { git = "https://github.com/emilk/egui.git", rev = "f7efb2186d529ddc9e69f7173c6ae3ae5f403d0b" } # egui master 2024-12-16
-egui-wgpu = { git = "https://github.com/emilk/egui.git", rev = "f7efb2186d529ddc9e69f7173c6ae3ae5f403d0b" }    # egui master 2024-12-16
-emath = { git = "https://github.com/emilk/egui.git", rev = "f7efb2186d529ddc9e69f7173c6ae3ae5f403d0b" }        # egui master 2024-12-16
+ecolor = { git = "https://github.com/emilk/egui.git", rev = "0823a36952a6791a0e28e6e8eac4f35639ab3091" }       # egui master 2024-12-16 15:08
+eframe = { git = "https://github.com/emilk/egui.git", rev = "0823a36952a6791a0e28e6e8eac4f35639ab3091" }       # egui master 2024-12-16 15:08
+egui = { git = "https://github.com/emilk/egui.git", rev = "0823a36952a6791a0e28e6e8eac4f35639ab3091" }         # egui master 2024-12-16 15:08
+egui_extras = { git = "https://github.com/emilk/egui.git", rev = "0823a36952a6791a0e28e6e8eac4f35639ab3091" }  # egui master 2024-12-16 15:08
+egui_kittest = { git = "https://github.com/emilk/egui.git", rev = "0823a36952a6791a0e28e6e8eac4f35639ab3091" } # egui master 2024-12-16 15:08
+egui-wgpu = { git = "https://github.com/emilk/egui.git", rev = "0823a36952a6791a0e28e6e8eac4f35639ab3091" }    # egui master 2024-12-16 15:08
+emath = { git = "https://github.com/emilk/egui.git", rev = "0823a36952a6791a0e28e6e8eac4f35639ab3091" }        # egui master 2024-12-16 15:08
 
 # Useful while developing:
 # ecolor = { path = "../../egui/crates/ecolor" }

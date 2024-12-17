@@ -56,7 +56,7 @@ impl Caches {
 
 /// A cache for memoizing things in order to speed up immediate mode UI & other immediate mode style things.
 ///
-/// See also egus's cache system, in [`egui::cache`] (<https://docs.rs/egui/latest/egui/util/cache/index.html>).
+/// See also egus's cache system, in [`egui::cache`] (<https://docs.rs/egui/latest/egui/cache/index.html>).
 pub trait Cache: std::any::Any + Send + Sync {
     /// Called once per frame to potentially flush the cache.
     ///

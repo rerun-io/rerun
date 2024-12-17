@@ -572,7 +572,7 @@ impl Renderer for PointCloudRenderer {
                 render_targets: smallvec![Some(OutlineMaskProcessor::MASK_FORMAT.into())],
                 depth_stencil: OutlineMaskProcessor::MASK_DEPTH_STATE,
                 // Alpha to coverage doesn't work with the mask integer target.
-                multisample: OutlineMaskProcessor::mask_default_msaa_state(&ctx.config.device_caps),
+                multisample: OutlineMaskProcessor::mask_default_msaa_state(ctx.device_caps().tier),
                 ..render_pipeline_desc_color
             },
         );
