@@ -10,6 +10,7 @@ namespace rerun.components;
 /// It *only* applies to views that work with spatial transformations, i.e. 2D & 3D views.
 /// This is useful for specifying that a subgraph is independent of the rest of the scene.
 struct DisconnectedSpace (
+  "attr.rerun.deprecated": "Use [archetypes.Transform3D] with an invalid transform instead.",
   "attr.python.aliases": "bool",
   "attr.python.array_aliases": "bool, npt.NDArray[np.bool_]",
   "attr.rust.derive": "Copy, PartialEq, Eq"

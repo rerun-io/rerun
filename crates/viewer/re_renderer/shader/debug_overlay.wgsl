@@ -53,7 +53,7 @@ fn main_vs(@builtin(vertex_index) vertex_index: u32) -> VertexOutput {
 @fragment
 fn main_fs(in: VertexOutput) -> @location(0) vec4f {
     if uniforms.mode == ShowFloatTexture {
-        return vec4f(textureSample(debug_texture_float, nearest_sampler, in.texcoord).rgb, 1.0);
+        return vec4f(textureSample(debug_texture_float, nearest_sampler_clamped, in.texcoord).rgb, 1.0);
     } else if uniforms.mode == ShowUintTexture {
         let coords = vec2i(in.texcoord * vec2f(textureDimensions(debug_texture_uint).xy));
         let raw_values = textureLoad(debug_texture_uint, coords, 0);

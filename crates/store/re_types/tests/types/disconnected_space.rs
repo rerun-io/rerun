@@ -1,3 +1,5 @@
+#![allow(deprecated)]
+
 use std::collections::HashMap;
 
 use re_types::{archetypes::DisconnectedSpace, Archetype as _, AsComponents as _};

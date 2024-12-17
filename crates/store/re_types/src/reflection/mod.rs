@@ -29,7 +29,7 @@ pub fn generate_reflection() -> Result<Reflection, SerializationError> {
 /// Generates reflection about all known components.
 ///
 /// Call only once and reuse the results.
-
+#[allow(deprecated)]
 fn generate_component_reflection() -> Result<ComponentReflectionMap, SerializationError> {
     re_tracing::profile_function!();
     let array = [
@@ -658,7 +658,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <PoseRotationAxisAngle as Component>::name(),
             ComponentReflection {
-                docstring_md: "3D rotation represented by a rotation around a given axis that doesn't propagate in the transform hierarchy.",
+                docstring_md: "3D rotation represented by a rotation around a given axis that doesn't propagate in the transform hierarchy.\n\nIf normalization of the rotation axis fails the rotation is treated as an invalid transform.",
                 custom_placeholder: Some(PoseRotationAxisAngle::default().to_arrow2()?),
                 datatype: PoseRotationAxisAngle::arrow2_datatype(),
             },
@@ -666,7 +666,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <PoseRotationQuat as Component>::name(),
             ComponentReflection {
-                docstring_md: "A 3D rotation expressed as a quaternion that doesn't propagate in the transform hierarchy.\n\nNote: although the x,y,z,w components of the quaternion will be passed through to the\ndatastore as provided, when used in the Viewer, quaternions will always be normalized.",
+                docstring_md: "A 3D rotation expressed as a quaternion that doesn't propagate in the transform hierarchy.\n\nNote: although the x,y,z,w components of the quaternion will be passed through to the\ndatastore as provided, when used in the Viewer, quaternions will always be normalized.\nIf normalization fails the rotation is treated as an invalid transform.",
                 custom_placeholder: Some(PoseRotationQuat::default().to_arrow2()?),
                 datatype: PoseRotationQuat::arrow2_datatype(),
             },
@@ -746,7 +746,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <RotationAxisAngle as Component>::name(),
             ComponentReflection {
-                docstring_md: "3D rotation represented by a rotation around a given axis.",
+                docstring_md: "3D rotation represented by a rotation around a given axis.\n\nIf normalization of the rotation axis fails the rotation is treated as an invalid transform.",
                 custom_placeholder: Some(RotationAxisAngle::default().to_arrow2()?),
                 datatype: RotationAxisAngle::arrow2_datatype(),
             },
@@ -754,7 +754,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <RotationQuat as Component>::name(),
             ComponentReflection {
-                docstring_md: "A 3D rotation expressed as a quaternion.\n\nNote: although the x,y,z,w components of the quaternion will be passed through to the\ndatastore as provided, when used in the Viewer, quaternions will always be normalized.",
+                docstring_md: "A 3D rotation expressed as a quaternion.\n\nNote: although the x,y,z,w components of the quaternion will be passed through to the\ndatastore as provided, when used in the Viewer, quaternions will always be normalized.\nIf normalization fails the rotation is treated as an invalid transform.",
                 custom_placeholder: Some(RotationQuat::default().to_arrow2()?),
                 datatype: RotationQuat::arrow2_datatype(),
             },

@@ -9,6 +9,7 @@ namespace rerun.archetypes;
 ///
 /// \example archetypes/disconnected_space title="Disconnected space" image="https://static.rerun.io/disconnected_space/709041fc304b50c74db773b780e32294fe90c95f/1200w.png"
 table DisconnectedSpace (
+  "attr.rerun.deprecated": "Use [archetypes.Transform3D] with an invalid transform instead",
   "attr.rust.derive": "Copy, PartialEq, Eq",
   "attr.docs.view_types": "Spatial2DView, Spatial3DView"
 ) {

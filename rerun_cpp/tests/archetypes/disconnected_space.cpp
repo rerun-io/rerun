@@ -1,5 +1,7 @@
 #include "archetype_test.hpp"
 
+RR_DISABLE_DEPRECATION_WARNING
+
 #include <rerun/archetypes/disconnected_space.hpp>
 
 using namespace rerun::archetypes;

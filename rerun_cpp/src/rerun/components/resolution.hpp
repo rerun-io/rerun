@@ -20,8 +20,6 @@ namespace rerun::components {
         rerun::datatypes::Vec2D resolution;
 
       public: // START of extensions from resolution_ext.cpp:
-        RERUN_SDK_EXPORT static const Resolution IDENTITY;
-
         /// Construct resolution from width and height floats.
         Resolution(float width, float height) : resolution{width, height} {}
 

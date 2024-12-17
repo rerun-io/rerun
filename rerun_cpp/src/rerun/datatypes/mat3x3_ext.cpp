@@ -13,6 +13,7 @@ namespace rerun {
         // <CODEGEN_COPY_TO_HEADER>
 
         static const Mat3x3 IDENTITY;
+        static const Mat3x3 INVALID;
 
         /// Creates a new 3x3 matrix from 3 *columns* of 3 elements each.
         Mat3x3(const Vec3D (&columns)[3])
@@ -49,6 +50,12 @@ namespace rerun {
             {1.0, 0.0, 0.0},
             {0.0, 1.0, 0.0},
             {0.0, 0.0, 1.0},
+        });
+
+        const Mat3x3 Mat3x3::INVALID = Mat3x3({
+            {0.0, 0.0, 0.0},
+            {0.0, 0.0, 0.0},
+            {0.0, 0.0, 0.0},
         });
 
     } // namespace datatypes

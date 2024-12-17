@@ -136,6 +136,8 @@ impl PerStoreChunkSubscriber for TransformComponentTrackerStoreSubscriber {
                         .or_default()
                         .pinhole = true;
                 }
+                // `DisconnectedSpace` is deprecated and will be removed in the future.
+                #[allow(deprecated)]
                 if component_name == re_types::components::DisconnectedSpace::name()
                     && contains_non_zero_component_array(component_name)
                 {

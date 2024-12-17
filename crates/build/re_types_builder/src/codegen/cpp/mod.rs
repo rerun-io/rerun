@@ -567,22 +567,26 @@ impl QuotedObject {
             format!("{}Indicator", obj.fqname).replace("archetypes", "components");
         let doc_hide_comment = quote_hide_from_docs();
         let deprecation_notice = quote_deprecation_notice(obj);
+
+        // Note that GCC doesn't like using deprecated fields even if the archetype itself is deprecated.
+        // In that case we're just being generous with the ignore warnings, making it finegrained is hard and not really worth it anyways.
+        let has_any_deprecated_fields = obj.fields.iter().any(|field| {
+            field
+                .typ
+                .fqname()
+                .and_then(|fqname| objects.get(fqname))
+                .map_or(false, |obj| obj.deprecation_notice().is_some())
+        });
         let (deprecation_ignore_start, deprecation_ignore_end) =
-            if obj.deprecation_notice().is_some() {
-                hpp_includes.insert_rerun("compiler_utils.hpp");
-                (
-                    quote! {
-                        RR_PUSH_WARNINGS #NEWLINE_TOKEN
-                        RR_DISABLE_DEPRECATION_WARNING #NEWLINE_TOKEN
-                    },
-                    quote! { RR_POP_WARNINGS },
-                )
-            } else {
-                (quote!(), quote!())
-            };
+            quote_deprecation_ignore_start_and_end(
+                &mut hpp_includes,
+                obj.deprecation_notice().is_some() || has_any_deprecated_fields,
+            );
 
         let hpp = quote! {
             #hpp_includes
+
+            #deprecation_ignore_start
 
             namespace rerun::#quoted_namespace {
                 #quoted_docs
@@ -622,9 +626,9 @@ impl QuotedObject {
                 struct AsComponents<#quoted_namespace::#type_ident> {
                     #serialize_hpp
                 };
-
-                #deprecation_ignore_end
             }
+
+            #deprecation_ignore_end
         };
 
         let cpp = quote! {
@@ -2591,7 +2595,12 @@ fn quote_loggable_hpp_and_cpp(
 
     hpp_includes.insert_rerun("component_descriptor.hpp");
 
+    let (deprecation_ignore_start, deprecation_ignore_end) =
+        quote_deprecation_ignore_start_and_end(hpp_includes, obj.deprecation_notice().is_some());
+
     let hpp = quote! {
+        #deprecation_ignore_start
+
         namespace rerun {
             #predeclarations_and_static_assertions
 
@@ -2604,6 +2613,8 @@ fn quote_loggable_hpp_and_cpp(
                 #(#methods_hpp)*
             };
         }
+
+        #deprecation_ignore_end
     };
 
     let cpp = if methods.iter().any(|m| !m.inline) {
@@ -2627,5 +2638,23 @@ fn quote_deprecation_notice(obj: &Object) -> TokenStream {
         }
     } else {
         quote! {}
+    }
+}
+
+fn quote_deprecation_ignore_start_and_end(
+    includes: &mut Includes,
+    should_deprecate: bool,
+) -> (TokenStream, TokenStream) {
+    if should_deprecate {
+        includes.insert_rerun("compiler_utils.hpp");
+        (
+            quote! {
+                RR_PUSH_WARNINGS #NEWLINE_TOKEN
+                RR_DISABLE_DEPRECATION_WARNING #NEWLINE_TOKEN
+            },
+            quote! { RR_POP_WARNINGS },
+        )
+    } else {
+        (quote!(), quote!())
     }
 }
