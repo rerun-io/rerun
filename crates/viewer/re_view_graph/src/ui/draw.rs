@@ -130,6 +130,13 @@ fn draw_circle_label(
             Color32::TRANSPARENT,
             Stroke::new(2.0, visuals.selection.stroke.color),
         );
+    } else if highlight.hover == HoverHighlight::Hovered {
+        painter.circle(
+            resp.rect.center(),
+            radius - 2.0,
+            Color32::TRANSPARENT,
+            Stroke::new(2.0, visuals.widgets.hovered.bg_fill),
+        );
     }
 
     resp
