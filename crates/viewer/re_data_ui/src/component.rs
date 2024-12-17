@@ -75,8 +75,7 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
 
                 let temporal_message_count = engine
                     .store()
-                    .num_temporal_events_for_component_on_timeline(
-                        &query.timeline(),
+                    .num_temporal_events_for_component_on_all_timelines(
                         entity_path,
                         *component_name,
                     );
