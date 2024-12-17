@@ -62,7 +62,7 @@ struct Notification {
 pub struct NotificationUi {
     /// State of every notification.
     ///
-    /// Notifications are stored in order of ascending age, so the latest one is at the end.
+    /// Notifications are stored in order of ascending `created_at`, so the latest one is at the end.
     data: Vec<Notification>,
 
     has_unread_notifications: bool,
