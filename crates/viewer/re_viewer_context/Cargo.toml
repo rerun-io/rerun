@@ -52,7 +52,6 @@ egui.workspace = true
 emath.workspace = true
 glam = { workspace = true, features = ["serde"] }
 half.workspace = true
-home.workspace = true
 image = { workspace = true, features = ["jpeg", "png"] }
 indexmap = { workspace = true, features = ["std", "serde"] }
 itertools.workspace = true
@@ -75,6 +74,7 @@ wgpu.workspace = true
 arboard = { workspace = true, default-features = false, features = [
   "image-data",
 ] }
+home.workspace = true
 
 # Web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
