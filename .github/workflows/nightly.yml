@@ -15,6 +15,9 @@ permissions:
   contents: "write"
   id-token: "write"
   deployments: "write"
+  # This is needed since the web viewer build has this permission in order to write comments in PRs
+  # (not needed for nightly, but the permission is still active).
+  pull-requests: "write"
 
 jobs:
   checks:

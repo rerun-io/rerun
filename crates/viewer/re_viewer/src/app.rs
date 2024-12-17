@@ -296,7 +296,7 @@ impl App {
 
         let panel_state_overrides = startup_options.panel_state_overrides;
 
-        let reflection = crate::reflection::generate_reflection().unwrap_or_else(|err| {
+        let reflection = re_types::reflection::generate_reflection().unwrap_or_else(|err| {
             re_log::error!(
                 "Failed to create list of serialized default values for components: {err}"
             );
@@ -2283,7 +2283,7 @@ async fn async_save_dialog(
 
     let bytes = re_log_encoding::encoder::encode_as_bytes(
         rrd_version,
-        re_log_encoding::EncodingOptions::COMPRESSED,
+        re_log_encoding::EncodingOptions::MSGPACK_COMPRESSED,
         messages,
     )?;
     file_handle.write(&bytes).await.context("Failed to save")

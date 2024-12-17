@@ -6,7 +6,7 @@ use re_log_types::EntityPath;
 use re_types::View;
 use re_types::{
     archetypes::{DepthImage, Image},
-    blueprint::archetypes::{Background, VisualBounds2D},
+    blueprint::archetypes::{Background, NearClipPlane, VisualBounds2D},
     Archetype, ComponentName, ViewClassIdentifier,
 };
 use re_ui::UiExt as _;
@@ -20,7 +20,7 @@ use re_viewer_context::{
 use crate::{
     contexts::register_spatial_contexts,
     heuristics::default_visualized_entities_for_visualizer_kind,
-    max_image_dimension_subscriber::{MaxDimensions, MaxImageDimensions},
+    max_image_dimension_subscriber::MaxDimensions,
     spatial_topology::{SpatialTopology, SubSpaceConnectionFlags},
     ui::SpatialViewState,
     view_kind::SpatialViewKind,
@@ -69,7 +69,7 @@ impl ViewClass for SpatialView2D {
         // Ensure spatial topology & max image dimension is registered.
         crate::spatial_topology::SpatialTopologyStoreSubscriber::subscription_handle();
         crate::transform_component_tracker::TransformComponentTrackerStoreSubscriber::subscription_handle();
-        crate::max_image_dimension_subscriber::MaxImageDimensionSubscriber::subscription_handle();
+        crate::max_image_dimension_subscriber::MaxImageDimensionsStoreSubscriber::subscription_handle();
 
         register_spatial_contexts(system_registry)?;
         register_2d_spatial_visualizers(system_registry)?;
@@ -177,9 +177,10 @@ impl ViewClass for SpatialView2D {
         );
 
         let image_dimensions =
-            MaxImageDimensions::access(&ctx.recording_id(), |image_dimensions| {
-                image_dimensions.clone()
-            })
+            crate::max_image_dimension_subscriber::MaxImageDimensionsStoreSubscriber::access(
+                &ctx.recording_id(),
+                |image_dimensions| image_dimensions.clone(),
+            )
             .unwrap_or_default();
 
         // Spawn a view at each subspace that has any potential 2D content.
@@ -245,6 +246,7 @@ impl ViewClass for SpatialView2D {
 
         re_ui::list_item::list_item_scope(ui, "spatial_view2d_selection_ui", |ui| {
             view_property_ui::<VisualBounds2D>(ctx, ui, view_id, self, state);
+            view_property_ui::<NearClipPlane>(ctx, ui, view_id, self, state);
             view_property_ui::<Background>(ctx, ui, view_id, self, state);
         });
 

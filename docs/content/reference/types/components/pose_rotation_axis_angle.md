@@ -5,6 +5,8 @@ title: "PoseRotationAxisAngle"
 
 3D rotation represented by a rotation around a given axis that doesn't propagate in the transform hierarchy.
 
+If normalization of the rotation axis fails the rotation is treated as an invalid transform.
+
 ## Rerun datatype
 [`RotationAxisAngle`](../datatypes/rotation_axis_angle.md)
 

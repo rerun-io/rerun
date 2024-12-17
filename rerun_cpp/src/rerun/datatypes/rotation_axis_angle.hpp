@@ -23,8 +23,8 @@ namespace rerun::datatypes {
         /// Axis to rotate around.
         ///
         /// This is not required to be normalized.
-        /// If normalization fails (typically because the vector is length zero), the rotation is silently
-        /// ignored.
+        /// However, if normalization of the rotation axis fails (typically due to a zero vector)
+        /// the rotation is treated as an invalid transform.
         rerun::datatypes::Vec3D axis;
 
         /// How much to rotate around the axis.

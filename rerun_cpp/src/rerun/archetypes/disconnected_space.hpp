@@ -4,6 +4,7 @@
 #pragma once
 
 #include "../collection.hpp"
+#include "../compiler_utils.hpp"
 #include "../component_batch.hpp"
 #include "../components/disconnected_space.hpp"
 #include "../indicator_component.hpp"
@@ -12,6 +13,9 @@
 #include <cstdint>
 #include <utility>
 #include <vector>
+
+RR_PUSH_WARNINGS
+RR_DISABLE_DEPRECATION_WARNING
 
 namespace rerun::archetypes {
     /// **Archetype**: Spatially disconnect this entity from its parent.
@@ -29,6 +33,9 @@ namespace rerun::archetypes {
     /// ```cpp
     /// #include <rerun.hpp>
     ///
+    /// // DisconnectedSpace is deprecated and will be removed in the future.
+    /// RR_DISABLE_DEPRECATION_WARNING
+    ///
     /// int main() {
     ///     const auto rec = rerun::RecordingStream("rerun_example_disconnected_space");
     ///     rec.spawn().exit_on_failure();
@@ -42,7 +49,8 @@ namespace rerun::archetypes {
     ///     rec.log("world/wormhole/point", rerun::Points3D({{2.0f, 2.0f, 2.0f}}));
     /// }
     /// ```
-    struct DisconnectedSpace {
+    struct [[deprecated("Use [archetypes.Transform3D] with an invalid transform instead"
+    )]] DisconnectedSpace {
         /// Whether the entity path at which this is logged is disconnected from its parent.
         rerun::components::DisconnectedSpace disconnected_space;
 
@@ -67,6 +75,8 @@ namespace rerun {
     /// \private
     template <typename T>
     struct AsComponents;
+    RR_PUSH_WARNINGS
+    RR_DISABLE_DEPRECATION_WARNING
 
     /// \private
     template <>
@@ -77,3 +87,5 @@ namespace rerun {
         );
     };
 } // namespace rerun
+
+RR_POP_WARNINGS

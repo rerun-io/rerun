@@ -23,7 +23,7 @@ pub fn generate_reflection(
     // Put into its own subfolder since codegen is set up in a way that it thinks that everything
     // inside the folder is either generated or an extension to the generated code.
     // This way we don't have to build an exception just for this file.
-    let path = Utf8PathBuf::from("crates/viewer/re_viewer/src/reflection/mod.rs");
+    let path = Utf8PathBuf::from("crates/store/re_types/src/reflection/mod.rs");
 
     let mut imports = BTreeSet::new();
     let component_reflection = generate_component_reflection(
@@ -60,9 +60,9 @@ pub fn generate_reflection(
             SerializationError,
         };
 
-        /// Generates reflection about all known components.
-        ///
-        /// Call only once and reuse the results.
+        #[doc = "Generates reflection about all known components."]
+        #[doc = ""]
+        #[doc = "Call only once and reuse the results."]
         pub fn generate_reflection() -> Result<Reflection, SerializationError> {
             re_tracing::profile_function!();
 
@@ -95,10 +95,11 @@ fn generate_component_reflection(
         .objects_of_kind(ObjectKind::Component)
         .filter(|obj| !obj.is_testing())
     {
+        let crate_name = patched_crate_name(&obj.crate_name());
         if let Some(scope) = obj.scope() {
-            imports.insert(format!("{}::{scope}::components::*", obj.crate_name()));
+            imports.insert(format!("{crate_name}::{scope}::components::*"));
         } else {
-            imports.insert(format!("{}::components::*", obj.crate_name()));
+            imports.insert(format!("{crate_name}::components::*"));
         }
 
         let type_name = format_ident!("{}", obj.name);
@@ -152,9 +153,10 @@ fn generate_component_reflection(
     }
 
     quote! {
-        /// Generates reflection about all known components.
-        ///
-        /// Call only once and reuse the results.
+        #[doc = "Generates reflection about all known components."]
+        #[doc = ""]
+        #[doc = "Call only once and reuse the results."]
+        #[allow(deprecated)]
         fn generate_component_reflection() -> Result<ComponentReflectionMap, SerializationError> {
             re_tracing::profile_function!();
             let array = [
@@ -177,6 +179,7 @@ fn generate_archetype_reflection(reporter: &Reporter, objects: &Objects) -> Toke
             let Some(component_name) = field.typ.fqname() else {
                 panic!("archetype field must be an object/union or an array/vector of such")
             };
+            let name = &field.name;
             let display_name = re_case::to_human_case(&field.name);
             let docstring_md = doc_as_lines(
                 reporter,
@@ -192,8 +195,9 @@ fn generate_archetype_reflection(reporter: &Reporter, objects: &Objects) -> Toke
 
             quote! {
                 ArchetypeFieldReflection {
-                    component_name: #component_name.into(),
+                    name: #name,
                     display_name: #display_name,
+                    component_name: #component_name.into(),
                     docstring_md: #docstring_md,
                     is_required: #required,
                 }
@@ -219,6 +223,12 @@ fn generate_archetype_reflection(reporter: &Reporter, objects: &Objects) -> Toke
             .join("\n");
         }
 
+        let scope = if let Some(scope) = obj.scope() {
+            quote!(Some(#scope))
+        } else {
+            quote!(None)
+        };
+
         let quoted_view_types = obj
             .archetype_view_types()
             .unwrap_or_default()
@@ -233,6 +243,8 @@ fn generate_archetype_reflection(reporter: &Reporter, objects: &Objects) -> Toke
             ArchetypeReflection {
                 display_name: #display_name,
 
+                scope: #scope,
+
                 view_types: &[
                     #(#quoted_view_types,)*
                 ],
@@ -246,9 +258,9 @@ fn generate_archetype_reflection(reporter: &Reporter, objects: &Objects) -> Toke
     }
 
     quote! {
-        /// Generates reflection about all known archetypes.
-        ///
-        /// Call only once and reuse the results.
+        #[doc = "Generates reflection about all known archetypes."]
+        #[doc = ""]
+        #[doc = "Call only once and reuse the results."]
         fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             re_tracing::profile_function!();
             let array = [
@@ -256,5 +268,15 @@ fn generate_archetype_reflection(reporter: &Reporter, objects: &Objects) -> Toke
             ];
             ArchetypeReflectionMap::from_iter(array)
         }
+    }
+}
+
+/// Returns `crate_name` as is, unless it's `re_types`, in which case it's replace by `crate`,
+/// because that's where this code lives.
+fn patched_crate_name(crate_name: &str) -> String {
+    if crate_name == "re_types" {
+        "crate".to_owned()
+    } else {
+        crate_name.to_owned()
     }
 }

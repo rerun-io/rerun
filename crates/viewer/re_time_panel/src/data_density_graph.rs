@@ -14,7 +14,7 @@ use re_chunk_store::RangeQuery;
 use re_log_types::{ComponentPath, ResolvedTimeRange, TimeInt, Timeline};
 use re_viewer_context::{Item, TimeControl, UiLayout, ViewerContext};
 
-use crate::recursive_chunks_per_timeline_subscriber::PathRecursiveChunksPerTimeline;
+use crate::recursive_chunks_per_timeline_subscriber::PathRecursiveChunksPerTimelineStoreSubscriber;
 use crate::TimePanelItem;
 
 use super::time_ranges_ui::TimeRangesUi;
@@ -147,6 +147,10 @@ impl DensityGraph {
     pub fn add_range(&mut self, (min_x, max_x): (f32, f32), count: f32) {
         debug_assert!(min_x <= max_x);
 
+        if max_x < self.min_x || self.max_x < min_x {
+            return;
+        }
+
         if min_x == max_x {
             let center_x = lerp(min_x..=max_x, 0.5);
             self.add_point(center_x, count);
@@ -162,29 +166,39 @@ impl DensityGraph {
         // We then want to add to the buckets [3, 4, 5, 6],
         // but not in equal amounts.
 
-        let first_bucket_factor = 1.0 - (min_bucket - min_bucket.floor());
-        let num_full_buckets = 1.0 + max_bucket.floor() - min_bucket.ceil();
-        let last_bucket_factor = 1.0 - (max_bucket.ceil() - max_bucket);
+        let min_full_bucket = min_bucket.ceil();
+        let first_bucket = min_bucket.floor();
+        let max_full_bucket = max_bucket.floor();
+        let last_bucket = max_bucket.ceil();
+        let first_bucket_factor = 1.0 - (min_bucket - first_bucket);
+        let num_full_buckets = 1.0 + max_full_bucket - min_full_bucket;
+        let last_bucket_factor = 1.0 - (last_bucket - max_bucket);
         let count_per_bucket =
             count / (first_bucket_factor + num_full_buckets + last_bucket_factor);
 
+        // For filling self.buckets, we need to account for min_bucket/max_bucket being out of range!
+        // (everything before & beyond can be seen as a "virtual" bucket that we can't fill)
+
         // first bucket, partially filled:
-        if let Ok(i) = usize::try_from(min_bucket.floor() as i64) {
+        if let Ok(i) = usize::try_from(first_bucket as i64) {
             if let Some(bucket) = self.buckets.get_mut(i) {
                 *bucket += first_bucket_factor * count_per_bucket;
             }
         }
 
         // full buckets:
-        let min_full_bucket_idx = (min_bucket.ceil() as i64).at_least(0) as usize;
-        let max_full_bucket_idx =
-            (max_bucket.floor() as i64).at_most(self.buckets.len() as i64 - 1) as usize;
-        for bucket in &mut self.buckets[min_full_bucket_idx..=max_full_bucket_idx] {
-            *bucket += count_per_bucket;
+        if min_full_bucket != max_full_bucket {
+            let min_full_bucket_idx =
+                (min_full_bucket as i64).clamp(0, self.buckets.len() as i64 - 1) as usize;
+            let max_full_bucket_idx =
+                (max_full_bucket as i64).clamp(0, self.buckets.len() as i64 - 1) as usize;
+            for bucket in &mut self.buckets[min_full_bucket_idx..=max_full_bucket_idx] {
+                *bucket += count_per_bucket;
+            }
         }
 
         // last bucket, partially filled:
-        if let Ok(i) = usize::try_from(max_bucket.ceil() as i64) {
+        if let Ok(i) = usize::try_from(last_bucket as i64) {
             if let Some(bucket) = self.buckets.get_mut(i) {
                 *bucket += last_bucket_factor * count_per_bucket;
             }
@@ -472,27 +486,33 @@ pub fn build_density_graph<'a>(
                 total_num_events,
             )
         } else {
-            PathRecursiveChunksPerTimeline::access(&store.id(), |chunks_per_timeline| {
-                let Some(info) = chunks_per_timeline
-                    .path_recursive_chunks_for_entity_and_timeline(&item.entity_path, &timeline)
-                else {
-                    return Default::default();
-                };
+            PathRecursiveChunksPerTimelineStoreSubscriber::access(
+                &store.id(),
+                |chunks_per_timeline| {
+                    let Some(info) = chunks_per_timeline
+                        .path_recursive_chunks_for_entity_and_timeline(
+                            &item.entity_path,
+                            &timeline,
+                        )
+                    else {
+                        return Default::default();
+                    };
 
-                (
-                    info.recursive_chunks_info
-                        .values()
-                        .map(|info| {
-                            (
-                                info.chunk.clone(),
-                                info.resolved_time_range,
-                                info.num_events,
-                            )
-                        })
-                        .collect(),
-                    info.total_num_events,
-                )
-            })
+                    (
+                        info.recursive_chunks_info
+                            .values()
+                            .map(|info| {
+                                (
+                                    info.chunk.clone(),
+                                    info.resolved_time_range,
+                                    info.num_events,
+                                )
+                            })
+                            .collect(),
+                        info.total_num_events,
+                    )
+                },
+            )
             .unwrap_or_default()
         }
     };

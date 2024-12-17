@@ -15,6 +15,7 @@ namespace rerun::components {
     ///
     /// Note: although the x,y,z,w components of the quaternion will be passed through to the
     /// datastore as provided, when used in the Viewer, quaternions will always be normalized.
+    /// If normalization fails the rotation is treated as an invalid transform.
     struct PoseRotationQuat {
         rerun::datatypes::Quaternion quaternion;
 

@@ -4,8 +4,8 @@ use re_chunk::{ComponentName, RowId, UnitChunkShared};
 use re_data_ui::{sorted_component_list_for_ui, DataUi};
 use re_entity_db::EntityDb;
 use re_log_types::{ComponentPath, EntityPath};
+use re_types::blueprint::components::VisualizerOverrides;
 use re_types::external::arrow2;
-use re_types_blueprint::blueprint::components::VisualizerOverrides;
 use re_ui::{list_item, UiExt as _};
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
@@ -246,19 +246,19 @@ fn visualizer_components(
                     ValueSource::Override => (
                         ctx.viewer_ctx.blueprint_query,
                         ctx.blueprint_db(),
-                        override_path,
+                        override_path.clone(),
                         result_override.unwrap(),
                     ),
                     ValueSource::Store => (
                         &store_query,
                         ctx.recording(),
-                        &data_result.entity_path,
+                        data_result.entity_path.clone(),
                         result_store.unwrap(),
                     ),
                     ValueSource::Default => (
                         ctx.viewer_ctx.blueprint_query,
                         ctx.blueprint_db(),
-                        ctx.defaults_path,
+                        ViewBlueprint::defaults_path(ctx.view_id),
                         result_default.unwrap(),
                     ),
                     ValueSource::FallbackOrPlaceholder => {
@@ -280,7 +280,7 @@ fn visualizer_components(
                 };
 
                 re_data_ui::ComponentPathLatestAtResults {
-                    component_path: ComponentPath::new(entity_path.clone(), component_name),
+                    component_path: ComponentPath::new(entity_path, component_name),
                     unit: latest_at_unit,
                 }
                 .data_ui(ctx.viewer_ctx, ui, UiLayout::List, query, db);
@@ -340,7 +340,7 @@ fn visualizer_components(
                         &query_ctx,
                         ui,
                         "Default",
-                        ctx.defaults_path,
+                        &ViewBlueprint::defaults_path(ctx.view_id),
                         component_name,
                         *row_id,
                         raw_default.as_ref(),
@@ -501,7 +501,7 @@ fn menu_more(
 
     if ui.button("Make default for current view").clicked() {
         ctx.save_blueprint_array(
-            ctx.defaults_path,
+            &ViewBlueprint::defaults_path(ctx.view_id),
             component_name,
             raw_current_value.to_boxed(),
         );

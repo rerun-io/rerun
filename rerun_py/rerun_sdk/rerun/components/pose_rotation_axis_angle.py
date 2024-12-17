@@ -16,7 +16,11 @@ __all__ = ["PoseRotationAxisAngle", "PoseRotationAxisAngleBatch"]
 
 
 class PoseRotationAxisAngle(datatypes.RotationAxisAngle, ComponentMixin):
-    """**Component**: 3D rotation represented by a rotation around a given axis that doesn't propagate in the transform hierarchy."""
+    """
+    **Component**: 3D rotation represented by a rotation around a given axis that doesn't propagate in the transform hierarchy.
+
+    If normalization of the rotation axis fails the rotation is treated as an invalid transform.
+    """
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of PoseRotationAxisAngleExt in pose_rotation_axis_angle_ext.py

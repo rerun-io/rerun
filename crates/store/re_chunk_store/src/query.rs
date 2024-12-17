@@ -592,7 +592,10 @@ impl ChunkStore {
             })
             .unwrap_or_default();
 
-        debug_assert!(chunks.iter().map(|chunk| chunk.id()).all_unique());
+        debug_assert!(
+            chunks.iter().map(|chunk| chunk.id()).all_unique(),
+            "{entity_path}:{component_name} @ {query:?}",
+        );
 
         chunks
     }

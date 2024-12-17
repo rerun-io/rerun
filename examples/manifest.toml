@@ -142,6 +142,7 @@ examples = [
   "notebook",
   "clock",
   "dna",
+  "graphs",
   "log_file",
   "openstreetmap_data",
   "minimal",
@@ -150,8 +151,6 @@ examples = [
   "plots",
   "live_scrolling_plot",
   "raw_mesh",
-  "graph_lattice",
-  "graph_binary_tree",
   "air_traffic_data",
 ]
 
@@ -169,6 +168,7 @@ examples = [
   "drone_lidar",
   "extend_viewer_ui",
   "external_data_loader",
+  "graph_lattice",
   "incremental_logging",
   "minimal_serve",
   "shared_recording",

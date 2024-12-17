@@ -8,7 +8,7 @@ import pyarrow as pa
 
 from rerun._baseclasses import ComponentDescriptor
 
-from . import ComponentColumn
+from ._baseclasses import ComponentColumn
 from ._log import AsComponents, ComponentBatchLike
 from .error_utils import catch_and_log_exceptions
 

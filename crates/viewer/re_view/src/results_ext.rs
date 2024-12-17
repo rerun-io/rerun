@@ -21,7 +21,7 @@ use crate::DataResultQuery as _;
 pub struct HybridLatestAtResults<'a> {
     pub overrides: LatestAtResults,
     pub results: LatestAtResults,
-    pub defaults: LatestAtResults,
+    pub defaults: &'a LatestAtResults,
 
     pub ctx: &'a ViewContext<'a>,
     pub query: LatestAtQuery,
@@ -33,10 +33,10 @@ pub struct HybridLatestAtResults<'a> {
 /// Although overrides are never temporal, when accessed via the [`crate::RangeResultsExt`] trait
 /// they will be merged into the results appropriately.
 #[derive(Debug)]
-pub struct HybridRangeResults {
+pub struct HybridRangeResults<'a> {
     pub(crate) overrides: LatestAtResults,
     pub(crate) results: RangeResults,
-    pub(crate) defaults: LatestAtResults,
+    pub(crate) defaults: &'a LatestAtResults,
 }
 
 impl HybridLatestAtResults<'_> {
@@ -130,20 +130,19 @@ pub enum HybridResults<'a> {
     LatestAt(LatestAtQuery, HybridLatestAtResults<'a>),
 
     // Boxed because of size difference between variants
-    Range(RangeQuery, Box<HybridRangeResults>),
+    Range(RangeQuery, Box<HybridRangeResults<'a>>),
 }
 
 impl HybridResults<'_> {
     pub fn query_result_hash(&self) -> Hash64 {
-        re_tracing::profile_function!();
+        // This is called very frequently, don't put a profile scope here.
         // TODO(andreas): We should be able to do better than this and determine hashes for queries on the fly.
 
         match self {
             Self::LatestAt(_, r) => {
                 let mut indices = Vec::with_capacity(
-                    r.defaults.components.len()
-                        + r.overrides.components.len()
-                        + r.results.components.len(),
+                    // Don't add defaults component count because that's defaults for the entire view.
+                    r.overrides.components.len() + r.results.components.len(),
                 );
 
                 indices.extend(
@@ -170,9 +169,8 @@ impl HybridResults<'_> {
 
             Self::Range(_, r) => {
                 let mut indices = Vec::with_capacity(
-                    r.defaults.components.len()
-                        + r.overrides.components.len()
-                        + r.results.components.len(), // Don't know how many results per component.
+                    // Don't add defaults component count because that's defaults for the entire view.
+                    r.overrides.components.len() + r.results.components.len(),
                 );
 
                 indices.extend(
@@ -213,9 +211,9 @@ impl<'a> From<(LatestAtQuery, HybridLatestAtResults<'a>)> for HybridResults<'a> 
     }
 }
 
-impl From<(RangeQuery, HybridRangeResults)> for HybridResults<'_> {
+impl<'a> From<(RangeQuery, HybridRangeResults<'a>)> for HybridResults<'a> {
     #[inline]
-    fn from((query, results): (RangeQuery, HybridRangeResults)) -> Self {
+    fn from((query, results): (RangeQuery, HybridRangeResults<'a>)) -> Self {
         Self::Range(query, Box::new(results))
     }
 }
@@ -288,7 +286,7 @@ impl RangeResultsExt for RangeResults {
     }
 }
 
-impl RangeResultsExt for HybridRangeResults {
+impl<'a> RangeResultsExt for HybridRangeResults<'a> {
     #[inline]
     fn get_required_chunks(&self, component_name: &ComponentName) -> Option<Cow<'_, [Chunk]>> {
         if let Some(unit) = self.overrides.get(component_name) {

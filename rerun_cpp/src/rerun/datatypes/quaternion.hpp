@@ -27,6 +27,7 @@ namespace rerun::datatypes {
 
       public: // START of extensions from quaternion_ext.cpp:
         RERUN_SDK_EXPORT static const Quaternion IDENTITY;
+        RERUN_SDK_EXPORT static const Quaternion INVALID;
 
         /// Construct Quaternion from x/y/z/w values.
         static Quaternion from_xyzw(float x, float y, float z, float w) {

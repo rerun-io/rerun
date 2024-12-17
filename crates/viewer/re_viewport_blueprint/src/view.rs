@@ -400,8 +400,8 @@ impl ViewBlueprint {
             viewer_ctx: ctx,
             view_id: self.id,
             view_state,
-            defaults_path: &self.defaults_path,
             visualizer_collection: self.visualizer_collection(ctx),
+            query_result: ctx.lookup_query_result(self.id),
         }
     }
 
@@ -414,8 +414,8 @@ impl ViewBlueprint {
             viewer_ctx: ctx,
             view_id: self.id,
             view_state,
-            defaults_path: &self.defaults_path,
             visualizer_collection: self.visualizer_collection(ctx),
+            query_result: ctx.lookup_query_result(self.id),
         }
     }
 
@@ -715,7 +715,7 @@ mod tests {
 
             // Set up a store query and update the overrides.
             let query_result =
-                update_overrides(&test_ctx, &view.contents, &visualizable_entities, &resolver);
+                update_overrides(&test_ctx, &view, &visualizable_entities, &resolver);
 
             // Extract component overrides for testing.
             let mut visited: HashMap<EntityPath, HashMap<ComponentName, EntityPath>> =
@@ -745,7 +745,7 @@ mod tests {
 
     fn update_overrides(
         test_ctx: &TestContext,
-        contents: &ViewContents,
+        view: &ViewBlueprint,
         visualizable_entities: &PerVisualizer<VisualizableEntities>,
         resolver: &DataQueryPropertyResolver<'_>,
     ) -> re_viewer_context::DataQueryResult {
@@ -759,7 +759,13 @@ mod tests {
             hub: &re_viewer_context::StoreHub::test_hub(),
         };
 
-        let mut query_result = contents.execute_query(&store_ctx, visualizable_entities);
+        let mut query_result = view.contents.execute_query(
+            &store_ctx,
+            &test_ctx.view_class_registry,
+            &test_ctx.blueprint_query,
+            view.id,
+            visualizable_entities,
+        );
         let mut view_states = ViewStates::default();
 
         test_ctx.run_in_egui_central_panel(|ctx, _ui| {

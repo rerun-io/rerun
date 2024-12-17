@@ -5,6 +5,7 @@ use re_chunk_store::LatestAtQuery;
 use re_entity_db::entity_db::EntityDb;
 use re_query::StorageEngineReadGuard;
 
+use crate::drag_and_drop::DragAndDropPayload;
 use crate::{
     query_context::DataQueryResult, AppOptions, ApplicableEntities, ApplicationSelectionState,
     Caches, CommandSender, ComponentUiRegistry, IndicatedEntities, ItemCollection, PerVisualizer,
@@ -79,6 +80,13 @@ pub struct ViewerContext<'a> {
     /// The focused item is cleared every frame, but views may react with side-effects
     /// that last several frames.
     pub focused_item: &'a Option<crate::Item>,
+
+    /// If a selection contains any `undraggable_items`, it may not be dragged.
+    ///
+    /// This is a rather ugly workaround to handle the case of the root container not being
+    /// draggable, but also being unknown to the drag-and-drop machinery in `re_viewer_context`.
+    //TODO(ab): figure out a way to deal with that in a cleaner way.
+    pub undraggable_items: &'a ItemCollection,
 }
 
 impl ViewerContext<'_> {
@@ -131,11 +139,22 @@ impl ViewerContext<'_> {
         self.rec_cfg.time_ctrl.read().current_query()
     }
 
-    /// Set hover/select/focus for a given selection based on an egui response.
-    pub fn select_hovered_on_click(
+    /// Consistently handle the selection, hover, drag start interactions for a given set of items.
+    ///
+    /// The `draggable` parameter controls whether a drag can be initiated from this item. When a UI
+    /// element represents an [`crate::Item`], one must make the call whether this element should be
+    /// meaningfully draggable by the users. This is ultimately a subjective decision, but some here
+    /// are some guidelines:
+    /// - Is there a meaningful destination for the dragged payload? For example, dragging stuff out
+    ///   of a modal dialog is by definition meaningless.
+    /// - Even if a drag destination exists, would that be obvious for the user?
+    /// - Is it expected for that kind of UI element to be draggable? For example, buttons aren't
+    ///   typically draggable.
+    pub fn handle_select_hover_drag_interactions(
         &self,
         response: &egui::Response,
         selection: impl Into<ItemCollection>,
+        draggable: bool,
     ) {
         re_tracing::profile_function!();
 
@@ -146,14 +165,40 @@ impl ViewerContext<'_> {
             selection_state.set_hovered(selection.clone());
         }
 
-        if response.double_clicked() {
-            if let Some(item) = selection.first_item() {
-                self.command_sender
-                    .send_system(crate::SystemCommand::SetFocus(item.clone()));
+        if draggable && response.drag_started() {
+            let mut selected_items = selection_state.selected_items().clone();
+            let is_already_selected = selection
+                .iter()
+                .all(|(item, _)| selected_items.contains_item(item));
+            if !is_already_selected {
+                if response.ctx.input(|i| i.modifiers.command) {
+                    selected_items.extend(selection);
+                } else {
+                    selected_items = selection;
+                }
+                selection_state.set_selection(selected_items.clone());
             }
-        }
 
-        if response.clicked() {
+            let selection_may_be_dragged = self
+                .undraggable_items
+                .iter_items()
+                .all(|item| !selected_items.contains_item(item));
+
+            let payload = if selection_may_be_dragged {
+                DragAndDropPayload::from_items(&selected_items)
+            } else {
+                DragAndDropPayload::Invalid
+            };
+
+            egui::DragAndDrop::set_payload(&response.ctx, payload);
+        } else if response.clicked() {
+            if response.double_clicked() {
+                if let Some(item) = selection.first_item() {
+                    self.command_sender
+                        .send_system(crate::SystemCommand::SetFocus(item.clone()));
+                }
+            }
+
             if response.ctx.input(|i| i.modifiers.command) {
                 selection_state.toggle_selection(selection);
             } else {

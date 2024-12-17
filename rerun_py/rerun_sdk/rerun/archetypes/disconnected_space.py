@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 from attrs import define, field
+from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
 from .. import components
 from .._baseclasses import (
@@ -16,6 +17,7 @@ from .disconnected_space_ext import DisconnectedSpaceExt
 __all__ = ["DisconnectedSpace"]
 
 
+@deprecated("""Use [archetypes.Transform3D] with an invalid transform instead""")
 @define(str=False, repr=False, init=False)
 class DisconnectedSpace(DisconnectedSpaceExt, Archetype):
     """

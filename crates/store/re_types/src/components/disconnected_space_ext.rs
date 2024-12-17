@@ -1,3 +1,5 @@
+#![allow(deprecated)]
+
 use super::DisconnectedSpace;
 
 impl Default for DisconnectedSpace {

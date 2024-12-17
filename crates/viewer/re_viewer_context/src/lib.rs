@@ -13,6 +13,7 @@ mod component_fallbacks;
 mod component_ui_registry;
 mod contents;
 mod data_result_node_or_path;
+mod drag_and_drop;
 mod file_dialog;
 mod image_info;
 mod item;
@@ -52,6 +53,7 @@ pub use self::{
     component_ui_registry::{ComponentUiRegistry, ComponentUiTypes, UiLayout},
     contents::{blueprint_id_to_tile_id, Contents, ContentsName},
     data_result_node_or_path::DataResultNodeOrPath,
+    drag_and_drop::{drag_and_drop_payload_cursor_ui, DragAndDropPayload},
     file_dialog::santitize_file_name,
     image_info::{ColormapWithRange, ImageInfo},
     item::Item,

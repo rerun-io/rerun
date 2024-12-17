@@ -19,7 +19,7 @@ use re_view::{
     view_property_ui,
 };
 use re_viewer_context::{
-    IdentifiedViewSystem as _, RecommendedView, SystemExecutionOutput, ViewClass,
+    IdentifiedViewSystem as _, Item, RecommendedView, SystemExecutionOutput, ViewClass,
     ViewClassLayoutPriority, ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics,
     ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewSystemRegistrator, ViewerContext,
 };
@@ -28,7 +28,7 @@ use re_viewport_blueprint::ViewProperty;
 use crate::{
     graph::Graph,
     layout::{ForceLayoutParams, LayoutRequest},
-    ui::{draw_debug, draw_graph, view_property_force_ui, GraphViewState},
+    ui::{draw_debug, draw_graph, view_property_force_ui, GraphViewState, LevelOfDetail},
     visualizers::{merge, EdgesVisualizer, NodeVisualizer},
 };
 
@@ -168,6 +168,8 @@ Display a graph of nodes and edges.
 
         let state = state.downcast_mut::<GraphViewState>()?;
 
+        let params = ForceLayoutParams::get(ctx, query, self, state)?;
+
         let bounds_property = ViewProperty::from_archetype::<VisualBounds2D>(
             ctx.blueprint_db(),
             ctx.blueprint_query,
@@ -176,21 +178,25 @@ Display a graph of nodes and edges.
         let rect_in_scene: blueprint::components::VisualBounds2D =
             bounds_property.component_or_fallback(ctx, self, state)?;
 
-        let params = ForceLayoutParams::get(ctx, query, self, state)?;
-
-        let rect_in_ui = ui.max_rect();
-
+        // Perform all layout-related tasks.
         let request = LayoutRequest::from_graphs(graphs.iter());
-        let layout_was_empty = state.layout_state.is_none();
         let layout = state.layout_state.get(request, params);
+
+        // Prepare the view and the transformations.
+        let rect_in_ui = *state.rect_in_ui.insert(ui.max_rect());
 
         let mut ui_from_world = fit_to_rect_in_scene(rect_in_ui, rect_in_scene.into());
 
-        let resp = zoom_pan_area(ui, rect_in_ui, &mut ui_from_world, |ui| {
+        // We store a copy of the transformation to see if it has changed.
+        let ui_from_world_ref = ui_from_world;
+
+        let level_of_detail = LevelOfDetail::from_scaling(ui_from_world.scaling);
+
+        let resp = zoom_pan_area(ui, &mut ui_from_world, |ui| {
             let mut world_bounding_rect = egui::Rect::NOTHING;
 
             for graph in &graphs {
-                let graph_rect = draw_graph(ui, ctx, graph, layout, query);
+                let graph_rect = draw_graph(ui, ctx, graph, layout, query, level_of_detail);
                 world_bounding_rect = world_bounding_rect.union(graph_rect);
             }
 
@@ -200,12 +206,22 @@ Display a graph of nodes and edges.
             }
         });
 
+        if resp.hovered() {
+            ctx.selection_state().set_hovered(Item::View(query.view_id));
+        }
+
+        if resp.clicked() {
+            // clicked elsewhere, select the view
+            ctx.selection_state()
+                .set_selection(Item::View(query.view_id));
+        }
+
         // Update blueprint if changed
         let updated_rect_in_scene =
             blueprint::components::VisualBounds2D::from(ui_from_world.inverse() * rect_in_ui);
-        if resp.double_clicked() || layout_was_empty {
+        if resp.double_clicked() {
             bounds_property.reset_blueprint_component::<blueprint::components::VisualBounds2D>(ctx);
-        } else if rect_in_scene != updated_rect_in_scene {
+        } else if ui_from_world != ui_from_world_ref {
             bounds_property.save_blueprint_component(ctx, &updated_rect_in_scene);
         }
         // Update stored bounds on the state, so visualizers see an up-to-date value.

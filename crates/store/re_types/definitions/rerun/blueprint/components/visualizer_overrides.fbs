@@ -17,8 +17,7 @@ table VisualizerOverrides (
     "attr.python.array_aliases": "str",
     "attr.rerun.scope": "blueprint",
     "attr.rust.derive": "PartialEq, Eq, PartialOrd, Ord, Default",
-    "attr.rust.repr": "transparent",
-    "attr.rust.override_crate": "re_types_blueprint"
+    "attr.rust.repr": "transparent"
 ) {
     /// Names of the visualizers that should be active.
     visualizers: rerun.blueprint.datatypes.Utf8List (order: 100);

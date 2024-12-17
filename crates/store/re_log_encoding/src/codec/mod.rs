@@ -1,3 +1,5 @@
+mod arrow;
+pub mod file;
 pub mod wire;
 
 #[derive(Debug, thiserror::Error)]
@@ -20,18 +22,6 @@ pub enum CodecError {
     #[error("Unsupported encoding, expected Arrow IPC")]
     UnsupportedEncoding,
 
-    #[error("Invalid file header")]
-    InvalidFileHeader,
-
     #[error("Unknown message header")]
     UnknownMessageHeader,
-
-    #[error("Invalid message header")]
-    InvalidMessageHeader,
-
-    #[error("Unknown message kind {0}")]
-    UnknownMessageKind(u8),
-
-    #[error("Invalid argument: {0}")]
-    InvalidArgument(String),
 }

@@ -129,7 +129,7 @@ impl BinaryStreamSink {
 
         // We always compress when writing to a stream
         // TODO(jleibs): Make this configurable
-        let encoding_options = re_log_encoding::EncodingOptions::COMPRESSED;
+        let encoding_options = re_log_encoding::EncodingOptions::MSGPACK_COMPRESSED;
 
         let (tx, rx) = std::sync::mpsc::channel();
 

@@ -26,7 +26,7 @@ impl ContextMenuAction for ShowAction {
 
     fn label(&self, ctx: &ContextMenuContext<'_>) -> String {
         if ctx.selection.len() > 1 {
-            "Show All".to_owned()
+            "Show all".to_owned()
         } else {
             "Show".to_owned()
         }
@@ -80,7 +80,7 @@ impl ContextMenuAction for HideAction {
 
     fn label(&self, ctx: &ContextMenuContext<'_>) -> String {
         if ctx.selection.len() > 1 {
-            "Hide All".to_owned()
+            "Hide all".to_owned()
         } else {
             "Hide".to_owned()
         }

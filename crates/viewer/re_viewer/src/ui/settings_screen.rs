@@ -203,6 +203,7 @@ fn video_section_ui(ui: &mut Ui, app_options: &mut AppOptions) {
 #[cfg(not(target_arch = "wasm32"))]
 fn ffmpeg_path_status_ui(ui: &mut Ui, app_options: &AppOptions) {
     use re_video::decode::{FFmpegVersion, FFmpegVersionParseError};
+    use std::task::Poll;
 
     let path = app_options
         .video_decoder_override_ffmpeg_path
@@ -211,17 +212,21 @@ fn ffmpeg_path_status_ui(ui: &mut Ui, app_options: &AppOptions) {
     if path.is_some_and(|path| !path.is_file()) {
         ui.error_label("The specified FFmpeg binary path does not exist or is not a file.");
     } else {
-        let res = FFmpegVersion::for_executable(path);
+        let res = FFmpegVersion::for_executable_poll(path);
 
         match res {
-            Ok(version) => {
+            Poll::Pending => {
+                ui.spinner();
+            }
+
+            Poll::Ready(Ok(version)) => {
                 if version.is_compatible() {
                     ui.success_label(format!("FFmpeg found (version {version})"));
                 } else {
                     ui.error_label(format!("Incompatible FFmpeg version: {version}"));
                 }
             }
-            Err(FFmpegVersionParseError::ParseVersion { raw_version }) => {
+            Poll::Ready(Err(FFmpegVersionParseError::ParseVersion { raw_version })) => {
                 // We make this one a warning instead of an error because version parsing is flaky, and
                 // it might end up still working.
                 ui.warning_label(format!(
@@ -229,7 +234,7 @@ fn ffmpeg_path_status_ui(ui: &mut Ui, app_options: &AppOptions) {
                 ));
             }
 
-            Err(err) => {
+            Poll::Ready(Err(err)) => {
                 ui.error_label(format!("Unable to check FFmpeg version: {err}"));
             }
         }

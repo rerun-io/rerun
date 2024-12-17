@@ -23,7 +23,7 @@ use re_log_types::LogMsg;
 ///
 /// This function is capable of decoding multiple independent recordings from a single stream.
 pub fn read_rrd_streams_from_file_or_stdin(
-    version_policy: re_log_encoding::decoder::VersionPolicy,
+    version_policy: re_log_encoding::VersionPolicy,
     paths: &[String],
 ) -> (
     channel::Receiver<anyhow::Result<LogMsg>>,

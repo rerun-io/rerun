@@ -407,6 +407,67 @@ impl std::fmt::Display for PythonVersion {
     }
 }
 
+impl std::str::FromStr for PythonVersion {
+    type Err = PythonVersionParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s.is_empty() {
+            return Err(PythonVersionParseError::MissingMajor);
+        }
+        let (major, rest) = s
+            .split_once('.')
+            .ok_or(PythonVersionParseError::MissingMinor)?;
+        if rest.is_empty() {
+            return Err(PythonVersionParseError::MissingMinor);
+        }
+        let (minor, rest) = rest
+            .split_once('.')
+            .ok_or(PythonVersionParseError::MissingPatch)?;
+        if rest.is_empty() {
+            return Err(PythonVersionParseError::MissingPatch);
+        }
+        let pos = rest.bytes().position(|v| !v.is_ascii_digit());
+        let (patch, suffix) = match pos {
+            Some(pos) => rest.split_at(pos),
+            None => (rest, ""),
+        };
+
+        Ok(Self {
+            major: major
+                .parse()
+                .map_err(PythonVersionParseError::InvalidMajor)?,
+            minor: minor
+                .parse()
+                .map_err(PythonVersionParseError::InvalidMinor)?,
+            patch: patch
+                .parse()
+                .map_err(PythonVersionParseError::InvalidPatch)?,
+            suffix: suffix.into(),
+        })
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum PythonVersionParseError {
+    #[error("missing major version")]
+    MissingMajor,
+
+    #[error("missing minor version")]
+    MissingMinor,
+
+    #[error("missing patch version")]
+    MissingPatch,
+
+    #[error("invalid major version: {0}")]
+    InvalidMajor(std::num::ParseIntError),
+
+    #[error("invalid minor version: {0}")]
+    InvalidMinor(std::num::ParseIntError),
+
+    #[error("invalid patch version: {0}")]
+    InvalidPatch(std::num::ParseIntError),
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum FileSource {
@@ -572,4 +633,58 @@ pub fn build_frame_nr(frame_nr: impl TryInto<TimeInt>) -> (Timeline, TimeInt) {
         Timeline::new("frame_nr", TimeType::Sequence),
         frame_nr.try_into().unwrap_or(TimeInt::MIN),
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_python_version() {
+        macro_rules! assert_parse_err {
+            ($input:literal, $expected:pat) => {
+                let actual = $input.parse::<PythonVersion>();
+
+                assert!(
+                    matches!(actual, Err($expected)),
+                    "actual: {actual:?}, expected: {}",
+                    stringify!($expected)
+                );
+            };
+        }
+
+        macro_rules! assert_parse_ok {
+            ($input:literal, $expected:expr) => {
+                let actual = $input.parse::<PythonVersion>().expect("failed to parse");
+                assert_eq!(actual, $expected);
+            };
+        }
+
+        assert_parse_err!("", PythonVersionParseError::MissingMajor);
+        assert_parse_err!("3", PythonVersionParseError::MissingMinor);
+        assert_parse_err!("3.", PythonVersionParseError::MissingMinor);
+        assert_parse_err!("3.11", PythonVersionParseError::MissingPatch);
+        assert_parse_err!("3.11.", PythonVersionParseError::MissingPatch);
+        assert_parse_err!("a.11.0", PythonVersionParseError::InvalidMajor(_));
+        assert_parse_err!("3.b.0", PythonVersionParseError::InvalidMinor(_));
+        assert_parse_err!("3.11.c", PythonVersionParseError::InvalidPatch(_));
+        assert_parse_ok!(
+            "3.11.0",
+            PythonVersion {
+                major: 3,
+                minor: 11,
+                patch: 0,
+                suffix: String::new(),
+            }
+        );
+        assert_parse_ok!(
+            "3.11.0a1",
+            PythonVersion {
+                major: 3,
+                minor: 11,
+                patch: 0,
+                suffix: "a1".to_owned(),
+            }
+        );
+    }
 }

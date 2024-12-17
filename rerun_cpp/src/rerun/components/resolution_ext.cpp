@@ -18,8 +18,6 @@ namespace rerun {
 
             // <CODEGEN_COPY_TO_HEADER>
 
-            RERUN_SDK_EXPORT static const Resolution IDENTITY;
-
             /// Construct resolution from width and height floats.
             Resolution(float width, float height) : resolution{width, height} {}
 

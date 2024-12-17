@@ -35,6 +35,7 @@ impl DrawableLabel {
 }
 
 pub struct TextLabel {
+    color: Option<Color32>,
     frame: Frame,
     galley: Arc<Galley>,
 }
@@ -44,11 +45,27 @@ pub struct CircleLabel {
     color: Option<Color32>,
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum LevelOfDetail {
+    Full,
+    Low,
+}
+
+impl LevelOfDetail {
+    pub fn from_scaling(zoom: f32) -> Self {
+        if zoom < 0.20 {
+            Self::Low
+        } else {
+            Self::Full
+        }
+    }
+}
+
 impl DrawableLabel {
     pub fn size(&self) -> Vec2 {
         match self {
             Self::Circle(CircleLabel { radius, .. }) => Vec2::splat(radius * 2.0),
-            Self::Text(TextLabel { galley, frame }) => {
+            Self::Text(TextLabel { galley, frame, .. }) => {
                 frame.inner_margin.sum() + galley.size() + Vec2::splat(frame.stroke.width * 2.0)
             }
         }
@@ -82,7 +99,11 @@ impl DrawableLabel {
             .fill(ui.style().visuals.widgets.noninteractive.bg_fill)
             .stroke(Stroke::new(1.0, ui.style().visuals.text_color()));
 
-        Self::Text(TextLabel { frame, galley })
+        Self::Text(TextLabel {
+            frame,
+            galley,
+            color,
+        })
     }
 }
 
@@ -94,7 +115,7 @@ fn draw_circle_label(
     let &CircleLabel { radius, color } = label;
     let visuals = &ui.style().visuals.clone();
 
-    let (resp, painter) = ui.allocate_painter(Vec2::splat(radius * 2.0), Sense::click());
+    let (resp, painter) = ui.allocate_painter(Vec2::splat(radius * 2.0), Sense::hover());
     painter.circle(
         resp.rect.center(),
         radius,
@@ -115,7 +136,7 @@ fn draw_circle_label(
 }
 
 fn draw_text_label(ui: &mut Ui, label: &TextLabel, highlight: InteractionHighlight) -> Response {
-    let TextLabel { galley, frame } = label;
+    let TextLabel { galley, frame, .. } = label;
     let visuals = &ui.style().visuals;
 
     let bg = match highlight.hover {
@@ -132,13 +153,44 @@ fn draw_text_label(ui: &mut Ui, label: &TextLabel, highlight: InteractionHighlig
         .stroke(stroke)
         .fill(bg)
         .show(ui, |ui| {
-            ui.add(
-                egui::Label::new(galley.clone())
-                    .selectable(false)
-                    .sense(Sense::click()),
-            )
+            ui.add(egui::Label::new(galley.clone()).selectable(false))
         })
-        .response
+        .inner
+}
+
+/// Draw a rectangle to "fake" a label at small scales, where actual text would be unreadable anyways.
+fn draw_rect_label(ui: &mut Ui, label: &TextLabel, highlight: InteractionHighlight) -> Response {
+    let TextLabel {
+        galley,
+        frame,
+        color,
+    } = label;
+    let visuals = ui.visuals();
+
+    let bg = match highlight.hover {
+        HoverHighlight::None => visuals.widgets.noninteractive.bg_fill,
+        HoverHighlight::Hovered => visuals.widgets.hovered.bg_fill,
+    };
+
+    let stroke = match highlight.selection {
+        SelectionHighlight::Selection => visuals.selection.stroke,
+        _ => Stroke::new(1.0, visuals.text_color()),
+    };
+
+    // We use `gamma` to correct for the fact that text is not completely solid.
+    let fill_color = color
+        .unwrap_or_else(|| visuals.text_color())
+        .gamma_multiply(0.5);
+
+    frame
+        .stroke(stroke)
+        .fill(bg)
+        .show(ui, |ui| {
+            let (resp, painter) = ui.allocate_painter(galley.rect.size(), Sense::click());
+            painter.rect_filled(resp.rect, 0.0, fill_color);
+            resp
+        })
+        .inner
 }
 
 /// Draws a node at the given position.
@@ -147,16 +199,26 @@ fn draw_node(
     center: Pos2,
     node: &DrawableLabel,
     highlight: InteractionHighlight,
+    lod: LevelOfDetail,
 ) -> Response {
-    let builder = UiBuilder::new().max_rect(Rect::from_center_size(center, node.size()));
-    let mut node_ui = ui.new_child(builder);
+    let builder = UiBuilder::new()
+        .max_rect(Rect::from_center_size(center, node.size()))
+        .sense(Sense::click());
 
-    // TODO(grtlr): handle highlights
+    let mut node_ui = ui.new_child(builder);
 
     match node {
         DrawableLabel::Circle(label) => draw_circle_label(&mut node_ui, label, highlight),
-        DrawableLabel::Text(label) => draw_text_label(&mut node_ui, label, highlight),
-    }
+        DrawableLabel::Text(label) => {
+            if lod == LevelOfDetail::Full {
+                draw_text_label(&mut node_ui, label, highlight)
+            } else {
+                draw_rect_label(&mut node_ui, label, highlight)
+            }
+        }
+    };
+
+    node_ui.response()
 }
 
 /// Draws a bounding box, as well as a basic coordinate system.
@@ -282,6 +344,7 @@ pub fn draw_graph(
     graph: &Graph,
     layout: &Layout,
     query: &ViewQuery<'_>,
+    lod: LevelOfDetail,
 ) -> Rect {
     let entity_path = graph.entity();
     let entity_highlights = query.highlights.entity_highlight(entity_path.hash());
@@ -295,14 +358,10 @@ pub fn draw_graph(
         let response = match node {
             Node::Explicit { instance, .. } => {
                 let highlight = entity_highlights.index_highlight(instance.instance_index);
-                let mut response = draw_node(ui, center, node.label(), highlight);
+                let mut response = draw_node(ui, center, node.label(), highlight, lod);
 
                 let instance_path =
                     InstancePath::instance(entity_path.clone(), instance.instance_index);
-                ctx.select_hovered_on_click(
-                    &response,
-                    Item::DataResult(query.view_id, instance_path.clone()),
-                );
 
                 response = response.on_hover_ui_at_pointer(|ui| {
                     list_item::list_item_scope(ui, "graph_node_hover", |ui| {
@@ -319,10 +378,25 @@ pub fn draw_graph(
                     });
                 });
 
+                ctx.handle_select_hover_drag_interactions(
+                    &response,
+                    Item::DataResult(query.view_id, instance_path.clone()),
+                    false,
+                );
+
+                // double click selects the entire entity
+                if response.double_clicked() {
+                    // Select the entire entity
+                    ctx.selection_state().set_selection(Item::DataResult(
+                        query.view_id,
+                        instance_path.entity_path.clone().into(),
+                    ));
+                }
+
                 response
             }
             Node::Implicit { graph_node, .. } => {
-                draw_node(ui, center, node.label(), Default::default()).on_hover_text(format!(
+                draw_node(ui, center, node.label(), Default::default(), lod).on_hover_text(format!(
                     "Implicit node {} created via a reference in a GraphEdge component",
                     graph_node.as_str(),
                 ))
@@ -346,9 +420,10 @@ pub fn draw_graph(
             let resp = draw_entity_rect(ui, *rect, entity_path, &query.highlights);
             current_rect = current_rect.union(resp.rect);
             let instance_path = InstancePath::entity_all(entity_path.clone());
-            ctx.select_hovered_on_click(
+            ctx.handle_select_hover_drag_interactions(
                 &resp,
-                vec![(Item::DataResult(query.view_id, instance_path), None)].into_iter(),
+                Item::DataResult(query.view_id, instance_path),
+                false,
             );
         }
     }

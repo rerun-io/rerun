@@ -9,6 +9,12 @@ impl RotationAxisAngle {
         angle: Angle::ZERO,
     };
 
+    /// A rotation that represents an invalid transform.
+    pub const INVALID: Self = Self {
+        axis: Vec3D::ZERO,
+        angle: Angle::ZERO,
+    };
+
     /// Create a new rotation from an axis and an angle.
     #[inline]
     pub fn new(axis: impl Into<Vec3D>, angle: impl Into<Angle>) -> Self {
@@ -26,13 +32,15 @@ impl<V: Into<Vec3D>, A: Into<Angle>> From<(V, A)> for RotationAxisAngle {
 }
 
 #[cfg(feature = "glam")]
-impl From<RotationAxisAngle> for glam::Quat {
+impl TryFrom<RotationAxisAngle> for glam::Quat {
+    type Error = ();
+
     #[inline]
-    fn from(val: RotationAxisAngle) -> Self {
+    fn try_from(val: RotationAxisAngle) -> Result<Self, ()> {
         let axis: glam::Vec3 = val.axis.into();
         axis.try_normalize()
             .map(|axis| Self::from_axis_angle(axis, val.angle.radians()))
-            .unwrap_or_default()
+            .ok_or(())
     }
 }
 
