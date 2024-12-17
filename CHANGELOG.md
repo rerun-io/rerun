@@ -34,25 +34,29 @@ The 3D view now offers an infinite 3D grid, enabled by default. Further controls
   </picture>
 </p>
 
-All the nitty gritty details in:
-* https://github.com/rerun-io/rerun/pull/8230
-* https://github.com/rerun-io/rerun/pull/8234
+All the nitty gritty details in https://github.com/rerun-io/rerun/pull/8230 and https://github.com/rerun-io/rerun/pull/8234.
 
 ### UI/UX improvements
 
-* Undo/Redo
-TODO: embed somehow emil's loom about it
-* Drag-n-drop
-* View screenshots
-* Breadcrumbs and other UI/UX improvements
 TODO: Katya's loom
-TODO: breadcrumbs?
+
+* Undo/Redo\
+TODO: blurb\
+TODO: embed somehow emil's loom about it
+* Drag-n-drop\
+TODO: blurb
+* View screenshots\
+TODO: blurb
+* Breadcrumbs and other UI/UX improvements\
+TODO: blurb
 
 ### ⚠️ Breaking changes
 
 * Near clip plane for `Spatial2D` views now defaults to `0.1` in 3D scene units.
-* Blueprint: Types and fields got renamed from `.*space_view.*`/`.*SpaceView.*` to `.*view.*`/`.*View.*`.
+* Blueprint: types and fields got renamed from `.*space_view.*`/`.*SpaceView.*` to `.*view.*`/`.*View.*`.
 * 3D transform arrow visualization show up less often by default.
+* `DisconnectedSpace` archetype/component deprecated.
+* `RotationAxisAngle` with zero rotation axis is no longer treated as identity.
 
 Read our 🧳 migration guide for more detailed information: https://rerun.io/docs/reference/migration/migration-0-21.
 
