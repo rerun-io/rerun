@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use itertools::Itertools as _;
 
-use re_capabilities::MainThreadToken;
 use re_build_info::CrateVersion;
+use re_capabilities::MainThreadToken;
 use re_data_source::{DataSource, FileContents};
 use re_entity_db::entity_db::EntityDb;
 use re_log_types::{ApplicationId, FileSource, LogMsg, StoreKind};
