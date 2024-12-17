@@ -11,6 +11,7 @@
 #![allow(clippy::redundant_closure)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
+#![allow(deprecated)]
 
 use ::re_types_core::external::arrow2;
 use ::re_types_core::SerializationResult;
@@ -29,6 +30,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// ### Disconnected space
 /// ```ignore
+/// // `DisconnectedSpace` is deprecated and will be removed in the future.
+/// // Use an invalid transform (e.g. zeroed out 3x3 matrix) instead.
+/// #![allow(deprecated)]
+///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_disconnected_space").spawn()?;
 ///
@@ -62,6 +67,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// </picture>
 /// </center>
 #[derive(Clone, Debug, Copy, PartialEq, Eq)]
+#[deprecated(note = "Use [archetypes.Transform3D] with an invalid transform instead")]
 pub struct DisconnectedSpace {
     /// Whether the entity path at which this is logged is disconnected from its parent.
     pub disconnected_space: crate::components::DisconnectedSpace,

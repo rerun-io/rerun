@@ -1,3 +1,8 @@
+#include <rerun/compiler_utils.hpp>
+
+// DisconnectedSpace is deprecated and will be removed in the future.
+RR_DISABLE_DEPRECATION_WARNING
+
 #include <rerun/archetypes/disconnected_space.hpp>
 #include <rerun/recording_stream.hpp>
 

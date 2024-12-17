@@ -16,6 +16,11 @@ namespace rerun::archetypes {
     /// Applying this transform does not alter an entity's transformation.
     RERUN_SDK_EXPORT static const Transform3D IDENTITY;
 
+    /// Invalid transformation.
+    ///
+    /// Applying this transform will cause this entity and the entire subtree not to be visualized.
+    RERUN_SDK_EXPORT static const Transform3D INVALID;
+
     /// Creates a new 3D transform from translation and matrix provided as 3 columns.
     ///
     /// \param translation_ \çopydoc Transform3D::translation
@@ -337,5 +342,15 @@ namespace rerun::archetypes {
 
     // </CODEGEN_COPY_TO_HEADER>
 #endif
+
+    /// Identity transformation.
+    ///
+    /// Applying this transform does not alter an entity's transformation.
+    const Transform3D Transform3D::IDENTITY = Transform3D(rerun::datatypes::Mat3x3::IDENTITY);
+
+    /// Invalid transformation.
+    ///
+    /// Applying this transform will cause this entity and the entire subtree not to be visualized.
+    const Transform3D Transform3D::INVALID = Transform3D(rerun::datatypes::Mat3x3::INVALID);
 
 } // namespace rerun::archetypes

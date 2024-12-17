@@ -1,5 +1,9 @@
 //! Logs a `DisconnectedSpace` archetype for roundtrip checks.
 
+// `DisconnectedSpace` is deprecated and will be removed in the future.
+// Use an invalid transform (for instance zero scale or zero matrix) instead.
+#![allow(deprecated)]
+
 use rerun::{archetypes::DisconnectedSpace, RecordingStream};
 
 #[derive(Debug, clap::Parser)]

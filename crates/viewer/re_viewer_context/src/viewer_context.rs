@@ -191,12 +191,14 @@ impl ViewerContext<'_> {
             };
 
             egui::DragAndDrop::set_payload(&response.ctx, payload);
-        } else if response.double_clicked() {
-            if let Some(item) = selection.first_item() {
-                self.command_sender
-                    .send_system(crate::SystemCommand::SetFocus(item.clone()));
-            }
         } else if response.clicked() {
+            if response.double_clicked() {
+                if let Some(item) = selection.first_item() {
+                    self.command_sender
+                        .send_system(crate::SystemCommand::SetFocus(item.clone()));
+                }
+            }
+
             if response.ctx.input(|i| i.modifiers.command) {
                 selection_state.toggle_selection(selection);
             } else {

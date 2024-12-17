@@ -128,7 +128,6 @@ ecolor = "0.29.1"
 eframe = { version = "0.29.1", default-features = false, features = [
   "accesskit",
   "default_fonts",
-  "puffin",
   "wayland",
   "x11",
 ] }
@@ -136,16 +135,10 @@ egui = { version = "0.29.1", features = [
   "callstack",
   "color-hex",
   "log",
-  "puffin",
   "rayon",
 ] }
 egui_commonmark = { version = "0.18", default-features = false }
-egui_extras = { version = "0.29.1", features = [
-  "http",
-  "image",
-  "puffin",
-  "serde",
-] }
+egui_extras = { version = "0.29.1", features = ["http", "image", "serde"] }
 egui_kittest = { version = "0.29.1", features = ["wgpu", "snapshot"] }
 egui_plot = "0.29.0" # https://github.com/emilk/egui_plot
 egui_table = "0.1.0" # https://github.com/rerun-io/egui_table
@@ -160,7 +153,7 @@ arboard = { version = "3.2", default-features = false }
 argh = "0.1.12"
 array-init = "2.1"
 arrow = { version = "53.1", default-features = false }
-arrow2 = { package = "re_arrow2", version = "0.17" }
+arrow2 = { package = "re_arrow2", version = "0.18" }
 async-executor = "1.0"
 backtrace = "0.3"
 bincode = "1.3"
@@ -561,13 +554,13 @@ significant_drop_tightening = "allow" # An update of parking_lot made this trigg
 # As a last resport, patch with a commit to our own repository.
 # ALWAYS document what PR the commit hash is part of, or when it was merged into the upstream trunk.
 
-ecolor = { git = "https://github.com/emilk/egui.git", rev = "13352d606496d7b1c5fd6fcfbe3c85baae39c040" }       # egui master 2024-12-09
-eframe = { git = "https://github.com/emilk/egui.git", rev = "13352d606496d7b1c5fd6fcfbe3c85baae39c040" }       # egui master 2024-12-09
-egui = { git = "https://github.com/emilk/egui.git", rev = "13352d606496d7b1c5fd6fcfbe3c85baae39c040" }         # egui master 2024-12-09
-egui_extras = { git = "https://github.com/emilk/egui.git", rev = "13352d606496d7b1c5fd6fcfbe3c85baae39c040" }  # egui master 2024-12-09
-egui_kittest = { git = "https://github.com/emilk/egui.git", rev = "13352d606496d7b1c5fd6fcfbe3c85baae39c040" } # egui master 2024-12-09
-egui-wgpu = { git = "https://github.com/emilk/egui.git", rev = "13352d606496d7b1c5fd6fcfbe3c85baae39c040" }    # egui master 2024-12-09
-emath = { git = "https://github.com/emilk/egui.git", rev = "13352d606496d7b1c5fd6fcfbe3c85baae39c040" }        # egui master 2024-12-09
+ecolor = { git = "https://github.com/emilk/egui.git", rev = "f7efb2186d529ddc9e69f7173c6ae3ae5f403d0b" }       # egui master 2024-12-16
+eframe = { git = "https://github.com/emilk/egui.git", rev = "f7efb2186d529ddc9e69f7173c6ae3ae5f403d0b" }       # egui master 2024-12-16
+egui = { git = "https://github.com/emilk/egui.git", rev = "f7efb2186d529ddc9e69f7173c6ae3ae5f403d0b" }         # egui master 2024-12-16
+egui_extras = { git = "https://github.com/emilk/egui.git", rev = "f7efb2186d529ddc9e69f7173c6ae3ae5f403d0b" }  # egui master 2024-12-16
+egui_kittest = { git = "https://github.com/emilk/egui.git", rev = "f7efb2186d529ddc9e69f7173c6ae3ae5f403d0b" } # egui master 2024-12-16
+egui-wgpu = { git = "https://github.com/emilk/egui.git", rev = "f7efb2186d529ddc9e69f7173c6ae3ae5f403d0b" }    # egui master 2024-12-16
+emath = { git = "https://github.com/emilk/egui.git", rev = "f7efb2186d529ddc9e69f7173c6ae3ae5f403d0b" }        # egui master 2024-12-16
 
 # Useful while developing:
 # ecolor = { path = "../../egui/crates/ecolor" }
@@ -587,9 +580,5 @@ egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", rev = "48e0ef5664
 # egui_commonmark = { git = "https://github.com/rerun-io/egui_commonmark", rev = "7a9dc755bfa351a3796274cb8ca87129b051c084" } # https://github.com/lampsitter/egui_commonmark/pull/65
 
 # walkers = { git = "https://github.com/rerun-io/walkers", rev = "8939cceb3fa49ca8648ee16fe1d8432f5ab0bdcc" } # https://github.com/podusowski/walkers/pull/222
-
-# commit on `rerun-io/re_arrow2` `main` branch
-# https://github.com/rerun-io/re_arrow2/commit/79ba149e823c88c1baa770a33c6ea8b6244d0597
-re_arrow2 = { git = "https://github.com/rerun-io/re_arrow2", rev = "79ba149e823c88c1baa770a33c6ea8b6244d0597" }
 
 # dav1d = { path = "/home/cmc/dev/rerun-io/rav1d", package = "re_rav1d", version = "0.1.1" }

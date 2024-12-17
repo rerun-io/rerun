@@ -499,6 +499,8 @@ fn handle_ui_interactions(
         // clicked elsewhere, select the view
         ctx.selection_state()
             .set_selection(Item::View(query.view_id));
+    } else if map_response.hovered() {
+        ctx.selection_state().set_hovered(Item::View(query.view_id));
     }
 }
 

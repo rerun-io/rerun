@@ -13,6 +13,9 @@ impl Quaternion {
     /// The identity quaternion representing no rotation.
     pub const IDENTITY: Self = Self([0.0, 0.0, 0.0, 1.0]);
 
+    /// A quaternion that represents an invalid transform.
+    pub const INVALID: Self = Self([0.0, 0.0, 0.0, 0.0]);
+
     /// From XYZW.
     #[inline]
     pub const fn from_xyzw(xyzw: [f32; 4]) -> Self {
@@ -33,11 +36,15 @@ impl Quaternion {
 }
 
 #[cfg(feature = "glam")]
-impl From<Quaternion> for glam::Quat {
+impl TryFrom<Quaternion> for glam::Quat {
+    type Error = ();
+
     #[inline]
-    fn from(q: Quaternion) -> Self {
-        let [x, y, z, w] = q.0;
-        Self::from_xyzw(x, y, z, w).normalize()
+    fn try_from(q: Quaternion) -> Result<Self, ()> {
+        glam::Vec4::from(q.0)
+            .try_normalize()
+            .map(Self::from_vec4)
+            .ok_or(())
     }
 }
 

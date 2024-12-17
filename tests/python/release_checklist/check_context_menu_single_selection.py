@@ -42,8 +42,11 @@ Component                 <no action available>
 =================================================
 ITEM                      CONTEXT MENU CONTENT
 =================================================
-view (tab title)    Hide
+view (tab title)          Hide
                           Remove
+
+                          Copy screenshot
+                          Save screenshot…
 
                           Expand all
                           Collapse all
@@ -66,8 +69,11 @@ view (tab title)    Hide
 =================================================
 ITEM                      CONTEXT MENU CONTENT
 =================================================
-view (child list)   Hide
+view (child list)         Hide
                           Remove
+
+                          Copy screenshot
+                          Save screenshot…
 
                           Expand all
                           Collapse all

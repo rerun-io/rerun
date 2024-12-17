@@ -37,8 +37,11 @@ Container                  Hide (or Show, depending on visibility)
 
                            Move to new container
 ------------------------------------------------------------------
-View                 Hide (or Show, depending on visibility)
+View                       Hide (or Show, depending on visibility)
                            Remove
+
+                           Copy screenshot
+                           Save screenshot…
 
                            Expand all
                            Collapse all
