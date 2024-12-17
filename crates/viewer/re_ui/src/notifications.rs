@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use egui::NumExt as _;
 pub use re_log::Level;
 use time::OffsetDateTime;
 
@@ -166,12 +167,11 @@ impl NotificationUi {
                 notification.is_unread = false;
             }
         }
+        self.was_open_last_frame = *is_panel_visible;
 
         self.panel
             .show(egui_ctx, &mut self.notifications, is_panel_visible);
         self.toasts.show(egui_ctx, &mut self.notifications[..]);
-
-        self.was_open_last_frame = *is_panel_visible;
     }
 }
 
@@ -197,7 +197,9 @@ impl NotificationPanel {
         }
 
         let panel_width = 356.0;
-        let panel_max_height = egui_ctx.screen_rect().max.y.min(640.0);
+        let panel_max_height = (egui_ctx.screen_rect().height() - 100.0)
+            .at_least(0.0)
+            .at_most(640.0);
 
         let mut to_dismiss = None;
 
@@ -221,7 +223,7 @@ impl NotificationPanel {
 
         let mut dismiss_all = false;
 
-        egui::Area::new(self.id)
+        let response = egui::Area::new(self.id)
             .anchor(egui::Align2::RIGHT_TOP, egui::vec2(-8.0, 32.0))
             .order(egui::Order::Foreground)
             .interactable(true)
@@ -233,6 +235,8 @@ impl NotificationPanel {
                     .inner_margin(8.0)
                     .show(ui, |ui| {
                         ui.set_width(panel_width);
+                        ui.set_max_height(panel_max_height);
+
                         ui.horizontal_top(|ui| {
                             if !notifications.is_empty() {
                                 ui.label(format!("Notifications ({})", notifications.len()));
@@ -246,7 +250,7 @@ impl NotificationPanel {
                             });
                         });
                         egui::ScrollArea::vertical()
-                            .min_scrolled_height(panel_max_height)
+                            .min_scrolled_height(panel_max_height / 2.0)
                             .max_height(panel_max_height)
                             .show(ui, notification_list);
 
@@ -258,7 +262,12 @@ impl NotificationPanel {
                             });
                         }
                     });
-            });
+            })
+            .response;
+
+        if response.clicked_elsewhere() {
+            *is_panel_visible = false;
+        }
 
         if dismiss_all {
             notifications.clear();
