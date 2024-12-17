@@ -5,6 +5,7 @@ mod address;
 pub use address::{InvalidRedapAddress, RedapAddress};
 use re_chunk::external::arrow2;
 use re_log_types::external::re_types_core::ComponentDescriptor;
+use re_protos::remote_store::v0::CatalogFilter;
 use re_types::blueprint::archetypes::{ContainerBlueprint, ViewportBlueprint};
 use re_types::blueprint::archetypes::{ViewBlueprint, ViewContents};
 use re_types::blueprint::components::{ContainerKind, RootContainer};
@@ -176,6 +177,43 @@ async fn stream_recording_async(
         StorageNodeClient::new(tonic_client).max_decoding_message_size(usize::MAX)
     };
 
+    re_log::debug!("Fetching catalog data for {recording_id}…");
+
+    let resp = client
+        .query_catalog(QueryCatalogRequest {
+            column_projection: None, // fetch all columns
+            filter: Some(CatalogFilter {
+                recording_ids: vec![RecordingId {
+                    id: recording_id.clone(),
+                }],
+            }),
+        })
+        .await
+        .map_err(TonicStatusError)?
+        .into_inner()
+        .filter_map(|resp| {
+            resp.and_then(|r| {
+                decode(r.encoder_version(), &r.payload)
+                    .map_err(|err| tonic::Status::internal(err.to_string()))
+            })
+            .transpose()
+        })
+        .collect::<Result<Vec<_>, tonic::Status>>()
+        .await
+        .map_err(TonicStatusError)?;
+
+    if resp.len() != 1 || resp[0].num_rows() != 1 {
+        return Err(StreamError::ChunkError(re_chunk::ChunkError::Malformed {
+            reason: format!(
+                "expected exactly one recording with id {recording_id}, got {}",
+                resp.len()
+            ),
+        }));
+    }
+
+    let store_info = store_info_from_catalog_chunk(&resp[0], &recording_id)?;
+    let store_id = store_info.store_id.clone();
+
     re_log::debug!("Fetching {recording_id}…");
 
     let mut resp = client
@@ -196,19 +234,6 @@ async fn stream_recording_async(
         });
 
     drop(client);
-
-    // TODO(zehiko) - we need a separate gRPC endpoint for fetching Store info REDAP #85
-    let store_id = StoreId::from_string(StoreKind::Recording, recording_id.clone());
-
-    let store_info = StoreInfo {
-        application_id: ApplicationId::from("redap_recording"),
-        store_id: store_id.clone(),
-        cloned_from: None,
-        is_official_example: false,
-        started: Time::now(),
-        store_source: StoreSource::Unknown,
-        store_version: None,
-    };
 
     // We need a whole StoreInfo here.
     if tx
@@ -241,6 +266,51 @@ async fn stream_recording_async(
     }
 
     Ok(())
+}
+
+fn store_info_from_catalog_chunk(
+    tc: &TransportChunk,
+    recording_id: &str,
+) -> Result<StoreInfo, StreamError> {
+    let store_id = StoreId::from_string(StoreKind::Recording, recording_id.to_owned());
+
+    let (_field, data) = tc
+        .components()
+        .find(|(f, _)| f.name == "application_id")
+        .ok_or(StreamError::ChunkError(re_chunk::ChunkError::Malformed {
+            reason: "no application_id field found".to_owned(),
+        }))?;
+    let app_id = data
+        .as_any()
+        .downcast_ref::<Arrow2Utf8Array<i32>>()
+        .ok_or(StreamError::ChunkError(re_chunk::ChunkError::Malformed {
+            reason: format!("application_id must be a utf8 array: {:?}", tc.schema),
+        }))?
+        .value(0);
+
+    let (_field, data) = tc
+        .components()
+        .find(|(f, _)| f.name == "start_time")
+        .ok_or(StreamError::ChunkError(re_chunk::ChunkError::Malformed {
+            reason: "no start_time field found".to_owned(),
+        }))?;
+    let start_time = data
+        .as_any()
+        .downcast_ref::<arrow2::array::Int64Array>()
+        .ok_or(StreamError::ChunkError(re_chunk::ChunkError::Malformed {
+            reason: format!("start_time must be an int64 array: {:?}", tc.schema),
+        }))?
+        .value(0);
+
+    Ok(StoreInfo {
+        application_id: ApplicationId::from(app_id),
+        store_id: store_id.clone(),
+        cloned_from: None,
+        is_official_example: false,
+        started: Time::from_ns_since_epoch(start_time),
+        store_source: StoreSource::Unknown,
+        store_version: None,
+    })
 }
 
 async fn stream_catalog_async(
