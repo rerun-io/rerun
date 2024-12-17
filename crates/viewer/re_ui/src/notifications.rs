@@ -347,7 +347,7 @@ fn show_notification(
             ui.vertical_centered(|ui| {
                 ui.horizontal_top(|ui| {
                     ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
-                    ui.set_max_width(300.0);
+                    ui.set_width(300.0);
                     ui.spacing_mut().item_spacing.x = 8.0;
                     log_level_icon(ui, notification.level);
                     ui.label(
