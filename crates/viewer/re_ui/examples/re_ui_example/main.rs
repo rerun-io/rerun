@@ -130,8 +130,8 @@ impl ExampleApp {
 
     /// Show recent text log messages to the user as toast notifications.
     fn show_text_logs_as_notifications(&mut self) {
-        while let Ok(re_log::LogMsg { level, msg, .. }) = self.text_log_rx.try_recv() {
-            self.notifications.add_log(level, msg);
+        while let Ok(re_log::LogMsg { target, level, msg }) = self.text_log_rx.try_recv() {
+            self.notifications.add_log(&target, level, msg);
         }
     }
 }
