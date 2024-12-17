@@ -91,7 +91,7 @@ pub mod time {
 pub use time::{Time, TimePoint, Timeline};
 
 pub use re_types_core::{
-    Archetype, ArchetypeName, AsComponents, Component, ComponentBatch,
+    Archetype, ArchetypeName, AsComponents, Component, ComponentBatch, ComponentBatchCow,
     ComponentBatchCowWithDescriptor, ComponentDescriptor, ComponentName, DatatypeName,
     DeserializationError, DeserializationResult, GenericIndicatorComponent, Loggable,
     LoggableBatch, NamedIndicatorComponent, SerializationError, SerializationResult, SizeBytes,
