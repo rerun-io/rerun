@@ -191,7 +191,13 @@ Display a graph of nodes and edges.
 
         let level_of_detail = LevelOfDetail::from_scaling(ui_from_world.scaling);
 
-        let resp = zoom_pan_area(ui, &mut ui_from_world, |ui| {
+        let resp = zoom_pan_area(ui, &mut ui_from_world, |response, ui| {
+            // Set the view to hovered if the mouse is hovering over the area.
+            // This may be overriden by hovering graph nodes/edges down the line.
+            if response.hovered() {
+                ctx.selection_state().set_hovered(Item::View(query.view_id));
+            }
+
             let mut world_bounding_rect = egui::Rect::NOTHING;
 
             for graph in &graphs {
@@ -199,12 +205,6 @@ Display a graph of nodes and edges.
                 world_bounding_rect = world_bounding_rect.union(graph_rect);
             }
         });
-
-        // Don't set the view to hovered if something else was already hovered.
-        // (this can only mean that a graph node/edge was hovered)
-        if resp.hovered() && ctx.selection_state().hovered_items().is_empty() {
-            ctx.selection_state().set_hovered(Item::View(query.view_id));
-        }
 
         if resp.clicked() {
             // clicked elsewhere, select the view

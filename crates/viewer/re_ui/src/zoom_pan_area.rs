@@ -65,10 +65,11 @@ pub fn fit_to_rect_in_scene(rect_in_ui: Rect, rect_in_scene: Rect) -> TSTransfor
 /// Provides a zoom-pan area for a given view.
 ///
 /// Will fill the entire `max_rect` of the `parent_ui`.
+/// `draw_contents` is called with the response of the pan-and-zoom area and its local ui.
 pub fn zoom_pan_area(
     parent_ui: &mut Ui,
     to_global: &mut TSTransform,
-    draw_contents: impl FnOnce(&mut Ui),
+    draw_contents: impl FnOnce(&egui::Response, &mut Ui),
 ) -> Response {
     // Create a new egui paint layer, where we can draw our contents:
     let zoom_pan_layer_id = egui::LayerId::new(
@@ -103,7 +104,7 @@ pub fn zoom_pan_area(
     local_ui.set_clip_rect(to_global.inverse() * global_view_bounds);
 
     // Add the actual contents to the area:
-    draw_contents(&mut local_ui);
+    draw_contents(&pan_response, &mut local_ui);
 
     // Tell egui to apply the transform on the layer:
     local_ui
