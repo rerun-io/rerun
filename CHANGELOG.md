@@ -36,14 +36,14 @@ The 3D view now offers an infinite 3D grid, enabled by default. Further controls
 
 All the nitty gritty details in https://github.com/rerun-io/rerun/pull/8230 and https://github.com/rerun-io/rerun/pull/8234.
 
-### Undo/Redo support in the viewer
+#### Undo/Redo support in the viewer
 
 You can now undo/redo blueprint changes in the viewer!
 This video shows it in action and explains how it works:
 
 [![video demonstrating undo/redo](https://img.youtube.com/vi/HWdv4FZQbqQ/0.jpg)](https://www.youtube.com/watch?v=HWdv4FZQbqQ)
 
-### More UI/UX improvements
+#### More UI/UX improvements
 
 * Drag-n-drop\
 TODO: blurb
