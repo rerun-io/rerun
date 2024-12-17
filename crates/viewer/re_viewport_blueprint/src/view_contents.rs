@@ -142,6 +142,9 @@ impl ViewContents {
         );
     }
 
+    /// Set the entity path filter. WARNING: a single mutation is allowed per frame, or data will be
+    /// lost.
+    //TODO(#8518): address this massive foot-gun.
     pub fn set_entity_path_filter(
         &self,
         ctx: &ViewerContext<'_>,
@@ -184,40 +187,65 @@ impl ViewContents {
         }
     }
 
-    /// Remove a subtree and any existing rules that it would match.
+    /// Perform arbitrary mutation on the entity path filter. WARNING: a single mutation is allowed
+    /// per frame, or data will be lost.
+    ///
+    /// This method exists because of the single mutation per frame limitation. It currently is the
+    /// only way to perform multiple mutations on the entity path filter in a single frame.
+    //TODO(#8518): address this massive foot-gun.
+    pub fn mutate_entity_path_filter(
+        &self,
+        ctx: &ViewerContext<'_>,
+        f: impl FnOnce(&mut EntityPathFilter),
+    ) {
+        let mut new_entity_path_filter = self.entity_path_filter.clone();
+        f(&mut new_entity_path_filter);
+        self.set_entity_path_filter(ctx, &new_entity_path_filter);
+    }
+
+    /// Remove a subtree and any existing rules that it would match. WARNING: a single mutation is
+    /// allowed per frame, or data will be lost.
     ///
     /// Because most-specific matches win, if we only add a subtree exclusion
     /// it can still be overridden by existing inclusions. This method ensures
     /// that not only do we add a subtree exclusion, but clear out any existing
     /// inclusions or (now redundant) exclusions that would match the subtree.
+    //TODO(#8518): address this massive foot-gun.
     pub fn remove_subtree_and_matching_rules(&self, ctx: &ViewerContext<'_>, path: EntityPath) {
         let mut new_entity_path_filter = self.entity_path_filter.clone();
         new_entity_path_filter.remove_subtree_and_matching_rules(path);
         self.set_entity_path_filter(ctx, &new_entity_path_filter);
     }
 
-    /// Directly add an exclusion rule to the [`EntityPathFilter`].
+    /// Directly add an exclusion rule to the [`EntityPathFilter`]. WARNING: a single mutation is
+    /// allowed per frame, or data will be lost.
     ///
     /// This is a direct modification of the filter and will not do any simplification
     /// related to overlapping or conflicting rules.
     ///
     /// If you are trying to remove an entire subtree, prefer using [`Self::remove_subtree_and_matching_rules`].
+    //TODO(#8518): address this massive foot-gun.
     pub fn raw_add_entity_exclusion(&self, ctx: &ViewerContext<'_>, rule: EntityPathRule) {
         let mut new_entity_path_filter = self.entity_path_filter.clone();
         new_entity_path_filter.add_rule(RuleEffect::Exclude, rule);
         self.set_entity_path_filter(ctx, &new_entity_path_filter);
     }
 
-    /// Directly add an inclusion rule to the [`EntityPathFilter`].
+    /// Directly add an inclusion rule to the [`EntityPathFilter`]. WARNING: a single mutation is
+    /// allowed per frame, or data will be lost.
     ///
     /// This is a direct modification of the filter and will not do any simplification
     /// related to overlapping or conflicting rules.
+    //TODO(#8518): address this massive foot-gun.
     pub fn raw_add_entity_inclusion(&self, ctx: &ViewerContext<'_>, rule: EntityPathRule) {
         let mut new_entity_path_filter = self.entity_path_filter.clone();
         new_entity_path_filter.add_rule(RuleEffect::Include, rule);
         self.set_entity_path_filter(ctx, &new_entity_path_filter);
     }
 
+    /// Remove rules for a given entity. WARNING: a single mutation is allowed per frame, or data
+    /// will be lost.
+    //TODO(#8518): address this massive foot-gun.
     pub fn remove_filter_rule_for(&self, ctx: &ViewerContext<'_>, ent_path: &EntityPath) {
         let mut new_entity_path_filter = self.entity_path_filter.clone();
         new_entity_path_filter.remove_rule_for(ent_path);
