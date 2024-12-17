@@ -1,10 +1,11 @@
 //! Modal for adding a new view of container to an existing target container.
 
-use crate::{ViewBlueprint, ViewportBlueprint};
 use re_ui::UiExt as _;
 use re_viewer_context::{
     blueprint_id_to_tile_id, icon_for_container_kind, ContainerId, RecommendedView, ViewerContext,
 };
+
+use crate::{ViewBlueprint, ViewportBlueprint};
 
 #[derive(Default)]
 pub struct AddViewOrContainerModal {
@@ -30,6 +31,7 @@ impl AddViewOrContainerModal {
                 re_ui::modal::ModalWrapper::new("Add view or container")
                     .min_width(500.0)
                     .full_span_content(true)
+                    .scrollable([false, true])
             },
             |ui, keep_open| modal_ui(ui, ctx, viewport, self.target_container, keep_open),
         );
