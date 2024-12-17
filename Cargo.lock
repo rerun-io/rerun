@@ -6862,6 +6862,7 @@ dependencies = [
  "bit-vec",
  "bitflags 2.6.0",
  "bytemuck",
+ "crossbeam",
  "directories",
  "egui",
  "egui-wgpu",
