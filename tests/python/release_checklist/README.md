@@ -3,12 +3,6 @@
 # Interactive release checklist
 Welcome to the release checklist.
 
-_**⚠ Make sure to clean your blueprints if you want to start from a clean slate ⚠**_
-
-```
-pixi run rerun reset
-```
-
 Run the testlist with:
 ```
 pixi run -e examples python tests/python/release_checklist/main.py

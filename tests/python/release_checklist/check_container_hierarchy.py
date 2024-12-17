@@ -91,6 +91,8 @@ def run(args: Namespace) -> None:
     log_readme()
     log_some_views()
 
+    rr.send_blueprint(rr.blueprint.Blueprint(auto_layout=True, auto_views=True), make_active=True, make_default=True)
+
 
 if __name__ == "__main__":
     import argparse

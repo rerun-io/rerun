@@ -34,32 +34,31 @@ def log_plots() -> None:
         cos_of_t = cos(float(t) / 10.0)
         rr.log("plots/cos", rr.Scalar(cos_of_t))
 
-    rr.send_blueprint(
-        rrb.Blueprint(
-            rrb.Grid(
-                rrb.TextDocumentView(origin="readme", name="Instructions"),
-                rrb.TimeSeriesView(
-                    name="Plots",
-                    defaults=[rr.components.Color([0, 0, 255])],
-                    overrides={
-                        "plots/cos": [
-                            rrb.VisualizerOverrides("SeriesPoint"),
-                            rr.components.Color([0, 255, 0]),
-                            # TODDO(#6670): This should just be `rr.components.MarkerShape.Cross`
-                            rr.components.MarkerShapeBatch("cross"),
-                        ],
-                    },
-                ),
-            )
-        )
-    )
-
 
 def run(args: Namespace) -> None:
     rr.script_setup(args, f"{os.path.basename(__file__)}", recording_id=uuid4())
 
     log_readme()
     log_plots()
+
+    blueprint = rrb.Blueprint(
+        rrb.Grid(
+            rrb.TextDocumentView(origin="readme", name="Instructions"),
+            rrb.TimeSeriesView(
+                name="Plots",
+                defaults=[rr.components.Color([0, 0, 255])],
+                overrides={
+                    "plots/cos": [
+                        rrb.VisualizerOverrides("SeriesPoint"),
+                        rr.components.Color([0, 255, 0]),
+                        # TODDO(#6670): This should just be `rr.components.MarkerShape.Cross`
+                        rr.components.MarkerShapeBatch("cross"),
+                    ],
+                },
+            ),
+        )
+    )
+    rr.send_blueprint(blueprint, make_active=True, make_default=True)
 
 
 if __name__ == "__main__":

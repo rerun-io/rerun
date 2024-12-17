@@ -54,12 +54,9 @@ def log_readme() -> None:
 
 
 def run(args: Namespace) -> None:
-    rr.script_setup(
-        args,
-        f"{os.path.basename(__file__)}",
-        recording_id=uuid4(),
-        default_blueprint=rrb.Grid(rrb.TextDocumentView(origin="readme")),
-    )
+    rr.script_setup(args, f"{os.path.basename(__file__)}", recording_id=uuid4())
+
+    rr.send_blueprint(rrb.Grid(rrb.TextDocumentView(origin="readme")), make_active=True, make_default=True)
 
     log_readme()
 
