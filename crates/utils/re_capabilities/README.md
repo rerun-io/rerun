@@ -3,7 +3,7 @@
 Part of the [`rerun`](https://github.com/rerun-io/rerun) family of crates.
 
 [![Latest version](https://img.shields.io/crates/v/re_capabilities.svg)](https://crates.io/crates/re_capabilitiescrates/utils/)
-[![Documentation](https://docs.rs/re_capabilities/badge.svg?speculative-link)](https://docs.rs/re_capabilities?speculative-link)
+[![Documentation](https://docs.rs/re_capabilities/badge.svg)](https://docs.rs/re_capabilities)
 ![MIT](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Apache](https://img.shields.io/badge/license-Apache-blue.svg)
 
