@@ -38,7 +38,7 @@ dependencies = [
  "accesskit_consumer 0.26.0",
  "atspi-common",
  "serde",
- "thiserror",
+ "thiserror 1.0.65",
  "zvariant",
 ]
 
@@ -187,7 +187,7 @@ dependencies = [
  "ndk-context",
  "ndk-sys 0.6.0+11769913",
  "num_enum",
- "thiserror",
+ "thiserror 1.0.65",
 ]
 
 [[package]]
@@ -318,7 +318,7 @@ dependencies = [
  "argh_shared",
  "proc-macro2",
  "quote",
- "syn 2.0.85",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -691,7 +691,7 @@ checksum = "3b43422f69d8ff38f95f1b2bb76517c91589a924d1559a0e935d7c8ce0274c11"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.85",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -731,7 +731,7 @@ checksum = "c7c24de15d275a1ecfd47a380fb4d5ec9bfe0933f309ed5e705b775596a3574d"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.85",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -748,7 +748,7 @@ checksum = "721cae7de5c34fbb2acd27e21e6d2cf7b886dce0c27388d46c4e6c47ea4318dd"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.85",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -854,7 +854,7 @@ dependencies = [
  "num-derive",
  "num-rational",
  "num-traits",
- "thiserror",
+ "thiserror 1.0.65",
 ]
 
 [[package]]
@@ -1066,7 +1066,7 @@ checksum = "bcfcc3cd946cb52f0bbfdbbcfa2f4e24f75ebb6c0e1002f7c25904fada18b9ec"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.85",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -1108,7 +1108,7 @@ dependencies = [
  "sha2",
  "ssri",
  "tempfile",
- "thiserror",
+ "thiserror 1.0.65",
  "tokio",
  "tokio-stream",
  "walkdir",
@@ -1125,7 +1125,7 @@ dependencies = [
  "polling",
  "rustix",
  "slab",
- "thiserror",
+ "thiserror 1.0.65",
 ]
 
 [[package]]
@@ -1156,7 +1156,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "03fa8484a7f2eef80e6dd2e2be90b322b9c29aeb1bbc206013d6eb2104db7241"
 dependencies = [
  "serde",
- "thiserror",
+ "thiserror 1.0.65",
  "toml",
 ]
 
@@ -1205,7 +1205,7 @@ dependencies = [
  "semver",
  "serde",
  "serde_json",
- "thiserror",
+ "thiserror 1.0.65",
 ]
 
 [[package]]
@@ -1321,7 +1321,7 @@ version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "696283b40e1a39d208ee614b92e5f6521d16962edeb47c48372585ec92419943"
 dependencies = [
- "thiserror",
+ "thiserror 1.0.65",
 ]
 
 [[package]]
@@ -1355,7 +1355,7 @@ dependencies = [
  "heck 0.5.0",
  "proc-macro2",
  "quote",
- "syn 2.0.85",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -1768,7 +1768,7 @@ dependencies = [
  "ident_case",
  "proc-macro2",
  "quote",
- "syn 2.0.85",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -1779,7 +1779,7 @@ checksum = "d336a2a514f6ccccaa3e09b02d41d35330c07ddf03a62165fcec10bb561c7806"
 dependencies = [
  "darling_core",
  "quote",
- "syn 2.0.85",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -1877,7 +1877,7 @@ checksum = "97369cbbc041bc366949bc74d34658d6cda5621039731c6310521892a3a20ae0"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.85",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -1933,8 +1933,9 @@ checksum = "0d6ef0072f8a535281e4876be788938b528e9a1d43900b82c2569af7da799125"
 
 [[package]]
 name = "ecolor"
-version = "0.29.1"
-source = "git+https://github.com/emilk/egui.git?rev=0fb340fe89e9476b2fec15c2eff1405e51e5c04e#0fb340fe89e9476b2fec15c2eff1405e51e5c04e"
+version = "0.30.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7d72e9c39f6e11a2e922d04a34ec5e7ef522ea3f5a1acfca7a19d16ad5fe50f5"
 dependencies = [
  "bytemuck",
  "color-hex",
@@ -1950,8 +1951,9 @@ checksum = "18aade80d5e09429040243ce1143ddc08a92d7a22820ac512610410a4dd5214f"
 
 [[package]]
 name = "eframe"
-version = "0.29.1"
-source = "git+https://github.com/emilk/egui.git?rev=0fb340fe89e9476b2fec15c2eff1405e51e5c04e#0fb340fe89e9476b2fec15c2eff1405e51e5c04e"
+version = "0.30.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b2f2d9e7ea2d11ec9e98a8683b6eb99f9d7d0448394ef6e0d6d91bd4eb817220"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -1989,8 +1991,9 @@ dependencies = [
 
 [[package]]
 name = "egui"
-version = "0.29.1"
-source = "git+https://github.com/emilk/egui.git?rev=0fb340fe89e9476b2fec15c2eff1405e51e5c04e#0fb340fe89e9476b2fec15c2eff1405e51e5c04e"
+version = "0.30.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "252d52224d35be1535d7fd1d6139ce071fb42c9097773e79f7665604f5596b5e"
 dependencies = [
  "accesskit",
  "ahash",
@@ -2006,8 +2009,9 @@ dependencies = [
 
 [[package]]
 name = "egui-wgpu"
-version = "0.29.1"
-source = "git+https://github.com/emilk/egui.git?rev=0fb340fe89e9476b2fec15c2eff1405e51e5c04e#0fb340fe89e9476b2fec15c2eff1405e51e5c04e"
+version = "0.30.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "26c1e821d2d8921ef6ce98b258c7e24d9d6aab2ca1f9cdf374eca997e7f67f59"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -2016,7 +2020,7 @@ dependencies = [
  "epaint",
  "log",
  "profiling",
- "thiserror",
+ "thiserror 1.0.65",
  "type-map",
  "web-time",
  "wgpu",
@@ -2025,8 +2029,9 @@ dependencies = [
 
 [[package]]
 name = "egui-winit"
-version = "0.29.1"
-source = "git+https://github.com/emilk/egui.git?rev=0fb340fe89e9476b2fec15c2eff1405e51e5c04e#0fb340fe89e9476b2fec15c2eff1405e51e5c04e"
+version = "0.30.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1e84c2919cd9f3a38a91e8f84ac6a245c19251fd95226ed9fae61d5ea564fce3"
 dependencies = [
  "accesskit_winit",
  "ahash",
@@ -2044,9 +2049,9 @@ dependencies = [
 
 [[package]]
 name = "egui_commonmark"
-version = "0.18.0"
+version = "0.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6f169228b94d1c8eb9330b7ea1b5f65b1193b6bea95159c87f574ed4aff8c172"
+checksum = "43d76bd08ab5264071aab3bd0ad0f5bdc34cf36cbb4be4c17c853a935c84d5fe"
 dependencies = [
  "egui",
  "egui_commonmark_backend",
@@ -2056,9 +2061,9 @@ dependencies = [
 
 [[package]]
 name = "egui_commonmark_backend"
-version = "0.18.0"
+version = "0.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dcd08f95abeb137e59c9bfdd0880d362bff74a83afe13805fde7a2d014ef773d"
+checksum = "47acd9dde83a575127a498e4ef77b00377f85c258ae259214bb125c79efefd00"
 dependencies = [
  "egui",
  "egui_extras",
@@ -2067,8 +2072,9 @@ dependencies = [
 
 [[package]]
 name = "egui_extras"
-version = "0.29.1"
-source = "git+https://github.com/emilk/egui.git?rev=0fb340fe89e9476b2fec15c2eff1405e51e5c04e#0fb340fe89e9476b2fec15c2eff1405e51e5c04e"
+version = "0.30.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3d7a8198c088b1007108cb2d403bc99a5e370999b200db4f14559610d7330126"
 dependencies = [
  "ahash",
  "egui",
@@ -2084,8 +2090,9 @@ dependencies = [
 
 [[package]]
 name = "egui_glow"
-version = "0.29.1"
-source = "git+https://github.com/emilk/egui.git?rev=0fb340fe89e9476b2fec15c2eff1405e51e5c04e#0fb340fe89e9476b2fec15c2eff1405e51e5c04e"
+version = "0.30.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3eaf6264cc7608e3e69a7d57a6175f438275f1b3889c1a551b418277721c95e6"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -2101,8 +2108,9 @@ dependencies = [
 
 [[package]]
 name = "egui_kittest"
-version = "0.29.1"
-source = "git+https://github.com/emilk/egui.git?rev=0fb340fe89e9476b2fec15c2eff1405e51e5c04e#0fb340fe89e9476b2fec15c2eff1405e51e5c04e"
+version = "0.30.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "27fe1ba792adf7a7bd8c51852d2dfa2a1711aea05bc532f9aa5f54a15533d33e"
 dependencies = [
  "dify",
  "egui",
@@ -2114,9 +2122,9 @@ dependencies = [
 
 [[package]]
 name = "egui_plot"
-version = "0.29.0"
+version = "0.30.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d8dca4871c15d51aadb79534dcf51a8189e5de3426ee7b465eb7db9a0a81ea67"
+checksum = "c226cae80a6ee10c4d3aaf9e33bd9e9b2f1c0116b6036bdc2a1cfc9d2d0dcc10"
 dependencies = [
  "ahash",
  "egui",
@@ -2125,9 +2133,9 @@ dependencies = [
 
 [[package]]
 name = "egui_table"
-version = "0.1.0"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2ef148ce13d97a23376b92d3c5d0dddedd98c28b17053ceb326b31b92ea45d07"
+checksum = "dc957dce337da3794d73f0c20a998e205850ed8a0fa1410432bddf31133667f8"
 dependencies = [
  "egui",
  "serde",
@@ -2136,8 +2144,9 @@ dependencies = [
 
 [[package]]
 name = "egui_tiles"
-version = "0.10.1"
-source = "git+https://github.com/rerun-io/egui_tiles?rev=48e0ef566479000a23d8dabf84badced98f1b9a6#48e0ef566479000a23d8dabf84badced98f1b9a6"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "588dcf9028464fb4d23baf1f7805c13927fb540f2f9096f7d177b814848645a3"
 dependencies = [
  "ahash",
  "egui",
@@ -2170,8 +2179,9 @@ checksum = "60b1af1c220855b6ceac025d3f6ecdd2b7c4894bfe9cd9bda4fbb4bc7c0d4cf0"
 
 [[package]]
 name = "emath"
-version = "0.29.1"
-source = "git+https://github.com/emilk/egui.git?rev=0fb340fe89e9476b2fec15c2eff1405e51e5c04e#0fb340fe89e9476b2fec15c2eff1405e51e5c04e"
+version = "0.30.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c4fe73c1207b864ee40aa0b0c038d6092af1030744678c60188a05c28553515d"
 dependencies = [
  "bytemuck",
  "serde",
@@ -2216,7 +2226,7 @@ checksum = "f282cfdfe92516eb26c2af8589c274c7c17681f5ecc03c18255fe741c6aa64eb"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.85",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -2237,7 +2247,7 @@ checksum = "de0d48a183585823424a4ce1aa132d174a6a81bd540895822eb4c8373a8e49e8"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.85",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -2248,7 +2258,7 @@ checksum = "2f9ed6b3789237c8a0c1c505af1c7eb2c560df6186f01b098c3a1064ea532f38"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.85",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -2269,7 +2279,7 @@ dependencies = [
  "darling",
  "proc-macro2",
  "quote",
- "syn 2.0.85",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -2286,8 +2296,9 @@ dependencies = [
 
 [[package]]
 name = "epaint"
-version = "0.29.1"
-source = "git+https://github.com/emilk/egui.git?rev=0fb340fe89e9476b2fec15c2eff1405e51e5c04e#0fb340fe89e9476b2fec15c2eff1405e51e5c04e"
+version = "0.30.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5666f8d25236293c966fbb3635eac18b04ad1914e3bab55bc7d44b9980cafcac"
 dependencies = [
  "ab_glyph",
  "ahash",
@@ -2305,8 +2316,9 @@ dependencies = [
 
 [[package]]
 name = "epaint_default_fonts"
-version = "0.29.1"
-source = "git+https://github.com/emilk/egui.git?rev=0fb340fe89e9476b2fec15c2eff1405e51e5c04e#0fb340fe89e9476b2fec15c2eff1405e51e5c04e"
+version = "0.30.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "66f6ddac3e6ac6fd4c3d48bb8b1943472f8da0f43a4303bcd8a18aa594401c80"
 
 [[package]]
 name = "equivalent"
@@ -2514,7 +2526,7 @@ checksum = "1a5c6c585bc94aaf2c7b51dd4c2ba22680844aba4c687be581871a6f518c5742"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.85",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -2616,7 +2628,7 @@ checksum = "162ee34ebcb7c64a8abebc059ce0fee27c2262618d7b60ed8faf72fef13c3650"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.85",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -2794,7 +2806,7 @@ dependencies = [
  "inflections",
  "proc-macro2",
  "quote",
- "syn 2.0.85",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -3440,7 +3452,7 @@ checksum = "1ec89e9337638ecdc08744df490b221a7399bf8d164eb52a665454e60e075ad6"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.85",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -3676,7 +3688,7 @@ dependencies = [
  "combine",
  "jni-sys",
  "log",
- "thiserror",
+ "thiserror 1.0.65",
  "walkdir",
  "windows-sys 0.45.0",
 ]
@@ -4076,7 +4088,7 @@ checksum = "59bb584eaeeab6bd0226ccf3509a69d7936d148cf3d036ad350abe35e8c6856e"
 dependencies = [
  "miette-derive",
  "once_cell",
- "thiserror",
+ "thiserror 1.0.65",
  "unicode-width",
 ]
 
@@ -4088,7 +4100,7 @@ checksum = "49e7bc1560b95a3c4a25d03de42fe76ca718ab92d1a22a55b9b4cf67b3ae635c"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.85",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -4213,7 +4225,7 @@ dependencies = [
  "rustc-hash 1.1.0",
  "spirv",
  "termcolor",
- "thiserror",
+ "thiserror 1.0.65",
  "unicode-xid",
 ]
 
@@ -4270,7 +4282,7 @@ dependencies = [
  "ndk-sys 0.6.0+11769913",
  "num_enum",
  "raw-window-handle",
- "thiserror",
+ "thiserror 1.0.65",
 ]
 
 [[package]]
@@ -4397,7 +4409,7 @@ checksum = "ed3955f1a9c7c0c15e092f9c887db08b1fc683305fdf6eb6684f22555355e202"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.85",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -4460,7 +4472,7 @@ dependencies = [
  "proc-macro-crate",
  "proc-macro2",
  "quote",
- "syn 2.0.85",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -4929,7 +4941,7 @@ checksum = "3c0f5fad0874fc7abcd4d750e76917eaebbecaa2c20bde22e1dbeeba8beb758c"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.85",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -5111,7 +5123,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "64d1ec885c64d0457d564db4ec299b2dae3f9c02808b8ad9c3a089c591b18033"
 dependencies = [
  "proc-macro2",
- "syn 2.0.85",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -5149,7 +5161,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a65f2e60fbf1063868558d69c6beacf412dc755f9fc020f514b7955fc914fe30"
 dependencies = [
  "quote",
- "syn 2.0.85",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -5179,7 +5191,7 @@ dependencies = [
  "prost",
  "prost-types",
  "regex",
- "syn 2.0.85",
+ "syn 2.0.87",
  "tempfile",
 ]
 
@@ -5193,7 +5205,7 @@ dependencies = [
  "itertools 0.13.0",
  "proc-macro2",
  "quote",
- "syn 2.0.85",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -5314,7 +5326,7 @@ dependencies = [
  "proc-macro2",
  "pyo3-macros-backend",
  "quote",
- "syn 2.0.85",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -5327,7 +5339,7 @@ dependencies = [
  "proc-macro2",
  "pyo3-build-config",
  "quote",
- "syn 2.0.85",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -5363,7 +5375,7 @@ dependencies = [
  "rustc-hash 2.0.0",
  "rustls 0.23.18",
  "socket2",
- "thiserror",
+ "thiserror 1.0.65",
  "tokio",
  "tracing",
 ]
@@ -5380,7 +5392,7 @@ dependencies = [
  "rustc-hash 2.0.0",
  "rustls 0.23.18",
  "slab",
- "thiserror",
+ "thiserror 1.0.65",
  "tinyvec",
  "tracing",
 ]
@@ -5519,7 +5531,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
- "thiserror",
+ "thiserror 1.0.65",
  "time",
  "url",
  "uuid",
@@ -5635,7 +5647,7 @@ dependencies = [
  "re_types_core",
  "serde",
  "similar-asserts",
- "thiserror",
+ "thiserror 1.0.65",
 ]
 
 [[package]]
@@ -5665,7 +5677,7 @@ dependencies = [
  "re_types",
  "re_types_core",
  "similar-asserts",
- "thiserror",
+ "thiserror 1.0.65",
  "tinyvec",
  "web-time",
 ]
@@ -5762,7 +5774,7 @@ dependencies = [
  "re_tracing",
  "re_types",
  "tempfile",
- "thiserror",
+ "thiserror 1.0.65",
  "uuid",
  "walkdir",
 ]
@@ -5895,7 +5907,7 @@ dependencies = [
  "re_types_core",
  "serde",
  "similar-asserts",
- "thiserror",
+ "thiserror 1.0.65",
  "web-time",
 ]
 
@@ -5935,7 +5947,7 @@ dependencies = [
  "re_protos",
  "re_smart_channel",
  "re_types",
- "thiserror",
+ "thiserror 1.0.65",
  "tokio",
  "tokio-stream",
  "tonic",
@@ -5989,7 +6001,7 @@ dependencies = [
  "re_types",
  "rmp-serde",
  "serde_test",
- "thiserror",
+ "thiserror 1.0.65",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
@@ -6028,7 +6040,7 @@ dependencies = [
  "serde_bytes",
  "similar-asserts",
  "static_assertions",
- "thiserror",
+ "thiserror 1.0.65",
  "time",
  "typenum",
  "uuid",
@@ -6077,7 +6089,7 @@ dependencies = [
  "num-rational",
  "serde",
  "serde_json",
- "thiserror",
+ "thiserror 1.0.65",
 ]
 
 [[package]]
@@ -6085,7 +6097,7 @@ name = "re_protos"
 version = "0.21.0-alpha.1+dev"
 dependencies = [
  "prost",
- "thiserror",
+ "thiserror 1.0.65",
  "tonic",
  "tonic-web-wasm-client",
 ]
@@ -6128,7 +6140,7 @@ dependencies = [
  "re_types_core",
  "seq-macro",
  "similar-asserts",
- "thiserror",
+ "thiserror 1.0.65",
 ]
 
 [[package]]
@@ -6192,7 +6204,7 @@ dependencies = [
  "slotmap",
  "smallvec",
  "static_assertions",
- "thiserror",
+ "thiserror 1.0.65",
  "tinystl",
  "tobj",
  "type-map",
@@ -6261,7 +6273,7 @@ dependencies = [
  "re_web_viewer_server",
  "re_ws_comms",
  "similar-asserts",
- "thiserror",
+ "thiserror 1.0.65",
  "webbrowser",
 ]
 
@@ -6278,7 +6290,7 @@ dependencies = [
  "re_log_encoding",
  "re_log_types",
  "re_smart_channel",
- "thiserror",
+ "thiserror 1.0.65",
 ]
 
 [[package]]
@@ -6422,7 +6434,7 @@ dependencies = [
  "serde",
  "similar-asserts",
  "smallvec",
- "thiserror",
+ "thiserror 1.0.65",
  "uuid",
 ]
 
@@ -6450,7 +6462,7 @@ dependencies = [
  "re_tracing",
  "rust-format",
  "serde",
- "syn 2.0.85",
+ "syn 2.0.87",
  "tempfile",
  "toml",
  "unindent",
@@ -6479,7 +6491,7 @@ dependencies = [
  "re_tuid",
  "serde",
  "smallvec",
- "thiserror",
+ "thiserror 1.0.65",
 ]
 
 [[package]]
@@ -6531,7 +6543,7 @@ dependencies = [
  "re_rav1d",
  "re_tracing",
  "serde",
- "thiserror",
+ "thiserror 1.0.65",
  "wasm-bindgen",
  "web-sys",
 ]
@@ -6599,7 +6611,7 @@ dependencies = [
  "re_ui",
  "re_viewer_context",
  "re_viewport_blueprint",
- "thiserror",
+ "thiserror 1.0.65",
 ]
 
 [[package]]
@@ -6689,7 +6701,7 @@ dependencies = [
  "re_viewport_blueprint",
  "serde",
  "smallvec",
- "thiserror",
+ "thiserror 1.0.65",
  "vec1",
  "web-time",
 ]
@@ -6714,7 +6726,7 @@ dependencies = [
  "re_view",
  "re_viewer_context",
  "re_viewport_blueprint",
- "thiserror",
+ "thiserror 1.0.65",
  "wgpu",
 ]
 
@@ -6844,7 +6856,7 @@ dependencies = [
  "serde_json",
  "strum",
  "strum_macros",
- "thiserror",
+ "thiserror 1.0.65",
  "uuid",
  "wasm-bindgen",
  "wasm-bindgen-futures",
@@ -6903,7 +6915,7 @@ dependencies = [
  "slotmap",
  "smallvec",
  "strum_macros",
- "thiserror",
+ "thiserror 1.0.65",
  "uuid",
  "wasm-bindgen-futures",
  "wgpu",
@@ -6955,7 +6967,7 @@ dependencies = [
  "re_viewer_context",
  "slotmap",
  "smallvec",
- "thiserror",
+ "thiserror 1.0.65",
 ]
 
 [[package]]
@@ -6965,7 +6977,7 @@ dependencies = [
  "document-features",
  "re_analytics",
  "re_log",
- "thiserror",
+ "thiserror 1.0.65",
  "tiny_http",
 ]
 
@@ -6985,7 +6997,7 @@ dependencies = [
  "re_memory",
  "re_smart_channel",
  "re_tracing",
- "thiserror",
+ "thiserror 1.0.65",
  "tungstenite",
 ]
 
@@ -7015,7 +7027,7 @@ checksum = "ba009ff324d1fc1b900bd1fdb31564febe58a8ccc8a6fdbb93b543d33b13ca43"
 dependencies = [
  "getrandom",
  "libredox",
- "thiserror",
+ "thiserror 1.0.65",
 ]
 
 [[package]]
@@ -7163,7 +7175,7 @@ dependencies = [
  "reqwest 0.11.27",
  "serde",
  "task-local-extensions",
- "thiserror",
+ "thiserror 1.0.65",
 ]
 
 [[package]]
@@ -7641,7 +7653,7 @@ dependencies = [
  "cargo-manifest",
  "cargo_metadata 0.18.1",
  "serde",
- "thiserror",
+ "thiserror 1.0.65",
  "toml",
  "tracing",
 ]
@@ -7880,7 +7892,7 @@ checksum = "de523f781f095e28fa605cdce0f8307e451cc0fd14e2eb4cd2e98a355b147766"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.85",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -7903,7 +7915,7 @@ checksum = "6c64451ba24fc7a6a2d60fc75dd9c83c90903b19028d4eff35e88fc1e86564e9"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.85",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -8108,7 +8120,7 @@ dependencies = [
  "log",
  "memmap2 0.9.5",
  "rustix",
- "thiserror",
+ "thiserror 1.0.65",
  "wayland-backend",
  "wayland-client",
  "wayland-csd-frame",
@@ -8220,7 +8232,7 @@ dependencies = [
  "serde",
  "sha-1",
  "sha2",
- "thiserror",
+ "thiserror 1.0.65",
  "xxhash-rust",
 ]
 
@@ -8277,7 +8289,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "rustversion",
- "syn 2.0.85",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -8315,9 +8327,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "2.0.85"
+version = "2.0.87"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5023162dfcd14ef8f32034d8bcd4cc5ddc61ef7a247c024a33e24e1f24d21b56"
+checksum = "25aa4ce346d03a6dcd68dd8b4010bcb74e54e62c90c573f394c46eae99aba32d"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -8347,7 +8359,7 @@ checksum = "c8af7666ab7b6390ab78131fb5b0fce11d6b7a6951602017c35fa82800708971"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.85",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -8498,7 +8510,16 @@ version = "1.0.65"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5d11abd9594d9b38965ef50805c5e469ca9cc6f197f883f717e0269a3057b3d5"
 dependencies = [
- "thiserror-impl",
+ "thiserror-impl 1.0.65",
+]
+
+[[package]]
+name = "thiserror"
+version = "2.0.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "93605438cbd668185516ab499d589afb7ee1859ea3d5fc8f6b0755e1c7443767"
+dependencies = [
+ "thiserror-impl 2.0.7",
 ]
 
 [[package]]
@@ -8509,7 +8530,18 @@ checksum = "ae71770322cbd277e69d762a16c444af02aa0575ac0d174f0b9562d3b37f8602"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.85",
+ "syn 2.0.87",
+]
+
+[[package]]
+name = "thiserror-impl"
+version = "2.0.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e1d8749b4531af2117677a5fcd12b1348a3fe2b81e36e61ffeac5c4aa3273e36"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -8698,7 +8730,7 @@ checksum = "693d596312e88961bc67d7f1f97af8a70227d9f90c31bba5806eec004978d752"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.85",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -8822,7 +8854,7 @@ dependencies = [
  "prost-build",
  "prost-types",
  "quote",
- "syn 2.0.85",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -8841,7 +8873,7 @@ dependencies = [
  "httparse",
  "js-sys",
  "pin-project",
- "thiserror",
+ "thiserror 1.0.65",
  "tonic",
  "tower-service",
  "wasm-bindgen",
@@ -8916,7 +8948,7 @@ checksum = "34704c8d6ebcbc939824180af020566b01a7c01f80641264eba0999f6c2b6be7"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.85",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -8956,7 +8988,7 @@ dependencies = [
  "rustls 0.23.18",
  "rustls-pki-types",
  "sha1",
- "thiserror",
+ "thiserror 1.0.65",
  "utf-8",
  "webpki-roots 0.26.6",
 ]
@@ -9187,9 +9219,9 @@ dependencies = [
 
 [[package]]
 name = "walkers"
-version = "0.29.0"
+version = "0.32.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b0688ad9bfb3bd49d997a6fb831e9ef21e251f4698c07e2f9902dcdb72d254bd"
+checksum = "70ca9bf7f5ff8a6d57de654d06fb25e5c6d60e0acc7e938d6fc15324b8e22a2f"
 dependencies = [
  "egui",
  "egui_extras",
@@ -9201,7 +9233,7 @@ dependencies = [
  "lru",
  "reqwest 0.11.27",
  "reqwest-middleware",
- "thiserror",
+ "thiserror 2.0.7",
  "tokio",
  "wasm-bindgen-futures",
 ]
@@ -9231,7 +9263,7 @@ dependencies = [
  "heck 0.5.0",
  "proc-macro2",
  "quote",
- "syn 2.0.85",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -9271,7 +9303,7 @@ dependencies = [
  "once_cell",
  "proc-macro2",
  "quote",
- "syn 2.0.85",
+ "syn 2.0.87",
  "wasm-bindgen-shared",
 ]
 
@@ -9339,7 +9371,7 @@ checksum = "26c6ab57572f7a24a4985830b120de1594465e5d500f24afe89e16b4e833ef68"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.85",
+ "syn 2.0.87",
  "wasm-bindgen-backend",
  "wasm-bindgen-shared",
 ]
@@ -9646,7 +9678,7 @@ dependencies = [
  "raw-window-handle",
  "rustc-hash 1.1.0",
  "smallvec",
- "thiserror",
+ "thiserror 1.0.65",
  "wgpu-hal",
  "wgpu-types",
 ]
@@ -9685,7 +9717,7 @@ dependencies = [
  "renderdoc-sys",
  "rustc-hash 1.1.0",
  "smallvec",
- "thiserror",
+ "thiserror 1.0.65",
  "wasm-bindgen",
  "web-sys",
  "wgpu-types",
@@ -9784,7 +9816,7 @@ checksum = "2bbd5b46c938e506ecbce286b6628a02171d56153ba733b6c741fc627ec9579b"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.85",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -9795,7 +9827,7 @@ checksum = "053c4c462dc91d3b1504c6fe5a726dd15e216ba718e84a0e46a88fbe5ded3515"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.85",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -10244,7 +10276,7 @@ checksum = "2380878cad4ac9aac1e2435f3eb4020e8374b5f13c296cb75b4620ff8e229154"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.85",
+ "syn 2.0.87",
  "synstructure",
 ]
 
@@ -10304,7 +10336,7 @@ checksum = "709ab20fc57cb22af85be7b360239563209258430bccf38d8b979c5a2ae3ecce"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.85",
+ "syn 2.0.87",
  "zbus-lockstep",
  "zbus_xml",
  "zvariant",
@@ -10319,7 +10351,7 @@ dependencies = [
  "proc-macro-crate",
  "proc-macro2",
  "quote",
- "syn 2.0.85",
+ "syn 2.0.87",
  "zvariant_utils",
 ]
 
@@ -10365,7 +10397,7 @@ checksum = "fa4f8080344d4671fb4e831a13ad1e68092748387dfc4f55e356242fae12ce3e"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.85",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -10385,7 +10417,7 @@ checksum = "595eed982f7d355beb85837f651fa22e90b3c044842dc7f2c2842c086f295808"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.85",
+ "syn 2.0.87",
  "synstructure",
 ]
 
@@ -10414,7 +10446,7 @@ checksum = "6eafa6dfb17584ea3e2bd6e76e0cc15ad7af12b09abdd1ca55961bed9b1063c6"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.85",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -10467,7 +10499,7 @@ dependencies = [
  "proc-macro-crate",
  "proc-macro2",
  "quote",
- "syn 2.0.85",
+ "syn 2.0.87",
  "zvariant_utils",
 ]
 
@@ -10479,5 +10511,5 @@ checksum = "c51bcff7cc3dbb5055396bcf774748c3dab426b4b8659046963523cee4808340"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.85",
+ "syn 2.0.87",
 ]
