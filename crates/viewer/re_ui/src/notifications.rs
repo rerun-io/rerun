@@ -116,12 +116,12 @@ impl NotificationUi {
         self.unread_notification_level
     }
 
-    pub fn add_log(&mut self, target: &str, level: Level, text: impl Into<String>) {
-        if !is_relevant(target, level) {
+    pub fn add_log(&mut self, message: re_log::LogMsg) {
+        if !is_relevant(&message.target, message.level) {
             return;
         }
 
-        self.push(level.into(), text.into());
+        self.push(message.level.into(), message.msg);
     }
 
     pub fn success(&mut self, text: impl Into<String>) {

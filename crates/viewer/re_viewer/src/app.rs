@@ -1133,8 +1133,7 @@ impl App {
         re_tracing::profile_function!();
 
         while let Ok(message) = self.text_log_rx.try_recv() {
-            self.notifications
-                .add_log(&message.target, message.level, message.msg);
+            self.notifications.add_log(message);
         }
     }
 
