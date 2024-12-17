@@ -94,6 +94,10 @@ def log_graph() -> None:
     rr.log("graph", rr.GraphNodes(["a", "b"], labels=["A", "B"]))
 
 
+def log_map() -> None:
+    rr.log("points", rr.GeoPoints(lat_lon=[[47.6344, 19.1397], [47.6334, 19.1399]], radii=rr.Radius.ui_points(20.0)))
+
+
 def run(args: Namespace) -> None:
     rr.script_setup(args, f"{os.path.basename(__file__)}", recording_id=uuid4())
 
@@ -102,6 +106,7 @@ def run(args: Namespace) -> None:
     log_points_3d()
     log_points_2d()
     log_graph()
+    log_map()
 
 
 if __name__ == "__main__":
