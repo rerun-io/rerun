@@ -8,7 +8,7 @@ use static_assertions::assert_not_impl_any;
 ///
 /// The token should only be constructed in `fn main`, using [`MainThreadToken::i_promise_i_am_on_the_main_thread`],
 /// and then be passed down the call tree to where it is needed.
-/// [`MainTheadToken`] is neither `Send` nor `Sync`,
+/// [`MainThreadToken`] is neither `Send` nor `Sync`,
 /// thus guaranteeing that it cannot be found in other threads.
 ///
 /// Of course, there is nothing stopping you from calling [`MainThreadToken::i_promise_i_am_on_the_main_thread`] from a background thread,
