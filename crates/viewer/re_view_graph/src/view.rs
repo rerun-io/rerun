@@ -1,3 +1,4 @@
+use egui::Response;
 use re_log_types::EntityPath;
 use re_types::{
     blueprint::{
@@ -191,18 +192,28 @@ Display a graph of nodes and edges.
 
         let level_of_detail = LevelOfDetail::from_scaling(ui_from_world.scaling);
 
+        let mut hover_click_item: Option<(Item, Response)> = None;
+
         let resp = zoom_pan_area(ui, &mut ui_from_world, |ui| {
             let mut world_bounding_rect = egui::Rect::NOTHING;
 
             for graph in &graphs {
-                let graph_rect = draw_graph(ui, ctx, graph, layout, query, level_of_detail);
+                let graph_rect = draw_graph(
+                    ui,
+                    ctx,
+                    graph,
+                    layout,
+                    query,
+                    level_of_detail,
+                    &mut hover_click_item,
+                );
                 world_bounding_rect = world_bounding_rect.union(graph_rect);
             }
         });
 
-        // Don't set the view to hovered if something else was already hovered.
-        // (this can only mean that a graph node/edge was hovered)
-        if resp.hovered() && ctx.selection_state().hovered_items().is_empty() {
+        if let Some((item, response)) = hover_click_item {
+            ctx.handle_select_hover_drag_interactions(&response, item, false);
+        } else if resp.hovered() {
             ctx.selection_state().set_hovered(Item::View(query.view_id));
         }
 
