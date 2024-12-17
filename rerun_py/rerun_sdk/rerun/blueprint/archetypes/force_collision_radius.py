@@ -21,7 +21,7 @@ __all__ = ["ForceCollisionRadius"]
 
 @define(str=False, repr=False, init=False)
 class ForceCollisionRadius(Archetype):
-    """**Archetype**: Resolves collisions between the bounding spheres, according to the radius of the nodes."""
+    """**Archetype**: Resolves collisions between the bounding circles, according to the radius of the nodes."""
 
     def __init__(
         self: Any,
@@ -36,7 +36,9 @@ class ForceCollisionRadius(Archetype):
         Parameters
         ----------
         enabled:
-            Whether the force is enabled.
+            Whether the collision force is enabled.
+
+            The collision force resolves collisions between nodes based on the bounding circle defined by their radius.
         strength:
             The strength of the force.
         iterations:
@@ -72,7 +74,9 @@ class ForceCollisionRadius(Archetype):
         default=None,
         converter=blueprint_components.EnabledBatch._optional,  # type: ignore[misc]
     )
-    # Whether the force is enabled.
+    # Whether the collision force is enabled.
+    #
+    # The collision force resolves collisions between nodes based on the bounding circle defined by their radius.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

@@ -19,7 +19,9 @@
 namespace rerun::blueprint::archetypes {
     /// **Archetype**: Tries to move the center of mass of the graph to the origin.
     struct ForceCenter {
-        /// Whether the force is enabled.
+        /// Whether the center force is enabled.
+        ///
+        /// The center force tries to move the center of mass of the graph towards the origin.
         std::optional<rerun::blueprint::components::Enabled> enabled;
 
         /// The strength of the force.
@@ -36,7 +38,9 @@ namespace rerun::blueprint::archetypes {
         ForceCenter() = default;
         ForceCenter(ForceCenter&& other) = default;
 
-        /// Whether the force is enabled.
+        /// Whether the center force is enabled.
+        ///
+        /// The center force tries to move the center of mass of the graph towards the origin.
         ForceCenter with_enabled(rerun::blueprint::components::Enabled _enabled) && {
             enabled = std::move(_enabled);
             // See: https://github.com/rerun-io/rerun/issues/4027

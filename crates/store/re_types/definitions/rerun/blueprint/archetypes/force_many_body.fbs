@@ -6,7 +6,10 @@ namespace rerun.blueprint.archetypes;
 struct ForceManyBody (
     "attr.rerun.scope": "blueprint"
 ) {
-    /// Whether the force is enabled.
+    /// Whether the many body force is enabled.
+    ///
+    /// The many body force is applied on each pair of nodes in a way that ressembles an electrical charge. If the
+    /// strength is smaller than 0, it pushes nodes apart; if it is larger than 0, it pulls them together.
     enabled: rerun.blueprint.components.Enabled ("attr.rerun.component_optional", nullable, order: 100);
 
     /// The strength of the force.

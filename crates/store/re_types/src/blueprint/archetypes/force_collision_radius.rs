@@ -18,10 +18,12 @@ use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Archetype**: Resolves collisions between the bounding spheres, according to the radius of the nodes.
+/// **Archetype**: Resolves collisions between the bounding circles, according to the radius of the nodes.
 #[derive(Clone, Debug)]
 pub struct ForceCollisionRadius {
-    /// Whether the force is enabled.
+    /// Whether the collision force is enabled.
+    ///
+    /// The collision force resolves collisions between nodes based on the bounding circle defined by their radius.
     pub enabled: Option<crate::blueprint::components::Enabled>,
 
     /// The strength of the force.
@@ -250,7 +252,9 @@ impl ForceCollisionRadius {
         }
     }
 
-    /// Whether the force is enabled.
+    /// Whether the collision force is enabled.
+    ///
+    /// The collision force resolves collisions between nodes based on the bounding circle defined by their radius.
     #[inline]
     pub fn with_enabled(
         mut self,

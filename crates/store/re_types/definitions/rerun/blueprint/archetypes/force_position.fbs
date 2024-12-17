@@ -4,7 +4,9 @@ namespace rerun.blueprint.archetypes;
 struct ForcePosition (
     "attr.rerun.scope": "blueprint"
 ) {
-    /// Whether the force is enabled.
+    /// Whether the position force is enabled.
+    ///
+    /// The position force pulls nodes towards a specific position, similar to gravity.
     enabled: rerun.blueprint.components.Enabled ("attr.rerun.component_optional", nullable, order: 100);
 
     /// The strength of the force.

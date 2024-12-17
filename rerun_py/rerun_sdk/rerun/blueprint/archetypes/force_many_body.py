@@ -36,7 +36,10 @@ class ForceManyBody(Archetype):
         Parameters
         ----------
         enabled:
-            Whether the force is enabled.
+            Whether the many body force is enabled.
+
+            The many body force is applied on each pair of nodes in a way that ressembles an electrical charge. If the
+            strength is smaller than 0, it pushes nodes apart; if it is larger than 0, it pulls them together.
         strength:
             The strength of the force.
 
@@ -69,7 +72,10 @@ class ForceManyBody(Archetype):
         default=None,
         converter=blueprint_components.EnabledBatch._optional,  # type: ignore[misc]
     )
-    # Whether the force is enabled.
+    # Whether the many body force is enabled.
+    #
+    # The many body force is applied on each pair of nodes in a way that ressembles an electrical charge. If the
+    # strength is smaller than 0, it pushes nodes apart; if it is larger than 0, it pulls them together.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
