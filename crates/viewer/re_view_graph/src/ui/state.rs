@@ -12,9 +12,6 @@ use crate::layout::{ForceLayoutParams, ForceLayoutProvider, Layout, LayoutReques
 #[derive(Default)]
 pub struct GraphViewState {
     pub layout_state: LayoutState,
-
-    pub show_debug: bool,
-
     pub visual_bounds: Option<VisualBounds2D>,
     pub rect_in_ui: Option<Rect>,
 }
@@ -32,12 +29,6 @@ impl GraphViewState {
             ui.label(format!("x [{} - {}]", format_f32(min.x), format_f32(max.x),));
             ui.label(format!("y [{} - {}]", format_f32(min.y), format_f32(max.y),));
         });
-        ui.end_row();
-    }
-
-    pub fn debug_ui(&mut self, ui: &mut egui::Ui) {
-        ui.re_checkbox(&mut self.show_debug, "Show debug information")
-            .on_hover_text("Shows debug information for the current graph");
         ui.end_row();
     }
 
