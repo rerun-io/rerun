@@ -75,7 +75,8 @@ def download_example_image_as_rgb() -> np.ndarray:
 
 
 def run(args: Namespace) -> None:
-    rr.script_setup(args, f"{os.path.basename(__file__)}", recording_id=uuid4(), default_blueprint=blueprint())
+    rr.script_setup(args, f"{os.path.basename(__file__)}", recording_id=uuid4())
+    rr.send_blueprint(blueprint(), make_active=True, make_default=True)
 
     sample_image_rgb_u8 = download_example_image_as_rgb()
     log_readme()

@@ -29,6 +29,8 @@ def run(args: Namespace) -> None:
     # Log it again, to ensure that the newest one is visible
     rr.log("points", rr.Points3D([[0, 0, 0], [1, 1, 1], [2, 2, 2]]), static=True)
 
+    rr.send_blueprint(rr.blueprint.Blueprint(auto_layout=True, auto_views=True), make_active=True, make_default=True)
+
 
 if __name__ == "__main__":
     import argparse

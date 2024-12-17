@@ -119,7 +119,7 @@ def log_points() -> None:
 def run(args: Namespace) -> None:
     rr.script_setup(args, f"{os.path.basename(__file__)}", recording_id=uuid4())
 
-    rr.send_blueprint(blueprint())
+    rr.send_blueprint(blueprint(), make_default=True, make_active=True)
 
     log_readme()
     log_points()

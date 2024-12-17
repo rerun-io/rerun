@@ -55,17 +55,17 @@ def run(args: Namespace) -> None:
     log_readme()
 
     rr.send_blueprint(
-        rrb.Blueprint(
-            rrb.Grid(
-                rrb.GraphView(origin="graph", name="Multiple edges and self-edges"),
-                rrb.GraphView(
-                    origin="graph",
-                    name="Multiple edges and self-edges (without labels)",
-                    defaults=[rr.components.ShowLabels(False)],
-                ),
-                rrb.TextDocumentView(origin="readme", name="Instructions"),
-            )
-        )
+        rrb.Grid(
+            rrb.GraphView(origin="graph", name="Multiple edges and self-edges"),
+            rrb.GraphView(
+                origin="graph",
+                name="Multiple edges and self-edges (without labels)",
+                defaults=[rr.components.ShowLabels(False)],
+            ),
+            rrb.TextDocumentView(origin="readme", name="Instructions"),
+        ),
+        make_active=True,
+        make_default=True,
     )
 
 

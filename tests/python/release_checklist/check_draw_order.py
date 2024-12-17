@@ -71,11 +71,11 @@ def run_2d_layering() -> None:
 
 
 def run(args: Namespace) -> None:
-    rr.script_setup(
-        args,
-        f"{os.path.basename(__file__)}",
-        recording_id=uuid4(),
-        default_blueprint=rrb.Grid(rrb.Spatial2DView(origin="/"), rrb.TextDocumentView(origin="readme")),
+    rr.script_setup(args, f"{os.path.basename(__file__)}", recording_id=uuid4())
+    rr.send_blueprint(
+        rrb.Blueprint(rrb.Grid(rrb.Spatial2DView(origin="/"), rrb.TextDocumentView(origin="readme"))),
+        make_active=True,
+        make_default=True,
     )
 
     log_readme()
