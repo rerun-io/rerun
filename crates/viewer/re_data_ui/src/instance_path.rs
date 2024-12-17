@@ -99,7 +99,7 @@ impl DataUi for InstancePath {
             // TODO(#7026): Instances today are too poorly defined:
             // For many archetypes it makes sense to slice through all their component arrays with the same index.
             // However, there are cases when there are multiple dimensions of slicing that make sense.
-            // This is most obvious for meshes & graph nodes where there are different dimentions for vertices/edges/etc.
+            // This is most obvious for meshes & graph nodes where there are different dimensions for vertices/edges/etc.
             //
             // For graph nodes this is particularly glaring since our indicices imply nodes today and
             // unlike with meshes it's very easy to hover & select individual nodes.
