@@ -175,7 +175,7 @@ impl NotificationPanel {
         let notification_list = |ui: &mut egui::Ui| {
             if notifications.is_empty() {
                 ui.label(
-                    egui::RichText::new("Nothing here!")
+                    egui::RichText::new("No notifications yet.")
                         .weak()
                         .color(hex_color!("#636b6f")),
                 );
