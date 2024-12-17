@@ -210,7 +210,7 @@ impl NotificationPanel {
 
         let mut dismiss_all = false;
 
-        egui::Area::new(self.id)
+        let response = egui::Area::new(self.id)
             .anchor(egui::Align2::RIGHT_TOP, egui::vec2(-8.0, 32.0))
             .order(egui::Order::Foreground)
             .interactable(true)
@@ -243,7 +243,12 @@ impl NotificationPanel {
                             });
                         }
                     });
-            });
+            })
+            .response;
+
+        if response.clicked_elsewhere() {
+            *is_panel_visible = false;
+        }
 
         if dismiss_all {
             notifications.clear();
