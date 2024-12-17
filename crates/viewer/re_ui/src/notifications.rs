@@ -4,7 +4,10 @@ use egui::hex_color;
 pub use re_log::Level;
 use time::OffsetDateTime;
 
+use crate::design_tokens;
 use crate::icons;
+use crate::ColorToken;
+use crate::Scale;
 use crate::UiExt;
 
 fn now() -> OffsetDateTime {
@@ -175,9 +178,9 @@ impl NotificationPanel {
         let notification_list = |ui: &mut egui::Ui| {
             if notifications.is_empty() {
                 ui.label(
-                    egui::RichText::new("No notifications yet.")
-                        .weak()
-                        .color(hex_color!("#636b6f")),
+                    design_tokens()
+                        .text("No notifications yet.", ColorToken::gray(Scale::S450))
+                        .weak(),
                 );
 
                 return;
@@ -329,8 +332,8 @@ fn show_notification(
                         ui.spacing_mut().item_spacing.x = 8.0;
                         log_level_icon(ui, notification.level);
                         ui.label(
-                            egui::RichText::new(notification.text.clone())
-                                .color(hex_color!("#cad8de"))
+                            design_tokens()
+                                .text(notification.text.clone(), ColorToken::gray(Scale::S775))
                                 .weak(),
                         );
 
@@ -384,9 +387,9 @@ fn notification_age_label(ui: &mut egui::Ui, notification: &Notification) {
         ui.set_min_width(52.0);
         ui.with_layout(egui::Layout::top_down(egui::Align::Max), |ui| {
             ui.label(
-                egui::RichText::new(formatted)
-                    .weak()
-                    .color(hex_color!("#636b6f")),
+                design_tokens()
+                    .text(formatted, ColorToken::gray(Scale::S450))
+                    .weak(),
             )
             .on_hover_text(format!("{}", notification.created_at));
         });
@@ -402,7 +405,6 @@ fn log_level_icon(ui: &mut egui::Ui, level: NotificationLevel) {
     };
 
     let (rect, _) = ui.allocate_exact_size(egui::vec2(10.0, 10.0), egui::Sense::hover());
-    let mut pos = rect.center();
-    pos.y += 2.0;
-    ui.painter().circle_filled(pos, 5.0, color);
+    ui.painter()
+        .circle_filled(rect.center() + egui::vec2(0.0, 2.0), 5.0, color);
 }
