@@ -29,6 +29,10 @@ pub struct MainThreadToken {
 impl MainThreadToken {
     /// Only call this from `fn main`, or you may get weird runtime errors!
     pub fn i_promise_i_am_on_the_main_thread() -> Self {
+        // On web there is no thread name.
+        // On native the thread-name is always "main" in Rust,
+        // but there is nothing preventing a user from also naming another thread "main".
+        // In any case, since `MainThreadToken` is just best-effort, we only check this in debug builds.
         #[cfg(not(target_arch = "wasm32"))]
         debug_assert_eq!(std::thread::current().name(), Some("main"),
             "DEBUG ASSERT: Trying to construct a MainThreadToken on a thread that is not the main thread!"
