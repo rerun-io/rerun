@@ -52,6 +52,7 @@ egui.workspace = true
 emath.workspace = true
 glam = { workspace = true, features = ["serde"] }
 half.workspace = true
+home.workspace = true
 image = { workspace = true, features = ["jpeg", "png"] }
 indexmap = { workspace = true, features = ["std", "serde"] }
 itertools.workspace = true
