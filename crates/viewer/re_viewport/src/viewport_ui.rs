@@ -165,6 +165,13 @@ impl ViewportUi {
                         continue;
                     };
 
+                    if matches!(contents, Contents::View(_))
+                        && !should_display_drop_destination_frame
+                    {
+                        // We already light up the view tab title; that is enough
+                        continue;
+                    }
+
                     // We want the rectangle to be on top of everything in the viewport,
                     // including stuff in "zoom-pan areas", like we use in the graph view.
                     let top_layer_id =
