@@ -100,6 +100,7 @@ Read our 🧳 migration guide for more detailed information: https://rerun.io/do
 - Improve hovered order in 2D views [#8405](https://github.com/rerun-io/rerun/pull/8405)
 - Remove wait-time when opening settings panel [#8464](https://github.com/rerun-io/rerun/pull/8464)
 - Deprecate `DisconnectedSpace` archetype/component in favor of implicit invalid transforms [#8459](https://github.com/rerun-io/rerun/pull/8459)
+- Improve graphics device capability detection, warn on old devices, early error on unsupported render targets [#8476](https://github.com/rerun-io/rerun/pull/8476)
 
 #### 🧑‍🏫 Examples
 - Add a new "Air Traffic Data" example [#5449](https://github.com/rerun-io/rerun/pull/5449)
@@ -125,6 +126,7 @@ Read our 🧳 migration guide for more detailed information: https://rerun.io/do
 - Allow drag-and-dropping multiple containers and views in the blueprint tree [#8334](https://github.com/rerun-io/rerun/pull/8334)
 - Improve picking in 2D views [#8404](https://github.com/rerun-io/rerun/pull/8404)
 - Make our collapsing triangle thinner for more consistency with our icons [#8408](https://github.com/rerun-io/rerun/pull/8408)
+- Entities can be dragged from the blueprint tree and streams tree to an existing view in the viewport [#8431](https://github.com/rerun-io/rerun/pull/8431)
 
 #### 🎨 Renderer improvements
 - Update egui to latest, update wgpu to 23.0.0 [#8183](https://github.com/rerun-io/rerun/pull/8183)
@@ -141,6 +143,9 @@ Read our 🧳 migration guide for more detailed information: https://rerun.io/do
 
 #### 📦 Dependencies
 - Numpy 2.0 allowed in pyproject.toml [#8306](https://github.com/rerun-io/rerun/pull/8306) (thanks [@Ipuch](https://github.com/Ipuch)!)
+
+#### 🧑‍💻 Dev-experience
+- Add `MainThreadToken` to ensure file-dialogs only run on the main thread [#8467](https://github.com/rerun-io/rerun/pull/8467)
 
 #### 🤷‍ Other
 - Deprecate `--serve`, add `--serve-web` [#8144](https://github.com/rerun-io/rerun/pull/8144)
