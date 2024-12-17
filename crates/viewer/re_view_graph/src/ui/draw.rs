@@ -330,6 +330,7 @@ pub fn draw_graph(
     layout: &Layout,
     query: &ViewQuery<'_>,
     lod: LevelOfDetail,
+    hovered: &mut Option<Item>,
 ) -> Rect {
     let entity_path = graph.entity();
     let entity_highlights = query.highlights.entity_highlight(entity_path.hash());
@@ -363,11 +364,9 @@ pub fn draw_graph(
                     });
                 });
 
-                ctx.handle_select_hover_drag_interactions(
-                    &response,
-                    Item::DataResult(query.view_id, instance_path.clone()),
-                    false,
-                );
+                if response.hovered() {
+                    *hovered = Some(Item::DataResult(query.view_id, instance_path.clone()));
+                }
 
                 // double click selects the entire entity
                 if response.double_clicked() {
