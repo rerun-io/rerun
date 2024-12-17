@@ -41,6 +41,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Try for example to run: `cargo run -p minimal_options -- --connect` in another terminal instance.");
 
     re_viewer::run_native_app(
+        main_thread_token,
         Box::new(move |cc| {
             let mut app = re_viewer::App::new(
                 main_thread_token,
