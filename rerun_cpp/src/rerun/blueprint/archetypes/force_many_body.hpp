@@ -21,7 +21,10 @@ namespace rerun::blueprint::archetypes {
     ///
     /// If `strength` is smaller than 0, it pushes nodes apart, if it is larger than 0 it pulls them together.
     struct ForceManyBody {
-        /// Whether the force is enabled.
+        /// Whether the many body force is enabled.
+        ///
+        /// The many body force is applied on each pair of nodes in a way that ressembles an electrical charge. If the
+        /// strength is smaller than 0, it pushes nodes apart; if it is larger than 0, it pulls them together.
         std::optional<rerun::blueprint::components::Enabled> enabled;
 
         /// The strength of the force.
@@ -40,7 +43,10 @@ namespace rerun::blueprint::archetypes {
         ForceManyBody() = default;
         ForceManyBody(ForceManyBody&& other) = default;
 
-        /// Whether the force is enabled.
+        /// Whether the many body force is enabled.
+        ///
+        /// The many body force is applied on each pair of nodes in a way that ressembles an electrical charge. If the
+        /// strength is smaller than 0, it pushes nodes apart; if it is larger than 0, it pulls them together.
         ForceManyBody with_enabled(rerun::blueprint::components::Enabled _enabled) && {
             enabled = std::move(_enabled);
             // See: https://github.com/rerun-io/rerun/issues/4027

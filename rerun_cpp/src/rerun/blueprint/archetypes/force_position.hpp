@@ -20,7 +20,9 @@
 namespace rerun::blueprint::archetypes {
     /// **Archetype**: Similar to gravity, this force pulls nodes towards a specific position.
     struct ForcePosition {
-        /// Whether the force is enabled.
+        /// Whether the position force is enabled.
+        ///
+        /// The position force pulls nodes towards a specific position, similar to gravity.
         std::optional<rerun::blueprint::components::Enabled> enabled;
 
         /// The strength of the force.
@@ -40,7 +42,9 @@ namespace rerun::blueprint::archetypes {
         ForcePosition() = default;
         ForcePosition(ForcePosition&& other) = default;
 
-        /// Whether the force is enabled.
+        /// Whether the position force is enabled.
+        ///
+        /// The position force pulls nodes towards a specific position, similar to gravity.
         ForcePosition with_enabled(rerun::blueprint::components::Enabled _enabled) && {
             enabled = std::move(_enabled);
             // See: https://github.com/rerun-io/rerun/issues/4027

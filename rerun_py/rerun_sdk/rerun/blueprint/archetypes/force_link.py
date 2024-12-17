@@ -36,7 +36,9 @@ class ForceLink(Archetype):
         Parameters
         ----------
         enabled:
-            Whether the force is enabled.
+            Whether the link force is enabled.
+
+            The link force aims to achieve a target distance between two nodes that are connected by one ore more edges.
         distance:
             The target distance between two nodes.
         iterations:
@@ -72,7 +74,9 @@ class ForceLink(Archetype):
         default=None,
         converter=blueprint_components.EnabledBatch._optional,  # type: ignore[misc]
     )
-    # Whether the force is enabled.
+    # Whether the link force is enabled.
+    #
+    # The link force aims to achieve a target distance between two nodes that are connected by one ore more edges.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

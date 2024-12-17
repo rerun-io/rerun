@@ -2040,8 +2040,9 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 fields: vec![
                     ArchetypeFieldReflection { name : "enabled", display_name :
                     "Enabled", component_name : "rerun.blueprint.components.Enabled"
-                    .into(), docstring_md : "Whether the force is enabled.", is_required
-                    : false, }, ArchetypeFieldReflection { name : "strength",
+                    .into(), docstring_md :
+                    "Whether the center force is enabled.\n\nThe center force tries to move the center of mass of the graph towards the origin.",
+                    is_required : false, }, ArchetypeFieldReflection { name : "strength",
                     display_name : "Strength", component_name :
                     "rerun.blueprint.components.ForceStrength".into(), docstring_md :
                     "The strength of the force.", is_required : false, },
@@ -2057,8 +2058,9 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 fields: vec![
                     ArchetypeFieldReflection { name : "enabled", display_name :
                     "Enabled", component_name : "rerun.blueprint.components.Enabled"
-                    .into(), docstring_md : "Whether the force is enabled.", is_required
-                    : false, }, ArchetypeFieldReflection { name : "strength",
+                    .into(), docstring_md :
+                    "Whether the collision force is enabled.\n\nThe collision force resolves collisions between nodes based on the bounding circle defined by their radius.",
+                    is_required : false, }, ArchetypeFieldReflection { name : "strength",
                     display_name : "Strength", component_name :
                     "rerun.blueprint.components.ForceStrength".into(), docstring_md :
                     "The strength of the force.", is_required : false, },
@@ -2079,8 +2081,9 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 fields: vec![
                     ArchetypeFieldReflection { name : "enabled", display_name :
                     "Enabled", component_name : "rerun.blueprint.components.Enabled"
-                    .into(), docstring_md : "Whether the force is enabled.", is_required
-                    : false, }, ArchetypeFieldReflection { name : "distance",
+                    .into(), docstring_md :
+                    "Whether the link force is enabled.\n\nThe link force aims to achieve a target distance between two nodes that are connected by one ore more edges.",
+                    is_required : false, }, ArchetypeFieldReflection { name : "distance",
                     display_name : "Distance", component_name :
                     "rerun.blueprint.components.ForceDistance".into(), docstring_md :
                     "The target distance between two nodes.", is_required : false, },
@@ -2101,8 +2104,9 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 fields: vec![
                     ArchetypeFieldReflection { name : "enabled", display_name :
                     "Enabled", component_name : "rerun.blueprint.components.Enabled"
-                    .into(), docstring_md : "Whether the force is enabled.", is_required
-                    : false, }, ArchetypeFieldReflection { name : "strength",
+                    .into(), docstring_md :
+                    "Whether the many body force is enabled.\n\nThe many body force is applied on each pair of nodes in a way that ressembles an electrical charge. If the\nstrength is smaller than 0, it pushes nodes apart; if it is larger than 0, it pulls them together.",
+                    is_required : false, }, ArchetypeFieldReflection { name : "strength",
                     display_name : "Strength", component_name :
                     "rerun.blueprint.components.ForceStrength".into(), docstring_md :
                     "The strength of the force.\n\nIf `strength` is smaller than 0, it pushes nodes apart, if it is larger than 0 it pulls them together.",
@@ -2119,8 +2123,9 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 fields: vec![
                     ArchetypeFieldReflection { name : "enabled", display_name :
                     "Enabled", component_name : "rerun.blueprint.components.Enabled"
-                    .into(), docstring_md : "Whether the force is enabled.", is_required
-                    : false, }, ArchetypeFieldReflection { name : "strength",
+                    .into(), docstring_md :
+                    "Whether the position force is enabled.\n\nThe position force pulls nodes towards a specific position, similar to gravity.",
+                    is_required : false, }, ArchetypeFieldReflection { name : "strength",
                     display_name : "Strength", component_name :
                     "rerun.blueprint.components.ForceStrength".into(), docstring_md :
                     "The strength of the force.", is_required : false, },

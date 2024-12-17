@@ -20,7 +20,9 @@
 namespace rerun::blueprint::archetypes {
     /// **Archetype**: Aims to achieve a target distance between two nodes that are connected by an edge.
     struct ForceLink {
-        /// Whether the force is enabled.
+        /// Whether the link force is enabled.
+        ///
+        /// The link force aims to achieve a target distance between two nodes that are connected by one ore more edges.
         std::optional<rerun::blueprint::components::Enabled> enabled;
 
         /// The target distance between two nodes.
@@ -42,7 +44,9 @@ namespace rerun::blueprint::archetypes {
         ForceLink() = default;
         ForceLink(ForceLink&& other) = default;
 
-        /// Whether the force is enabled.
+        /// Whether the link force is enabled.
+        ///
+        /// The link force aims to achieve a target distance between two nodes that are connected by one ore more edges.
         ForceLink with_enabled(rerun::blueprint::components::Enabled _enabled) && {
             enabled = std::move(_enabled);
             // See: https://github.com/rerun-io/rerun/issues/4027

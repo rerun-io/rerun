@@ -18,9 +18,11 @@
 #include <vector>
 
 namespace rerun::blueprint::archetypes {
-    /// **Archetype**: Resolves collisions between the bounding spheres, according to the radius of the nodes.
+    /// **Archetype**: Resolves collisions between the bounding circles, according to the radius of the nodes.
     struct ForceCollisionRadius {
-        /// Whether the force is enabled.
+        /// Whether the collision force is enabled.
+        ///
+        /// The collision force resolves collisions between nodes based on the bounding circle defined by their radius.
         std::optional<rerun::blueprint::components::Enabled> enabled;
 
         /// The strength of the force.
@@ -42,7 +44,9 @@ namespace rerun::blueprint::archetypes {
         ForceCollisionRadius() = default;
         ForceCollisionRadius(ForceCollisionRadius&& other) = default;
 
-        /// Whether the force is enabled.
+        /// Whether the collision force is enabled.
+        ///
+        /// The collision force resolves collisions between nodes based on the bounding circle defined by their radius.
         ForceCollisionRadius with_enabled(rerun::blueprint::components::Enabled _enabled) && {
             enabled = std::move(_enabled);
             // See: https://github.com/rerun-io/rerun/issues/4027
