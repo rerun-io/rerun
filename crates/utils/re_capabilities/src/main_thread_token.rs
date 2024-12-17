@@ -1,6 +1,6 @@
 use static_assertions::assert_not_impl_any;
 
-/// A token that proves we are on the main thread.
+/// A token that (almost) proves we are on the main thread.
 ///
 /// Certain operations are only allowed on the main thread.
 /// These operations should require this token.
@@ -43,10 +43,13 @@ impl MainThreadToken {
         }
     }
 
-    /// We should only create an `egui::Ui` on the main thread,
-    /// so having it is proof enough that we are on the main thread.
+    /// We _should_ only create an [`egui::Ui`] on the main thread,
+    /// so having it is good enough to "prove" that we are on the main thread.
     ///
     /// Use this only in a code base where you are sure that egui is running only on the main thread.
+    ///
+    /// In theory there is nothing preventing anyone from creating a [`egui::Ui`] on another thread,
+    /// but practice that is unlikely (or intentionally malicious).
     #[cfg(feature = "egui")]
     pub fn from_egui_ui(_ui: &egui::Ui) -> Self {
         Self::i_promise_i_am_on_the_main_thread()
