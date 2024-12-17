@@ -83,37 +83,41 @@ pub fn edit_or_view_plane3d(
     let distance = value.distance();
 
     ui.label("n");
-    // Show simplified combobox if this is axis aligned.
-    let mut axis_dir = AxisDirection::from(glam::Vec3::from(value.normal()));
-    let normal_response = response_with_changes_of_inner(
-        egui::ComboBox::from_id_salt("plane_normal")
-            .selected_text(format!("{axis_dir}"))
-            .height(250.0)
-            .show_ui(ui, |ui| {
-                let mut variants = AxisDirection::VARIANTS.iter();
-                #[allow(clippy::unwrap_used)] // We know there's more than zero variants.
-                let variant = variants.next().unwrap();
 
-                let mut response =
-                    ui.selectable_value(&mut axis_dir, *variant, variant.to_string());
-                for variant in variants {
-                    response |= ui.selectable_value(&mut axis_dir, *variant, variant.to_string());
-                }
+    let normal_response = if let Some(value_mut) = value.as_mut() {
+        // Show simplified combobox if this is axis aligned.
+        let mut axis_dir = AxisDirection::from(glam::Vec3::from(value_mut.normal()));
+        response_with_changes_of_inner(
+            egui::ComboBox::from_id_salt("plane_normal")
+                .selected_text(format!("{axis_dir}"))
+                .height(250.0)
+                .show_ui(ui, |ui| {
+                    let mut variants = AxisDirection::VARIANTS.iter();
+                    #[allow(clippy::unwrap_used)] // We know there's more than zero variants.
+                    let variant = variants.next().unwrap();
 
-                if let MaybeMutRef::MutRef(value) = value {
-                    if let Ok(new_dir) = glam::Vec3::try_from(axis_dir) {
-                        **value = components::Plane3D::new(new_dir, distance);
+                    let mut response =
+                        ui.selectable_value(&mut axis_dir, *variant, variant.to_string());
+                    for variant in variants {
+                        response |=
+                            ui.selectable_value(&mut axis_dir, *variant, variant.to_string());
                     }
-                }
-                response
-            }),
-    )
-    .on_hover_text(format!(
-        "{} {} {}",
-        re_format::format_f32(value.normal().x()),
-        re_format::format_f32(value.normal().y()),
-        re_format::format_f32(value.normal().z()),
-    ));
+                    if let Ok(new_dir) = glam::Vec3::try_from(axis_dir) {
+                        *value_mut = components::Plane3D::new(new_dir, distance);
+                    }
+                    response
+                }),
+        )
+        .on_hover_text(format!(
+            "{} {} {}",
+            re_format::format_f32(value.normal().x()),
+            re_format::format_f32(value.normal().y()),
+            re_format::format_f32(value.normal().z()),
+        ))
+    } else {
+        let normal = value.normal();
+        edit_or_view_vec3d_raw(ui, &mut MaybeMutRef::Ref(&normal))
+    };
 
     ui.label("d");
     let mut maybe_mut_distance = match value {
