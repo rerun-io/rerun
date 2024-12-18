@@ -764,13 +764,17 @@ impl PyRecordingView {
                         .map(|batch| batch.try_to_arrow_record_batch()),
                     std::sync::Arc::new(schema),
                 );
-
                 Ok(PyArrowType(Box::new(reader)))
             }
             #[cfg(feature = "remote")]
-            PyRecordingHandle::Remote(_) => Err::<_, PyErr>(PyRuntimeError::new_err(
-                "Schema is not implemented for for remote recordings yet.",
-            )),
+            PyRecordingHandle::Remote(recording) => {
+                let borrowed_recording = recording.borrow(py);
+                let mut borrowed_client = borrowed_recording.client.borrow_mut(py);
+                borrowed_client.exec_query(
+                    borrowed_recording.store_info.store_id.clone(),
+                    self.query_expression.clone(),
+                )
+            }
         }
     }
 
@@ -807,15 +811,14 @@ impl PyRecordingView {
         args: &Bound<'_, PyTuple>,
         columns: Option<Vec<AnyColumn>>,
     ) -> PyResult<PyArrowType<Box<dyn RecordBatchReader + Send>>> {
+        let mut query_expression = self.query_expression.clone();
+        // This is a static selection, so we clear the filtered index
+        query_expression.filtered_index = None;
+
         match &self.recording {
             PyRecordingHandle::Local(recording) => {
                 let borrowed = recording.borrow(py);
                 let engine = borrowed.engine();
-
-                let mut query_expression = self.query_expression.clone();
-
-                // This is a static selection, so we clear the filtered index
-                query_expression.filtered_index = None;
 
                 // If no columns provided, select all static columns
                 let static_columns = Self::select_args(args, columns)
@@ -862,9 +865,14 @@ impl PyRecordingView {
                 Ok(PyArrowType(Box::new(reader)))
             }
             #[cfg(feature = "remote")]
-            PyRecordingHandle::Remote(_) => Err::<_, PyErr>(PyRuntimeError::new_err(
-                "Schema is not implemented for for remote recordings yet.",
-            )),
+            PyRecordingHandle::Remote(recording) => {
+                let borrowed_recording = recording.borrow(py);
+                let mut borrowed_client = borrowed_recording.client.borrow_mut(py);
+                borrowed_client.exec_query(
+                    borrowed_recording.store_info.store_id.clone(),
+                    query_expression,
+                )
+            }
         }
     }
 
