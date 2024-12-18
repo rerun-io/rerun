@@ -14,13 +14,11 @@
 
 We've added two new logging primitives: [`GraphNodes`](https://rerun.io/docs/reference/types/archetypes/graph_nodes) and [`GraphEdges`](https://rerun.io/docs/reference/types/archetypes/graph_edges) that can be used to visualize node-link diagrams. For this, we have implemented a new Graph View that uses force-based layouts to draw graphs.
 
-<p align="center">
-  <picture>
-    <img src="https://static.rerun.io/graphs/c1070214bed5e50c9e7d452835f32759b991383e/480w.png" alt="">
-  </picture>
-</p>
+This video demonstrates the main features of the new graph view:
 
-Have a look at https://github.com/rerun-io/rerun/pull/7500 if you want to learn to more.
+https://github.com/user-attachments/assets/77db75c9-a8d8-401d-b90d-3daf08baf0ba
+
+You can also have a look at https://github.com/rerun-io/rerun/pull/7500 if you want to learn to more.
 
 #### UX improvements
 
