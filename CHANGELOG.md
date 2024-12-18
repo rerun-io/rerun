@@ -62,6 +62,15 @@ But that's not the only thing that improved in the viewer:
 
 ![image](https://github.com/user-attachments/assets/493d9711-c4d1-407e-ab41-eef2e4e51ba8)
 
+#### Index of code snippets
+
+We now have a new [index for all our code snippets](./docs/snippets/INDEX.md).
+
+You can use it to quickly find copy-pastable snippets of code for any Rerun feature you're interested in (API, Archetypes, Components, etc).
+No special tools required -- all you need is a keyword of interest, and plain old text search.
+
+It's still the early days so it is far from perfect, but we think it can already be quite helpful; feedback welcome.
+Most of it is auto-generated, so it will never get out of sync!
 
 ### ⚠️ Breaking changes
 
