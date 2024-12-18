@@ -559,6 +559,10 @@ fn entity_path_filter_ui(
     }
 
     // Apply the edit.
+    //
+    // NOTE: The comparison of `EntityPathFilter` is done on the _expanded_ data (i.e. with variables substituted),
+    // so we must make sure to expand the new filter too before we compare it to the existing one.
+    // See <https://github.com/rerun-io/rerun/pull/8526>
     let new_filter =
         EntityPathFilter::parse_forgiving(&filter_string, &EntityPathSubs::new_with_origin(origin));
     if &new_filter == filter {
