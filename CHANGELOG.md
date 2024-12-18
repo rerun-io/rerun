@@ -24,13 +24,13 @@ We've added two new logging primitives: [`GraphNodes`](https://rerun.io/docs/ref
 
 Have a look at https://github.com/rerun-io/rerun/pull/7500 if you want to learn to more.
 
-##### UX improvements
+#### UX improvements
 
 This video demonstrates the main UX improvements that went into this release:
 
 https://github.com/user-attachments/assets/ddda9300-05e4-4e53-9010-6b7e92056904
 
-###### 3D Grid
+#### 3D Grid
 
 The 3D view now offers an infinite 3D grid, enabled by default. Further controls and settings are available as usual through the blueprint API and/or the selection panel.
 
@@ -42,14 +42,14 @@ The 3D view now offers an infinite 3D grid, enabled by default. Further controls
 
 All the nitty gritty details in https://github.com/rerun-io/rerun/pull/8230 and https://github.com/rerun-io/rerun/pull/8234.
 
-##### Undo/Redo support & many more UI/UX improvements
+#### Undo/Redo support & many more UI/UX improvements
 
 You can now undo/redo blueprint changes in the viewer!
 Watch @emilk putting it to action and explains how it works:
 
 [![video demonstrating undo/redo](https://img.youtube.com/vi/HWdv4FZQbqQ/0.jpg)](https://www.youtube.com/watch?v=HWdv4FZQbqQ)
 
-##### Other UX improvements
+#### Other UX improvements
 
 But that's not the only thing that improved in the viewer:
 * Breadcrumbs show up in the selection menu now
