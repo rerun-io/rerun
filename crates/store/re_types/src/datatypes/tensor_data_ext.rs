@@ -1,3 +1,5 @@
+use re_types_core::{ArrowBuffer, ArrowString};
+
 use crate::tensor_data::{TensorCastError, TensorDataType, TensorElement};
 
 #[cfg(feature = "image")]
@@ -6,33 +8,69 @@ use crate::tensor_data::TensorImageLoadError;
 #[allow(unused_imports)] // Used for docstring links
 use crate::archetypes::EncodedImage;
 
-use super::{TensorBuffer, TensorData, TensorDimension};
+use super::{TensorBuffer, TensorData};
 
 // ----------------------------------------------------------------------------
 
 impl TensorData {
     /// Create a new tensor.
     #[inline]
-    pub fn new(shape: Vec<TensorDimension>, buffer: TensorBuffer) -> Self {
-        Self { shape, buffer }
+    pub fn new(shape: impl Into<ArrowBuffer<u64>>, buffer: TensorBuffer) -> Self {
+        Self {
+            shape: shape.into(),
+            names: None,
+            buffer,
+        }
     }
 
-    /// The shape of the tensor, including optional dimension names.
+    /// Set the names of the dimensions to the provided names.
+    ///
+    /// Any existing names will be overwritten.
+    ///
+    /// If the wrong number of names are given, a warning will be logged,
+    /// and the names might not show up correctly.
+    pub fn with_dim_names(
+        mut self,
+        names: impl IntoIterator<Item = impl Into<ArrowString>>,
+    ) -> Self {
+        let names: Vec<ArrowString> = names.into_iter().map(|x| x.into()).collect();
+
+        if names.len() != self.shape.len() {
+            re_log::warn_once!(
+                "Wrong number of names provided for tensor dimension. {} provided but {} expected. The names will be ignored.",
+                names.len(),
+                self.shape.len(),
+            );
+        }
+
+        self.names = Some(names);
+
+        self
+    }
+
+    /// The shape of the tensor.
     #[inline]
-    pub fn shape(&self) -> &[TensorDimension] {
+    pub fn shape(&self) -> &[u64] {
         self.shape.as_slice()
+    }
+
+    /// Get the name of a specific dimension.
+    ///
+    /// Returns `None` if the dimension does not have a name.
+    pub fn dim_name(&self, dim: usize) -> Option<&ArrowString> {
+        self.names.as_ref().and_then(|names| names.get(dim))
     }
 
     /// Returns the shape of the tensor with all leading & trailing dimensions of size 1 ignored.
     ///
     /// If all dimension sizes are one, this returns only the first dimension.
     #[inline]
-    pub fn shape_short(&self) -> &[TensorDimension] {
+    pub fn shape_short(&self) -> &[u64] {
         if self.shape.is_empty() {
             &self.shape
         } else {
-            let first_not_one = self.shape.iter().position(|dim| dim.size != 1);
-            let last_not_one = self.shape.iter().rev().position(|dim| dim.size != 1);
+            let first_not_one = self.shape.iter().position(|&dim| dim != 1);
+            let last_not_one = self.shape.iter().rev().position(|&dim| dim != 1);
             &self.shape[first_not_one.unwrap_or(0)..self.shape.len() - last_not_one.unwrap_or(0)]
         }
     }
@@ -53,7 +91,7 @@ impl TensorData {
         if self.shape.is_empty() {
             false
         } else {
-            self.shape.iter().filter(|dim| dim.size > 1).count() <= 1
+            self.shape.iter().filter(|&&dim| dim > 1).count() <= 1
         }
     }
 
@@ -63,12 +101,12 @@ impl TensorData {
     pub fn get(&self, index: &[u64]) -> Option<TensorElement> {
         let mut stride: usize = 1;
         let mut offset: usize = 0;
-        for (TensorDimension { size, .. }, index) in self.shape.iter().zip(index).rev() {
+        for (&size, &index) in self.shape.iter().zip(index).rev() {
             if size <= index {
                 return None;
             }
-            offset += *index as usize * stride;
-            stride *= *size as usize;
+            offset += index as usize * stride;
+            stride *= size as usize;
         }
 
         match &self.buffer {
@@ -103,7 +141,8 @@ impl Default for TensorData {
     #[inline]
     fn default() -> Self {
         Self {
-            shape: Vec::new(),
+            shape: Default::default(),
+            names: None,
             buffer: TensorBuffer::U8(Vec::new().into()),
         }
     }
@@ -117,7 +156,7 @@ macro_rules! ndarray_from_tensor {
             type Error = TensorCastError;
 
             fn try_from(value: &'a TensorData) -> Result<Self, Self::Error> {
-                let shape: Vec<_> = value.shape.iter().map(|d| d.size as usize).collect();
+                let shape: Vec<usize> = value.shape.iter().map(|&d| d as usize).collect();
 
                 if let TensorBuffer::$variant(data) = &value.buffer {
                     ndarray::ArrayViewD::from_shape(shape, data.as_slice())
@@ -138,26 +177,17 @@ macro_rules! tensor_from_ndarray {
             type Error = TensorCastError;
 
             fn try_from(view: ::ndarray::ArrayView<'a, $type, D>) -> Result<Self, Self::Error> {
-                let shape = view
-                    .shape()
-                    .iter()
-                    .map(|dim| TensorDimension {
-                        size: *dim as u64,
-                        name: None,
-                    })
-                    .collect();
+                let shape = ArrowBuffer::from_iter(view.shape().iter().map(|&dim| dim as u64));
 
                 match view.to_slice() {
-                    Some(slice) => Ok(TensorData {
+                    Some(slice) => Ok(TensorData::new(
                         shape,
-                        buffer: TensorBuffer::$variant(Vec::from(slice).into()),
-                    }),
-                    None => Ok(TensorData {
+                        TensorBuffer::$variant(Vec::from(slice).into()),
+                    )),
+                    None => Ok(TensorData::new(
                         shape,
-                        buffer: TensorBuffer::$variant(
-                            view.iter().cloned().collect::<Vec<_>>().into(),
-                        ),
-                    }),
+                        TensorBuffer::$variant(view.iter().cloned().collect::<Vec<_>>().into()),
+                    )),
                 }
             }
         }
@@ -166,14 +196,7 @@ macro_rules! tensor_from_ndarray {
             type Error = TensorCastError;
 
             fn try_from(value: ndarray::Array<$type, D>) -> Result<Self, Self::Error> {
-                let shape = value
-                    .shape()
-                    .iter()
-                    .map(|dim| TensorDimension {
-                        size: *dim as u64,
-                        name: None,
-                    })
-                    .collect();
+                let shape = ArrowBuffer::from_iter(value.shape().iter().map(|&dim| dim as u64));
 
                 let vec = if value.is_standard_layout() {
                     let (mut vec, offset) = value.into_raw_vec_and_offset();
@@ -190,28 +213,22 @@ macro_rules! tensor_from_ndarray {
                     value.into_iter().collect::<Vec<_>>()
                 };
 
-                Ok(Self {
-                    shape,
-                    buffer: TensorBuffer::$variant(vec.into()),
-                })
+                Ok(Self::new(shape, TensorBuffer::$variant(vec.into())))
             }
         }
 
         impl From<Vec<$type>> for TensorData {
             fn from(vec: Vec<$type>) -> Self {
-                TensorData {
-                    shape: vec![TensorDimension::unnamed(vec.len() as u64)],
-                    buffer: TensorBuffer::$variant(vec.into()),
-                }
+                Self::new(vec![vec.len() as u64], TensorBuffer::$variant(vec.into()))
             }
         }
 
         impl From<&[$type]> for TensorData {
             fn from(slice: &[$type]) -> Self {
-                TensorData {
-                    shape: vec![TensorDimension::unnamed(slice.len() as u64)],
-                    buffer: TensorBuffer::$variant(slice.into()),
-                }
+                Self::new(
+                    vec![slice.len() as u64],
+                    TensorBuffer::$variant(slice.into()),
+                )
             }
         }
     };
@@ -247,7 +264,7 @@ impl<'a> TryFrom<&'a TensorData> for ::ndarray::ArrayViewD<'a, u8> {
     fn try_from(value: &'a TensorData) -> Result<Self, Self::Error> {
         match &value.buffer {
             TensorBuffer::U8(data) => {
-                let shape: Vec<_> = value.shape.iter().map(|d| d.size as usize).collect();
+                let shape: Vec<usize> = value.shape.iter().map(|&d| d as usize).collect();
                 ndarray::ArrayViewD::from_shape(shape, bytemuck::cast_slice(data.as_slice()))
                     .map_err(|err| TensorCastError::BadTensorShape { source: err })
             }
@@ -363,19 +380,15 @@ impl TensorData {
                 ));
             }
         };
-        let shape = if depth == 1 {
-            vec![
-                TensorDimension::height(h as _),
-                TensorDimension::width(w as _),
-            ]
+        let (shape, names) = if depth == 1 {
+            (vec![h as _, w as _], vec!["height", "width"])
         } else {
-            vec![
-                TensorDimension::height(h as _),
-                TensorDimension::width(w as _),
-                TensorDimension::depth(depth),
-            ]
+            (
+                vec![h as _, w as _, depth],
+                vec!["height", "width", "depth"],
+            )
         };
-        Ok(Self { shape, buffer })
+        Ok(Self::new(shape, buffer).with_dim_names(names))
     }
 }
 

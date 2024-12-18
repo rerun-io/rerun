@@ -2,27 +2,46 @@ use itertools::Itertools as _;
 
 use re_chunk_store::RowId;
 use re_log_types::EntityPath;
-use re_types::datatypes::{TensorData, TensorDimension};
+use re_types::datatypes::TensorData;
 use re_ui::UiExt as _;
 use re_viewer_context::{TensorStats, TensorStatsCache, UiLayout, ViewerContext};
 
 use super::EntityDataUi;
 
-pub fn format_tensor_shape_single_line(shape: &[TensorDimension]) -> String {
-    let iter = shape.iter();
-    let labelled = iter.clone().any(|dim| dim.name.is_some());
-    iter.map(|dim| {
-        format!(
-            "{}{}",
-            dim.size,
-            if let Some(name) = &dim.name {
-                format!(" ({name})")
+fn format_tensor_shape_single_line(tensor: &TensorData) -> String {
+    const MAX_SHOWN: usize = 4; // should be enough for width/height/depth and then some!
+    let short_shape = &tensor.shape[0..tensor.shape.len().min(MAX_SHOWN)];
+    let has_names = short_shape
+        .iter()
+        .enumerate()
+        .any(|(dim_idx, _)| tensor.dim_name(dim_idx).is_some());
+    let shapes = short_shape
+        .iter()
+        .enumerate()
+        .map(|(dim_idx, dim_len)| {
+            format!(
+                "{}{}",
+                dim_len,
+                if let Some(name) = tensor.dim_name(dim_idx) {
+                    format!(" ({name})")
+                } else {
+                    String::new()
+                }
+            )
+        })
+        .join(if has_names { " × " } else { "×" });
+    format!(
+        "{shapes}{}",
+        if MAX_SHOWN < tensor.shape.len() {
+            if has_names {
+                " × …"
             } else {
-                String::new()
+                "×…"
             }
-        )
-    })
-    .join(if labelled { " × " } else { "×" })
+        } else {
+            ""
+        }
+    )
 }
 
 impl EntityDataUi for re_types::components::TensorData {
@@ -61,7 +80,7 @@ pub fn tensor_ui(
             let text = format!(
                 "{}, {}",
                 tensor.dtype(),
-                format_tensor_shape_single_line(&tensor.shape)
+                format_tensor_shape_single_line(tensor)
             );
             ui_layout.label(ui, text).on_hover_ui(|ui| {
                 tensor_summary_ui(ui, tensor, &tensor_stats);
@@ -80,7 +99,7 @@ pub fn tensor_summary_ui_grid_contents(
     tensor: &TensorData,
     tensor_stats: &TensorStats,
 ) {
-    let TensorData { shape, buffer: _ } = tensor;
+    let TensorData { shape, names, .. } = tensor;
 
     ui.grid_left_hand_label("Data type")
         .on_hover_text("Data type used for all individual elements within the tensor");
@@ -93,12 +112,12 @@ pub fn tensor_summary_ui_grid_contents(
         // For unnamed tensor dimension more than a single line usually doesn't make sense!
         // But what if some are named and some are not?
         // -> If more than 1 is named, make it a column!
-        if shape.iter().filter(|d| d.name.is_some()).count() > 1 {
-            for dim in shape {
-                ui.label(dim.to_string());
+        if let Some(names) = names {
+            for (name, size) in itertools::izip!(names, shape) {
+                ui.label(format!("{name}={size}"));
             }
         } else {
-            ui.label(format_tensor_shape_single_line(shape));
+            ui.label(format_tensor_shape_single_line(tensor));
         }
     });
     ui.end_row();

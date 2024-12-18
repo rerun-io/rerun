@@ -20,7 +20,7 @@ impl DepthImage {
         let tensor_data: TensorData = data
             .try_into()
             .map_err(ImageConstructionError::TensorDataConversion)?;
-        let shape = tensor_data.shape;
+        let TensorData { shape, buffer, .. } = tensor_data;
 
         let non_empty_dim_inds = find_non_empty_dim_indices(&shape);
 
@@ -28,13 +28,11 @@ impl DepthImage {
             return Err(ImageConstructionError::BadImageShape(shape));
         }
 
-        let (blob, datatype) = blob_and_datatype_from_tensor(tensor_data.buffer);
+        let (blob, datatype) = blob_and_datatype_from_tensor(buffer);
 
-        let (height, width) = (&shape[non_empty_dim_inds[0]], &shape[non_empty_dim_inds[1]]);
-        let height = height.size as u32;
-        let width = width.size as u32;
+        let (height, width) = (shape[non_empty_dim_inds[0]], shape[non_empty_dim_inds[1]]);
 
-        let image_format = ImageFormat::depth([width, height], datatype);
+        let image_format = ImageFormat::depth([width as u32, height as u32], datatype);
 
         Ok(Self {
             buffer: blob.into(),
