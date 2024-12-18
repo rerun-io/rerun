@@ -109,7 +109,6 @@ impl PerStoreChunkSubscriber for MaxImageDimensionsStoreSubscriber {
 
 fn size_from_blob(blob: &[u8], media_type: Option<MediaType>) -> Option<[u32; 2]> {
     re_tracing::profile_function!();
-
     let media_type = MediaType::or_guess_from_data(media_type, blob)?;
 
     if media_type.is_image() {
