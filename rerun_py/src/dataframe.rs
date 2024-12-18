@@ -667,7 +667,7 @@ impl PyRecordingView {
             }
             #[cfg(feature = "remote")]
             PyRecordingHandle::Remote(_) => Err::<_, PyErr>(PyRuntimeError::new_err(
-                "Schema is not implemented for for remote recordings yet.",
+                "Schema is not implemented for remote recordings yet.",
             )),
         }
     }
