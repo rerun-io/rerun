@@ -68,4 +68,7 @@ A type alias for index values.
 This can be any numpy-compatible array of integers, or a [`pa.Int64Array`][]
 """
 
-MetadataLike: TypeAlias = pa.Array
+TableLike: TypeAlias = Union[pa.Table, pa.RecordBatch, pa.RecordBatchReader]
+"""
+A type alias for TableLike pyarrow objects.
+"""

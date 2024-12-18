@@ -44,7 +44,6 @@ message RegisterRecordingRequest {
 // ---------------- UpdateCatalog  -----------------
 
 message UpdateCatalogRequest {
-    rerun.common.v0.RecordingId recording_id = 1;
     DataframePart metadata = 2;
 }
 

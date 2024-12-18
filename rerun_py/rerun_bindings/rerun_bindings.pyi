@@ -3,7 +3,7 @@ from typing import Iterator, Optional, Sequence, Union
 
 import pyarrow as pa
 
-from .types import AnyColumn, AnyComponentColumn, ComponentLike, IndexValuesLike, MetadataLike, ViewContentsLike
+from .types import AnyColumn, AnyComponentColumn, ComponentLike, IndexValuesLike, TableLike, ViewContentsLike
 
 class IndexColumnDescriptor:
     """
@@ -581,7 +581,7 @@ class StorageNodeClient:
         """Get the metadata for all recordings in the storage node."""
         ...
 
-    def register(self, storage_url: str, metadata: Optional[dict[str, MetadataLike]] = None) -> str:
+    def register(self, storage_url: str, metadata: Optional[TableLike] = None) -> str:
         """
         Register a recording along with some metadata.
 
@@ -589,22 +589,24 @@ class StorageNodeClient:
         ----------
         storage_url : str
             The URL to the storage location.
-        metadata : dict[str, MetadataLike]
-            A dictionary where the keys are the metadata columns and the values are pyarrow arrays.
+        metadata : Optional[Table | RecordBatch]
+            A pyarrow Table or RecordBatch containing the metadata to update.
+            This Table must contain only a single row.
 
         """
         ...
 
-    def update_catalog(self, id: str, metadata: dict[str, MetadataLike]) -> None:
+    def update_catalog(self, metadata: TableLike) -> None:
         """
-        Update the metadata for the recording with the given id.
+        Update the catalog metadata for one or more recordings.
+
+        The updates are provided as a pyarrow Table or RecordBatch containing the metadata to update.
+        The Table must contain an 'id' column, which is used to specify the recording to update for each row.
 
         Parameters
         ----------
-        id : str
-            The id of the recording to update.
-        metadata : dict[str, MetadataLike]
-            A dictionary where the keys are the metadata columns and the values are pyarrow arrays.
+        metadata : Table | RecordBatch
+            A pyarrow Table or RecordBatch containing the metadata to update.
 
         """
         ...
