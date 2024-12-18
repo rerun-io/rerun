@@ -321,7 +321,7 @@ jobs:
 
   github-release:
     name: "GitHub Release"
-    if: inputs.release-type == 'final'
+    if: inputs.release-type == 'rc' || inputs.release-type == 'final'
     needs:
       [
         version,
@@ -347,9 +347,16 @@ jobs:
         run: |
           version="${{ needs.version.outputs.final }}"
           commit="${{ needs.version.outputs.release-commit }}"
+
+          if [ ${{ inputs.release-type }} = "final" ]; then
+            pre_arg=""
+          else
+            pre_arg="--prerelease"
+          fi
+
           git tag $version $commit
           git push origin $version
-          gh release create $version --verify-tag --draft --title $version
+          gh release create $version --verify-tag --draft --title $version $pre_arg
 
       - name: Create comment
         env:
