@@ -1,4 +1,5 @@
 mod arrow2_sizes;
+mod arrow_sizes;
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
 use std::sync::Arc;
