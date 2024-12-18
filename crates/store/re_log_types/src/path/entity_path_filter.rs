@@ -588,6 +588,8 @@ impl EntityPathFilter {
         true
     }
 
+    #[inline]
+    /// Iterate over all rules in the filter.
     pub fn rules(&self) -> impl Iterator<Item = (&EntityPathRule, &RuleEffect)> {
         self.rules.iter()
     }
