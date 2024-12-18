@@ -9,34 +9,20 @@ use re_viewer_context::{TensorStats, TensorStatsCache, UiLayout, ViewerContext};
 use super::EntityDataUi;
 
 pub fn format_tensor_shape_single_line(shape: &[TensorDimension]) -> String {
-    const MAX_SHOWN: usize = 4; // should be enough for width/height/depth and then some!
-    let iter = shape.iter().take(MAX_SHOWN);
+    let iter = shape.iter();
     let labelled = iter.clone().any(|dim| dim.name.is_some());
-    let shapes = iter
-        .map(|dim| {
-            format!(
-                "{}{}",
-                dim.size,
-                if let Some(name) = &dim.name {
-                    format!(" ({name})")
-                } else {
-                    String::new()
-                }
-            )
-        })
-        .join(if labelled { " × " } else { "×" });
-    format!(
-        "{shapes}{}",
-        if shape.len() > MAX_SHOWN {
-            if labelled {
-                " × …"
+    iter.map(|dim| {
+        format!(
+            "{}{}",
+            dim.size,
+            if let Some(name) = &dim.name {
+                format!(" ({name})")
             } else {
-                "×…"
+                String::new()
             }
-        } else {
-            ""
-        }
-    )
+        )
+    })
+    .join(if labelled { " × " } else { "×" })
 }
 
 impl EntityDataUi for re_types::components::TensorData {
