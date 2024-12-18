@@ -48,6 +48,7 @@ pub use re_log_types::{EntityPath, TimeInt, TimePoint, Timeline, TimelineName};
 pub use re_types_core::{ArchetypeFieldName, ArchetypeName, ComponentName};
 
 pub mod external {
+    pub use arrow;
     pub use arrow2;
     pub use nohash_hasher;
 

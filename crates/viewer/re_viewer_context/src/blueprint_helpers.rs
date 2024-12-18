@@ -92,7 +92,7 @@ impl ViewerContext<'_> {
         let timepoint = self.store_context.blueprint_timepoint_for_writes();
 
         let chunk = match Chunk::builder(entity_path.clone())
-            .with_row_arrow1(
+            .with_row(
                 RowId::new(),
                 timepoint.clone(),
                 [(ComponentDescriptor::new(component_name), array)],
@@ -165,7 +165,7 @@ impl ViewerContext<'_> {
             .latest_at(self.blueprint_query, entity_path, [component_name])
             .get(&component_name)
             .and_then(|unit| {
-                unit.component_batch_raw_arrow2(&component_name)
+                unit.component_batch_raw(&component_name)
                     .map(|array| array.data_type().clone())
             })
         else {
@@ -180,7 +180,7 @@ impl ViewerContext<'_> {
                 timepoint,
                 [(
                     ComponentDescriptor::new(component_name),
-                    re_chunk::external::arrow2::array::new_empty_array(datatype),
+                    re_chunk::external::arrow::array::new_empty_array(&datatype),
                 )],
             )
             .build();

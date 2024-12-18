@@ -171,13 +171,13 @@ fn component_ui(
 
                 let num_instances = data.len();
                 for i in 0..num_instances {
-                    ui.label(format_arrow(&*data.sliced(i, 1)));
+                    ui.label(format_arrow2(&*data.sliced(i, 1)));
                 }
             });
     };
 }
 
-fn format_arrow(value: &dyn arrow2::array::Array) -> String {
+fn format_arrow2(value: &dyn arrow2::array::Array) -> String {
     use re_types::SizeBytes as _;
 
     let bytes = value.total_size_bytes();

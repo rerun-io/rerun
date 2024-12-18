@@ -491,7 +491,7 @@ impl DataQueryPropertyResolver<'_> {
                             .storage_engine()
                             .cache()
                             .latest_at(blueprint_query, &recursive_override_path, [component_name])
-                            .component_batch_raw_arrow2(&component_name)
+                            .component_batch_raw(&component_name)
                         {
                             if !component_data.is_empty() {
                                 recursive_property_overrides.to_mut().insert(
@@ -522,7 +522,7 @@ impl DataQueryPropertyResolver<'_> {
                             .storage_engine()
                             .cache()
                             .latest_at(blueprint_query, &individual_override_path, [component_name])
-                            .component_batch_raw_arrow2(&component_name)
+                            .component_batch_raw(&component_name)
                         {
                             if !component_data.is_empty() {
                                 resolved_component_overrides.insert(

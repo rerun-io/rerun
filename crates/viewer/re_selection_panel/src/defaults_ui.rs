@@ -201,7 +201,7 @@ fn active_defaults(
             db.storage_engine()
                 .cache()
                 .latest_at(query, &view.defaults_path, [*c])
-                .component_batch_raw_arrow2(c)
+                .component_batch_raw(c)
                 .map_or(false, |data| !data.is_empty())
         })
         .collect::<BTreeSet<_>>()
@@ -304,10 +304,7 @@ fn add_popup_ui(
                 .with_row(
                     RowId::new(),
                     ctx.blueprint_timepoint_for_writes(),
-                    [(
-                        ComponentDescriptor::new(component_name),
-                        initial_data.into(),
-                    )],
+                    [(ComponentDescriptor::new(component_name), initial_data)],
                 )
                 .build()
             {

@@ -33,7 +33,7 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
 
         let Some(num_instances) = self
             .unit
-            .component_batch_raw_arrow2(component_name)
+            .component_batch_raw(component_name)
             .map(|data| data.len())
         else {
             ui.weak("<pending>");
