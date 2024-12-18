@@ -211,7 +211,7 @@ pub fn resolve_mono_instance_path(
                     &instance.entity_path,
                     [ComponentDescriptor::new(component_name)],
                 )
-                .component_batch_raw(&component_name)
+                .component_batch_raw_arrow2(&component_name)
             {
                 if array.len() > 1 {
                     return instance.clone();

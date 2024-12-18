@@ -1,5 +1,5 @@
 use arrow::array::ArrayRef;
-use re_chunk::{Arrow2Array, RowId};
+use re_chunk::RowId;
 use re_chunk_store::external::re_chunk::Chunk;
 use re_log_types::{EntityPath, TimeInt, TimePoint, Timeline};
 use re_types::{AsComponents, ComponentBatch, ComponentDescriptor, ComponentName};
@@ -87,12 +87,12 @@ impl ViewerContext<'_> {
         &self,
         entity_path: &EntityPath,
         component_name: ComponentName,
-        array: Box<dyn Arrow2Array>,
+        array: ArrayRef,
     ) {
         let timepoint = self.store_context.blueprint_timepoint_for_writes();
 
         let chunk = match Chunk::builder(entity_path.clone())
-            .with_row(
+            .with_row_arrow1(
                 RowId::new(),
                 timepoint.clone(),
                 [(ComponentDescriptor::new(component_name), array)],
@@ -138,16 +138,6 @@ impl ViewerContext<'_> {
             })
     }
 
-    /// Queries a raw component from the default blueprint.
-    pub fn raw_latest_at_in_default_blueprint_arrow2(
-        &self,
-        entity_path: &EntityPath,
-        component_name: ComponentName,
-    ) -> Option<Box<dyn Arrow2Array>> {
-        self.raw_latest_at_in_default_blueprint(entity_path, component_name)
-            .map(|array| array.into())
-    }
-
     /// Resets a blueprint component to the value it had in the default blueprint.
     pub fn reset_blueprint_component_by_name(
         &self,
@@ -155,7 +145,7 @@ impl ViewerContext<'_> {
         component_name: ComponentName,
     ) {
         if let Some(default_value) =
-            self.raw_latest_at_in_default_blueprint_arrow2(entity_path, component_name)
+            self.raw_latest_at_in_default_blueprint(entity_path, component_name)
         {
             self.save_blueprint_array(entity_path, component_name, default_value);
         } else {

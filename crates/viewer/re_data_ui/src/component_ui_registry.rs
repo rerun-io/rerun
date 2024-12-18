@@ -23,7 +23,7 @@ pub fn add_to_registry<C: EntityDataUi + re_types::Component>(registry: &mut Com
     registry.add_legacy_display_ui(
         C::name(),
         Box::new(
-            |ctx, ui, ui_layout, query, db, entity_path, row_id, component_raw| match C::from_arrow2(
+            |ctx, ui, ui_layout, query, db, entity_path, row_id, component_raw| match C::from_arrow(
                 component_raw,
             ) {
                 Ok(components) => match components.len() {

@@ -1,7 +1,6 @@
 use re_types::{
     components::{Name, Text},
     datatypes::Utf8,
-    external::arrow2,
     Loggable as _,
 };
 use re_ui::UiExt as _;
@@ -84,9 +83,9 @@ pub fn display_text_ui(
     _db: &EntityDb,
     _path: &EntityPath,
     _row_id: Option<RowId>,
-    data: &dyn arrow2::array::Array,
+    data: &dyn arrow::array::Array,
 ) {
-    let text = match Text::from_arrow2(data) {
+    let text = match Text::from_arrow(data) {
         Ok(text) => text.first().cloned(),
         Err(err) => {
             ui.error_label("Failed to deserialize")
@@ -113,9 +112,9 @@ pub fn display_name_ui(
     _db: &EntityDb,
     _path: &EntityPath,
     _row_id: Option<RowId>,
-    data: &dyn arrow2::array::Array,
+    data: &dyn arrow::array::Array,
 ) {
-    let name = match Name::from_arrow2(data) {
+    let name = match Name::from_arrow(data) {
         Ok(name) => name.first().cloned(),
         Err(err) => {
             ui.error_label("Failed to deserialize")

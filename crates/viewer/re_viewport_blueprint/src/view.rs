@@ -263,7 +263,7 @@ impl ViewBlueprint {
                                 let array = blueprint_engine
                                     .cache()
                                     .latest_at(query, path, [component_name])
-                                    .component_batch_raw(&component_name);
+                                    .component_batch_raw_arrow2(&component_name);
                                 array.map(|array| (ComponentDescriptor::new(component_name), array))
                             }),
                     )

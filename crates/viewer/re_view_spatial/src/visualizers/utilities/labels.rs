@@ -115,10 +115,10 @@ pub fn show_labels_fallback<C: Component>(ctx: &re_viewer_context::QueryContext<
         ctx.recording()
             .latest_at(ctx.query, ctx.target_entity_path, [C::name(), Text::name()]);
     let num_instances = results
-        .component_batch_raw(&C::name())
+        .component_batch_raw_arrow2(&C::name())
         .map_or(0, |array| array.len());
     let num_labels = results
-        .component_batch_raw(&Text::name())
+        .component_batch_raw_arrow2(&Text::name())
         .map_or(0, |array| array.len());
 
     ShowLabels::from(num_labels == 1 || num_instances < MAX_NUM_LABELS_PER_ENTITY)

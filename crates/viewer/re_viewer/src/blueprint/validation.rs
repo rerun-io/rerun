@@ -24,7 +24,7 @@ pub(crate) fn validate_component<C: Component>(blueprint: &EntityDb) -> bool {
                 if let Some(array) = engine
                     .cache()
                     .latest_at(&query, path, [C::name()])
-                    .component_batch_raw(&C::name())
+                    .component_batch_raw_arrow2(&C::name())
                 {
                     if let Err(err) = C::from_arrow2_opt(&*array) {
                         re_log::debug!(

@@ -163,7 +163,7 @@ fn component_ui(
             .cache()
             .latest_at(&query, entity_path, [component_name]);
 
-    if let Some(data) = results.component_batch_raw(&component_name) {
+    if let Some(data) = results.component_batch_raw_arrow2(&component_name) {
         egui::ScrollArea::vertical()
             .auto_shrink([false, true])
             .show(ui, |ui| {

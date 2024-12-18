@@ -1,3 +1,4 @@
+use arrow::array::ArrayRef;
 use arrow2::{
     array::{Array as Arrow2Array, PrimitiveArray as Arrow2PrimitiveArray},
     datatypes::DataType as Arrow2Datatype,
@@ -97,6 +98,23 @@ impl ChunkBuilder {
         }
 
         self
+    }
+
+    /// Add a row's worth of data using the given component data.
+    #[inline]
+    pub fn with_row_arrow1(
+        self,
+        row_id: RowId,
+        timepoint: impl Into<TimePoint>,
+        components: impl IntoIterator<Item = (ComponentDescriptor, ArrayRef)>,
+    ) -> Self {
+        self.with_sparse_row(
+            row_id,
+            timepoint,
+            components
+                .into_iter()
+                .map(|(component_descr, array)| (component_descr, Some(array.into()))),
+        )
     }
 
     /// Add a row's worth of data using the given component data.

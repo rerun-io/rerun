@@ -201,7 +201,7 @@ fn active_defaults(
             db.storage_engine()
                 .cache()
                 .latest_at(query, &view.defaults_path, [*c])
-                .component_batch_raw(c)
+                .component_batch_raw_arrow2(c)
                 .map_or(false, |data| !data.is_empty())
         })
         .collect::<BTreeSet<_>>()
