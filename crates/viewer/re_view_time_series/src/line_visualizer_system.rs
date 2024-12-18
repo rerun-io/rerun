@@ -4,7 +4,7 @@ use re_chunk_store::{RangeQuery, RowId};
 use re_log_types::{EntityPath, TimeInt};
 use re_types::archetypes;
 use re_types::components::{AggregationPolicy, ClearIsRecursive};
-use re_types::external::arrow2::datatypes::DataType as Arrow2Datatype;
+use re_types::external::arrow::datatypes::DataType as ArrowDatatype;
 use re_types::{
     archetypes::SeriesLine,
     components::{Color, Name, Scalar, StrokeWidth},
@@ -243,7 +243,7 @@ impl SeriesLineSystem {
                         chunk.iter_component_indices(&query.timeline(), &Scalar::name())
                     })
                     .map(|(data_time, _)| {
-                        debug_assert_eq!(Scalar::arrow2_datatype(), Arrow2Datatype::Float64);
+                        debug_assert_eq!(Scalar::arrow_datatype(), ArrowDatatype::Float64);
 
                         PlotPoint {
                             time: data_time.as_i64(),
@@ -257,7 +257,7 @@ impl SeriesLineSystem {
             {
                 re_tracing::profile_scope!("fill values");
 
-                debug_assert_eq!(Scalar::arrow2_datatype(), Arrow2Datatype::Float64);
+                debug_assert_eq!(Scalar::arrow_datatype(), ArrowDatatype::Float64);
                 all_scalar_chunks
                     .iter()
                     .flat_map(|chunk| chunk.iter_primitive::<f64>(&Scalar::name()))
@@ -281,7 +281,7 @@ impl SeriesLineSystem {
             {
                 re_tracing::profile_scope!("fill colors");
 
-                debug_assert_eq!(Color::arrow2_datatype(), Arrow2Datatype::UInt32);
+                debug_assert_eq!(Color::arrow_datatype(), ArrowDatatype::UInt32);
 
                 fn map_raw_color(raw: &[u32]) -> Option<re_renderer::Color32> {
                     raw.first().map(|c| {
@@ -334,7 +334,7 @@ impl SeriesLineSystem {
             {
                 re_tracing::profile_scope!("fill stroke widths");
 
-                debug_assert_eq!(StrokeWidth::arrow2_datatype(), Arrow2Datatype::Float32);
+                debug_assert_eq!(StrokeWidth::arrow_datatype(), ArrowDatatype::Float32);
 
                 {
                     let all_stroke_width_chunks = results.get_optional_chunks(&StrokeWidth::name());
