@@ -37,9 +37,6 @@ def log_external_blueprint() -> None:
                 rrb.TextDocumentView(origin="readme"),
                 column_shares=[3, 2],
             ),
-            rrb.BlueprintPanel(state="collapsed"),
-            rrb.SelectionPanel(state="collapsed"),
-            rrb.TimePanel(state="collapsed"),
         ).save("some_unrelated_blueprint_app_id", tmp.name)
 
         rr.log_file_from_path(tmp.name)
@@ -76,7 +73,9 @@ def run(args: Namespace) -> None:
         args,
         f"{os.path.basename(__file__)}",
         recording_id=uuid4(),
-        default_blueprint=rrb.Blueprint(
+    )
+    rr.send_blueprint(
+        rrb.Blueprint(
             rrb.Horizontal(
                 rrb.TimeSeriesView(origin="/"),
                 rrb.TextDocumentView(origin="readme"),
@@ -86,6 +85,8 @@ def run(args: Namespace) -> None:
             rrb.SelectionPanel(state="collapsed"),
             rrb.TimePanel(state="collapsed"),
         ),
+        make_active=True,
+        make_default=True,
     )
 
     log_readme()

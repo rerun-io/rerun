@@ -59,19 +59,19 @@ def run(args: Namespace) -> None:
     log_coincident_nodes()
 
     rr.send_blueprint(
-        rrb.Blueprint(
-            rrb.Grid(
-                rrb.GraphView(origin="graph", name="Graph 1"),
-                rrb.GraphView(origin="graph2", name="Graph 2"),
-                rrb.GraphView(name="Both", contents=["/graph", "/graph2"]),
-                rrb.GraphView(
-                    origin="coincident",
-                    name="Coincident nodes",
-                    overrides={"coincident": [rr.components.Position2D([0, 0])]},
-                ),
-                rrb.TextDocumentView(origin="readme", name="Instructions"),
-            )
-        )
+        rrb.Grid(
+            rrb.GraphView(origin="graph", name="Graph 1"),
+            rrb.GraphView(origin="graph2", name="Graph 2"),
+            rrb.GraphView(name="Both", contents=["/graph", "/graph2"]),
+            rrb.GraphView(
+                origin="coincident",
+                name="Coincident nodes",
+                overrides={"coincident": [rr.components.Position2D([0, 0])]},
+            ),
+            rrb.TextDocumentView(origin="readme", name="Instructions"),
+        ),
+        make_default=True,
+        make_active=True,
     )
 
 

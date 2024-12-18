@@ -65,10 +65,6 @@ def blueprint() -> rrb.BlueprintLike:
                 ),
             ]
         ),
-        # NOTE: It looks nice but it's very annoying when going through several checklists.
-        # rrb.BlueprintPanel(state="collapsed"),
-        # rrb.TimePanel(state="collapsed"),
-        # rrb.SelectionPanel(state="collapsed"),
     )
 
 
@@ -119,7 +115,7 @@ def log_points() -> None:
 def run(args: Namespace) -> None:
     rr.script_setup(args, f"{os.path.basename(__file__)}", recording_id=uuid4())
 
-    rr.send_blueprint(blueprint())
+    rr.send_blueprint(blueprint(), make_default=True, make_active=True)
 
     log_readme()
     log_points()
