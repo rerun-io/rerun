@@ -34,7 +34,6 @@ Data types are the lowest layer of the data model hierarchy. They are re-usable 
 * [`RotationAxisAngle`](datatypes/rotation_axis_angle.md): 3D rotation represented by a rotation around a given axis.
 * [`TensorBuffer`](datatypes/tensor_buffer.md): The underlying storage for [`archetypes.Tensor`](https://rerun.io/docs/reference/types/archetypes/tensor).
 * [`TensorData`](datatypes/tensor_data.md): An N-dimensional array of numbers.
-* [`TensorDimension`](datatypes/tensor_dimension.md): A single dimension within a multi-dimensional tensor.
 * [`TensorDimensionIndexSelection`](datatypes/tensor_dimension_index_selection.md): Indexing a specific tensor dimension.
 * [`TensorDimensionSelection`](datatypes/tensor_dimension_selection.md): Selection of a single tensor dimension.
 * [`TimeInt`](datatypes/time_int.md): A 64-bit number describing either nanoseconds OR sequence numbers.

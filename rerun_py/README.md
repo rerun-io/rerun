@@ -89,3 +89,8 @@ While we try to keep the main branch usable at all times, it may be unstable occ
 ```sh
 pixi run -e py py-build && pixi run -e py py-test
 ```
+
+# Running specific Python unit tests
+```sh
+pixi run -e py py-build && pixi run -e py pytest rerun_py/tests/unit/test_tensor.py
+```

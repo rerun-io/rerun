@@ -133,6 +133,16 @@ impl<T: ArrowNativeType> FromIterator<T> for ArrowBuffer<T> {
     }
 }
 
+impl<'a, T: ArrowNativeType> IntoIterator for &'a ArrowBuffer<T> {
+    type Item = &'a T;
+    type IntoIter = std::slice::Iter<'a, T>;
+
+    #[inline]
+    fn into_iter(self) -> Self::IntoIter {
+        self.as_slice().iter()
+    }
+}
+
 impl<T: ArrowNativeType> std::ops::Deref for ArrowBuffer<T> {
     type Target = [T];
 

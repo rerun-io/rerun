@@ -3,6 +3,9 @@ title: Migrating from 0.20 to 0.21
 order: 989
 ---
 
+### File compatibility
+We've changed how tensors are encoded in .rrd files, so tensors will no longer load from older .rrd files ([#8376](https://github.com/rerun-io/rerun/pull/8376)).
+
 ### Near clip plane for `Spatial2D` views now defaults to `0.1` in 3D scene units.
 
 Previously, the clip plane was set an arbitrary value that worked reasonably for
