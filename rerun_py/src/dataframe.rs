@@ -29,7 +29,7 @@ use re_log_types::{EntityPathFilter, ResolvedTimeRange, TimeType};
 use re_sdk::{ComponentName, EntityPath, StoreId, StoreKind};
 
 #[cfg(feature = "remote")]
-use crate::remote::PyStorageNodeClient;
+use crate::remote::PyRemoteRecording;
 
 /// Register the `rerun.dataframe` module.
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -430,7 +430,7 @@ impl IndexValuesLike<'_> {
     }
 }
 
-struct ComponentLike(String);
+pub struct ComponentLike(pub String);
 
 impl FromPyObject<'_> for ComponentLike {
     fn extract_bound(component: &Bound<'_, PyAny>) -> PyResult<Self> {
@@ -574,10 +574,10 @@ pub struct PyRecording {
 }
 
 #[derive(Clone)]
-enum PyRecordingHandle {
+pub enum PyRecordingHandle {
     Local(std::sync::Arc<Py<PyRecording>>),
     #[cfg(feature = "remote")]
-    Remote(PyStorageNodeClient, StoreId),
+    Remote(std::sync::Arc<Py<PyRemoteRecording>>),
 }
 
 /// A view of a recording restricted to a given index, containing a specific set of entities and components.
@@ -598,9 +598,9 @@ enum PyRecordingHandle {
 #[pyclass(name = "RecordingView")]
 #[derive(Clone)]
 pub struct PyRecordingView {
-    recording: PyRecordingHandle,
+    pub(crate) recording: PyRecordingHandle,
 
-    query_expression: QueryExpression,
+    pub(crate) query_expression: QueryExpression,
 }
 
 impl PyRecordingView {
@@ -648,7 +648,7 @@ impl PyRecordingView {
     ///
     /// This schema will only contain the columns that are included in the view via
     /// the view contents.
-    fn schema(&self, py: Python<'_>) -> PySchema {
+    fn schema(&self, py: Python<'_>) -> PyResult<PySchema> {
         match &self.recording {
             PyRecordingHandle::Local(recording) => {
                 let borrowed: PyRef<'_, PyRecording> = recording.borrow(py);
@@ -661,14 +661,14 @@ impl PyRecordingView {
 
                 let contents = query_handle.view_contents();
 
-                PySchema {
+                Ok(PySchema {
                     schema: contents.to_vec(),
-                }
+                })
             }
             #[cfg(feature = "remote")]
-            PyRecordingHandle::Remote(client, store_id) => Err::<_, PyErr>(
-                PyRuntimeError::new_err("Schema is not implemented for for remote recordings yet."),
-            ),
+            PyRecordingHandle::Remote(_) => Err::<_, PyErr>(PyRuntimeError::new_err(
+                "Schema is not implemented for for remote recordings yet.",
+            )),
         }
     }
 
@@ -768,9 +768,9 @@ impl PyRecordingView {
                 Ok(PyArrowType(Box::new(reader)))
             }
             #[cfg(feature = "remote")]
-            PyRecordingHandle::Remote(client, store_id) => Err::<_, PyErr>(
-                PyRuntimeError::new_err("Schema is not implemented for for remote recordings yet."),
-            ),
+            PyRecordingHandle::Remote(_) => Err::<_, PyErr>(PyRuntimeError::new_err(
+                "Schema is not implemented for for remote recordings yet.",
+            )),
         }
     }
 
@@ -818,14 +818,17 @@ impl PyRecordingView {
                 query_expression.filtered_index = None;
 
                 // If no columns provided, select all static columns
-                let static_columns = Self::select_args(args, columns)?.unwrap_or_else(|| {
-                    self.schema(py)
-                        .schema
-                        .iter()
-                        .filter(|col| col.is_static())
-                        .map(|col| col.clone().into())
-                        .collect()
-                });
+                let static_columns = Self::select_args(args, columns)
+                    .transpose()
+                    .unwrap_or_else(|| {
+                        Ok(self
+                            .schema(py)?
+                            .schema
+                            .iter()
+                            .filter(|col| col.is_static())
+                            .map(|col| col.clone().into())
+                            .collect())
+                    })?;
 
                 query_expression.selection = Some(static_columns);
 
@@ -859,9 +862,9 @@ impl PyRecordingView {
                 Ok(PyArrowType(Box::new(reader)))
             }
             #[cfg(feature = "remote")]
-            PyRecordingHandle::Remote(client, store_id) => Err::<_, PyErr>(
-                PyRuntimeError::new_err("Schema is not implemented for for remote recordings yet."),
-            ),
+            PyRecordingHandle::Remote(_) => Err::<_, PyErr>(PyRuntimeError::new_err(
+                "Schema is not implemented for for remote recordings yet.",
+            )),
         }
     }
 

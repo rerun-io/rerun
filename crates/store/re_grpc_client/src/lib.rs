@@ -38,7 +38,7 @@ use re_protos::remote_store::v0::{
 
 /// Wrapper with a nicer error message
 #[derive(Debug)]
-struct TonicStatusError(tonic::Status);
+pub struct TonicStatusError(pub tonic::Status);
 
 impl std::fmt::Display for TonicStatusError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -65,7 +65,7 @@ impl Error for TonicStatusError {
 }
 
 #[derive(thiserror::Error, Debug)]
-enum StreamError {
+pub enum StreamError {
     /// Native connection error
     #[cfg(not(target_arch = "wasm32"))]
     #[error(transparent)]
@@ -268,7 +268,7 @@ async fn stream_recording_async(
     Ok(())
 }
 
-fn store_info_from_catalog_chunk(
+pub fn store_info_from_catalog_chunk(
     tc: &TransportChunk,
     recording_id: &str,
 ) -> Result<StoreInfo, StreamError> {
