@@ -75,8 +75,6 @@ No special tools required -- all you need is a keyword of interest, and plain ol
 It's still the early days so it is far from perfect, but we think it can already be quite helpful; feedback welcome.
 Most of it is auto-generated, so it will never get out of sync!
 
----
-
 ### ⚠️ Breaking changes
 
 * Near clip plane for `Spatial2D` views now defaults to `0.1` in 3D scene units.
