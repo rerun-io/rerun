@@ -134,21 +134,21 @@ Read our 🧳 migration guide for more detailed information: https://rerun.io/do
 - Use video logging api in `detect_and_track` example [#8261](https://github.com/rerun-io/rerun/pull/8261) (thanks [@oxkitsune](https://github.com/oxkitsune)!)
 - Add hloc_glomap example and update manifest [#8352](https://github.com/rerun-io/rerun/pull/8352) (thanks [@pablovela5620](https://github.com/pablovela5620)!)
 - Introduce the Snippet Index [#8383](https://github.com/rerun-io/rerun/pull/8383)
-- Implement complete Graph View example [#8421](https://github.com/rerun-io/rerun/pull/8421) (thanks [@grtlr](https://github.com/grtlr)!)
+- Implement complete Graph View example [#8421](https://github.com/rerun-io/rerun/pull/8421)
 
 #### 📚 Docs
 - Update wheel build instruction [#8235](https://github.com/rerun-io/rerun/pull/8235)
 - Fix various doc links in SDKs [#8331](https://github.com/rerun-io/rerun/pull/8331)
 
 #### 🖼 UI improvements
-- Implement graph components and archetypes [#7500](https://github.com/rerun-io/rerun/pull/7500) (thanks [@grtlr](https://github.com/grtlr)!)
-- Add support for Bezier-curve multi (self-)edges [#8256](https://github.com/rerun-io/rerun/pull/8256) (thanks [@grtlr](https://github.com/grtlr)!)
-- Implement incremental graph layouts [#8308](https://github.com/rerun-io/rerun/pull/8308) (thanks [@grtlr](https://github.com/grtlr)!)
+- Implement graph components and archetypes [#7500](https://github.com/rerun-io/rerun/pull/7500)
+- Add support for Bezier-curve multi (self-)edges [#8256](https://github.com/rerun-io/rerun/pull/8256)
+- Implement incremental graph layouts [#8308](https://github.com/rerun-io/rerun/pull/8308)
 - Revert label background color to that in 0.19 [#8337](https://github.com/rerun-io/rerun/pull/8337)
 - Add selection hierarchy breadcrumbs [#8319](https://github.com/rerun-io/rerun/pull/8319)
 - More compact selection panel when multiple items selected [#8351](https://github.com/rerun-io/rerun/pull/8351)
-- Make Position2D components editable in selection panel [#8357](https://github.com/rerun-io/rerun/pull/8357) (thanks [@grtlr](https://github.com/grtlr)!)
-- Dynamic configuration of graph layout forces through blueprints [#8299](https://github.com/rerun-io/rerun/pull/8299) (thanks [@grtlr](https://github.com/grtlr)!)
+- Make Position2D components editable in selection panel [#8357](https://github.com/rerun-io/rerun/pull/8357)
+- Dynamic configuration of graph layout forces through blueprints [#8299](https://github.com/rerun-io/rerun/pull/8299)
 - Document legend interaction in the timeseries view help text [#8406](https://github.com/rerun-io/rerun/pull/8406)
 - Allow drag-and-dropping multiple containers and views in the blueprint tree [#8334](https://github.com/rerun-io/rerun/pull/8334)
 - Improve picking in 2D views [#8404](https://github.com/rerun-io/rerun/pull/8404)
