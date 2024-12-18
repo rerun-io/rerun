@@ -6035,6 +6035,7 @@ version = "0.22.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "anyhow",
+ "arrow",
  "backtrace",
  "bytemuck",
  "clean-path",
