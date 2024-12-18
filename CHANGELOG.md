@@ -28,7 +28,7 @@ This video demonstrates the main UX improvements that went into this release:
 
 https://github.com/user-attachments/assets/bef071b5-0681-41b2-9ef0-1c6a557ff138
 
-#### 3D Grid
+#### 3D grid
 
 The 3D view now offers an infinite 3D grid, enabled by default. Further controls and settings are available as usual through the blueprint API and/or the selection panel.
 
