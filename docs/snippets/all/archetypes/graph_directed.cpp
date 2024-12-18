@@ -10,12 +10,7 @@ int main() {
         "simple",
         rerun::GraphNodes({"a", "b", "c"})
             .with_positions({{0.0, 100.0}, {-100.0, 0.0}, {100.0, 0.0}})
-            .with_labels({"A", "B", "C"})
-    );
-
-    // Note: We log to the same entity here.
-    rec.log(
-        "simple",
+            .with_labels({"A", "B", "C"}),
         rerun::GraphEdges({{"a", "b"}, {"b", "c"}, {"c", "a"}})
             // Graphs are undirected by default.
             .with_graph_type(rerun::components::GraphType::Directed)
