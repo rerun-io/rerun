@@ -21,6 +21,36 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Archetype**: A list of nodes in a graph with optional labels, colors, etc.
 ///
 /// ⚠️ **This type is experimental and may be removed in future versions**
+///
+/// ## Example
+///
+/// ### Simple directed graph
+/// ```ignore
+/// fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_graph_directed").spawn()?;
+///
+///     rec.log(
+///         "simple",
+///         &[
+///             &rerun::GraphNodes::new(["a", "b", "c"])
+///                 .with_positions([(0.0, 100.0), (-100.0, 0.0), (100.0, 0.0)])
+///                 .with_labels(["A", "B", "C"]) as &dyn rerun::AsComponents,
+///             &rerun::GraphEdges::new([("a", "b"), ("b", "c"), ("c", "a")]).with_directed_edges(),
+///         ],
+///     )?;
+///
+///     Ok(())
+/// }
+/// ```
+/// <center>
+/// <picture>
+///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/graph_directed/ca29a37b65e1e0b6482251dce401982a0bc568fa/480w.png">
+///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/graph_directed/ca29a37b65e1e0b6482251dce401982a0bc568fa/768w.png">
+///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/graph_directed/ca29a37b65e1e0b6482251dce401982a0bc568fa/1024w.png">
+///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/graph_directed/ca29a37b65e1e0b6482251dce401982a0bc568fa/1200w.png">
+///   <img src="https://static.rerun.io/graph_directed/ca29a37b65e1e0b6482251dce401982a0bc568fa/full.png" width="640">
+/// </picture>
+/// </center>
 #[derive(Clone, Debug, PartialEq)]
 pub struct GraphNodes {
     /// A list of node IDs.
