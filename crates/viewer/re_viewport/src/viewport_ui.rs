@@ -290,15 +290,6 @@ impl ViewportUi {
                     }
                 });
 
-            // for entity in entities {
-            //     if can_entity_be_added(entity) {
-            //         view_blueprint.contents.raw_add_entity_inclusion(
-            //             ctx,
-            //             EntityPathRule::including_subtree(entity.clone()),
-            //         );
-            //     }
-            // }
-
             ctx.selection_state()
                 .set_selection(Item::View(view_blueprint.id));
 
