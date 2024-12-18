@@ -31,5 +31,5 @@ egui = ["dep:egui"]
 
 # External dependencies:
 document-features.workspace = true
-egui = { workspace = true, default-features = false, optional = true }
+egui = { workspace = true, optional = true }
 static_assertions.workspace = true
