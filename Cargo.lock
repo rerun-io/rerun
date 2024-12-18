@@ -5668,6 +5668,7 @@ version = "0.22.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "anyhow",
+ "arrow",
  "criterion",
  "document-features",
  "indent",

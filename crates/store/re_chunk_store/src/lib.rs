@@ -56,6 +56,7 @@ pub use re_chunk::{
 pub use re_log_types::{ResolvedTimeRange, TimeInt, TimeType, Timeline};
 
 pub mod external {
+    pub use arrow;
     pub use arrow2;
 
     pub use re_chunk;
