@@ -709,14 +709,13 @@ impl PyRecordingView {
         args: &Bound<'_, PyTuple>,
         columns: Option<Vec<AnyColumn>>,
     ) -> PyResult<PyArrowType<Box<dyn RecordBatchReader + Send>>> {
+        let mut query_expression = self.query_expression.clone();
+        query_expression.selection = Self::select_args(args, columns)?;
+
         match &self.recording {
             PyRecordingHandle::Local(recording) => {
                 let borrowed = recording.borrow(py);
                 let engine = borrowed.engine();
-
-                let mut query_expression = self.query_expression.clone();
-
-                query_expression.selection = Self::select_args(args, columns)?;
 
                 let query_handle = engine.query(query_expression);
 
@@ -772,7 +771,7 @@ impl PyRecordingView {
                 let mut borrowed_client = borrowed_recording.client.borrow_mut(py);
                 borrowed_client.exec_query(
                     borrowed_recording.store_info.store_id.clone(),
-                    self.query_expression.clone(),
+                    query_expression,
                 )
             }
         }
@@ -815,25 +814,25 @@ impl PyRecordingView {
         // This is a static selection, so we clear the filtered index
         query_expression.filtered_index = None;
 
+        // If no columns provided, select all static columns
+        let static_columns = Self::select_args(args, columns)
+            .transpose()
+            .unwrap_or_else(|| {
+                Ok(self
+                    .schema(py)?
+                    .schema
+                    .iter()
+                    .filter(|col| col.is_static())
+                    .map(|col| col.clone().into())
+                    .collect())
+            })?;
+
+        query_expression.selection = Some(static_columns);
+
         match &self.recording {
             PyRecordingHandle::Local(recording) => {
                 let borrowed = recording.borrow(py);
                 let engine = borrowed.engine();
-
-                // If no columns provided, select all static columns
-                let static_columns = Self::select_args(args, columns)
-                    .transpose()
-                    .unwrap_or_else(|| {
-                        Ok(self
-                            .schema(py)?
-                            .schema
-                            .iter()
-                            .filter(|col| col.is_static())
-                            .map(|col| col.clone().into())
-                            .collect())
-                    })?;
-
-                query_expression.selection = Some(static_columns);
 
                 let query_handle = engine.query(query_expression);
 
