@@ -277,6 +277,7 @@ pub mod external {
     pub use re_types_core;
 
     pub use anyhow;
+    pub use arrow;
     pub use arrow2;
     pub use ndarray;
     pub use uuid;

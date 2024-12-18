@@ -275,6 +275,7 @@ fn test_arrow2_estimated_size_bytes() {
         offset::Offsets,
     };
     use std::mem::size_of;
+    use std::sync::Arc;
 
     // empty primitive array
     {
