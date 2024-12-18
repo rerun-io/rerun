@@ -1,8 +1,7 @@
 //! --- Arrow2 size estimations ---
 //!
-//! The following is a modified version of [1], available under MIT OR Apache-2.0.
-//!
-//! [1] <https://github.com/jorgecarleitao/arrow2/blob/v0.16.0/src/compute/aggregate/memory.rs>
+//! The following is a modified version of <https://github.com/jorgecarleitao/arrow2/blob/v0.16.0/src/compute/aggregate/memory.rs>,
+//! available under MIT OR Apache-2.0.
 
 use std::collections::BTreeMap;
 
