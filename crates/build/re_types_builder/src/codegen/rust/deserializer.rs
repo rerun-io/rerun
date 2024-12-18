@@ -597,7 +597,7 @@ fn quote_arrow_field_deserializer(
                                 (start, end), #data_src_buf.len(),
                             ));
                         }
-                        #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)] // TODO: unsafe slice again
+                        #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)] // TODO(apache/arrow-rs#6900): slice_with_length_unchecked unsafe when https://github.com/apache/arrow-rs/pull/6901 is merged and released
                         let data = #data_src_buf.slice_with_length(start, len);
 
                         Ok(data)
@@ -749,7 +749,7 @@ fn quote_arrow_field_deserializer(
             let quoted_inner_data_range = match inner_repr {
                 InnerRepr::BufferT => {
                     quote! {
-                        #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)] // TODO: unsafe
+                        #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)] // TODO(apache/arrow-rs#6900): unsafe slice_unchecked when https://github.com/apache/arrow-rs/pull/6901 is merged and released
                         let data = #data_src_inner.clone().slice(start,  end - start);
                         let data = ::re_types_core::ArrowBuffer::from(data);
                     }
