@@ -4,9 +4,7 @@
 
 ## [0.21.0](https://github.com/rerun-io/rerun/compare/0.20.3...0.21.0) - Graph view, 3D Grid & UI/UX improvements
 
-TODO: add link to release video
-
-📖 Release blogpost: TODO: add link
+📖 Release blogpost: https://rerun.io/blog/graphs
 
 🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-21
 
