@@ -28,7 +28,7 @@ Have a look at https://github.com/rerun-io/rerun/pull/7500 if you want to learn 
 
 This video demonstrates the main UX improvements that went into this release:
 
-https://github.com/user-attachments/assets/ddda9300-05e4-4e53-9010-6b7e92056904
+https://github.com/user-attachments/assets/bef071b5-0681-41b2-9ef0-1c6a557ff138
 
 #### 3D Grid
 
@@ -47,7 +47,8 @@ All the nitty gritty details in https://github.com/rerun-io/rerun/pull/8230 and 
 You can now undo/redo blueprint changes in the viewer!
 Watch @emilk putting it to action and explains how it works:
 
-[![video demonstrating undo/redo](https://img.youtube.com/vi/HWdv4FZQbqQ/0.jpg)](https://www.youtube.com/watch?v=HWdv4FZQbqQ)
+https://github.com/user-attachments/assets/a29c099d-35a3-4d32-8946-932b5a184943
+
 
 #### Other UX improvements
 
