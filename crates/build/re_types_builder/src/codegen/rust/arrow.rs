@@ -7,7 +7,7 @@ use quote::quote;
 /// `(Datatype, is_recursive)`
 ///
 /// If `is_recursive` is set to `true`,
-/// then the generate code will often be shorter, as it it will
+/// then the generated code will often be shorter, as it will
 /// defer to calling `arrow_datatype()` on the inner type.
 pub struct ArrowDataTypeTokenizer<'a>(pub &'a ::arrow2::datatypes::DataType, pub bool);
 

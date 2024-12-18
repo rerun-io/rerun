@@ -32,7 +32,7 @@ pub fn generate_rust_code(
                 std::process::exit(1);
             }
             _ => {
-                panic!("{err:?}");
+                panic!("{err}");
             }
         }
     }
