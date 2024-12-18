@@ -319,7 +319,7 @@ impl LatestAtResults {
     ) -> Option<Box<dyn Arrow2Array>> {
         self.components
             .get(component_name)
-            .and_then(|unit| unit.component_batch_raw(component_name))
+            .and_then(|unit| unit.component_batch_raw_arrow2(component_name))
     }
 
     /// Returns the deserialized data for the specified component.

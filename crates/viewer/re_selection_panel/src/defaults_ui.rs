@@ -304,7 +304,10 @@ fn add_popup_ui(
                 .with_row(
                     RowId::new(),
                     ctx.blueprint_timepoint_for_writes(),
-                    [(ComponentDescriptor::new(component_name), initial_data)],
+                    [(
+                        ComponentDescriptor::new(component_name),
+                        initial_data.into(),
+                    )],
                 )
                 .build()
             {

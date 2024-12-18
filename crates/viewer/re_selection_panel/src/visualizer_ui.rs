@@ -162,7 +162,7 @@ fn visualizer_components(
         component_name: &ComponentName,
     ) -> Option<(Option<RowId>, Box<dyn re_chunk::Arrow2Array>)> {
         let unit = unit?;
-        let batch = unit.component_batch_raw(component_name)?;
+        let batch = unit.component_batch_raw_arrow2(component_name)?;
         if batch.is_empty() {
             None
         } else {
@@ -205,9 +205,10 @@ fn visualizer_components(
         let result_default = query_result.defaults.get(&component_name);
         let raw_default = non_empty_component_batch_raw(result_default, &component_name);
 
-        let raw_fallback = visualizer
+        let raw_fallback: Box<dyn re_chunk::Arrow2Array> = visualizer
             .fallback_provider()
-            .fallback_for(&query_ctx, component_name);
+            .fallback_for(&query_ctx, component_name)
+            .into();
 
         // Determine where the final value comes from.
         // Putting this into an enum makes it easier to reason about the next steps.
@@ -485,7 +486,7 @@ fn menu_more(
     let override_differs_from_default = raw_override
         != &ctx
             .viewer_ctx
-            .raw_latest_at_in_default_blueprint(override_path, component_name);
+            .raw_latest_at_in_default_blueprint_arrow2(override_path, component_name);
     if ui
         .add_enabled(
             override_differs_from_default,

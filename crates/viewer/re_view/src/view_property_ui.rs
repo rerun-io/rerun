@@ -89,7 +89,9 @@ pub fn view_property_component_ui(
     field: &ArchetypeFieldReflection,
     fallback_provider: &dyn ComponentFallbackProvider,
 ) {
-    let component_array = property.component_raw(field.component_name);
+    let component_array: Option<Box<dyn arrow2::array::Array>> = property
+        .component_raw(field.component_name)
+        .map(|array| array.into());
     let row_id = property.component_row_id(field.component_name);
 
     let ui_types = ctx

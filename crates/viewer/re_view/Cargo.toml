@@ -37,6 +37,7 @@ re_viewport_blueprint.workspace = true
 
 ahash.workspace = true
 arrow.workspace = true
+arrow2.workspace = true
 bytemuck.workspace = true
 egui.workspace = true
 glam.workspace = true

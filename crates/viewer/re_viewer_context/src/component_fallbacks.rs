@@ -1,11 +1,13 @@
-use re_types::{external::arrow2, ComponentName};
+use arrow::array::ArrayRef;
+
+use re_types::ComponentName;
 
 use crate::QueryContext;
 
 /// Result for a fallback request to a provider.
 pub enum ComponentFallbackProviderResult {
     /// A fallback value was successfully provided.
-    Value(Box<dyn arrow2::array::Array>),
+    Value(ArrayRef),
 
     /// The fallback provider is not able to handle the given component.
     ///
@@ -20,7 +22,7 @@ pub enum ComponentFallbackProviderResult {
 
 impl<T: re_types::ComponentBatch> From<T> for ComponentFallbackProviderResult {
     fn from(batch: T) -> Self {
-        match batch.to_arrow2() {
+        match batch.to_arrow() {
             Ok(value) => Self::Value(value),
             Err(err) => Self::SerializationError(err),
         }
@@ -53,11 +55,7 @@ pub trait ComponentFallbackProvider {
 
     /// Provides a fallback value for a given component, first trying the provider and
     /// then falling back to the placeholder value registered in the viewer context.
-    fn fallback_for(
-        &self,
-        ctx: &QueryContext<'_>,
-        component: ComponentName,
-    ) -> Box<dyn arrow2::array::Array> {
+    fn fallback_for(&self, ctx: &QueryContext<'_>, component: ComponentName) -> ArrayRef {
         match self.try_provide_fallback(ctx, component) {
             ComponentFallbackProviderResult::Value(value) => {
                 return value;

@@ -1,3 +1,4 @@
+use arrow::array::ArrayRef;
 use re_chunk::{Arrow2Array, RowId};
 use re_chunk_store::external::re_chunk::Chunk;
 use re_log_types::{EntityPath, TimeInt, TimePoint, Timeline};
@@ -126,7 +127,7 @@ impl ViewerContext<'_> {
         &self,
         entity_path: &EntityPath,
         component_name: ComponentName,
-    ) -> Option<Box<dyn Arrow2Array>> {
+    ) -> Option<ArrayRef> {
         self.store_context
             .default_blueprint
             .and_then(|default_blueprint| {
@@ -137,6 +138,16 @@ impl ViewerContext<'_> {
             })
     }
 
+    /// Queries a raw component from the default blueprint.
+    pub fn raw_latest_at_in_default_blueprint_arrow2(
+        &self,
+        entity_path: &EntityPath,
+        component_name: ComponentName,
+    ) -> Option<Box<dyn Arrow2Array>> {
+        self.raw_latest_at_in_default_blueprint(entity_path, component_name)
+            .map(|array| array.into())
+    }
+
     /// Resets a blueprint component to the value it had in the default blueprint.
     pub fn reset_blueprint_component_by_name(
         &self,
@@ -144,7 +155,7 @@ impl ViewerContext<'_> {
         component_name: ComponentName,
     ) {
         if let Some(default_value) =
-            self.raw_latest_at_in_default_blueprint(entity_path, component_name)
+            self.raw_latest_at_in_default_blueprint_arrow2(entity_path, component_name)
         {
             self.save_blueprint_array(entity_path, component_name, default_value);
         } else {
@@ -164,7 +175,7 @@ impl ViewerContext<'_> {
             .latest_at(self.blueprint_query, entity_path, [component_name])
             .get(&component_name)
             .and_then(|unit| {
-                unit.component_batch_raw(&component_name)
+                unit.component_batch_raw_arrow2(&component_name)
                     .map(|array| array.data_type().clone())
             })
         else {
