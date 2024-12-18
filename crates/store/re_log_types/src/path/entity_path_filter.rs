@@ -16,8 +16,11 @@ pub enum EntityPathFilterParseError {
 }
 
 /// A set of substitutions for entity paths.
+///
+/// Important: the same substitutions must be used in every place we parse entity path filters.
+// TODO(ab): the above requirement is a foot-gun we already fell in and should be addressed.
 #[derive(Default)]
-pub struct EntityPathSubs(pub HashMap<String, String>);
+pub struct EntityPathSubs(HashMap<String, String>);
 
 impl EntityPathSubs {
     /// Create a new set of substitutions from a single origin.
