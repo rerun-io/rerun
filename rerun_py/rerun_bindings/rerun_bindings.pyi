@@ -615,7 +615,27 @@ class StorageNodeClient:
         """
         Open a [`Recording`][rerun.dataframe.Recording] by id to use with the dataframe APIs.
 
-        This currently downloads the full recording to the local machine.
+        This will run queries against the remote storage node and stream the results. Faster for small
+        numbers of queries with small results.
+
+        Parameters
+        ----------
+        id : str
+            The id of the recording to open.
+
+        Returns
+        -------
+        Recording
+            The opened recording.
+
+        """
+        ...
+
+    def download_recording(self, id: str) -> Recording:
+        """
+        Download a [`Recording`][rerun.dataframe.Recording] by id to use with the dataframe APIs.
+
+        This will download the full recording to memory and run queries against a local chunk store.
 
         Parameters
         ----------

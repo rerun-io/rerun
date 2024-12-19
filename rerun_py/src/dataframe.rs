@@ -28,6 +28,9 @@ use re_log_encoding::VersionPolicy;
 use re_log_types::{EntityPathFilter, ResolvedTimeRange, TimeType};
 use re_sdk::{ComponentName, EntityPath, StoreId, StoreKind};
 
+#[cfg(feature = "remote")]
+use crate::remote::PyRemoteRecording;
+
 /// Register the `rerun.dataframe` module.
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PySchema>()?;
@@ -427,7 +430,7 @@ impl IndexValuesLike<'_> {
     }
 }
 
-struct ComponentLike(String);
+pub struct ComponentLike(pub String);
 
 impl FromPyObject<'_> for ComponentLike {
     fn extract_bound(component: &Bound<'_, PyAny>) -> PyResult<Self> {
@@ -570,6 +573,13 @@ pub struct PyRecording {
     pub(crate) cache: re_dataframe::QueryCacheHandle,
 }
 
+#[derive(Clone)]
+pub enum PyRecordingHandle {
+    Local(std::sync::Arc<Py<PyRecording>>),
+    #[cfg(feature = "remote")]
+    Remote(std::sync::Arc<Py<PyRemoteRecording>>),
+}
+
 /// A view of a recording restricted to a given index, containing a specific set of entities and components.
 ///
 /// See [`Recording.view(…)`][rerun.dataframe.Recording.view] for details on how to create a `RecordingView`.
@@ -588,9 +598,9 @@ pub struct PyRecording {
 #[pyclass(name = "RecordingView")]
 #[derive(Clone)]
 pub struct PyRecordingView {
-    recording: std::sync::Arc<Py<PyRecording>>,
+    pub(crate) recording: PyRecordingHandle,
 
-    query_expression: QueryExpression,
+    pub(crate) query_expression: QueryExpression,
 }
 
 impl PyRecordingView {
@@ -638,19 +648,27 @@ impl PyRecordingView {
     ///
     /// This schema will only contain the columns that are included in the view via
     /// the view contents.
-    fn schema(&self, py: Python<'_>) -> PySchema {
-        let borrowed = self.recording.borrow(py);
-        let engine = borrowed.engine();
+    fn schema(&self, py: Python<'_>) -> PyResult<PySchema> {
+        match &self.recording {
+            PyRecordingHandle::Local(recording) => {
+                let borrowed: PyRef<'_, PyRecording> = recording.borrow(py);
+                let engine = borrowed.engine();
 
-        let mut query_expression = self.query_expression.clone();
-        query_expression.selection = None;
+                let mut query_expression = self.query_expression.clone();
+                query_expression.selection = None;
 
-        let query_handle = engine.query(query_expression);
+                let query_handle = engine.query(query_expression);
 
-        let contents = query_handle.view_contents();
+                let contents = query_handle.view_contents();
 
-        PySchema {
-            schema: contents.to_vec(),
+                Ok(PySchema {
+                    schema: contents.to_vec(),
+                })
+            }
+            #[cfg(feature = "remote")]
+            PyRecordingHandle::Remote(_) => Err::<_, PyErr>(PyRuntimeError::new_err(
+                "Schema is not implemented for remote recordings yet.",
+            )),
         }
     }
 
@@ -691,60 +709,72 @@ impl PyRecordingView {
         args: &Bound<'_, PyTuple>,
         columns: Option<Vec<AnyColumn>>,
     ) -> PyResult<PyArrowType<Box<dyn RecordBatchReader + Send>>> {
-        let borrowed = self.recording.borrow(py);
-        let engine = borrowed.engine();
-
         let mut query_expression = self.query_expression.clone();
-
         query_expression.selection = Self::select_args(args, columns)?;
 
-        let query_handle = engine.query(query_expression);
+        match &self.recording {
+            PyRecordingHandle::Local(recording) => {
+                let borrowed = recording.borrow(py);
+                let engine = borrowed.engine();
 
-        // If the only contents found are static, we might need to warn the user since
-        // this means we won't naturally have any rows in the result.
-        let available_data_columns = query_handle
-            .view_contents()
-            .iter()
-            .filter(|c| matches!(c, ColumnDescriptor::Component(_)))
-            .collect::<Vec<_>>();
+                let query_handle = engine.query(query_expression);
 
-        // We only consider all contents static if there at least some columns
-        let all_contents_are_static = !available_data_columns.is_empty()
-            && available_data_columns.iter().all(|c| c.is_static());
+                // If the only contents found are static, we might need to warn the user since
+                // this means we won't naturally have any rows in the result.
+                let available_data_columns = query_handle
+                    .view_contents()
+                    .iter()
+                    .filter(|c| matches!(c, ColumnDescriptor::Component(_)))
+                    .collect::<Vec<_>>();
 
-        // Additionally, we only want to warn if the user actually tried to select some
-        // of the static columns. Otherwise the fact that there are no results shouldn't
-        // be surprising.
-        let selected_data_columns = query_handle
-            .selected_contents()
-            .iter()
-            .map(|(_, col)| col)
-            .filter(|c| matches!(c, ColumnDescriptor::Component(_)))
-            .collect::<Vec<_>>();
+                // We only consider all contents static if there at least some columns
+                let all_contents_are_static = !available_data_columns.is_empty()
+                    && available_data_columns.iter().all(|c| c.is_static());
 
-        let any_selected_data_is_static = selected_data_columns.iter().any(|c| c.is_static());
+                // Additionally, we only want to warn if the user actually tried to select some
+                // of the static columns. Otherwise the fact that there are no results shouldn't
+                // be surprising.
+                let selected_data_columns = query_handle
+                    .selected_contents()
+                    .iter()
+                    .map(|(_, col)| col)
+                    .filter(|c| matches!(c, ColumnDescriptor::Component(_)))
+                    .collect::<Vec<_>>();
 
-        if self.query_expression.using_index_values.is_none()
-            && all_contents_are_static
-            && any_selected_data_is_static
-        {
-            py_rerun_warn("RecordingView::select: tried to select static data, but no non-static contents generated an index value on this timeline. No results will be returned. Either include non-static data or consider using `select_static()` instead.")?;
+                let any_selected_data_is_static =
+                    selected_data_columns.iter().any(|c| c.is_static());
+
+                if self.query_expression.using_index_values.is_none()
+                    && all_contents_are_static
+                    && any_selected_data_is_static
+                {
+                    py_rerun_warn("RecordingView::select: tried to select static data, but no non-static contents generated an index value on this timeline. No results will be returned. Either include non-static data or consider using `select_static()` instead.")?;
+                }
+
+                let schema = query_handle.schema();
+                let fields: Vec<arrow::datatypes::Field> =
+                    schema.fields.iter().map(|f| f.clone().into()).collect();
+                let metadata = schema.metadata.clone().into_iter().collect();
+                let schema = arrow::datatypes::Schema::new(fields).with_metadata(metadata);
+
+                let reader = RecordBatchIterator::new(
+                    query_handle
+                        .into_batch_iter()
+                        .map(|batch| batch.try_to_arrow_record_batch()),
+                    std::sync::Arc::new(schema),
+                );
+                Ok(PyArrowType(Box::new(reader)))
+            }
+            #[cfg(feature = "remote")]
+            PyRecordingHandle::Remote(recording) => {
+                let borrowed_recording = recording.borrow(py);
+                let mut borrowed_client = borrowed_recording.client.borrow_mut(py);
+                borrowed_client.exec_query(
+                    borrowed_recording.store_info.store_id.clone(),
+                    query_expression,
+                )
+            }
         }
-
-        let schema = query_handle.schema();
-        let fields: Vec<arrow::datatypes::Field> =
-            schema.fields.iter().map(|f| f.clone().into()).collect();
-        let metadata = schema.metadata.clone().into_iter().collect();
-        let schema = arrow::datatypes::Schema::new(fields).with_metadata(metadata);
-
-        let reader = RecordBatchIterator::new(
-            query_handle
-                .into_batch_iter()
-                .map(|batch| batch.try_to_arrow_record_batch()),
-            std::sync::Arc::new(schema),
-        );
-
-        Ok(PyArrowType(Box::new(reader)))
     }
 
     /// Select only the static columns from the view.
@@ -780,54 +810,69 @@ impl PyRecordingView {
         args: &Bound<'_, PyTuple>,
         columns: Option<Vec<AnyColumn>>,
     ) -> PyResult<PyArrowType<Box<dyn RecordBatchReader + Send>>> {
-        let borrowed = self.recording.borrow(py);
-        let engine = borrowed.engine();
-
         let mut query_expression = self.query_expression.clone();
-
         // This is a static selection, so we clear the filtered index
         query_expression.filtered_index = None;
 
         // If no columns provided, select all static columns
-        let static_columns = Self::select_args(args, columns)?.unwrap_or_else(|| {
-            self.schema(py)
-                .schema
-                .iter()
-                .filter(|col| col.is_static())
-                .map(|col| col.clone().into())
-                .collect()
-        });
+        let static_columns = Self::select_args(args, columns)
+            .transpose()
+            .unwrap_or_else(|| {
+                Ok(self
+                    .schema(py)?
+                    .schema
+                    .iter()
+                    .filter(|col| col.is_static())
+                    .map(|col| col.clone().into())
+                    .collect())
+            })?;
 
         query_expression.selection = Some(static_columns);
 
-        let query_handle = engine.query(query_expression);
+        match &self.recording {
+            PyRecordingHandle::Local(recording) => {
+                let borrowed = recording.borrow(py);
+                let engine = borrowed.engine();
 
-        let non_static_cols = query_handle
-            .selected_contents()
-            .iter()
-            .filter(|(_, col)| !col.is_static())
-            .collect::<Vec<_>>();
+                let query_handle = engine.query(query_expression);
 
-        if !non_static_cols.is_empty() {
-            return Err(PyValueError::new_err(format!(
-                "Static selection resulted in non-static columns: {non_static_cols:?}",
-            )));
+                let non_static_cols = query_handle
+                    .selected_contents()
+                    .iter()
+                    .filter(|(_, col)| !col.is_static())
+                    .collect::<Vec<_>>();
+
+                if !non_static_cols.is_empty() {
+                    return Err(PyValueError::new_err(format!(
+                        "Static selection resulted in non-static columns: {non_static_cols:?}",
+                    )));
+                }
+
+                let schema = query_handle.schema();
+                let fields: Vec<arrow::datatypes::Field> =
+                    schema.fields.iter().map(|f| f.clone().into()).collect();
+                let metadata = schema.metadata.clone().into_iter().collect();
+                let schema = arrow::datatypes::Schema::new(fields).with_metadata(metadata);
+
+                let reader = RecordBatchIterator::new(
+                    query_handle
+                        .into_batch_iter()
+                        .map(|batch| batch.try_to_arrow_record_batch()),
+                    std::sync::Arc::new(schema),
+                );
+
+                Ok(PyArrowType(Box::new(reader)))
+            }
+            #[cfg(feature = "remote")]
+            PyRecordingHandle::Remote(recording) => {
+                let borrowed_recording = recording.borrow(py);
+                let mut borrowed_client = borrowed_recording.client.borrow_mut(py);
+                borrowed_client.exec_query(
+                    borrowed_recording.store_info.store_id.clone(),
+                    query_expression,
+                )
+            }
         }
-
-        let schema = query_handle.schema();
-        let fields: Vec<arrow::datatypes::Field> =
-            schema.fields.iter().map(|f| f.clone().into()).collect();
-        let metadata = schema.metadata.clone().into_iter().collect();
-        let schema = arrow::datatypes::Schema::new(fields).with_metadata(metadata);
-
-        let reader = RecordBatchIterator::new(
-            query_handle
-                .into_batch_iter()
-                .map(|batch| batch.try_to_arrow_record_batch()),
-            std::sync::Arc::new(schema),
-        );
-
-        Ok(PyArrowType(Box::new(reader)))
     }
 
     #[allow(rustdoc::private_doc_tests)]
@@ -1336,7 +1381,7 @@ impl PyRecording {
         let recording = slf.unbind();
 
         Ok(PyRecordingView {
-            recording: std::sync::Arc::new(recording),
+            recording: PyRecordingHandle::Local(std::sync::Arc::new(recording)),
             query_expression: query,
         })
     }
