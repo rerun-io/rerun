@@ -1,7 +1,7 @@
 use egui::NumExt as _;
 
 use re_types::datatypes::Range1D;
-use re_viewer_context::MaybeMutRef;
+use re_viewer_context::{MaybeMutRef, UiLayout};
 
 pub fn edit_view_range1d(
     _ctx: &re_viewer_context::ViewerContext<'_>,
@@ -41,10 +41,13 @@ fn edit_view_range1d_impl(
         response_min | response_max
     } else {
         let [min, max] = value.0;
-        ui.label(format!(
-            "{} - {}",
-            re_format::format_f64(min),
-            re_format::format_f64(max)
-        ))
+        UiLayout::List.data_label(
+            ui,
+            format!(
+                "{} - {}",
+                re_format::format_f64(min),
+                re_format::format_f64(max)
+            ),
+        )
     }
 }

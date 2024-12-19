@@ -36,3 +36,9 @@ arrow.workspace = true
 egui_extras.workspace = true
 egui_plot.workspace = true
 egui.workspace = true
+
+
+[dev-dependencies]
+egui_kittest.workspace = true
+itertools.workspace = true
+nohash-hasher.workspace = true
