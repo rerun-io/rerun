@@ -18,7 +18,6 @@ mod capsules3d;
 mod capsules3d_ext;
 mod depth_image;
 mod depth_image_ext;
-mod disconnected_space;
 mod ellipsoids3d;
 mod ellipsoids3d_ext;
 mod encoded_image;
@@ -92,6 +91,3 @@ pub use self::text_log::TextLog;
 pub use self::transform3d::Transform3D;
 pub use self::video_frame_reference::VideoFrameReference;
 pub use self::view_coordinates::ViewCoordinates;
-
-#[allow(deprecated)]
-pub use self::disconnected_space::DisconnectedSpace;

@@ -149,14 +149,16 @@ impl ViewClass for SpatialView2D {
 
             // All space are visualizable + the parent space if it is connected via a pinhole.
             // For the moment we don't allow going down pinholes again.
-            let reprojectable_3d_entities =
-                if primary_space.connection_to_parent.is_connected_pinhole() {
-                    topo.subspace_for_subspace_origin(primary_space.parent_space)
-                        .map(|parent_space| parent_space.entities.clone())
-                        .unwrap_or_default()
-                } else {
-                    Default::default()
-                };
+            let reprojectable_3d_entities = if primary_space
+                .connection_to_parent
+                .contains(SubSpaceConnectionFlags::Pinhole)
+            {
+                topo.subspace_for_subspace_origin(primary_space.parent_space)
+                    .map(|parent_space| parent_space.entities.clone())
+                    .unwrap_or_default()
+            } else {
+                Default::default()
+            };
 
             VisualizableFilterContext2D {
                 entities_in_main_2d_space: primary_space.entities.clone(),

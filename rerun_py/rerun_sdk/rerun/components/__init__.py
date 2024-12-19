@@ -22,7 +22,6 @@ from .clear_is_recursive import ClearIsRecursive, ClearIsRecursiveBatch
 from .color import Color, ColorBatch
 from .colormap import Colormap, ColormapArrayLike, ColormapBatch, ColormapLike
 from .depth_meter import DepthMeter, DepthMeterBatch
-from .disconnected_space import DisconnectedSpace, DisconnectedSpaceBatch
 from .draw_order import DrawOrder, DrawOrderBatch
 from .entity_path import EntityPath, EntityPathBatch
 from .fill_mode import FillMode, FillModeArrayLike, FillModeBatch, FillModeLike
@@ -121,8 +120,6 @@ __all__ = [
     "ColormapLike",
     "DepthMeter",
     "DepthMeterBatch",
-    "DisconnectedSpace",
-    "DisconnectedSpaceBatch",
     "DrawOrder",
     "DrawOrderBatch",
     "EntityPath",

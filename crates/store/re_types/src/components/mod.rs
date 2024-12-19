@@ -15,8 +15,6 @@ mod colormap;
 mod colormap_ext;
 mod depth_meter;
 mod depth_meter_ext;
-mod disconnected_space;
-mod disconnected_space_ext;
 mod draw_order;
 mod draw_order_ext;
 mod entity_path;
@@ -198,6 +196,3 @@ pub use self::vector2d::Vector2D;
 pub use self::vector3d::Vector3D;
 pub use self::video_timestamp::VideoTimestamp;
 pub use self::view_coordinates::ViewCoordinates;
-
-#[allow(deprecated)]
-pub use self::disconnected_space::DisconnectedSpace;

@@ -35,9 +35,9 @@ class TestCase:
         alternatives: Iterable[Any] | None = None,
         disabled: bool = False,
     ):
-        assert (
-            (single is not None) ^ (batch is not None) ^ (alternatives is not None) ^ disabled
-        ), "Exactly one of single, batch, or alternatives must be provided"
+        assert (single is not None) ^ (batch is not None) ^ (alternatives is not None) ^ disabled, (
+            "Exactly one of single, batch, or alternatives must be provided"
+        )
 
         if batch is not None:
             batch = list(batch)
@@ -109,7 +109,6 @@ ALL_COMPONENTS: dict[str, TestCase] = {
     "ColorBatch": TestCase(batch=[(255, 0, 0, 255), (0, 255, 0, 255), (0, 0, 255, 255)]),
     "ColormapBatch": TestCase(rr.components.Colormap.Viridis),
     "DepthMeterBatch": TestCase(1000.0),
-    "DisconnectedSpaceBatch": TestCase(True),
     "DrawOrderBatch": TestCase(100.0),
     "EntityPathBatch": TestCase("my/entity/path"),
     "FillModeBatch": TestCase(
@@ -256,9 +255,9 @@ def log_readme() -> None:
 def log_some_views() -> None:
     # check that we didn't forget a component
     missing_components = set(c for c in dir(rr.components) if c.endswith("Batch")) - set(ALL_COMPONENTS.keys())
-    assert (
-        len(missing_components) == 0
-    ), f"Some components are missing from the `ALL_COMPONENTS` dictionary: {missing_components}"
+    assert len(missing_components) == 0, (
+        f"Some components are missing from the `ALL_COMPONENTS` dictionary: {missing_components}"
+    )
 
     # log all components as len=1 batches
     rr.log(
