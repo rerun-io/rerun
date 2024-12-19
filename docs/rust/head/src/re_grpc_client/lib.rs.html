@@ -682,7 +682,7 @@
 
 </span><span class="doccomment">/// Wrapper with a nicer error message
 </span><span class="attr">#[derive(Debug)]
-</span><span class="kw">struct </span>TonicStatusError(tonic::Status);
+</span><span class="kw">pub struct </span>TonicStatusError(<span class="kw">pub </span>tonic::Status);
 
 <span class="kw">impl </span>std::fmt::Display <span class="kw">for </span>TonicStatusError {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">'_</span>&gt;) -&gt; std::fmt::Result {
@@ -709,7 +709,7 @@
 }
 
 <span class="attr">#[derive(thiserror::Error, Debug)]
-</span><span class="kw">enum </span>StreamError {
+</span><span class="kw">pub enum </span>StreamError {
     <span class="doccomment">/// Native connection error
     </span><span class="attr">#[cfg(not(target_arch = <span class="string">"wasm32"</span>))]
     #[error(transparent)]
@@ -912,7 +912,7 @@
     <span class="prelude-val">Ok</span>(())
 }
 
-<span class="kw">fn </span>store_info_from_catalog_chunk(
+<span class="kw">pub fn </span>store_info_from_catalog_chunk(
     tc: <span class="kw-2">&amp;</span>TransportChunk,
     recording_id: <span class="kw-2">&amp;</span>str,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;StoreInfo, StreamError&gt; {

@@ -994,6 +994,12 @@
 <a href="#994" id="994">994</a>
 <a href="#995" id="995">995</a>
 <a href="#996" id="996">996</a>
+<a href="#997" id="997">997</a>
+<a href="#998" id="998">998</a>
+<a href="#999" id="999">999</a>
+<a href="#1000" id="1000">1000</a>
+<a href="#1001" id="1001">1001</a>
+<a href="#1002" id="1002">1002</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeMap;
 
 <span class="kw">use </span>ahash::HashMap;
@@ -1583,6 +1589,12 @@
         // inclusion rule and didn't hit an exclusion rule.
         </span><span class="bool-val">true
     </span>}
+
+    <span class="attr">#[inline]
+    </span><span class="doccomment">/// Iterate over all rules in the filter.
+    </span><span class="kw">pub fn </span>rules(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = (<span class="kw-2">&amp;</span>EntityPathRule, <span class="kw-2">&amp;</span>RuleEffect)&gt; {
+        <span class="self">self</span>.rules.iter()
+    }
 }
 
 <span class="kw">impl </span>EntityPathRule {
