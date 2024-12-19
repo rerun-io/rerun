@@ -69,13 +69,12 @@ impl VisualizerSystem for GeoPointsVisualizer {
 
             // iterate over each chunk and find all relevant component slices
             for (_index, positions, colors, radii, class_ids) in re_query::range_zip_1x3(
-                all_positions.component::<LatLon>(),
+                all_positions.primitive_array::<2, f64>(),
                 all_colors.primitive::<u32>(),
-                all_radii.component::<Radius>(),
+                all_radii.primitive::<f32>(),
                 all_class_ids.primitive::<u16>(),
             ) {
                 // required component
-                let positions = positions.as_slice();
                 let num_instances = positions.len();
 
                 // Resolve annotation info (if needed).
@@ -94,10 +93,10 @@ impl VisualizerSystem for GeoPointsVisualizer {
                     &annotation_infos,
                     colors.map_or(&[], |colors| bytemuck::cast_slice(colors)),
                 );
-                let radii = radii.as_ref().map(|r| r.as_slice()).unwrap_or(&[]);
+                let radii = radii.unwrap_or(&[]);
 
                 // optional components values to be used for instance clamping semantics
-                let last_radii = radii.last().copied().unwrap_or(fallback_radius);
+                let last_radii = radii.last().copied().unwrap_or(fallback_radius.0 .0);
 
                 // iterate over all instances
                 for (instance_index, (position, color, radius)) in itertools::izip!(
@@ -107,11 +106,10 @@ impl VisualizerSystem for GeoPointsVisualizer {
                 )
                 .enumerate()
                 {
-                    batch_data.positions.push(walkers::Position::from_lat_lon(
-                        position.latitude(),
-                        position.longitude(),
-                    ));
-                    batch_data.radii.push(*radius);
+                    batch_data
+                        .positions
+                        .push(walkers::Position::from_lat_lon(position[0], position[1]));
+                    batch_data.radii.push(Radius((*radius).into()));
                     batch_data.colors.push(*color);
                     batch_data
                         .instance_id

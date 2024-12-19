@@ -421,8 +421,12 @@ pub struct HybridResultsChunkIter<'a> {
 impl<'a> HybridResultsChunkIter<'a> {
     /// Iterate as indexed deserialized batches.
     ///
+    /// TODO(#5305): Note that this uses the old codegen'd deserialization path, which does some
+    /// very unidiomatic Arrow things, and is therefore very slow at the moment. Avoid this on
+    /// performance critical paths.
+    ///
     /// See [`Chunk::iter_component`] for more information.
-    pub fn component<C: re_types_core::Component>(
+    pub fn component_slow<C: re_types_core::Component>(
         &'a self,
     ) -> impl Iterator<Item = ((TimeInt, RowId), ChunkComponentIterItem<C>)> + 'a {
         self.chunks.iter().flat_map(move |chunk| {
