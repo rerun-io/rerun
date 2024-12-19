@@ -4,7 +4,6 @@ namespace rerun.components;
 
 /// A string-based ID representing a node in a graph.
 table GraphNode (
-  "attr.docs.unreleased",
   "attr.python.aliases": "str",
   "attr.python.array_aliases": "str, Sequence[str]",
   "attr.rust.derive": "Default, PartialEq, Eq, PartialOrd, Ord, Hash",

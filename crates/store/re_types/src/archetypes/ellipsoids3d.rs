@@ -27,6 +27,58 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// Note that orienting and placing the ellipsoids/spheres is handled via `[archetypes.InstancePoses3D]`.
 /// Some of its component are repeated here for convenience.
 /// If there's more instance poses than half sizes, the last half size will be repeated for the remaining poses.
+///
+/// ## Example
+///
+/// ### Covariance ellipsoid
+/// ```ignore
+/// use rand::distributions::Distribution;
+///
+/// fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_ellipsoid_simple").spawn()?;
+///
+///     let sigmas: [f32; 3] = [5., 3., 1.];
+///
+///     let mut rng = rand::thread_rng();
+///     let normal = rand_distr::Normal::new(0.0, 1.0)?;
+///
+///     rec.log(
+///         "points",
+///         &rerun::Points3D::new((0..50_000).map(|_| {
+///             (
+///                 sigmas[0] * normal.sample(&mut rng),
+///                 sigmas[1] * normal.sample(&mut rng),
+///                 sigmas[2] * normal.sample(&mut rng),
+///             )
+///         }))
+///         .with_radii([0.02])
+///         .with_colors([rerun::Color::from_rgb(188, 77, 185)]),
+///     )?;
+///
+///     rec.log(
+///         "ellipsoid",
+///         &rerun::Ellipsoids3D::from_centers_and_half_sizes(
+///             [(0.0, 0.0, 0.0), (0.0, 0.0, 0.0)],
+///             [sigmas, [sigmas[0] * 3., sigmas[1] * 3., sigmas[2] * 3.]],
+///         )
+///         .with_colors([
+///             rerun::Color::from_rgb(255, 255, 0),
+///             rerun::Color::from_rgb(64, 64, 0),
+///         ]),
+///     )?;
+///
+///     Ok(())
+/// }
+/// ```
+/// <center>
+/// <picture>
+///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/elliopsoid3d_simple/bd5d46e61b80ae44792b52ee07d750a7137002ea/480w.png">
+///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/elliopsoid3d_simple/bd5d46e61b80ae44792b52ee07d750a7137002ea/768w.png">
+///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/elliopsoid3d_simple/bd5d46e61b80ae44792b52ee07d750a7137002ea/1024w.png">
+///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/elliopsoid3d_simple/bd5d46e61b80ae44792b52ee07d750a7137002ea/1200w.png">
+///   <img src="https://static.rerun.io/elliopsoid3d_simple/bd5d46e61b80ae44792b52ee07d750a7137002ea/full.png" width="640">
+/// </picture>
+/// </center>
 #[derive(Clone, Debug, PartialEq)]
 pub struct Ellipsoids3D {
     /// For each ellipsoid, half of its size on its three axes.

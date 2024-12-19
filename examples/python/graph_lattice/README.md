@@ -17,8 +17,8 @@ Since no explicit positions are passed for the nodes, Rerun will layout the grap
 </picture>
 
 ## Used Rerun types
-[`GraphNodes`](https://www.rerun.io/docs/reference/types/archetypes/graph_nodes?speculative-link),
-[`GraphEdges`](https://www.rerun.io/docs/reference/types/archetypes/graph_edges?speculative-link)
+[`GraphNodes`](https://www.rerun.io/docs/reference/types/archetypes/graph_nodes),
+[`GraphEdges`](https://www.rerun.io/docs/reference/types/archetypes/graph_edges)
 
 ## Run the code
 

@@ -37,7 +37,7 @@ In this example, the node positions—and therefore the graph layout—are compu
 You can modify how these graphs look by changing the parameters of the force-based layout algorithm in the selection panel.
 
 The full source code for this example is available
-[on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/graphs?speculative-link).
+[on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/graphs).
 """.strip()
 
 
