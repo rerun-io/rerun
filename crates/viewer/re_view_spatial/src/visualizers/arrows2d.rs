@@ -244,6 +244,7 @@ impl VisualizerSystem for Arrows2DVisualizer {
                     all_labels.string(),
                     all_class_ids.primitive::<u16>(),
                     all_keypoint_ids.primitive::<u16>(),
+                    // TODO(cmc): provide a `iter_bool`.
                     all_show_labels.component_slow::<ShowLabels>(),
                 )
                 .map(

@@ -159,9 +159,11 @@ impl VisualizerSystem for Boxes3DVisualizer {
                 let all_fill_modes = results.iter_as(timeline, FillMode::name());
                 // fill mode is currently a non-repeated component
                 let fill_mode: FillMode = all_fill_modes
-                    .component_slow::<FillMode>()
+                    .primitive::<u8>()
                     .next()
-                    .and_then(|(_, fill_modes)| fill_modes.as_slice().first().copied())
+                    .and_then(|(_, fill_modes)| {
+                        fill_modes.first().copied().and_then(FillMode::from_u8)
+                    })
                     .unwrap_or_default();
 
                 match fill_mode {

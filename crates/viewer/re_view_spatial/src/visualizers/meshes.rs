@@ -214,7 +214,9 @@ impl VisualizerSystem for Mesh3DVisualizer {
                     all_vertex_texcoords.primitive_array::<2, f32>(),
                     all_triangle_indices.primitive_array::<3, u32>(),
                     all_albedo_factors.primitive::<u32>(),
+                    // TODO(cmc): Provide a `iter_blob`.
                     all_albedo_buffers.component_slow::<ImageBuffer>(),
+                    // Legit call to `component_slow`, `ImageFormat` is real complicated.
                     all_albedo_formats.component_slow::<ImageFormat>(),
                     all_class_ids.primitive::<u16>(),
                 )
