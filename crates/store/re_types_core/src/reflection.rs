@@ -1,5 +1,7 @@
 //! Run-time reflection for reading meta-data about components and archetypes.
 
+use arrow::array::ArrayRef;
+
 use crate::{ArchetypeName, ComponentName};
 
 /// A trait for code-generated enums.
@@ -218,7 +220,7 @@ pub struct ComponentReflection {
     /// especially when it's necessary to have a starting value for edit ui.
     /// Typically, this is only used when `FallbackProvider`s are not available.
     /// If there's no custom placeholder, a placeholder can be derived from the arrow datatype.
-    pub custom_placeholder: Option<Box<dyn arrow2::array::Array>>,
+    pub custom_placeholder: Option<ArrayRef>,
 
     /// Datatype of the component.
     pub datatype: arrow2::datatypes::DataType,

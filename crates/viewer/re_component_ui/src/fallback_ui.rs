@@ -17,12 +17,20 @@ pub fn fallback_component_ui(
     _db: &EntityDb,
     _entity_path: &EntityPath,
     _row_id: Option<RowId>,
-    component: &dyn arrow2::array::Array,
+    component: &dyn arrow::array::Array,
 ) {
     arrow_ui(ui, ui_layout, component);
 }
 
-fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow2::array::Array) {
+fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array::Array) {
+    arrow2_ui(
+        ui,
+        ui_layout,
+        Box::<dyn arrow2::array::Array>::from(array).as_ref(),
+    );
+}
+
+fn arrow2_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow2::array::Array) {
     use re_types::SizeBytes as _;
 
     // Special-treat text.

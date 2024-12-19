@@ -3,7 +3,7 @@ use itertools::Itertools as _;
 use re_types::{
     archetypes::{self, SeriesPoint},
     components::{Color, MarkerShape, MarkerSize, Name, Scalar},
-    external::arrow2::datatypes::DataType as Arrow2Datatype,
+    external::arrow::datatypes::DataType as ArrowDatatype,
     Archetype as _, Component as _, Loggable as _,
 };
 use re_view::range_with_blueprint_resolved_data;
@@ -257,7 +257,7 @@ impl SeriesPointSystem {
                         chunk.iter_component_indices(&query.timeline(), &Scalar::name())
                     })
                     .map(|(data_time, _)| {
-                        debug_assert_eq!(Scalar::arrow2_datatype(), Arrow2Datatype::Float64);
+                        debug_assert_eq!(Scalar::arrow_datatype(), ArrowDatatype::Float64);
 
                         PlotPoint {
                             time: data_time.as_i64(),
@@ -271,7 +271,7 @@ impl SeriesPointSystem {
             {
                 re_tracing::profile_scope!("fill values");
 
-                debug_assert_eq!(Scalar::arrow2_datatype(), Arrow2Datatype::Float64);
+                debug_assert_eq!(Scalar::arrow_datatype(), ArrowDatatype::Float64);
                 let mut i = 0;
                 all_scalar_chunks
                         .iter()
@@ -297,7 +297,7 @@ impl SeriesPointSystem {
             {
                 re_tracing::profile_scope!("fill colors");
 
-                debug_assert_eq!(Color::arrow2_datatype(), Arrow2Datatype::UInt32);
+                debug_assert_eq!(Color::arrow_datatype(), ArrowDatatype::UInt32);
 
                 fn map_raw_color(raw: &[u32]) -> Option<re_renderer::Color32> {
                     raw.first().map(|c| {
@@ -351,7 +351,7 @@ impl SeriesPointSystem {
             {
                 re_tracing::profile_scope!("fill marker sizes");
 
-                debug_assert_eq!(MarkerSize::arrow2_datatype(), Arrow2Datatype::Float32);
+                debug_assert_eq!(MarkerSize::arrow_datatype(), ArrowDatatype::Float32);
 
                 {
                     let all_marker_size_chunks = results.get_optional_chunks(&MarkerSize::name());

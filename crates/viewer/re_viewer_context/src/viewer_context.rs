@@ -1,4 +1,5 @@
 use ahash::HashMap;
+use arrow::array::ArrayRef;
 use parking_lot::RwLock;
 
 use re_chunk_store::LatestAtQuery;
@@ -227,10 +228,7 @@ impl ViewerContext<'_> {
     /// The rationale is that to get into this situation, we need to know of a component name for which
     /// we don't have a datatype, meaning that we can't make any statement about what data this component should represent.
     // TODO(andreas): Are there cases where this is expected and how to handle this?
-    pub fn placeholder_for(
-        &self,
-        component: re_chunk::ComponentName,
-    ) -> Box<dyn re_chunk::Arrow2Array> {
+    pub fn placeholder_for(&self, component: re_chunk::ComponentName) -> ArrayRef {
         let datatype = if let Some(reflection) = self.reflection.components.get(&component) {
             // It's a builtin type with reflection. We either have custom place holder, or can rely on the known datatype.
             if let Some(placeholder) = reflection.custom_placeholder.as_ref() {
@@ -251,7 +249,7 @@ impl ViewerContext<'_> {
 
         // TODO(andreas): Is this operation common enough to cache the result? If so, here or in the reflection data?
         // The nice thing about this would be that we could always give out references (but updating said cache wouldn't be easy in that case).
-        re_types::reflection::generic_placeholder_for_datatype(&datatype)
+        re_types::reflection::generic_placeholder_for_datatype(&datatype).into()
     }
 }
 

@@ -1,10 +1,11 @@
+use arrow::array::ArrayRef;
 use nohash_hasher::IntSet;
 
 use crate::{
     results_ext::{HybridLatestAtResults, HybridRangeResults},
     HybridResults,
 };
-use re_chunk_store::{external::re_chunk::Arrow2Array, LatestAtQuery, RangeQuery, RowId};
+use re_chunk_store::{LatestAtQuery, RangeQuery, RowId};
 use re_log_types::{TimeInt, Timeline};
 use re_query::LatestAtResults;
 use re_types_core::{Archetype, ComponentName};
@@ -225,7 +226,7 @@ pub trait DataResultQuery {
         query_ctx: &'a QueryContext<'a>,
         visualizer_collection: &'a re_viewer_context::VisualizerCollection,
         component: re_types_core::ComponentName,
-    ) -> Box<dyn Arrow2Array>;
+    ) -> ArrayRef;
 }
 
 impl DataResultQuery for DataResult {
@@ -265,7 +266,7 @@ impl DataResultQuery for DataResult {
         query_ctx: &'a QueryContext<'a>,
         visualizer_collection: &'a re_viewer_context::VisualizerCollection,
         component: re_types_core::ComponentName,
-    ) -> Box<dyn Arrow2Array> {
+    ) -> ArrayRef {
         // TODO(jleibs): This should be cached somewhere
         for vis in &self.visualizers {
             let Ok(vis) = visualizer_collection.get_by_identifier(*vis) else {

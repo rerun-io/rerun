@@ -137,7 +137,7 @@ fn generate_component_reflection(
                         || contents.contains(&format!("impl Default for super::{}", &obj.name))
                 });
         let custom_placeholder = if auto_derive_default || has_custom_default_impl {
-            quote! { Some(#type_name::default().to_arrow2()?) }
+            quote! { Some(#type_name::default().to_arrow()?) }
         } else {
             quote! { None }
         };

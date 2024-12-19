@@ -5701,6 +5701,7 @@ dependencies = [
 name = "re_component_ui"
 version = "0.22.0-alpha.1+dev"
 dependencies = [
+ "arrow",
  "egui",
  "egui_extras",
  "egui_plot",
@@ -6297,6 +6298,7 @@ dependencies = [
 name = "re_selection_panel"
 version = "0.22.0-alpha.1+dev"
 dependencies = [
+ "arrow",
  "egui",
  "egui_tiles",
  "itertools 0.13.0",
@@ -6559,6 +6561,7 @@ dependencies = [
  "glam",
  "itertools 0.13.0",
  "nohash-hasher",
+ "re_arrow2",
  "re_chunk_store",
  "re_entity_db",
  "re_log",
@@ -6596,6 +6599,7 @@ name = "re_view_dataframe"
 version = "0.22.0-alpha.1+dev"
 dependencies = [
  "anyhow",
+ "arrow",
  "egui",
  "egui_table",
  "itertools 0.13.0",
@@ -6872,6 +6876,7 @@ dependencies = [
  "ahash",
  "anyhow",
  "arboard",
+ "arrow",
  "bit-vec",
  "bitflags 2.6.0",
  "bytemuck",
@@ -6950,6 +6955,7 @@ name = "re_viewport_blueprint"
 version = "0.22.0-alpha.1+dev"
 dependencies = [
  "ahash",
+ "arrow",
  "egui",
  "egui_tiles",
  "itertools 0.13.0",

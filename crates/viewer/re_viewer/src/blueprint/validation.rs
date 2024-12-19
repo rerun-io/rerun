@@ -26,7 +26,7 @@ pub(crate) fn validate_component<C: Component>(blueprint: &EntityDb) -> bool {
                     .latest_at(&query, path, [C::name()])
                     .component_batch_raw(&C::name())
                 {
-                    if let Err(err) = C::from_arrow2_opt(&*array) {
+                    if let Err(err) = C::from_arrow_opt(&*array) {
                         re_log::debug!(
                             "Failed to deserialize component {:?}: {:?}",
                             C::name(),

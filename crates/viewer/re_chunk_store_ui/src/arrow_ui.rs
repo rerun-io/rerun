@@ -8,7 +8,7 @@ use re_ui::UiExt;
 // Note: this is copied and heavily modified from `re_data_ui`. We don't want to unify them because
 // that would likely introduce an undesired dependency (`re_chunk_store_ui` should remain as
 // independent as possible from the viewer, so it may be split off one day).
-pub(crate) fn arrow_ui(ui: &mut egui::Ui, array: &dyn arrow2::array::Array) {
+pub(crate) fn arrow2_ui(ui: &mut egui::Ui, array: &dyn arrow2::array::Array) {
     ui.scope(|ui| {
         ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
 

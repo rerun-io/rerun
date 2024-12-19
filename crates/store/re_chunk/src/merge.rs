@@ -804,7 +804,7 @@ mod tests {
                 <MyPoint64 as re_types_core::LoggableBatch>::to_arrow2(&MyPoint64::new(1.0, 1.0))?;
 
             let chunk1 = Chunk::builder(entity_path.into())
-                .with_row(
+                .with_row_arrow2(
                     row_id1,
                     timepoint1,
                     [
@@ -814,7 +814,7 @@ mod tests {
                 .build()?;
 
             let chunk2 = Chunk::builder(entity_path.into())
-                .with_row(
+                .with_row_arrow2(
                     row_id2,
                     timepoint2,
                     [

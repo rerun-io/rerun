@@ -5,7 +5,7 @@ use re_data_ui::{sorted_component_list_for_ui, DataUi};
 use re_entity_db::EntityDb;
 use re_log_types::{ComponentPath, EntityPath};
 use re_types::blueprint::components::VisualizerOverrides;
-use re_types::external::arrow2;
+use re_types_core::external::arrow::array::ArrayRef;
 use re_ui::{list_item, UiExt as _};
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
@@ -160,7 +160,7 @@ fn visualizer_components(
     fn non_empty_component_batch_raw(
         unit: Option<&UnitChunkShared>,
         component_name: &ComponentName,
-    ) -> Option<(Option<RowId>, Box<dyn re_chunk::Arrow2Array>)> {
+    ) -> Option<(Option<RowId>, ArrayRef)> {
         let unit = unit?;
         let batch = unit.component_batch_raw(component_name)?;
         if batch.is_empty() {
@@ -397,8 +397,8 @@ fn visualizer_components(
                             override_path,
                             &raw_override.clone().map(|(_, raw_override)| raw_override),
                             raw_default.clone().map(|(_, raw_override)| raw_override),
-                            raw_fallback.as_ref(),
-                            raw_current_value.as_ref(),
+                            raw_fallback.clone(),
+                            raw_current_value.clone(),
                         );
                     }),
                 add_children,
@@ -417,7 +417,7 @@ fn editable_blueprint_component_list_item(
     blueprint_path: &EntityPath,
     component: re_types::ComponentName,
     row_id: Option<RowId>,
-    raw_override: &dyn arrow2::array::Array,
+    raw_override: &dyn arrow::array::Array,
 ) -> egui::Response {
     ui.list_item_flat_noninteractive(
         list_item::PropertyContent::new(name)
@@ -449,10 +449,10 @@ fn menu_more(
     ui: &mut egui::Ui,
     component_name: re_types::ComponentName,
     override_path: &EntityPath,
-    raw_override: &Option<Box<dyn arrow2::array::Array>>,
-    raw_default: Option<Box<dyn arrow2::array::Array>>,
-    raw_fallback: &dyn arrow2::array::Array,
-    raw_current_value: &dyn arrow2::array::Array,
+    raw_override: &Option<ArrayRef>,
+    raw_default: Option<ArrayRef>,
+    raw_fallback: arrow::array::ArrayRef,
+    raw_current_value: arrow::array::ArrayRef,
 ) {
     if ui
         .add_enabled(raw_override.is_some(), egui::Button::new("Remove override"))
@@ -478,7 +478,7 @@ fn menu_more(
     }
 
     if ui.button("Set to fallback value").clicked() {
-        ctx.save_blueprint_array(override_path, component_name, raw_fallback.to_boxed());
+        ctx.save_blueprint_array(override_path, component_name, raw_fallback);
         ui.close_menu();
     }
 
@@ -503,7 +503,7 @@ fn menu_more(
         ctx.save_blueprint_array(
             &ViewBlueprint::defaults_path(ctx.view_id),
             component_name,
-            raw_current_value.to_boxed(),
+            raw_current_value,
         );
         ui.close_menu();
     }

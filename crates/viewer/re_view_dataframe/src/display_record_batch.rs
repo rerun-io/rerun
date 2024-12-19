@@ -145,6 +145,8 @@ impl ComponentData {
                 data
             };
 
+            let data_to_display: arrow::array::ArrayRef = data_to_display.into();
+
             ctx.component_ui_registry.ui_raw(
                 ctx,
                 ui,
@@ -154,7 +156,7 @@ impl ComponentData {
                 entity_path,
                 component_name,
                 None,
-                &*data_to_display,
+                data_to_display.as_ref(),
             );
         } else {
             ui.label("-");

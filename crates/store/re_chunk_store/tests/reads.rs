@@ -39,7 +39,7 @@ fn query_latest_array(
         })
         .max_by_key(|(index, _chunk)| *index)?;
 
-    unit.component_batch_raw(&component_desc.component_name)
+    unit.component_batch_raw_arrow2(&component_desc.component_name)
         .map(|array| (data_time, row_id, array))
 }
 
