@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["encode_dictionary_values"],"struct":["OwnedRow","Row","RowConverter","RowParser","Rows","RowsIter","SortField"]};

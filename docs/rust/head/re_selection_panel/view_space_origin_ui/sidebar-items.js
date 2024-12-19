@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["SpaceOriginEditState"],"fn":["view_space_origin_widget_editing_ui","view_space_origin_widget_ui"],"struct":["EditState"]};

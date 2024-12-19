@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["clear_is_recursive","clear_is_recursive_ext"],"struct":["ClearIsRecursive"]};

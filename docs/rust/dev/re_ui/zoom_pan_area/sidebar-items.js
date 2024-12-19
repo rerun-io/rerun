@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["fit_to_rect_in_scene","register_pan_and_zoom","zoom_pan_area"]};

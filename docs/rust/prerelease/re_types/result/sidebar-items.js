@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["DeserializationError","SerializationError"],"trait":["ResultExt"],"type":["DeserializationResult","SerializationResult","_Backtrace"]};

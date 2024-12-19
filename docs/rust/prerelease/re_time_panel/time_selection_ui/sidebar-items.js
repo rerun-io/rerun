@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["drag_left_loop_selection_edge","drag_right_loop_selection_edge","format_duration","initial_time_selection","loop_selection_ui","on_drag_loop_selection","paint_range_text"]};
