@@ -1,13 +1,14 @@
 #![allow(clippy::unwrap_used)]
 
+use std::collections::HashSet;
+use std::fmt::Formatter;
+use std::fs;
+
 use arrow::array::ArrayRef;
 use egui::Vec2;
 use egui_kittest::{SnapshotError, SnapshotOptions};
 use itertools::Itertools;
 use nohash_hasher::IntSet;
-use std::collections::HashSet;
-use std::fmt::Formatter;
-use std::fs;
 
 use re_component_ui::create_component_ui_registry;
 use re_log_types::{EntityPath, Timeline};

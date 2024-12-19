@@ -1,14 +1,15 @@
 use std::sync::Arc;
 
+use re_chunk_store::LatestAtQuery;
+use re_entity_db::EntityDb;
+use re_log_types::{StoreId, StoreKind};
+use re_types_core::reflection::Reflection;
+
 use crate::{
     blueprint_timeline, command_channel, ApplicationSelectionState, CommandReceiver, CommandSender,
     ComponentUiRegistry, ItemCollection, RecordingConfig, StoreContext, SystemCommand,
     ViewClassRegistry, ViewerContext,
 };
-use re_chunk_store::LatestAtQuery;
-use re_entity_db::EntityDb;
-use re_log_types::{StoreId, StoreKind};
-use re_types_core::reflection::Reflection;
 
 /// Harness to execute code that rely on [`crate::ViewerContext`].
 ///
