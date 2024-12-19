@@ -5736,6 +5736,42 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_compute_graph"
+version = "0.22.0-alpha.1+dev"
+dependencies = [
+ "ahash",
+ "anyhow",
+ "criterion",
+ "document-features",
+ "indent",
+ "insta",
+ "itertools 0.13.0",
+ "mimalloc",
+ "nohash-hasher",
+ "once_cell",
+ "parking_lot",
+ "rand",
+ "re_arrow2",
+ "re_chunk",
+ "re_chunk_store",
+ "re_format",
+ "re_log",
+ "re_log_encoding",
+ "re_log_types",
+ "re_protos",
+ "re_tracing",
+ "re_types",
+ "re_types_core",
+ "similar-asserts",
+ "slotmap",
+ "thiserror 1.0.65",
+ "tinyvec",
+ "type-map",
+ "unindent",
+ "web-time",
+]
+
+[[package]]
 name = "re_context_menu"
 version = "0.22.0-alpha.1+dev"
 dependencies = [

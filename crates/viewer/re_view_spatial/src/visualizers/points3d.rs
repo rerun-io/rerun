@@ -116,7 +116,7 @@ impl Points3DVisualizer {
                         let highlighted_point_index = (highlighted_key.get()
                             < num_instances as u64)
                             .then_some(highlighted_key.get());
-                        if let Some(highlighted_point_index) = highlighted_point_index {
+                        if let some(highlighted_point_index) = highlighted_point_index {
                             point_range_builder = point_range_builder
                                 .push_additional_outline_mask_ids_for_range(
                                     highlighted_point_index as u32

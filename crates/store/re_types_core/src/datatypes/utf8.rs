@@ -96,6 +96,7 @@ impl crate::Loggable for Utf8 {
                     DeserializationError::datatype_mismatch(expected, actual)
                 })
                 .with_context("rerun.datatypes.Utf8#value")?;
+
             let arrow_data_buf = arrow_data.values();
             let offsets = arrow_data.offsets();
             arrow2::bitmap::utils::ZipValidity::new_with_validity(
