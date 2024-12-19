@@ -15,8 +15,8 @@ utf8
 ```
 
 ## API reference links
- * 🌊 [C++ API docs for `RecordingUri`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1RecordingUri.html?speculative-link)
- * 🐍 [Python API docs for `RecordingUri`](https://ref.rerun.io/docs/python/stable/common/components?speculative-link#rerun.components.RecordingUri)
- * 🦀 [Rust API docs for `RecordingUri`](https://docs.rs/rerun/latest/rerun/components/struct.RecordingUri.html?speculative-link)
+ * 🌊 [C++ API docs for `RecordingUri`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1RecordingUri.html)
+ * 🐍 [Python API docs for `RecordingUri`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.RecordingUri)
+ * 🦀 [Rust API docs for `RecordingUri`](https://docs.rs/rerun/latest/rerun/components/struct.RecordingUri.html)
 
 

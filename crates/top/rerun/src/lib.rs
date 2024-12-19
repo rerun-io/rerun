@@ -169,10 +169,10 @@ pub const EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE: i32 = 66;
 pub mod external {
     pub use anyhow;
 
-    pub use re_build_info;
-    pub use re_entity_db;
-    pub use re_entity_db::external::*;
-    pub use re_format;
+    pub use ::re_build_info;
+    pub use ::re_entity_db;
+    pub use ::re_entity_db::external::*;
+    pub use ::re_format;
 
     #[cfg(feature = "run")]
     pub use re_data_source;

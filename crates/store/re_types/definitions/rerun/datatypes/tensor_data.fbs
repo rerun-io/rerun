@@ -19,8 +19,17 @@ table TensorData (
   "attr.python.array_aliases": "npt.ArrayLike",
   "attr.rust.derive": "PartialEq,"
 ) {
-  /// The shape of the tensor, including optional names for each dimension.
-  shape: [rerun.datatypes.TensorDimension] (order: 200);
+  /// The shape of the tensor, i.e. the length of each dimension.
+  shape: [uint64] (order: 200);
+
+  /// The names of the dimensions of the tensor (optional).
+  ///
+  /// If set, should be the same length as [datatypes.TensorData.shape].
+  /// If it has a different length your names may show up improperly,
+  /// and some constructors may produce a warning or even an error.
+  ///
+  /// Example: `["height", "width", "channel", "batch"]`.
+  names: [string] (order: 250, nullable);
 
   /// The content/data.
   buffer: rerun.datatypes.TensorBuffer (order: 300);

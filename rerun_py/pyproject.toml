@@ -33,7 +33,7 @@ text = "MIT OR Apache-2.0"
 
 [project.optional-dependencies]
 tests = ["pytest==7.1.2"]
-notebook = ["rerun-notebook==0.21.0-alpha.1+dev"]
+notebook = ["rerun-notebook==0.22.0-alpha.1+dev"]
 
 [project.urls]
 documentation = "https://www.rerun.io/docs"

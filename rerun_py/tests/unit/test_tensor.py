@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 import rerun as rr
 from rerun.components import TensorData, TensorDataBatch
-from rerun.datatypes import TensorBuffer, TensorDataLike, TensorDimension
+from rerun.datatypes import TensorBuffer, TensorDataLike
 
 rng = np.random.default_rng(12345)
 RANDOM_TENSOR_SOURCE = rng.uniform(0.0, 1.0, (8, 6, 3, 5))
@@ -15,12 +15,8 @@ RANDOM_TENSOR_SOURCE = rng.uniform(0.0, 1.0, (8, 6, 3, 5))
 TENSOR_DATA_INPUTS: list[TensorDataLike] = [
     # Full explicit construction
     TensorData(
-        shape=[
-            TensorDimension(8, name="a"),
-            TensorDimension(6, name="b"),
-            TensorDimension(3, name="c"),
-            TensorDimension(5, name="d"),
-        ],
+        shape=[8, 6, 3, 5],
+        dim_names=["a", "b", "c", "d"],
         buffer=TensorBuffer(RANDOM_TENSOR_SOURCE),
     ),
     # Implicit construction from ndarray
@@ -33,14 +29,15 @@ TENSOR_DATA_INPUTS: list[TensorDataLike] = [
     TensorData(array=RANDOM_TENSOR_SOURCE, dim_names=["a", "b", "c", "d"]),
 ]
 
-# 0 = shape
-# 1 = buffer
+SHAPE = 0  # Based on datatypes/tensor_data.fbs
+NAMES = 1  # Based on datatypes/tensor_data.fbs
+BUFFER = 2  # Based on datatypes/tensor_data.fbs
 CHECK_FIELDS: list[list[int]] = [
-    [0, 1],
-    [1],
-    [1],
-    [0, 1],
-    [0, 1],
+    [SHAPE, NAMES, BUFFER],
+    [BUFFER],
+    [BUFFER],
+    [SHAPE, NAMES, BUFFER],
+    [SHAPE, NAMES, BUFFER],
 ]
 
 
@@ -87,12 +84,8 @@ def test_bad_tensors() -> None:
     # Wrong size buffer for dimensions
     with pytest.raises(ValueError):
         TensorData(
-            shape=[
-                TensorDimension(8, name="a"),
-                TensorDimension(6, name="b"),
-                TensorDimension(3, name="c"),
-                TensorDimension(4, name="d"),
-            ],
+            shape=[1, 2, 3],
+            dim_names=["a", "b", "c", "d"],
             buffer=RANDOM_TENSOR_SOURCE,
         )
 
@@ -108,11 +101,7 @@ def test_bad_tensors() -> None:
     # Shape disagrees with array
     with pytest.raises(ValueError):
         TensorData(
-            shape=[
-                TensorDimension(8, name="a"),
-                TensorDimension(6, name="b"),
-                TensorDimension(5, name="c"),
-                TensorDimension(3, name="d"),
-            ],
+            shape=[1, 2, 3],
+            dim_names=["a", "b", "c", "d"],
             array=RANDOM_TENSOR_SOURCE,
         )

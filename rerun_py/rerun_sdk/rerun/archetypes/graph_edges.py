@@ -25,8 +25,6 @@ class GraphEdges(Archetype):
 
     By default, edges are undirected.
 
-    ⚠️ **This is an experimental API! It is not fully supported, and is likely to change significantly in future versions.**
-
     Example
     -------
     ### Simple directed graph:

@@ -4,8 +4,7 @@ namespace rerun.blueprint.views;
 ///
 /// \example views/graph title="Use a blueprint to create a graph view." image="https://static.rerun.io/graph_lattice/f9169da9c3f35b7260c9d74cd5be5fe710aec6a8/1200w.png"
 table GraphView (
-    "attr.rerun.view_identifier": "Graph",
-    "attr.docs.unreleased"
+    "attr.rerun.view_identifier": "Graph"
 ) {
     /// Everything within these bounds is guaranteed to be visible.
     ///

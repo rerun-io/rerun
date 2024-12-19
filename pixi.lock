@@ -30286,8 +30286,8 @@ packages:
   - watchfiles ; extra == 'dev'
 - pypi: rerun_notebook
   name: rerun-notebook
-  version: 0.21.0a1+dev
-  sha256: 047bf251505a9b46f02e7f700fe4073247fa2c95f8dd36f6f2f628e0ade8c055
+  version: 0.22.0a1+dev
+  sha256: 7e12a38063373d2b82c7eb731a3985d7646c0ecd59b5c6230a8a48955094b723
   requires_dist:
   - anywidget
   - jupyter-ui-poll
@@ -30362,8 +30362,8 @@ packages:
   requires_python: '>=3.8,<3.13'
 - pypi: rerun_py
   name: rerun-sdk
-  version: 0.21.0a1+dev
-  sha256: a2a848bd650eb5075582955b9dfcb9e4e43a5d1209ca7f053ceeed16ded0118a
+  version: 0.22.0a1+dev
+  sha256: 4a0b3da14f4aef104a2c3c4c8db24f35528b5b96590c282a5e52d53a96aea177
   requires_dist:
   - attrs>=23.1.0
   - numpy>=1.23
@@ -30371,7 +30371,7 @@ packages:
   - pyarrow>=14.0.2
   - typing-extensions>=4.5
   - pytest==7.1.2 ; extra == 'tests'
-  - rerun-notebook==0.21.0a1+dev ; extra == 'notebook'
+  - rerun-notebook==0.22.0a1+dev ; extra == 'notebook'
   requires_python: '>=3.8'
   editable: true
 - pypi: https://files.pythonhosted.org/packages/7b/44/4e421b96b67b2daff264473f7465db72fbdf36a07e05494f50300cc7b0c6/rfc3339_validator-0.1.4-py2.py3-none-any.whl
