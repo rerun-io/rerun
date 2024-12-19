@@ -1,4 +1,3 @@
-use arrow2::array::Array;
 use nohash_hasher::IntMap;
 use once_cell::sync::OnceCell;
 
@@ -85,41 +84,38 @@ impl PerStoreChunkSubscriber for MaxImageDimensionsStoreSubscriber {
             }
 
             // Handle `ImageEncoded`, `AssetVideo`…
-            let blobs = event.diff.chunk.iter_component_arrays(&Blob::name());
-            let media_types = event.diff.chunk.iter_component_arrays(&MediaType::name());
+            let blobs = event.diff.chunk.iter_buffer(&Blob::name());
+            let media_types = event.diff.chunk.iter_string(&MediaType::name());
             for (blob, media_type) in
                 itertools::izip!(blobs, media_types.map(Some).chain(std::iter::repeat(None)))
             {
-                if let Some([width, height]) = size_from_blob(blob.as_ref(), media_type.as_deref())
-                {
-                    let max_dim = self
-                        .max_dimensions
-                        .entry(event.diff.chunk.entity_path().clone())
-                        .or_default();
-                    max_dim.width = max_dim.width.max(width);
-                    max_dim.height = max_dim.height.max(height);
+                if let Some(blob) = blob.first() {
+                    if let Some([width, height]) = size_from_blob(
+                        blob.as_slice(),
+                        media_type.and_then(|v| v.first().map(|v| MediaType(v.clone().into()))),
+                    ) {
+                        let max_dim = self
+                            .max_dimensions
+                            .entry(event.diff.chunk.entity_path().clone())
+                            .or_default();
+                        max_dim.width = max_dim.width.max(width);
+                        max_dim.height = max_dim.height.max(height);
+                    }
                 }
             }
         }
     }
 }
 
-fn size_from_blob(blob: &dyn Array, media_type: Option<&dyn Array>) -> Option<[u32; 2]> {
+fn size_from_blob(blob: &[u8], media_type: Option<MediaType>) -> Option<[u32; 2]> {
     re_tracing::profile_function!();
 
-    let blob = Blob::from_arrow2_opt(blob).ok()?.first()?.clone()?;
-
-    let media_type: Option<MediaType> = media_type
-        .and_then(|media_type| MediaType::from_arrow2_opt(media_type).ok())
-        .and_then(|list| list.first().cloned())
-        .flatten();
-
-    let media_type = MediaType::or_guess_from_data(media_type, &blob)?;
+    let media_type = MediaType::or_guess_from_data(media_type, blob)?;
 
     if media_type.is_image() {
         re_tracing::profile_scope!("image");
 
-        let image_bytes = blob.0.as_slice();
+        let image_bytes = blob;
 
         let mut reader = image::ImageReader::new(std::io::Cursor::new(image_bytes));
 
@@ -137,7 +133,7 @@ fn size_from_blob(blob: &dyn Array, media_type: Option<&dyn Array>) -> Option<[u
         reader.into_dimensions().ok().map(|size| size.into())
     } else if media_type.is_video() {
         re_tracing::profile_scope!("video");
-        re_video::VideoData::load_from_bytes(&blob, &media_type)
+        re_video::VideoData::load_from_bytes(blob, &media_type)
             .ok()
             .map(|video| video.dimensions())
     } else {
