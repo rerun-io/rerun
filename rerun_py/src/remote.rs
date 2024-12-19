@@ -97,7 +97,7 @@ impl PyStorageNodeClient {
                 .await
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
                 .into_inner()
-                .filter_map(|resp| {
+                .map(|resp| {
                     resp.and_then(|r| {
                         decode(r.encoder_version(), &r.payload)
                             .map_err(|err| tonic::Status::internal(err.to_string()))
@@ -185,7 +185,7 @@ impl PyStorageNodeClient {
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
                 .into_inner();
             let metadata = decode(resp.encoder_version(), &resp.payload)
-                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
             let recording_id = metadata
                 .all_columns()
@@ -293,10 +293,6 @@ impl PyStorageNodeClient {
                 let response = result.map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
                 let tc = decode(EncoderVersion::V0, &response.payload)
                     .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
-
-                let Some(tc) = tc else {
-                    return Err(PyRuntimeError::new_err("Stream error"));
-                };
 
                 let chunk = Chunk::from_transport(&tc)
                     .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
