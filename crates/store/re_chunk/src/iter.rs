@@ -2,9 +2,9 @@ use std::sync::Arc;
 
 use arrow2::{
     array::{
-        Array as Arrow2Array, BooleanArray as Arrow2BooleanArray,
-        FixedSizeListArray as Arrow2FixedSizeListArray, ListArray as Arrow2ListArray,
-        PrimitiveArray as Arrow2PrimitiveArray, Utf8Array as Arrow2Utf8Array,
+        BooleanArray as Arrow2BooleanArray, FixedSizeListArray as Arrow2FixedSizeListArray,
+        ListArray as Arrow2ListArray, PrimitiveArray as Arrow2PrimitiveArray,
+        Utf8Array as Arrow2Utf8Array,
     },
     bitmap::Bitmap as Arrow2Bitmap,
     Either,
