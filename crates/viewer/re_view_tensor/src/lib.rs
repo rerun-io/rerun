@@ -32,10 +32,12 @@ impl TensorDimension {
             .collect()
     }
 
+    #[allow(dead_code)] // Used for tests
     pub fn unnamed(size: u64) -> Self {
         Self { size, name: None }
     }
 
+    #[allow(dead_code)] // Used for tests
     pub fn named(size: u64, name: impl Into<re_types::ArrowString>) -> Self {
         Self {
             size,
