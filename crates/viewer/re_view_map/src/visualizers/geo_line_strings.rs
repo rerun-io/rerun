@@ -66,9 +66,9 @@ impl VisualizerSystem for GeoLineStringsVisualizer {
 
             // iterate over each chunk and find all relevant component slices
             for (_index, lines, colors, radii) in re_query::range_zip_1x2(
-                all_lines.component::<GeoLineString>(),
-                all_colors.component::<Color>(),
-                all_radii.component::<Radius>(),
+                all_lines.component_slow::<GeoLineString>(),
+                all_colors.component_slow::<Color>(),
+                all_radii.component_slow::<Radius>(),
             ) {
                 // required component
                 let lines = lines.as_slice();

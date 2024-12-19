@@ -178,10 +178,10 @@ impl VisualizerSystem for Ellipsoids3DVisualizer {
                     all_half_sizes_indexed,
                     all_colors.primitive::<u32>(),
                     all_line_radii.primitive::<f32>(),
-                    all_fill_modes.component::<FillMode>(),
+                    all_fill_modes.component_slow::<FillMode>(),
                     all_labels.string(),
                     all_class_ids.primitive::<u16>(),
-                    all_show_labels.component::<ShowLabels>(),
+                    all_show_labels.component_slow::<ShowLabels>(),
                 )
                 .map(
                     |(

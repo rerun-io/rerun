@@ -111,7 +111,7 @@ impl TextLogSystem {
 
         let all_frames = range_zip_1x2(
             all_texts.string(),
-            all_levels.component(),
+            all_levels.component_slow(),
             all_colors.primitive::<u32>(),
         );
 

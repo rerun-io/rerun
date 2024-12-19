@@ -69,9 +69,9 @@ impl VisualizerSystem for GeoPointsVisualizer {
 
             // iterate over each chunk and find all relevant component slices
             for (_index, positions, colors, radii, class_ids) in re_query::range_zip_1x3(
-                all_positions.component::<LatLon>(),
+                all_positions.component_slow::<LatLon>(),
                 all_colors.primitive::<u32>(),
-                all_radii.component::<Radius>(),
+                all_radii.component_slow::<Radius>(),
                 all_class_ids.primitive::<u16>(),
             ) {
                 // required component

@@ -195,7 +195,7 @@ impl VisualizerSystem for Capsules3DVisualizer {
                     all_radii_indexed,
                     all_colors.primitive::<u32>(),
                     all_labels.string(),
-                    all_show_labels.component::<ShowLabels>(),
+                    all_show_labels.component_slow::<ShowLabels>(),
                     all_class_ids.primitive::<u16>(),
                 )
                 .map(

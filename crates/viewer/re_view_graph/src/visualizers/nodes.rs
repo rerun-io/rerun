@@ -89,8 +89,8 @@ impl VisualizerSystem for NodeVisualizer {
                 .map_or(true, bool::from);
 
             let data = range_zip_1x4(
-                all_indexed_nodes.component::<components::GraphNode>(),
-                all_colors.component::<components::Color>(),
+                all_indexed_nodes.component_slow::<components::GraphNode>(),
+                all_colors.component_slow::<components::Color>(),
                 all_positions.primitive_array::<2, f32>(),
                 all_labels.string(),
                 all_radii.primitive::<f32>(),

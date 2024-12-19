@@ -236,7 +236,7 @@ impl VisualizerSystem for Lines3DVisualizer {
                     all_radii.primitive::<f32>(),
                     all_labels.string(),
                     all_class_ids.primitive::<u16>(),
-                    all_show_labels.component::<ShowLabels>(),
+                    all_show_labels.component_slow::<ShowLabels>(),
                 )
                 .map(
                     |(_index, strips, colors, radii, labels, class_ids, show_labels)| {

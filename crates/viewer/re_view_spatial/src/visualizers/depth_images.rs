@@ -292,7 +292,7 @@ impl VisualizerSystem for DepthImageVisualizer {
                 let mut data = re_query::range_zip_1x5(
                     all_buffers_indexed,
                     all_formats_indexed,
-                    all_colormaps.component::<components::Colormap>(),
+                    all_colormaps.component_slow::<components::Colormap>(),
                     all_value_ranges.primitive_array::<2, f64>(),
                     all_depth_meters.primitive::<f32>(),
                     all_fill_ratios.primitive::<f32>(),
