@@ -315,7 +315,7 @@ impl GeoLineStrings {
     }
 }
 
-impl ::re_types_core::SizeBytes for GeoLineStrings {
+impl ::re_byte_size::SizeBytes for GeoLineStrings {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.line_strings.heap_size_bytes()

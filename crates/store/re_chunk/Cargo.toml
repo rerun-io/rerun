@@ -37,6 +37,7 @@ arrow = ["arrow2/arrow"]
 [dependencies]
 
 # Rerun
+re_byte_size.workspace = true
 re_error.workspace = true
 re_format.workspace = true
 re_format_arrow.workspace = true

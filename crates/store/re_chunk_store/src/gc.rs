@@ -5,11 +5,12 @@ use std::{
 
 use ahash::{HashMap, HashSet};
 use nohash_hasher::IntMap;
+use re_byte_size::SizeBytes;
 use web_time::Instant;
 
 use re_chunk::{Chunk, ChunkId};
 use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt, Timeline};
-use re_types_core::{ComponentName, SizeBytes};
+use re_types_core::ComponentName;
 
 use crate::{
     store::ChunkIdSetPerTime, ChunkStore, ChunkStoreChunkStats, ChunkStoreDiff, ChunkStoreDiffKind,

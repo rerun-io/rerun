@@ -173,7 +173,7 @@ impl MapBackground {
     }
 }
 
-impl ::re_types_core::SizeBytes for MapBackground {
+impl ::re_byte_size::SizeBytes for MapBackground {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.provider.heap_size_bytes()

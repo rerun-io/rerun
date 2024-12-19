@@ -348,7 +348,7 @@ impl VideoFrameReference {
     }
 }
 
-impl ::re_types_core::SizeBytes for VideoFrameReference {
+impl ::re_byte_size::SizeBytes for VideoFrameReference {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.timestamp.heap_size_bytes() + self.video_reference.heap_size_bytes()

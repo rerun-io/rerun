@@ -160,7 +160,7 @@ impl From<KeypointId> for u16 {
     }
 }
 
-impl ::re_types_core::SizeBytes for KeypointId {
+impl ::re_byte_size::SizeBytes for KeypointId {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.0.heap_size_bytes()

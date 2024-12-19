@@ -266,7 +266,7 @@ impl Tensor {
     }
 }
 
-impl ::re_types_core::SizeBytes for Tensor {
+impl ::re_byte_size::SizeBytes for Tensor {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.data.heap_size_bytes() + self.value_range.heap_size_bytes()

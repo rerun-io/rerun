@@ -331,7 +331,7 @@ fn quote_struct(
         };
 
         quote! {
-            impl ::re_types_core::SizeBytes for #name {
+            impl ::re_byte_size::SizeBytes for #name {
                 #[inline]
                 fn heap_size_bytes(&self) -> u64 {
                     #heap_size_bytes_impl
@@ -443,7 +443,7 @@ fn quote_union(
         };
 
         quote! {
-            impl ::re_types_core::SizeBytes for #name {
+            impl ::re_byte_size::SizeBytes for #name {
                 #[inline]
                 fn heap_size_bytes(&self) -> u64 {
                     #![allow(clippy::match_same_arms)]
@@ -630,7 +630,7 @@ fn quote_enum(
             }
         }
 
-        impl ::re_types_core::SizeBytes for #name {
+        impl ::re_byte_size::SizeBytes for #name {
             #[inline]
             fn heap_size_bytes(&self) -> u64 {
                 0

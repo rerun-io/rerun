@@ -246,7 +246,6 @@ mod loggable;
 mod loggable_batch;
 pub mod reflection;
 mod result;
-mod size_bytes;
 mod tuid;
 mod view;
 
@@ -269,7 +268,6 @@ pub use self::{
         DeserializationError, DeserializationResult, ResultExt, SerializationError,
         SerializationResult, _Backtrace,
     },
-    size_bytes::SizeBytes,
     view::{View, ViewClassIdentifier},
 };
 

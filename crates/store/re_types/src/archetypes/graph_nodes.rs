@@ -449,7 +449,7 @@ impl GraphNodes {
     }
 }
 
-impl ::re_types_core::SizeBytes for GraphNodes {
+impl ::re_byte_size::SizeBytes for GraphNodes {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.node_ids.heap_size_bytes()

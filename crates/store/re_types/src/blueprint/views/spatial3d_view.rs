@@ -41,7 +41,7 @@ impl ::re_types_core::View for Spatial3DView {
     }
 }
 
-impl ::re_types_core::SizeBytes for Spatial3DView {
+impl ::re_byte_size::SizeBytes for Spatial3DView {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.background.heap_size_bytes()

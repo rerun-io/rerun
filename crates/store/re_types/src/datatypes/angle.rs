@@ -150,7 +150,7 @@ impl From<Angle> for f32 {
     }
 }
 
-impl ::re_types_core::SizeBytes for Angle {
+impl ::re_byte_size::SizeBytes for Angle {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.radians.heap_size_bytes()

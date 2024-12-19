@@ -202,7 +202,7 @@ impl ::re_types_core::reflection::Enum for MarkerShape {
     }
 }
 
-impl ::re_types_core::SizeBytes for MarkerShape {
+impl ::re_byte_size::SizeBytes for MarkerShape {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         0

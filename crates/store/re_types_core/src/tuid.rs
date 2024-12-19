@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use crate::{DeserializationError, Loggable, SizeBytes};
 use arrow2::{
     array::{StructArray, UInt64Array},
     datatypes::{DataType, Field},
@@ -8,14 +7,9 @@ use arrow2::{
 
 use re_tuid::Tuid;
 
-// ---
+use crate::{DeserializationError, Loggable};
 
-impl SizeBytes for Tuid {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        Self::heap_size_bytes(self)
-    }
-}
+// ---
 
 impl Loggable for Tuid {
     #[inline]

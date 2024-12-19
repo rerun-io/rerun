@@ -822,7 +822,7 @@ impl AffixFuzzer2 {
     }
 }
 
-impl ::re_types_core::SizeBytes for AffixFuzzer2 {
+impl ::re_byte_size::SizeBytes for AffixFuzzer2 {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.fuzz1101.heap_size_bytes()

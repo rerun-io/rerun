@@ -215,7 +215,7 @@ impl ::re_types_core::Loggable for FilterIsNotNull {
     }
 }
 
-impl ::re_types_core::SizeBytes for FilterIsNotNull {
+impl ::re_byte_size::SizeBytes for FilterIsNotNull {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.active.heap_size_bytes() + self.column.heap_size_bytes()

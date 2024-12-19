@@ -412,7 +412,7 @@ impl ViewportBlueprint {
     }
 }
 
-impl ::re_types_core::SizeBytes for ViewportBlueprint {
+impl ::re_byte_size::SizeBytes for ViewportBlueprint {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.root_container.heap_size_bytes()

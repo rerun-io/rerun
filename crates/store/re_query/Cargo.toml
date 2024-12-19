@@ -28,6 +28,7 @@ codegen = []
 
 [dependencies]
 # Rerun dependencies:
+re_byte_size.workspace = true
 re_chunk.workspace = true
 re_chunk_store.workspace = true
 re_error.workspace = true

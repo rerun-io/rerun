@@ -29,7 +29,7 @@ impl ::re_types_core::View for TextDocumentView {
     }
 }
 
-impl ::re_types_core::SizeBytes for TextDocumentView {
+impl ::re_byte_size::SizeBytes for TextDocumentView {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         0

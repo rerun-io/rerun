@@ -4,7 +4,7 @@ use arrow::array::ArrayRef;
 use arrow2::array::Array as Arrow2Array;
 
 use re_log_types::{TimeInt, Timeline};
-use re_types_core::{Component, ComponentName, SizeBytes};
+use re_types_core::{Component, ComponentName};
 
 use crate::{Chunk, ChunkResult, RowId};
 
@@ -175,7 +175,7 @@ impl std::ops::Deref for UnitChunkShared {
     }
 }
 
-impl SizeBytes for UnitChunkShared {
+impl re_byte_size::SizeBytes for UnitChunkShared {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         Chunk::heap_size_bytes(&self.0)

@@ -210,7 +210,7 @@ impl ArchetypeName {
     }
 }
 
-impl crate::SizeBytes for ArchetypeName {
+impl re_byte_size::SizeBytes for ArchetypeName {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         0
@@ -224,7 +224,7 @@ re_string_interner::declare_new_type!(
     pub struct ArchetypeFieldName;
 );
 
-impl crate::SizeBytes for ArchetypeFieldName {
+impl re_byte_size::SizeBytes for ArchetypeFieldName {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         0

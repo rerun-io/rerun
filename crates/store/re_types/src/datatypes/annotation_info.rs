@@ -310,7 +310,7 @@ impl ::re_types_core::Loggable for AnnotationInfo {
     }
 }
 
-impl ::re_types_core::SizeBytes for AnnotationInfo {
+impl ::re_byte_size::SizeBytes for AnnotationInfo {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.id.heap_size_bytes() + self.label.heap_size_bytes() + self.color.heap_size_bytes()

@@ -389,7 +389,7 @@ impl ::re_types_core::Loggable for Range2D {
     }
 }
 
-impl ::re_types_core::SizeBytes for Range2D {
+impl ::re_byte_size::SizeBytes for Range2D {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.x_range.heap_size_bytes() + self.y_range.heap_size_bytes()

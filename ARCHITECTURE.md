@@ -209,7 +209,8 @@ Update instructions:
 | Crate              | Description                                                                          |
 |--------------------|--------------------------------------------------------------------------------------|
 | re_analytics       | Rerun's analytics SDK                                                                |
-| re_capabilities    | Capability tokens                                                                   |
+| re_byte_size       | Calculate the heap-allocated size of values at runtime                               |
+| re_capabilities    | Capability tokens                                                                    |
 | re_case            | Case conversions, the way Rerun likes them                                           |
 | re_crash_handler   | Detect panics and signals, logging them and optionally sending them to analytics.    |
 | re_error           | Helpers for handling errors.                                                         |

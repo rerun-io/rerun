@@ -94,7 +94,7 @@ impl std::ops::DerefMut for Interactive {
     }
 }
 
-impl ::re_types_core::SizeBytes for Interactive {
+impl ::re_byte_size::SizeBytes for Interactive {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.0.heap_size_bytes()

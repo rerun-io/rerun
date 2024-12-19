@@ -100,7 +100,7 @@ impl std::ops::DerefMut for Position2D {
     }
 }
 
-impl ::re_types_core::SizeBytes for Position2D {
+impl ::re_byte_size::SizeBytes for Position2D {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.0.heap_size_bytes()
