@@ -148,7 +148,7 @@ impl VisualizerSystem for Capsules3DVisualizer {
             &Fallback,
         );
 
-        use super::entity_iterator::{iter_primitive, process_archetype};
+        use super::entity_iterator::{iter_slices, process_archetype};
         process_archetype::<Self, Capsules3D, _>(
             ctx,
             view_query,
@@ -167,12 +167,12 @@ impl VisualizerSystem for Capsules3DVisualizer {
 
                 let num_lengths: usize = all_length_chunks
                     .iter()
-                    .flat_map(|chunk| chunk.iter_primitive::<f32>(&Length::name()))
+                    .flat_map(|chunk| chunk.iter_slices::<f32>(Length::name()))
                     .map(|lengths| lengths.len())
                     .sum();
                 let num_radii: usize = all_radius_chunks
                     .iter()
-                    .flat_map(|chunk| chunk.iter_primitive::<f32>(&components::Radius::name()))
+                    .flat_map(|chunk| chunk.iter_slices::<f32>(components::Radius::name()))
                     .map(|radii| radii.len())
                     .sum();
                 let num_instances = num_lengths.max(num_radii);
@@ -182,9 +182,9 @@ impl VisualizerSystem for Capsules3DVisualizer {
 
                 let timeline = ctx.query.timeline();
                 let all_lengths_indexed =
-                    iter_primitive::<f32>(&all_length_chunks, timeline, Length::name());
+                    iter_slices::<f32>(&all_length_chunks, timeline, Length::name());
                 let all_radii_indexed =
-                    iter_primitive::<f32>(&all_radius_chunks, timeline, components::Radius::name());
+                    iter_slices::<f32>(&all_radius_chunks, timeline, components::Radius::name());
                 let all_colors = results.iter_as(timeline, Color::name());
                 let all_labels = results.iter_as(timeline, Text::name());
                 let all_show_labels = results.iter_as(timeline, ShowLabels::name());
@@ -193,10 +193,10 @@ impl VisualizerSystem for Capsules3DVisualizer {
                 let data = re_query::range_zip_2x4(
                     all_lengths_indexed,
                     all_radii_indexed,
-                    all_colors.primitive::<u32>(),
-                    all_labels.string(),
-                    all_show_labels.bool(),
-                    all_class_ids.primitive::<u16>(),
+                    all_colors.slice::<u32>(),
+                    all_labels.slice::<String>(),
+                    all_show_labels.slice::<bool>(),
+                    all_class_ids.slice::<u16>(),
                 )
                 .map(
                     |(_index, lengths, radii, colors, labels, show_labels, class_ids)| {

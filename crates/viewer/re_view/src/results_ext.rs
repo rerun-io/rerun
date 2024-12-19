@@ -3,9 +3,9 @@ use std::{borrow::Cow, sync::Arc};
 use itertools::Itertools as _;
 
 use re_chunk_store::{Chunk, LatestAtQuery, RangeQuery, UnitChunkShared};
-use re_log_types::external::arrow2::bitmap::Bitmap as Arrow2Bitmap;
 use re_log_types::hash::Hash64;
 use re_query::{LatestAtResults, RangeResults};
+use re_types::ArchetypeFieldName;
 use re_types_core::ComponentName;
 use re_viewer_context::{DataResult, QueryContext, ViewContext};
 
@@ -239,9 +239,8 @@ pub trait RangeResultsExt {
     /// Returns a zero-copy iterator over all the results for the given `(timeline, component)` pair.
     ///
     /// Call one of the following methods on the returned [`HybridResultsChunkIter`]:
-    /// * [`HybridResultsChunkIter::primitive`]
-    /// * [`HybridResultsChunkIter::primitive_array`]
-    /// * [`HybridResultsChunkIter::string`]
+    /// * [`HybridResultsChunkIter::slice`]
+    /// * [`HybridResultsChunkIter::slice_from_struct_field`]
     fn iter_as(
         &self,
         timeline: Timeline,
@@ -408,7 +407,7 @@ impl RangeResultsExt for HybridResults<'_> {
 // ---
 
 use re_chunk::{ChunkComponentIterItem, RowId, TimeInt, Timeline};
-use re_chunk_store::external::{re_chunk, re_chunk::external::arrow2};
+use re_chunk_store::external::re_chunk;
 
 /// The iterator type backing [`HybridResults::iter_as`].
 pub struct HybridResultsChunkIter<'a> {
@@ -436,90 +435,31 @@ impl<'a> HybridResultsChunkIter<'a> {
         })
     }
 
-    /// Iterate as indexed booleans.
+    /// Iterate as indexed, sliced, deserialized component batches.
     ///
-    /// See [`Chunk::iter_bool`] for more information.
-    pub fn bool(&'a self) -> impl Iterator<Item = ((TimeInt, RowId), Arrow2Bitmap)> + 'a {
-        self.chunks.iter().flat_map(move |chunk| {
-            itertools::izip!(
-                chunk.iter_component_indices(&self.timeline, &self.component_name),
-                chunk.iter_bool(&self.component_name)
-            )
-        })
-    }
-
-    /// Iterate as indexed primitives.
-    ///
-    /// See [`Chunk::iter_primitive`] for more information.
-    pub fn primitive<T: arrow2::types::NativeType>(
+    /// See [`Chunk::iter_slices`] for more information.
+    pub fn slice<S: 'a + re_chunk::ChunkComponentSlicer>(
         &'a self,
-    ) -> impl Iterator<Item = ((TimeInt, RowId), &'a [T])> + 'a {
-        self.chunks.iter().flat_map(move |chunk| {
-            itertools::izip!(
-                chunk.iter_component_indices(&self.timeline, &self.component_name),
-                chunk.iter_primitive::<T>(&self.component_name)
-            )
-        })
-    }
-
-    /// Iterate as indexed primitive arrays.
-    ///
-    /// See [`Chunk::iter_primitive_array`] for more information.
-    pub fn primitive_array<const N: usize, T: arrow2::types::NativeType>(
-        &'a self,
-    ) -> impl Iterator<Item = ((TimeInt, RowId), &'a [[T; N]])> + 'a
-    where
-        [T; N]: bytemuck::Pod,
-    {
-        self.chunks.iter().flat_map(move |chunk| {
-            itertools::izip!(
-                chunk.iter_component_indices(&self.timeline, &self.component_name),
-                chunk.iter_primitive_array::<N, T>(&self.component_name)
-            )
-        })
-    }
-
-    /// Iterate as indexed list of primitive arrays.
-    ///
-    /// See [`Chunk::iter_primitive_array_list`] for more information.
-    pub fn primitive_array_list<const N: usize, T: arrow2::types::NativeType>(
-        &'a self,
-    ) -> impl Iterator<Item = ((TimeInt, RowId), Vec<&'a [[T; N]]>)> + 'a
-    where
-        [T; N]: bytemuck::Pod,
-    {
-        self.chunks.iter().flat_map(move |chunk| {
-            itertools::izip!(
-                chunk.iter_component_indices(&self.timeline, &self.component_name),
-                chunk.iter_primitive_array_list::<N, T>(&self.component_name)
-            )
-        })
-    }
-
-    /// Iterate as indexed UTF-8 strings.
-    ///
-    /// See [`Chunk::iter_string`] for more information.
-    pub fn string(
-        &'a self,
-    ) -> impl Iterator<Item = ((TimeInt, RowId), Vec<re_types_core::ArrowString>)> + 'a {
+    ) -> impl Iterator<Item = ((TimeInt, RowId), S::Item<'a>)> + 'a {
         self.chunks.iter().flat_map(|chunk| {
             itertools::izip!(
                 chunk.iter_component_indices(&self.timeline, &self.component_name),
-                chunk.iter_string(&self.component_name)
+                chunk.iter_slices::<S>(self.component_name)
             )
         })
     }
 
-    /// Iterate as indexed buffers.
+    /// Iterate as indexed, sliced, deserialized component batches for a specific struct field.
     ///
-    /// See [`Chunk::iter_buffer`] for more information.
-    pub fn buffer<T: arrow::datatypes::ArrowNativeType + arrow2::types::NativeType>(
+    /// See [`Chunk::iter_slices_from_struct_field`] for more information.
+    pub fn slice_from_struct_field<S: 'a + re_chunk::ChunkComponentSlicer>(
         &'a self,
-    ) -> impl Iterator<Item = ((TimeInt, RowId), Vec<re_types_core::ArrowBuffer<T>>)> + 'a {
+        field_name: &'a ArchetypeFieldName,
+    ) -> impl Iterator<Item = ((TimeInt, RowId), S::Item<'a>)> + 'a {
         self.chunks.iter().flat_map(|chunk| {
             itertools::izip!(
                 chunk.iter_component_indices(&self.timeline, &self.component_name),
-                chunk.iter_buffer(&self.component_name)
+                chunk.iter_slices_from_struct_field::<S>(self.component_name, field_name)
             )
         })
     }

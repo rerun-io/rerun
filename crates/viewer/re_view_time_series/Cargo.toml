@@ -19,6 +19,7 @@ workspace = true
 all-features = true
 
 [dependencies]
+re_chunk.workspace = true
 re_chunk_store.workspace = true
 re_format.workspace = true
 re_log.workspace = true

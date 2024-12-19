@@ -1,10 +1,6 @@
-use re_chunk::LatestAtQuery;
+use re_chunk::{ArchetypeFieldName, LatestAtQuery};
 use re_log_types::{EntityPath, Instance};
-use re_types::{
-    self, archetypes,
-    components::{self, GraphEdge, GraphNode},
-    Component as _,
-};
+use re_types::{self, archetypes, components, datatypes, Component as _};
 use re_view::{DataResultQuery, RangeResultsExt};
 use re_viewer_context::{
     self, IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery,
@@ -21,8 +17,8 @@ pub struct EdgesVisualizer {
 pub struct EdgeInstance {
     // We will need this in the future, when we want to select individual edges.
     pub _instance: Instance,
-    pub source: GraphNode,
-    pub target: GraphNode,
+    pub source: components::GraphNode,
+    pub target: components::GraphNode,
     pub source_index: NodeId,
     pub target_index: NodeId,
 }
@@ -52,6 +48,15 @@ impl VisualizerSystem for EdgesVisualizer {
     ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
         let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
 
+        // TODO(cmc): could we (improve and then) use reflection for this?
+        re_types::static_assert_struct_has_fields!(
+            datatypes::Utf8Pair,
+            first: datatypes::Utf8,
+            second: datatypes::Utf8,
+        );
+        let source: ArchetypeFieldName = "first".into();
+        let target: ArchetypeFieldName = "second".into();
+
         for data_result in query.iter_visible_data_results(ctx, Self::identifier()) {
             let results = data_result
                 .latest_at_with_blueprint_resolved_data::<archetypes::GraphEdges>(
@@ -59,17 +64,22 @@ impl VisualizerSystem for EdgesVisualizer {
                     &timeline_query,
                 );
 
-            let all_indexed_edges = results.iter_as(query.timeline, components::GraphEdge::name());
+            let all_edges = results.iter_as(query.timeline, components::GraphEdge::name());
             let graph_type = results.get_mono_with_fallback::<components::GraphType>();
 
-            // TODO(cmc): Provide a `iter_struct`.
-            for (_index, edges) in all_indexed_edges.component_slow::<GraphEdge>() {
-                let edges = edges
-                    .iter()
+            let sources = all_edges
+                .slice_from_struct_field::<String>(&source)
+                .map(|(_index, source)| source);
+            let targets = all_edges
+                .slice_from_struct_field::<String>(&target)
+                .map(|(_index, target)| target);
+
+            for (sources, targets) in itertools::izip!(sources, targets) {
+                let edges = itertools::izip!(sources, targets)
                     .enumerate()
-                    .map(|(i, edge)| {
-                        let source = GraphNode::from(edge.first.clone());
-                        let target = GraphNode::from(edge.second.clone());
+                    .map(|(i, (source, target))| {
+                        let source = components::GraphNode(source.into());
+                        let target = components::GraphNode(target.into());
 
                         let entity_path = &data_result.entity_path;
                         let source_index = NodeId::from_entity_node(entity_path, &source);
