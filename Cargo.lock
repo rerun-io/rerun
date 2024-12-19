@@ -6506,7 +6506,6 @@ dependencies = [
  "bytemuck",
  "criterion",
  "document-features",
- "half",
  "itertools 0.13.0",
  "nohash-hasher",
  "once_cell",
@@ -6518,7 +6517,6 @@ dependencies = [
  "re_tracing",
  "re_tuid",
  "serde",
- "smallvec",
  "thiserror 1.0.65",
 ]
 
