@@ -284,7 +284,7 @@ impl ViewportUi {
                         if can_entity_be_added(entity) {
                             filter.add_rule(
                                 RuleEffect::Include,
-                                ResolvedEntityPathRule::including_subtree(&entity),
+                                ResolvedEntityPathRule::including_subtree(entity),
                             );
                         }
                     }

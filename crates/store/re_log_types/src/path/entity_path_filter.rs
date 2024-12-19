@@ -118,6 +118,7 @@ impl From<EntityPath> for EntityPathRule {
 impl std::ops::Deref for EntityPathRule {
     type Target = str;
 
+    #[inline]
     fn deref(&self) -> &Self::Target {
         &self.0
     }
@@ -410,14 +411,14 @@ impl EntityPathFilter {
     }
 
     /// Resolve variables & parse paths, ignoring any errors.
-    pub fn resolve_forgiving(self, subst_env: &EntityPathSubs) -> ResolvedEntityPathFilter {
+    pub fn resolve_forgiving(&self, subst_env: &EntityPathSubs) -> ResolvedEntityPathFilter {
         let rules = self
             .rules
-            .into_iter()
+            .iter()
             .map(|(rule, effect)| {
                 (
-                    ResolvedEntityPathRule::parse_forgiving(&rule, subst_env),
-                    effect,
+                    ResolvedEntityPathRule::parse_forgiving(rule, subst_env),
+                    *effect,
                 )
             })
             .collect();

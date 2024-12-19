@@ -357,7 +357,7 @@ impl ViewportBlueprint {
                 .map(|view| {
                     // Today this looks trivial and something like we could do during recommendation-creation. But in the future variable substitutions might become more complex!
                     let path_subs = EntityPathSubs::new_with_origin(&view.origin);
-                    let query_filter = view.query_filter.clone().resolve_forgiving(&path_subs);
+                    let query_filter = view.query_filter.resolve_forgiving(&path_subs);
                     (query_filter, view)
                 })
                 .collect::<Vec<_>>();
@@ -372,7 +372,7 @@ impl ViewportBlueprint {
             recommended_views.retain(|(query_filter, _)| {
                 existing_path_filters
                     .iter()
-                    .all(|existing_filter| !existing_filter.is_superset_of(&query_filter))
+                    .all(|existing_filter| !existing_filter.is_superset_of(query_filter))
             });
 
             // Remove all views that are redundant within the remaining recommendation.
@@ -385,7 +385,7 @@ impl ViewportBlueprint {
                         .iter()
                         .enumerate()
                         .all(|(i, (other_query_filter, _))| {
-                            i == *j || !other_query_filter.is_superset_of(&candidate_query_filter)
+                            i == *j || !other_query_filter.is_superset_of(candidate_query_filter)
                         })
                 })
                 .map(|(_, recommendation)| recommendation);

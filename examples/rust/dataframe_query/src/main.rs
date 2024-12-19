@@ -4,7 +4,7 @@ use itertools::Itertools;
 
 use rerun::{
     dataframe::{
-        concatenate_record_batches, EntityPathFilter, QueryEngine, QueryExpression,
+        concatenate_record_batches, EntityPathFilter, EntityPathSubs, QueryEngine, QueryExpression,
         SparseFillStrategy, Timeline,
     },
     ChunkStoreConfig, StoreKind, VersionPolicy,
@@ -57,7 +57,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             filtered_index: Some(timeline),
             view_contents: Some(
                 engine
-                    .iter_entity_paths_sorted(&entity_path_filter)
+                    .iter_entity_paths_sorted(
+                        &entity_path_filter.resolve_forgiving(&EntityPathSubs::empty()),
+                    )
                     .map(|entity_path| (entity_path, None))
                     .collect(),
             ),
