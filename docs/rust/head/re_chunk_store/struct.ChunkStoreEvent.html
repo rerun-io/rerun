@@ -5,7 +5,7 @@
     pub diff: <a class="struct" href="events/struct.ChunkStoreDiff.html" title="struct re_chunk_store::events::ChunkStoreDiff">ChunkStoreDiff</a>,
 }</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>The atomic unit of change in the Rerun <a href="store/struct.ChunkStore.html" title="struct re_chunk_store::store::ChunkStore"><code>ChunkStore</code></a>.</p>
 <p>A <a href="events/struct.ChunkStoreEvent.html" title="struct re_chunk_store::events::ChunkStoreEvent"><code>ChunkStoreEvent</code></a> describes the changes caused by the addition or deletion of a
-[<code>Chunk</code>] in the store.</p>
+<a href="../re_chunk/chunk/struct.Chunk.html" title="struct re_chunk::chunk::Chunk"><code>Chunk</code></a> in the store.</p>
 <p>Methods that mutate the <a href="store/struct.ChunkStore.html" title="struct re_chunk_store::store::ChunkStore"><code>ChunkStore</code></a>, such as <a href="store/struct.ChunkStore.html#method.insert_chunk" title="method re_chunk_store::store::ChunkStore::insert_chunk"><code>ChunkStore::insert_chunk</code></a> and <a href="store/struct.ChunkStore.html#method.gc" title="method re_chunk_store::store::ChunkStore::gc"><code>ChunkStore::gc</code></a>,
 return <a href="events/struct.ChunkStoreEvent.html" title="struct re_chunk_store::events::ChunkStoreEvent"><code>ChunkStoreEvent</code></a>s that describe the changes.
 You can also register your own <a href="subscribers/trait.ChunkStoreSubscriber.html" title="trait re_chunk_store::subscribers::ChunkStoreSubscriber"><code>ChunkStoreSubscriber</code></a> in order to be notified of changes as soon as they

@@ -53,7 +53,7 @@
 
 <span class="kw">use </span>egui::NumExt <span class="kw">as _</span>;
 <span class="kw">use </span>re_types_core::datatypes;
-<span class="kw">use </span>re_viewer_context::{MaybeMutRef, UiLayout};
+<span class="kw">use </span>re_viewer_context::MaybeMutRef;
 
 <span class="doccomment">/// Generic editor for a [`re_types::datatypes::UInt64`] values within a given range.
 </span><span class="kw">pub fn </span>edit_u64_range(
@@ -97,7 +97,7 @@
                 .suffix(suffix),
         )
     } <span class="kw">else </span>{
-        UiLayout::List.data_label(ui, <span class="macro">format!</span>(<span class="string">"{}{}"</span>, re_format::format_uint(<span class="kw-2">**</span>value), suffix))
+        ui.label(<span class="macro">format!</span>(<span class="string">"{}{}"</span>, re_format::format_uint(<span class="kw-2">**</span>value), suffix))
     }
 }
 </code></pre></div></section></main></body></html>

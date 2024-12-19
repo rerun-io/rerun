@@ -102,17 +102,11 @@
 <a href="#102" id="102">102</a>
 <a href="#103" id="103">103</a>
 <a href="#104" id="104">104</a>
-<a href="#105" id="105">105</a>
-<a href="#106" id="106">106</a>
-<a href="#107" id="107">107</a>
-<a href="#108" id="108">108</a>
-<a href="#109" id="109">109</a>
-<a href="#110" id="110">110</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::ops::RangeInclusive;
 
 <span class="kw">use </span>egui::NumExt <span class="kw">as _</span>;
 <span class="kw">use </span>re_types::datatypes;
-<span class="kw">use </span>re_viewer_context::{MaybeMutRef, UiLayout};
+<span class="kw">use </span>re_viewer_context::MaybeMutRef;
 
 <span class="kw">pub fn </span>edit_or_view_vec2d(
     _ctx: <span class="kw-2">&amp;</span>re_viewer_context::ViewerContext&lt;<span class="lifetime">'_</span>&gt;,
@@ -170,14 +164,11 @@
 
         response
     } <span class="kw">else </span>{
-        UiLayout::List.data_label(
-            ui,
-            <span class="macro">format!</span>(
-                <span class="string">"[{}, {}]"</span>,
-                re_format::format_f32(x),
-                re_format::format_f32(y),
-            ),
-        )
+        ui.label(<span class="macro">format!</span>(
+            <span class="string">"[ {} , {} ]"</span>,
+            re_format::format_f32(x),
+            re_format::format_f32(y),
+        ))
     }
 }
 
@@ -207,15 +198,12 @@
 
         response
     } <span class="kw">else </span>{
-        UiLayout::List.data_label(
-            ui,
-            <span class="macro">format!</span>(
-                <span class="string">"[{}, {}, {}]"</span>,
-                re_format::format_f32(x),
-                re_format::format_f32(y),
-                re_format::format_f32(z),
-            ),
-        )
+        ui.label(<span class="macro">format!</span>(
+            <span class="string">"[ {} , {} , {} ]"</span>,
+            re_format::format_f32(x),
+            re_format::format_f32(y),
+            re_format::format_f32(z),
+        ))
     }
 }
 </code></pre></div></section></main></body></html>

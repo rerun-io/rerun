@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["TransportMessageV0"],"fn":["decode","encode"],"mod":["decoder","encoder"],"struct":["MessageHeader"]};
+window.SIDEBAR_ITEMS = {"fn":["decode","encode"],"mod":["decoder","encoder"]};

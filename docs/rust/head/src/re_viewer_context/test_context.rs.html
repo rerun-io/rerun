@@ -233,19 +233,17 @@
 <a href="#233" id="233">233</a>
 <a href="#234" id="234">234</a>
 <a href="#235" id="235">235</a>
-<a href="#236" id="236">236</a>
-<a href="#237" id="237">237</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::sync::Arc;
+
+<span class="kw">use </span>re_chunk_store::LatestAtQuery;
+<span class="kw">use </span>re_entity_db::EntityDb;
+<span class="kw">use </span>re_log_types::{StoreId, StoreKind};
 
 <span class="kw">use crate</span>::{
     blueprint_timeline, command_channel, ApplicationSelectionState, CommandReceiver, CommandSender,
     ComponentUiRegistry, ItemCollection, RecordingConfig, StoreContext, SystemCommand,
     ViewClassRegistry, ViewerContext,
 };
-<span class="kw">use </span>re_chunk_store::LatestAtQuery;
-<span class="kw">use </span>re_entity_db::EntityDb;
-<span class="kw">use </span>re_log_types::{StoreId, StoreKind};
-<span class="kw">use </span>re_types_core::reflection::Reflection;
 
 <span class="doccomment">/// Harness to execute code that rely on [`crate::ViewerContext`].
 ///
@@ -267,8 +265,7 @@
     <span class="kw">pub </span>recording_config: RecordingConfig,
 
     <span class="kw">pub </span>blueprint_query: LatestAtQuery,
-    <span class="kw">pub </span>component_ui_registry: ComponentUiRegistry,
-    <span class="kw">pub </span>reflection: Reflection,
+    component_ui_registry: ComponentUiRegistry,
 
     command_sender: CommandSender,
     command_receiver: CommandReceiver,
@@ -297,7 +294,6 @@
             recording_config,
             blueprint_query,
             component_ui_registry,
-            reflection: Default::default(),
             command_sender,
             command_receiver,
         }
@@ -334,7 +330,7 @@
         <span class="kw">let </span>ctx = ViewerContext {
             app_options: <span class="kw-2">&amp;</span>Default::default(),
             cache: <span class="kw-2">&amp;</span>Default::default(),
-            reflection: <span class="kw-2">&amp;</span><span class="self">self</span>.reflection,
+            reflection: <span class="kw-2">&amp;</span>Default::default(),
             component_ui_registry: <span class="kw-2">&amp;</span><span class="self">self</span>.component_ui_registry,
             view_class_registry: <span class="kw-2">&amp;</span><span class="self">self</span>.view_class_registry,
             store_context: <span class="kw-2">&amp;</span>store_context,

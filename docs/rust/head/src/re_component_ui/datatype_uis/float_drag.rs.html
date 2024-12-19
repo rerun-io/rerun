@@ -169,7 +169,7 @@
 
 <span class="kw">use </span>egui::NumExt <span class="kw">as _</span>;
 <span class="kw">use </span>re_types::datatypes;
-<span class="kw">use </span>re_viewer_context::{MaybeMutRef, UiLayout};
+<span class="kw">use </span>re_viewer_context::MaybeMutRef;
 
 <span class="doccomment">/// Generic editor for a [`re_types::datatypes::Float32`] value from zero to max float.
 </span><span class="kw">pub fn </span>edit_f32_zero_to_max(
@@ -244,7 +244,7 @@
                 .suffix(suffix),
         )
     } <span class="kw">else </span>{
-        UiLayout::List.data_label(ui, <span class="macro">format!</span>(<span class="string">"{}{}"</span>, re_format::format_f32(<span class="kw-2">**</span>value), suffix))
+        ui.label(<span class="macro">format!</span>(<span class="string">"{}{}"</span>, re_format::format_f32(<span class="kw-2">**</span>value), suffix))
     }
 }
 
@@ -272,7 +272,7 @@
                 .fixed_decimals(<span class="number">2</span>),
         )
     } <span class="kw">else </span>{
-        UiLayout::List.data_label(ui, re_format::format_f32(<span class="kw-2">**</span>value))
+        ui.label(re_format::format_f32(<span class="kw-2">**</span>value))
     }
 }
 
@@ -329,7 +329,7 @@
                 .speed(speed),
         )
     } <span class="kw">else </span>{
-        UiLayout::List.data_label(ui, re_format::format_f64(<span class="kw-2">**</span>value))
+        ui.label(re_format::format_f64(<span class="kw-2">**</span>value))
     }
 }
 </code></pre></div></section></main></body></html>

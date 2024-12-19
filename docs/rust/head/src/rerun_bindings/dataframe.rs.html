@@ -1457,6 +1457,51 @@
 <a href="#1457" id="1457">1457</a>
 <a href="#1458" id="1458">1458</a>
 <a href="#1459" id="1459">1459</a>
+<a href="#1460" id="1460">1460</a>
+<a href="#1461" id="1461">1461</a>
+<a href="#1462" id="1462">1462</a>
+<a href="#1463" id="1463">1463</a>
+<a href="#1464" id="1464">1464</a>
+<a href="#1465" id="1465">1465</a>
+<a href="#1466" id="1466">1466</a>
+<a href="#1467" id="1467">1467</a>
+<a href="#1468" id="1468">1468</a>
+<a href="#1469" id="1469">1469</a>
+<a href="#1470" id="1470">1470</a>
+<a href="#1471" id="1471">1471</a>
+<a href="#1472" id="1472">1472</a>
+<a href="#1473" id="1473">1473</a>
+<a href="#1474" id="1474">1474</a>
+<a href="#1475" id="1475">1475</a>
+<a href="#1476" id="1476">1476</a>
+<a href="#1477" id="1477">1477</a>
+<a href="#1478" id="1478">1478</a>
+<a href="#1479" id="1479">1479</a>
+<a href="#1480" id="1480">1480</a>
+<a href="#1481" id="1481">1481</a>
+<a href="#1482" id="1482">1482</a>
+<a href="#1483" id="1483">1483</a>
+<a href="#1484" id="1484">1484</a>
+<a href="#1485" id="1485">1485</a>
+<a href="#1486" id="1486">1486</a>
+<a href="#1487" id="1487">1487</a>
+<a href="#1488" id="1488">1488</a>
+<a href="#1489" id="1489">1489</a>
+<a href="#1490" id="1490">1490</a>
+<a href="#1491" id="1491">1491</a>
+<a href="#1492" id="1492">1492</a>
+<a href="#1493" id="1493">1493</a>
+<a href="#1494" id="1494">1494</a>
+<a href="#1495" id="1495">1495</a>
+<a href="#1496" id="1496">1496</a>
+<a href="#1497" id="1497">1497</a>
+<a href="#1498" id="1498">1498</a>
+<a href="#1499" id="1499">1499</a>
+<a href="#1500" id="1500">1500</a>
+<a href="#1501" id="1501">1501</a>
+<a href="#1502" id="1502">1502</a>
+<a href="#1503" id="1503">1503</a>
+<a href="#1504" id="1504">1504</a>
 </pre></div><pre class="rust"><code><span class="attr">#![allow(clippy::needless_pass_by_value)] </span><span class="comment">// A lot of arguments to #[pyfunction] need to be by value
 </span><span class="attr">#![allow(clippy::borrow_deref_ref)] </span><span class="comment">// False positive due to #[pyfunction] macro
 </span><span class="attr">#![allow(unsafe_op_in_unsafe_fn)] </span><span class="comment">// False positive due to #[pyfunction] macro
@@ -1486,6 +1531,9 @@
 <span class="kw">use </span>re_log_encoding::VersionPolicy;
 <span class="kw">use </span>re_log_types::{EntityPathFilter, ResolvedTimeRange, TimeType};
 <span class="kw">use </span>re_sdk::{ComponentName, EntityPath, StoreId, StoreKind};
+
+<span class="attr">#[cfg(feature = <span class="string">"remote"</span>)]
+</span><span class="kw">use </span><span class="kw">crate</span>::remote::PyRemoteRecording;
 
 <span class="doccomment">/// Register the `rerun.dataframe` module.
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>register(m: <span class="kw-2">&amp;</span>Bound&lt;<span class="lifetime">'_</span>, PyModule&gt;) -&gt; PyResult&lt;()&gt; {
@@ -1886,7 +1934,7 @@
     }
 }
 
-<span class="kw">struct </span>ComponentLike(String);
+<span class="kw">pub struct </span>ComponentLike(<span class="kw">pub </span>String);
 
 <span class="kw">impl </span>FromPyObject&lt;<span class="lifetime">'_</span>&gt; <span class="kw">for </span>ComponentLike {
     <span class="kw">fn </span>extract_bound(component: <span class="kw-2">&amp;</span>Bound&lt;<span class="lifetime">'_</span>, PyAny&gt;) -&gt; PyResult&lt;<span class="self">Self</span>&gt; {
@@ -2029,6 +2077,13 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) cache: re_dataframe::QueryCacheHandle,
 }
 
+<span class="attr">#[derive(Clone)]
+</span><span class="kw">pub enum </span>PyRecordingHandle {
+    Local(std::sync::Arc&lt;Py&lt;PyRecording&gt;&gt;),
+    <span class="attr">#[cfg(feature = <span class="string">"remote"</span>)]
+    </span>Remote(std::sync::Arc&lt;Py&lt;PyRemoteRecording&gt;&gt;),
+}
+
 <span class="doccomment">/// A view of a recording restricted to a given index, containing a specific set of entities and components.
 ///
 /// See [`Recording.view(…)`][rerun.dataframe.Recording.view] for details on how to create a `RecordingView`.
@@ -2047,9 +2102,9 @@
 </span><span class="attr">#[pyclass(name = <span class="string">"RecordingView"</span>)]
 #[derive(Clone)]
 </span><span class="kw">pub struct </span>PyRecordingView {
-    recording: std::sync::Arc&lt;Py&lt;PyRecording&gt;&gt;,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) recording: PyRecordingHandle,
 
-    query_expression: QueryExpression,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) query_expression: QueryExpression,
 }
 
 <span class="kw">impl </span>PyRecordingView {
@@ -2097,19 +2152,27 @@
     ///
     /// This schema will only contain the columns that are included in the view via
     /// the view contents.
-    </span><span class="kw">fn </span>schema(<span class="kw-2">&amp;</span><span class="self">self</span>, py: Python&lt;<span class="lifetime">'_</span>&gt;) -&gt; PySchema {
-        <span class="kw">let </span>borrowed = <span class="self">self</span>.recording.borrow(py);
-        <span class="kw">let </span>engine = borrowed.engine();
+    </span><span class="kw">fn </span>schema(<span class="kw-2">&amp;</span><span class="self">self</span>, py: Python&lt;<span class="lifetime">'_</span>&gt;) -&gt; PyResult&lt;PySchema&gt; {
+        <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.recording {
+            PyRecordingHandle::Local(recording) =&gt; {
+                <span class="kw">let </span>borrowed: PyRef&lt;<span class="lifetime">'_</span>, PyRecording&gt; = recording.borrow(py);
+                <span class="kw">let </span>engine = borrowed.engine();
 
-        <span class="kw">let </span><span class="kw-2">mut </span>query_expression = <span class="self">self</span>.query_expression.clone();
-        query_expression.selection = <span class="prelude-val">None</span>;
+                <span class="kw">let </span><span class="kw-2">mut </span>query_expression = <span class="self">self</span>.query_expression.clone();
+                query_expression.selection = <span class="prelude-val">None</span>;
 
-        <span class="kw">let </span>query_handle = engine.query(query_expression);
+                <span class="kw">let </span>query_handle = engine.query(query_expression);
 
-        <span class="kw">let </span>contents = query_handle.view_contents();
+                <span class="kw">let </span>contents = query_handle.view_contents();
 
-        PySchema {
-            schema: contents.to_vec(),
+                <span class="prelude-val">Ok</span>(PySchema {
+                    schema: contents.to_vec(),
+                })
+            }
+            <span class="attr">#[cfg(feature = <span class="string">"remote"</span>)]
+            </span>PyRecordingHandle::Remote(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>::&lt;<span class="kw">_</span>, PyErr&gt;(PyRuntimeError::new_err(
+                <span class="string">"Schema is not implemented for remote recordings yet."</span>,
+            )),
         }
     }
 
@@ -2150,60 +2213,72 @@
         args: <span class="kw-2">&amp;</span>Bound&lt;<span class="lifetime">'_</span>, PyTuple&gt;,
         columns: <span class="prelude-ty">Option</span>&lt;Vec&lt;AnyColumn&gt;&gt;,
     ) -&gt; PyResult&lt;PyArrowType&lt;Box&lt;<span class="kw">dyn </span>RecordBatchReader + Send&gt;&gt;&gt; {
-        <span class="kw">let </span>borrowed = <span class="self">self</span>.recording.borrow(py);
-        <span class="kw">let </span>engine = borrowed.engine();
-
         <span class="kw">let </span><span class="kw-2">mut </span>query_expression = <span class="self">self</span>.query_expression.clone();
-
         query_expression.selection = <span class="self">Self</span>::select_args(args, columns)<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>query_handle = engine.query(query_expression);
+        <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.recording {
+            PyRecordingHandle::Local(recording) =&gt; {
+                <span class="kw">let </span>borrowed = recording.borrow(py);
+                <span class="kw">let </span>engine = borrowed.engine();
 
-        <span class="comment">// If the only contents found are static, we might need to warn the user since
-        // this means we won't naturally have any rows in the result.
-        </span><span class="kw">let </span>available_data_columns = query_handle
-            .view_contents()
-            .iter()
-            .filter(|c| <span class="macro">matches!</span>(c, ColumnDescriptor::Component(<span class="kw">_</span>)))
-            .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
+                <span class="kw">let </span>query_handle = engine.query(query_expression);
 
-        <span class="comment">// We only consider all contents static if there at least some columns
-        </span><span class="kw">let </span>all_contents_are_static = !available_data_columns.is_empty()
-            &amp;&amp; available_data_columns.iter().all(|c| c.is_static());
+                <span class="comment">// If the only contents found are static, we might need to warn the user since
+                // this means we won't naturally have any rows in the result.
+                </span><span class="kw">let </span>available_data_columns = query_handle
+                    .view_contents()
+                    .iter()
+                    .filter(|c| <span class="macro">matches!</span>(c, ColumnDescriptor::Component(<span class="kw">_</span>)))
+                    .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
 
-        <span class="comment">// Additionally, we only want to warn if the user actually tried to select some
-        // of the static columns. Otherwise the fact that there are no results shouldn't
-        // be surprising.
-        </span><span class="kw">let </span>selected_data_columns = query_handle
-            .selected_contents()
-            .iter()
-            .map(|(<span class="kw">_</span>, col)| col)
-            .filter(|c| <span class="macro">matches!</span>(c, ColumnDescriptor::Component(<span class="kw">_</span>)))
-            .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
+                <span class="comment">// We only consider all contents static if there at least some columns
+                </span><span class="kw">let </span>all_contents_are_static = !available_data_columns.is_empty()
+                    &amp;&amp; available_data_columns.iter().all(|c| c.is_static());
 
-        <span class="kw">let </span>any_selected_data_is_static = selected_data_columns.iter().any(|c| c.is_static());
+                <span class="comment">// Additionally, we only want to warn if the user actually tried to select some
+                // of the static columns. Otherwise the fact that there are no results shouldn't
+                // be surprising.
+                </span><span class="kw">let </span>selected_data_columns = query_handle
+                    .selected_contents()
+                    .iter()
+                    .map(|(<span class="kw">_</span>, col)| col)
+                    .filter(|c| <span class="macro">matches!</span>(c, ColumnDescriptor::Component(<span class="kw">_</span>)))
+                    .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
 
-        <span class="kw">if </span><span class="self">self</span>.query_expression.using_index_values.is_none()
-            &amp;&amp; all_contents_are_static
-            &amp;&amp; any_selected_data_is_static
-        {
-            py_rerun_warn(<span class="string">"RecordingView::select: tried to select static data, but no non-static contents generated an index value on this timeline. No results will be returned. Either include non-static data or consider using `select_static()` instead."</span>)<span class="question-mark">?</span>;
+                <span class="kw">let </span>any_selected_data_is_static =
+                    selected_data_columns.iter().any(|c| c.is_static());
+
+                <span class="kw">if </span><span class="self">self</span>.query_expression.using_index_values.is_none()
+                    &amp;&amp; all_contents_are_static
+                    &amp;&amp; any_selected_data_is_static
+                {
+                    py_rerun_warn(<span class="string">"RecordingView::select: tried to select static data, but no non-static contents generated an index value on this timeline. No results will be returned. Either include non-static data or consider using `select_static()` instead."</span>)<span class="question-mark">?</span>;
+                }
+
+                <span class="kw">let </span>schema = query_handle.schema();
+                <span class="kw">let </span>fields: Vec&lt;arrow::datatypes::Field&gt; =
+                    schema.fields.iter().map(|f| f.clone().into()).collect();
+                <span class="kw">let </span>metadata = schema.metadata.clone().into_iter().collect();
+                <span class="kw">let </span>schema = arrow::datatypes::Schema::new(fields).with_metadata(metadata);
+
+                <span class="kw">let </span>reader = RecordBatchIterator::new(
+                    query_handle
+                        .into_batch_iter()
+                        .map(|batch| batch.try_to_arrow_record_batch()),
+                    std::sync::Arc::new(schema),
+                );
+                <span class="prelude-val">Ok</span>(PyArrowType(Box::new(reader)))
+            }
+            <span class="attr">#[cfg(feature = <span class="string">"remote"</span>)]
+            </span>PyRecordingHandle::Remote(recording) =&gt; {
+                <span class="kw">let </span>borrowed_recording = recording.borrow(py);
+                <span class="kw">let </span><span class="kw-2">mut </span>borrowed_client = borrowed_recording.client.borrow_mut(py);
+                borrowed_client.exec_query(
+                    borrowed_recording.store_info.store_id.clone(),
+                    query_expression,
+                )
+            }
         }
-
-        <span class="kw">let </span>schema = query_handle.schema();
-        <span class="kw">let </span>fields: Vec&lt;arrow::datatypes::Field&gt; =
-            schema.fields.iter().map(|f| f.clone().into()).collect();
-        <span class="kw">let </span>metadata = schema.metadata.clone().into_iter().collect();
-        <span class="kw">let </span>schema = arrow::datatypes::Schema::new(fields).with_metadata(metadata);
-
-        <span class="kw">let </span>reader = RecordBatchIterator::new(
-            query_handle
-                .into_batch_iter()
-                .map(|batch| batch.try_to_arrow_record_batch()),
-            std::sync::Arc::new(schema),
-        );
-
-        <span class="prelude-val">Ok</span>(PyArrowType(Box::new(reader)))
     }
 
     <span class="doccomment">/// Select only the static columns from the view.
@@ -2239,54 +2314,69 @@
         args: <span class="kw-2">&amp;</span>Bound&lt;<span class="lifetime">'_</span>, PyTuple&gt;,
         columns: <span class="prelude-ty">Option</span>&lt;Vec&lt;AnyColumn&gt;&gt;,
     ) -&gt; PyResult&lt;PyArrowType&lt;Box&lt;<span class="kw">dyn </span>RecordBatchReader + Send&gt;&gt;&gt; {
-        <span class="kw">let </span>borrowed = <span class="self">self</span>.recording.borrow(py);
-        <span class="kw">let </span>engine = borrowed.engine();
-
         <span class="kw">let </span><span class="kw-2">mut </span>query_expression = <span class="self">self</span>.query_expression.clone();
-
         <span class="comment">// This is a static selection, so we clear the filtered index
         </span>query_expression.filtered_index = <span class="prelude-val">None</span>;
 
         <span class="comment">// If no columns provided, select all static columns
-        </span><span class="kw">let </span>static_columns = <span class="self">Self</span>::select_args(args, columns)<span class="question-mark">?</span>.unwrap_or_else(|| {
-            <span class="self">self</span>.schema(py)
-                .schema
-                .iter()
-                .filter(|col| col.is_static())
-                .map(|col| col.clone().into())
-                .collect()
-        });
+        </span><span class="kw">let </span>static_columns = <span class="self">Self</span>::select_args(args, columns)
+            .transpose()
+            .unwrap_or_else(|| {
+                <span class="prelude-val">Ok</span>(<span class="self">self
+                    </span>.schema(py)<span class="question-mark">?
+                    </span>.schema
+                    .iter()
+                    .filter(|col| col.is_static())
+                    .map(|col| col.clone().into())
+                    .collect())
+            })<span class="question-mark">?</span>;
 
         query_expression.selection = <span class="prelude-val">Some</span>(static_columns);
 
-        <span class="kw">let </span>query_handle = engine.query(query_expression);
+        <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.recording {
+            PyRecordingHandle::Local(recording) =&gt; {
+                <span class="kw">let </span>borrowed = recording.borrow(py);
+                <span class="kw">let </span>engine = borrowed.engine();
 
-        <span class="kw">let </span>non_static_cols = query_handle
-            .selected_contents()
-            .iter()
-            .filter(|(<span class="kw">_</span>, col)| !col.is_static())
-            .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
+                <span class="kw">let </span>query_handle = engine.query(query_expression);
 
-        <span class="kw">if </span>!non_static_cols.is_empty() {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(PyValueError::new_err(<span class="macro">format!</span>(
-                <span class="string">"Static selection resulted in non-static columns: {non_static_cols:?}"</span>,
-            )));
+                <span class="kw">let </span>non_static_cols = query_handle
+                    .selected_contents()
+                    .iter()
+                    .filter(|(<span class="kw">_</span>, col)| !col.is_static())
+                    .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
+
+                <span class="kw">if </span>!non_static_cols.is_empty() {
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(PyValueError::new_err(<span class="macro">format!</span>(
+                        <span class="string">"Static selection resulted in non-static columns: {non_static_cols:?}"</span>,
+                    )));
+                }
+
+                <span class="kw">let </span>schema = query_handle.schema();
+                <span class="kw">let </span>fields: Vec&lt;arrow::datatypes::Field&gt; =
+                    schema.fields.iter().map(|f| f.clone().into()).collect();
+                <span class="kw">let </span>metadata = schema.metadata.clone().into_iter().collect();
+                <span class="kw">let </span>schema = arrow::datatypes::Schema::new(fields).with_metadata(metadata);
+
+                <span class="kw">let </span>reader = RecordBatchIterator::new(
+                    query_handle
+                        .into_batch_iter()
+                        .map(|batch| batch.try_to_arrow_record_batch()),
+                    std::sync::Arc::new(schema),
+                );
+
+                <span class="prelude-val">Ok</span>(PyArrowType(Box::new(reader)))
+            }
+            <span class="attr">#[cfg(feature = <span class="string">"remote"</span>)]
+            </span>PyRecordingHandle::Remote(recording) =&gt; {
+                <span class="kw">let </span>borrowed_recording = recording.borrow(py);
+                <span class="kw">let </span><span class="kw-2">mut </span>borrowed_client = borrowed_recording.client.borrow_mut(py);
+                borrowed_client.exec_query(
+                    borrowed_recording.store_info.store_id.clone(),
+                    query_expression,
+                )
+            }
         }
-
-        <span class="kw">let </span>schema = query_handle.schema();
-        <span class="kw">let </span>fields: Vec&lt;arrow::datatypes::Field&gt; =
-            schema.fields.iter().map(|f| f.clone().into()).collect();
-        <span class="kw">let </span>metadata = schema.metadata.clone().into_iter().collect();
-        <span class="kw">let </span>schema = arrow::datatypes::Schema::new(fields).with_metadata(metadata);
-
-        <span class="kw">let </span>reader = RecordBatchIterator::new(
-            query_handle
-                .into_batch_iter()
-                .map(|batch| batch.try_to_arrow_record_batch()),
-            std::sync::Arc::new(schema),
-        );
-
-        <span class="prelude-val">Ok</span>(PyArrowType(Box::new(reader)))
     }
 
     <span class="attr">#[allow(rustdoc::private_doc_tests)]
@@ -2795,7 +2885,7 @@
         <span class="kw">let </span>recording = slf.unbind();
 
         <span class="prelude-val">Ok</span>(PyRecordingView {
-            recording: std::sync::Arc::new(recording),
+            recording: PyRecordingHandle::Local(std::sync::Arc::new(recording)),
             query_expression: query,
         })
     }
