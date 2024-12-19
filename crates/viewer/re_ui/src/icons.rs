@@ -59,6 +59,7 @@ pub const ARROW_RIGHT: Icon = icon_from_path!("../data/icons/arrow_right.png");
 pub const ARROW_DOWN: Icon = icon_from_path!("../data/icons/arrow_down.png");
 pub const LOOP: Icon = icon_from_path!("../data/icons/loop.png");
 
+pub const NOTIFICATION: Icon = icon_from_path!("../data/icons/notification.png");
 pub const RIGHT_PANEL_TOGGLE: Icon = icon_from_path!("../data/icons/right_panel_toggle.png");
 pub const BOTTOM_PANEL_TOGGLE: Icon = icon_from_path!("../data/icons/bottom_panel_toggle.png");
 pub const LEFT_PANEL_TOGGLE: Icon = icon_from_path!("../data/icons/left_panel_toggle.png");

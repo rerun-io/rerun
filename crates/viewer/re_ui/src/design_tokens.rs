@@ -441,6 +441,10 @@ impl DesignTokens {
     pub fn drop_target_container_stroke(&self) -> egui::Stroke {
         egui::Stroke::new(2.0, self.color(ColorToken::blue(S350)))
     }
+
+    pub fn text(&self, text: impl Into<String>, token: ColorToken) -> egui::RichText {
+        egui::RichText::new(text).color(self.color(token))
+    }
 }
 
 // ----------------------------------------------------------------------------

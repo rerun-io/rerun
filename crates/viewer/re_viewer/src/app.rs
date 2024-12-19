@@ -9,7 +9,7 @@ use re_entity_db::entity_db::EntityDb;
 use re_log_types::{ApplicationId, FileSource, LogMsg, StoreKind};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
-use re_ui::{toasts, DesignTokens, UICommand, UICommandSender};
+use re_ui::{notifications, DesignTokens, UICommand, UICommandSender};
 use re_viewer_context::{
     command_channel,
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
@@ -193,8 +193,9 @@ pub struct App {
     /// Interface for all recordings and blueprints
     pub(crate) store_hub: Option<StoreHub>,
 
-    /// Toast notifications.
-    toasts: toasts::Toasts,
+    /// Notification panel.
+    pub(crate) notifications: notifications::NotificationUi,
+    pub(crate) notifications_panel_open: bool,
 
     memory_panel: crate::memory_panel::MemoryPanel,
     memory_panel_open: bool,
@@ -333,7 +334,9 @@ impl App {
                 blueprint_loader(),
                 &crate::app_blueprint::setup_welcome_screen_blueprint,
             )),
-            toasts: toasts::Toasts::new(),
+            notifications: notifications::NotificationUi::new(),
+            notifications_panel_open: false,
+
             memory_panel: Default::default(),
             memory_panel_open: false,
 
@@ -975,11 +978,8 @@ impl App {
 
         self.egui_ctx
             .output_mut(|o| o.copied_text = direct_link.clone());
-        self.toasts.add(toasts::Toast {
-            kind: toasts::ToastKind::Success,
-            text: format!("Copied {direct_link:?} to clipboard"),
-            options: toasts::ToastOptions::with_ttl_in_seconds(4.0),
-        });
+        self.notifications
+            .success(format!("Copied {direct_link:?} to clipboard"));
     }
 
     fn memory_panel_ui(
@@ -1065,6 +1065,16 @@ impl App {
 
                 crate::ui::mobile_warning_ui(ui);
 
+                // NOTE: We do this here because the `notifications` UI is on top,
+                //       and may want to consume some key events.
+                // This should come _before_ `top_panel`, otherwise the notification panel
+                // is closed when the toggle button is clicked.
+                self.show_text_logs_as_notifications();
+                if !self.screenshotter.is_screenshotting() {
+                    self.notifications
+                        .ui(egui_ctx, &mut self.notifications_panel_open);
+                }
+
                 crate::ui::top_panel(
                     frame,
                     self,
@@ -1124,26 +1134,8 @@ impl App {
     fn show_text_logs_as_notifications(&mut self) {
         re_tracing::profile_function!();
 
-        while let Ok(re_log::LogMsg { level, target, msg }) = self.text_log_rx.try_recv() {
-            let is_rerun_crate = target.starts_with("rerun") || target.starts_with("re_");
-            if !is_rerun_crate {
-                continue;
-            }
-
-            let kind = match level {
-                re_log::Level::Error => toasts::ToastKind::Error,
-                re_log::Level::Warn => toasts::ToastKind::Warning,
-                re_log::Level::Info => toasts::ToastKind::Info,
-                re_log::Level::Debug | re_log::Level::Trace => {
-                    continue; // too spammy
-                }
-            };
-
-            self.toasts.add(toasts::Toast {
-                kind,
-                text: msg,
-                options: toasts::ToastOptions::with_ttl_in_seconds(4.0),
-            });
+        while let Ok(message) = self.text_log_rx.try_recv() {
+            self.notifications.add_log(message);
         }
     }
 
@@ -1874,7 +1866,6 @@ impl eframe::App for App {
             store_hub.begin_frame(renderer_active_frame_idx);
         }
 
-        self.show_text_logs_as_notifications();
         self.receive_messages(&mut store_hub, egui_ctx);
 
         if self.app_options().blueprint_gc {
@@ -1933,10 +1924,6 @@ impl eframe::App for App {
             if re_ui::CUSTOM_WINDOW_DECORATIONS {
                 // Paint the main window frame on top of everything else
                 paint_native_window_frame(egui_ctx);
-            }
-
-            if !self.screenshotter.is_screenshotting() {
-                self.toasts.show(egui_ctx);
             }
 
             if let Some(cmd) = self.cmd_palette.show(egui_ctx) {
