@@ -41,6 +41,7 @@ impl Layout {
     }
 
     /// Gets the shape of an edge in the final layout.
+    #[expect(unused)]
     pub fn get_edge(&self, edge: &EdgeId) -> Option<&[EdgeGeometry]> {
         self.edges.get(edge).map(|es| es.as_slice())
     }

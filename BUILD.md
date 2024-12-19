@@ -23,12 +23,12 @@ cd rerun
 
 Now install the `pixi` package manager: <https://github.com/prefix-dev/pixi?tab=readme-ov-file#installation>
 
-Make sure `cargo --version` prints `1.80.0` once you are done.
+Make sure `cargo --version` prints `1.81.0` once you are done.
 
 If you are using an Apple-silicon Mac (M1, M2), make sure `rustc -vV` outputs `host: aarch64-apple-darwin`. If not, this should fix it:
 
 ```sh
-rustup set default-host aarch64-apple-darwin && rustup install 1.80.0
+rustup set default-host aarch64-apple-darwin && rustup install 1.81.0
 ```
 
 ## Git-lfs
