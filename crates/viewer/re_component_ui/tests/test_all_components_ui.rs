@@ -322,11 +322,11 @@ fn check_and_print_results(test_cases: &[TestCase], results: &[Result<(), Snapsh
                 test_case.component_name.short_name(),
                 test_case.label,
             ),
-            Err(e) => println!(
+            Err(err) => println!(
                 "{:>component_name_width$}[{:label_width$}] ERR {}",
                 test_case.component_name.short_name(),
                 test_case.label,
-                e,
+                err,
             ),
         }
     }
