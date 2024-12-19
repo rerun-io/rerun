@@ -102,7 +102,6 @@ impl PyStorageNodeClient {
                         decode(r.encoder_version(), &r.payload)
                             .map_err(|err| tonic::Status::internal(err.to_string()))
                     })
-                    .transpose()
                 })
                 .collect::<Result<Vec<_>, _>>()
                 .await
@@ -187,8 +186,6 @@ impl PyStorageNodeClient {
                 .into_inner();
             let metadata = decode(resp.encoder_version(), &resp.payload)
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
-                // TODO(zehiko) this is going away soon
-                .ok_or(PyRuntimeError::new_err("No metadata"))?;
 
             let recording_id = metadata
                 .all_columns()
