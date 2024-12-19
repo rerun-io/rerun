@@ -214,8 +214,7 @@ impl VisualizerSystem for Mesh3DVisualizer {
                     all_vertex_texcoords.primitive_array::<2, f32>(),
                     all_triangle_indices.primitive_array::<3, u32>(),
                     all_albedo_factors.primitive::<u32>(),
-                    // TODO(cmc): Provide a `iter_blob`.
-                    all_albedo_buffers.component_slow::<ImageBuffer>(),
+                    all_albedo_buffers.buffer(),
                     // Legit call to `component_slow`, `ImageFormat` is real complicated.
                     all_albedo_formats.component_slow::<ImageFormat>(),
                     all_class_ids.primitive::<u16>(),
@@ -250,7 +249,11 @@ impl VisualizerSystem for Mesh3DVisualizer {
                                     bytemuck::cast_slice(albedo_factors)
                                 })
                                 .first(),
-                            albedo_buffer: albedo_buffers.unwrap_or_default().first().cloned(), // shallow clone
+                            albedo_buffer: albedo_buffers
+                                .unwrap_or_default()
+                                .first()
+                                .cloned()
+                                .map(Into::into), // shallow clone
                             albedo_format: albedo_formats.unwrap_or_default().first().copied(),
                             class_ids: class_ids
                                 .map_or(&[], |class_ids| bytemuck::cast_slice(class_ids)),
