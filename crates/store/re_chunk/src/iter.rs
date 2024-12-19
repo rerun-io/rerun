@@ -686,6 +686,10 @@ impl Chunk {
     /// Use this when working with complex arrow datatypes and performance matters (e.g. ranging
     /// through enum types across many timestamps).
     ///
+    /// TODO(#5305): Note that, while this is much faster than deserializing each row individually,
+    /// this still uses the old codegen'd deserialization path, which does some very unidiomatic Arrow
+    /// things, and is therefore very slow at the moment. Avoid this on performance critical paths.
+    ///
     /// See also:
     /// * [`Self::iter_primitive`]
     /// * [`Self::iter_primitive_array`]
