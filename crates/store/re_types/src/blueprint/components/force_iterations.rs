@@ -102,7 +102,7 @@ impl std::ops::DerefMut for ForceIterations {
     }
 }
 
-impl ::re_types_core::SizeBytes for ForceIterations {
+impl ::re_byte_size::SizeBytes for ForceIterations {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.0.heap_size_bytes()

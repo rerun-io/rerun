@@ -380,7 +380,7 @@ impl DataframeQuery {
     }
 }
 
-impl ::re_types_core::SizeBytes for DataframeQuery {
+impl ::re_byte_size::SizeBytes for DataframeQuery {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.timeline.heap_size_bytes()

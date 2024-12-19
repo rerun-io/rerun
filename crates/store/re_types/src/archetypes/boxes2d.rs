@@ -556,7 +556,7 @@ impl Boxes2D {
     }
 }
 
-impl ::re_types_core::SizeBytes for Boxes2D {
+impl ::re_byte_size::SizeBytes for Boxes2D {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.half_sizes.heap_size_bytes()

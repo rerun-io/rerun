@@ -204,7 +204,7 @@ impl ::re_types_core::Loggable for MultiEnum {
     }
 }
 
-impl ::re_types_core::SizeBytes for MultiEnum {
+impl ::re_byte_size::SizeBytes for MultiEnum {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.value1.heap_size_bytes() + self.value2.heap_size_bytes()

@@ -12,7 +12,7 @@ pub struct TimeInt(Option<NonMinI64>);
 static_assertions::assert_eq_size!(TimeInt, i64);
 static_assertions::assert_eq_align!(TimeInt, i64);
 
-impl re_types_core::SizeBytes for TimeInt {
+impl re_byte_size::SizeBytes for TimeInt {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         0

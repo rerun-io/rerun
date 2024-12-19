@@ -452,7 +452,7 @@ impl Pinhole {
     }
 }
 
-impl ::re_types_core::SizeBytes for Pinhole {
+impl ::re_byte_size::SizeBytes for Pinhole {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.image_from_camera.heap_size_bytes()

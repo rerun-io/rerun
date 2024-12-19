@@ -160,7 +160,7 @@ impl ::re_types_core::reflection::Enum for Corner2D {
     }
 }
 
-impl ::re_types_core::SizeBytes for Corner2D {
+impl ::re_byte_size::SizeBytes for Corner2D {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         0

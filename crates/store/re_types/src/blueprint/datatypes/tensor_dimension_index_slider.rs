@@ -181,7 +181,7 @@ impl From<TensorDimensionIndexSlider> for u32 {
     }
 }
 
-impl ::re_types_core::SizeBytes for TensorDimensionIndexSlider {
+impl ::re_byte_size::SizeBytes for TensorDimensionIndexSlider {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.dimension.heap_size_bytes()

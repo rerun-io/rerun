@@ -761,7 +761,7 @@ impl EntityDb {
     }
 }
 
-impl re_types_core::SizeBytes for EntityDb {
+impl re_byte_size::SizeBytes for EntityDb {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         // TODO(emilk): size of entire EntityDb, including secondary indices etc

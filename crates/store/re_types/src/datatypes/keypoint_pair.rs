@@ -234,7 +234,7 @@ impl ::re_types_core::Loggable for KeypointPair {
     }
 }
 
-impl ::re_types_core::SizeBytes for KeypointPair {
+impl ::re_byte_size::SizeBytes for KeypointPair {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.keypoint0.heap_size_bytes() + self.keypoint1.heap_size_bytes()

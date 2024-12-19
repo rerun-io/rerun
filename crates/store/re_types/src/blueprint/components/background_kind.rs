@@ -157,7 +157,7 @@ impl ::re_types_core::reflection::Enum for BackgroundKind {
     }
 }
 
-impl ::re_types_core::SizeBytes for BackgroundKind {
+impl ::re_byte_size::SizeBytes for BackgroundKind {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         0

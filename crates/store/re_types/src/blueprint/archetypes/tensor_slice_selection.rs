@@ -356,7 +356,7 @@ impl TensorSliceSelection {
     }
 }
 
-impl ::re_types_core::SizeBytes for TensorSliceSelection {
+impl ::re_byte_size::SizeBytes for TensorSliceSelection {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.width.heap_size_bytes()

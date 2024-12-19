@@ -92,7 +92,7 @@ impl std::ops::DerefMut for Text {
     }
 }
 
-impl ::re_types_core::SizeBytes for Text {
+impl ::re_byte_size::SizeBytes for Text {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.0.heap_size_bytes()

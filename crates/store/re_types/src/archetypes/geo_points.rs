@@ -359,7 +359,7 @@ impl GeoPoints {
     }
 }
 
-impl ::re_types_core::SizeBytes for GeoPoints {
+impl ::re_byte_size::SizeBytes for GeoPoints {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.positions.heap_size_bytes()

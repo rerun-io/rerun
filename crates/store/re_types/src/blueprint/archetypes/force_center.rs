@@ -232,7 +232,7 @@ impl ForceCenter {
     }
 }
 
-impl ::re_types_core::SizeBytes for ForceCenter {
+impl ::re_byte_size::SizeBytes for ForceCenter {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.enabled.heap_size_bytes() + self.strength.heap_size_bytes()

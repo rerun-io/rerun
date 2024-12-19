@@ -9,11 +9,12 @@ use arrow2::{
         Schema as Arrow2Schema, TimeUnit as ArrowTimeUnit,
     },
 };
-
 use itertools::Itertools;
 use nohash_hasher::IntMap;
+
+use re_byte_size::SizeBytes as _;
 use re_log_types::{EntityPath, Timeline};
-use re_types_core::{Component as _, ComponentDescriptor, Loggable as _, SizeBytes};
+use re_types_core::{Component as _, ComponentDescriptor, Loggable as _};
 
 use crate::{chunk::ChunkComponents, Chunk, ChunkError, ChunkId, ChunkResult, RowId, TimeColumn};
 

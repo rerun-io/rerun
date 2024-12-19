@@ -545,7 +545,7 @@ impl ContainerBlueprint {
     }
 }
 
-impl ::re_types_core::SizeBytes for ContainerBlueprint {
+impl ::re_byte_size::SizeBytes for ContainerBlueprint {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.container_kind.heap_size_bytes()

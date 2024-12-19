@@ -222,7 +222,7 @@ impl ::re_types_core::Loggable for TensorDimensionIndexSelection {
     }
 }
 
-impl ::re_types_core::SizeBytes for TensorDimensionIndexSelection {
+impl ::re_byte_size::SizeBytes for TensorDimensionIndexSelection {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.dimension.heap_size_bytes() + self.index.heap_size_bytes()

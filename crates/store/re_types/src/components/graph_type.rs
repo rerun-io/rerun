@@ -143,7 +143,7 @@ impl ::re_types_core::reflection::Enum for GraphType {
     }
 }
 
-impl ::re_types_core::SizeBytes for GraphType {
+impl ::re_byte_size::SizeBytes for GraphType {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         0

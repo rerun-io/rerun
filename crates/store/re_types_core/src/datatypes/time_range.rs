@@ -206,7 +206,7 @@ impl crate::Loggable for TimeRange {
     }
 }
 
-impl crate::SizeBytes for TimeRange {
+impl ::re_byte_size::SizeBytes for TimeRange {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.start.heap_size_bytes() + self.end.heap_size_bytes()

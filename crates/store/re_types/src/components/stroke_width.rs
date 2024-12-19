@@ -100,7 +100,7 @@ impl std::ops::DerefMut for StrokeWidth {
     }
 }
 
-impl ::re_types_core::SizeBytes for StrokeWidth {
+impl ::re_byte_size::SizeBytes for StrokeWidth {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.0.heap_size_bytes()

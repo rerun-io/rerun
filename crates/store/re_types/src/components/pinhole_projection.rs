@@ -109,7 +109,7 @@ impl std::ops::DerefMut for PinholeProjection {
     }
 }
 
-impl ::re_types_core::SizeBytes for PinholeProjection {
+impl ::re_byte_size::SizeBytes for PinholeProjection {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.0.heap_size_bytes()

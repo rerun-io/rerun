@@ -103,7 +103,7 @@ impl std::ops::DerefMut for ForceDistance {
     }
 }
 
-impl ::re_types_core::SizeBytes for ForceDistance {
+impl ::re_byte_size::SizeBytes for ForceDistance {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.0.heap_size_bytes()

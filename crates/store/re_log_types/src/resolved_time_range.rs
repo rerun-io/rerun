@@ -125,7 +125,7 @@ impl ResolvedTimeRange {
     }
 }
 
-impl re_types_core::SizeBytes for ResolvedTimeRange {
+impl re_byte_size::SizeBytes for ResolvedTimeRange {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         0

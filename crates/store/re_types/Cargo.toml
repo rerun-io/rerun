@@ -52,6 +52,7 @@ testing = []
 
 [dependencies]
 # Rerun
+re_byte_size.workspace = true
 re_format.workspace = true
 re_log.workspace = true
 re_log_types.workspace = true

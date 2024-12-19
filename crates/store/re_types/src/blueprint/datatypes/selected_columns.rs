@@ -453,7 +453,7 @@ impl ::re_types_core::Loggable for SelectedColumns {
     }
 }
 
-impl ::re_types_core::SizeBytes for SelectedColumns {
+impl ::re_byte_size::SizeBytes for SelectedColumns {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.time_columns.heap_size_bytes() + self.component_columns.heap_size_bytes()
