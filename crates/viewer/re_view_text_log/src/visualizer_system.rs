@@ -4,6 +4,7 @@ use re_entity_db::EntityPath;
 use re_log_types::TimeInt;
 use re_log_types::TimePoint;
 use re_query::{clamped_zip_1x2, range_zip_1x2};
+use re_types::ArrowString;
 use re_types::{
     archetypes::TextLog,
     components::{Color, Text, TextLogLevel},
@@ -22,7 +23,7 @@ pub struct Entry {
     pub timepoint: TimePoint,
     pub color: Option<Color>,
     pub body: Text,
-    pub level: Option<TextLogLevel>,
+    pub level: Option<ArrowString>,
 }
 
 /// A text scene, with everything needed to render it.
