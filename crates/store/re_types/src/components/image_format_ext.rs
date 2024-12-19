@@ -26,7 +26,7 @@ impl ImageFormat {
         datatypes::ImageFormat::rgba8([width, height]).into()
     }
 
-    /// From a speicifc pixel format.
+    /// From a specific pixel format.
     #[inline]
     pub fn from_pixel_format([width, height]: [u32; 2], pixel_format: PixelFormat) -> Self {
         datatypes::ImageFormat::from_pixel_format([width, height], pixel_format).into()

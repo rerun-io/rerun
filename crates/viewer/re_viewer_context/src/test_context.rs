@@ -3,6 +3,7 @@ use std::sync::Arc;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_log_types::{StoreId, StoreKind};
+use re_types_core::reflection::Reflection;
 
 use crate::{
     blueprint_timeline, command_channel, ApplicationSelectionState, CommandReceiver, CommandSender,
@@ -30,7 +31,8 @@ pub struct TestContext {
     pub recording_config: RecordingConfig,
 
     pub blueprint_query: LatestAtQuery,
-    component_ui_registry: ComponentUiRegistry,
+    pub component_ui_registry: ComponentUiRegistry,
+    pub reflection: Reflection,
 
     command_sender: CommandSender,
     command_receiver: CommandReceiver,
@@ -59,6 +61,7 @@ impl Default for TestContext {
             recording_config,
             blueprint_query,
             component_ui_registry,
+            reflection: Default::default(),
             command_sender,
             command_receiver,
         }
@@ -95,7 +98,7 @@ impl TestContext {
         let ctx = ViewerContext {
             app_options: &Default::default(),
             cache: &Default::default(),
-            reflection: &Default::default(),
+            reflection: &self.reflection,
             component_ui_registry: &self.component_ui_registry,
             view_class_registry: &self.view_class_registry,
             store_context: &store_context,
