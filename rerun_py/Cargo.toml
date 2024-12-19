@@ -15,7 +15,7 @@ name = "rerun_bindings" # name of the .so library that the Python module will im
 
 
 [features]
-default = ["extension-module", "remote"]
+default = ["extension-module"]
 
 ## Extra features that aren't ready to be included in release builds yet.
 extra = []
