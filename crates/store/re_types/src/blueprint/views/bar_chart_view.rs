@@ -63,7 +63,7 @@ impl std::ops::DerefMut for BarChartView {
     }
 }
 
-impl ::re_types_core::SizeBytes for BarChartView {
+impl ::re_byte_size::SizeBytes for BarChartView {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.plot_legend.heap_size_bytes()

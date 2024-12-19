@@ -231,7 +231,7 @@ impl From<UVec4D> for [u32; 4usize] {
     }
 }
 
-impl ::re_types_core::SizeBytes for UVec4D {
+impl ::re_byte_size::SizeBytes for UVec4D {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.0.heap_size_bytes()

@@ -387,7 +387,7 @@ impl LineGrid3D {
     }
 }
 
-impl ::re_types_core::SizeBytes for LineGrid3D {
+impl ::re_byte_size::SizeBytes for LineGrid3D {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.visible.heap_size_bytes()

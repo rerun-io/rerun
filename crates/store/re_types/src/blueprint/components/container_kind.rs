@@ -155,7 +155,7 @@ impl ::re_types_core::reflection::Enum for ContainerKind {
     }
 }
 
-impl ::re_types_core::SizeBytes for ContainerKind {
+impl ::re_byte_size::SizeBytes for ContainerKind {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         0

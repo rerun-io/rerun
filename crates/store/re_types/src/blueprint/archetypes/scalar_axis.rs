@@ -229,7 +229,7 @@ impl ScalarAxis {
     }
 }
 
-impl ::re_types_core::SizeBytes for ScalarAxis {
+impl ::re_byte_size::SizeBytes for ScalarAxis {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.range.heap_size_bytes() + self.zoom_lock.heap_size_bytes()

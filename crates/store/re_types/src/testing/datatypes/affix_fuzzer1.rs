@@ -1069,7 +1069,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
     }
 }
 
-impl ::re_types_core::SizeBytes for AffixFuzzer1 {
+impl ::re_byte_size::SizeBytes for AffixFuzzer1 {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.single_float_optional.heap_size_bytes()

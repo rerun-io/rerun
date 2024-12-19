@@ -4,10 +4,11 @@ use ahash::HashMap;
 use nohash_hasher::IntMap;
 use parking_lot::RwLock;
 
+use re_byte_size::SizeBytes;
 use re_chunk::{Chunk, ChunkId};
 use re_chunk_store::{ChunkStore, RangeQuery, TimeInt};
 use re_log_types::{EntityPath, ResolvedTimeRange};
-use re_types_core::{ComponentDescriptor, ComponentName, DeserializationError, SizeBytes};
+use re_types_core::{ComponentDescriptor, ComponentName, DeserializationError};
 
 use crate::{QueryCache, QueryCacheKey};
 

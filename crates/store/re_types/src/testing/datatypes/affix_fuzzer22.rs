@@ -268,7 +268,7 @@ impl From<AffixFuzzer22> for [u8; 4usize] {
     }
 }
 
-impl ::re_types_core::SizeBytes for AffixFuzzer22 {
+impl ::re_byte_size::SizeBytes for AffixFuzzer22 {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.fixed_sized_native.heap_size_bytes()

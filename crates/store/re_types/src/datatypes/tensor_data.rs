@@ -490,7 +490,7 @@ impl ::re_types_core::Loggable for TensorData {
     }
 }
 
-impl ::re_types_core::SizeBytes for TensorData {
+impl ::re_byte_size::SizeBytes for TensorData {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.shape.heap_size_bytes() + self.names.heap_size_bytes() + self.buffer.heap_size_bytes()

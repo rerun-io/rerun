@@ -171,7 +171,7 @@ impl MapZoom {
     }
 }
 
-impl ::re_types_core::SizeBytes for MapZoom {
+impl ::re_byte_size::SizeBytes for MapZoom {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.zoom.heap_size_bytes()

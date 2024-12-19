@@ -236,7 +236,7 @@ impl PlotLegend {
     }
 }
 
-impl ::re_types_core::SizeBytes for PlotLegend {
+impl ::re_byte_size::SizeBytes for PlotLegend {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.corner.heap_size_bytes() + self.visible.heap_size_bytes()

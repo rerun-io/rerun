@@ -350,7 +350,7 @@ impl EncodedImage {
     }
 }
 
-impl ::re_types_core::SizeBytes for EncodedImage {
+impl ::re_byte_size::SizeBytes for EncodedImage {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.blob.heap_size_bytes()

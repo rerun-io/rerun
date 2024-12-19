@@ -105,7 +105,7 @@ impl std::ops::DerefMut for HalfSize3D {
     }
 }
 
-impl ::re_types_core::SizeBytes for HalfSize3D {
+impl ::re_byte_size::SizeBytes for HalfSize3D {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.0.heap_size_bytes()

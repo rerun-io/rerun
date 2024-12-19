@@ -225,7 +225,7 @@ impl ::re_types_core::Loggable for ClassDescriptionMapElem {
     }
 }
 
-impl ::re_types_core::SizeBytes for ClassDescriptionMapElem {
+impl ::re_byte_size::SizeBytes for ClassDescriptionMapElem {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.class_id.heap_size_bytes() + self.class_description.heap_size_bytes()

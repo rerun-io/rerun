@@ -333,7 +333,7 @@ impl crate::Loggable for TimeRangeBoundary {
     }
 }
 
-impl crate::SizeBytes for TimeRangeBoundary {
+impl ::re_byte_size::SizeBytes for TimeRangeBoundary {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         #![allow(clippy::match_same_arms)]

@@ -142,7 +142,7 @@ impl From<UInt32> for u32 {
     }
 }
 
-impl crate::SizeBytes for UInt32 {
+impl ::re_byte_size::SizeBytes for UInt32 {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.0.heap_size_bytes()

@@ -204,7 +204,7 @@ impl ::re_types_core::reflection::Enum for ChannelDatatype {
     }
 }
 
-impl ::re_types_core::SizeBytes for ChannelDatatype {
+impl ::re_byte_size::SizeBytes for ChannelDatatype {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         0

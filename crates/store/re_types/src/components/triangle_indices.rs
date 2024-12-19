@@ -100,7 +100,7 @@ impl std::ops::DerefMut for TriangleIndices {
     }
 }
 
-impl ::re_types_core::SizeBytes for TriangleIndices {
+impl ::re_byte_size::SizeBytes for TriangleIndices {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.0.heap_size_bytes()

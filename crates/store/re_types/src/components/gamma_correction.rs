@@ -106,7 +106,7 @@ impl std::ops::DerefMut for GammaCorrection {
     }
 }
 
-impl ::re_types_core::SizeBytes for GammaCorrection {
+impl ::re_byte_size::SizeBytes for GammaCorrection {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.0.heap_size_bytes()

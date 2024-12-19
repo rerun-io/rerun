@@ -238,7 +238,7 @@ impl From<Uuid> for [u8; 16usize] {
     }
 }
 
-impl ::re_types_core::SizeBytes for Uuid {
+impl ::re_byte_size::SizeBytes for Uuid {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.bytes.heap_size_bytes()

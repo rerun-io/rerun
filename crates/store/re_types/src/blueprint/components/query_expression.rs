@@ -101,7 +101,7 @@ impl std::ops::DerefMut for QueryExpression {
     }
 }
 
-impl ::re_types_core::SizeBytes for QueryExpression {
+impl ::re_byte_size::SizeBytes for QueryExpression {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.0.heap_size_bytes()

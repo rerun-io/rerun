@@ -329,7 +329,7 @@ impl ViewBlueprint {
     }
 }
 
-impl ::re_types_core::SizeBytes for ViewBlueprint {
+impl ::re_byte_size::SizeBytes for ViewBlueprint {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.class_identifier.heap_size_bytes()

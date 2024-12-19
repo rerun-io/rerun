@@ -214,7 +214,7 @@ impl Background {
     }
 }
 
-impl ::re_types_core::SizeBytes for Background {
+impl ::re_byte_size::SizeBytes for Background {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.kind.heap_size_bytes() + self.color.heap_size_bytes()

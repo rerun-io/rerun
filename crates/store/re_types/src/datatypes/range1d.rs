@@ -231,7 +231,7 @@ impl From<Range1D> for [f64; 2usize] {
     }
 }
 
-impl ::re_types_core::SizeBytes for Range1D {
+impl ::re_byte_size::SizeBytes for Range1D {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.0.heap_size_bytes()

@@ -112,7 +112,7 @@ impl std::ops::DerefMut for PoseTransformMat3x3 {
     }
 }
 
-impl ::re_types_core::SizeBytes for PoseTransformMat3x3 {
+impl ::re_byte_size::SizeBytes for PoseTransformMat3x3 {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.0.heap_size_bytes()

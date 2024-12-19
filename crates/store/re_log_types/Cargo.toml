@@ -43,6 +43,7 @@ serde = [
 
 # Rerun
 re_build_info.workspace = true
+re_byte_size.workspace = true
 re_format.workspace = true
 re_log.workspace = true
 re_protos.workspace = true

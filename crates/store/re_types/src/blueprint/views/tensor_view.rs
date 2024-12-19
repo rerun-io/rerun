@@ -38,7 +38,7 @@ impl ::re_types_core::View for TensorView {
     }
 }
 
-impl ::re_types_core::SizeBytes for TensorView {
+impl ::re_byte_size::SizeBytes for TensorView {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.slice_selection.heap_size_bytes()

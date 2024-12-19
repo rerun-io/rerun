@@ -179,7 +179,7 @@ impl<I: Into<crate::datatypes::ClassDescriptionMapElem>, T: IntoIterator<Item = 
     }
 }
 
-impl ::re_types_core::SizeBytes for AnnotationContext {
+impl ::re_byte_size::SizeBytes for AnnotationContext {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.0.heap_size_bytes()

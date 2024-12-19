@@ -28,6 +28,7 @@ serde = ["dep:serde", "re_log_types/serde"]
 
 [dependencies]
 re_build_info.workspace = true
+re_byte_size.workspace = true
 re_chunk = { workspace = true, features = ["serde"] }
 re_chunk_store.workspace = true
 re_format.workspace = true

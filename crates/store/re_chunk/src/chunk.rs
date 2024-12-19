@@ -8,14 +8,14 @@ use arrow2::{
     },
     Either,
 };
-
 use itertools::{izip, Itertools};
 use nohash_hasher::IntMap;
 
+use re_byte_size::SizeBytes as _;
 use re_log_types::{EntityPath, ResolvedTimeRange, Time, TimeInt, TimePoint, Timeline};
 use re_types_core::{
     ComponentDescriptor, ComponentName, DeserializationError, Loggable, LoggableBatch,
-    SerializationError, SizeBytes,
+    SerializationError,
 };
 
 use crate::{ChunkId, RowId};
@@ -1399,7 +1399,7 @@ impl TimeColumn {
     }
 }
 
-impl re_types_core::SizeBytes for Chunk {
+impl re_byte_size::SizeBytes for Chunk {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         let Self {
@@ -1428,7 +1428,7 @@ impl re_types_core::SizeBytes for Chunk {
     }
 }
 
-impl re_types_core::SizeBytes for TimeColumn {
+impl re_byte_size::SizeBytes for TimeColumn {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         let Self {
