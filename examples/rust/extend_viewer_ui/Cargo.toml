@@ -13,7 +13,6 @@ default = []
 analytics = ["re_crash_handler/analytics", "re_viewer/analytics"]
 
 [dependencies]
-re_byte_size.workspace = true
 re_crash_handler = { path = "../../../crates/utils/re_crash_handler" }
 re_viewer = { path = "../../../crates/viewer/re_viewer", default-features = false }
 
