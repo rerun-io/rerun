@@ -200,7 +200,7 @@ impl VisualizerSystem for Arrows2DVisualizer {
             re_view::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
         );
 
-        use super::entity_iterator::{iter_primitive_array, process_archetype};
+        use super::entity_iterator::{iter_slices, process_archetype};
         process_archetype::<Self, Arrows2D, _>(
             ctx,
             view_query,
@@ -214,7 +214,7 @@ impl VisualizerSystem for Arrows2DVisualizer {
 
                 let num_vectors = all_vector_chunks
                     .iter()
-                    .flat_map(|chunk| chunk.iter_primitive_array::<2, f32>(&Vector2D::name()))
+                    .flat_map(|chunk| chunk.iter_slices::<[f32; 2]>(Vector2D::name()))
                     .map(|vectors| vectors.len())
                     .sum();
 
@@ -227,7 +227,7 @@ impl VisualizerSystem for Arrows2DVisualizer {
 
                 let timeline = ctx.query.timeline();
                 let all_vectors_indexed =
-                    iter_primitive_array::<2, f32>(&all_vector_chunks, timeline, Vector2D::name());
+                    iter_slices::<[f32; 2]>(&all_vector_chunks, timeline, Vector2D::name());
                 let all_origins = results.iter_as(timeline, Position2D::name());
                 let all_colors = results.iter_as(timeline, Color::name());
                 let all_radii = results.iter_as(timeline, Radius::name());
@@ -238,13 +238,13 @@ impl VisualizerSystem for Arrows2DVisualizer {
 
                 let data = re_query::range_zip_1x7(
                     all_vectors_indexed,
-                    all_origins.primitive_array::<2, f32>(),
-                    all_colors.primitive::<u32>(),
-                    all_radii.primitive::<f32>(),
-                    all_labels.string(),
-                    all_class_ids.primitive::<u16>(),
-                    all_keypoint_ids.primitive::<u16>(),
-                    all_show_labels.bool(),
+                    all_origins.slice::<[f32; 2]>(),
+                    all_colors.slice::<u32>(),
+                    all_radii.slice::<f32>(),
+                    all_labels.slice::<String>(),
+                    all_class_ids.slice::<u16>(),
+                    all_keypoint_ids.slice::<u16>(),
+                    all_show_labels.slice::<bool>(),
                 )
                 .map(
                     |(

@@ -275,7 +275,7 @@ impl SeriesPointSystem {
                 let mut i = 0;
                 all_scalar_chunks
                         .iter()
-                        .flat_map(|chunk| chunk.iter_primitive::<f64>(&Scalar::name()))
+                        .flat_map(|chunk| chunk.iter_slices::<f64>(Scalar::name()))
                         .for_each(|values| {
                             if !values.is_empty() {
                                 if values.len() > 1 {
@@ -318,7 +318,7 @@ impl SeriesPointSystem {
                         re_tracing::profile_scope!("override/default fast path");
 
                         let color = all_color_chunks[0]
-                            .iter_primitive::<u32>(&Color::name())
+                            .iter_slices::<u32>(Color::name())
                             .next()
                             .and_then(map_raw_color);
 
@@ -331,7 +331,7 @@ impl SeriesPointSystem {
                         let all_colors = all_color_chunks.iter().flat_map(|chunk| {
                             itertools::izip!(
                                 chunk.iter_component_indices(&query.timeline(), &Color::name()),
-                                chunk.iter_primitive::<u32>(&Color::name())
+                                chunk.iter_slices::<u32>(Color::name())
                             )
                         });
 
@@ -360,7 +360,7 @@ impl SeriesPointSystem {
                         re_tracing::profile_scope!("override/default fast path");
 
                         let marker_size = all_marker_size_chunks[0]
-                            .iter_primitive::<f32>(&MarkerSize::name())
+                            .iter_slices::<f32>(MarkerSize::name())
                             .next()
                             .and_then(|marker_sizes| marker_sizes.first().copied());
 
@@ -377,7 +377,7 @@ impl SeriesPointSystem {
                             itertools::izip!(
                                 chunk
                                     .iter_component_indices(&query.timeline(), &MarkerSize::name()),
-                                chunk.iter_primitive::<f32>(&MarkerSize::name())
+                                chunk.iter_slices::<f32>(Color::name())
                             )
                         });
 

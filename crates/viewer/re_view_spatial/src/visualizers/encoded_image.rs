@@ -133,7 +133,7 @@ impl EncodedImageVisualizer {
         results: &HybridResults<'_>,
         spatial_ctx: &SpatialSceneEntityContext<'_>,
     ) {
-        use super::entity_iterator::iter_buffer;
+        use super::entity_iterator::iter_slices;
         use re_view::RangeResultsExt as _;
 
         let entity_path = ctx.target_entity_path;
@@ -143,14 +143,14 @@ impl EncodedImageVisualizer {
         };
 
         let timeline = ctx.query.timeline();
-        let all_blobs_indexed = iter_buffer::<u8>(&all_blob_chunks, timeline, Blob::name());
+        let all_blobs_indexed = iter_slices::<&[u8]>(&all_blob_chunks, timeline, Blob::name());
         let all_media_types = results.iter_as(timeline, MediaType::name());
         let all_opacities = results.iter_as(timeline, Opacity::name());
 
         for ((_time, tensor_data_row_id), blobs, media_types, opacities) in re_query::range_zip_1x2(
             all_blobs_indexed,
-            all_media_types.string(),
-            all_opacities.primitive::<f32>(),
+            all_media_types.slice::<String>(),
+            all_opacities.slice::<f32>(),
         ) {
             let Some(blob) = blobs.first() else {
                 continue;

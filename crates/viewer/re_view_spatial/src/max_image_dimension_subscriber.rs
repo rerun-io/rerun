@@ -84,8 +84,8 @@ impl PerStoreChunkSubscriber for MaxImageDimensionsStoreSubscriber {
             }
 
             // Handle `ImageEncoded`, `AssetVideo`…
-            let blobs = event.diff.chunk.iter_buffer(&Blob::name());
-            let media_types = event.diff.chunk.iter_string(&MediaType::name());
+            let blobs = event.diff.chunk.iter_slices::<&[u8]>(Blob::name());
+            let media_types = event.diff.chunk.iter_slices::<String>(MediaType::name());
             for (blob, media_type) in
                 itertools::izip!(blobs, media_types.map(Some).chain(std::iter::repeat(None)))
             {

@@ -110,9 +110,9 @@ impl TextLogSystem {
         let all_colors = results.iter_as(timeline, Color::name());
 
         let all_frames = range_zip_1x2(
-            all_texts.string(),
-            all_levels.string(),
-            all_colors.primitive::<u32>(),
+            all_texts.slice::<String>(),
+            all_levels.slice::<String>(),
+            all_colors.slice::<u32>(),
         );
 
         let all_frames = izip!(all_timepoints, all_frames);

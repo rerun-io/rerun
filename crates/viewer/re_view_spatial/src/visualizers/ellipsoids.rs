@@ -133,7 +133,7 @@ impl VisualizerSystem for Ellipsoids3DVisualizer {
             &Fallback,
         );
 
-        use super::entity_iterator::{iter_primitive_array, process_archetype};
+        use super::entity_iterator::{iter_slices, process_archetype};
         process_archetype::<Self, Ellipsoids3D, _>(
             ctx,
             view_query,
@@ -148,7 +148,7 @@ impl VisualizerSystem for Ellipsoids3DVisualizer {
 
                 let num_ellipsoids: usize = all_half_size_chunks
                     .iter()
-                    .flat_map(|chunk| chunk.iter_primitive_array::<3, f32>(&HalfSize3D::name()))
+                    .flat_map(|chunk| chunk.iter_slices::<[f32; 3]>(HalfSize3D::name()))
                     .map(|vectors| vectors.len())
                     .sum();
                 if num_ellipsoids == 0 {
@@ -161,11 +161,8 @@ impl VisualizerSystem for Ellipsoids3DVisualizer {
                 // line_builder.reserve_vertices(num_ellipsoids * sphere_mesh.vertex_count)?;
 
                 let timeline = ctx.query.timeline();
-                let all_half_sizes_indexed = iter_primitive_array::<3, f32>(
-                    &all_half_size_chunks,
-                    timeline,
-                    HalfSize3D::name(),
-                );
+                let all_half_sizes_indexed =
+                    iter_slices::<[f32; 3]>(&all_half_size_chunks, timeline, HalfSize3D::name());
                 let all_colors = results.iter_as(timeline, Color::name());
                 let all_line_radii = results.iter_as(timeline, Radius::name());
                 // Deserialized because it's a union.
@@ -176,12 +173,12 @@ impl VisualizerSystem for Ellipsoids3DVisualizer {
 
                 let data = re_query::range_zip_1x6(
                     all_half_sizes_indexed,
-                    all_colors.primitive::<u32>(),
-                    all_line_radii.primitive::<f32>(),
-                    all_fill_modes.primitive::<u8>(),
-                    all_labels.string(),
-                    all_class_ids.primitive::<u16>(),
-                    all_show_labels.bool(),
+                    all_colors.slice::<u32>(),
+                    all_line_radii.slice::<f32>(),
+                    all_fill_modes.slice::<u8>(),
+                    all_labels.slice::<String>(),
+                    all_class_ids.slice::<u16>(),
+                    all_show_labels.slice::<bool>(),
                 )
                 .map(
                     |(
