@@ -200,27 +200,6 @@ impl Chunk {
         }
     }
 
-    /// Returns an iterator over the raw arrays of a [`Chunk`], for a given component.
-    ///
-    /// See also:
-    /// * [`Self::iter_primitive`]
-    /// * [`Self::iter_primitive_array`]
-    /// * [`Self::iter_primitive_array_list`]
-    /// * [`Self::iter_string`]
-    /// * [`Self::iter_buffer`].
-    /// * [`Self::iter_component`].
-    #[inline]
-    pub fn iter_component_arrays(
-        &self,
-        component_name: &ComponentName,
-    ) -> impl Iterator<Item = Box<dyn Arrow2Array>> + '_ {
-        let Some(list_array) = self.get_first_component(component_name) else {
-            return Either::Left(std::iter::empty());
-        };
-
-        Either::Right(list_array.iter().flatten())
-    }
-
     /// Returns an iterator over the raw primitive values of a [`Chunk`], for a given component.
     ///
     /// This is a very fast path: the entire column will be downcasted at once, and then every
