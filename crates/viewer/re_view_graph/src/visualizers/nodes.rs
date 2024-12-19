@@ -120,6 +120,10 @@ impl VisualizerSystem for NodeVisualizer {
                             text: label.clone(),
                             color,
                         },
+                        (None, true) => Label::Text {
+                            text: node.0 .0.clone(),
+                            color,
+                        },
                         _ => Label::Circle {
                             // Radius is negative for UI radii, but we don't handle this here.
                             radius: radius.unwrap_or(FALLBACK_RADIUS).abs(),
