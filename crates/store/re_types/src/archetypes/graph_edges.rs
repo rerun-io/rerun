@@ -22,8 +22,6 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// By default, edges are undirected.
 ///
-/// ⚠️ **This type is experimental and may be removed in future versions**
-///
 /// ## Example
 ///
 /// ### Simple directed graph

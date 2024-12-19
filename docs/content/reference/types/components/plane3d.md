@@ -23,8 +23,8 @@ FixedSizeList<4, float32>
 ```
 
 ## API reference links
- * 🌊 [C++ API docs for `Plane3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1Plane3D.html?speculative-link)
- * 🐍 [Python API docs for `Plane3D`](https://ref.rerun.io/docs/python/stable/common/components?speculative-link#rerun.components.Plane3D)
- * 🦀 [Rust API docs for `Plane3D`](https://docs.rs/rerun/latest/rerun/components/struct.Plane3D.html?speculative-link)
+ * 🌊 [C++ API docs for `Plane3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1Plane3D.html)
+ * 🐍 [Python API docs for `Plane3D`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.Plane3D)
+ * 🦀 [Rust API docs for `Plane3D`](https://docs.rs/rerun/latest/rerun/components/struct.Plane3D.html)
 
 

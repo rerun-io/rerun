@@ -62,7 +62,8 @@ impl VisualizerSystem for EdgesVisualizer {
             let all_indexed_edges = results.iter_as(query.timeline, components::GraphEdge::name());
             let graph_type = results.get_mono_with_fallback::<components::GraphType>();
 
-            for (_index, edges) in all_indexed_edges.component::<GraphEdge>() {
+            // TODO(cmc): Provide a `iter_struct`.
+            for (_index, edges) in all_indexed_edges.component_slow::<GraphEdge>() {
                 let edges = edges
                     .iter()
                     .enumerate()

@@ -24,5 +24,5 @@ FixedSizeList<2, float32>
 
 * [`Arrows2D`](../archetypes/arrows2d.md)
 * [`Boxes2D`](../archetypes/boxes2d.md)
-* [`GraphNodes`](../archetypes/graph_nodes.md?speculative-link)
+* [`GraphNodes`](../archetypes/graph_nodes.md)
 * [`Points2D`](../archetypes/points2d.md)

@@ -15,7 +15,7 @@ pub struct DesignTokens {
     /// Color table for all colors used in the UI.
     ///
     /// Loaded at startup from `design_tokens.json`.
-    color_table: ColorTable,
+    pub color_table: ColorTable,
 
     // TODO(ab): get rid of these, they should be function calls like the rest.
     pub top_bar_color: egui::Color32,

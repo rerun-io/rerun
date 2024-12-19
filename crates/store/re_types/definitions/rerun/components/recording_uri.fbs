@@ -4,8 +4,7 @@ namespace rerun.components;
 
 /// A recording URI (Uniform Resource Identifier).
 table RecordingUri (
-  "attr.rust.derive": "PartialEq, Eq, PartialOrd, Ord, Hash",
-  "attr.docs.unreleased"
+  "attr.rust.derive": "PartialEq, Eq, PartialOrd, Ord, Hash"
 ) {
   recording_uri: rerun.datatypes.Utf8 (order: 100);
 }

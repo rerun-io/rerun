@@ -44,8 +44,6 @@ namespace rerun::archetypes {
     ///     );
     /// }
     /// ```
-    ///
-    /// ⚠ **This is an experimental API! It is not fully supported, and is likely to change significantly in future versions.**
     struct GraphEdges {
         /// A list of node tuples.
         Collection<rerun::components::GraphEdge> edges;

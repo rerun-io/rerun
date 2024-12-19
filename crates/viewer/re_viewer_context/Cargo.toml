@@ -75,6 +75,7 @@ wgpu.workspace = true
 arboard = { workspace = true, default-features = false, features = [
   "image-data",
 ] }
+home.workspace = true
 
 # Web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]

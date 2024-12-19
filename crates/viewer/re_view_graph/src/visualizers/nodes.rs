@@ -41,7 +41,6 @@ pub enum Label {
 /// A [`NodeInstance`] is the output of the [`NodeVisualizer`] and represents a single node in the graph.
 #[derive(Clone)]
 pub struct NodeInstance {
-    pub graph_node: components::GraphNode,
     pub instance_index: Instance,
     pub id: NodeId,
     pub position: Option<egui::Pos2>,
@@ -89,8 +88,9 @@ impl VisualizerSystem for NodeVisualizer {
                 .map_or(true, bool::from);
 
             let data = range_zip_1x4(
-                all_indexed_nodes.component::<components::GraphNode>(),
-                all_colors.component::<components::Color>(),
+                // TODO(cmc): Provide a `iter_struct`.
+                all_indexed_nodes.component_slow::<components::GraphNode>(),
+                all_colors.primitive::<u32>(),
                 all_positions.primitive_array::<2, f32>(),
                 all_labels.string(),
                 all_radii.primitive::<f32>(),
@@ -101,7 +101,7 @@ impl VisualizerSystem for NodeVisualizer {
                     nodes.iter(),
                     (0..).map(Instance::from),
                     colors.unwrap_or_default().iter().map(Option::Some),
-                    Option::<&Color>::default,
+                    Option::<&u32>::default,
                     positions
                         .unwrap_or_default()
                         .iter()
@@ -114,7 +114,7 @@ impl VisualizerSystem for NodeVisualizer {
                     Option::<f32>::default,
                 )
                 .map(|(node, instance, color, position, label, radius)| {
-                    let color = color.map(|&c| egui::Color32::from(c));
+                    let color = color.map(|&c| egui::Color32::from(Color::new(c)));
                     let label = match (label, show_label) {
                         (Some(label), true) => Label::Text {
                             text: label.clone(),
@@ -128,7 +128,6 @@ impl VisualizerSystem for NodeVisualizer {
                     };
 
                     NodeInstance {
-                        graph_node: node.clone(),
                         instance_index: instance,
                         id: NodeId::from_entity_node(&data_result.entity_path, node),
                         position: position.map(|[x, y]| egui::Pos2::new(x, y)),

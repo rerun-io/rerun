@@ -19,7 +19,7 @@ pub mod zoom_pan_area;
 use egui::NumExt as _;
 
 pub use self::{
-    color_table::{ColorToken, Hue, Scale},
+    color_table::{ColorTable, ColorToken, Hue, Scale},
     command::{UICommand, UICommandSender},
     command_palette::CommandPalette,
     context_ext::ContextExt,

@@ -111,7 +111,7 @@ impl TextLogSystem {
 
         let all_frames = range_zip_1x2(
             all_texts.string(),
-            all_levels.component(),
+            all_levels.string(),
             all_colors.primitive::<u32>(),
         );
 
@@ -139,7 +139,7 @@ impl TextLogSystem {
                     timepoint: timepoint.clone(),
                     color,
                     body: text.clone().into(),
-                    level,
+                    level: level.clone().map(Into::into),
                 });
             }
         }

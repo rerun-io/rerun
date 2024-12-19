@@ -195,7 +195,7 @@ impl VisualizerSystem for Capsules3DVisualizer {
                     all_radii_indexed,
                     all_colors.primitive::<u32>(),
                     all_labels.string(),
-                    all_show_labels.component::<ShowLabels>(),
+                    all_show_labels.bool(),
                     all_class_ids.primitive::<u16>(),
                 )
                 .map(
@@ -207,7 +207,7 @@ impl VisualizerSystem for Capsules3DVisualizer {
                             labels: labels.unwrap_or_default(),
                             class_ids: class_ids
                                 .map_or(&[], |class_ids| bytemuck::cast_slice(class_ids)),
-                            show_labels: show_labels.unwrap_or_default().first().copied(),
+                            show_labels: show_labels.unwrap_or_default().get(0).map(Into::into),
                         }
                     },
                 );

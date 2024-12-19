@@ -28,7 +28,7 @@ utf8
 * [`Boxes3D`](../archetypes/boxes3d.md)
 * [`Capsules3D`](../archetypes/capsules3d.md)
 * [`Ellipsoids3D`](../archetypes/ellipsoids3d.md)
-* [`GraphNodes`](../archetypes/graph_nodes.md?speculative-link)
+* [`GraphNodes`](../archetypes/graph_nodes.md)
 * [`LineStrips2D`](../archetypes/line_strips2d.md)
 * [`LineStrips3D`](../archetypes/line_strips3d.md)
 * [`Points2D`](../archetypes/points2d.md)

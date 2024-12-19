@@ -33,7 +33,7 @@ snippet: archetypes/points3d_send_columns.py
 
 ### Using `send_columns` for logging custom components
 
-An entire batch of a custom component can be logged at once using [`rr.AnyBatchValue`](https://ref.rerun.io/docs/python/0.20.0/common/custom_data/#rerun.AnyBatchValue?speculative-link) along with `send_column`:
+An entire batch of a custom component can be logged at once using [`rr.AnyBatchValue`](https://ref.rerun.io/docs/python/0.20.0/common/custom_data/#rerun.AnyBatchValue) along with `send_column`:
 
 snippet: howto/any_batch_value_send_columns
 
