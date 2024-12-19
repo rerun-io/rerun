@@ -82,10 +82,6 @@ impl LayoutState {
         *self = Self::None;
     }
 
-    pub fn is_none(&self) -> bool {
-        matches!(self, Self::None)
-    }
-
     pub fn is_in_progress(&self) -> bool {
         matches!(self, Self::InProgress { .. })
     }
