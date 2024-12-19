@@ -157,21 +157,25 @@ impl ColorTable {
     }
 
     #[inline]
+    #[allow(dead_code)]
     pub fn green(&self, shade: Scale) -> egui::Color32 {
         self.get(ColorToken::green(shade))
     }
 
     #[inline]
+    #[allow(dead_code)]
     pub fn red(&self, shade: Scale) -> egui::Color32 {
         self.get(ColorToken::red(shade))
     }
 
     #[inline]
+    #[allow(dead_code)]
     pub fn blue(&self, shade: Scale) -> egui::Color32 {
         self.get(ColorToken::blue(shade))
     }
 
     #[inline]
+    #[allow(dead_code)]
     pub fn purple(&self, shade: Scale) -> egui::Color32 {
         self.get(ColorToken::purple(shade))
     }
