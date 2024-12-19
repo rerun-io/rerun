@@ -484,7 +484,7 @@ async fn stream_catalog_async(
             )))?;
 
         let recording_uri_arrays: Vec<Box<dyn Arrow2Array>> = chunk
-            .iter_component_arrays(&"id".into())
+            .iter_component_arrays_arrow2(&"id".into())
             .map(|id| {
                 let rec_id = id
                     .as_any()

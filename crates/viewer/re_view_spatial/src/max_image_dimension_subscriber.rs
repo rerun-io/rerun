@@ -1,4 +1,3 @@
-use arrow2::array::Array;
 use nohash_hasher::IntMap;
 use once_cell::sync::OnceCell;
 
@@ -104,13 +103,16 @@ impl PerStoreChunkSubscriber for MaxImageDimensionsStoreSubscriber {
     }
 }
 
-fn size_from_blob(blob: &dyn Array, media_type: Option<&dyn Array>) -> Option<[u32; 2]> {
+fn size_from_blob(
+    blob: &dyn arrow::array::Array,
+    media_type: Option<&dyn arrow::array::Array>,
+) -> Option<[u32; 2]> {
     re_tracing::profile_function!();
 
-    let blob = Blob::from_arrow2_opt(blob).ok()?.first()?.clone()?;
+    let blob = Blob::from_arrow_opt(blob).ok()?.first()?.clone()?;
 
     let media_type: Option<MediaType> = media_type
-        .and_then(|media_type| MediaType::from_arrow2_opt(media_type).ok())
+        .and_then(|media_type| MediaType::from_arrow_opt(media_type).ok())
         .and_then(|list| list.first().cloned())
         .flatten();
 
