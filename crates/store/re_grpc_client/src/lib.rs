@@ -191,12 +191,11 @@ async fn stream_recording_async(
         .await
         .map_err(TonicStatusError)?
         .into_inner()
-        .filter_map(|resp| {
+        .map(|resp| {
             resp.and_then(|r| {
                 decode(r.encoder_version(), &r.payload)
                     .map_err(|err| tonic::Status::internal(err.to_string()))
             })
-            .transpose()
         })
         .collect::<Result<Vec<_>, tonic::Status>>()
         .await
@@ -225,12 +224,11 @@ async fn stream_recording_async(
         .await
         .map_err(TonicStatusError)?
         .into_inner()
-        .filter_map(|resp| {
+        .map(|resp| {
             resp.and_then(|r| {
                 decode(r.encoder_version(), &r.payload)
                     .map_err(|err| tonic::Status::internal(err.to_string()))
             })
-            .transpose()
         });
 
     drop(client);
@@ -340,7 +338,6 @@ async fn stream_catalog_async(
     re_log::debug!("Fetching catalog…");
 
     let mut resp = client
-        // TODO(zehiko) add support for fetching specific columns and rows
         .query_catalog(QueryCatalogRequest {
             column_projection: None, // fetch all columns
             filter: None,            // fetch all rows
@@ -348,12 +345,11 @@ async fn stream_catalog_async(
         .await
         .map_err(TonicStatusError)?
         .into_inner()
-        .filter_map(|resp| {
+        .map(|resp| {
             resp.and_then(|r| {
                 decode(r.encoder_version(), &r.payload)
                     .map_err(|err| tonic::Status::internal(err.to_string()))
             })
-            .transpose()
         });
 
     drop(client);
