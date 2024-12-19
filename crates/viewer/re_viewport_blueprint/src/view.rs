@@ -71,12 +71,16 @@ impl ViewBlueprint {
     pub fn new(view_class: ViewClassIdentifier, recommended: RecommendedView) -> Self {
         let id = ViewId::random();
 
+        // TODO(andreas): do we need more context here?
+        let path_subs = EntityPathSubs::new_with_origin(&recommended.origin);
+        let query_filter = recommended.query_filter.resolve_forgiving(&path_subs);
+
         Self {
             display_name: None,
             class_identifier: view_class,
             id,
             space_origin: recommended.origin,
-            contents: ViewContents::new(id, view_class, recommended.query_filter),
+            contents: ViewContents::new(id, view_class, query_filter),
             visible: true,
             defaults_path: Self::defaults_path(id),
             pending_writes: Default::default(),

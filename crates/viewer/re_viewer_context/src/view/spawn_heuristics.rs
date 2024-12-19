@@ -1,4 +1,4 @@
-use re_log_types::{hash::Hash64, EntityPath, EntityPathFilter, EntityPathSubs};
+use re_log_types::{hash::Hash64, EntityPath, EntityPathFilter};
 use re_types::ViewClassIdentifier;
 
 /// Properties of a view that as recommended to be spawned by default via view spawn heuristics.
@@ -48,25 +48,19 @@ impl ViewSpawnHeuristics {
 
 impl RecommendedView {
     #[inline]
-    pub fn new<'a>(origin: EntityPath, expressions: impl IntoIterator<Item = &'a str>) -> Self {
-        let space_env = EntityPathSubs::new_with_origin(&origin);
+    pub fn new_subtree(origin: EntityPath) -> Self {
         Self {
             origin,
-            query_filter: EntityPathFilter::from_query_expressions_forgiving(
-                expressions,
-                &space_env,
-            ),
+            query_filter: EntityPathFilter::subtree_filter("$origin"),
         }
     }
 
     #[inline]
-    pub fn new_subtree(origin: EntityPath) -> Self {
-        Self::new(origin, std::iter::once("$origin/**"))
-    }
-
-    #[inline]
     pub fn new_single_entity(origin: EntityPath) -> Self {
-        Self::new(origin, std::iter::once("$origin"))
+        Self {
+            origin,
+            query_filter: EntityPathFilter::single_filter("$origin"),
+        }
     }
 
     #[inline]

@@ -10,6 +10,7 @@ use ahash::HashMap;
 use egui_tiles::{SimplificationOptions, TileId};
 use nohash_hasher::IntSet;
 use parking_lot::Mutex;
+use re_log_types::EntityPathSubs;
 use smallvec::SmallVec;
 
 use re_chunk_store::LatestAtQuery;
@@ -350,6 +351,17 @@ impl ViewportBlueprint {
                 );
             }
 
+            // Resolve query filters for the recommended views.
+            let mut recommended_views = recommended_views
+                .into_iter()
+                .map(|view| {
+                    // Today this looks trivial and something like we could do during recommendation-creation. But in the future variable substitutions might become more complex!
+                    let path_subs = EntityPathSubs::new_with_origin(&view.origin);
+                    let query_filter = view.query_filter.clone().resolve_forgiving(&path_subs);
+                    (query_filter, view)
+                })
+                .collect::<Vec<_>>();
+
             // Remove all views that have all the entities we already have on screen.
             let existing_path_filters = self
                 .views
@@ -357,10 +369,10 @@ impl ViewportBlueprint {
                 .filter(|view| view.class_identifier() == class_id)
                 .map(|view| &view.contents.entity_path_filter)
                 .collect::<Vec<_>>();
-            recommended_views.retain(|recommended_view| {
-                existing_path_filters.iter().all(|existing_filter| {
-                    !existing_filter.is_superset_of(&recommended_view.query_filter)
-                })
+            recommended_views.retain(|(query_filter, _)| {
+                existing_path_filters
+                    .iter()
+                    .all(|existing_filter| !existing_filter.is_superset_of(&query_filter))
             });
 
             // Remove all views that are redundant within the remaining recommendation.
@@ -368,16 +380,20 @@ impl ViewportBlueprint {
             let final_recommendations = recommended_views
                 .iter()
                 .enumerate()
-                .filter(|(j, candidate)| {
-                    recommended_views.iter().enumerate().all(|(i, other)| {
-                        i == *j || !other.query_filter.is_superset_of(&candidate.query_filter)
-                    })
+                .filter(|(j, (candidate_query_filter, _))| {
+                    recommended_views
+                        .iter()
+                        .enumerate()
+                        .all(|(i, (other_query_filter, _))| {
+                            i == *j || !other_query_filter.is_superset_of(&candidate_query_filter)
+                        })
                 })
                 .map(|(_, recommendation)| recommendation);
 
             self.add_views(
-                final_recommendations
-                    .map(|recommendation| ViewBlueprint::new(class_id, recommendation.clone())),
+                final_recommendations.map(|(_, recommendation)| {
+                    ViewBlueprint::new(class_id, recommendation.clone())
+                }),
                 None,
                 None,
             );

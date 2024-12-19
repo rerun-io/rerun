@@ -25,7 +25,7 @@ use re_chunk_store::{
 };
 use re_dataframe::{QueryEngine, StorageEngine};
 use re_log_encoding::VersionPolicy;
-use re_log_types::{EntityPathFilter, ResolvedTimeRange, TimeType};
+use re_log_types::{EntityPathFilter, EntityPathSubs, ResolvedTimeRange, TimeType};
 use re_sdk::{ComponentName, EntityPath, StoreId, StoreKind};
 
 /// Register the `rerun.dataframe` module.
@@ -1161,11 +1161,13 @@ impl PyRecording {
             // `str`
 
             let path_filter =
-                EntityPathFilter::parse_strict(&expr, &Default::default()).map_err(|err| {
-                    PyValueError::new_err(format!(
-                        "Could not interpret `contents` as a ViewContentsLike. Failed to parse {expr}: {err}.",
-                    ))
-                })?;
+                EntityPathFilter::parse_strict(&expr)
+                    .and_then(|epf| epf.resolve_strict(&EntityPathSubs::empty()))
+                    .map_err(|err| {
+                        PyValueError::new_err(format!(
+                            "Could not interpret `contents` as a ViewContentsLike. Failed to parse {expr}: {err}.",
+                        ))
+                    })?;
 
             let contents = engine
                 .iter_entity_paths_sorted(&path_filter)
@@ -1185,7 +1187,7 @@ impl PyRecording {
                     )
                 })?;
 
-                let path_filter = EntityPathFilter::parse_strict(&key, &Default::default()).map_err(|err| {
+                let path_filter = EntityPathFilter::parse_strict(&key).and_then(|epf| epf.resolve_strict(&EntityPathSubs::empty())).map_err(|err| {
                     PyValueError::new_err(format!(
                         "Could not interpret `contents` as a ViewContentsLike. Failed to parse {key}: {err}.",
                     ))
