@@ -23,7 +23,29 @@
 namespace rerun::archetypes {
     /// **Archetype**: A list of nodes in a graph with optional labels, colors, etc.
     ///
-    /// ⚠ **This is an experimental API! It is not fully supported, and is likely to change significantly in future versions.**
+    /// ## Example
+    ///
+    /// ### Simple directed graph
+    /// ![image](https://static.rerun.io/graph_directed/ca29a37b65e1e0b6482251dce401982a0bc568fa/full.png)
+    ///
+    /// ```cpp
+    /// #include <rerun.hpp>
+    ///
+    /// int main() {
+    ///     const auto rec = rerun::RecordingStream("rerun_example_graph_directed");
+    ///     rec.spawn().exit_on_failure();
+    ///
+    ///     rec.log(
+    ///         "simple",
+    ///         rerun::GraphNodes({"a", "b", "c"})
+    ///             .with_positions({{0.0, 100.0}, {-100.0, 0.0}, {100.0, 0.0}})
+    ///             .with_labels({"A", "B", "C"}),
+    ///         rerun::GraphEdges({{"a", "b"}, {"b", "c"}, {"c", "a"}})
+    ///             // Graphs are undirected by default.
+    ///             .with_graph_type(rerun::components::GraphType::Directed)
+    ///     );
+    /// }
+    /// ```
     struct GraphNodes {
         /// A list of node IDs.
         Collection<rerun::components::GraphNode> node_ids;

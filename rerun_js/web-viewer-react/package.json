@@ -1,6 +1,6 @@
 {
   "name": "@rerun-io/web-viewer-react",
-  "version": "0.21.0-alpha.1+dev",
+  "version": "0.22.0-alpha.1+dev",
   "description": "Embed the Rerun web viewer in your React app",
   "licenses": [
     {
@@ -39,7 +39,7 @@
     "tsconfig.json"
   ],
   "dependencies": {
-    "@rerun-io/web-viewer": "0.21.0-alpha.1",
+    "@rerun-io/web-viewer": "0.22.0-alpha.1",
     "@types/react": "^18.2.33",
     "react": "^18.2.0"
   },

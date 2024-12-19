@@ -72,9 +72,9 @@ def log_data() -> None:
     rr.set_time_sequence("steps", 4)
     path += "scale_back_mat3x3/"
     # fmt: off
-    rr.log(path, rr.Transform3D(mat3x3=[1.0, 0.0,  0.0,
-                                          0.0, 5.0, 0.0,
-                                          0.0, 0.0, 1.0]))
+    rr.log(path, rr.Transform3D(mat3x3=[1.0, 0.0, 0.0,
+                                        0.0, 5.0, 0.0,
+                                        0.0, 0.0, 1.0]))
     # fmt: on
 
     rr.set_time_sequence("steps", 5)
@@ -112,7 +112,8 @@ def log_data() -> None:
 
 
 def run(args: Namespace) -> None:
-    rr.script_setup(args, f"{os.path.basename(__file__)}", recording_id=uuid4(), default_blueprint=blueprint())
+    rr.script_setup(args, f"{os.path.basename(__file__)}", recording_id=uuid4())
+    rr.send_blueprint(blueprint(), make_active=True, make_default=True)
 
     # Extract the rerun_obj.zip file
     with zipfile.ZipFile(f"{rerun_obj_path}.zip", "r") as zip_ref:

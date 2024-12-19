@@ -21,7 +21,9 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Archetype**: Tries to move the center of mass of the graph to the origin.
 #[derive(Clone, Debug)]
 pub struct ForceCenter {
-    /// Whether the force is enabled.
+    /// Whether the center force is enabled.
+    ///
+    /// The center force tries to move the center of mass of the graph towards the origin.
     pub enabled: Option<crate::blueprint::components::Enabled>,
 
     /// The strength of the force.
@@ -207,7 +209,9 @@ impl ForceCenter {
         }
     }
 
-    /// Whether the force is enabled.
+    /// Whether the center force is enabled.
+    ///
+    /// The center force tries to move the center of mass of the graph towards the origin.
     #[inline]
     pub fn with_enabled(
         mut self,

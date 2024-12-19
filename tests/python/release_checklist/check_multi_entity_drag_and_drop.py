@@ -9,32 +9,13 @@ import rerun as rr
 import rerun.blueprint as rrb
 
 README = """\
-# Drag-and-drop selection
+# Multi-entity drag-and-drop
 
-The goal of this test is to test the selection behavior of drag-and-drop.
+This test checks that dragging multiple entities to a view correctly adds all entities.
 
-#### View selects on a successful drop
-
-1. Select the `cos_curve` entity in the streams tree.
-2. Drag it to the PLOT view and drop it.
-3. _Expect_: the entity is added to the view, and the view becomes selected.
-
-
-#### View doesn't select on a failed drop
-
-1. Select the `cos_curve` entity again.
-2. Drag it to the PLOT view (it should be rejected) and drop it.
-3. _Expect_: nothing happens, and the selection is not changed.
-
-
-#### Dragging an unselected item doesn't change the selection
-
-1. Select the PLOT view.
-2. Drag drag the `line_curve` entity to the PLOT view and drop it.
-2. _Expect_:
-    - The selection remains unchanged (the PLOT view is still selected).
-    - The `line_curve` entity is added to the view.
-
+1. Multi-select `cos_curve` and `line_curve` entities in the streams tree.
+2. Drag them to the PLOT view.
+3. _Expect_: both entities are visible in the plot view and each are listed in the view's entity path filter.
 """
 
 
@@ -43,9 +24,9 @@ def log_readme() -> None:
 
 
 def blueprint() -> rrb.BlueprintLike:
-    return rrb.Horizontal(
-        rrb.TimeSeriesView(origin="/", contents=[], name="PLOT"),
+    return rrb.Vertical(
         rrb.TextDocumentView(origin="readme"),
+        rrb.TimeSeriesView(origin="/", contents=[], name="PLOT"),
     )
 
 
@@ -64,7 +45,7 @@ def log_some_scalar_entities() -> None:
 
 def run(args: Namespace) -> None:
     rr.script_setup(args, f"{os.path.basename(__file__)}", recording_id=uuid4())
-    rr.send_blueprint(blueprint(), make_active=True, make_default=True)
+    rr.send_blueprint(blueprint(), make_default=True, make_active=True)
 
     log_readme()
     log_some_scalar_entities()

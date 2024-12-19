@@ -28,6 +28,40 @@ class Ellipsoids3D(Ellipsoids3DExt, Archetype):
     Note that orienting and placing the ellipsoids/spheres is handled via `[archetypes.InstancePoses3D]`.
     Some of its component are repeated here for convenience.
     If there's more instance poses than half sizes, the last half size will be repeated for the remaining poses.
+
+    Example
+    -------
+    ### Covariance ellipsoid:
+    ```python
+    import numpy as np
+    import rerun as rr
+
+    rr.init("rerun_example_ellipsoid_simple", spawn=True)
+
+    center = np.array([0, 0, 0])
+    sigmas = np.array([5, 3, 1])
+    points = np.random.randn(50_000, 3) * sigmas.reshape(1, -1)
+
+    rr.log("points", rr.Points3D(points, radii=0.02, colors=[188, 77, 185]))
+    rr.log(
+        "ellipsoid",
+        rr.Ellipsoids3D(
+            centers=[center, center],
+            half_sizes=[sigmas, 3 * sigmas],
+            colors=[[255, 255, 0], [64, 64, 0]],
+        ),
+    )
+    ```
+    <center>
+    <picture>
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/elliopsoid3d_simple/bd5d46e61b80ae44792b52ee07d750a7137002ea/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/elliopsoid3d_simple/bd5d46e61b80ae44792b52ee07d750a7137002ea/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/elliopsoid3d_simple/bd5d46e61b80ae44792b52ee07d750a7137002ea/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/elliopsoid3d_simple/bd5d46e61b80ae44792b52ee07d750a7137002ea/1200w.png">
+      <img src="https://static.rerun.io/elliopsoid3d_simple/bd5d46e61b80ae44792b52ee07d750a7137002ea/full.png" width="640">
+    </picture>
+    </center>
+
     """
 
     # __init__ can be found in ellipsoids3d_ext.py

@@ -189,7 +189,7 @@ jobs:
                 - [ ] cargo install of cli tool: does it install and run?
                 - [ ] C++ SDK zip: does it contain rerun_c for all platforms?
               - [ ] Populate the release with the changelog and a nice header video/picture, check `Set as latest release`, then click `Publish release`.
-              - [ ] Update the [google colab notebooks](https://drive.google.com/drive/folders/0AC0q24MFKh3fUk9PVA) to install this version and re-execute the notebook.
+              - [ ] Update the [google colab notebooks](https://colab.research.google.com/drive/1R9I7s4o6wydQC_zkybqaSRFTtlEaked_) to install this version and re-execute the notebook.
               - [ ] Update landing's version of the web viewer (@jprochazk)
 
           A few hours after the GitHub release is created, `regro-cf-autotick-bot` will create a
@@ -321,7 +321,7 @@ jobs:
 
   github-release:
     name: "GitHub Release"
-    if: inputs.release-type == 'final'
+    if: inputs.release-type == 'rc' || inputs.release-type == 'final'
     needs:
       [
         version,
@@ -347,9 +347,16 @@ jobs:
         run: |
           version="${{ needs.version.outputs.final }}"
           commit="${{ needs.version.outputs.release-commit }}"
+
+          if [ ${{ inputs.release-type }} = "final" ]; then
+            pre_arg=""
+          else
+            pre_arg="--prerelease"
+          fi
+
           git tag $version $commit
           git push origin $version
-          gh release create $version --verify-tag --draft --title $version
+          gh release create $version --verify-tag --draft --title $version $pre_arg
 
       - name: Create comment
         env:

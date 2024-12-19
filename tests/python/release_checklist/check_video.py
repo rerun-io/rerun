@@ -66,19 +66,18 @@ def run(args: Namespace) -> None:
         static=True,  # Static, so it shows up in the "video_time" timeline!
     )
 
-    rr.send_blueprint(
-        rrb.Blueprint(
-            rrb.Grid(
-                rrb.TextDocumentView(origin="readme", name="Instructions"),
-                rrb.Spatial3DView(origin="/", name="AV1 frustum", contents="av1"),
-                rrb.Spatial2DView(origin="av1", name="AV1"),
-                rrb.Spatial2DView(origin="h264", name="H.264"),
-                rrb.Spatial2DView(origin="h265", name="H.265"),
-                rrb.Spatial2DView(origin="vp9", name="VP9"),
-            ),
-            rrb.TimePanel(state="collapsed"),
-        )
+    blueprint = rrb.Blueprint(
+        rrb.Grid(
+            rrb.TextDocumentView(origin="readme", name="Instructions"),
+            rrb.Spatial3DView(origin="/", name="AV1 frustum", contents="av1"),
+            rrb.Spatial2DView(origin="av1", name="AV1"),
+            rrb.Spatial2DView(origin="h264", name="H.264"),
+            rrb.Spatial2DView(origin="h265", name="H.265"),
+            rrb.Spatial2DView(origin="vp9", name="VP9"),
+        ),
     )
+
+    rr.send_blueprint(blueprint, make_active=True, make_default=True)
 
 
 if __name__ == "__main__":

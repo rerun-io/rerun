@@ -3,7 +3,6 @@ use re_chunk::LatestAtQuery;
 use re_log_types::{EntityPath, Instance};
 use re_query::{clamped_zip_2x4, range_zip_1x4};
 use re_types::components::{Color, Radius, ShowLabels};
-use re_types::datatypes::Float32;
 use re_types::{
     self, archetypes,
     components::{self},
@@ -23,6 +22,8 @@ pub struct NodeVisualizer {
     pub data: ahash::HashMap<EntityPath, NodeData>,
 }
 
+pub const FALLBACK_RADIUS: f32 = 4.0;
+
 /// The label information of a [`re_types::archetypes::GraphNodes`].
 #[derive(Clone)]
 pub enum Label {
@@ -40,7 +41,6 @@ pub enum Label {
 /// A [`NodeInstance`] is the output of the [`NodeVisualizer`] and represents a single node in the graph.
 #[derive(Clone)]
 pub struct NodeInstance {
-    pub graph_node: components::GraphNode,
     pub instance_index: Instance,
     pub id: NodeId,
     pub position: Option<egui::Pos2>,
@@ -120,13 +120,13 @@ impl VisualizerSystem for NodeVisualizer {
                             color,
                         },
                         _ => Label::Circle {
-                            radius: radius.unwrap_or(4.0),
+                            // Radius is negative for UI radii, but we don't handle this here.
+                            radius: radius.unwrap_or(FALLBACK_RADIUS).abs(),
                             color,
                         },
                     };
 
                     NodeInstance {
-                        graph_node: node.clone(),
                         instance_index: instance,
                         id: NodeId::from_entity_node(&data_result.entity_path, node),
                         position: position.map(|[x, y]| egui::Pos2::new(x, y)),
@@ -160,7 +160,7 @@ impl TypedComponentFallbackProvider<ShowLabels> for NodeVisualizer {
 
 impl TypedComponentFallbackProvider<Radius> for NodeVisualizer {
     fn fallback_for(&self, _ctx: &QueryContext<'_>) -> Radius {
-        Radius(Float32(4.0f32))
+        FALLBACK_RADIUS.into()
     }
 }
 

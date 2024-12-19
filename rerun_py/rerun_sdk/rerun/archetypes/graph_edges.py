@@ -25,7 +25,32 @@ class GraphEdges(Archetype):
 
     By default, edges are undirected.
 
-    ⚠️ **This is an experimental API! It is not fully supported, and is likely to change significantly in future versions.**
+    Example
+    -------
+    ### Simple directed graph:
+    ```python
+    import rerun as rr
+
+    rr.init("rerun_example_graph_directed", spawn=True)
+
+    rr.log(
+        "simple",
+        rr.GraphNodes(
+            node_ids=["a", "b", "c"], positions=[(0.0, 100.0), (-100.0, 0.0), (100.0, 0.0)], labels=["A", "B", "C"]
+        ),
+        rr.GraphEdges(edges=[("a", "b"), ("b", "c"), ("c", "a")], graph_type="directed"),
+    )
+    ```
+    <center>
+    <picture>
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/graph_directed/ca29a37b65e1e0b6482251dce401982a0bc568fa/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/graph_directed/ca29a37b65e1e0b6482251dce401982a0bc568fa/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/graph_directed/ca29a37b65e1e0b6482251dce401982a0bc568fa/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/graph_directed/ca29a37b65e1e0b6482251dce401982a0bc568fa/1200w.png">
+      <img src="https://static.rerun.io/graph_directed/ca29a37b65e1e0b6482251dce401982a0bc568fa/full.png" width="640">
+    </picture>
+    </center>
+
     """
 
     def __init__(self: Any, edges: datatypes.Utf8PairArrayLike, *, graph_type: components.GraphTypeLike | None = None):

@@ -8,6 +8,7 @@ import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
 
+from rerun._validators import flat_np_uint64_array_from_array_like
 from rerun.error_utils import _send_warning_or_raise
 
 from .._unions import build_dense_union
@@ -20,7 +21,7 @@ class TorchTensorLike(Protocol):
 
 
 if TYPE_CHECKING:
-    from . import TensorBufferLike, TensorDataArrayLike, TensorDataLike, TensorDimension, TensorDimensionLike
+    from . import TensorBufferLike, TensorDataArrayLike, TensorDataLike
 
     TensorLike = Union[TensorDataLike, TorchTensorLike]
     """Type helper for a tensor-like object that can be logged to Rerun."""
@@ -48,10 +49,10 @@ class TensorDataExt:
     def __init__(
         self: Any,
         *,
-        shape: Sequence[TensorDimensionLike] | None = None,
+        shape: Sequence[int] | None = None,
         buffer: TensorBufferLike | None = None,
         array: TensorLike | None = None,
-        dim_names: Sequence[str | None] | None = None,
+        dim_names: Sequence[str] | None = None,
     ) -> None:
         """
         Construct a `TensorData` object.
@@ -64,18 +65,18 @@ class TensorDataExt:
 
         Parameters
         ----------
-        self: TensorData
+        self:
             The TensorData object to construct.
-        shape: Sequence[TensorDimensionLike] | None
+        shape:
             The shape of the tensor. If None, and an array is provided, the shape will be inferred
             from the shape of the array.
-        buffer: TensorBufferLike | None
+        buffer:
             The buffer of the tensor. If None, and an array is provided, the buffer will be generated
             from the array.
-        array: Tensor | None
+        array:
             A numpy array (or The array of the tensor. If None, the array will be inferred from the buffer.
-        dim_names: Sequence[str] | None
-            The names of the tensor dimensions when generating the shape from an array.
+        dim_names:
+            The names of the tensor dimensions.
 
         """
         if array is None and buffer is None:
@@ -84,10 +85,8 @@ class TensorDataExt:
             raise ValueError("Can only provide one of 'array' or 'buffer'")
         if buffer is not None and shape is None:
             raise ValueError("If 'buffer' is provided, 'shape' is also required")
-        if shape is not None and dim_names is not None:
-            raise ValueError("Can only provide one of 'shape' or 'names'")
 
-        from . import TensorBuffer, TensorDimension
+        from . import TensorBuffer
         from .tensor_data import _tensor_data__buffer__special_field_converter_override
 
         if shape is not None:
@@ -101,7 +100,7 @@ class TensorDataExt:
 
             # If a shape we provided, it must match the array
             if resolved_shape:
-                shape_tuple = tuple(d.size for d in resolved_shape)
+                shape_tuple = tuple(d for d in resolved_shape)
                 if shape_tuple != array.shape:
                     _send_warning_or_raise(
                         (
@@ -113,21 +112,10 @@ class TensorDataExt:
                 resolved_shape = None
 
             if resolved_shape is None:
-                if dim_names:
-                    if len(array.shape) != len(dim_names):
-                        _send_warning_or_raise(
-                            (
-                                f"len(array.shape) = {len(array.shape)} != "
-                                + f"len(dim_names) = {len(dim_names)}. Dropping tensor dimension names."
-                            ),
-                            2,
-                        )
-                    resolved_shape = [TensorDimension(size, name) for size, name in zip(array.shape, dim_names)]  # type: ignore[arg-type]
-                else:
-                    resolved_shape = [TensorDimension(size) for size in array.shape]
+                resolved_shape = [size for size in array.shape]
 
         if resolved_shape is not None:
-            self.shape = resolved_shape
+            self.shape: npt.NDArray[np.uint64] = resolved_shape
         else:
             # This shouldn't be possible but typing can't figure it out
             raise ValueError("No shape provided.")
@@ -137,7 +125,20 @@ class TensorDataExt:
         elif array is not None:
             self.buffer = TensorBuffer(array.flatten())
 
-        expected_buffer_size = prod(d.size for d in self.shape)
+        self.names: list[str] | None = None
+        if dim_names:
+            if len(self.shape) == len(dim_names):
+                self.names = dim_names
+            else:
+                _send_warning_or_raise(
+                    (
+                        f"len(shape) = {len(self.shape)} != "
+                        + f"len(dim_names) = {len(dim_names)}. Ignoring tensor dimension names."
+                    ),
+                    2,
+                )
+
+        expected_buffer_size = prod(d for d in self.shape)
         if len(self.buffer.inner) != expected_buffer_size:
             raise ValueError(
                 f"Shape and buffer size do not match. {len(self.buffer.inner)} {self.shape}->{expected_buffer_size}"
@@ -166,46 +167,32 @@ class TensorDataExt:
             data = TensorData(array=array)
 
         # Now build the actual arrow fields
-        shape = _build_shape_array(data.shape).cast(data_type.field("shape").type)
+        shape = pa.array([flat_np_uint64_array_from_array_like(data.shape, 1)], type=data_type.field("shape").type)
         buffer = _build_buffer_array(data.buffer)
+
+        if data.names is None:
+            names = pa.array([None], type=data_type.field("names").type)
+        else:
+            names = pa.array([data.names], type=data_type.field("names").type)
 
         return pa.StructArray.from_arrays(
             [
                 shape,
+                names,
                 buffer,
             ],
-            fields=[data_type.field("shape"), data_type.field("buffer")],
+            fields=data_type.fields,
         ).cast(data_type)
 
     def numpy(self: Any, force: bool) -> npt.NDArray[Any]:
         """Convert the TensorData back to a numpy array."""
-        dims = [d.size for d in self.shape]
+        dims = [d for d in self.shape]
         return self.buffer.inner.reshape(dims)  # type: ignore[no-any-return]
 
 
 ################################################################################
 # Internal construction helpers
 ################################################################################
-
-
-def _build_shape_array(dims: list[TensorDimension]) -> pa.Array:
-    from . import TensorDimensionBatch
-
-    data_type = TensorDimensionBatch._ARROW_DATATYPE
-
-    array = np.asarray([d.size for d in dims], dtype=np.uint64).flatten()
-    names = pa.array([d.name for d in dims], mask=[d is None for d in dims], type=data_type.field("name").type)
-
-    return pa.ListArray.from_arrays(
-        offsets=[0, len(array)],
-        values=pa.StructArray.from_arrays(
-            [
-                array,
-                names,
-            ],
-            fields=[data_type.field("size"), data_type.field("name")],
-        ),
-    )
 
 
 DTYPE_MAP: Final[dict[npt.DTypeLike, str]] = {

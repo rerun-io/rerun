@@ -124,7 +124,7 @@ pub fn build(
             cmd.arg("--no-default-features");
         }
         if !features.is_empty() {
-            cmd.arg(&format!("--features={features}"));
+            cmd.arg(format!("--features={features}"));
         }
         if profile == Profile::Release {
             cmd.arg("--release");

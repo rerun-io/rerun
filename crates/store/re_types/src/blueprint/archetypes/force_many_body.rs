@@ -23,7 +23,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// If `strength` is smaller than 0, it pushes nodes apart, if it is larger than 0 it pulls them together.
 #[derive(Clone, Debug)]
 pub struct ForceManyBody {
-    /// Whether the force is enabled.
+    /// Whether the many body force is enabled.
+    ///
+    /// The many body force is applied on each pair of nodes in a way that ressembles an electrical charge. If the
+    /// strength is smaller than 0, it pushes nodes apart; if it is larger than 0, it pulls them together.
     pub enabled: Option<crate::blueprint::components::Enabled>,
 
     /// The strength of the force.
@@ -211,7 +214,10 @@ impl ForceManyBody {
         }
     }
 
-    /// Whether the force is enabled.
+    /// Whether the many body force is enabled.
+    ///
+    /// The many body force is applied on each pair of nodes in a way that ressembles an electrical charge. If the
+    /// strength is smaller than 0, it pushes nodes apart; if it is larger than 0, it pulls them together.
     #[inline]
     pub fn with_enabled(
         mut self,

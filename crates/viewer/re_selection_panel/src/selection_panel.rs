@@ -7,7 +7,7 @@ use re_data_ui::{
     DataUi,
 };
 use re_entity_db::{EntityPath, InstancePath};
-use re_log_types::{ComponentPath, EntityPathFilter};
+use re_log_types::{ComponentPath, EntityPathFilter, EntityPathSubs};
 use re_types::blueprint::components::Interactive;
 use re_ui::{
     icons,
@@ -559,7 +559,12 @@ fn entity_path_filter_ui(
     }
 
     // Apply the edit.
-    let new_filter = EntityPathFilter::parse_forgiving(&filter_string, &Default::default());
+    //
+    // NOTE: The comparison of `EntityPathFilter` is done on the _expanded_ data (i.e. with variables substituted),
+    // so we must make sure to expand the new filter too before we compare it to the existing one.
+    // See <https://github.com/rerun-io/rerun/pull/8526>
+    let new_filter =
+        EntityPathFilter::parse_forgiving(&filter_string, &EntityPathSubs::new_with_origin(origin));
     if &new_filter == filter {
         None // no change
     } else {

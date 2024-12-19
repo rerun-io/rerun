@@ -434,7 +434,7 @@ def publish_crate(crate: Crate, token: str, version: str, env: dict[str, Any]) -
     while True:
         try:
             cargo(
-                f"publish --quiet --token {token}",
+                f"publish --quiet --locked --token {token}",
                 cwd=crate.path,
                 env=env,
                 dry_run=False,

@@ -48,14 +48,6 @@ impl Node {
         }
     }
 
-    /// The original [`components::GraphNode`] id that was logged by the user.
-    pub fn graph_node(&self) -> &components::GraphNode {
-        match self {
-            Self::Explicit { instance, .. } => &instance.graph_node,
-            Self::Implicit { graph_node, .. } => graph_node,
-        }
-    }
-
     pub fn label(&self) -> &DrawableLabel {
         match self {
             Self::Explicit { label, .. } | Self::Implicit { label, .. } => label,
@@ -81,6 +73,7 @@ pub struct Graph {
     entity: EntityPath,
     nodes: Vec<Node>,
     edges: Vec<EdgeTemplate>,
+    #[expect(unused)]
     kind: GraphType,
 }
 
@@ -110,21 +103,19 @@ impl Graph {
 
         let (edges, kind) = if let Some(data) = edge_data {
             for edge in &data.edges {
-                if !seen.contains(&edge.source_index) {
+                if seen.insert(edge.source_index) {
                     nodes.push(Node::Implicit {
                         id: edge.source_index,
                         graph_node: edge.source.clone(),
                         label: DrawableLabel::implicit_circle(ui),
                     });
-                    seen.insert(edge.source_index);
                 }
-                if !seen.contains(&edge.target_index) {
+                if seen.insert(edge.target_index) {
                     nodes.push(Node::Implicit {
                         id: edge.target_index,
                         graph_node: edge.target.clone(),
                         label: DrawableLabel::implicit_circle(ui),
                     });
-                    seen.insert(edge.target_index);
                 }
             }
 
@@ -153,10 +144,6 @@ impl Graph {
 
     pub fn edges(&self) -> &[EdgeTemplate] {
         &self.edges
-    }
-
-    pub fn kind(&self) -> GraphType {
-        self.kind
     }
 
     pub fn entity(&self) -> &EntityPath {

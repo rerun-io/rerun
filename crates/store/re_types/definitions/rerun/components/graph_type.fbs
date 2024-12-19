@@ -4,7 +4,6 @@ namespace rerun.components;
 
 /// Specifies if a graph has directed or undirected edges.
 enum GraphType: ubyte (
-  "attr.docs.unreleased",
   "attr.rust.derive": "Default, PartialEq, Eq"
 ) {
   /// Invalid value. Won't show up in generated types.

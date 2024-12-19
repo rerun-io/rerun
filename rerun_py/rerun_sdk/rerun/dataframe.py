@@ -77,7 +77,13 @@ class RawComponentBatchLike(ComponentColumn):
 
 
 def send_record_batch(batch: pa.RecordBatch, rec: Optional[RecordingStream] = None) -> None:
-    """Coerce a single pyarrow `RecordBatch` to Rerun structure."""
+    """
+    Coerce a single pyarrow `RecordBatch` to Rerun structure.
+
+    If this `RecordBatch` came from a call to [`RecordingView.view`][rerun.dataframe.RecordingView.view], you
+    will want to make sure the `view` call includes `include_indicator_columns = True` or else the
+    viewer will not know about the archetypes in the data.
+    """
 
     indexes = []
     data: defaultdict[str, list[Any]] = defaultdict(list)
@@ -112,7 +118,14 @@ def send_record_batch(batch: pa.RecordBatch, rec: Optional[RecordingStream] = No
 
 
 def send_dataframe(df: pa.RecordBatchReader | pa.Table, rec: Optional[RecordingStream] = None) -> None:
-    """Coerce a pyarrow `RecordBatchReader` or `Table` to Rerun structure."""
+    """
+    Coerce a pyarrow `RecordBatchReader` or `Table` to Rerun structure.
+
+    If this `Table` came from a call to [`RecordingView.view`][rerun.dataframe.RecordingView.view], you
+    will want to make sure the `view` call includes `include_indicator_columns = True` or else the
+    viewer will not know about the archetypes in the data.
+
+    """
     if isinstance(df, pa.Table):
         df = df.to_reader()
 

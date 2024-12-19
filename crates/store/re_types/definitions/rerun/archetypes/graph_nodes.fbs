@@ -5,13 +5,11 @@ namespace rerun.archetypes;
 /// A list of nodes in a graph with optional labels, colors, etc.
 ///
 /// \example archetypes/graph_undirected !api title="Simple undirected graph" image="https://static.rerun.io/graph_undirected/15f46bec77452a8c6220558e4403b99cac188e2e/1200w.png"
-/// \example archetypes/graph_directed !api title="Simple directed graph" image="https://static.rerun.io/graph_directed/ca29a37b65e1e0b6482251dce401982a0bc568fa/1200w.png"
+/// \example archetypes/graph_directed title="Simple directed graph" image="https://static.rerun.io/graph_directed/ca29a37b65e1e0b6482251dce401982a0bc568fa/1200w.png"
 table GraphNodes (
   "attr.docs.category": "Graph",
-  "attr.docs.unreleased",
   "attr.docs.view_types": "GraphView",
-  "attr.rust.derive": "PartialEq",
-  "attr.rerun.experimental"
+  "attr.rust.derive": "PartialEq"
 ) {
   // --- Required ---
 

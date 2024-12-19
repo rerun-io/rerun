@@ -6,7 +6,7 @@ use ahash::HashMap;
 use egui_tiles::{Behavior as _, EditAction};
 
 use re_context_menu::{context_menu_ui_for_item, SelectionUpdateBehavior};
-use re_log_types::{EntityPath, EntityPathRule};
+use re_log_types::{EntityPath, EntityPathRule, RuleEffect};
 use re_ui::{design_tokens, ContextExt as _, DesignTokens, Icon, UiExt as _};
 use re_viewer_context::{
     blueprint_id_to_tile_id, icon_for_container_kind, Contents, DragAndDropFeedback,
@@ -165,6 +165,13 @@ impl ViewportUi {
                         continue;
                     };
 
+                    if matches!(contents, Contents::View(_))
+                        && !should_display_drop_destination_frame
+                    {
+                        // We already light up the view tab title; that is enough
+                        continue;
+                    }
+
                     // We want the rectangle to be on top of everything in the viewport,
                     // including stuff in "zoom-pan areas", like we use in the graph view.
                     let top_layer_id =
@@ -270,14 +277,18 @@ impl ViewportUi {
         if ctx.egui_ctx.input(|i| i.pointer.any_released()) {
             egui::DragAndDrop::clear_payload(ctx.egui_ctx);
 
-            for entity in entities {
-                if can_entity_be_added(entity) {
-                    view_blueprint.contents.raw_add_entity_inclusion(
-                        ctx,
-                        EntityPathRule::including_subtree(entity.clone()),
-                    );
-                }
-            }
+            view_blueprint
+                .contents
+                .mutate_entity_path_filter(ctx, |filter| {
+                    for entity in entities {
+                        if can_entity_be_added(entity) {
+                            filter.add_rule(
+                                RuleEffect::Include,
+                                EntityPathRule::including_subtree(entity.clone()),
+                            );
+                        }
+                    }
+                });
 
             ctx.selection_state()
                 .set_selection(Item::View(view_blueprint.id));

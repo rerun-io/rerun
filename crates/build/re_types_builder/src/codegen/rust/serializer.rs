@@ -843,7 +843,7 @@ fn quote_arrow_field_serializer(
             // if we make the C++ and Python codegen match the rust behavior or
             // make our comparison tests more lenient.
             //
-            // This workaround does not apply if we don't have any validity validity on the outer type.
+            // This workaround does not apply if we don't have any validity on the outer type.
             // (as it is always the case with unions where the nullability is encoded as a separate variant)
             let quoted_inner_validity = if let (true, DataType::FixedSizeList(_, count)) =
                 (elements_are_nullable, datatype.to_logical_type())

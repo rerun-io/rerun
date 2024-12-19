@@ -39,6 +39,7 @@ impl EdgeGeometry {
     }
 
     /// The starting position of an edge.
+    #[expect(unused)]
     pub fn source_pos(&self) -> Pos2 {
         match self.path {
             PathGeometry::Line { source, .. } | PathGeometry::CubicBezier { source, .. } => source,
@@ -53,6 +54,7 @@ impl EdgeGeometry {
     }
 
     /// The direction of the edge at the source node (normalized).
+    #[expect(unused)]
     pub fn source_arrow_direction(&self) -> Vec2 {
         use PathGeometry::{CubicBezier, Line};
         match self.path {

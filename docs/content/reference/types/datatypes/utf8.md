@@ -20,11 +20,11 @@ utf8
 ## Used by
 
 * [`AnnotationInfo`](../datatypes/annotation_info.md)
-* [`GraphNode`](../components/graph_node.md?speculative-link)
+* [`GraphNode`](../components/graph_node.md)
 * [`MediaType`](../components/media_type.md)
 * [`Name`](../components/name.md)
-* [`RecordingUri`](../components/recording_uri.md?speculative-link)
+* [`RecordingUri`](../components/recording_uri.md)
 * [`TextLogLevel`](../components/text_log_level.md)
 * [`Text`](../components/text.md)
-* [`Utf8Pair`](../datatypes/utf8pair.md?speculative-link)
+* [`Utf8Pair`](../datatypes/utf8pair.md)
 * [`VisibleTimeRange`](../datatypes/visible_time_range.md)

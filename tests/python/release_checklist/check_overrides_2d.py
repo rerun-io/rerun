@@ -67,6 +67,13 @@ def log_boxes() -> None:
         rr.Arrows2D(origins=[[-2.0, 0.0], [0.0, 0.0], [2.0, 0.0]], vectors=[[-2.0, 1.0], [0.0, 2.0], [2.0, 1.0]]),
     )
 
+
+def run(args: Namespace) -> None:
+    rr.script_setup(args, f"{os.path.basename(__file__)}", recording_id=uuid4())
+
+    log_readme()
+    log_boxes()
+
     visual_bounds = rrb.VisualBounds2D(x_range=[-5.5, 5.5], y_range=[-3.0, 3.0])
     overrides = {
         "arrows": [
@@ -87,68 +94,58 @@ def log_boxes() -> None:
         rr.components.TextBatch(["TeenyYellow", "AverageCyan", "GigaPurple"]),
     ]
 
-    rr.send_blueprint(
-        rrb.Blueprint(
-            rrb.Grid(
-                rrb.TextDocumentView(origin="readme", name="Instructions"),
-                rrb.Vertical(
-                    rrb.Spatial2DView(
-                        name="1) Overrides, logged values & defaults",
-                        visual_bounds=visual_bounds,
-                        overrides=overrides,
-                        defaults=defaults,
-                    ),
-                    rrb.Spatial2DView(
-                        name="2) Logged values & defaults",
-                        visual_bounds=visual_bounds,
-                        defaults=defaults,
-                    ),
-                    rrb.Spatial2DView(
-                        name="3) Logged values only",
-                        visual_bounds=visual_bounds,
-                    ),
+    blueprint = rrb.Blueprint(
+        rrb.Grid(
+            rrb.TextDocumentView(origin="readme", name="Instructions"),
+            rrb.Vertical(
+                rrb.Spatial2DView(
+                    name="1) Overrides, logged values & defaults",
+                    visual_bounds=visual_bounds,
+                    overrides=overrides,
+                    defaults=defaults,
                 ),
-                rrb.Vertical(
-                    rrb.Spatial2DView(
-                        name="What you should get after removing overrides from 1)",
-                        visual_bounds=visual_bounds,
-                        defaults=defaults,
-                    ),
-                    rrb.Spatial2DView(
-                        name="What you should get after removing defaults from 2)",
-                        visual_bounds=visual_bounds,
-                    ),
-                    rrb.Spatial2DView(
-                        name="What you should get after adding overrides & defaults to 3)",
-                        visual_bounds=visual_bounds,
-                        overrides={
-                            "arrows": [
-                                rrb.VisualizerOverrides([
-                                    rrb.visualizers.Arrows2D,
-                                    rrb.visualizers.Points2D,
-                                ]),
-                                rr.components.Color([255, 255, 255]),
-                                rr.components.Radius(0.1),
-                                rr.components.Text("Cerberus"),
-                                rr.components.Position2D([0.0, 0.0]),
-                            ]
-                        },
-                    ),
+                rrb.Spatial2DView(
+                    name="2) Logged values & defaults",
+                    visual_bounds=visual_bounds,
+                    defaults=defaults,
                 ),
-                grid_columns=3,
-                column_shares=[1, 1, 1],
+                rrb.Spatial2DView(
+                    name="3) Logged values only",
+                    visual_bounds=visual_bounds,
+                ),
             ),
-            rrb.BlueprintPanel(state="collapsed"),
-            rrb.TimePanel(state="collapsed"),
-        )
+            rrb.Vertical(
+                rrb.Spatial2DView(
+                    name="What you should get after removing overrides from 1)",
+                    visual_bounds=visual_bounds,
+                    defaults=defaults,
+                ),
+                rrb.Spatial2DView(
+                    name="What you should get after removing defaults from 2)",
+                    visual_bounds=visual_bounds,
+                ),
+                rrb.Spatial2DView(
+                    name="What you should get after adding overrides & defaults to 3)",
+                    visual_bounds=visual_bounds,
+                    overrides={
+                        "arrows": [
+                            rrb.VisualizerOverrides([
+                                rrb.visualizers.Arrows2D,
+                                rrb.visualizers.Points2D,
+                            ]),
+                            rr.components.Color([255, 255, 255]),
+                            rr.components.Radius(0.1),
+                            rr.components.Text("Cerberus"),
+                            rr.components.Position2D([0.0, 0.0]),
+                        ]
+                    },
+                ),
+            ),
+            grid_columns=3,
+            column_shares=[1, 1, 1],
+        ),
     )
-
-
-def run(args: Namespace) -> None:
-    rr.script_setup(args, f"{os.path.basename(__file__)}", recording_id=uuid4())
-
-    log_readme()
-    log_boxes()
+    rr.send_blueprint(blueprint, make_active=True, make_default=True)
 
 
 if __name__ == "__main__":

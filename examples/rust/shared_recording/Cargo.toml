@@ -1,8 +1,8 @@
 [package]
 name = "shared_recording"
-version = "0.21.0-alpha.1+dev"
+version = "0.22.0-alpha.1+dev"
 edition = "2021"
-rust-version = "1.80"
+rust-version = "1.81"
 license = "MIT OR Apache-2.0"
 publish = false
 

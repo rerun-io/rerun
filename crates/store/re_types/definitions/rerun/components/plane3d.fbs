@@ -10,7 +10,6 @@ namespace rerun.components;
 /// datastore as provided, when used in the Viewer, planes will always be normalized.
 /// I.e. the plane with xyz = (2, 0, 0), d = 1 is equivalent to xyz = (1, 0, 0), d = 0.5
 struct Plane3D (
-  "attr.docs.unreleased",
   "attr.rust.derive": "Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable",
   "attr.rust.repr": "transparent"
 ) {

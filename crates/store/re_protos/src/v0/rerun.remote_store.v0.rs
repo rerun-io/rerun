@@ -47,8 +47,6 @@ impl ::prost::Name for RegisterRecordingRequest {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UpdateCatalogRequest {
-    #[prost(message, optional, tag = "1")]
-    pub recording_id: ::core::option::Option<super::super::common::v0::RecordingId>,
     #[prost(message, optional, tag = "2")]
     pub metadata: ::core::option::Option<DataframePart>,
 }

@@ -36,7 +36,9 @@ class ForcePosition(Archetype):
         Parameters
         ----------
         enabled:
-            Whether the force is enabled.
+            Whether the position force is enabled.
+
+            The position force pulls nodes towards a specific position, similar to gravity.
         strength:
             The strength of the force.
         position:
@@ -70,7 +72,9 @@ class ForcePosition(Archetype):
         default=None,
         converter=blueprint_components.EnabledBatch._optional,  # type: ignore[misc]
     )
-    # Whether the force is enabled.
+    # Whether the position force is enabled.
+    #
+    # The position force pulls nodes towards a specific position, similar to gravity.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

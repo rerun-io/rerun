@@ -139,13 +139,17 @@ impl ForceLayoutProvider {
         layout: &Layout,
         params: &ForceLayoutParams,
     ) -> Self {
-        let nodes = request.all_nodes().map(|(id, v)| {
-            if let Some(rect) = layout.get_node(&id) {
-                let pos = rect.center();
-                fj::Node::from(v).position(pos.x as f64, pos.y as f64)
-            } else {
-                fj::Node::from(v)
+        let nodes = request.all_nodes().map(|(id, template)| {
+            let node = fj::Node::from(template);
+
+            if template.fixed_position.is_none() {
+                if let Some(rect) = layout.get_node(&id) {
+                    let pos = rect.center();
+                    return node.position(pos.x as f64, pos.y as f64);
+                }
             }
+
+            node
         });
         let radii = request
             .all_nodes()
@@ -207,13 +211,17 @@ impl ForceLayoutProvider {
                                     target: edge.target,
                                 })
                                 .or_default();
-                            geometries.push(EdgeGeometry {
-                                target_arrow,
-                                path: line_segment(
-                                    layout.nodes[&edge.source],
-                                    layout.nodes[&edge.target],
-                                ),
-                            });
+
+                            let source = layout.nodes[&edge.source];
+                            let target = layout.nodes[&edge.target];
+
+                            // We only draw edges if they can be displayed meaningfully.
+                            if source.center() != target.center() && !source.intersects(target) {
+                                geometries.push(EdgeGeometry {
+                                    target_arrow,
+                                    path: line_segment(source, target),
+                                });
+                            }
                         } else {
                             // Multiple edges occupy the same space, so we fan them out.
                             let num_edges = edges.len();
@@ -221,6 +229,14 @@ impl ForceLayoutProvider {
                             for (i, edge) in edges.iter().enumerate() {
                                 let source_rect = layout.nodes[slot_source];
                                 let target_rect = layout.nodes[slot_target];
+
+                                if source_rect.center() == target_rect.center()
+                                    || source_rect.intersects(target_rect)
+                                {
+                                    // There is no meaningful geometry to draw here.
+                                    // Keep in mind that self-edges are handled separately above.
+                                    continue;
+                                }
 
                                 let d = (target_rect.center() - source_rect.center()).normalized();
 

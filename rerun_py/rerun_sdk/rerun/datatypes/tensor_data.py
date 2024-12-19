@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Sequence, Union
 
+import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
@@ -14,6 +15,9 @@ from attrs import define, field
 from .. import datatypes
 from .._baseclasses import (
     BaseBatch,
+)
+from .._converters import (
+    to_np_uint64,
 )
 from .tensor_data_ext import TensorDataExt
 
@@ -46,13 +50,24 @@ class TensorData(TensorDataExt):
 
     # __init__ can be found in tensor_data_ext.py
 
-    shape: list[datatypes.TensorDimension] = field()
-    # The shape of the tensor, including optional names for each dimension.
+    shape: npt.NDArray[np.uint64] = field(converter=to_np_uint64)
+    # The shape of the tensor, i.e. the length of each dimension.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     buffer: datatypes.TensorBuffer = field(converter=_tensor_data__buffer__special_field_converter_override)
     # The content/data.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    names: list[str] | None = field(default=None)
+    # The names of the dimensions of the tensor (optional).
+    #
+    # If set, should be the same length as [`datatypes.TensorData.shape`][rerun.datatypes.TensorData.shape].
+    # If it has a different length your names may show up improperly,
+    # and some constructors may produce a warning or even an error.
+    #
+    # Example: `["height", "width", "channel", "batch"]`.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -68,20 +83,10 @@ TensorDataArrayLike = Union[TensorData, Sequence[TensorDataLike], npt.ArrayLike]
 class TensorDataBatch(BaseBatch[TensorDataArrayLike]):
     _ARROW_DATATYPE = pa.struct([
         pa.field(
-            "shape",
-            pa.list_(
-                pa.field(
-                    "item",
-                    pa.struct([
-                        pa.field("size", pa.uint64(), nullable=False, metadata={}),
-                        pa.field("name", pa.utf8(), nullable=True, metadata={}),
-                    ]),
-                    nullable=False,
-                    metadata={},
-                )
-            ),
-            nullable=False,
-            metadata={},
+            "shape", pa.list_(pa.field("item", pa.uint64(), nullable=False, metadata={})), nullable=False, metadata={}
+        ),
+        pa.field(
+            "names", pa.list_(pa.field("item", pa.utf8(), nullable=False, metadata={})), nullable=True, metadata={}
         ),
         pa.field(
             "buffer",

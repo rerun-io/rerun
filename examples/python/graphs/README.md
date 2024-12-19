@@ -25,8 +25,8 @@ This example shows different types of layouts:
 
 ## Used Rerun types
 
-[`GraphNodes`](https://www.rerun.io/docs/reference/types/archetypes/graph_nodes?speculative-link),
-[`GraphEdges`](https://www.rerun.io/docs/reference/types/archetypes/graph_edges?speculative-link)
+[`GraphNodes`](https://www.rerun.io/docs/reference/types/archetypes/graph_nodes),
+[`GraphEdges`](https://www.rerun.io/docs/reference/types/archetypes/graph_edges)
 
 ## Force-based layouts
 

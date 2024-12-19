@@ -15,11 +15,16 @@ Please check the following:
 * `graph` has directed edges, while `graph2` has undirected edges.
 * `graph` and `graph2` are shown in two different viewers.
 * There is a third viewer, `Both`, that shows both `graph` and `graph2` in the same viewer.
+* The `coincident` viewer shows two nodes, `A` and `B`, at the same position
 """
 
 
 def log_readme() -> None:
     rr.log("readme", rr.TextDocument(README, media_type=rr.MediaType.MARKDOWN), static=True)
+
+
+def log_coincident_nodes() -> None:
+    rr.log("coincident", rr.GraphNodes(["A", "B"], labels=["A", "B"], positions=[[-150, 0], [150, 0]]))
 
 
 def log_graphs() -> None:
@@ -51,16 +56,22 @@ def run(args: Namespace) -> None:
 
     log_readme()
     log_graphs()
+    log_coincident_nodes()
 
     rr.send_blueprint(
-        rrb.Blueprint(
-            rrb.Grid(
-                rrb.GraphView(origin="graph", name="Graph 1"),
-                rrb.GraphView(origin="graph2", name="Graph 2"),
-                rrb.GraphView(name="Both", contents=["/graph", "/graph2"]),
-                rrb.TextDocumentView(origin="readme", name="Instructions"),
-            )
-        )
+        rrb.Grid(
+            rrb.GraphView(origin="graph", name="Graph 1"),
+            rrb.GraphView(origin="graph2", name="Graph 2"),
+            rrb.GraphView(name="Both", contents=["/graph", "/graph2"]),
+            rrb.GraphView(
+                origin="coincident",
+                name="Coincident nodes",
+                overrides={"coincident": [rr.components.Position2D([0, 0])]},
+            ),
+            rrb.TextDocumentView(origin="readme", name="Instructions"),
+        ),
+        make_default=True,
+        make_active=True,
     )
 
 

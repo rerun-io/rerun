@@ -1413,11 +1413,11 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 fields: vec![
                     ArchetypeFieldReflection { name : "edges", display_name : "Edges",
                     component_name : "rerun.components.GraphEdge".into(), docstring_md :
-                    "A list of node tuples.\n\n⚠\u{fe0f} **This type is experimental and may be removed in future versions**",
-                    is_required : true, }, ArchetypeFieldReflection { name :
-                    "graph_type", display_name : "Graph type", component_name :
-                    "rerun.components.GraphType".into(), docstring_md :
-                    "Specifies if the graph is directed or undirected.\n\nIf no [`components.GraphType`](https://rerun.io/docs/reference/types/components/graph_type?speculative-link) is provided, the graph is assumed to be undirected.\n\n⚠\u{fe0f} **This type is experimental and may be removed in future versions**",
+                    "A list of node tuples.", is_required : true, },
+                    ArchetypeFieldReflection { name : "graph_type", display_name :
+                    "Graph type", component_name : "rerun.components.GraphType".into(),
+                    docstring_md :
+                    "Specifies if the graph is directed or undirected.\n\nIf no [`components.GraphType`](https://rerun.io/docs/reference/types/components/graph_type) is provided, the graph is assumed to be undirected.",
                     is_required : false, },
                 ],
             },
@@ -1431,29 +1431,24 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 fields: vec![
                     ArchetypeFieldReflection { name : "node_ids", display_name :
                     "Node ids", component_name : "rerun.components.GraphNode".into(),
-                    docstring_md :
-                    "A list of node IDs.\n\n⚠\u{fe0f} **This type is experimental and may be removed in future versions**",
-                    is_required : true, }, ArchetypeFieldReflection { name : "positions",
-                    display_name : "Positions", component_name :
-                    "rerun.components.Position2D".into(), docstring_md :
-                    "Optional center positions of the nodes.\n\n⚠\u{fe0f} **This type is experimental and may be removed in future versions**",
-                    is_required : false, }, ArchetypeFieldReflection { name : "colors",
-                    display_name : "Colors", component_name : "rerun.components.Color"
-                    .into(), docstring_md :
-                    "Optional colors for the boxes.\n\n⚠\u{fe0f} **This type is experimental and may be removed in future versions**",
-                    is_required : false, }, ArchetypeFieldReflection { name : "labels",
-                    display_name : "Labels", component_name : "rerun.components.Text"
-                    .into(), docstring_md :
-                    "Optional text labels for the node.\n\n⚠\u{fe0f} **This type is experimental and may be removed in future versions**",
-                    is_required : false, }, ArchetypeFieldReflection { name :
-                    "show_labels", display_name : "Show labels", component_name :
+                    docstring_md : "A list of node IDs.", is_required : true, },
+                    ArchetypeFieldReflection { name : "positions", display_name :
+                    "Positions", component_name : "rerun.components.Position2D".into(),
+                    docstring_md : "Optional center positions of the nodes.", is_required
+                    : false, }, ArchetypeFieldReflection { name : "colors", display_name
+                    : "Colors", component_name : "rerun.components.Color".into(),
+                    docstring_md : "Optional colors for the boxes.", is_required : false,
+                    }, ArchetypeFieldReflection { name : "labels", display_name :
+                    "Labels", component_name : "rerun.components.Text".into(),
+                    docstring_md : "Optional text labels for the node.", is_required :
+                    false, }, ArchetypeFieldReflection { name : "show_labels",
+                    display_name : "Show labels", component_name :
                     "rerun.components.ShowLabels".into(), docstring_md :
-                    "Optional choice of whether the text labels should be shown by default.\n\n⚠\u{fe0f} **This type is experimental and may be removed in future versions**",
+                    "Optional choice of whether the text labels should be shown by default.",
                     is_required : false, }, ArchetypeFieldReflection { name : "radii",
                     display_name : "Radii", component_name : "rerun.components.Radius"
-                    .into(), docstring_md :
-                    "Optional radii for nodes.\n\n⚠\u{fe0f} **This type is experimental and may be removed in future versions**",
-                    is_required : false, },
+                    .into(), docstring_md : "Optional radii for nodes.", is_required :
+                    false, },
                 ],
             },
         ),
@@ -2040,8 +2035,9 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 fields: vec![
                     ArchetypeFieldReflection { name : "enabled", display_name :
                     "Enabled", component_name : "rerun.blueprint.components.Enabled"
-                    .into(), docstring_md : "Whether the force is enabled.", is_required
-                    : false, }, ArchetypeFieldReflection { name : "strength",
+                    .into(), docstring_md :
+                    "Whether the center force is enabled.\n\nThe center force tries to move the center of mass of the graph towards the origin.",
+                    is_required : false, }, ArchetypeFieldReflection { name : "strength",
                     display_name : "Strength", component_name :
                     "rerun.blueprint.components.ForceStrength".into(), docstring_md :
                     "The strength of the force.", is_required : false, },
@@ -2057,8 +2053,9 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 fields: vec![
                     ArchetypeFieldReflection { name : "enabled", display_name :
                     "Enabled", component_name : "rerun.blueprint.components.Enabled"
-                    .into(), docstring_md : "Whether the force is enabled.", is_required
-                    : false, }, ArchetypeFieldReflection { name : "strength",
+                    .into(), docstring_md :
+                    "Whether the collision force is enabled.\n\nThe collision force resolves collisions between nodes based on the bounding circle defined by their radius.",
+                    is_required : false, }, ArchetypeFieldReflection { name : "strength",
                     display_name : "Strength", component_name :
                     "rerun.blueprint.components.ForceStrength".into(), docstring_md :
                     "The strength of the force.", is_required : false, },
@@ -2079,8 +2076,9 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 fields: vec![
                     ArchetypeFieldReflection { name : "enabled", display_name :
                     "Enabled", component_name : "rerun.blueprint.components.Enabled"
-                    .into(), docstring_md : "Whether the force is enabled.", is_required
-                    : false, }, ArchetypeFieldReflection { name : "distance",
+                    .into(), docstring_md :
+                    "Whether the link force is enabled.\n\nThe link force aims to achieve a target distance between two nodes that are connected by one ore more edges.",
+                    is_required : false, }, ArchetypeFieldReflection { name : "distance",
                     display_name : "Distance", component_name :
                     "rerun.blueprint.components.ForceDistance".into(), docstring_md :
                     "The target distance between two nodes.", is_required : false, },
@@ -2101,8 +2099,9 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 fields: vec![
                     ArchetypeFieldReflection { name : "enabled", display_name :
                     "Enabled", component_name : "rerun.blueprint.components.Enabled"
-                    .into(), docstring_md : "Whether the force is enabled.", is_required
-                    : false, }, ArchetypeFieldReflection { name : "strength",
+                    .into(), docstring_md :
+                    "Whether the many body force is enabled.\n\nThe many body force is applied on each pair of nodes in a way that ressembles an electrical charge. If the\nstrength is smaller than 0, it pushes nodes apart; if it is larger than 0, it pulls them together.",
+                    is_required : false, }, ArchetypeFieldReflection { name : "strength",
                     display_name : "Strength", component_name :
                     "rerun.blueprint.components.ForceStrength".into(), docstring_md :
                     "The strength of the force.\n\nIf `strength` is smaller than 0, it pushes nodes apart, if it is larger than 0 it pulls them together.",
@@ -2119,8 +2118,9 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 fields: vec![
                     ArchetypeFieldReflection { name : "enabled", display_name :
                     "Enabled", component_name : "rerun.blueprint.components.Enabled"
-                    .into(), docstring_md : "Whether the force is enabled.", is_required
-                    : false, }, ArchetypeFieldReflection { name : "strength",
+                    .into(), docstring_md :
+                    "Whether the position force is enabled.\n\nThe position force pulls nodes towards a specific position, similar to gravity.",
+                    is_required : false, }, ArchetypeFieldReflection { name : "strength",
                     display_name : "Strength", component_name :
                     "rerun.blueprint.components.ForceStrength".into(), docstring_md :
                     "The strength of the force.", is_required : false, },

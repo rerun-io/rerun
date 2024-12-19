@@ -14,9 +14,20 @@ which stores a contiguous array of typed values.
 
 ## Fields
 #### `shape`
-Type: List of [`TensorDimension`](../datatypes/tensor_dimension.md)
+Type: List of `uint64`
 
-The shape of the tensor, including optional names for each dimension.
+The shape of the tensor, i.e. the length of each dimension.
+
+#### `names`
+Type: nullable List of `utf8`
+
+The names of the dimensions of the tensor (optional).
+
+If set, should be the same length as [`datatypes.TensorData#shape`](https://rerun.io/docs/reference/types/datatypes/tensor_data).
+If it has a different length your names may show up improperly,
+and some constructors may produce a warning or even an error.
+
+Example: `["height", "width", "channel", "batch"]`.
 
 #### `buffer`
 Type: [`TensorBuffer`](../datatypes/tensor_buffer.md)
@@ -27,10 +38,8 @@ The content/data.
 ## Arrow datatype
 ```
 Struct {
-    shape: List<Struct {
-            size: uint64
-            name: nullable utf8
-        }>
+    shape: List<uint64>
+    names: nullable List<utf8>
     buffer: DenseUnion {
         0 = "_null_markers": nullable null
         1 = "U8": List<uint8>
