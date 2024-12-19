@@ -4,7 +4,7 @@ use std::sync::Arc;
 use itertools::Itertools as _;
 
 use re_chunk_store::{Chunk, LatestAtQuery, RangeQuery, UnitChunkShared};
-use re_log_types::external::arrow2::array::Array as Arrow2Array;
+use re_log_types::external::arrow2::{array::Array as Arrow2Array, bitmap::Bitmap as Arrow2Bitmap};
 use re_log_types::hash::Hash64;
 use re_query::{LatestAtResults, RangeResults};
 use re_types_core::ComponentName;
@@ -433,6 +433,18 @@ impl<'a> HybridResultsChunkIter<'a> {
             itertools::izip!(
                 chunk.iter_component_indices(&self.timeline, &self.component_name),
                 chunk.iter_component::<C>(),
+            )
+        })
+    }
+
+    /// Iterate as indexed booleans.
+    ///
+    /// See [`Chunk::iter_bool`] for more information.
+    pub fn bool(&'a self) -> impl Iterator<Item = ((TimeInt, RowId), Arrow2Bitmap)> + 'a {
+        self.chunks.iter().flat_map(move |chunk| {
+            itertools::izip!(
+                chunk.iter_component_indices(&self.timeline, &self.component_name),
+                chunk.iter_bool(&self.component_name)
             )
         })
     }
