@@ -12,7 +12,7 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 
-use ::re_types_core::external::arrow2;
+use ::re_types_core::external::arrow;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
@@ -203,8 +203,8 @@ impl ::re_types_core::Archetype for SegmentationImage {
     }
 
     #[inline]
-    fn from_arrow2_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, Box<dyn arrow2::array::Array>)>,
+    fn from_arrow_components(
+        arrow_data: impl IntoIterator<Item = (ComponentName, arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
@@ -217,7 +217,7 @@ impl ::re_types_core::Archetype for SegmentationImage {
                 .get("rerun.components.ImageBuffer")
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.SegmentationImage#buffer")?;
-            <crate::components::ImageBuffer>::from_arrow2_opt(&**array)
+            <crate::components::ImageBuffer>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.SegmentationImage#buffer")?
                 .into_iter()
                 .next()
@@ -230,7 +230,7 @@ impl ::re_types_core::Archetype for SegmentationImage {
                 .get("rerun.components.ImageFormat")
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.SegmentationImage#format")?;
-            <crate::components::ImageFormat>::from_arrow2_opt(&**array)
+            <crate::components::ImageFormat>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.SegmentationImage#format")?
                 .into_iter()
                 .next()
@@ -239,7 +239,7 @@ impl ::re_types_core::Archetype for SegmentationImage {
                 .with_context("rerun.archetypes.SegmentationImage#format")?
         };
         let opacity = if let Some(array) = arrays_by_name.get("rerun.components.Opacity") {
-            <crate::components::Opacity>::from_arrow2_opt(&**array)
+            <crate::components::Opacity>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.SegmentationImage#opacity")?
                 .into_iter()
                 .next()
@@ -248,7 +248,7 @@ impl ::re_types_core::Archetype for SegmentationImage {
             None
         };
         let draw_order = if let Some(array) = arrays_by_name.get("rerun.components.DrawOrder") {
-            <crate::components::DrawOrder>::from_arrow2_opt(&**array)
+            <crate::components::DrawOrder>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.SegmentationImage#draw_order")?
                 .into_iter()
                 .next()

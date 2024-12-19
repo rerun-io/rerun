@@ -12,7 +12,7 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 
-use ::re_types_core::external::arrow2;
+use ::re_types_core::external::arrow;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
@@ -127,20 +127,19 @@ impl ::re_types_core::Loggable for FilterByRange {
         })
     }
 
-    fn from_arrow2_opt(
-        arrow_data: &dyn arrow2::array::Array,
+    fn from_arrow_opt(
+        arrow_data: &dyn arrow::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
         #![allow(clippy::wildcard_imports)]
-        use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow::datatypes::*;
-        use arrow2::{array::*, buffer::*};
+        use ::re_types_core::{arrow_zip_validity::ZipValidity, Loggable as _, ResultExt as _};
+        use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let arrow_data = arrow_data
                 .as_any()
-                .downcast_ref::<arrow2::array::StructArray>()
+                .downcast_ref::<arrow::array::StructArray>()
                 .ok_or_else(|| {
                     let expected = Self::arrow_datatype();
                     let actual = arrow_data.data_type().clone();
@@ -151,10 +150,10 @@ impl ::re_types_core::Loggable for FilterByRange {
                 Vec::new()
             } else {
                 let (arrow_data_fields, arrow_data_arrays) =
-                    (arrow_data.fields(), arrow_data.values());
+                    (arrow_data.fields(), arrow_data.columns());
                 let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data_fields
                     .iter()
-                    .map(|field| field.name.as_str())
+                    .map(|field| field.name().as_str())
                     .zip(arrow_data_arrays)
                     .collect();
                 let start = {
@@ -176,7 +175,6 @@ impl ::re_types_core::Loggable for FilterByRange {
                         })
                         .with_context("rerun.blueprint.datatypes.FilterByRange#start")?
                         .into_iter()
-                        .map(|opt| opt.copied())
                         .map(|res_or_opt| res_or_opt.map(crate::datatypes::TimeInt))
                 };
                 let end = {
@@ -198,28 +196,26 @@ impl ::re_types_core::Loggable for FilterByRange {
                         })
                         .with_context("rerun.blueprint.datatypes.FilterByRange#end")?
                         .into_iter()
-                        .map(|opt| opt.copied())
                         .map(|res_or_opt| res_or_opt.map(crate::datatypes::TimeInt))
                 };
-                arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                    ::itertools::izip!(start, end),
-                    arrow_data.validity(),
-                )
-                .map(|opt| {
-                    opt.map(|(start, end)| {
-                        Ok(Self {
-                            start: start
-                                .ok_or_else(DeserializationError::missing_data)
-                                .with_context("rerun.blueprint.datatypes.FilterByRange#start")?,
-                            end: end
-                                .ok_or_else(DeserializationError::missing_data)
-                                .with_context("rerun.blueprint.datatypes.FilterByRange#end")?,
+                ZipValidity::new_with_validity(::itertools::izip!(start, end), arrow_data.nulls())
+                    .map(|opt| {
+                        opt.map(|(start, end)| {
+                            Ok(Self {
+                                start: start
+                                    .ok_or_else(DeserializationError::missing_data)
+                                    .with_context(
+                                        "rerun.blueprint.datatypes.FilterByRange#start",
+                                    )?,
+                                end: end
+                                    .ok_or_else(DeserializationError::missing_data)
+                                    .with_context("rerun.blueprint.datatypes.FilterByRange#end")?,
+                            })
                         })
+                        .transpose()
                     })
-                    .transpose()
-                })
-                .collect::<DeserializationResult<Vec<_>>>()
-                .with_context("rerun.blueprint.datatypes.FilterByRange")?
+                    .collect::<DeserializationResult<Vec<_>>>()
+                    .with_context("rerun.blueprint.datatypes.FilterByRange")?
             }
         })
     }

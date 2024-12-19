@@ -241,6 +241,7 @@ mod archetype;
 mod arrow_buffer;
 pub mod arrow_helpers;
 mod arrow_string;
+pub mod arrow_zip_validity;
 mod component_descriptor;
 mod loggable;
 mod loggable_batch;

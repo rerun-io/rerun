@@ -12,7 +12,7 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 
-use ::re_types_core::external::arrow2;
+use ::re_types_core::external::arrow;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
@@ -144,20 +144,19 @@ impl ::re_types_core::Loggable for RotationAxisAngle {
         })
     }
 
-    fn from_arrow2_opt(
-        arrow_data: &dyn arrow2::array::Array,
+    fn from_arrow_opt(
+        arrow_data: &dyn arrow::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
         #![allow(clippy::wildcard_imports)]
-        use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow::datatypes::*;
-        use arrow2::{array::*, buffer::*};
+        use ::re_types_core::{arrow_zip_validity::ZipValidity, Loggable as _, ResultExt as _};
+        use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let arrow_data = arrow_data
                 .as_any()
-                .downcast_ref::<arrow2::array::StructArray>()
+                .downcast_ref::<arrow::array::StructArray>()
                 .ok_or_else(|| {
                     let expected = Self::arrow_datatype();
                     let actual = arrow_data.data_type().clone();
@@ -168,10 +167,10 @@ impl ::re_types_core::Loggable for RotationAxisAngle {
                 Vec::new()
             } else {
                 let (arrow_data_fields, arrow_data_arrays) =
-                    (arrow_data.fields(), arrow_data.values());
+                    (arrow_data.fields(), arrow_data.columns());
                 let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data_fields
                     .iter()
-                    .map(|field| field.name.as_str())
+                    .map(|field| field.name().as_str())
                     .zip(arrow_data_arrays)
                     .collect();
                 let axis = {
@@ -186,7 +185,7 @@ impl ::re_types_core::Loggable for RotationAxisAngle {
                     {
                         let arrow_data = arrow_data
                             .as_any()
-                            .downcast_ref::<arrow2::array::FixedSizeListArray>()
+                            .downcast_ref::<arrow::array::FixedSizeListArray>()
                             .ok_or_else(|| {
                                 let expected = DataType::FixedSizeList(
                                     std::sync::Arc::new(Field::new(
@@ -218,38 +217,36 @@ impl ::re_types_core::Loggable for RotationAxisAngle {
                                     })
                                     .with_context("rerun.datatypes.RotationAxisAngle#axis")?
                                     .into_iter()
-                                    .map(|opt| opt.copied())
                                     .collect::<Vec<_>>()
                             };
-                            arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                offsets,
-                                arrow_data.validity(),
-                            )
-                            .map(|elem| {
-                                elem.map(|(start, end): (usize, usize)| {
-                                    debug_assert!(end - start == 3usize);
-                                    if end > arrow_data_inner.len() {
-                                        return Err(DeserializationError::offset_slice_oob(
-                                            (start, end),
-                                            arrow_data_inner.len(),
-                                        ));
-                                    }
+                            ZipValidity::new_with_validity(offsets, arrow_data.nulls())
+                                .map(|elem| {
+                                    elem.map(|(start, end): (usize, usize)| {
+                                        debug_assert!(end - start == 3usize);
+                                        if arrow_data_inner.len() < end {
+                                            return Err(DeserializationError::offset_slice_oob(
+                                                (start, end),
+                                                arrow_data_inner.len(),
+                                            ));
+                                        }
 
-                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                    let data =
-                                        unsafe { arrow_data_inner.get_unchecked(start..end) };
-                                    let data = data.iter().cloned().map(Option::unwrap_or_default);
+                                        #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                        let data =
+                                            unsafe { arrow_data_inner.get_unchecked(start..end) };
+                                        let data =
+                                            data.iter().cloned().map(Option::unwrap_or_default);
 
-                                    // NOTE: Unwrapping cannot fail: the length must be correct.
-                                    #[allow(clippy::unwrap_used)]
-                                    Ok(array_init::from_iter(data).unwrap())
+                                        // NOTE: Unwrapping cannot fail: the length must be correct.
+                                        #[allow(clippy::unwrap_used)]
+                                        Ok(array_init::from_iter(data).unwrap())
+                                    })
+                                    .transpose()
                                 })
-                                .transpose()
-                            })
-                            .map(|res_or_opt| {
-                                res_or_opt.map(|res_or_opt| res_or_opt.map(crate::datatypes::Vec3D))
-                            })
-                            .collect::<DeserializationResult<Vec<Option<_>>>>()?
+                                .map(|res_or_opt| {
+                                    res_or_opt
+                                        .map(|res_or_opt| res_or_opt.map(crate::datatypes::Vec3D))
+                                })
+                                .collect::<DeserializationResult<Vec<Option<_>>>>()?
                         }
                         .into_iter()
                     }
@@ -273,30 +270,26 @@ impl ::re_types_core::Loggable for RotationAxisAngle {
                         })
                         .with_context("rerun.datatypes.RotationAxisAngle#angle")?
                         .into_iter()
-                        .map(|opt| opt.copied())
                         .map(|res_or_opt| {
                             res_or_opt.map(|radians| crate::datatypes::Angle { radians })
                         })
                 };
-                arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                    ::itertools::izip!(axis, angle),
-                    arrow_data.validity(),
-                )
-                .map(|opt| {
-                    opt.map(|(axis, angle)| {
-                        Ok(Self {
-                            axis: axis
-                                .ok_or_else(DeserializationError::missing_data)
-                                .with_context("rerun.datatypes.RotationAxisAngle#axis")?,
-                            angle: angle
-                                .ok_or_else(DeserializationError::missing_data)
-                                .with_context("rerun.datatypes.RotationAxisAngle#angle")?,
+                ZipValidity::new_with_validity(::itertools::izip!(axis, angle), arrow_data.nulls())
+                    .map(|opt| {
+                        opt.map(|(axis, angle)| {
+                            Ok(Self {
+                                axis: axis
+                                    .ok_or_else(DeserializationError::missing_data)
+                                    .with_context("rerun.datatypes.RotationAxisAngle#axis")?,
+                                angle: angle
+                                    .ok_or_else(DeserializationError::missing_data)
+                                    .with_context("rerun.datatypes.RotationAxisAngle#angle")?,
+                            })
                         })
+                        .transpose()
                     })
-                    .transpose()
-                })
-                .collect::<DeserializationResult<Vec<_>>>()
-                .with_context("rerun.datatypes.RotationAxisAngle")?
+                    .collect::<DeserializationResult<Vec<_>>>()
+                    .with_context("rerun.datatypes.RotationAxisAngle")?
             }
         })
     }

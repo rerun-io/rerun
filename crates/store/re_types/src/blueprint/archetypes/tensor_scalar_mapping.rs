@@ -12,7 +12,7 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 
-use ::re_types_core::external::arrow2;
+use ::re_types_core::external::arrow;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
@@ -147,8 +147,8 @@ impl ::re_types_core::Archetype for TensorScalarMapping {
     }
 
     #[inline]
-    fn from_arrow2_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, Box<dyn arrow2::array::Array>)>,
+    fn from_arrow_components(
+        arrow_data: impl IntoIterator<Item = (ComponentName, arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
@@ -158,7 +158,7 @@ impl ::re_types_core::Archetype for TensorScalarMapping {
             .collect();
         let mag_filter =
             if let Some(array) = arrays_by_name.get("rerun.components.MagnificationFilter") {
-                <crate::components::MagnificationFilter>::from_arrow2_opt(&**array)
+                <crate::components::MagnificationFilter>::from_arrow_opt(&**array)
                     .with_context("rerun.blueprint.archetypes.TensorScalarMapping#mag_filter")?
                     .into_iter()
                     .next()
@@ -167,7 +167,7 @@ impl ::re_types_core::Archetype for TensorScalarMapping {
                 None
             };
         let colormap = if let Some(array) = arrays_by_name.get("rerun.components.Colormap") {
-            <crate::components::Colormap>::from_arrow2_opt(&**array)
+            <crate::components::Colormap>::from_arrow_opt(&**array)
                 .with_context("rerun.blueprint.archetypes.TensorScalarMapping#colormap")?
                 .into_iter()
                 .next()
@@ -176,7 +176,7 @@ impl ::re_types_core::Archetype for TensorScalarMapping {
             None
         };
         let gamma = if let Some(array) = arrays_by_name.get("rerun.components.GammaCorrection") {
-            <crate::components::GammaCorrection>::from_arrow2_opt(&**array)
+            <crate::components::GammaCorrection>::from_arrow_opt(&**array)
                 .with_context("rerun.blueprint.archetypes.TensorScalarMapping#gamma")?
                 .into_iter()
                 .next()

@@ -13,7 +13,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(deprecated)]
 
-use ::re_types_core::external::arrow2;
+use ::re_types_core::external::arrow;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
@@ -158,8 +158,8 @@ impl ::re_types_core::Archetype for DisconnectedSpace {
     }
 
     #[inline]
-    fn from_arrow2_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, Box<dyn arrow2::array::Array>)>,
+    fn from_arrow_components(
+        arrow_data: impl IntoIterator<Item = (ComponentName, arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
@@ -172,7 +172,7 @@ impl ::re_types_core::Archetype for DisconnectedSpace {
                 .get("rerun.components.DisconnectedSpace")
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.DisconnectedSpace#disconnected_space")?;
-            <crate::components::DisconnectedSpace>::from_arrow2_opt(&**array)
+            <crate::components::DisconnectedSpace>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.DisconnectedSpace#disconnected_space")?
                 .into_iter()
                 .next()
