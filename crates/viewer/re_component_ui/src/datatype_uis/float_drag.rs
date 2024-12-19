@@ -2,7 +2,7 @@ use std::ops::RangeInclusive;
 
 use egui::NumExt as _;
 use re_types::datatypes;
-use re_viewer_context::MaybeMutRef;
+use re_viewer_context::{MaybeMutRef, UiLayout};
 
 /// Generic editor for a [`re_types::datatypes::Float32`] value from zero to max float.
 pub fn edit_f32_zero_to_max(
@@ -77,7 +77,7 @@ pub fn edit_f32_float_raw_with_speed_impl(
                 .suffix(suffix),
         )
     } else {
-        ui.label(format!("{}{}", re_format::format_f32(**value), suffix))
+        UiLayout::List.data_label(ui, format!("{}{}", re_format::format_f32(**value), suffix))
     }
 }
 
@@ -105,7 +105,7 @@ fn edit_f32_zero_to_one_raw(ui: &mut egui::Ui, value: &mut MaybeMutRef<'_, f32>)
                 .fixed_decimals(2),
         )
     } else {
-        ui.label(re_format::format_f32(**value))
+        UiLayout::List.data_label(ui, re_format::format_f32(**value))
     }
 }
 
@@ -162,6 +162,6 @@ pub fn edit_f64_float_raw_with_speed_impl(
                 .speed(speed),
         )
     } else {
-        ui.label(re_format::format_f64(**value))
+        UiLayout::List.data_label(ui, re_format::format_f64(**value))
     }
 }
