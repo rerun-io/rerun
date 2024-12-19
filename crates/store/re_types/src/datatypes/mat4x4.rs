@@ -243,7 +243,7 @@ impl From<Mat4x4> for [f32; 16usize] {
     }
 }
 
-impl ::re_types_core::SizeBytes for Mat4x4 {
+impl ::re_byte_size::SizeBytes for Mat4x4 {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.0.heap_size_bytes()

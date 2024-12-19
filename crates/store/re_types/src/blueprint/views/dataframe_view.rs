@@ -63,7 +63,7 @@ impl std::ops::DerefMut for DataframeView {
     }
 }
 
-impl ::re_types_core::SizeBytes for DataframeView {
+impl ::re_byte_size::SizeBytes for DataframeView {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.query.heap_size_bytes()

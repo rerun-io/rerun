@@ -115,7 +115,7 @@ impl std::ops::DerefMut for Texcoord2D {
     }
 }
 
-impl ::re_types_core::SizeBytes for Texcoord2D {
+impl ::re_byte_size::SizeBytes for Texcoord2D {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.0.heap_size_bytes()

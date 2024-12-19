@@ -260,7 +260,7 @@ impl crate::Loggable for VisibleTimeRange {
     }
 }
 
-impl crate::SizeBytes for VisibleTimeRange {
+impl ::re_byte_size::SizeBytes for VisibleTimeRange {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.timeline.heap_size_bytes() + self.range.heap_size_bytes()

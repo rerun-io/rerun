@@ -1,7 +1,7 @@
 use std::sync::{atomic::Ordering, Arc};
 
 use re_chunk::{Chunk, ComponentName, EntityPath, Timeline};
-use re_types_core::SizeBytes;
+use re_byte_size::SizeBytes;
 
 use crate::ChunkStore;
 

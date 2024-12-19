@@ -125,7 +125,7 @@ impl Timeline {
 
 impl nohash_hasher::IsEnabled for Timeline {}
 
-impl re_types_core::SizeBytes for Timeline {
+impl re_byte_size::SizeBytes for Timeline {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         0

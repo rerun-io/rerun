@@ -8,8 +8,9 @@ use arrow2::array::{Array as Arrow2Array, PrimitiveArray as Arrow2PrimitiveArray
 use crossbeam::channel::{Receiver, Sender};
 use nohash_hasher::IntMap;
 
+use re_byte_size::SizeBytes as _;
 use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt, TimePoint, Timeline};
-use re_types_core::{ComponentDescriptor, SizeBytes as _};
+use re_types_core::ComponentDescriptor;
 
 use crate::{chunk::ChunkComponents, Chunk, ChunkId, ChunkResult, RowId, TimeColumn};
 
@@ -695,7 +696,7 @@ impl PendingRow {
     }
 }
 
-impl re_types_core::SizeBytes for PendingRow {
+impl re_byte_size::SizeBytes for PendingRow {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         let Self {

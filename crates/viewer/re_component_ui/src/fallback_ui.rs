@@ -31,7 +31,7 @@ fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array::Ar
 }
 
 fn arrow2_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow2::array::Array) {
-    use re_types::SizeBytes as _;
+    use re_byte_size::SizeBytes as _;
 
     // Special-treat text.
     // Note: we match on the raw data here, so this works for any component containing text.

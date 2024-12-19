@@ -92,7 +92,7 @@ impl std::ops::DerefMut for TensorWidthDimension {
     }
 }
 
-impl ::re_types_core::SizeBytes for TensorWidthDimension {
+impl ::re_byte_size::SizeBytes for TensorWidthDimension {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.0.heap_size_bytes()

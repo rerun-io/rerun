@@ -241,7 +241,7 @@ impl BarChart {
     }
 }
 
-impl ::re_types_core::SizeBytes for BarChart {
+impl ::re_byte_size::SizeBytes for BarChart {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.values.heap_size_bytes() + self.color.heap_size_bytes()

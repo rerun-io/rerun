@@ -7,7 +7,7 @@
 #[derive(Copy, Clone, Eq, PartialOrd, Ord)]
 pub struct Hash64(u64);
 
-impl re_types_core::SizeBytes for Hash64 {
+impl re_byte_size::SizeBytes for Hash64 {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         0

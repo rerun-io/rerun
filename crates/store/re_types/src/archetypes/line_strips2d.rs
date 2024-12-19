@@ -544,7 +544,7 @@ impl LineStrips2D {
     }
 }
 
-impl ::re_types_core::SizeBytes for LineStrips2D {
+impl ::re_byte_size::SizeBytes for LineStrips2D {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.strips.heap_size_bytes()

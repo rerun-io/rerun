@@ -178,7 +178,7 @@ impl PanelBlueprint {
     }
 }
 
-impl ::re_types_core::SizeBytes for PanelBlueprint {
+impl ::re_byte_size::SizeBytes for PanelBlueprint {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.state.heap_size_bytes()

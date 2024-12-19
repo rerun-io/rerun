@@ -29,7 +29,7 @@ impl ::re_types_core::View for TextLogView {
     }
 }
 
-impl ::re_types_core::SizeBytes for TextLogView {
+impl ::re_byte_size::SizeBytes for TextLogView {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         0

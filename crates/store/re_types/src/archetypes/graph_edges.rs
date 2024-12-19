@@ -250,7 +250,7 @@ impl GraphEdges {
     }
 }
 
-impl ::re_types_core::SizeBytes for GraphEdges {
+impl ::re_byte_size::SizeBytes for GraphEdges {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.edges.heap_size_bytes() + self.graph_type.heap_size_bytes()

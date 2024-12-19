@@ -35,7 +35,7 @@ impl ::re_types_core::View for MapView {
     }
 }
 
-impl ::re_types_core::SizeBytes for MapView {
+impl ::re_byte_size::SizeBytes for MapView {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.zoom.heap_size_bytes() + self.background.heap_size_bytes()

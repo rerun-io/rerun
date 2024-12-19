@@ -5,7 +5,7 @@ use arrow2::array::{Array as _, ListArray as Arrow2ListArray};
 use itertools::Itertools as _;
 
 use re_chunk::{Chunk, EntityPath, RowId};
-use re_types_core::SizeBytes;
+use re_byte_size::SizeBytes;
 
 use crate::{
     store::ChunkIdSetPerTime, ChunkStore, ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreDiff,

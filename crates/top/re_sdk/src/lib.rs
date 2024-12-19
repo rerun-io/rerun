@@ -94,8 +94,10 @@ pub use re_types_core::{
     Archetype, ArchetypeName, AsComponents, Component, ComponentBatch, ComponentBatchCow,
     ComponentBatchCowWithDescriptor, ComponentDescriptor, ComponentName, DatatypeName,
     DeserializationError, DeserializationResult, GenericIndicatorComponent, Loggable,
-    LoggableBatch, NamedIndicatorComponent, SerializationError, SerializationResult, SizeBytes,
+    LoggableBatch, NamedIndicatorComponent, SerializationError, SerializationResult,
 };
+
+pub use re_byte_size::SizeBytes;
 
 #[cfg(feature = "data_loaders")]
 pub use re_data_loader::{DataLoader, DataLoaderError, DataLoaderSettings, LoadedData};

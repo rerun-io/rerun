@@ -103,7 +103,7 @@ impl std::ops::DerefMut for Length {
     }
 }
 
-impl ::re_types_core::SizeBytes for Length {
+impl ::re_byte_size::SizeBytes for Length {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.0.heap_size_bytes()

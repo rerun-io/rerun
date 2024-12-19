@@ -335,7 +335,7 @@ impl ::re_types_core::Loggable for ComponentColumnSelector {
     }
 }
 
-impl ::re_types_core::SizeBytes for ComponentColumnSelector {
+impl ::re_byte_size::SizeBytes for ComponentColumnSelector {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.entity_path.heap_size_bytes() + self.component.heap_size_bytes()

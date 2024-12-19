@@ -301,7 +301,7 @@ impl TextLog {
     }
 }
 
-impl ::re_types_core::SizeBytes for TextLog {
+impl ::re_byte_size::SizeBytes for TextLog {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.text.heap_size_bytes() + self.level.heap_size_bytes() + self.color.heap_size_bytes()

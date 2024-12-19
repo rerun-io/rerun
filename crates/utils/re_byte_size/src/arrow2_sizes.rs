@@ -93,6 +93,8 @@ fn validity_size(validity: Option<&Bitmap>) -> usize {
 ///
 /// FFI buffers are included in this estimation.
 fn estimated_bytes_size(array: &dyn Array) -> usize {
+    #![allow(clippy::unwrap_used)] // We check the type first
+
     // NOTE: `.len()` is the number of elements in an arrow2 buffer
     // no matter WHAT the documentation says.
     // See https://github.com/jorgecarleitao/arrow2/issues/1430

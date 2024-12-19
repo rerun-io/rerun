@@ -24,16 +24,6 @@ impl Tuid {
     /// as a hack so that we can compactly format them when printing Arrow data to the terminal.
     /// Check out `re_format_arrow` for context.
     pub const NAME: &'static str = "rerun.datatypes.TUID";
-
-    /// Returns the total size of `self` on the heap, in bytes.
-    ///
-    /// NOTE: This crate cannot depend on `re_types_core`, therefore the actual implementation of
-    /// `SizeBytes for Tuid` lives in `re_types_core` and calls this method.
-    #[inline]
-    pub fn heap_size_bytes(&self) -> u64 {
-        let Self { time_ns: _, inc: _ } = self;
-        0
-    }
 }
 
 impl std::fmt::Display for Tuid {

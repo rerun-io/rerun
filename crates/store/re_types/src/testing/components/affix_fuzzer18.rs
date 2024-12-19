@@ -171,7 +171,7 @@ impl<I: Into<crate::testing::datatypes::AffixFuzzer4>, T: IntoIterator<Item = I>
     }
 }
 
-impl ::re_types_core::SizeBytes for AffixFuzzer18 {
+impl ::re_byte_size::SizeBytes for AffixFuzzer18 {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.0.heap_size_bytes()

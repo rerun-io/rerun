@@ -366,7 +366,7 @@ impl SeriesPoint {
     }
 }
 
-impl ::re_types_core::SizeBytes for SeriesPoint {
+impl ::re_byte_size::SizeBytes for SeriesPoint {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.color.heap_size_bytes()

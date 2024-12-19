@@ -27,6 +27,7 @@ deadlock_detection = ["parking_lot/deadlock_detection"]
 
 [dependencies]
 # Rerun dependencies:
+re_byte_size.workspace = true
 re_chunk.workspace = true
 re_format.workspace = true
 re_log = { workspace = true, features = ["setup"] }

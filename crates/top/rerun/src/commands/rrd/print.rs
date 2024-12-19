@@ -3,7 +3,7 @@ use itertools::Itertools;
 
 use re_log_types::{LogMsg, SetStoreInfo};
 use re_sdk::log::Chunk;
-use re_types::SizeBytes as _;
+use re_byte_size::SizeBytes as _;
 
 use crate::commands::read_rrd_streams_from_file_or_stdin;
 
