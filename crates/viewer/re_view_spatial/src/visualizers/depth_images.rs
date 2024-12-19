@@ -259,7 +259,7 @@ impl VisualizerSystem for DepthImageVisualizer {
 
         let mut depth_clouds = Vec::new();
 
-        use super::entity_iterator::{iter_buffer, iter_component, process_archetype};
+        use super::entity_iterator::{iter_component, iter_slices, process_archetype};
         process_archetype::<Self, DepthImage, _>(
             ctx,
             view_query,
@@ -278,7 +278,7 @@ impl VisualizerSystem for DepthImageVisualizer {
 
                 let timeline = ctx.query.timeline();
                 let all_buffers_indexed =
-                    iter_buffer::<u8>(&all_buffer_chunks, timeline, ImageBuffer::name());
+                    iter_slices::<&[u8]>(&all_buffer_chunks, timeline, ImageBuffer::name());
                 let all_formats_indexed = iter_component::<ImageFormat>(
                     &all_format_chunks,
                     timeline,
@@ -292,10 +292,10 @@ impl VisualizerSystem for DepthImageVisualizer {
                 let mut data = re_query::range_zip_1x5(
                     all_buffers_indexed,
                     all_formats_indexed,
-                    all_colormaps.primitive::<u8>(),
-                    all_value_ranges.primitive_array::<2, f64>(),
-                    all_depth_meters.primitive::<f32>(),
-                    all_fill_ratios.primitive::<f32>(),
+                    all_colormaps.slice::<u8>(),
+                    all_value_ranges.slice::<[f64; 2]>(),
+                    all_depth_meters.slice::<f32>(),
+                    all_fill_ratios.slice::<f32>(),
                 )
                 .filter_map(
                     |(index, buffers, format, colormap, value_range, depth_meter, fill_ratio)| {

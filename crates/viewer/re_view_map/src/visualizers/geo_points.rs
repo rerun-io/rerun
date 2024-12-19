@@ -69,10 +69,10 @@ impl VisualizerSystem for GeoPointsVisualizer {
 
             // iterate over each chunk and find all relevant component slices
             for (_index, positions, colors, radii, class_ids) in re_query::range_zip_1x3(
-                all_positions.primitive_array::<2, f64>(),
-                all_colors.primitive::<u32>(),
-                all_radii.primitive::<f32>(),
-                all_class_ids.primitive::<u16>(),
+                all_positions.slice::<[f64; 2]>(),
+                all_colors.slice::<u32>(),
+                all_radii.slice::<f32>(),
+                all_class_ids.slice::<u16>(),
             ) {
                 // required component
                 let num_instances = positions.len();

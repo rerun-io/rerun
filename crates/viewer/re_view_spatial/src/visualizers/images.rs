@@ -118,7 +118,7 @@ impl ImageVisualizer {
         results: &HybridResults<'_>,
         spatial_ctx: &SpatialSceneEntityContext<'_>,
     ) {
-        use super::entity_iterator::{iter_buffer, iter_component};
+        use super::entity_iterator::{iter_component, iter_slices};
         use re_view::RangeResultsExt as _;
 
         let entity_path = ctx.target_entity_path;
@@ -132,7 +132,7 @@ impl ImageVisualizer {
 
         let timeline = ctx.query.timeline();
         let all_buffers_indexed =
-            iter_buffer::<u8>(&all_buffer_chunks, timeline, ImageBuffer::name());
+            iter_slices::<&[u8]>(&all_buffer_chunks, timeline, ImageBuffer::name());
         let all_formats_indexed =
             iter_component::<ImageFormat>(&all_formats_chunks, timeline, ImageFormat::name());
         let all_opacities = results.iter_as(timeline, Opacity::name());
@@ -140,7 +140,7 @@ impl ImageVisualizer {
         let data = re_query::range_zip_1x2(
             all_buffers_indexed,
             all_formats_indexed,
-            all_opacities.primitive::<f32>(),
+            all_opacities.slice::<f32>(),
         )
         .filter_map(|(index, buffers, formats, opacities)| {
             let buffer = buffers.first()?;
