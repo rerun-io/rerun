@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Hue","Scale"],"struct":["ColorTable","ColorToken","HueIter","ScaleIter"]};

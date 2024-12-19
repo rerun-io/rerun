@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"macro":["impl_size_bytes_pod"],"mod":["arrow2_sizes","arrow_sizes"],"trait":["SizeBytes"]};

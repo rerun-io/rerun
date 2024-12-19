@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["MessageKind"],"mod":["decoder","encoder"],"struct":["MessageHeader"]};

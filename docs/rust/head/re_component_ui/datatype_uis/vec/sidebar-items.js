@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["drag","edit_or_view_vec2d","edit_or_view_vec2d_raw","edit_or_view_vec3d","edit_or_view_vec3d_raw"]};
