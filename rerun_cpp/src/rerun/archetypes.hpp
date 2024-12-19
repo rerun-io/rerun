@@ -13,7 +13,6 @@
 #include "archetypes/capsules3d.hpp"
 #include "archetypes/clear.hpp"
 #include "archetypes/depth_image.hpp"
-#include "archetypes/disconnected_space.hpp"
 #include "archetypes/ellipsoids3d.hpp"
 #include "archetypes/encoded_image.hpp"
 #include "archetypes/geo_line_strings.hpp"

@@ -1,6 +1,3 @@
-// `DisconnectedSpace` is still around, but to be removed.
-#![allow(deprecated)]
-
 use once_cell::sync::OnceCell;
 
 use ahash::HashMap;
@@ -11,23 +8,14 @@ use re_chunk_store::{
 };
 use re_log_types::{EntityPath, EntityPathHash, StoreId};
 use re_types::{
-    components::{DisconnectedSpace, PinholeProjection, ViewCoordinates},
+    components::{PinholeProjection, ViewCoordinates},
     Component,
 };
 
 bitflags::bitflags! {
     #[derive(PartialEq, Eq, Debug, Copy, Clone)]
     pub struct SubSpaceConnectionFlags: u8 {
-        const Disconnected = 0b0000001;
-        const Pinhole = 0b0000010;
-    }
-}
-
-impl SubSpaceConnectionFlags {
-    /// Pinhole flag but not disconnected
-    #[inline]
-    pub fn is_connected_pinhole(&self) -> bool {
-        self.contains(Self::Pinhole) && !self.contains(Self::Disconnected)
+        const Pinhole = 0b0000001;
     }
 }
 
@@ -39,9 +27,9 @@ bitflags::bitflags! {
     }
 }
 
-/// Spatial subspace within we typically expect a homogeneous dimensionality without any projections & disconnects.
+/// Spatial subspace within we typically expect a homogeneous dimensionality without any projections.
 ///
-/// Subspaces are separated by projections or explicit disconnects.
+/// Subspaces are separated by projections.
 ///
 /// A subspace may contain internal transforms, but any such transforms must be invertible such
 /// that all data can be represented regardless of choice of origin.
@@ -69,8 +57,7 @@ pub struct SubSpace {
 
     /// Origin paths of child spaces.
     ///
-    /// This implies that there is a either an explicit disconnect or
-    /// a projection at the origin of the child space.
+    /// This implies that there is a projection at the origin of the child space.
     /// How it is connected is implied by `connection_to_parent` in the child space.
     ///
     /// Any path in `child_spaces` is *not* contained in `entities`.
@@ -283,9 +270,7 @@ impl SpatialTopology {
         let mut new_heuristic_hints = HeuristicHints::empty();
 
         for added_component in added_components {
-            if added_component == DisconnectedSpace::name() {
-                new_subspace_connections.insert(SubSpaceConnectionFlags::Disconnected);
-            } else if added_component == PinholeProjection::name() {
+            if added_component == PinholeProjection::name() {
                 new_subspace_connections.insert(SubSpaceConnectionFlags::Pinhole);
             } else if added_component == ViewCoordinates::name() {
                 new_heuristic_hints.insert(HeuristicHints::ViewCoordinates3d);
@@ -434,7 +419,7 @@ impl SpatialTopology {
 mod tests {
     use re_log_types::EntityPath;
     use re_types::{
-        components::{DisconnectedSpace, PinholeProjection, ViewCoordinates},
+        components::{PinholeProjection, ViewCoordinates},
         Component as _, ComponentName,
     };
 
@@ -478,16 +463,10 @@ mod tests {
         );
 
         // Add splitting entities to the root space - this should not cause any splits.
+        #[allow(clippy::single_element_loop)]
         for (name, flags) in [
             (PinholeProjection::name(), SubSpaceConnectionFlags::Pinhole),
-            (
-                DisconnectedSpace::name(),
-                SubSpaceConnectionFlags::Pinhole | SubSpaceConnectionFlags::Disconnected,
-            ),
-            (
-                ViewCoordinates::name(),
-                SubSpaceConnectionFlags::Pinhole | SubSpaceConnectionFlags::Disconnected,
-            ),
+            // Add future ways of splitting here (in the past `DisconnectedSpace` was used here).
         ] {
             add_diff(&mut topo, "", &[name]);
             let subspace = topo.subspace_for_entity(&"robo".into());
@@ -589,31 +568,6 @@ mod tests {
             );
         }
 
-        // Disconnect the left camera.
-        add_diff(
-            &mut topo,
-            "robo/eyes/left/cam",
-            &[DisconnectedSpace::name()],
-        );
-        {
-            let root = topo.subspace_for_entity(&"robo".into());
-            let left_camera = topo.subspace_for_entity(&"robo/eyes/left/cam".into());
-            let right_camera = topo.subspace_for_entity(&"robo/eyes/right/cam".into());
-
-            assert_eq!(left_camera.origin, "robo/eyes/left/cam".into());
-            assert_eq!(left_camera.parent_space, root.origin.hash());
-            assert_eq!(
-                left_camera.connection_to_parent,
-                SubSpaceConnectionFlags::Disconnected | SubSpaceConnectionFlags::Pinhole
-            );
-            assert_eq!(right_camera.parent_space, root.origin.hash());
-            assert_eq!(
-                right_camera.connection_to_parent,
-                SubSpaceConnectionFlags::Pinhole
-            );
-            assert_eq!(root.connection_to_parent, SubSpaceConnectionFlags::empty());
-        }
-
         // Add view coordinates to robo.
         add_diff(&mut topo, "robo", &[ViewCoordinates::name()]);
         {
@@ -657,32 +611,6 @@ mod tests {
             assert_eq!(cam1.parent_space, cam0.origin.hash());
             assert!(cam1.child_spaces.is_empty());
         }
-    }
-
-    #[test]
-    fn disconnected_pinhole() {
-        let mut topo = SpatialTopology::default();
-
-        add_diff(&mut topo, "stuff", &[]);
-        add_diff(
-            &mut topo,
-            "camera",
-            &[PinholeProjection::name(), DisconnectedSpace::name()],
-        );
-        add_diff(&mut topo, "camera/image", &[]);
-
-        check_paths_in_space(&topo, &["stuff"], "/");
-        check_paths_in_space(&topo, &["camera", "camera/image"], "camera");
-
-        let cam = topo.subspace_for_entity(&"camera".into());
-        assert_eq!(
-            cam.connection_to_parent,
-            SubSpaceConnectionFlags::Disconnected | SubSpaceConnectionFlags::Pinhole
-        );
-        assert_eq!(cam.parent_space, EntityPath::root().hash());
-
-        let root = topo.subspace_for_entity(&"stuff".into());
-        assert_eq!(root.connection_to_parent, SubSpaceConnectionFlags::empty());
     }
 
     fn add_diff(topo: &mut SpatialTopology, path: &str, components: &[ComponentName]) {

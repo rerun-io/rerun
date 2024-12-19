@@ -304,7 +304,9 @@ impl ViewClass for SpatialView3D {
                                 topo.subspace_for_subspace_origin(child.hash()).map_or(
                                     false,
                                     |child_space| {
-                                        child_space.connection_to_parent.is_connected_pinhole()
+                                        child_space
+                                            .connection_to_parent
+                                            .contains(SubSpaceConnectionFlags::Pinhole)
                                     },
                                 )
                             })

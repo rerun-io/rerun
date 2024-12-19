@@ -13,7 +13,6 @@ from .boxes3d import Boxes3D
 from .capsules3d import Capsules3D
 from .clear import Clear
 from .depth_image import DepthImage
-from .disconnected_space import DisconnectedSpace
 from .ellipsoids3d import Ellipsoids3D
 from .encoded_image import EncodedImage
 from .geo_line_strings import GeoLineStrings
@@ -51,7 +50,6 @@ __all__ = [
     "Capsules3D",
     "Clear",
     "DepthImage",
-    "DisconnectedSpace",
     "Ellipsoids3D",
     "EncodedImage",
     "GeoLineStrings",

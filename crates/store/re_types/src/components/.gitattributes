@@ -10,7 +10,6 @@ class_id.rs linguist-generated=true
 color.rs linguist-generated=true
 colormap.rs linguist-generated=true
 depth_meter.rs linguist-generated=true
-disconnected_space.rs linguist-generated=true
 draw_order.rs linguist-generated=true
 entity_path.rs linguist-generated=true
 fill_mode.rs linguist-generated=true

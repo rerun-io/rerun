@@ -6,7 +6,7 @@ use re_entity_db::{EntityDb, EntityPath, EntityTree};
 use re_types::{
     archetypes::{InstancePoses3D, Pinhole, Transform3D},
     components::{
-        self, ImagePlaneDistance, PinholeProjection, PoseRotationAxisAngle, PoseRotationQuat,
+        ImagePlaneDistance, PinholeProjection, PoseRotationAxisAngle, PoseRotationQuat,
         PoseScale3D, PoseTransformMat3x3, PoseTranslation3D, RotationAxisAngle, RotationQuat,
         Scale3D, TransformMat3x3, TransformRelation, Translation3D, ViewCoordinates,
     },
@@ -111,9 +111,6 @@ impl TransformInfo {
 enum UnreachableTransformReason {
     /// More than one pinhole camera between this and the reference space.
     NestedPinholeCameras,
-
-    /// Unknown transform between this and the reference space.
-    DisconnectedSpace,
 }
 
 /// Provides transforms from an entity to a chosen reference space for all elements in the scene
@@ -169,8 +166,6 @@ impl ViewContextSystem for TransformContext {
                 .map(|descr| descr.component_name)
                 .collect(),
             std::iter::once(PinholeProjection::name()).collect(),
-            #[allow(deprecated)] // `DisconnectedSpace` is on the way out.
-            std::iter::once(components::DisconnectedSpace::name()).collect(),
         ]
     }
 
@@ -821,24 +816,5 @@ fn transforms_at(
         }
     }
 
-    // If there is any other transform, we ignore `DisconnectedSpace`.
-    let no_other_transforms = transforms_at_entity
-        .parent_from_entity_tree_transform
-        .is_none()
-        && transforms_at_entity.entity_from_instance_poses.is_empty()
-        && transforms_at_entity
-            .instance_from_pinhole_image_plane
-            .is_none();
-
-    #[allow(deprecated)] // `DisconnectedSpace` is on the way out.
-    if no_other_transforms
-        && potential_transform_components.disconnected_space
-        && entity_db
-            .latest_at_component::<components::DisconnectedSpace>(entity_path, query)
-            .map_or(false, |(_index, res)| **res)
-    {
-        Err(UnreachableTransformReason::DisconnectedSpace)
-    } else {
-        Ok(transforms_at_entity)
-    }
+    Ok(transforms_at_entity)
 }
