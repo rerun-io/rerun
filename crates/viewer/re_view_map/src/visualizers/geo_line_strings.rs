@@ -66,7 +66,7 @@ impl VisualizerSystem for GeoLineStringsVisualizer {
 
             // iterate over each chunk and find all relevant component slices
             for (_index, lines, colors, radii) in re_query::range_zip_1x2(
-                all_lines.component_slow::<GeoLineString>(),
+                all_lines.primitive_array_list::<2, f64>(),
                 all_colors.primitive::<u32>(),
                 all_radii.primitive::<f32>(),
             ) {
@@ -90,9 +90,8 @@ impl VisualizerSystem for GeoLineStringsVisualizer {
                 .enumerate()
                 {
                     batch_data.lines.push(
-                        line.0
-                            .iter()
-                            .map(|pos| walkers::Position::from_lat_lon(pos.x(), pos.y()))
+                        line.iter()
+                            .map(|pos| walkers::Position::from_lat_lon(pos[0], pos[1]))
                             .collect(),
                     );
                     batch_data.radii.push(Radius((*radius).into()));
