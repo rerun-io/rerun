@@ -14,7 +14,6 @@ color.hpp linguist-generated=true
 colormap.cpp linguist-generated=true
 colormap.hpp linguist-generated=true
 depth_meter.hpp linguist-generated=true
-disconnected_space.hpp linguist-generated=true
 draw_order.hpp linguist-generated=true
 entity_path.hpp linguist-generated=true
 fill_mode.cpp linguist-generated=true

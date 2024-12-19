@@ -21,9 +21,6 @@ pub struct PotentialTransformComponentSet {
 
     /// Whether the entity ever had a pinhole camera.
     pub pinhole: bool,
-
-    /// Whether the entity ever had a disconnected space component.
-    pub disconnected_space: bool,
 }
 
 /// Keeps track of which entities have had any `Transform3D`-related data on any timeline at any
@@ -135,16 +132,6 @@ impl PerStoreChunkSubscriber for TransformComponentTrackerStoreSubscriber {
                         .entry(entity_path_hash)
                         .or_default()
                         .pinhole = true;
-                }
-                // `DisconnectedSpace` is deprecated and will be removed in the future.
-                #[allow(deprecated)]
-                if component_name == re_types::components::DisconnectedSpace::name()
-                    && contains_non_zero_component_array(component_name)
-                {
-                    self.components_per_entity
-                        .entry(entity_path_hash)
-                        .or_default()
-                        .disconnected_space = true;
                 }
             }
         }

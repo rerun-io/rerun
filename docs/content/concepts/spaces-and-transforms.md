@@ -75,7 +75,6 @@ transforms that can be logged:
     [`rr.Transform3D`](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.Transform3D)).
 -   Pinhole transforms define a 3D -> 2D camera projection (see
     [`rr.Pinhole`](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.Pinhole)).
--   A disconnected space specifies that the data cannot be transformed (see [`rr.DisconnectedSpace`](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.DisconnectedSpace)). In this case it will not be possible to combine the data into a single view, and you will need to create two separate views to explore the data.
 
 In the future, Rerun will be adding support for additional types of transforms.
 

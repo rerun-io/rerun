@@ -49,7 +49,6 @@ snippet: views/spatial2d
 * [`Boxes2D`](../archetypes/boxes2d.md)
 * [`Clear`](../archetypes/clear.md)
 * [`DepthImage`](../archetypes/depth_image.md)
-* [`DisconnectedSpace`](../archetypes/disconnected_space.md)
 * [`EncodedImage`](../archetypes/encoded_image.md)
 * [`Image`](../archetypes/image.md)
 * [`LineStrips2D`](../archetypes/line_strips2d.md)

@@ -242,7 +242,6 @@ SECTION_TABLE: Final[list[Section]] = [
     Section(
         title="Transforms and Coordinate Systems",
         class_list=[
-            "archetypes.DisconnectedSpace",
             "archetypes.Pinhole",
             "archetypes.Transform3D",
             "archetypes.InstancePoses3D",
