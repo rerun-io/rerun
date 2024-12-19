@@ -7,7 +7,7 @@ pub use encoder::encode;
 #[cfg(test)]
 mod tests {
     use crate::{
-        codec::wire::{decode, encode, TransportMessageV0},
+        codec::wire::{decode, encode},
         codec::CodecError,
     };
     use re_chunk::{Chunk, RowId};
@@ -38,9 +38,9 @@ mod tests {
     }
 
     #[test]
-    fn test_invalid_batch_data() {
-        let data = vec![2, 3, 4]; // '1' is NO_DATA message header
-        let decoded = TransportMessageV0::from_bytes(&data);
+    fn test_invalid_data() {
+        let data = vec![2, 3, 4];
+        let decoded = decode(EncoderVersion::V0, &data);
 
         assert!(matches!(
             decoded.err().unwrap(),
@@ -54,7 +54,7 @@ mod tests {
 
         let encoded = encode(
             EncoderVersion::V0,
-            expected_chunk.clone().to_transport().unwrap(),
+            &expected_chunk.clone().to_transport().unwrap(),
         )
         .unwrap();
         let decoded = decode(EncoderVersion::V0, &encoded).unwrap();

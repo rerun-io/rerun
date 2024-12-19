@@ -5,7 +5,7 @@ use re_chunk::TransportChunk;
 /// Encode a transport chunk into a byte stream.
 pub fn encode(
     version: re_protos::common::v0::EncoderVersion,
-    chunk: TransportChunk,
+    chunk: &TransportChunk,
 ) -> Result<Vec<u8>, CodecError> {
     match version {
         re_protos::common::v0::EncoderVersion::V0 => {

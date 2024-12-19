@@ -269,7 +269,7 @@ impl PyStorageNodeClient {
 
                     let metadata_tc = TransportChunk::from_arrow_record_batch(&metadata);
 
-                    encode(EncoderVersion::V0, metadata_tc)
+                    encode(EncoderVersion::V0, &metadata_tc)
                         .map_err(|err| PyRuntimeError::new_err(err.to_string()))
                 })
                 .transpose()?
@@ -339,7 +339,7 @@ impl PyStorageNodeClient {
             let request = UpdateCatalogRequest {
                 metadata: Some(DataframePart {
                     encoder_version: EncoderVersion::V0 as i32,
-                    payload: encode(EncoderVersion::V0, metadata_tc)
+                    payload: encode(EncoderVersion::V0, &metadata_tc)
                         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?,
                 }),
             };
