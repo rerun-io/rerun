@@ -11,7 +11,6 @@ boxes2d.rs linguist-generated=true
 boxes3d.rs linguist-generated=true
 capsules3d.rs linguist-generated=true
 depth_image.rs linguist-generated=true
-disconnected_space.rs linguist-generated=true
 ellipsoids3d.rs linguist-generated=true
 encoded_image.rs linguist-generated=true
 geo_line_strings.rs linguist-generated=true

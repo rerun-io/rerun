@@ -76,9 +76,9 @@ Notes:
  * `image` has become `data`
 
 ### log_disconnected_space
-Replace with [DisconnectedSpace](../types/archetypes/disconnected_space.md)
+Replace with `DisconnectedSpace`
 
-Python docs: [DisconnectedSpace](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.DisconnectedSpace)
+Python docs: [DisconnectedSpace](https://ref.rerun.io/docs/python/0.21.0/common/archetypes/#rerun.archetypes.DisconnectedSpace)
 
 ### log_extension_components
 Replace with `AnyValues`

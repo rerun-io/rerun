@@ -430,14 +430,6 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <DisconnectedSpace as Component>::name(),
-            ComponentReflection {
-                docstring_md: "Spatially disconnect this entity from its parent.\n\nSpecifies that the entity path at which this is logged is spatially disconnected from its parent,\nmaking it impossible to transform the entity path into its parent's space and vice versa.\nIt *only* applies to views that work with spatial transformations, i.e. 2D & 3D views.\nThis is useful for specifying that a subgraph is independent of the rest of the scene.",
-                custom_placeholder: Some(DisconnectedSpace::default().to_arrow()?),
-                datatype: DisconnectedSpace::arrow2_datatype(),
-            },
-        ),
-        (
             <DrawOrder as Component>::name(),
             ComponentReflection {
                 docstring_md: "Draw order of 2D elements. Higher values are drawn on top of lower values.\n\nAn entity can have only a single draw order component.\nWithin an entity draw order is governed by the order of the components.\n\nDraw order for entities with the same draw order is generally undefined.",
@@ -1260,21 +1252,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "rerun.components.DrawOrder".into(), docstring_md :
                     "An optional floating point value that specifies the 2D drawing order, used only if the depth image is shown as a 2D image.\n\nObjects with higher values are drawn on top of those with lower values.",
                     is_required : false, },
-                ],
-            },
-        ),
-        (
-            ArchetypeName::new("rerun.archetypes.DisconnectedSpace"),
-            ArchetypeReflection {
-                display_name: "Disconnected space",
-                scope: None,
-                view_types: &["Spatial2DView", "Spatial3DView"],
-                fields: vec![
-                    ArchetypeFieldReflection { name : "disconnected_space", display_name
-                    : "Disconnected space", component_name :
-                    "rerun.components.DisconnectedSpace".into(), docstring_md :
-                    "Whether the entity path at which this is logged is disconnected from its parent.",
-                    is_required : true, },
                 ],
             },
         ),

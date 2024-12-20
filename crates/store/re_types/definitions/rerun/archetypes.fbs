@@ -11,7 +11,6 @@ include "./archetypes/boxes3d.fbs";
 include "./archetypes/capsules3d.fbs";
 include "./archetypes/clear.fbs";
 include "./archetypes/depth_image.fbs";
-include "./archetypes/disconnected_space.fbs";
 include "./archetypes/ellipsoids3d.fbs";
 include "./archetypes/encoded_image.fbs";
 include "./archetypes/geo_line_strings.fbs";

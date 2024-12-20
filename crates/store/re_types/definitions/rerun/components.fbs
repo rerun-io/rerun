@@ -10,7 +10,6 @@ include "./components/clear_is_recursive.fbs";
 include "./components/color.fbs";
 include "./components/colormap.fbs";
 include "./components/depth_meter.fbs";
-include "./components/disconnected_space.fbs";
 include "./components/draw_order.fbs";
 include "./components/entity_path.fbs";
 include "./components/fill_mode.fbs";

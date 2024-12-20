@@ -7484,16 +7484,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "roundtrip_disconnected_space"
-version = "0.22.0-alpha.1+dev"
-dependencies = [
- "anyhow",
- "clap",
- "re_log",
- "rerun",
-]
-
-[[package]]
 name = "roundtrip_image"
 version = "0.22.0-alpha.1+dev"
 dependencies = [
