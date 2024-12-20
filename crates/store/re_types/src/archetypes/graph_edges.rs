@@ -12,7 +12,7 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 
-use ::re_types_core::external::arrow2;
+use ::re_types_core::external::arrow;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
@@ -159,8 +159,8 @@ impl ::re_types_core::Archetype for GraphEdges {
     }
 
     #[inline]
-    fn from_arrow2_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, Box<dyn arrow2::array::Array>)>,
+    fn from_arrow_components(
+        arrow_data: impl IntoIterator<Item = (ComponentName, arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
@@ -173,7 +173,7 @@ impl ::re_types_core::Archetype for GraphEdges {
                 .get("rerun.components.GraphEdge")
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.GraphEdges#edges")?;
-            <crate::components::GraphEdge>::from_arrow2_opt(&**array)
+            <crate::components::GraphEdge>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.GraphEdges#edges")?
                 .into_iter()
                 .map(|v| v.ok_or_else(DeserializationError::missing_data))
@@ -181,7 +181,7 @@ impl ::re_types_core::Archetype for GraphEdges {
                 .with_context("rerun.archetypes.GraphEdges#edges")?
         };
         let graph_type = if let Some(array) = arrays_by_name.get("rerun.components.GraphType") {
-            <crate::components::GraphType>::from_arrow2_opt(&**array)
+            <crate::components::GraphType>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.GraphEdges#graph_type")?
                 .into_iter()
                 .next()

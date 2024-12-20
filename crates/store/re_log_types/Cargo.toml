@@ -55,6 +55,7 @@ re_types_core.workspace = true
 # External
 ahash.workspace = true
 anyhow.workspace = true
+arrow.workspace = true
 arrow2 = { workspace = true, features = [
   "io_ipc",
   "io_print",

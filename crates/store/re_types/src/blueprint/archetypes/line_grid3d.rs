@@ -12,7 +12,7 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 
-use ::re_types_core::external::arrow2;
+use ::re_types_core::external::arrow;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
@@ -176,8 +176,8 @@ impl ::re_types_core::Archetype for LineGrid3D {
     }
 
     #[inline]
-    fn from_arrow2_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, Box<dyn arrow2::array::Array>)>,
+    fn from_arrow_components(
+        arrow_data: impl IntoIterator<Item = (ComponentName, arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
@@ -187,7 +187,7 @@ impl ::re_types_core::Archetype for LineGrid3D {
             .collect();
         let visible = if let Some(array) = arrays_by_name.get("rerun.blueprint.components.Visible")
         {
-            <crate::blueprint::components::Visible>::from_arrow2_opt(&**array)
+            <crate::blueprint::components::Visible>::from_arrow_opt(&**array)
                 .with_context("rerun.blueprint.archetypes.LineGrid3D#visible")?
                 .into_iter()
                 .next()
@@ -197,7 +197,7 @@ impl ::re_types_core::Archetype for LineGrid3D {
         };
         let spacing =
             if let Some(array) = arrays_by_name.get("rerun.blueprint.components.GridSpacing") {
-                <crate::blueprint::components::GridSpacing>::from_arrow2_opt(&**array)
+                <crate::blueprint::components::GridSpacing>::from_arrow_opt(&**array)
                     .with_context("rerun.blueprint.archetypes.LineGrid3D#spacing")?
                     .into_iter()
                     .next()
@@ -206,7 +206,7 @@ impl ::re_types_core::Archetype for LineGrid3D {
                 None
             };
         let plane = if let Some(array) = arrays_by_name.get("rerun.components.Plane3D") {
-            <crate::components::Plane3D>::from_arrow2_opt(&**array)
+            <crate::components::Plane3D>::from_arrow_opt(&**array)
                 .with_context("rerun.blueprint.archetypes.LineGrid3D#plane")?
                 .into_iter()
                 .next()
@@ -215,7 +215,7 @@ impl ::re_types_core::Archetype for LineGrid3D {
             None
         };
         let stroke_width = if let Some(array) = arrays_by_name.get("rerun.components.StrokeWidth") {
-            <crate::components::StrokeWidth>::from_arrow2_opt(&**array)
+            <crate::components::StrokeWidth>::from_arrow_opt(&**array)
                 .with_context("rerun.blueprint.archetypes.LineGrid3D#stroke_width")?
                 .into_iter()
                 .next()
@@ -224,7 +224,7 @@ impl ::re_types_core::Archetype for LineGrid3D {
             None
         };
         let color = if let Some(array) = arrays_by_name.get("rerun.components.Color") {
-            <crate::components::Color>::from_arrow2_opt(&**array)
+            <crate::components::Color>::from_arrow_opt(&**array)
                 .with_context("rerun.blueprint.archetypes.LineGrid3D#color")?
                 .into_iter()
                 .next()
