@@ -144,7 +144,7 @@ fn create_view_for_selected_entities(
         .recommended_root_for_entities(&entities_of_interest, ctx.viewer_context.recording())
         .unwrap_or_else(EntityPath::root);
 
-    let mut filter = EntityPathFilter::default();
+    let mut query_filter = EntityPathFilter::default();
 
     let target_container_id = ctx
         .clicked_item_enclosing_container_id_and_position()
@@ -154,11 +154,14 @@ fn create_view_for_selected_entities(
     // relative to the origin. This makes sense since if you create a view and
     // then change the origin you likely wanted those entities to still be there.
     for path in entities_of_interest {
-        filter.add_rule(RuleEffect::Include, EntityPathRule::including_subtree(path));
+        query_filter.add_rule(
+            RuleEffect::Include,
+            EntityPathRule::including_entity_subtree(&path),
+        );
     }
     let recommended = RecommendedView {
         origin,
-        query_filter: filter,
+        query_filter,
     };
 
     let view = ViewBlueprint::new(identifier, recommended);

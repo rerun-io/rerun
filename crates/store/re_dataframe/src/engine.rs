@@ -4,7 +4,7 @@ use re_chunk::{EntityPath, TransportChunk};
 use re_chunk_store::{
     ChunkStore, ChunkStoreConfig, ChunkStoreHandle, ColumnDescriptor, QueryExpression,
 };
-use re_log_types::{EntityPathFilter, StoreId};
+use re_log_types::{ResolvedEntityPathFilter, StoreId};
 use re_query::{QueryCache, QueryCacheHandle, StorageEngine, StorageEngineLike};
 
 use crate::QueryHandle;
@@ -104,7 +104,7 @@ impl<E: StorageEngineLike + Clone> QueryEngine<E> {
     #[inline]
     pub fn iter_entity_paths_sorted<'a>(
         &self,
-        filter: &'a EntityPathFilter,
+        filter: &'a ResolvedEntityPathFilter,
     ) -> impl Iterator<Item = EntityPath> + 'a {
         self.engine.with(|store, _cache| {
             store

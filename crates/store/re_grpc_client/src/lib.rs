@@ -567,7 +567,7 @@ fn activate_catalog_blueprint(
         .with_archetype(RowId::new(), timepoint, &vb)
         .build()?;
 
-    let epf = EntityPathFilter::parse_forgiving("/**", &Default::default());
+    let epf = EntityPathFilter::parse_forgiving("/**");
     let vc = ViewContents::new(epf.iter_expressions());
     let view_contents_chunk = ChunkBuilder::new(
         ChunkId::new(),

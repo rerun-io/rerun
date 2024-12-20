@@ -6,7 +6,7 @@ use ahash::HashMap;
 use egui_tiles::{Behavior as _, EditAction};
 
 use re_context_menu::{context_menu_ui_for_item, SelectionUpdateBehavior};
-use re_log_types::{EntityPath, EntityPathRule, RuleEffect};
+use re_log_types::{EntityPath, ResolvedEntityPathRule, RuleEffect};
 use re_ui::{design_tokens, ContextExt as _, DesignTokens, Icon, UiExt as _};
 use re_viewer_context::{
     blueprint_id_to_tile_id, icon_for_container_kind, Contents, DragAndDropFeedback,
@@ -284,7 +284,7 @@ impl ViewportUi {
                         if can_entity_be_added(entity) {
                             filter.add_rule(
                                 RuleEffect::Include,
-                                EntityPathRule::including_subtree(entity.clone()),
+                                ResolvedEntityPathRule::including_subtree(entity),
                             );
                         }
                     }
