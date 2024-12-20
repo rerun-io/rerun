@@ -121,7 +121,7 @@ impl VisualizerSystem for Boxes3DVisualizer {
         let mut builder =
             ProcMeshDrawableBuilder::new(&mut self.0, render_ctx, view_query, "boxes3d", &Fallback);
 
-        use super::entity_iterator::{iter_primitive_array, process_archetype};
+        use super::entity_iterator::{iter_slices, process_archetype};
         process_archetype::<Self, Boxes3D, _>(
             ctx,
             view_query,
@@ -136,7 +136,7 @@ impl VisualizerSystem for Boxes3DVisualizer {
 
                 let num_boxes: usize = all_half_size_chunks
                     .iter()
-                    .flat_map(|chunk| chunk.iter_primitive_array::<3, f32>(&HalfSize3D::name()))
+                    .flat_map(|chunk| chunk.iter_slices::<[f32; 3]>(HalfSize3D::name()))
                     .map(|vectors| vectors.len())
                     .sum();
                 if num_boxes == 0 {
@@ -144,11 +144,8 @@ impl VisualizerSystem for Boxes3DVisualizer {
                 }
 
                 let timeline = ctx.query.timeline();
-                let all_half_sizes_indexed = iter_primitive_array::<3, f32>(
-                    &all_half_size_chunks,
-                    timeline,
-                    HalfSize3D::name(),
-                );
+                let all_half_sizes_indexed =
+                    iter_slices::<[f32; 3]>(&all_half_size_chunks, timeline, HalfSize3D::name());
                 let all_colors = results.iter_as(timeline, Color::name());
                 let all_radii = results.iter_as(timeline, Radius::name());
                 let all_labels = results.iter_as(timeline, Text::name());
@@ -159,7 +156,7 @@ impl VisualizerSystem for Boxes3DVisualizer {
                 let all_fill_modes = results.iter_as(timeline, FillMode::name());
                 // fill mode is currently a non-repeated component
                 let fill_mode: FillMode = all_fill_modes
-                    .primitive::<u8>()
+                    .slice::<u8>()
                     .next()
                     .and_then(|(_, fill_modes)| {
                         fill_modes.first().copied().and_then(FillMode::from_u8)
@@ -179,11 +176,11 @@ impl VisualizerSystem for Boxes3DVisualizer {
 
                 let data = re_query::range_zip_1x5(
                     all_half_sizes_indexed,
-                    all_colors.primitive::<u32>(),
-                    all_radii.primitive::<f32>(),
-                    all_labels.string(),
-                    all_class_ids.primitive::<u16>(),
-                    all_show_labels.bool(),
+                    all_colors.slice::<u32>(),
+                    all_radii.slice::<f32>(),
+                    all_labels.slice::<String>(),
+                    all_class_ids.slice::<u16>(),
+                    all_show_labels.slice::<bool>(),
                 )
                 .map(
                     |(_index, half_sizes, colors, radii, labels, class_ids, show_labels)| {

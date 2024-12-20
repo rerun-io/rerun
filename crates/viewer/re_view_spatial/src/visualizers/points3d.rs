@@ -196,7 +196,7 @@ impl VisualizerSystem for Points3DVisualizer {
             re_view::SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
         );
 
-        use super::entity_iterator::{iter_primitive_array, process_archetype};
+        use super::entity_iterator::{iter_slices, process_archetype};
         process_archetype::<Self, Points3D, _>(
             ctx,
             view_query,
@@ -211,7 +211,7 @@ impl VisualizerSystem for Points3DVisualizer {
 
                 let num_positions = all_position_chunks
                     .iter()
-                    .flat_map(|chunk| chunk.iter_primitive_array::<3, f32>(&Position3D::name()))
+                    .flat_map(|chunk| chunk.iter_slices::<[f32; 3]>(Position3D::name()))
                     .map(|points| points.len())
                     .sum();
 
@@ -222,11 +222,8 @@ impl VisualizerSystem for Points3DVisualizer {
                 point_builder.reserve(num_positions)?;
 
                 let timeline = ctx.query.timeline();
-                let all_positions_indexed = iter_primitive_array::<3, f32>(
-                    &all_position_chunks,
-                    timeline,
-                    Position3D::name(),
-                );
+                let all_positions_indexed =
+                    iter_slices::<[f32; 3]>(&all_position_chunks, timeline, Position3D::name());
                 let all_colors = results.iter_as(timeline, Color::name());
                 let all_radii = results.iter_as(timeline, Radius::name());
                 let all_labels = results.iter_as(timeline, Text::name());
@@ -236,12 +233,12 @@ impl VisualizerSystem for Points3DVisualizer {
 
                 let data = re_query::range_zip_1x6(
                     all_positions_indexed,
-                    all_colors.primitive::<u32>(),
-                    all_radii.primitive::<f32>(),
-                    all_labels.string(),
-                    all_class_ids.primitive::<u16>(),
-                    all_keypoint_ids.primitive::<u16>(),
-                    all_show_labels.bool(),
+                    all_colors.slice::<u32>(),
+                    all_radii.slice::<f32>(),
+                    all_labels.slice::<String>(),
+                    all_class_ids.slice::<u16>(),
+                    all_keypoint_ids.slice::<u16>(),
+                    all_show_labels.slice::<bool>(),
                 )
                 .map(
                     |(

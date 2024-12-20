@@ -69,7 +69,7 @@ impl VisualizerSystem for TensorSystem {
             let all_ranges = results.iter_as(timeline, ValueRange::name());
 
             for ((_, tensor_row_id), tensors, data_ranges) in
-                re_query::range_zip_1x1(all_tensors_indexed, all_ranges.primitive_array::<2, f64>())
+                re_query::range_zip_1x1(all_tensors_indexed, all_ranges.slice::<[f64; 2]>())
             {
                 let Some(tensor) = tensors.first() else {
                     continue;

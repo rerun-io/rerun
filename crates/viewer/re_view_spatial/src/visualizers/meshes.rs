@@ -176,7 +176,7 @@ impl VisualizerSystem for Mesh3DVisualizer {
 
         let mut instances = Vec::new();
 
-        use super::entity_iterator::{iter_primitive_array, process_archetype};
+        use super::entity_iterator::{iter_slices, process_archetype};
         process_archetype::<Self, Mesh3D, _>(
             ctx,
             view_query,
@@ -191,7 +191,7 @@ impl VisualizerSystem for Mesh3DVisualizer {
                 };
 
                 let timeline = ctx.query.timeline();
-                let all_vertex_positions_indexed = iter_primitive_array::<3, f32>(
+                let all_vertex_positions_indexed = iter_slices::<[f32; 3]>(
                     &all_vertex_position_chunks,
                     timeline,
                     Position3D::name(),
@@ -209,16 +209,15 @@ impl VisualizerSystem for Mesh3DVisualizer {
 
                 let data = re_query::range_zip_1x8(
                     all_vertex_positions_indexed,
-                    all_vertex_normals.primitive_array::<3, f32>(),
-                    all_vertex_colors.primitive::<u32>(),
-                    all_vertex_texcoords.primitive_array::<2, f32>(),
-                    all_triangle_indices.primitive_array::<3, u32>(),
-                    all_albedo_factors.primitive::<u32>(),
-                    // TODO(cmc): Provide a `iter_blob`.
-                    all_albedo_buffers.component_slow::<ImageBuffer>(),
+                    all_vertex_normals.slice::<[f32; 3]>(),
+                    all_vertex_colors.slice::<u32>(),
+                    all_vertex_texcoords.slice::<[f32; 2]>(),
+                    all_triangle_indices.slice::<[f32; 3]>(),
+                    all_albedo_factors.slice::<u32>(),
+                    all_albedo_buffers.slice::<&[u8]>(),
                     // Legit call to `component_slow`, `ImageFormat` is real complicated.
                     all_albedo_formats.component_slow::<ImageFormat>(),
-                    all_class_ids.primitive::<u16>(),
+                    all_class_ids.slice::<u16>(),
                 )
                 .map(
                     |(
@@ -250,7 +249,11 @@ impl VisualizerSystem for Mesh3DVisualizer {
                                     bytemuck::cast_slice(albedo_factors)
                                 })
                                 .first(),
-                            albedo_buffer: albedo_buffers.unwrap_or_default().first().cloned(), // shallow clone
+                            albedo_buffer: albedo_buffers
+                                .unwrap_or_default()
+                                .first()
+                                .cloned()
+                                .map(Into::into), // shallow clone
                             albedo_format: albedo_formats.unwrap_or_default().first().copied(),
                             class_ids: class_ids
                                 .map_or(&[], |class_ids| bytemuck::cast_slice(class_ids)),
