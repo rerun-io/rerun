@@ -58,17 +58,38 @@ fn setup_store(test_context: &mut TestContext) {
 pub fn setup_graph_view_blueprint(test_context: &mut TestContext) -> ViewId {
     // Views are always logged at `/{view_id}` in the blueprint store.
     let view_id = ViewId::random(); // TODO: is this fishy for testing?
-    let chunk = Chunk::builder(view_id.as_entity_path().clone())
+
+    // Use the timeline that is queried for blueprints.
+    let timepoint = [(test_context.blueprint_query.timeline(), 0)];
+
+    let view_chunk = Chunk::builder(view_id.as_entity_path().clone())
         .with_archetype(
             RowId::new(),
-            [(test_context.blueprint_query.timeline(), 0)], // Use the timeline that is queried for blueprints.
+            timepoint,
             &re_types::blueprint::archetypes::ViewBlueprint::new(GraphView::identifier().as_str()),
         )
         .build()
         .unwrap();
     test_context
         .blueprint_store
-        .add_chunk(&Arc::new(chunk))
+        .add_chunk(&Arc::new(view_chunk))
+        .unwrap();
+
+    // TODO: can we use the `ViewProperty` utilities for this?
+    let view_contents_chunk =
+        Chunk::builder(format!("{}/ViewContents", view_id.as_entity_path()).into())
+            .with_archetype(
+                RowId::new(),
+                timepoint,
+                &re_types::blueprint::archetypes::ViewContents::new(std::iter::once(
+                    re_types::datatypes::Utf8::from("/**"),
+                )),
+            )
+            .build()
+            .unwrap();
+    test_context
+        .blueprint_store
+        .add_chunk(&Arc::new(view_contents_chunk))
         .unwrap();
 
     view_id
