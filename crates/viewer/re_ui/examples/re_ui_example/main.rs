@@ -78,7 +78,6 @@ pub struct ExampleApp {
     /// modal with full span mode
     full_span_modal_handler: re_ui::modal::ModalHandler,
 
-    show_notification_panel: bool,
     show_left_panel: bool,
     show_right_panel: bool,
     show_bottom_panel: bool,
@@ -112,7 +111,6 @@ impl ExampleApp {
             modal_handler: Default::default(),
             full_span_modal_handler: Default::default(),
 
-            show_notification_panel: false,
             show_left_panel: true,
             show_right_panel: true,
             show_bottom_panel: true,
