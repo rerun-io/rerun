@@ -54,8 +54,8 @@ impl VisualizerSystem for EdgesVisualizer {
             first: datatypes::Utf8,
             second: datatypes::Utf8,
         );
-        let source: ArchetypeFieldName = "first".into();
-        let target: ArchetypeFieldName = "second".into();
+        const SOURCE: &str = "first";
+        const TARGET: &str = "second";
 
         for data_result in query.iter_visible_data_results(ctx, Self::identifier()) {
             let results = data_result
@@ -68,10 +68,10 @@ impl VisualizerSystem for EdgesVisualizer {
             let graph_type = results.get_mono_with_fallback::<components::GraphType>();
 
             let sources = all_edges
-                .slice_from_struct_field::<String>(&source)
+                .slice_from_struct_field::<String>(SOURCE)
                 .map(|(_index, source)| source);
             let targets = all_edges
-                .slice_from_struct_field::<String>(&target)
+                .slice_from_struct_field::<String>(TARGET)
                 .map(|(_index, target)| target);
 
             for (sources, targets) in itertools::izip!(sources, targets) {
