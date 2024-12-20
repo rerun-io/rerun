@@ -2,9 +2,9 @@ use std::sync::Arc;
 
 use arrow2::{
     array::{
-        Array as Arrow2Array, BooleanArray as Arrow2BooleanArray,
-        FixedSizeListArray as Arrow2FixedSizeListArray, ListArray as Arrow2ListArray,
-        PrimitiveArray as Arrow2PrimitiveArray, Utf8Array as Arrow2Utf8Array,
+        BooleanArray as Arrow2BooleanArray, FixedSizeListArray as Arrow2FixedSizeListArray,
+        ListArray as Arrow2ListArray, PrimitiveArray as Arrow2PrimitiveArray,
+        Utf8Array as Arrow2Utf8Array,
     },
     bitmap::Bitmap as Arrow2Bitmap,
     Either,
@@ -200,27 +200,6 @@ impl Chunk {
         }
     }
 
-    /// Returns an iterator over the raw arrays of a [`Chunk`], for a given component.
-    ///
-    /// See also:
-    /// * [`Self::iter_primitive`]
-    /// * [`Self::iter_primitive_array`]
-    /// * [`Self::iter_primitive_array_list`]
-    /// * [`Self::iter_string`]
-    /// * [`Self::iter_buffer`].
-    /// * [`Self::iter_component`].
-    #[inline]
-    pub fn iter_component_arrays(
-        &self,
-        component_name: &ComponentName,
-    ) -> impl Iterator<Item = Box<dyn Arrow2Array>> + '_ {
-        let Some(list_array) = self.get_first_component(component_name) else {
-            return Either::Left(std::iter::empty());
-        };
-
-        Either::Right(list_array.iter().flatten())
-    }
-
     /// Returns an iterator over the raw primitive values of a [`Chunk`], for a given component.
     ///
     /// This is a very fast path: the entire column will be downcasted at once, and then every
@@ -233,7 +212,6 @@ impl Chunk {
     /// * [`Self::iter_primitive_array_list`]
     /// * [`Self::iter_string`]
     /// * [`Self::iter_buffer`].
-    /// * [`Self::iter_component_arrays`].
     /// * [`Self::iter_component`].
     #[inline]
     pub fn iter_primitive<T: arrow2::types::NativeType>(
@@ -276,7 +254,6 @@ impl Chunk {
     /// * [`Self::iter_primitive_array_list`]
     /// * [`Self::iter_string`]
     /// * [`Self::iter_buffer`].
-    /// * [`Self::iter_component_arrays`].
     /// * [`Self::iter_component`].
     #[inline]
     pub fn iter_bool(
@@ -319,7 +296,6 @@ impl Chunk {
     /// * [`Self::iter_primitive`]
     /// * [`Self::iter_string`]
     /// * [`Self::iter_buffer`].
-    /// * [`Self::iter_component_arrays`].
     /// * [`Self::iter_component`].
     pub fn iter_primitive_array<const N: usize, T: arrow2::types::NativeType>(
         &self,
@@ -381,7 +357,6 @@ impl Chunk {
     /// * [`Self::iter_primitive_array`]
     /// * [`Self::iter_string`]
     /// * [`Self::iter_buffer`].
-    /// * [`Self::iter_component_arrays`].
     /// * [`Self::iter_component`].
     pub fn iter_primitive_array_list<const N: usize, T: arrow2::types::NativeType>(
         &self,
@@ -466,7 +441,6 @@ impl Chunk {
     /// * [`Self::iter_primitive_array`]
     /// * [`Self::iter_primitive_array_list`]
     /// * [`Self::iter_buffer`].
-    /// * [`Self::iter_component_arrays`].
     /// * [`Self::iter_component`].
     pub fn iter_string(
         &self,
@@ -517,7 +491,6 @@ impl Chunk {
     /// * [`Self::iter_primitive_array`]
     /// * [`Self::iter_primitive_array_list`]
     /// * [`Self::iter_string`].
-    /// * [`Self::iter_component_arrays`].
     /// * [`Self::iter_component`].
     pub fn iter_buffer<T: arrow::datatypes::ArrowNativeType + arrow2::types::NativeType>(
         &self,
@@ -740,7 +713,6 @@ impl Chunk {
     /// * [`Self::iter_primitive_array_list`]
     /// * [`Self::iter_string`]
     /// * [`Self::iter_buffer`].
-    /// * [`Self::iter_component_arrays`].
     #[inline]
     pub fn iter_component<C: Component>(
         &self,

@@ -480,15 +480,9 @@ async fn stream_catalog_async(
             )))?;
 
         let recording_uri_arrays: Vec<Box<dyn Arrow2Array>> = chunk
-            .iter_component_arrays(&"id".into())
+            .iter_string(&"id".into())
             .map(|id| {
-                let rec_id = id
-                    .as_any()
-                    .downcast_ref::<Arrow2Utf8Array<i32>>()
-                    .ok_or(StreamError::ChunkError(re_chunk::ChunkError::Malformed {
-                        reason: format!("id must be a utf8 array: {:?}", tc.schema),
-                    }))?
-                    .value(0); // each component batch is of length 1 i.e. single 'id' value
+                let rec_id = &id[0]; // each component batch is of length 1 i.e. single 'id' value
 
                 let recording_uri = format!("rerun://{host}:{port}/recording/{rec_id}");
 
