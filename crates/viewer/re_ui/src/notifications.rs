@@ -55,19 +55,29 @@ fn is_relevant(target: &str, level: re_log::Level) -> bool {
     )
 }
 
-pub fn notification_toggle_button(
-    ui: &mut egui::Ui,
-    show_notification_panel: &mut bool,
-    unread_notification_level: Option<NotificationLevel>,
-) {
-    let response = ui.medium_icon_toggle_button(&icons::NOTIFICATION, show_notification_panel);
+fn notification_panel_popup_id() -> egui::Id {
+    egui::Id::new("notification_panel_popup")
+}
 
-    if let Some(level) = unread_notification_level {
-        let pos = response.rect.right_top() + egui::vec2(-2.0, 2.0);
+pub fn notification_toggle_button(ui: &mut egui::Ui, notification_ui: &mut NotificationUi) {
+    let popup_id = notification_panel_popup_id();
+
+    let is_panel_visible = ui.memory(|mem| mem.is_popup_open(popup_id));
+    let button_response =
+        ui.medium_icon_toggle_button(&icons::NOTIFICATION, &mut is_panel_visible.clone());
+
+    if button_response.clicked() {
+        ui.memory_mut(|mem| mem.toggle_popup(popup_id));
+    }
+
+    if let Some(level) = notification_ui.unread_notification_level {
+        let pos = button_response.rect.right_top() + egui::vec2(-2.0, 2.0);
         let radius = 3.0;
         let color = level.color(ui);
         ui.painter().circle_filled(pos, radius, color);
     }
+
+    notification_ui.ui(ui.ctx(), &button_response);
 }
 
 struct Notification {
@@ -91,7 +101,6 @@ pub struct NotificationUi {
     notifications: Vec<Notification>,
 
     unread_notification_level: Option<NotificationLevel>,
-
     was_open_last_frame: bool,
 
     /// Panel that shows all notifications.
@@ -149,31 +158,36 @@ impl NotificationUi {
         }
     }
 
-    pub fn ui(&mut self, egui_ctx: &egui::Context, is_panel_visible: &mut bool) {
-        if *is_panel_visible {
-            // Opening panel is the same as dismissing all toasts
+    fn ui(&mut self, egui_ctx: &egui::Context, button_response: &egui::Response) {
+        let is_panel_visible =
+            egui_ctx.memory(|mem| mem.is_popup_open(notification_panel_popup_id()));
+        if is_panel_visible {
+            // Dismiss all toasts when opening panel
             self.unread_notification_level = None;
             for notification in &mut self.notifications {
                 notification.toast_ttl = Duration::ZERO;
             }
-        } else if self.was_open_last_frame {
+        }
+        if !is_panel_visible && self.was_open_last_frame {
+            // Mark all as read after closing panel
             for notification in &mut self.notifications {
                 notification.is_unread = false;
             }
         }
-        self.was_open_last_frame = *is_panel_visible;
+        self.was_open_last_frame = is_panel_visible;
 
-        self.panel
-            .show(egui_ctx, &mut self.notifications, is_panel_visible);
-        self.toasts.show(egui_ctx, &mut self.notifications[..]);
-
-        if *is_panel_visible {
+        if is_panel_visible {
+            let panel_response = self.panel.show(egui_ctx, &mut self.notifications);
             let escape_pressed =
                 egui_ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape));
-            if escape_pressed {
-                *is_panel_visible = false;
+            if escape_pressed
+                || button_response.clicked_elsewhere() && panel_response.clicked_elsewhere()
+            {
+                egui_ctx.memory_mut(|mem| mem.close_popup());
             }
         }
+
+        self.toasts.show(egui_ctx, &mut self.notifications[..]);
     }
 }
 
@@ -192,12 +206,7 @@ impl NotificationPanel {
         &self,
         egui_ctx: &egui::Context,
         notifications: &mut Vec<Notification>,
-        is_panel_visible: &mut bool,
-    ) {
-        if !*is_panel_visible {
-            return;
-        }
-
+    ) -> egui::Response {
         let panel_width = 356.0;
         let panel_max_height = (egui_ctx.screen_rect().height() - 100.0)
             .at_least(0.0)
@@ -247,7 +256,7 @@ impl NotificationPanel {
                             }
                             ui.with_layout(egui::Layout::top_down(egui::Align::Max), |ui| {
                                 if ui.small_icon_button(&icons::CLOSE).clicked() {
-                                    *is_panel_visible = false;
+                                    ui.memory_mut(|mem| mem.close_popup());
                                 }
                             });
                         });
@@ -267,15 +276,13 @@ impl NotificationPanel {
             })
             .response;
 
-        if response.clicked_elsewhere() {
-            *is_panel_visible = false;
-        }
-
         if dismiss_all {
             notifications.clear();
         } else if let Some(to_dismiss) = to_dismiss {
             notifications.remove(to_dismiss);
         }
+
+        response
     }
 }
 

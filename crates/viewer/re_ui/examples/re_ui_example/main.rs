@@ -143,8 +143,6 @@ impl eframe::App for ExampleApp {
 
     fn update(&mut self, egui_ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.show_text_logs_as_notifications();
-        self.notifications
-            .ui(egui_ctx, &mut self.show_notification_panel);
 
         self.top_bar(egui_ctx);
 
@@ -418,11 +416,7 @@ impl ExampleApp {
                 &mut self.show_left_panel,
             );
 
-            notifications::notification_toggle_button(
-                ui,
-                &mut self.show_notification_panel,
-                self.notifications.unread_notification_level(),
-            );
+            notifications::notification_toggle_button(ui, &mut self.notifications);
         });
     }
 }

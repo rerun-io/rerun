@@ -195,7 +195,6 @@ pub struct App {
 
     /// Notification panel.
     pub(crate) notifications: notifications::NotificationUi,
-    pub(crate) notifications_panel_open: bool,
 
     memory_panel: crate::memory_panel::MemoryPanel,
     memory_panel_open: bool,
@@ -335,7 +334,6 @@ impl App {
                 &crate::app_blueprint::setup_welcome_screen_blueprint,
             )),
             notifications: notifications::NotificationUi::new(),
-            notifications_panel_open: false,
 
             memory_panel: Default::default(),
             memory_panel_open: false,
@@ -1065,16 +1063,6 @@ impl App {
 
                 crate::ui::mobile_warning_ui(ui);
 
-                // NOTE: We do this here because the `notifications` UI is on top,
-                //       and may want to consume some key events.
-                // This should come _before_ `top_panel`, otherwise the notification panel
-                // is closed when the toggle button is clicked.
-                self.show_text_logs_as_notifications();
-                if !self.screenshotter.is_screenshotting() {
-                    self.notifications
-                        .ui(egui_ctx, &mut self.notifications_panel_open);
-                }
-
                 crate::ui::top_panel(
                     frame,
                     self,
@@ -1127,6 +1115,8 @@ impl App {
                         render_ctx.before_submit();
                     }
                 }
+
+                self.show_text_logs_as_notifications();
             });
     }
 

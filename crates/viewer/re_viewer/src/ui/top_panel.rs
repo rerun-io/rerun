@@ -312,11 +312,7 @@ fn panel_buttons_r2l(app: &mut App, app_blueprint: &AppBlueprint<'_>, ui: &mut e
         app_blueprint.toggle_blueprint_panel(&app.command_sender);
     }
 
-    re_ui::notifications::notification_toggle_button(
-        ui,
-        &mut app.notifications_panel_open,
-        app.notifications.unread_notification_level(),
-    );
+    re_ui::notifications::notification_toggle_button(ui, &mut app.notifications);
 }
 
 /// Shows clickable website link as an image (text doesn't look as nice)
