@@ -8,6 +8,7 @@ from math import tau
 
 import numpy as np
 import rerun as rr  # pip install rerun-sdk
+from rerun import blueprint as rrb
 from rerun.utilities import bounce_lerp, build_color_spiral
 
 DESCRIPTION = """
@@ -60,10 +61,33 @@ def log_data() -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Logs rich data using the Rerun SDK.")
     rr.script_add_args(parser)
+    parser.add_argument(
+        "--blueprint",
+        action="store_true",
+        help="Logs a blueprint that enables a cursor-relative time range on the beads.",
+    )
     args = parser.parse_args()
 
     rr.script_setup(args, "rerun_example_dna_abacus")
     log_data()
+
+    if args.blueprint:
+        blueprint = rrb.Blueprint(
+            rrb.Spatial3DView(
+                origin="/",
+                overrides={
+                    "helix/structure/scaffolding/beads": [
+                        rrb.VisibleTimeRange(
+                            "stable_time",
+                            start=rrb.TimeRangeBoundary.cursor_relative(seconds=-0.3),
+                            end=rrb.TimeRangeBoundary.cursor_relative(seconds=0.3),
+                        ),
+                    ]
+                },
+            ),
+        )
+        rr.send_blueprint(blueprint)
+
     rr.script_teardown(args)
 
 
