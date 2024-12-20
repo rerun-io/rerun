@@ -357,6 +357,42 @@
 <a href="#357" id="357">357</a>
 <a href="#358" id="358">358</a>
 <a href="#359" id="359">359</a>
+<a href="#360" id="360">360</a>
+<a href="#361" id="361">361</a>
+<a href="#362" id="362">362</a>
+<a href="#363" id="363">363</a>
+<a href="#364" id="364">364</a>
+<a href="#365" id="365">365</a>
+<a href="#366" id="366">366</a>
+<a href="#367" id="367">367</a>
+<a href="#368" id="368">368</a>
+<a href="#369" id="369">369</a>
+<a href="#370" id="370">370</a>
+<a href="#371" id="371">371</a>
+<a href="#372" id="372">372</a>
+<a href="#373" id="373">373</a>
+<a href="#374" id="374">374</a>
+<a href="#375" id="375">375</a>
+<a href="#376" id="376">376</a>
+<a href="#377" id="377">377</a>
+<a href="#378" id="378">378</a>
+<a href="#379" id="379">379</a>
+<a href="#380" id="380">380</a>
+<a href="#381" id="381">381</a>
+<a href="#382" id="382">382</a>
+<a href="#383" id="383">383</a>
+<a href="#384" id="384">384</a>
+<a href="#385" id="385">385</a>
+<a href="#386" id="386">386</a>
+<a href="#387" id="387">387</a>
+<a href="#388" id="388">388</a>
+<a href="#389" id="389">389</a>
+<a href="#390" id="390">390</a>
+<a href="#391" id="391">391</a>
+<a href="#392" id="392">392</a>
+<a href="#393" id="393">393</a>
+<a href="#394" id="394">394</a>
+<a href="#395" id="395">395</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Performs the layout of the graph, i.e. converting an [`LayoutRequest`] into a [`Layout`].
 
 </span><span class="comment">// For now we have only a single layout provider that is based on a force-directed model.
@@ -366,6 +402,7 @@
 
 </span><span class="kw">use </span>egui::{Pos2, Rect, Vec2};
 <span class="kw">use </span>fjadra::{<span class="self">self </span><span class="kw">as </span>fj, Simulation};
+<span class="kw">use </span>re_log::error_once;
 
 <span class="kw">use </span><span class="kw">crate</span>::graph::{EdgeId, NodeId};
 
@@ -457,7 +494,8 @@
 }
 
 <span class="kw">pub struct </span>ForceLayoutProvider {
-    simulation: fj::Simulation,
+    <span class="comment">// If all nodes are fixed, we can skip the simulation.
+    </span>simulation: <span class="prelude-ty">Option</span>&lt;fj::Simulation&gt;,
     <span class="kw">pub </span>request: LayoutRequest,
 }
 
@@ -476,6 +514,13 @@
 
 <span class="kw">impl </span>ForceLayoutProvider {
     <span class="kw">pub fn </span>new(request: LayoutRequest, params: <span class="kw-2">&amp;</span>ForceLayoutParams) -&gt; <span class="self">Self </span>{
+        <span class="kw">if </span>request.all_nodes_fixed() {
+            <span class="kw">return </span><span class="self">Self </span>{
+                simulation: <span class="prelude-val">None</span>,
+                request,
+            };
+        }
+
         <span class="kw">let </span>nodes = request.all_nodes().map(|(<span class="kw">_</span>, v)| fj::Node::from(v));
         <span class="kw">let </span>radii = request
             .all_nodes()
@@ -488,7 +533,7 @@
         <span class="kw">let </span>simulation = update_simulation(simulation, params, edges, radii);
 
         <span class="self">Self </span>{
-            simulation,
+            simulation: <span class="prelude-val">Some</span>(simulation),
             request,
         }
     }
@@ -498,6 +543,13 @@
         layout: <span class="kw-2">&amp;</span>Layout,
         params: <span class="kw-2">&amp;</span>ForceLayoutParams,
     ) -&gt; <span class="self">Self </span>{
+        <span class="kw">if </span>request.all_nodes_fixed() {
+            <span class="kw">return </span><span class="self">Self </span>{
+                simulation: <span class="prelude-val">None</span>,
+                request,
+            };
+        }
+
         <span class="kw">let </span>nodes = request.all_nodes().map(|(id, template)| {
             <span class="kw">let </span>node = fj::Node::from(template);
 
@@ -520,7 +572,7 @@
         <span class="kw">let </span>simulation = update_simulation(simulation, params, edges, radii);
 
         <span class="self">Self </span>{
-            simulation,
+            simulation: <span class="prelude-val">Some</span>(simulation),
             request,
         }
     }
@@ -528,7 +580,21 @@
     <span class="kw">fn </span>layout(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Layout {
         <span class="comment">// We make use of the fact here that the simulation is stable, i.e. the
         // order of the nodes is the same as in the `request`.
-        </span><span class="kw">let </span><span class="kw-2">mut </span>positions = <span class="self">self</span>.simulation.positions();
+        </span><span class="kw">let </span><span class="kw-2">mut </span>positions = <span class="kw">if let </span><span class="prelude-val">Some</span>(simulation) = <span class="kw-2">&amp;</span><span class="self">self</span>.simulation {
+            itertools::Either::Left(
+                simulation
+                    .positions()
+                    .map(|[x, y]| Pos2::new(x <span class="kw">as </span>f32, y <span class="kw">as </span>f32)),
+            )
+        } <span class="kw">else </span>{
+            itertools::Either::Right(<span class="self">self</span>.request.all_nodes().filter_map(|(<span class="kw">_</span>, v)| {
+                <span class="macro">debug_assert!</span>(
+                    v.fixed_position.is_some(),
+                    <span class="string">"if there is no simulation, all nodes should have fixed positions"
+                </span>);
+                v.fixed_position
+            }))
+        };
 
         <span class="kw">let </span><span class="kw-2">mut </span>layout = Layout::empty();
 
@@ -536,8 +602,11 @@
             <span class="kw">let </span><span class="kw-2">mut </span>current_rect = Rect::NOTHING;
 
             <span class="kw">for </span>(node, template) <span class="kw">in </span><span class="kw-2">&amp;</span>graph.nodes {
-                <span class="kw">let </span>[x, y] = positions.next().expect(<span class="string">"positions has to match the layout"</span>);
-                <span class="kw">let </span>pos = Pos2::new(x <span class="kw">as </span>f32, y <span class="kw">as </span>f32);
+                <span class="kw">let </span>pos = positions.next().unwrap_or_else(|| {
+                    <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>, <span class="string">"not enough positions returned for layout request"</span>);
+                    <span class="macro">error_once!</span>(<span class="string">"not enough positions returned for layout request"</span>);
+                    Pos2::ZERO
+                });
                 <span class="kw">let </span>extent = Rect::from_center_size(pos, template.size);
                 current_rect = current_rect.union(extent);
                 layout.nodes.insert(<span class="kw-2">*</span>node, extent);
@@ -665,12 +734,15 @@
 
     <span class="doccomment">/// Returns `true` if finished.
     </span><span class="kw">pub fn </span>tick(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; Layout {
-        <span class="self">self</span>.simulation.tick(<span class="number">1</span>);
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(simulation) = <span class="self">self</span>.simulation.as_mut() {
+            simulation.tick(<span class="number">1</span>);
+        }
+
         <span class="self">self</span>.layout()
     }
 
     <span class="kw">pub fn </span>is_finished(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        <span class="self">self</span>.simulation.is_finished()
+        <span class="self">self</span>.simulation.as_ref().map_or(<span class="bool-val">true</span>, |s| s.is_finished())
     }
 }
 

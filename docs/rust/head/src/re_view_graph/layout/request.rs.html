@@ -93,6 +93,11 @@
 <a href="#93" id="93">93</a>
 <a href="#94" id="94">94</a>
 <a href="#95" id="95">95</a>
+<a href="#96" id="96">96</a>
+<a href="#97" id="97">97</a>
+<a href="#98" id="98">98</a>
+<a href="#99" id="99">99</a>
+<a href="#100" id="100">100</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Contains all the (geometric) information that is considered when performing a graph layout.
 //!
 //! We support:
@@ -172,6 +177,11 @@
         }
 
         request
+    }
+
+    <span class="doccomment">/// Returns `true` if all nodes in this request have fixed positions.
+    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>all_nodes_fixed(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="self">self</span>.all_nodes().all(|(<span class="kw">_</span>, v)| v.fixed_position.is_some())
     }
 
     <span class="doccomment">/// Returns all nodes from all graphs in this request.
