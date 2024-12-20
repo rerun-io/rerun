@@ -6543,6 +6543,7 @@ dependencies = [
  "strum",
  "strum_macros",
  "sublime_fuzzy",
+ "time",
 ]
 
 [[package]]

@@ -2,8 +2,9 @@ mod drag_and_drop;
 mod hierarchical_drag_and_drop;
 mod right_panel;
 
+use re_ui::notifications;
 use re_ui::{
-    list_item, toasts, CommandPalette, ContextExt as _, DesignTokens, UICommand, UICommandSender,
+    list_item, CommandPalette, ContextExt as _, DesignTokens, UICommand, UICommandSender,
     UiExt as _,
 };
 
@@ -64,7 +65,7 @@ fn main() -> eframe::Result {
 }
 
 pub struct ExampleApp {
-    toasts: toasts::Toasts,
+    notifications: notifications::NotificationUi,
 
     /// Listens to the local text log stream
     text_log_rx: std::sync::mpsc::Receiver<re_log::LogMsg>,
@@ -103,7 +104,7 @@ impl ExampleApp {
         let (command_sender, command_receiver) = command_channel();
 
         Self {
-            toasts: Default::default(),
+            notifications: Default::default(),
             text_log_rx,
 
             tree,
@@ -127,26 +128,8 @@ impl ExampleApp {
 
     /// Show recent text log messages to the user as toast notifications.
     fn show_text_logs_as_notifications(&mut self) {
-        while let Ok(re_log::LogMsg {
-            level,
-            target: _,
-            msg,
-        }) = self.text_log_rx.try_recv()
-        {
-            let kind = match level {
-                re_log::Level::Error => toasts::ToastKind::Error,
-                re_log::Level::Warn => toasts::ToastKind::Warning,
-                re_log::Level::Info => toasts::ToastKind::Info,
-                re_log::Level::Debug | re_log::Level::Trace => {
-                    continue; // too spammy
-                }
-            };
-
-            self.toasts.add(toasts::Toast {
-                kind,
-                text: msg,
-                options: toasts::ToastOptions::with_ttl_in_seconds(4.0),
-            });
+        while let Ok(message) = self.text_log_rx.try_recv() {
+            self.notifications.add_log(message);
         }
     }
 }
@@ -158,7 +141,6 @@ impl eframe::App for ExampleApp {
 
     fn update(&mut self, egui_ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.show_text_logs_as_notifications();
-        self.toasts.show(egui_ctx);
 
         self.top_bar(egui_ctx);
 
@@ -174,29 +156,29 @@ impl eframe::App for ExampleApp {
         let left_panel_top_section_ui = |ui: &mut egui::Ui| {
             ui.horizontal_centered(|ui| {
                 ui.strong("Left bar");
-            });
 
-            if ui.button("Log info").clicked() {
-                re_log::info!(
-                    "A lot of text on info level.\nA lot of text in fact. So \
+                if ui.button("Log info").clicked() {
+                    re_log::info!(
+                        "A lot of text on info level.\nA lot of text in fact. So \
                              much that we should ideally be auto-wrapping it at some point, much \
                              earlier than this."
-                );
-            }
-            if ui.button("Log warn").clicked() {
-                re_log::warn!(
-                    "A lot of text on warn level.\nA lot of text in fact. So \
-                            much that we should ideally be auto-wrapping it at some point, much \
-                            earlier than this."
-                );
-            }
-            if ui.button("Log error").clicked() {
-                re_log::error!(
-                    "A lot of text on error level.\nA lot of text in fact. \
+                    );
+                }
+                if ui.button("Log warn").clicked() {
+                    re_log::warn!(
+                        "A lot of text on warn level.\nA lot of text in fact."
+                    );
+                }
+                if ui.button("Log error").clicked() {
+                    re_log::error!(
+                        "A lot of text on error level.\nA lot of text in fact. \
                             So much that we should ideally be auto-wrapping it at some point, much \
-                            earlier than this."
-                );
-            }
+                            earlier than this. Lorem ipsum sit dolor amet. Lorem ipsum sit dolor amet. \
+                            Lorem ipsum sit dolor amet. Lorem ipsum sit dolor amet. Lorem ipsum sit dolor amet. \
+                            Lorem ipsum sit dolor amet."
+                    );
+                }
+            });
         };
 
         // bottom section closure
@@ -431,6 +413,8 @@ impl ExampleApp {
                 &re_ui::icons::LEFT_PANEL_TOGGLE,
                 &mut self.show_left_panel,
             );
+
+            notifications::notification_toggle_button(ui, &mut self.notifications);
         });
     }
 }
