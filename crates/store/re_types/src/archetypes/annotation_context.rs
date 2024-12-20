@@ -221,7 +221,7 @@ impl AnnotationContext {
     }
 }
 
-impl ::re_types_core::SizeBytes for AnnotationContext {
+impl ::re_byte_size::SizeBytes for AnnotationContext {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.context.heap_size_bytes()

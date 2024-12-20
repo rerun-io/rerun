@@ -8,12 +8,13 @@ use arrow2::array::Array as Arrow2Array;
 use nohash_hasher::IntMap;
 use parking_lot::RwLock;
 
+use re_byte_size::SizeBytes;
 use re_chunk::{Chunk, RowId, UnitChunkShared};
 use re_chunk_store::{ChunkStore, LatestAtQuery, TimeInt};
 use re_log_types::EntityPath;
 use re_types_core::{
     components::ClearIsRecursive, external::arrow::array::ArrayRef, Component, ComponentDescriptor,
-    ComponentName, SizeBytes,
+    ComponentName,
 };
 
 use crate::{QueryCache, QueryCacheKey, QueryError};

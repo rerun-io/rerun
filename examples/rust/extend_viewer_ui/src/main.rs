@@ -1,7 +1,8 @@
 //! This example shows how to wrap the Rerun Viewer in your own GUI.
 
 use re_viewer::external::{
-    arrow2, eframe, egui, re_chunk_store, re_entity_db, re_log, re_log_types, re_memory, re_types,
+    arrow2, eframe, egui, re_byte_size, re_chunk_store, re_entity_db, re_log, re_log_types,
+    re_memory, re_types,
 };
 
 // By using `re_memory::AccountingAllocator` Rerun can keep track of exactly how much memory it is using,
@@ -178,7 +179,7 @@ fn component_ui(
 }
 
 fn format_arrow2(value: &dyn arrow2::array::Array) -> String {
-    use re_types::SizeBytes as _;
+    use re_byte_size::SizeBytes as _;
 
     let bytes = value.total_size_bytes();
     if bytes < 256 {

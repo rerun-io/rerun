@@ -231,7 +231,7 @@ impl From<Vec3D> for [f32; 3usize] {
     }
 }
 
-impl ::re_types_core::SizeBytes for Vec3D {
+impl ::re_byte_size::SizeBytes for Vec3D {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.0.heap_size_bytes()

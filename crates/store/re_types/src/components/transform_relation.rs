@@ -155,7 +155,7 @@ impl ::re_types_core::reflection::Enum for TransformRelation {
     }
 }
 
-impl ::re_types_core::SizeBytes for TransformRelation {
+impl ::re_byte_size::SizeBytes for TransformRelation {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         0

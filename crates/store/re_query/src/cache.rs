@@ -26,7 +26,7 @@ pub struct QueryCacheKey {
     pub component_name: ComponentName,
 }
 
-impl re_types_core::SizeBytes for QueryCacheKey {
+impl re_byte_size::SizeBytes for QueryCacheKey {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         let Self {

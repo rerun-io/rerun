@@ -219,7 +219,7 @@ impl DisconnectedSpace {
     }
 }
 
-impl ::re_types_core::SizeBytes for DisconnectedSpace {
+impl ::re_byte_size::SizeBytes for DisconnectedSpace {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.disconnected_space.heap_size_bytes()

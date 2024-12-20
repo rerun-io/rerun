@@ -260,7 +260,7 @@ impl<I: Into<crate::datatypes::Vec3D>, T: IntoIterator<Item = I>> From<T> for Li
     }
 }
 
-impl ::re_types_core::SizeBytes for LineStrip3D {
+impl ::re_byte_size::SizeBytes for LineStrip3D {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.0.heap_size_bytes()

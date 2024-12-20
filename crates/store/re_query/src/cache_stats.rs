@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use re_types_core::SizeBytes as _;
+use re_byte_size::SizeBytes as _;
 
 use crate::{QueryCache, QueryCacheKey};
 

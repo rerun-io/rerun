@@ -287,7 +287,7 @@ impl ForceCollisionRadius {
     }
 }
 
-impl ::re_types_core::SizeBytes for ForceCollisionRadius {
+impl ::re_byte_size::SizeBytes for ForceCollisionRadius {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.enabled.heap_size_bytes()

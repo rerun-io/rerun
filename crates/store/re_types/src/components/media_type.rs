@@ -95,7 +95,7 @@ impl std::ops::DerefMut for MediaType {
     }
 }
 
-impl ::re_types_core::SizeBytes for MediaType {
+impl ::re_byte_size::SizeBytes for MediaType {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.0.heap_size_bytes()

@@ -639,7 +639,7 @@ impl Capsules3D {
     }
 }
 
-impl ::re_types_core::SizeBytes for Capsules3D {
+impl ::re_byte_size::SizeBytes for Capsules3D {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.lengths.heap_size_bytes()

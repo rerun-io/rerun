@@ -11,7 +11,7 @@ use arrow2::buffer::Buffer;
 #[derive(Clone, Debug, Default)]
 pub struct ArrowString(Buffer<u8>);
 
-impl crate::SizeBytes for ArrowString {
+impl re_byte_size::SizeBytes for ArrowString {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         let Self(buf) = self;

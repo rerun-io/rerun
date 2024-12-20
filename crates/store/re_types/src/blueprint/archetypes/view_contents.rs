@@ -211,7 +211,7 @@ impl ViewContents {
     }
 }
 
-impl ::re_types_core::SizeBytes for ViewContents {
+impl ::re_byte_size::SizeBytes for ViewContents {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.query.heap_size_bytes()

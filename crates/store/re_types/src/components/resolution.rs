@@ -101,7 +101,7 @@ impl std::ops::DerefMut for Resolution {
     }
 }
 
-impl ::re_types_core::SizeBytes for Resolution {
+impl ::re_byte_size::SizeBytes for Resolution {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.0.heap_size_bytes()

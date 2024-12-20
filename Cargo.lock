@@ -5606,6 +5606,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_byte_size"
+version = "0.22.0-alpha.1+dev"
+dependencies = [
+ "arrow",
+ "half",
+ "re_arrow2",
+ "re_tuid",
+ "smallvec",
+]
+
+[[package]]
 name = "re_capabilities"
 version = "0.22.0-alpha.1+dev"
 dependencies = [
@@ -5637,6 +5648,7 @@ dependencies = [
  "nohash-hasher",
  "rand",
  "re_arrow2",
+ "re_byte_size",
  "re_error",
  "re_format",
  "re_format_arrow",
@@ -5667,6 +5679,7 @@ dependencies = [
  "parking_lot",
  "rand",
  "re_arrow2",
+ "re_byte_size",
  "re_chunk",
  "re_format",
  "re_log",
@@ -5689,6 +5702,7 @@ dependencies = [
  "egui",
  "egui_extras",
  "itertools 0.13.0",
+ "re_byte_size",
  "re_chunk_store",
  "re_format",
  "re_log_types",
@@ -5708,6 +5722,7 @@ dependencies = [
  "egui_plot",
  "itertools 0.13.0",
  "nohash-hasher",
+ "re_byte_size",
  "re_data_source",
  "re_data_ui",
  "re_format",
@@ -5814,6 +5829,7 @@ dependencies = [
  "image",
  "itertools 0.13.0",
  "nohash-hasher",
+ "re_byte_size",
  "re_capabilities",
  "re_chunk_store",
  "re_entity_db",
@@ -5897,6 +5913,7 @@ dependencies = [
  "parking_lot",
  "rand",
  "re_build_info",
+ "re_byte_size",
  "re_chunk",
  "re_chunk_store",
  "re_format",
@@ -6033,6 +6050,7 @@ dependencies = [
  "num-traits",
  "re_arrow2",
  "re_build_info",
+ "re_byte_size",
  "re_format",
  "re_log",
  "re_protos",
@@ -6133,6 +6151,7 @@ dependencies = [
  "paste",
  "rand",
  "re_arrow2",
+ "re_byte_size",
  "re_chunk",
  "re_chunk_store",
  "re_error",
@@ -6264,6 +6283,7 @@ dependencies = [
  "re_arrow2",
  "re_build_info",
  "re_build_tools",
+ "re_byte_size",
  "re_chunk",
  "re_chunk_store",
  "re_data_loader",
@@ -6428,6 +6448,7 @@ dependencies = [
  "rayon",
  "re_arrow2",
  "re_build_tools",
+ "re_byte_size",
  "re_format",
  "re_log",
  "re_log_types",
@@ -6484,18 +6505,17 @@ dependencies = [
  "bytemuck",
  "criterion",
  "document-features",
- "half",
  "itertools 0.13.0",
  "nohash-hasher",
  "once_cell",
  "re_arrow2",
+ "re_byte_size",
  "re_case",
  "re_error",
  "re_string_interner",
  "re_tracing",
  "re_tuid",
  "serde",
- "smallvec",
  "thiserror 1.0.65",
 ]
 
@@ -7203,6 +7223,7 @@ dependencies = [
  "re_analytics",
  "re_build_info",
  "re_build_tools",
+ "re_byte_size",
  "re_capabilities",
  "re_chunk",
  "re_chunk_store",

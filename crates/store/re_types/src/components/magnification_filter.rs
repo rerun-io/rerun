@@ -152,7 +152,7 @@ impl ::re_types_core::reflection::Enum for MagnificationFilter {
     }
 }
 
-impl ::re_types_core::SizeBytes for MagnificationFilter {
+impl ::re_byte_size::SizeBytes for MagnificationFilter {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         0

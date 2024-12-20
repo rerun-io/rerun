@@ -222,7 +222,7 @@ impl ::re_types_core::reflection::Enum for Colormap {
     }
 }
 
-impl ::re_types_core::SizeBytes for Colormap {
+impl ::re_byte_size::SizeBytes for Colormap {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         0
