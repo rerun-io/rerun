@@ -53,6 +53,9 @@ impl Default for TestContext {
             |_ctx, _ui, _ui_layout, _query, _db, _entity_path, _row_id, _component| {},
         ));
 
+        let reflection =
+            re_types::reflection::generate_reflection().expect("Failed to generate reflection");
+
         Self {
             recording_store,
             blueprint_store,
@@ -61,7 +64,7 @@ impl Default for TestContext {
             recording_config,
             blueprint_query,
             component_ui_registry,
-            reflection: Default::default(),
+            reflection,
             command_sender,
             command_receiver,
         }
