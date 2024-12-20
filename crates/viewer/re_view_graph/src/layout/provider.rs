@@ -7,6 +7,7 @@
 
 use egui::{Pos2, Rect, Vec2};
 use fjadra::{self as fj, Simulation};
+use re_log::error_once;
 
 use crate::graph::{EdgeId, NodeId};
 
@@ -103,10 +104,6 @@ pub struct ForceLayoutProvider {
     pub request: LayoutRequest,
 }
 
-fn requires_simulation(request: &LayoutRequest) -> bool {
-    request.all_nodes().any(|(_, v)| v.fixed_position.is_none())
-}
-
 fn considered_edges(request: &LayoutRequest) -> Vec<(usize, usize)> {
     let node_index: ahash::HashMap<NodeId, usize> = request
         .all_nodes()
@@ -122,7 +119,7 @@ fn considered_edges(request: &LayoutRequest) -> Vec<(usize, usize)> {
 
 impl ForceLayoutProvider {
     pub fn new(request: LayoutRequest, params: &ForceLayoutParams) -> Self {
-        if !requires_simulation(&request) {
+        if request.all_nodes_fixed() {
             return Self {
                 simulation: None,
                 request,
@@ -151,7 +148,7 @@ impl ForceLayoutProvider {
         layout: &Layout,
         params: &ForceLayoutParams,
     ) -> Self {
-        if !requires_simulation(&request) {
+        if request.all_nodes_fixed() {
             return Self {
                 simulation: None,
                 request,
@@ -188,15 +185,20 @@ impl ForceLayoutProvider {
     fn layout(&self) -> Layout {
         // We make use of the fact here that the simulation is stable, i.e. the
         // order of the nodes is the same as in the `request`.
-        let positions: &mut dyn Iterator<Item = Pos2> = if let Some(simulation) = &self.simulation {
-            &mut simulation
-                .positions()
-                .map(|[x, y]| Pos2::new(x as f32, y as f32))
+        let mut positions = if let Some(simulation) = &self.simulation {
+            itertools::Either::Left(
+                simulation
+                    .positions()
+                    .map(|[x, y]| Pos2::new(x as f32, y as f32)),
+            )
         } else {
-            &mut self.request.all_nodes().map(|(_, v)| {
+            itertools::Either::Right(self.request.all_nodes().filter_map(|(_, v)| {
+                debug_assert!(
+                    v.fixed_position.is_some(),
+                    "if there is no simulation, all nodes should have fixed positions"
+                );
                 v.fixed_position
-                    .expect("if there is no simulation, all nodes have to be fixed")
-            })
+            }))
         };
 
         let mut layout = Layout::empty();
@@ -205,7 +207,11 @@ impl ForceLayoutProvider {
             let mut current_rect = Rect::NOTHING;
 
             for (node, template) in &graph.nodes {
-                let pos = positions.next().expect("positions has to match the layout");
+                let pos = positions.next().unwrap_or_else(|| {
+                    debug_assert!(false, "not enough positions returned for layout request");
+                    error_once!("not enough positions returned for layout request");
+                    Pos2::ZERO
+                });
                 let extent = Rect::from_center_size(pos, template.size);
                 current_rect = current_rect.union(extent);
                 layout.nodes.insert(*node, extent);

@@ -79,6 +79,11 @@ impl LayoutRequest {
         request
     }
 
+    /// Returns `true` if all nodes in this request have fixed positions.
+    pub(super) fn all_nodes_fixed(&self) -> bool {
+        self.all_nodes().all(|(_, v)| v.fixed_position.is_some())
+    }
+
     /// Returns all nodes from all graphs in this request.
     pub(super) fn all_nodes(&self) -> impl Iterator<Item = (NodeId, &NodeTemplate)> + '_ {
         self.graphs
