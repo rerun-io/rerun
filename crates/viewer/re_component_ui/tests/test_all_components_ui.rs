@@ -82,7 +82,7 @@ fn test_cases(reflection: &Reflection) -> Vec<TestCase> {
         re_types::components::AnnotationContext::name(),
         re_types::components::Blob::name(),
         re_types::components::ClassId::name(),
-        re_types::components::ImageBuffer::name(), // this one is not technically handled by `DataUi`, but should
+        re_types::components::ImageBuffer::name(), // this one is not technically handled by `DataUi`, but should get a custom ui first (it's using default ui right now).
         re_types::components::KeypointId::name(),
         re_types::components::TensorData::name(),
         //
