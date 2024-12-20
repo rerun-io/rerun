@@ -345,7 +345,7 @@ pub mod external {
 ///
 #[macro_export]
 macro_rules! static_assert_struct_has_fields {
-    ($strct:ty, $($field:ident: $field_typ:ty),+) => {
+    ($strct:ty, $($field:ident: $field_typ:ty),+ $(,)?) => {
         const _: fn(&$strct) = |s: &$strct| {
             $(let _: &$field_typ = &s.$field;)+
         };

@@ -130,7 +130,7 @@ where
 // ---
 
 use re_chunk::{Chunk, ChunkComponentIterItem, ComponentName, RowId};
-use re_chunk_store::external::{re_chunk, re_chunk::external::arrow2};
+use re_chunk_store::external::re_chunk;
 
 /// Iterate `chunks` as indexed deserialized batches.
 ///
@@ -236,6 +236,22 @@ pub fn iter_buffer<'a, T: arrow::datatypes::ArrowNativeType + arrow2::types::Nat
         itertools::izip!(
             chunk.iter_component_indices(&timeline, &component_name),
             chunk.iter_buffer(&component_name)
+        )
+    })
+}
+
+/// Iterate `chunks` as indexed primitives.
+///
+/// See [`Chunk::iter_slices`] for more information.
+pub fn iter_slices<'a, T: 'a + re_chunk::ChunkComponentSlicer>(
+    chunks: &'a std::borrow::Cow<'a, [Chunk]>,
+    timeline: Timeline,
+    component_name: ComponentName,
+) -> impl Iterator<Item = ((TimeInt, RowId), T::Item<'a>)> + 'a {
+    chunks.iter().flat_map(move |chunk| {
+        itertools::izip!(
+            chunk.iter_component_indices(&timeline, &component_name),
+            chunk.iter_slices::<T>(component_name)
         )
     })
 }

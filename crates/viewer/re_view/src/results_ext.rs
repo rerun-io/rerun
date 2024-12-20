@@ -239,9 +239,8 @@ pub trait RangeResultsExt {
     /// Returns a zero-copy iterator over all the results for the given `(timeline, component)` pair.
     ///
     /// Call one of the following methods on the returned [`HybridResultsChunkIter`]:
-    /// * [`HybridResultsChunkIter::primitive`]
-    /// * [`HybridResultsChunkIter::primitive_array`]
-    /// * [`HybridResultsChunkIter::string`]
+    /// * [`HybridResultsChunkIter::slice`]
+    /// * [`HybridResultsChunkIter::slice_from_struct_field`]
     fn iter_as(
         &self,
         timeline: Timeline,
@@ -408,7 +407,7 @@ impl RangeResultsExt for HybridResults<'_> {
 // ---
 
 use re_chunk::{ChunkComponentIterItem, RowId, TimeInt, Timeline};
-use re_chunk_store::external::{re_chunk, re_chunk::external::arrow2};
+use re_chunk_store::external::re_chunk;
 
 /// The iterator type backing [`HybridResults::iter_as`].
 pub struct HybridResultsChunkIter<'a> {
@@ -520,6 +519,35 @@ impl<'a> HybridResultsChunkIter<'a> {
             itertools::izip!(
                 chunk.iter_component_indices(&self.timeline, &self.component_name),
                 chunk.iter_buffer(&self.component_name)
+            )
+        })
+    }
+
+    /// Iterate as indexed, sliced, deserialized component batches.
+    ///
+    /// See [`Chunk::iter_slices`] for more information.
+    pub fn slice<S: 'a + re_chunk::ChunkComponentSlicer>(
+        &'a self,
+    ) -> impl Iterator<Item = ((TimeInt, RowId), S::Item<'a>)> + 'a {
+        self.chunks.iter().flat_map(|chunk| {
+            itertools::izip!(
+                chunk.iter_component_indices(&self.timeline, &self.component_name),
+                chunk.iter_slices::<S>(self.component_name)
+            )
+        })
+    }
+
+    /// Iterate as indexed, sliced, deserialized component batches for a specific struct field.
+    ///
+    /// See [`Chunk::iter_slices_from_struct_field`] for more information.
+    pub fn slice_from_struct_field<S: 'a + re_chunk::ChunkComponentSlicer>(
+        &'a self,
+        field_name: &'a str,
+    ) -> impl Iterator<Item = ((TimeInt, RowId), S::Item<'a>)> + 'a {
+        self.chunks.iter().flat_map(|chunk| {
+            itertools::izip!(
+                chunk.iter_component_indices(&self.timeline, &self.component_name),
+                chunk.iter_slices_from_struct_field::<S>(self.component_name, field_name)
             )
         })
     }
