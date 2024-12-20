@@ -6648,6 +6648,7 @@ dependencies = [
  "ahash",
  "egui",
  "fjadra",
+ "itertools 0.13.0",
  "nohash-hasher",
  "re_chunk",
  "re_data_ui",

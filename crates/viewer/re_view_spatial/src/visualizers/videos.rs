@@ -104,7 +104,7 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
                         timeline,
                         VideoTimestamp::name(),
                     ),
-                    all_video_references.string(),
+                    all_video_references.slice::<String>(),
                 ) {
                     let Some(video_timestamp): Option<&VideoTimestamp> = video_timestamps.first()
                     else {

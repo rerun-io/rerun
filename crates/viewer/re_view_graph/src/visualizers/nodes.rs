@@ -78,7 +78,7 @@ impl VisualizerSystem for NodeVisualizer {
                     &timeline_query,
                 );
 
-            let all_indexed_nodes = results.iter_as(query.timeline, components::GraphNode::name());
+            let all_nodes = results.iter_as(query.timeline, components::GraphNode::name());
             let all_colors = results.iter_as(query.timeline, components::Color::name());
             let all_positions = results.iter_as(query.timeline, components::Position2D::name());
             let all_labels = results.iter_as(query.timeline, components::Text::name());
@@ -88,12 +88,11 @@ impl VisualizerSystem for NodeVisualizer {
                 .map_or(true, bool::from);
 
             let data = range_zip_1x4(
-                // TODO(cmc): Provide a `iter_struct`.
-                all_indexed_nodes.component_slow::<components::GraphNode>(),
-                all_colors.primitive::<u32>(),
-                all_positions.primitive_array::<2, f32>(),
-                all_labels.string(),
-                all_radii.primitive::<f32>(),
+                all_nodes.slice::<String>(),
+                all_colors.slice::<u32>(),
+                all_positions.slice::<[f32; 2]>(),
+                all_labels.slice::<String>(),
+                all_radii.slice::<f32>(),
             );
 
             for (_index, nodes, colors, positions, labels, radii) in data {
@@ -114,6 +113,7 @@ impl VisualizerSystem for NodeVisualizer {
                     Option::<f32>::default,
                 )
                 .map(|(node, instance, color, position, label, radius)| {
+                    let node = components::GraphNode(node.clone().into());
                     let color = color.map(|&c| egui::Color32::from(Color::new(c)));
                     let label = match (label, show_label) {
                         (Some(label), true) => Label::Text {
@@ -133,7 +133,7 @@ impl VisualizerSystem for NodeVisualizer {
 
                     NodeInstance {
                         instance_index: instance,
-                        id: NodeId::from_entity_node(&data_result.entity_path, node),
+                        id: NodeId::from_entity_node(&data_result.entity_path, &node),
                         position: position.map(|[x, y]| egui::Pos2::new(x, y)),
                         label,
                     }
