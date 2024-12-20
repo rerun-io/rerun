@@ -6579,12 +6579,10 @@ version = "0.22.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "arrow",
- "bytemuck",
  "egui",
  "glam",
  "itertools 0.13.0",
  "nohash-hasher",
- "re_arrow2",
  "re_chunk_store",
  "re_entity_db",
  "re_log",
@@ -6696,7 +6694,6 @@ version = "0.22.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "anyhow",
- "arrow",
  "bitflags 2.6.0",
  "bytemuck",
  "criterion",
@@ -6709,7 +6706,6 @@ dependencies = [
  "nohash-hasher",
  "once_cell",
  "ordered-float",
- "re_arrow2",
  "re_chunk_store",
  "re_data_ui",
  "re_entity_db",
