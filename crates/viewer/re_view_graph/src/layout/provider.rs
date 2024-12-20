@@ -7,6 +7,7 @@
 
 use egui::{Pos2, Rect, Vec2};
 use fjadra::{self as fj, Simulation};
+use re_log::error_once;
 
 use crate::graph::{EdgeId, NodeId};
 
@@ -98,7 +99,8 @@ pub fn update_simulation(
 }
 
 pub struct ForceLayoutProvider {
-    simulation: fj::Simulation,
+    // If all nodes are fixed, we can skip the simulation.
+    simulation: Option<fj::Simulation>,
     pub request: LayoutRequest,
 }
 
@@ -117,6 +119,13 @@ fn considered_edges(request: &LayoutRequest) -> Vec<(usize, usize)> {
 
 impl ForceLayoutProvider {
     pub fn new(request: LayoutRequest, params: &ForceLayoutParams) -> Self {
+        if request.all_nodes_fixed() {
+            return Self {
+                simulation: None,
+                request,
+            };
+        }
+
         let nodes = request.all_nodes().map(|(_, v)| fj::Node::from(v));
         let radii = request
             .all_nodes()
@@ -129,7 +138,7 @@ impl ForceLayoutProvider {
         let simulation = update_simulation(simulation, params, edges, radii);
 
         Self {
-            simulation,
+            simulation: Some(simulation),
             request,
         }
     }
@@ -139,6 +148,13 @@ impl ForceLayoutProvider {
         layout: &Layout,
         params: &ForceLayoutParams,
     ) -> Self {
+        if request.all_nodes_fixed() {
+            return Self {
+                simulation: None,
+                request,
+            };
+        }
+
         let nodes = request.all_nodes().map(|(id, template)| {
             let node = fj::Node::from(template);
 
@@ -161,7 +177,7 @@ impl ForceLayoutProvider {
         let simulation = update_simulation(simulation, params, edges, radii);
 
         Self {
-            simulation,
+            simulation: Some(simulation),
             request,
         }
     }
@@ -169,7 +185,21 @@ impl ForceLayoutProvider {
     fn layout(&self) -> Layout {
         // We make use of the fact here that the simulation is stable, i.e. the
         // order of the nodes is the same as in the `request`.
-        let mut positions = self.simulation.positions();
+        let mut positions = if let Some(simulation) = &self.simulation {
+            itertools::Either::Left(
+                simulation
+                    .positions()
+                    .map(|[x, y]| Pos2::new(x as f32, y as f32)),
+            )
+        } else {
+            itertools::Either::Right(self.request.all_nodes().filter_map(|(_, v)| {
+                debug_assert!(
+                    v.fixed_position.is_some(),
+                    "if there is no simulation, all nodes should have fixed positions"
+                );
+                v.fixed_position
+            }))
+        };
 
         let mut layout = Layout::empty();
 
@@ -177,8 +207,11 @@ impl ForceLayoutProvider {
             let mut current_rect = Rect::NOTHING;
 
             for (node, template) in &graph.nodes {
-                let [x, y] = positions.next().expect("positions has to match the layout");
-                let pos = Pos2::new(x as f32, y as f32);
+                let pos = positions.next().unwrap_or_else(|| {
+                    debug_assert!(false, "not enough positions returned for layout request");
+                    error_once!("not enough positions returned for layout request");
+                    Pos2::ZERO
+                });
                 let extent = Rect::from_center_size(pos, template.size);
                 current_rect = current_rect.union(extent);
                 layout.nodes.insert(*node, extent);
@@ -306,12 +339,15 @@ impl ForceLayoutProvider {
 
     /// Returns `true` if finished.
     pub fn tick(&mut self) -> Layout {
-        self.simulation.tick(1);
+        if let Some(simulation) = self.simulation.as_mut() {
+            simulation.tick(1);
+        }
+
         self.layout()
     }
 
     pub fn is_finished(&self) -> bool {
-        self.simulation.is_finished()
+        self.simulation.as_ref().map_or(true, |s| s.is_finished())
     }
 }
 
