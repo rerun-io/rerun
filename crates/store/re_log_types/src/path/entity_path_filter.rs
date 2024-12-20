@@ -274,7 +274,7 @@ impl EntityPathFilter {
     /// Each line is a rule.
     ///
     /// The first character should be `+` or `-`. If missing, `+` is assumed.
-    /// The rest of the line is trimmed and treated as an entity path after variable substitution through [`Self::resolve`].
+    /// The rest of the line is trimmed and treated as an entity path after variable substitution through [`Self::resolve_forgiving`]/[`Self::resolve_strict`].
     ///
     /// Conflicting rules are resolved by the last rule.
     pub fn parse_forgiving(rules: &str) -> Self {
@@ -295,7 +295,7 @@ impl EntityPathFilter {
     /// Each line is a rule.
     ///
     /// The first character should be `+` or `-`. If missing, `+` is assumed.
-    /// The rest of the line is trimmed and treated as an entity path after variable substitution through [`Self::resolve`].
+    /// The rest of the line is trimmed and treated as an entity path after variable substitution through [`Self::resolve_forgiving`]/[`Self::resolve_strict`].
     ///
     /// Conflicting rules are resolved by the last rule.
     #[allow(clippy::unnecessary_wraps)]
