@@ -175,7 +175,7 @@ impl eframe::App for ExampleApp {
                     re_log::error!(
                         "A lot of text on error level.\nA lot of text in fact. \
                             So much that we should ideally be auto-wrapping it at some point, much \
-                            earlier than this. Lorem ipsum sit dolor amet.  Lorem ipsum sit dolor amet. \
+                            earlier than this. Lorem ipsum sit dolor amet. Lorem ipsum sit dolor amet. \
                             Lorem ipsum sit dolor amet. Lorem ipsum sit dolor amet. Lorem ipsum sit dolor amet. \
                             Lorem ipsum sit dolor amet."
                     );
