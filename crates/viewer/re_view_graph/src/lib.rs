@@ -9,4 +9,6 @@ mod ui;
 mod view;
 mod visualizers;
 
+#[cfg(test)]
+pub use ui::GraphViewState;
 pub use view::GraphView;
