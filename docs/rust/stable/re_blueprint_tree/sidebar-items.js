@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["blueprint_tree"],"struct":["BlueprintTree"]};

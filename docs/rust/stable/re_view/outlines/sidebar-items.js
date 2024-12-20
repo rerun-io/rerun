@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES","SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES"],"fn":["outline_config"]};

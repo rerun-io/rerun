@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["apply_viewport_command","tree_simplification_options"],"struct":["TabWidget","TilesDelegate","ViewportUi"]};
