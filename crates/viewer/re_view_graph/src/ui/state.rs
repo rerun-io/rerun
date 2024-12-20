@@ -9,7 +9,7 @@ use crate::layout::{ForceLayoutParams, ForceLayoutProvider, Layout, LayoutReques
 /// View state for the custom view.
 ///
 /// This state is preserved between frames, but not across Viewer sessions.
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct GraphViewState {
     pub layout_state: LayoutState,
     pub visual_bounds: Option<VisualBounds2D>,
@@ -66,6 +66,33 @@ pub enum LayoutState {
         provider: ForceLayoutProvider,
         params: ForceLayoutParams,
     },
+}
+
+// TODO: remove this once the tests work
+impl std::fmt::Debug for LayoutState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::None => write!(f, "None"),
+            Self::InProgress {
+                layout,
+                provider,
+                params,
+            } => f
+                .debug_struct("InProgress")
+                .field("layout", layout)
+                .field("params", params)
+                .finish(),
+            Self::Finished {
+                layout,
+                provider,
+                params,
+            } => f
+                .debug_struct("Finished")
+                .field("layout", layout)
+                .field("params", params)
+                .finish(),
+        }
+    }
 }
 
 impl LayoutState {

@@ -175,7 +175,7 @@ fn run_graph_view_and_save_snapshot(test_context: &mut TestContext) {
                     .ui(
                         viewer_ctx,
                         ui,
-                        &mut view_state,
+                        dbg!(&mut view_state), // TODO: why is this still empty?
                         &view_query,
                         system_execution_output,
                     )
