@@ -6666,6 +6666,7 @@ dependencies = [
  "re_ui",
  "re_view",
  "re_viewer_context",
+ "re_viewport",
  "re_viewport_blueprint",
 ]
 

@@ -1,16 +1,32 @@
+#![allow(clippy::unwrap_used)]
+
+use std::sync::Arc;
+
+use crate::{ui::GraphViewState, GraphView};
 use egui::Vec2;
-use re_chunk_store::{Chunk, LatestAtQuery, RowId};
+use re_chunk_store::{Chunk, RowId};
 use re_log_types::{build_frame_nr, EntityPath};
 use re_types::{components, Component};
-use crate::{GraphView, ui::GraphViewState};
-use re_viewer_context::{
-    blueprint_timeline, test_context::TestContext, SystemExecutionOutput, ViewClass, ViewId,
-};
-use re_viewport_blueprint::{ViewBlueprint, ViewportBlueprint};
+use re_viewer_context::{test_context::TestContext, ViewClass, ViewClassExt as _, ViewId};
+use re_viewport_blueprint::ViewBlueprint;
 
 #[test]
 pub fn self_and_multi_edges() {
     let mut test_context = TestContext::default();
+
+    // It's important to first register the view class before adding any entities,
+    // otherwise the `VisualizerEntitySubscriber` for our visualizers doesn't exist yet,
+    // and thus will not find anything applicable to the visualizer.
+    test_context
+        .view_class_registry
+        .add_class::<GraphView>()
+        .unwrap();
+
+    setup_store(&mut test_context);
+    run_graph_view_and_save_snapshot(&mut test_context);
+}
+
+fn setup_store(test_context: &mut TestContext) {
     let entity_path = EntityPath::from(format!("/self_and_multi_edges"));
 
     let nodes = [
@@ -39,57 +55,110 @@ pub fn self_and_multi_edges() {
         .unwrap();
 }
 
-pub fn setup_blueprint(test_context: &mut TestContext) {
+pub fn setup_graph_view_blueprint(test_context: &mut TestContext) -> ViewId {
+    // Views are always logged at `/{view_id}` in the blueprint store.
     let view_id = ViewId::random(); // TODO: is this fishy for testing?
+    let chunk = Chunk::builder(view_id.as_entity_path().clone())
+        .with_archetype(
+            RowId::new(),
+            [(test_context.blueprint_query.timeline(), 0)], // Use the timeline that is queried for blueprints.
+            &re_types::blueprint::archetypes::ViewBlueprint::new(GraphView::identifier().as_str()),
+        )
+        .build()
+        .unwrap();
+    test_context
+        .blueprint_store
+        .add_chunk(&Arc::new(chunk))
+        .unwrap();
 
-    let mut builder = Chunk::builder(view_id.as_entity_path().clone());
-    let time_point = test_context.blueprint_query.at();
-    builder.with_archetype(RowId::new(), time_point, re_types::blueprint::archetypes::ViewBlueprint {
-        class_identifier: GraphView::identifier().0.into(),
-        display_name: None,
-        space_origin: None,
-        visible: None,
-    });
-
-    test_context.blueprint_store
-    .add_chunk(&Arc::new(builder.build().unwrap()))
-    .unwrap();
+    view_id
 }
 
-fn run_graph_view_and_save_snapshot(mut test_context: TestContext, _snapshot_name: &str) {
-    setup_blueprint(&mut test_context);
+fn run_graph_view_and_save_snapshot(test_context: &mut TestContext) {
+    let view_id = setup_graph_view_blueprint(test_context);
+    let view_blueprint = ViewBlueprint::try_from_db(
+        view_id,
+        &test_context.blueprint_store,
+        &test_context.blueprint_query,
+    )
+    .expect("failed to get view blueprint");
 
-    let view_class = GraphView::default();
-    let view_blueprint = ViewBlueprint::from_b
+    let mut view_state = GraphViewState::default();
+    let class_identifier = GraphView::identifier();
+
+    let view_class_registry = &mut test_context.view_class_registry;
+    let applicable_entities_per_visualizer = view_class_registry
+        .applicable_entities_for_visualizer_systems(&test_context.recording_store.store_id());
+
+    // TODO: this is c&p from TestContext::run. Make it nicer plz ;)
+    let store_context = re_viewer_context::StoreContext {
+        app_id: "rerun_test".into(),
+        blueprint: &test_context.blueprint_store,
+        default_blueprint: None,
+        recording: &test_context.recording_store,
+        bundle: &Default::default(),
+        caches: &Default::default(),
+        hub: &Default::default(),
+    };
+
+    // Execute the queries for every `View`
+    test_context.query_results = std::iter::once((view_id, {
+        // TODO(andreas): This needs to be done in a store subscriber that exists per view (instance, not class!).
+        // Note that right now we determine *all* visualizable entities, not just the queried ones.
+        // In a store subscriber set this is fine, but on a per-frame basis it's wasteful.
+        let visualizable_entities = view_class_registry
+            .get_class_or_log_error(class_identifier)
+            .determine_visualizable_entities(
+                &applicable_entities_per_visualizer,
+                &test_context.recording_store,
+                &view_class_registry.new_visualizer_collection(class_identifier),
+                &view_blueprint.space_origin,
+            );
+
+        // TODO:
+        dbg!(&view_blueprint.contents);
+
+        view_blueprint.contents.execute_query(
+            &store_context,
+            view_class_registry,
+            &test_context.blueprint_query,
+            view_id,
+            &visualizable_entities,
+        )
+    }))
+    .collect();
+
+    dbg!(&test_context
+        .query_results
+        .iter()
+        .map(|(_, qr)| &qr.tree)
+        .collect::<Vec<_>>());
 
     //TODO(ab): this contains a lot of boilerplate which should be provided by helpers
     let mut harness = egui_kittest::Harness::builder()
         .with_size(Vec2::new(400.0, 400.0))
         .build_ui(|ui| {
             test_context.run(&ui.ctx().clone(), |viewer_ctx| {
-                // let blueprint = ViewportBlueprint::try_from_db(
-                //     viewer_ctx.store_context.blueprint,
-                //     &LatestAtQuery::latest(blueprint_timeline()),
-                // );
+                let view_class = test_context
+                    .view_class_registry
+                    .get_class_or_log_error(GraphView::identifier());
 
-                //let mut time_ctrl = viewer_ctx.rec_cfg.time_ctrl.read().clone();
+                let (view_query, system_execution_output) = re_viewport::execute_systems_for_view(
+                    viewer_ctx,
+                    &view_blueprint,
+                    viewer_ctx.current_query().at(), // TODO: why is this even needed to be passed in?
+                    &view_state,
+                );
 
-                // todo: run systems
-
-                // todo: draw ui
-                // view_class.ui(
-                //     viewer_ctx,
-                //     ui,
-                //     GraphViewState::default(),
-                //     &ctx.query(),
-                //     SystemExecutionOutput {
-                //         view_systems: Default::default(),
-                //         context_systems: Default::default(),
-                //         draw_data: Default::default(),
-                //     },
-                // );
-
-                //*viewer_ctx.rec_cfg.time_ctrl.write() = time_ctrl;
+                view_class
+                    .ui(
+                        viewer_ctx,
+                        ui,
+                        &mut view_state,
+                        &view_query,
+                        system_execution_output,
+                    )
+                    .expect("failed to run graph view ui");
             });
 
             test_context.handle_system_commands();
@@ -101,5 +170,5 @@ fn run_graph_view_and_save_snapshot(mut test_context: TestContext, _snapshot_nam
 
     //TODO(#8245): enable this everywhere when we have a software renderer setup
     #[cfg(target_os = "macos")]
-    harness.wgpu_snapshot(_snapshot_name);
+    harness.wgpu_snapshot("self_and_multi_edges");
 }
