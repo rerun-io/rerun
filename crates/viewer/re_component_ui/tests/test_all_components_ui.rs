@@ -99,18 +99,14 @@ fn test_cases(reflection: &Reflection) -> Vec<TestCase> {
         re_types::blueprint::components::ViewOrigin::name(),
         re_types::blueprint::components::ViewerRecommendationHash::name(),
         re_types::blueprint::components::VisualizerOverrides::name(),
-        //
-        // these are sufficiently covered by custom test cases
-        ComponentColumnSelector::name(),
-        components::EntityPath::name(),
-        GraphEdge::name(),
-        GraphNode::name(),
-        ImageFormat::name(),
-        QueryExpression::name(),
-        RecordingUri::name(),
-        Text::name(),
     ]
     .into_iter()
+    // Exclude components that have custom test cases.
+    .chain(
+        custom_test_cases
+            .iter()
+            .map(|test_case| test_case.component_name),
+    )
     .collect::<IntSet<_>>();
 
     //
