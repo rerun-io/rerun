@@ -2,10 +2,10 @@ use std::collections::BTreeMap;
 use std::ops::Range;
 
 use anyhow::Context;
+use arrow::array::ArrayRef;
 use egui::NumExt as _;
 use itertools::Itertools;
 
-use re_chunk_store::external::re_chunk::Arrow2Array;
 use re_chunk_store::{ColumnDescriptor, LatestAtQuery};
 use re_dataframe::external::re_query::StorageEngineArcReadGuard;
 use re_dataframe::QueryHandle;
@@ -142,7 +142,7 @@ struct RowsDisplayData {
 impl RowsDisplayData {
     fn try_new(
         row_indices: &Range<u64>,
-        row_data: Vec<Vec<Box<dyn Arrow2Array>>>,
+        row_data: Vec<Vec<ArrayRef>>,
         selected_columns: &[ColumnDescriptor],
         query_timeline: &Timeline,
     ) -> Result<Self, DisplayRecordBatchError> {

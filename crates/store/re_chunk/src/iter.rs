@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use arrow::array::ArrayRef as ArrowArrayRef;
 use arrow2::{
     array::{
         Array as Arrow2Array, BooleanArray as Arrow2BooleanArray,
@@ -211,6 +212,27 @@ impl Chunk {
     /// * [`Self::iter_component`].
     #[inline]
     pub fn iter_component_arrays(
+        &self,
+        component_name: &ComponentName,
+    ) -> impl Iterator<Item = ArrowArrayRef> + '_ {
+        if let Some(list_array) = self.get_first_component(component_name) {
+            Either::Left(list_array.iter().flatten().map(|c| c.into()))
+        } else {
+            Either::Right(std::iter::empty())
+        }
+    }
+
+    /// Returns an iterator over the raw arrays of a [`Chunk`], for a given component.
+    ///
+    /// See also:
+    /// * [`Self::iter_primitive`]
+    /// * [`Self::iter_primitive_array`]
+    /// * [`Self::iter_primitive_array_list`]
+    /// * [`Self::iter_string`]
+    /// * [`Self::iter_buffer`].
+    /// * [`Self::iter_component`].
+    #[inline]
+    pub fn iter_component_arrays_arrow2(
         &self,
         component_name: &ComponentName,
     ) -> impl Iterator<Item = Box<dyn Arrow2Array>> + '_ {
