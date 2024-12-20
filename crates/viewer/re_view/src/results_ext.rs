@@ -6,7 +6,6 @@ use re_chunk_store::{Chunk, LatestAtQuery, RangeQuery, UnitChunkShared};
 use re_log_types::external::arrow2::bitmap::Bitmap as Arrow2Bitmap;
 use re_log_types::hash::Hash64;
 use re_query::{LatestAtResults, RangeResults};
-use re_types::ArchetypeFieldName;
 use re_types_core::ComponentName;
 use re_viewer_context::{DataResult, QueryContext, ViewContext};
 
@@ -543,7 +542,7 @@ impl<'a> HybridResultsChunkIter<'a> {
     /// See [`Chunk::iter_slices_from_struct_field`] for more information.
     pub fn slice_from_struct_field<S: 'a + re_chunk::ChunkComponentSlicer>(
         &'a self,
-        field_name: &'a ArchetypeFieldName,
+        field_name: &'a str,
     ) -> impl Iterator<Item = ((TimeInt, RowId), S::Item<'a>)> + 'a {
         self.chunks.iter().flat_map(|chunk| {
             itertools::izip!(
