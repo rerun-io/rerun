@@ -212,7 +212,6 @@ impl Chunk {
     /// * [`Self::iter_primitive_array_list`]
     /// * [`Self::iter_string`]
     /// * [`Self::iter_buffer`].
-    /// * [`Self::iter_component_arrays`].
     /// * [`Self::iter_component`].
     #[inline]
     pub fn iter_primitive<T: arrow2::types::NativeType>(
@@ -255,7 +254,6 @@ impl Chunk {
     /// * [`Self::iter_primitive_array_list`]
     /// * [`Self::iter_string`]
     /// * [`Self::iter_buffer`].
-    /// * [`Self::iter_component_arrays`].
     /// * [`Self::iter_component`].
     #[inline]
     pub fn iter_bool(
@@ -298,7 +296,6 @@ impl Chunk {
     /// * [`Self::iter_primitive`]
     /// * [`Self::iter_string`]
     /// * [`Self::iter_buffer`].
-    /// * [`Self::iter_component_arrays`].
     /// * [`Self::iter_component`].
     pub fn iter_primitive_array<const N: usize, T: arrow2::types::NativeType>(
         &self,
@@ -360,7 +357,6 @@ impl Chunk {
     /// * [`Self::iter_primitive_array`]
     /// * [`Self::iter_string`]
     /// * [`Self::iter_buffer`].
-    /// * [`Self::iter_component_arrays`].
     /// * [`Self::iter_component`].
     pub fn iter_primitive_array_list<const N: usize, T: arrow2::types::NativeType>(
         &self,
@@ -445,7 +441,6 @@ impl Chunk {
     /// * [`Self::iter_primitive_array`]
     /// * [`Self::iter_primitive_array_list`]
     /// * [`Self::iter_buffer`].
-    /// * [`Self::iter_component_arrays`].
     /// * [`Self::iter_component`].
     pub fn iter_string(
         &self,
@@ -496,7 +491,6 @@ impl Chunk {
     /// * [`Self::iter_primitive_array`]
     /// * [`Self::iter_primitive_array_list`]
     /// * [`Self::iter_string`].
-    /// * [`Self::iter_component_arrays`].
     /// * [`Self::iter_component`].
     pub fn iter_buffer<T: arrow::datatypes::ArrowNativeType + arrow2::types::NativeType>(
         &self,
@@ -719,7 +713,6 @@ impl Chunk {
     /// * [`Self::iter_primitive_array_list`]
     /// * [`Self::iter_string`]
     /// * [`Self::iter_buffer`].
-    /// * [`Self::iter_component_arrays`].
     #[inline]
     pub fn iter_component<C: Component>(
         &self,
