@@ -13,7 +13,6 @@ boxes3d.py linguist-generated=true
 capsules3d.py linguist-generated=true
 clear.py linguist-generated=true
 depth_image.py linguist-generated=true
-disconnected_space.py linguist-generated=true
 ellipsoids3d.py linguist-generated=true
 encoded_image.py linguist-generated=true
 geo_line_strings.py linguist-generated=true

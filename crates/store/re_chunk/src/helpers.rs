@@ -1,9 +1,10 @@
 use std::sync::Arc;
 
+use arrow::array::ArrayRef;
 use arrow2::array::Array as Arrow2Array;
 
 use re_log_types::{TimeInt, Timeline};
-use re_types_core::{Component, ComponentName, SizeBytes};
+use re_types_core::{Component, ComponentName};
 
 use crate::{Chunk, ChunkResult, RowId};
 
@@ -174,7 +175,7 @@ impl std::ops::Deref for UnitChunkShared {
     }
 }
 
-impl SizeBytes for UnitChunkShared {
+impl re_byte_size::SizeBytes for UnitChunkShared {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         Chunk::heap_size_bytes(&self.0)
@@ -262,7 +263,14 @@ impl UnitChunkShared {
 
     /// Returns the raw data for the specified component.
     #[inline]
-    pub fn component_batch_raw(
+    pub fn component_batch_raw(&self, component_name: &ComponentName) -> Option<ArrayRef> {
+        self.component_batch_raw_arrow2(component_name)
+            .map(|array| array.into())
+    }
+
+    /// Returns the raw data for the specified component.
+    #[inline]
+    pub fn component_batch_raw_arrow2(
         &self,
         component_name: &ComponentName,
     ) -> Option<Box<dyn Arrow2Array>> {
@@ -276,7 +284,7 @@ impl UnitChunkShared {
     /// Returns an error if the data cannot be deserialized.
     #[inline]
     pub fn component_batch<C: Component>(&self) -> Option<ChunkResult<Vec<C>>> {
-        let data = C::from_arrow2(&*self.component_batch_raw(&C::name())?);
+        let data = C::from_arrow2(&*self.component_batch_raw_arrow2(&C::name())?);
         Some(data.map_err(Into::into))
     }
 
@@ -291,7 +299,7 @@ impl UnitChunkShared {
         component_name: &ComponentName,
         instance_index: usize,
     ) -> Option<ChunkResult<Box<dyn Arrow2Array>>> {
-        let array = self.component_batch_raw(component_name)?;
+        let array = self.component_batch_raw_arrow2(component_name)?;
         if array.len() > instance_index {
             Some(Ok(array.sliced(instance_index, 1)))
         } else {
@@ -334,7 +342,7 @@ impl UnitChunkShared {
         &self,
         component_name: &ComponentName,
     ) -> Option<ChunkResult<Box<dyn Arrow2Array>>> {
-        let array = self.component_batch_raw(component_name)?;
+        let array = self.component_batch_raw_arrow2(component_name)?;
         if array.len() == 1 {
             Some(Ok(array.sliced(0, 1)))
         } else {

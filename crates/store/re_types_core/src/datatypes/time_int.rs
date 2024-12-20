@@ -142,7 +142,7 @@ impl From<TimeInt> for i64 {
     }
 }
 
-impl crate::SizeBytes for TimeInt {
+impl ::re_byte_size::SizeBytes for TimeInt {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.0.heap_size_bytes()

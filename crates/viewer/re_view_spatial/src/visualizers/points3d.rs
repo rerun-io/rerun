@@ -241,7 +241,7 @@ impl VisualizerSystem for Points3DVisualizer {
                     all_labels.string(),
                     all_class_ids.primitive::<u16>(),
                     all_keypoint_ids.primitive::<u16>(),
-                    all_show_labels.component::<ShowLabels>(),
+                    all_show_labels.bool(),
                 )
                 .map(
                     |(
@@ -263,7 +263,7 @@ impl VisualizerSystem for Points3DVisualizer {
                                 .map_or(&[], |class_ids| bytemuck::cast_slice(class_ids)),
                             keypoint_ids: keypoint_ids
                                 .map_or(&[], |keypoint_ids| bytemuck::cast_slice(keypoint_ids)),
-                            show_labels: show_labels.unwrap_or_default().first().copied(),
+                            show_labels: show_labels.unwrap_or_default().get(0).map(Into::into),
                         }
                     },
                 );

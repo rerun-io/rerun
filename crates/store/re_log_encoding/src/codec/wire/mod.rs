@@ -4,28 +4,10 @@ pub mod encoder;
 pub use decoder::decode;
 pub use encoder::encode;
 
-use re_chunk::TransportChunk;
-
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Default)]
-pub struct MessageHeader(pub u8);
-
-impl MessageHeader {
-    pub const NO_DATA: Self = Self(1);
-    pub const RECORD_BATCH: Self = Self(2);
-
-    pub const SIZE_BYTES: usize = 1;
-}
-
-#[derive(Debug)]
-pub enum TransportMessageV0 {
-    NoData,
-    RecordBatch(TransportChunk),
-}
-
 #[cfg(test)]
 mod tests {
     use crate::{
-        codec::wire::{decode, encode, TransportMessageV0},
+        codec::wire::{decode, encode},
         codec::CodecError,
     };
     use re_chunk::{Chunk, RowId};
@@ -56,51 +38,13 @@ mod tests {
     }
 
     #[test]
-    fn test_message_v0_no_data() {
-        let msg = TransportMessageV0::NoData;
-        let data = msg.to_bytes().unwrap();
-        let decoded = TransportMessageV0::from_bytes(&data).unwrap();
-        assert!(matches!(decoded, TransportMessageV0::NoData));
-    }
-
-    #[test]
-    fn test_message_v0_record_batch() {
-        let expected_chunk = get_test_chunk();
-
-        let msg = TransportMessageV0::RecordBatch(expected_chunk.clone().to_transport().unwrap());
-        let data = msg.to_bytes().unwrap();
-        let decoded = TransportMessageV0::from_bytes(&data).unwrap();
-
-        #[allow(clippy::match_wildcard_for_single_variants)]
-        match decoded {
-            TransportMessageV0::RecordBatch(transport) => {
-                let decoded_chunk = Chunk::from_transport(&transport).unwrap();
-                assert_eq!(expected_chunk, decoded_chunk);
-            }
-            _ => panic!("unexpected message type"),
-        }
-    }
-
-    #[test]
-    fn test_invalid_batch_data() {
-        let data = vec![2, 3, 4]; // '1' is NO_DATA message header
-        let decoded = TransportMessageV0::from_bytes(&data);
+    fn test_invalid_data() {
+        let data = vec![2, 3, 4];
+        let decoded = decode(EncoderVersion::V0, &data);
 
         assert!(matches!(
             decoded.err().unwrap(),
             CodecError::ArrowSerialization(_)
-        ));
-    }
-
-    #[test]
-    fn test_unknown_header() {
-        let data = vec![3];
-        let decoded = TransportMessageV0::from_bytes(&data);
-        assert!(decoded.is_err());
-
-        assert!(matches!(
-            decoded.err().unwrap(),
-            CodecError::UnknownMessageHeader
         ));
     }
 
@@ -110,10 +54,10 @@ mod tests {
 
         let encoded = encode(
             EncoderVersion::V0,
-            expected_chunk.clone().to_transport().unwrap(),
+            &expected_chunk.clone().to_transport().unwrap(),
         )
         .unwrap();
-        let decoded = decode(EncoderVersion::V0, &encoded).unwrap().unwrap();
+        let decoded = decode(EncoderVersion::V0, &encoded).unwrap();
         let decoded_chunk = Chunk::from_transport(&decoded).unwrap();
 
         assert_eq!(expected_chunk, decoded_chunk);

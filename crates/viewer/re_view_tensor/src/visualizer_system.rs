@@ -69,13 +69,18 @@ impl VisualizerSystem for TensorSystem {
             let all_ranges = results.iter_as(timeline, ValueRange::name());
 
             for ((_, tensor_row_id), tensors, data_ranges) in
-                re_query::range_zip_1x1(all_tensors_indexed, all_ranges.component::<ValueRange>())
+                re_query::range_zip_1x1(all_tensors_indexed, all_ranges.primitive_array::<2, f64>())
             {
                 let Some(tensor) = tensors.first() else {
                     continue;
                 };
                 let data_range = data_ranges
-                    .and_then(|ranges| ranges.first().copied())
+                    .and_then(|ranges| {
+                        ranges
+                            .first()
+                            .copied()
+                            .map(|range| ValueRange(range.into()))
+                    })
                     .unwrap_or_else(|| {
                         let tensor_stats = ctx
                             .viewer_ctx

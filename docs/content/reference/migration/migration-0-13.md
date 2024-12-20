@@ -33,8 +33,8 @@ more predictable but comes with a few changes on how paths are expected to be st
       the appropriate dimensions.
     * Note that children of root are still special for 3D & time series views but this may change in the future
       see [#4926](https://github.com/rerun-io/rerun/issues/4926)
-* [DisconnectedSpace](../types/archetypes/disconnected_space.md) now strictly applies only to 2D and 3D Space Views
+* `DisconnectedSpace` now strictly applies only to 2D and 3D Space Views
   * Internally, the heuristic now reasons about a 2D/3D topology which does not affect other types of views.
-    [DisconnectedSpace](../types/archetypes/disconnected_space.md) represents a hard cut in this topology.
+    `DisconnectedSpace` represents a hard cut in this topology.
 
 Future releases will allow you to specify Space Views & view layout from code.

@@ -38,7 +38,7 @@ use re_protos::remote_store::v0::{
 
 /// Wrapper with a nicer error message
 #[derive(Debug)]
-struct TonicStatusError(tonic::Status);
+pub struct TonicStatusError(pub tonic::Status);
 
 impl std::fmt::Display for TonicStatusError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -65,7 +65,7 @@ impl Error for TonicStatusError {
 }
 
 #[derive(thiserror::Error, Debug)]
-enum StreamError {
+pub enum StreamError {
     /// Native connection error
     #[cfg(not(target_arch = "wasm32"))]
     #[error(transparent)]
@@ -191,12 +191,11 @@ async fn stream_recording_async(
         .await
         .map_err(TonicStatusError)?
         .into_inner()
-        .filter_map(|resp| {
+        .map(|resp| {
             resp.and_then(|r| {
                 decode(r.encoder_version(), &r.payload)
                     .map_err(|err| tonic::Status::internal(err.to_string()))
             })
-            .transpose()
         })
         .collect::<Result<Vec<_>, tonic::Status>>()
         .await
@@ -225,12 +224,11 @@ async fn stream_recording_async(
         .await
         .map_err(TonicStatusError)?
         .into_inner()
-        .filter_map(|resp| {
+        .map(|resp| {
             resp.and_then(|r| {
                 decode(r.encoder_version(), &r.payload)
                     .map_err(|err| tonic::Status::internal(err.to_string()))
             })
-            .transpose()
         });
 
     drop(client);
@@ -268,7 +266,7 @@ async fn stream_recording_async(
     Ok(())
 }
 
-fn store_info_from_catalog_chunk(
+pub fn store_info_from_catalog_chunk(
     tc: &TransportChunk,
     recording_id: &str,
 ) -> Result<StoreInfo, StreamError> {
@@ -340,7 +338,6 @@ async fn stream_catalog_async(
     re_log::debug!("Fetching catalog…");
 
     let mut resp = client
-        // TODO(zehiko) add support for fetching specific columns and rows
         .query_catalog(QueryCatalogRequest {
             column_projection: None, // fetch all columns
             filter: None,            // fetch all rows
@@ -348,12 +345,11 @@ async fn stream_catalog_async(
         .await
         .map_err(TonicStatusError)?
         .into_inner()
-        .filter_map(|resp| {
+        .map(|resp| {
             resp.and_then(|r| {
                 decode(r.encoder_version(), &r.payload)
                     .map_err(|err| tonic::Status::internal(err.to_string()))
             })
-            .transpose()
         });
 
     drop(client);
@@ -484,15 +480,9 @@ async fn stream_catalog_async(
             )))?;
 
         let recording_uri_arrays: Vec<Box<dyn Arrow2Array>> = chunk
-            .iter_component_arrays(&"id".into())
+            .iter_string(&"id".into())
             .map(|id| {
-                let rec_id = id
-                    .as_any()
-                    .downcast_ref::<Arrow2Utf8Array<i32>>()
-                    .ok_or(StreamError::ChunkError(re_chunk::ChunkError::Malformed {
-                        reason: format!("id must be a utf8 array: {:?}", tc.schema),
-                    }))?
-                    .value(0); // each component batch is of length 1 i.e. single 'id' value
+                let rec_id = &id[0]; // each component batch is of length 1 i.e. single 'id' value
 
                 let recording_uri = format!("rerun://{host}:{port}/recording/{rec_id}");
 

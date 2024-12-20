@@ -1,9 +1,7 @@
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{external::re_query::LatestAtResults, EntityDb};
 use re_log_types::EntityPath;
-use re_types::{
-    external::arrow2, Archetype, ArchetypeName, ComponentBatch, ComponentName, DeserializationError,
-};
+use re_types::{Archetype, ArchetypeName, ComponentBatch, ComponentName, DeserializationError};
 use re_viewer_context::{
     external::re_entity_db::EntityTree, ComponentFallbackError, ComponentFallbackProvider,
     QueryContext, ViewId, ViewSystemExecutionError, ViewerContext,
@@ -113,7 +111,7 @@ impl ViewProperty {
         view_state: &dyn re_viewer_context::ViewState,
     ) -> Result<Vec<C>, ViewPropertyQueryError> {
         let component_name = C::name();
-        C::from_arrow2(
+        C::from_arrow(
             self.component_or_fallback_raw(ctx, component_name, fallback_provider, view_state)
                 .as_ref(),
         )
@@ -135,7 +133,7 @@ impl ViewProperty {
     ) -> Result<Option<Vec<C>>, DeserializationError> {
         let component_name = C::name();
         self.component_raw(component_name)
-            .map(|raw| C::from_arrow2(raw.as_ref()))
+            .map(|raw| C::from_arrow(raw.as_ref()))
             .transpose()
     }
 
@@ -153,13 +151,11 @@ impl ViewProperty {
             .and_then(|unit| unit.row_id())
     }
 
-    pub fn component_raw(
-        &self,
-        component_name: ComponentName,
-    ) -> Option<Box<dyn arrow2::array::Array>> {
-        self.query_results
-            .get(&component_name)
-            .and_then(|unit| unit.component_batch_raw(&component_name))
+    pub fn component_raw(&self, component_name: ComponentName) -> Option<arrow::array::ArrayRef> {
+        self.query_results.get(&component_name).and_then(|unit| {
+            unit.component_batch_raw_arrow2(&component_name)
+                .map(|array| array.into())
+        })
     }
 
     fn component_or_fallback_raw(
@@ -168,7 +164,7 @@ impl ViewProperty {
         component_name: ComponentName,
         fallback_provider: &dyn ComponentFallbackProvider,
         view_state: &dyn re_viewer_context::ViewState,
-    ) -> Box<dyn arrow2::array::Array> {
+    ) -> arrow::array::ArrayRef {
         if let Some(value) = self.component_raw(component_name) {
             if value.len() > 0 {
                 return value;

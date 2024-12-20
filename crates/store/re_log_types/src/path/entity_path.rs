@@ -3,8 +3,8 @@ use std::sync::Arc;
 use ahash::{HashMap, HashSet};
 use itertools::Itertools as _;
 
+use re_byte_size::SizeBytes;
 use re_string_interner::InternedString;
-use re_types_core::SizeBytes;
 
 use crate::{hash::Hash64, EntityPathPart};
 
@@ -14,7 +14,7 @@ use crate::{hash::Hash64, EntityPathPart};
 #[derive(Copy, Clone, Eq, PartialOrd, Ord)]
 pub struct EntityPathHash(Hash64);
 
-impl re_types_core::SizeBytes for EntityPathHash {
+impl re_byte_size::SizeBytes for EntityPathHash {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.0.heap_size_bytes()

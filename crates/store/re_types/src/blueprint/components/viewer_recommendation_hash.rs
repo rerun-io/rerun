@@ -102,7 +102,7 @@ impl std::ops::DerefMut for ViewerRecommendationHash {
     }
 }
 
-impl ::re_types_core::SizeBytes for ViewerRecommendationHash {
+impl ::re_byte_size::SizeBytes for ViewerRecommendationHash {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.0.heap_size_bytes()

@@ -159,9 +159,11 @@ impl VisualizerSystem for Boxes3DVisualizer {
                 let all_fill_modes = results.iter_as(timeline, FillMode::name());
                 // fill mode is currently a non-repeated component
                 let fill_mode: FillMode = all_fill_modes
-                    .component::<FillMode>()
+                    .primitive::<u8>()
                     .next()
-                    .and_then(|(_, fill_modes)| fill_modes.as_slice().first().copied())
+                    .and_then(|(_, fill_modes)| {
+                        fill_modes.first().copied().and_then(FillMode::from_u8)
+                    })
                     .unwrap_or_default();
 
                 match fill_mode {
@@ -181,7 +183,7 @@ impl VisualizerSystem for Boxes3DVisualizer {
                     all_radii.primitive::<f32>(),
                     all_labels.string(),
                     all_class_ids.primitive::<u16>(),
-                    all_show_labels.component::<ShowLabels>(),
+                    all_show_labels.bool(),
                 )
                 .map(
                     |(_index, half_sizes, colors, radii, labels, class_ids, show_labels)| {
@@ -194,7 +196,7 @@ impl VisualizerSystem for Boxes3DVisualizer {
                             labels: labels.unwrap_or_default(),
                             class_ids: class_ids
                                 .map_or(&[], |class_ids| bytemuck::cast_slice(class_ids)),
-                            show_labels: show_labels.unwrap_or_default().first().copied(),
+                            show_labels: show_labels.unwrap_or_default().get(0).map(Into::into),
                         }
                     },
                 );

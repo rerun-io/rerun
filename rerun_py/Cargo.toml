@@ -39,6 +39,7 @@ remote = [
   "dep:object_store",
   "dep:re_protos",
   "dep:re_ws_comms",
+  "dep:re_grpc_client",
   "dep:tokio",
   "dep:tokio-stream",
   "dep:tonic",
@@ -61,6 +62,7 @@ re_build_info.workspace = true
 re_chunk = { workspace = true, features = ["arrow"] }
 re_chunk_store.workspace = true
 re_dataframe.workspace = true
+re_grpc_client = { workspace = true, optional = true }
 re_log = { workspace = true, features = ["setup"] }
 re_log_encoding = { workspace = true }
 re_log_types.workspace = true

@@ -8,11 +8,13 @@ use arrow2::array::Array as Arrow2Array;
 use nohash_hasher::IntMap;
 use parking_lot::RwLock;
 
+use re_byte_size::SizeBytes;
 use re_chunk::{Chunk, RowId, UnitChunkShared};
 use re_chunk_store::{ChunkStore, LatestAtQuery, TimeInt};
 use re_log_types::EntityPath;
 use re_types_core::{
-    components::ClearIsRecursive, Component, ComponentDescriptor, ComponentName, SizeBytes,
+    components::ClearIsRecursive, external::arrow::array::ArrayRef, Component, ComponentDescriptor,
+    ComponentName,
 };
 
 use crate::{QueryCache, QueryCacheKey, QueryError};
@@ -313,13 +315,21 @@ impl LatestAtResults {
 
     /// Returns the raw data for the specified component.
     #[inline]
-    pub fn component_batch_raw(
+    pub fn component_batch_raw(&self, component_name: &ComponentName) -> Option<ArrayRef> {
+        self.components
+            .get(component_name)?
+            .component_batch_raw(component_name)
+    }
+
+    /// Returns the raw data for the specified component.
+    #[inline]
+    pub fn component_batch_raw_arrow2(
         &self,
         component_name: &ComponentName,
     ) -> Option<Box<dyn Arrow2Array>> {
         self.components
             .get(component_name)
-            .and_then(|unit| unit.component_batch_raw(component_name))
+            .and_then(|unit| unit.component_batch_raw_arrow2(component_name))
     }
 
     /// Returns the deserialized data for the specified component.

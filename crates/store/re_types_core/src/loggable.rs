@@ -2,9 +2,9 @@ use std::borrow::Cow;
 
 use nohash_hasher::IntSet;
 
-use crate::{
-    result::_Backtrace, ComponentDescriptor, DeserializationResult, SerializationResult, SizeBytes,
-};
+use re_byte_size::SizeBytes;
+
+use crate::{result::_Backtrace, ComponentDescriptor, DeserializationResult, SerializationResult};
 
 #[allow(unused_imports)] // used in docstrings
 use crate::{Archetype, ComponentBatch, LoggableBatch};
@@ -295,7 +295,7 @@ impl ComponentName {
 
 // ---
 
-impl crate::SizeBytes for ComponentName {
+impl re_byte_size::SizeBytes for ComponentName {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         0
@@ -337,7 +337,7 @@ impl DatatypeName {
     }
 }
 
-impl crate::SizeBytes for DatatypeName {
+impl re_byte_size::SizeBytes for DatatypeName {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         0

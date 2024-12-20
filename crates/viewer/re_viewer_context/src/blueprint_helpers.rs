@@ -1,4 +1,5 @@
-use re_chunk::{Arrow2Array, RowId};
+use arrow::array::ArrayRef;
+use re_chunk::RowId;
 use re_chunk_store::external::re_chunk::Chunk;
 use re_log_types::{EntityPath, TimeInt, TimePoint, Timeline};
 use re_types::{AsComponents, ComponentBatch, ComponentDescriptor, ComponentName};
@@ -86,7 +87,7 @@ impl ViewerContext<'_> {
         &self,
         entity_path: &EntityPath,
         component_name: ComponentName,
-        array: Box<dyn Arrow2Array>,
+        array: ArrayRef,
     ) {
         let timepoint = self.store_context.blueprint_timepoint_for_writes();
 
@@ -126,7 +127,7 @@ impl ViewerContext<'_> {
         &self,
         entity_path: &EntityPath,
         component_name: ComponentName,
-    ) -> Option<Box<dyn Arrow2Array>> {
+    ) -> Option<ArrayRef> {
         self.store_context
             .default_blueprint
             .and_then(|default_blueprint| {
@@ -179,7 +180,7 @@ impl ViewerContext<'_> {
                 timepoint,
                 [(
                     ComponentDescriptor::new(component_name),
-                    re_chunk::external::arrow2::array::new_empty_array(datatype),
+                    re_chunk::external::arrow::array::new_empty_array(&datatype),
                 )],
             )
             .build();

@@ -19,8 +19,9 @@ workspace = true
 all-features = true
 
 [dependencies]
-re_data_ui.workspace = true # Needed for `item_ui`.
+re_byte_size.workspace = true
 re_data_source.workspace = true
+re_data_ui.workspace = true # Needed for `item_ui`.
 re_format.workspace = true
 re_log.workspace = true
 re_log_types.workspace = true
@@ -32,6 +33,13 @@ re_types_core.workspace = true
 re_ui.workspace = true
 re_viewer_context.workspace = true
 
+arrow.workspace = true
 egui_extras.workspace = true
 egui_plot.workspace = true
 egui.workspace = true
+
+
+[dev-dependencies]
+egui_kittest.workspace = true
+itertools.workspace = true
+nohash-hasher.workspace = true

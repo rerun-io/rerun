@@ -4,9 +4,9 @@ use std::sync::Arc;
 use egui_extras::{Column, TableRow};
 use itertools::Itertools;
 
+use re_byte_size::SizeBytes;
 use re_chunk_store::external::re_chunk::{Arrow2Array, TransportChunk};
 use re_chunk_store::Chunk;
-use re_log_types::external::re_types_core::SizeBytes;
 use re_log_types::{TimeZone, Timeline};
 use re_types::datatypes::TimeInt;
 use re_ui::{list_item, UiExt};
@@ -149,7 +149,7 @@ impl ChunkUi {
                         chunk.component_batch_raw(&component_desc.component_name, row_index);
                     match component_data {
                         Some(Ok(data)) => {
-                            crate::arrow_ui::arrow_ui(ui, &*data);
+                            crate::arrow_ui::arrow2_ui(ui, &*data);
                         }
                         Some(Err(err)) => {
                             ui.error_with_details_on_hover(err.to_string());

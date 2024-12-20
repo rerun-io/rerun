@@ -287,7 +287,7 @@ impl TensorScalarMapping {
     }
 }
 
-impl ::re_types_core::SizeBytes for TensorScalarMapping {
+impl ::re_byte_size::SizeBytes for TensorScalarMapping {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.mag_filter.heap_size_bytes()

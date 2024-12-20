@@ -460,7 +460,7 @@ impl InstancePoses3D {
     }
 }
 
-impl ::re_types_core::SizeBytes for InstancePoses3D {
+impl ::re_byte_size::SizeBytes for InstancePoses3D {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.translations.heap_size_bytes()

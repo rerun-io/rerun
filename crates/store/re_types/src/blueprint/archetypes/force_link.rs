@@ -286,7 +286,7 @@ impl ForceLink {
     }
 }
 
-impl ::re_types_core::SizeBytes for ForceLink {
+impl ::re_byte_size::SizeBytes for ForceLink {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.enabled.heap_size_bytes()

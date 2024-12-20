@@ -66,20 +66,20 @@ impl VisualizerSystem for GeoLineStringsVisualizer {
 
             // iterate over each chunk and find all relevant component slices
             for (_index, lines, colors, radii) in re_query::range_zip_1x2(
-                all_lines.component::<GeoLineString>(),
-                all_colors.component::<Color>(),
-                all_radii.component::<Radius>(),
+                all_lines.primitive_array_list::<2, f64>(),
+                all_colors.primitive::<u32>(),
+                all_radii.primitive::<f32>(),
             ) {
                 // required component
                 let lines = lines.as_slice();
 
                 // optional components
-                let colors = colors.as_ref().map(|c| c.as_slice()).unwrap_or(&[]);
-                let radii = radii.as_ref().map(|r| r.as_slice()).unwrap_or(&[]);
+                let colors = colors.unwrap_or(&[]);
+                let radii = radii.unwrap_or(&[]);
 
                 // optional components values to be used for instance clamping semantics
-                let last_color = colors.last().copied().unwrap_or(fallback_color);
-                let last_radii = radii.last().copied().unwrap_or(fallback_radius);
+                let last_color = colors.last().copied().unwrap_or(fallback_color.0 .0);
+                let last_radii = radii.last().copied().unwrap_or(fallback_radius.0 .0);
 
                 // iterate over all instances
                 for (instance_index, (line, color, radius)) in itertools::izip!(
@@ -90,13 +90,12 @@ impl VisualizerSystem for GeoLineStringsVisualizer {
                 .enumerate()
                 {
                     batch_data.lines.push(
-                        line.0
-                            .iter()
-                            .map(|pos| walkers::Position::from_lat_lon(pos.x(), pos.y()))
+                        line.iter()
+                            .map(|pos| walkers::Position::from_lat_lon(pos[0], pos[1]))
                             .collect(),
                     );
-                    batch_data.radii.push(*radius);
-                    batch_data.colors.push(color.0.into());
+                    batch_data.radii.push(Radius((*radius).into()));
+                    batch_data.colors.push(Color::new(*color).into());
                     batch_data
                         .instance_id
                         .push(re_renderer::PickingLayerInstanceId(instance_index as _));

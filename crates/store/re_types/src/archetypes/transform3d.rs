@@ -595,7 +595,7 @@ impl Transform3D {
     }
 }
 
-impl ::re_types_core::SizeBytes for Transform3D {
+impl ::re_byte_size::SizeBytes for Transform3D {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.translation.heap_size_bytes()

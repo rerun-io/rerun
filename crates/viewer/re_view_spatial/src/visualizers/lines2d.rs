@@ -232,7 +232,7 @@ impl VisualizerSystem for Lines2DVisualizer {
                     all_radii.primitive::<f32>(),
                     all_labels.string(),
                     all_class_ids.primitive::<u16>(),
-                    all_show_labels.component::<ShowLabels>(),
+                    all_show_labels.bool(),
                 )
                 .map(
                     |(_index, strips, colors, radii, labels, class_ids, show_labels)| {
@@ -243,7 +243,7 @@ impl VisualizerSystem for Lines2DVisualizer {
                             labels: labels.unwrap_or_default(),
                             class_ids: class_ids
                                 .map_or(&[], |class_ids| bytemuck::cast_slice(class_ids)),
-                            show_labels: show_labels.unwrap_or_default().first().copied(),
+                            show_labels: show_labels.unwrap_or_default().get(0).map(Into::into),
                         }
                     },
                 );

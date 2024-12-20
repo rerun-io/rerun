@@ -587,6 +587,12 @@ impl EntityPathFilter {
         // inclusion rule and didn't hit an exclusion rule.
         true
     }
+
+    #[inline]
+    /// Iterate over all rules in the filter.
+    pub fn rules(&self) -> impl Iterator<Item = (&EntityPathRule, &RuleEffect)> {
+        self.rules.iter()
+    }
 }
 
 impl EntityPathRule {

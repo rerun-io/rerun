@@ -35,6 +35,7 @@ re_ui.workspace = true
 re_viewer_context.workspace = true
 re_viewport_blueprint.workspace = true
 
+arrow.workspace = true
 egui_tiles.workspace = true
 egui.workspace = true
 itertools.workspace = true

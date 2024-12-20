@@ -24,6 +24,11 @@ pub trait LoggableBatch {
     // type Loggable: Loggable;
 
     /// Serializes the batch into an Arrow array.
+    fn to_arrow(&self) -> SerializationResult<arrow::array::ArrayRef> {
+        self.to_arrow2().map(|array| array.into())
+    }
+
+    /// Serializes the batch into an Arrow2 array.
     fn to_arrow2(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>>;
 }
 

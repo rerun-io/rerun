@@ -182,7 +182,7 @@ impl VisibleTimeRanges {
     }
 }
 
-impl ::re_types_core::SizeBytes for VisibleTimeRanges {
+impl ::re_byte_size::SizeBytes for VisibleTimeRanges {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.ranges.heap_size_bytes()

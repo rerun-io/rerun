@@ -1,14 +1,11 @@
 use std::collections::BTreeMap;
 
-use re_chunk::{Arrow2Array, RowId, UnitChunkShared};
+use re_chunk::{RowId, UnitChunkShared};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, EntityPath};
 use re_log::ResultExt;
 use re_log_types::Instance;
-use re_types::{
-    external::arrow2::{self},
-    ComponentName,
-};
+use re_types::ComponentName;
 use re_ui::UiExt as _;
 
 use crate::{ComponentFallbackProvider, MaybeMutRef, QueryContext, ViewerContext};
@@ -174,7 +171,7 @@ type LegacyDisplayComponentUiCallback = Box<
             &EntityDb,
             &EntityPath,
             Option<RowId>,
-            &dyn arrow2::array::Array,
+            &dyn arrow::array::Array,
         ) + Send
         + Sync,
 >;
@@ -196,9 +193,9 @@ type UntypedComponentEditOrViewCallback = Box<
     dyn Fn(
             &ViewerContext<'_>,
             &mut egui::Ui,
-            &dyn arrow2::array::Array,
+            &dyn arrow::array::Array,
             EditOrView,
-        ) -> Option<Box<dyn arrow2::array::Array>>
+        ) -> Option<arrow::array::ArrayRef>
         + Send
         + Sync,
 >;
@@ -336,7 +333,7 @@ impl ComponentUiRegistry {
 
                         if response.changed() {
                             use re_types::LoggableBatch as _;
-                            deserialized_value.to_arrow2().ok_or_log_error_once()
+                            deserialized_value.to_arrow().ok_or_log_error_once()
                         } else {
                             None
                         }
@@ -413,7 +410,7 @@ impl ComponentUiRegistry {
         // Enforce clamp-to-border semantics.
         // TODO(andreas): Is that always what we want?
         let index = index.clamp(0, array.len().saturating_sub(1));
-        let component_raw = array.sliced(index, 1);
+        let component_raw = array.slice(index, 1);
 
         self.ui_raw(
             ctx,
@@ -440,7 +437,7 @@ impl ComponentUiRegistry {
         entity_path: &EntityPath,
         component_name: ComponentName,
         row_id: Option<RowId>,
-        component_raw: &dyn arrow2::array::Array,
+        component_raw: &dyn arrow::array::Array,
     ) {
         re_tracing::profile_function!(component_name.full_name());
 
@@ -504,7 +501,7 @@ impl ComponentUiRegistry {
         blueprint_write_path: &EntityPath,
         component_name: ComponentName,
         row_id: Option<RowId>,
-        component_array: Option<&dyn Arrow2Array>,
+        component_array: Option<&dyn arrow::array::Array>,
         fallback_provider: &dyn ComponentFallbackProvider,
     ) {
         let multiline = true;
@@ -535,7 +532,7 @@ impl ComponentUiRegistry {
         blueprint_write_path: &EntityPath,
         component_name: ComponentName,
         row_id: Option<RowId>,
-        component_query_result: Option<&dyn Arrow2Array>,
+        component_query_result: Option<&dyn arrow::array::Array>,
         fallback_provider: &dyn ComponentFallbackProvider,
     ) {
         let multiline = false;
@@ -561,31 +558,32 @@ impl ComponentUiRegistry {
         blueprint_write_path: &EntityPath,
         component_name: ComponentName,
         row_id: Option<RowId>,
-        component_array: Option<&dyn Arrow2Array>,
+        component_array: Option<&dyn arrow::array::Array>,
         fallback_provider: &dyn ComponentFallbackProvider,
         allow_multiline: bool,
     ) {
         re_tracing::profile_function!(component_name.full_name());
 
-        // Use a fallback if there's either no component data at all or the component array is empty.
-        let component_raw = if let Some(component_raw) =
-            component_array.and_then(|array| (!array.is_empty()).then(|| array.to_boxed()))
-        {
-            component_raw
-        } else {
-            fallback_provider.fallback_for(ctx, component_name)
+        let mut run_with = |array| {
+            self.edit_ui_raw(
+                ctx,
+                ui,
+                origin_db,
+                blueprint_write_path,
+                component_name,
+                row_id,
+                array,
+                allow_multiline,
+            );
         };
 
-        self.edit_ui_raw(
-            ctx,
-            ui,
-            origin_db,
-            blueprint_write_path,
-            component_name,
-            row_id,
-            component_raw.as_ref(),
-            allow_multiline,
-        );
+        // Use a fallback if there's either no component data at all or the component array is empty.
+        if let Some(component_array) = component_array.filter(|array| !array.is_empty()) {
+            run_with(component_array);
+        } else {
+            let fallback = fallback_provider.fallback_for(ctx, component_name);
+            run_with(fallback.as_ref());
+        }
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -597,13 +595,13 @@ impl ComponentUiRegistry {
         blueprint_write_path: &EntityPath,
         component_name: ComponentName,
         row_id: Option<RowId>,
-        component_raw: &dyn arrow2::array::Array,
+        component_raw: &dyn arrow::array::Array,
         allow_multiline: bool,
     ) {
         if !self.try_show_edit_ui(
             ctx.viewer_ctx,
             ui,
-            component_raw.as_ref(),
+            component_raw,
             blueprint_write_path,
             component_name,
             allow_multiline,
@@ -631,7 +629,7 @@ impl ComponentUiRegistry {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        raw_current_value: &dyn arrow2::array::Array,
+        raw_current_value: &dyn arrow::array::Array,
         blueprint_write_path: &EntityPath,
         component_name: ComponentName,
         allow_multiline: bool,
@@ -660,9 +658,9 @@ impl ComponentUiRegistry {
     }
 }
 
-fn try_deserialize<C: re_types::Component>(value: &dyn arrow2::array::Array) -> Option<C> {
+fn try_deserialize<C: re_types::Component>(value: &dyn arrow::array::Array) -> Option<C> {
     let component_name = C::name();
-    let deserialized = C::from_arrow2(value);
+    let deserialized = C::from_arrow(value);
     match deserialized {
         Ok(values) => {
             if values.len() > 1 {

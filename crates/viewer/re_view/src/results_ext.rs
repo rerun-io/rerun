@@ -1,10 +1,9 @@
-use std::borrow::Cow;
-use std::sync::Arc;
+use std::{borrow::Cow, sync::Arc};
 
 use itertools::Itertools as _;
 
 use re_chunk_store::{Chunk, LatestAtQuery, RangeQuery, UnitChunkShared};
-use re_log_types::external::arrow2::array::Array as Arrow2Array;
+use re_log_types::external::arrow2::bitmap::Bitmap as Arrow2Bitmap;
 use re_log_types::hash::Hash64;
 use re_query::{LatestAtResults, RangeResults};
 use re_types_core::ComponentName;
@@ -50,7 +49,7 @@ impl HybridLatestAtResults<'_> {
             .or_else(|| self.defaults.get(&component_name))
     }
 
-    pub fn fallback_raw(&self, component_name: ComponentName) -> Box<dyn Arrow2Array> {
+    pub fn fallback_raw(&self, component_name: ComponentName) -> arrow::array::ArrayRef {
         let query_context = QueryContext {
             viewer_ctx: self.ctx.viewer_ctx,
             target_entity_path: &self.data_result.entity_path,
@@ -118,7 +117,7 @@ impl HybridLatestAtResults<'_> {
             .or_else(|| {
                 // No override, no store, no default -> try fallback instead
                 let raw_fallback = self.fallback_raw(C::name());
-                C::from_arrow2(raw_fallback.as_ref())
+                C::from_arrow(raw_fallback.as_ref())
                     .ok()
                     .and_then(|r| r.first().cloned())
             })
@@ -421,14 +420,30 @@ pub struct HybridResultsChunkIter<'a> {
 impl<'a> HybridResultsChunkIter<'a> {
     /// Iterate as indexed deserialized batches.
     ///
+    /// TODO(#5305): Note that this uses the old codegen'd deserialization path, which does some
+    /// very unidiomatic Arrow things, and is therefore very slow at the moment. Avoid this on
+    /// performance critical paths.
+    ///
     /// See [`Chunk::iter_component`] for more information.
-    pub fn component<C: re_types_core::Component>(
+    pub fn component_slow<C: re_types_core::Component>(
         &'a self,
     ) -> impl Iterator<Item = ((TimeInt, RowId), ChunkComponentIterItem<C>)> + 'a {
         self.chunks.iter().flat_map(move |chunk| {
             itertools::izip!(
                 chunk.iter_component_indices(&self.timeline, &self.component_name),
                 chunk.iter_component::<C>(),
+            )
+        })
+    }
+
+    /// Iterate as indexed booleans.
+    ///
+    /// See [`Chunk::iter_bool`] for more information.
+    pub fn bool(&'a self) -> impl Iterator<Item = ((TimeInt, RowId), Arrow2Bitmap)> + 'a {
+        self.chunks.iter().flat_map(move |chunk| {
+            itertools::izip!(
+                chunk.iter_component_indices(&self.timeline, &self.component_name),
+                chunk.iter_bool(&self.component_name)
             )
         })
     }

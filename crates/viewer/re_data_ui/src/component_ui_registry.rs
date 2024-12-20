@@ -9,7 +9,7 @@ pub fn register_component_uis(registry: &mut re_viewer_context::ComponentUiRegis
     // TODO(#6661): Move this to component_ui_registry. Separate components could simplify this to the extent that multi/single line is enough?
     add_to_registry::<re_types::components::AnnotationContext>(registry);
 
-    // TODO(#6661): Move this to component_ui_registry. Image preview is a bit hard because row_id and size stuff needs to be known
+    // TODO(#6661): Move this to component_ui_registry. Image preview is a bit hard because row_id and size stuff needs to be known. `ImageBuffer` needs to be handled as well.
     add_to_registry::<re_types::components::Blob>(registry);
     add_to_registry::<re_types::components::TensorData>(registry);
 
@@ -23,7 +23,7 @@ pub fn add_to_registry<C: EntityDataUi + re_types::Component>(registry: &mut Com
     registry.add_legacy_display_ui(
         C::name(),
         Box::new(
-            |ctx, ui, ui_layout, query, db, entity_path, row_id, component_raw| match C::from_arrow2(
+            |ctx, ui, ui_layout, query, db, entity_path, row_id, component_raw| match C::from_arrow(
                 component_raw,
             ) {
                 Ok(components) => match components.len() {

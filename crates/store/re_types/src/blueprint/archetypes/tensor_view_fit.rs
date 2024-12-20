@@ -178,7 +178,7 @@ impl TensorViewFit {
     }
 }
 
-impl ::re_types_core::SizeBytes for TensorViewFit {
+impl ::re_byte_size::SizeBytes for TensorViewFit {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.scaling.heap_size_bytes()

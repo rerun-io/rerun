@@ -60,7 +60,7 @@ def run_segmentation() -> None:
     rr.log(
         "logs/seg_test_log",
         rr.TextLog(
-            "default colored rects, default colored points, " "all points except the bottom right clusters have labels",
+            "default colored rects, default colored points, all points except the bottom right clusters have labels",
         ),
     )
 
@@ -98,9 +98,6 @@ def small_image() -> None:
 
 def transforms() -> None:
     rr.log("transforms", rr.ViewCoordinates.RIGHT_HAND_Y_UP, static=True)
-
-    # Log a disconnected space (this doesn't do anything here, but can be used to force a new space)
-    rr.log("transforms/disconnected", rr.DisconnectedSpace())
 
     # Log scale along the x axis only.
     rr.log("transforms/x_scaled", rr.Transform3D(scale=(3, 1, 1)))

@@ -2,10 +2,11 @@ use std::sync::Arc;
 
 use arrow2::{
     array::{
-        Array as Arrow2Array, FixedSizeListArray as Arrow2FixedSizeListArray,
+        BooleanArray as Arrow2BooleanArray, FixedSizeListArray as Arrow2FixedSizeListArray,
         ListArray as Arrow2ListArray, PrimitiveArray as Arrow2PrimitiveArray,
         Utf8Array as Arrow2Utf8Array,
     },
+    bitmap::Bitmap as Arrow2Bitmap,
     Either,
 };
 use itertools::{izip, Itertools};
@@ -199,27 +200,6 @@ impl Chunk {
         }
     }
 
-    /// Returns an iterator over the raw arrays of a [`Chunk`], for a given component.
-    ///
-    /// See also:
-    /// * [`Self::iter_primitive`]
-    /// * [`Self::iter_primitive_array`]
-    /// * [`Self::iter_primitive_array_list`]
-    /// * [`Self::iter_string`]
-    /// * [`Self::iter_buffer`].
-    /// * [`Self::iter_component`].
-    #[inline]
-    pub fn iter_component_arrays(
-        &self,
-        component_name: &ComponentName,
-    ) -> impl Iterator<Item = Box<dyn Arrow2Array>> + '_ {
-        let Some(list_array) = self.get_first_component(component_name) else {
-            return Either::Left(std::iter::empty());
-        };
-
-        Either::Right(list_array.iter().flatten())
-    }
-
     /// Returns an iterator over the raw primitive values of a [`Chunk`], for a given component.
     ///
     /// This is a very fast path: the entire column will be downcasted at once, and then every
@@ -232,7 +212,6 @@ impl Chunk {
     /// * [`Self::iter_primitive_array_list`]
     /// * [`Self::iter_string`]
     /// * [`Self::iter_buffer`].
-    /// * [`Self::iter_component_arrays`].
     /// * [`Self::iter_component`].
     #[inline]
     pub fn iter_primitive<T: arrow2::types::NativeType>(
@@ -264,6 +243,48 @@ impl Chunk {
         )
     }
 
+    /// Returns an iterator over the raw boolean values of a [`Chunk`], for a given component.
+    ///
+    /// This is a very fast path: the entire column will be downcasted at once, and then every
+    /// component batch will be a slice reference into that global slice.
+    /// Use this when working with simple arrow datatypes and performance matters.
+    ///
+    /// See also:
+    /// * [`Self::iter_primitive_array`]
+    /// * [`Self::iter_primitive_array_list`]
+    /// * [`Self::iter_string`]
+    /// * [`Self::iter_buffer`].
+    /// * [`Self::iter_component`].
+    #[inline]
+    pub fn iter_bool(
+        &self,
+        component_name: &ComponentName,
+    ) -> impl Iterator<Item = Arrow2Bitmap> + '_ {
+        let Some(list_array) = self.get_first_component(component_name) else {
+            return Either::Left(std::iter::empty());
+        };
+
+        let Some(values) = list_array
+            .values()
+            .as_any()
+            .downcast_ref::<Arrow2BooleanArray>()
+        else {
+            if cfg!(debug_assertions) {
+                panic!("downcast failed for {component_name}, data discarded");
+            } else {
+                re_log::error_once!("downcast failed for {component_name}, data discarded");
+            }
+            return Either::Left(std::iter::empty());
+        };
+        let values = values.values().clone();
+
+        // NOTE: No need for validity checks here, `iter_offsets` already takes care of that.
+        Either::Right(
+            self.iter_component_offsets(component_name)
+                .map(move |(idx, len)| values.clone().sliced(idx, len)),
+        )
+    }
+
     /// Returns an iterator over the raw primitive arrays of a [`Chunk`], for a given component.
     ///
     /// This is a very fast path: the entire column will be downcasted at once, and then every
@@ -275,7 +296,6 @@ impl Chunk {
     /// * [`Self::iter_primitive`]
     /// * [`Self::iter_string`]
     /// * [`Self::iter_buffer`].
-    /// * [`Self::iter_component_arrays`].
     /// * [`Self::iter_component`].
     pub fn iter_primitive_array<const N: usize, T: arrow2::types::NativeType>(
         &self,
@@ -337,7 +357,6 @@ impl Chunk {
     /// * [`Self::iter_primitive_array`]
     /// * [`Self::iter_string`]
     /// * [`Self::iter_buffer`].
-    /// * [`Self::iter_component_arrays`].
     /// * [`Self::iter_component`].
     pub fn iter_primitive_array_list<const N: usize, T: arrow2::types::NativeType>(
         &self,
@@ -422,7 +441,6 @@ impl Chunk {
     /// * [`Self::iter_primitive_array`]
     /// * [`Self::iter_primitive_array_list`]
     /// * [`Self::iter_buffer`].
-    /// * [`Self::iter_component_arrays`].
     /// * [`Self::iter_component`].
     pub fn iter_string(
         &self,
@@ -473,7 +491,6 @@ impl Chunk {
     /// * [`Self::iter_primitive_array`]
     /// * [`Self::iter_primitive_array_list`]
     /// * [`Self::iter_string`].
-    /// * [`Self::iter_component_arrays`].
     /// * [`Self::iter_component`].
     pub fn iter_buffer<T: arrow::datatypes::ArrowNativeType + arrow2::types::NativeType>(
         &self,
@@ -686,13 +703,16 @@ impl Chunk {
     /// Use this when working with complex arrow datatypes and performance matters (e.g. ranging
     /// through enum types across many timestamps).
     ///
+    /// TODO(#5305): Note that, while this is much faster than deserializing each row individually,
+    /// this still uses the old codegen'd deserialization path, which does some very unidiomatic Arrow
+    /// things, and is therefore very slow at the moment. Avoid this on performance critical paths.
+    ///
     /// See also:
     /// * [`Self::iter_primitive`]
     /// * [`Self::iter_primitive_array`]
     /// * [`Self::iter_primitive_array_list`]
     /// * [`Self::iter_string`]
     /// * [`Self::iter_buffer`].
-    /// * [`Self::iter_component_arrays`].
     #[inline]
     pub fn iter_component<C: Component>(
         &self,

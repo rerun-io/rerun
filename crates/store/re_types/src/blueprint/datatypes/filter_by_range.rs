@@ -225,7 +225,7 @@ impl ::re_types_core::Loggable for FilterByRange {
     }
 }
 
-impl ::re_types_core::SizeBytes for FilterByRange {
+impl ::re_byte_size::SizeBytes for FilterByRange {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.start.heap_size_bytes() + self.end.heap_size_bytes()

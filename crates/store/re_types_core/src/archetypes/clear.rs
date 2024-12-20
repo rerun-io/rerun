@@ -224,7 +224,7 @@ impl Clear {
     }
 }
 
-impl crate::SizeBytes for Clear {
+impl ::re_byte_size::SizeBytes for Clear {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.is_recursive.heap_size_bytes()

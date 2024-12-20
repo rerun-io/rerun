@@ -99,7 +99,7 @@ impl std::ops::DerefMut for TensorData {
     }
 }
 
-impl ::re_types_core::SizeBytes for TensorData {
+impl ::re_byte_size::SizeBytes for TensorData {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.0.heap_size_bytes()

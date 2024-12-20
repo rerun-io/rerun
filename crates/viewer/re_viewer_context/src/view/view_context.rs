@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use re_chunk::Arrow2Array;
 use re_chunk_store::LatestAtQuery;
 use re_log_types::{EntityPath, TimePoint};
 use re_query::StorageEngineReadGuard;
@@ -97,7 +96,7 @@ impl<'a> ViewContext<'a> {
         &self,
         entity_path: &EntityPath,
         component_name: ComponentName,
-        array: Box<dyn Arrow2Array>,
+        array: arrow::array::ArrayRef,
     ) {
         self.viewer_ctx
             .save_blueprint_array(entity_path, component_name, array);

@@ -74,7 +74,7 @@ fn main() -> anyhow::Result<()> {
         // data directly:
         let colors = colors
             .context("missing")?
-            .component_batch_raw(&MyColor::name())
+            .component_batch_raw_arrow2(&MyColor::name())
             .context("invalid")?;
         let colors = colors
             .as_any()

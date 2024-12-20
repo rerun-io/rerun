@@ -302,7 +302,7 @@ impl ::re_types_core::Loggable for RotationAxisAngle {
     }
 }
 
-impl ::re_types_core::SizeBytes for RotationAxisAngle {
+impl ::re_byte_size::SizeBytes for RotationAxisAngle {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.axis.heap_size_bytes() + self.angle.heap_size_bytes()

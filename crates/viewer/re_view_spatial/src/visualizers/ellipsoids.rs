@@ -178,10 +178,10 @@ impl VisualizerSystem for Ellipsoids3DVisualizer {
                     all_half_sizes_indexed,
                     all_colors.primitive::<u32>(),
                     all_line_radii.primitive::<f32>(),
-                    all_fill_modes.component::<FillMode>(),
+                    all_fill_modes.primitive::<u8>(),
                     all_labels.string(),
                     all_class_ids.primitive::<u16>(),
-                    all_show_labels.component::<ShowLabels>(),
+                    all_show_labels.bool(),
                 )
                 .map(
                     |(
@@ -204,11 +204,12 @@ impl VisualizerSystem for Ellipsoids3DVisualizer {
                                 .unwrap_or_default()
                                 .first()
                                 .copied()
+                                .and_then(FillMode::from_u8)
                                 .unwrap_or_default(),
                             labels: labels.unwrap_or_default(),
                             class_ids: class_ids
                                 .map_or(&[], |class_ids| bytemuck::cast_slice(class_ids)),
-                            show_labels: show_labels.unwrap_or_default().first().copied(),
+                            show_labels: show_labels.unwrap_or_default().get(0).map(Into::into),
                         }
                     },
                 );

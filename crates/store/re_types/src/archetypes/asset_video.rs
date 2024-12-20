@@ -332,7 +332,7 @@ impl AssetVideo {
     }
 }
 
-impl ::re_types_core::SizeBytes for AssetVideo {
+impl ::re_byte_size::SizeBytes for AssetVideo {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.blob.heap_size_bytes() + self.media_type.heap_size_bytes()

@@ -98,7 +98,7 @@ impl std::ops::DerefMut for TensorDimensionIndexSlider {
     }
 }
 
-impl ::re_types_core::SizeBytes for TensorDimensionIndexSlider {
+impl ::re_byte_size::SizeBytes for TensorDimensionIndexSlider {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.0.heap_size_bytes()

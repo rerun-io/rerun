@@ -109,7 +109,6 @@ ALL_COMPONENTS: dict[str, TestCase] = {
     "ColorBatch": TestCase(batch=[(255, 0, 0, 255), (0, 255, 0, 255), (0, 0, 255, 255)]),
     "ColormapBatch": TestCase(rr.components.Colormap.Viridis),
     "DepthMeterBatch": TestCase(1000.0),
-    "DisconnectedSpaceBatch": TestCase(True),
     "DrawOrderBatch": TestCase(100.0),
     "EntityPathBatch": TestCase("my/entity/path"),
     "FillModeBatch": TestCase(

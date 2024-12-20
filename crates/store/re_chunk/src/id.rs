@@ -86,7 +86,7 @@ impl ChunkId {
     }
 }
 
-impl re_types_core::SizeBytes for ChunkId {
+impl re_byte_size::SizeBytes for ChunkId {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         0
@@ -223,7 +223,7 @@ impl RowId {
     }
 }
 
-impl re_types_core::SizeBytes for RowId {
+impl re_byte_size::SizeBytes for RowId {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         0

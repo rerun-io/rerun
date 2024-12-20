@@ -455,7 +455,7 @@ impl ::re_types_core::Loggable for ClassDescription {
     }
 }
 
-impl ::re_types_core::SizeBytes for ClassDescription {
+impl ::re_byte_size::SizeBytes for ClassDescription {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.info.heap_size_bytes()

@@ -300,7 +300,7 @@ impl ::re_types_core::Loggable for Utf8Pair {
     }
 }
 
-impl ::re_types_core::SizeBytes for Utf8Pair {
+impl ::re_byte_size::SizeBytes for Utf8Pair {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.first.heap_size_bytes() + self.second.heap_size_bytes()

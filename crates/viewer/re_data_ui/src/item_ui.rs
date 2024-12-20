@@ -732,7 +732,7 @@ pub fn entity_db_button_ui(
     entity_db: &re_entity_db::EntityDb,
     include_app_id: bool,
 ) {
-    use re_types_core::SizeBytes as _;
+    use re_byte_size::SizeBytes as _;
     use re_viewer_context::{SystemCommand, SystemCommandSender as _};
 
     let app_id_prefix = if include_app_id {

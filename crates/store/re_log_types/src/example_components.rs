@@ -2,7 +2,8 @@
 
 use std::sync::Arc;
 
-use re_types_core::{Component, ComponentDescriptor, DeserializationError, Loggable, SizeBytes};
+use re_byte_size::SizeBytes;
+use re_types_core::{Component, ComponentDescriptor, DeserializationError, Loggable};
 
 // ----------------------------------------------------------------------------
 

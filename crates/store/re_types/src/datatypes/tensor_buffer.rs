@@ -1725,7 +1725,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
     }
 }
 
-impl ::re_types_core::SizeBytes for TensorBuffer {
+impl ::re_byte_size::SizeBytes for TensorBuffer {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         #![allow(clippy::match_same_arms)]
