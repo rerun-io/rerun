@@ -246,7 +246,7 @@ fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::LogMsg>
 }
 
 /// Lay out the panel button right-to-left
-fn panel_buttons_r2l(app: &App, app_blueprint: &AppBlueprint<'_>, ui: &mut egui::Ui) {
+fn panel_buttons_r2l(app: &mut App, app_blueprint: &AppBlueprint<'_>, ui: &mut egui::Ui) {
     #[cfg(target_arch = "wasm32")]
     if app.is_fullscreen_allowed() {
         let icon = if app.is_fullscreen_mode() {
@@ -311,6 +311,8 @@ fn panel_buttons_r2l(app: &App, app_blueprint: &AppBlueprint<'_>, ui: &mut egui:
     {
         app_blueprint.toggle_blueprint_panel(&app.command_sender);
     }
+
+    re_ui::notifications::notification_toggle_button(ui, &mut app.notifications);
 }
 
 /// Shows clickable website link as an image (text doesn't look as nice)
