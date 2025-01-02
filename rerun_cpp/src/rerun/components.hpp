@@ -67,6 +67,7 @@
 #include "components/transform_relation.hpp"
 #include "components/translation3d.hpp"
 #include "components/triangle_indices.hpp"
+#include "components/uri.hpp"
 #include "components/value_range.hpp"
 #include "components/vector2d.hpp"
 #include "components/vector3d.hpp"

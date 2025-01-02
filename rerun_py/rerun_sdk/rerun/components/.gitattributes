@@ -67,6 +67,7 @@ transform_mat3x3.py linguist-generated=true
 transform_relation.py linguist-generated=true
 translation3d.py linguist-generated=true
 triangle_indices.py linguist-generated=true
+uri.py linguist-generated=true
 value_range.py linguist-generated=true
 vector2d.py linguist-generated=true
 vector3d.py linguist-generated=true

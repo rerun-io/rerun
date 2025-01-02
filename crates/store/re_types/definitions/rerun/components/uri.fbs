@@ -1,0 +1,12 @@
+namespace rerun.components;
+
+// ---
+
+/// A general URI (Uniform Resource Identifier).
+///
+/// To specify a recording, use `RecordingUri`.
+table Uri (
+  "attr.rust.derive": "PartialEq, Eq, PartialOrd, Ord, Hash"
+) {
+  uri: rerun.datatypes.Utf8 (order: 100);
+}

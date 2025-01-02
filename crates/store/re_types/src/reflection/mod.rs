@@ -872,6 +872,14 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <Uri as Component>::name(),
+            ComponentReflection {
+                docstring_md: "A general URI (Uniform Resource Identifier).\n\nTo specify a recording, use `RecordingUri`.",
+                custom_placeholder: None,
+                datatype: Uri::arrow2_datatype(),
+            },
+        ),
+        (
             <ValueRange as Component>::name(),
             ComponentReflection {
                 docstring_md: "Range of expected or valid values, specifying a lower and upper bound.",

@@ -58,6 +58,7 @@ include "./components/transform_mat3x3.fbs";
 include "./components/transform_relation.fbs";
 include "./components/translation3d.fbs";
 include "./components/triangle_indices.fbs";
+include "./components/uri.fbs";
 include "./components/value_range.fbs";
 include "./components/vector2d.fbs";
 include "./components/vector3d.fbs";

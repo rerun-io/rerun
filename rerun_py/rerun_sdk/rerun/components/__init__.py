@@ -87,6 +87,7 @@ from .transform_relation import (
 )
 from .translation3d import Translation3D, Translation3DBatch
 from .triangle_indices import TriangleIndices, TriangleIndicesBatch
+from .uri import Uri, UriBatch
 from .value_range import ValueRange, ValueRangeBatch
 from .vector2d import Vector2D, Vector2DBatch
 from .vector3d import Vector3D, Vector3DBatch
@@ -246,6 +247,8 @@ __all__ = [
     "Translation3DBatch",
     "TriangleIndices",
     "TriangleIndicesBatch",
+    "Uri",
+    "UriBatch",
     "ValueRange",
     "ValueRangeBatch",
     "Vector2D",
