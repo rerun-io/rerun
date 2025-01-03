@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["OutOfSpecKind","StreamState"],"fn":["deserialize_schema","read_batch","read_file_dictionaries","read_file_metadata","read_stream_metadata"],"struct":["FileMetadata","FileReader","StreamMetadata","StreamReader"],"type":["Dictionaries"]};

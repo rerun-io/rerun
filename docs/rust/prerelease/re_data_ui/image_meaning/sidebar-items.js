@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["image_meaning_for_entity"]};

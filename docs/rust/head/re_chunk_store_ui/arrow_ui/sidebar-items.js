@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["arrow2_ui"]};

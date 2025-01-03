@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["DeserializationError","SerializationError"],"struct":["ArcArrow2Error","ArcArrowError"],"trait":["ResultExt"],"type":["DeserializationResult","SerializationResult","_Backtrace"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["edit_f32_float_raw","edit_f32_float_raw_with_speed_impl","edit_f32_min_to_max_float","edit_f32_zero_to_max","edit_f32_zero_to_max_with_suffix","edit_f32_zero_to_one","edit_f32_zero_to_one_raw","edit_f64_float_raw_impl","edit_f64_float_raw_with_speed_impl","edit_f64_min_to_max_float","edit_f64_zero_to_max","edit_ui_points"]};

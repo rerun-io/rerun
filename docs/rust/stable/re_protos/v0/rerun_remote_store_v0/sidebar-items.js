@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["ErrorCode","RecordingType"],"mod":["storage_node_client","storage_node_server"],"struct":["CatalogFilter","ColumnProjection","DataframePart","FetchRecordingRequest","FetchRecordingResponse","QueryCatalogRequest","QueryCatalogResponse","QueryRequest","RegisterRecordingRequest","RemoteStoreError","UpdateCatalogRequest","UpdateCatalogResponse"]};

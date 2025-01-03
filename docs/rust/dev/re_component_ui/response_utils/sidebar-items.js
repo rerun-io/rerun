@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["response_with_changes_of_inner"]};

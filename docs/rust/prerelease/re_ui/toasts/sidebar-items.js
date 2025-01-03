@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["ERROR_COLOR","INFO_COLOR","SUCCESS_COLOR","WARNING_COLOR"],"enum":["ToastKind"],"fn":["default_toast_contents"],"struct":["Toast","ToastOptions","Toasts"],"type":["ToastContents"]};

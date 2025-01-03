@@ -1,0 +1,1 @@
+searchState.loadedDescShard("custom_data_loader", 0, "This example demonstrates how to implement and register a …\nA custom <code>re_data_loader::DataLoader</code> that logs the hash of …\nReturns the argument unchanged.\nCalls <code>U::from(self)</code>.")
