@@ -65,7 +65,7 @@ fn main() -> anyhow::Result<()> {
         .flat_map(|chunk| {
             izip!(
                 chunk.iter_component_indices(&query.timeline(), &MyColor::name()),
-                chunk.iter_primitive::<u32>(&MyColor::name()),
+                chunk.iter_slices::<u32>(MyColor::name()),
             )
         });
 
