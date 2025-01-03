@@ -1,11 +1,10 @@
 use nohash_hasher::{IntMap, IntSet};
+use re_log_types::{ResolvedEntityPathFilter, ResolvedEntityPathRule};
 use slotmap::SlotMap;
 use smallvec::SmallVec;
 
 use re_entity_db::{external::re_chunk_store::LatestAtQuery, EntityDb, EntityTree};
-use re_log_types::{
-    path::RuleEffect, EntityPath, EntityPathFilter, EntityPathRule, EntityPathSubs, Timeline,
-};
+use re_log_types::{path::RuleEffect, EntityPath, EntityPathFilter, EntityPathSubs, Timeline};
 use re_types::blueprint::components::VisualizerOverrides;
 use re_types::{
     blueprint::{
@@ -26,7 +25,7 @@ use crate::{ViewBlueprint, ViewProperty};
 /// Data to be added to a view, built from a [`blueprint_archetypes::ViewContents`].
 ///
 /// During execution, it will walk an [`EntityTree`] and return a [`DataResultTree`]
-/// containing any entities that match a [`EntityPathFilter`].
+/// containing any entities that match a [`ResolvedEntityPathFilter`].
 ///
 /// Note: [`ViewContents`] doesn't implement Clone because it depends on its parent's [`ViewId`]
 /// used for identifying the path of its data in the blueprint store. It's ambiguous
@@ -39,7 +38,7 @@ pub struct ViewContents {
     pub blueprint_entity_path: EntityPath,
 
     pub view_class_identifier: ViewClassIdentifier,
-    pub entity_path_filter: EntityPathFilter,
+    pub entity_path_filter: ResolvedEntityPathFilter,
 }
 
 impl ViewContents {
@@ -76,7 +75,7 @@ impl ViewContents {
     pub fn new(
         id: ViewId,
         view_class_identifier: ViewClassIdentifier,
-        entity_path_filter: EntityPathFilter,
+        entity_path_filter: ResolvedEntityPathFilter,
     ) -> Self {
         // Don't use `entity_path_for_view_sub_archetype` here because this will do a search in the future,
         // thus needing the entity tree.
@@ -97,7 +96,7 @@ impl ViewContents {
         blueprint_db: &EntityDb,
         query: &LatestAtQuery,
         view_class_identifier: ViewClassIdentifier,
-        space_env: &EntityPathSubs,
+        subst_env: &EntityPathSubs,
     ) -> Self {
         let property = ViewProperty::from_archetype::<blueprint_archetypes::ViewContents>(
             blueprint_db,
@@ -118,9 +117,8 @@ impl ViewContents {
             }
         };
         let query = expressions.iter().map(|qe| qe.0.as_str());
-
         let entity_path_filter =
-            EntityPathFilter::from_query_expressions_forgiving(query, space_env);
+            EntityPathFilter::from_query_expressions(query).resolve_forgiving(subst_env);
 
         Self {
             blueprint_entity_path: property.blueprint_store_path,
@@ -138,7 +136,9 @@ impl ViewContents {
     pub fn save_to_blueprint_store(&self, ctx: &ViewerContext<'_>) {
         ctx.save_blueprint_archetype(
             &self.blueprint_entity_path,
-            &blueprint_archetypes::ViewContents::new(self.entity_path_filter.iter_expressions()),
+            &blueprint_archetypes::ViewContents::new(
+                self.entity_path_filter.iter_unresolved_expressions(),
+            ),
         );
     }
 
@@ -150,7 +150,7 @@ impl ViewContents {
         ctx: &ViewerContext<'_>,
         new_entity_path_filter: &EntityPathFilter,
     ) {
-        if &self.entity_path_filter == new_entity_path_filter {
+        if &self.entity_path_filter.unresolved() == new_entity_path_filter {
             return;
         }
 
@@ -196,11 +196,11 @@ impl ViewContents {
     pub fn mutate_entity_path_filter(
         &self,
         ctx: &ViewerContext<'_>,
-        f: impl FnOnce(&mut EntityPathFilter),
+        f: impl FnOnce(&mut ResolvedEntityPathFilter),
     ) {
         let mut new_entity_path_filter = self.entity_path_filter.clone();
         f(&mut new_entity_path_filter);
-        self.set_entity_path_filter(ctx, &new_entity_path_filter);
+        self.set_entity_path_filter(ctx, &new_entity_path_filter.unresolved());
     }
 
     /// Remove a subtree and any existing rules that it would match. WARNING: a single mutation is
@@ -214,7 +214,7 @@ impl ViewContents {
     pub fn remove_subtree_and_matching_rules(&self, ctx: &ViewerContext<'_>, path: EntityPath) {
         let mut new_entity_path_filter = self.entity_path_filter.clone();
         new_entity_path_filter.remove_subtree_and_matching_rules(path);
-        self.set_entity_path_filter(ctx, &new_entity_path_filter);
+        self.set_entity_path_filter(ctx, &new_entity_path_filter.unresolved());
     }
 
     /// Directly add an exclusion rule to the [`EntityPathFilter`]. WARNING: a single mutation is
@@ -225,10 +225,10 @@ impl ViewContents {
     ///
     /// If you are trying to remove an entire subtree, prefer using [`Self::remove_subtree_and_matching_rules`].
     //TODO(#8518): address this massive foot-gun.
-    pub fn raw_add_entity_exclusion(&self, ctx: &ViewerContext<'_>, rule: EntityPathRule) {
+    pub fn raw_add_entity_exclusion(&self, ctx: &ViewerContext<'_>, rule: ResolvedEntityPathRule) {
         let mut new_entity_path_filter = self.entity_path_filter.clone();
         new_entity_path_filter.add_rule(RuleEffect::Exclude, rule);
-        self.set_entity_path_filter(ctx, &new_entity_path_filter);
+        self.set_entity_path_filter(ctx, &new_entity_path_filter.unresolved());
     }
 
     /// Directly add an inclusion rule to the [`EntityPathFilter`]. WARNING: a single mutation is
@@ -237,10 +237,10 @@ impl ViewContents {
     /// This is a direct modification of the filter and will not do any simplification
     /// related to overlapping or conflicting rules.
     //TODO(#8518): address this massive foot-gun.
-    pub fn raw_add_entity_inclusion(&self, ctx: &ViewerContext<'_>, rule: EntityPathRule) {
+    pub fn raw_add_entity_inclusion(&self, ctx: &ViewerContext<'_>, rule: ResolvedEntityPathRule) {
         let mut new_entity_path_filter = self.entity_path_filter.clone();
         new_entity_path_filter.add_rule(RuleEffect::Include, rule);
-        self.set_entity_path_filter(ctx, &new_entity_path_filter);
+        self.set_entity_path_filter(ctx, &new_entity_path_filter.unresolved());
     }
 
     /// Remove rules for a given entity. WARNING: a single mutation is allowed per frame, or data
@@ -249,7 +249,7 @@ impl ViewContents {
     pub fn remove_filter_rule_for(&self, ctx: &ViewerContext<'_>, ent_path: &EntityPath) {
         let mut new_entity_path_filter = self.entity_path_filter.clone();
         new_entity_path_filter.remove_rule_for(ent_path);
-        self.set_entity_path_filter(ctx, &new_entity_path_filter);
+        self.set_entity_path_filter(ctx, &new_entity_path_filter.unresolved());
     }
 
     /// Build up the initial [`DataQueryResult`] for this [`ViewContents`]
@@ -334,7 +334,7 @@ impl ViewContents {
 /// to a pure recursive evaluation.
 struct QueryExpressionEvaluator<'a> {
     visualizable_entities_for_visualizer_systems: &'a PerVisualizer<VisualizableEntities>,
-    entity_path_filter: EntityPathFilter,
+    entity_path_filter: ResolvedEntityPathFilter,
     recursive_override_base_path: EntityPath,
     individual_override_base_path: EntityPath,
 }
@@ -622,7 +622,7 @@ mod tests {
 
     #[test]
     fn test_query_results() {
-        let space_env = Default::default();
+        let space_env = EntityPathSubs::empty();
 
         let mut recording = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
         let blueprint = EntityDb::new(StoreId::random(re_log_types::StoreKind::Blueprint));
@@ -759,7 +759,7 @@ mod tests {
             let contents = ViewContents::new(
                 view_id,
                 "3D".into(),
-                EntityPathFilter::parse_forgiving(filter, &space_env),
+                EntityPathFilter::parse_forgiving(filter).resolve_forgiving(&space_env),
             );
 
             let query_result = contents.execute_query(
