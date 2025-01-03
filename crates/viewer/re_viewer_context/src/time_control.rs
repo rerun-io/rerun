@@ -137,7 +137,7 @@ pub struct TimeControl {
 impl Default for TimeControl {
     fn default() -> Self {
         Self {
-            timeline: ActiveTimeline::Auto(Timeline::default()),
+            timeline: ActiveTimeline::Auto(default_timeline([])),
             states: Default::default(),
             playing: true,
             following: true,
@@ -440,9 +440,7 @@ impl TimeControl {
         if matches!(self.timeline, ActiveTimeline::Auto(_))
             || !is_timeline_valid(self.timeline(), times_per_timeline)
         {
-            self.timeline = ActiveTimeline::Auto(
-                default_timeline(times_per_timeline.timelines()).map_or(Default::default(), |t| *t),
-            );
+            self.timeline = ActiveTimeline::Auto(default_timeline(times_per_timeline.timelines()));
         }
     }
 
@@ -586,18 +584,25 @@ fn range(values: &TimeCounts) -> ResolvedTimeRange {
 }
 
 /// Pick the timeline that should be the default, prioritizing user-defined ones.
-fn default_timeline<'a>(timelines: impl Iterator<Item = &'a Timeline>) -> Option<&'a Timeline> {
-    let mut log_time_timeline = None;
+fn default_timeline<'a>(timelines: impl IntoIterator<Item = &'a Timeline>) -> Timeline {
+    let mut found_log_tick = false;
+    let mut found_log_time = false;
 
     for timeline in timelines {
-        if timeline == &Timeline::log_time() {
-            log_time_timeline = Some(timeline);
-        } else if timeline != &Timeline::log_tick() {
-            return Some(timeline); // user timeline - always prefer!
+        if timeline == &Timeline::log_tick() {
+            found_log_tick = true;
+        } else if timeline == &Timeline::log_time() {
+            found_log_time = true;
+        } else {
+            return *timeline;
         }
     }
 
-    log_time_timeline
+    if found_log_tick && !found_log_time {
+        Timeline::log_tick()
+    } else {
+        Timeline::log_time()
+    }
 }
 
 fn step_fwd_time(time: TimeReal, values: &TimeCounts) -> TimeInt {
@@ -654,5 +659,57 @@ fn step_back_time_looped(
         TimeReal::from(*previous)
     } else {
         step_back_time(time, values).into()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_default_timeline() {
+        let log_time = Timeline::log_time();
+        let log_tick = Timeline::log_tick();
+        let custom_timeline0 = Timeline::new("my_timeline0", TimeType::Time);
+        let custom_timeline1 = Timeline::new("my_timeline1", TimeType::Time);
+
+        assert_eq!(default_timeline([]), log_time);
+        assert_eq!(default_timeline([&log_tick]), log_tick);
+        assert_eq!(default_timeline([&log_time]), log_time);
+        assert_eq!(default_timeline([&log_time, &log_tick]), log_time);
+        assert_eq!(
+            default_timeline([&log_time, &log_tick, &custom_timeline0]),
+            custom_timeline0
+        );
+        assert_eq!(
+            default_timeline([&custom_timeline0, &log_time, &log_tick]),
+            custom_timeline0
+        );
+        assert_eq!(
+            default_timeline([&log_time, &custom_timeline0, &log_tick]),
+            custom_timeline0
+        );
+        assert_eq!(
+            default_timeline([&custom_timeline0, &log_time]),
+            custom_timeline0
+        );
+        assert_eq!(
+            default_timeline([&custom_timeline0, &log_tick]),
+            custom_timeline0
+        );
+        assert_eq!(
+            default_timeline([&log_time, &custom_timeline0]),
+            custom_timeline0
+        );
+        assert_eq!(
+            default_timeline([&log_tick, &custom_timeline0]),
+            custom_timeline0
+        );
+
+        assert_eq!(
+            default_timeline([&custom_timeline0, &custom_timeline1]),
+            custom_timeline0
+        );
+        assert_eq!(default_timeline([&custom_timeline0]), custom_timeline0);
     }
 }

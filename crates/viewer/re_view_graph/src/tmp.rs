@@ -5,7 +5,7 @@ use std::sync::Arc;
 use crate::{ui::GraphViewState, GraphView};
 use egui::Vec2;
 use re_chunk_store::{Chunk, RowId};
-use re_log_types::{build_frame_nr, EntityPath};
+use re_log_types::EntityPath;
 use re_types::{components, Component};
 use re_viewer_context::{test_context::TestContext, ViewClass, ViewClassExt as _, ViewId};
 use re_viewport_blueprint::ViewBlueprint;
@@ -42,7 +42,7 @@ fn setup_store(test_context: &mut TestContext) {
     let mut builder = Chunk::builder(entity_path.clone());
     builder = builder.with_sparse_component_batches(
         RowId::new(),
-        [build_frame_nr(1)],
+        [(test_context.active_timeline(), 1)],
         [
             (components::GraphNode::descriptor(), Some(&nodes as _)),
             (components::Position2D::descriptor(), Some(&positions as _)),
@@ -136,9 +136,6 @@ fn run_graph_view_and_save_snapshot(test_context: &mut TestContext) {
                 &view_blueprint.space_origin,
             );
 
-        // TODO:
-        dbg!(&view_blueprint.contents);
-
         view_blueprint.contents.execute_query(
             &store_context,
             view_class_registry,
@@ -148,12 +145,6 @@ fn run_graph_view_and_save_snapshot(test_context: &mut TestContext) {
         )
     }))
     .collect();
-
-    dbg!(&test_context
-        .query_results
-        .iter()
-        .map(|(_, qr)| &qr.tree)
-        .collect::<Vec<_>>());
 
     //TODO(ab): this contains a lot of boilerplate which should be provided by helpers
     let mut harness = egui_kittest::Harness::builder()
@@ -175,7 +166,7 @@ fn run_graph_view_and_save_snapshot(test_context: &mut TestContext) {
                     .ui(
                         viewer_ctx,
                         ui,
-                        dbg!(&mut view_state), // TODO: why is this still empty?
+                        &mut view_state,
                         &view_query,
                         system_execution_output,
                     )
@@ -190,6 +181,6 @@ fn run_graph_view_and_save_snapshot(test_context: &mut TestContext) {
     harness.run();
 
     //TODO(#8245): enable this everywhere when we have a software renderer setup
-    #[cfg(target_os = "macos")]
+    // #[cfg(target_os = "macos")]
     harness.wgpu_snapshot("self_and_multi_edges");
 }

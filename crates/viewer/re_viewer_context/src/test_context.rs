@@ -77,6 +77,11 @@ impl Default for TestContext {
 }
 
 impl TestContext {
+    /// Timeline the recording config is using by default.
+    pub fn active_timeline(&self) -> re_chunk::Timeline {
+        *self.recording_config.time_ctrl.read().timeline()
+    }
+
     pub fn edit_selection(&mut self, edit_fn: impl FnOnce(&mut ApplicationSelectionState)) {
         edit_fn(&mut self.selection_state);
 

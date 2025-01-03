@@ -166,7 +166,10 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         re_tracing::profile_scope!("init");
 
         // The timeline doesn't matter if we're running in static-only mode.
-        let filtered_index = self.query.filtered_index.unwrap_or_default();
+        let filtered_index = self
+            .query
+            .filtered_index
+            .unwrap_or_else(|| Timeline::new_sequence(""));
 
         // 1. Compute the schema for the query.
         let view_contents = store.schema_for_query(&self.query);
@@ -331,8 +334,10 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                 .map(|(_view_idx, descr)| match descr {
                     ColumnDescriptor::Time(_) => None,
                     ColumnDescriptor::Component(descr) => {
-                        let query =
-                            re_chunk::LatestAtQuery::new(Timeline::default(), TimeInt::STATIC);
+                        let query = re_chunk::LatestAtQuery::new(
+                            Timeline::new_sequence(""),
+                            TimeInt::STATIC,
+                        );
 
                         let results = cache.latest_at(
                             &query,
