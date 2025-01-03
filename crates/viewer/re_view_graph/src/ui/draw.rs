@@ -349,7 +349,7 @@ pub fn draw_graph(
                 let instance_path =
                     InstancePath::instance(entity_path.clone(), instance.instance_index);
 
-                response = response.on_hover_ui_at_pointer(|ui| {
+                response = response.on_hover_ui(|ui| {
                     list_item::list_item_scope(ui, "graph_node_hover", |ui| {
                         item_ui::instance_path_button(
                             ctx,
