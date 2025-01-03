@@ -1,11 +1,12 @@
 use std::time::Instant;
 
 use crate::comms::{protocol::Message, viewer::ControlViewerHandle};
-use re_log::ResultExt;
-use re_viewer::external::{
+use rerun::external::{
     eframe,
     egui::{self, ScrollArea},
+    re_log::ResultExt,
     re_ui::{list_item, UiExt},
+    re_viewer,
 };
 
 #[derive(Default)]

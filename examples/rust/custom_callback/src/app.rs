@@ -1,7 +1,10 @@
-//! The example from our Getting Started page.
+//! The external application that will be controlled by the extended viewer ui.
 
 use core::f32;
-use std::{f32::consts::TAU, net::ToSocketAddrs};
+use std::{
+    f32::consts::{PI, TAU},
+    net::ToSocketAddrs,
+};
 
 use custom_callback::comms::{app::ControlApp, protocol::Message};
 
@@ -86,8 +89,7 @@ async fn animated_snake(mut rx: UnboundedReceiver<Message>, rec: RecordingStream
             current_radius = radius.max(0.01);
         }
 
-        let num_spheres =
-            ((std::f32::consts::PI * current_offset) / current_radius.max(f32::EPSILON)).max(1.);
+        let num_spheres = ((PI * current_offset) / current_radius.max(f32::EPSILON)).max(1.);
         let theta = TAU / num_spheres;
 
         let total_spheres = ((num_spheres as usize) / 3).max(1);

@@ -1,6 +1,7 @@
 use custom_callback::{comms::viewer::ControlViewer, panel::Control};
 
-use re_viewer::external::{re_log, re_memory};
+use rerun::external::{eframe, egui, re_log, re_memory, re_sdk_comms, re_viewer};
+
 use std::net::Ipv4Addr;
 
 // By using `re_memory::AccountingAllocator` Rerun can keep track of exactly how much memory it is using,
@@ -15,6 +16,7 @@ const CONTROL_PORT: u16 = 8888;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let main_thread_token = re_viewer::MainThreadToken::i_promise_i_am_on_the_main_thread();
     // Direct calls using the `log` crate to stderr. Control with `RUST_LOG=debug` etc.
     re_log::setup_logging();
 
@@ -30,30 +32,45 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Default::default(),
     )?;
 
-    let startup_options = re_viewer::StartupOptions::default();
-    let app_env = re_viewer::AppEnvironment::Custom("Rerun Control Panel".to_owned());
+    // First we attempt to connect to the external application
     let viewer = ControlViewer::connect(format!("127.0.0.1:{CONTROL_PORT}")).await?;
-
     let handle = viewer.handle();
 
-    // Spawn the viewer in a separate task
+    // Spawn the viewer client in a separate task
     tokio::spawn(async move {
         viewer.run().await;
     });
 
-    re_viewer::run_native_app(
+    // Then we start the Rerun viewer
+    let native_options = eframe::NativeOptions {
+        viewport: egui::ViewportBuilder::default().with_app_id("rerun_custom_callback_example"),
+        ..re_viewer::native::eframe_options(None)
+    };
+
+    // This is used for analytics, if the `analytics` feature is on in `Cargo.toml`
+    let app_env = re_viewer::AppEnvironment::Custom("My Custom Callback".to_owned());
+
+    let startup_options = re_viewer::StartupOptions::default();
+    let window_title = "Rerun Control Panel";
+    eframe::run_native(
+        window_title,
+        native_options,
         Box::new(move |cc| {
-            let mut app = re_viewer::App::new(
+            re_viewer::customize_eframe_and_setup_renderer(cc)?;
+
+            let mut rerun_app = re_viewer::App::new(
+                main_thread_token,
                 re_viewer::build_info(),
                 &app_env,
                 startup_options,
                 cc.egui_ctx.clone(),
                 cc.storage,
             );
-            app.add_receiver(rx);
-            Box::new(Control::new(app, handle))
+
+            rerun_app.add_receiver(rx);
+
+            Ok(Box::new(Control::new(rerun_app, handle)))
         }),
-        None,
     )?;
 
     Ok(())

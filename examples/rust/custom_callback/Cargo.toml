@@ -18,17 +18,15 @@ path = "src/app.rs"
 default = []
 
 # Turn on if you want to share analytics with Rerun (e.g. callstacks on crashes).
-analytics = ["re_crash_handler/analytics", "re_viewer/analytics"]
+analytics = ["rerun/analytics"]
 
 [dependencies]
 re_crash_handler = { path = "../../../crates/utils/re_crash_handler" }
-re_sdk_comms = { path = "../../../crates/store/re_sdk_comms", features = [
-  "server",
-] }
-re_viewer = { path = "../../../crates/viewer/re_viewer", default-features = false }
-re_log = { path = "../../../crates/utils/re_log" }
 re_error = { path = "../../../crates/utils/re_error" }
-rerun = { path = "../../../crates/top/rerun" }
+rerun = { path = "../../../crates/top/rerun", features = [
+  "native_viewer",
+  "run",
+] }
 
 bincode = "1.3.3"
 mimalloc = "0.1.43"

@@ -1,3 +1,6 @@
+use rerun::external::re_log;
+use std::error::Error;
+use std::result::Result;
 use std::sync::{Arc, RwLock};
 use tokio::io::{AsyncReadExt, AsyncWriteExt, ReadHalf, WriteHalf};
 use tokio::net::{TcpListener, TcpSocket, TcpStream};
@@ -28,10 +31,7 @@ impl ControlApp {
         })
     }
 
-    pub fn add_handler(
-        &self,
-        handler: HandlerFn,
-    ) -> std::result::Result<(), Box<dyn std::error::Error>> {
+    pub fn add_handler(&self, handler: HandlerFn) -> Result<(), Box<dyn Error>> {
         let mut handlers = self
             .handlers
             .write()

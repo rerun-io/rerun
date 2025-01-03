@@ -1,3 +1,4 @@
+use rerun::external::re_log;
 use std::collections::VecDeque;
 use std::sync::Arc;
 use std::time::Duration;
@@ -8,6 +9,30 @@ use tokio::sync::{Mutex, Notify};
 
 use super::protocol::Message;
 
+/// A client for handling connections to an external application from within the Rerun viewer.
+///
+/// This client manages a TCP connection to the external application and provides bidirectional
+/// message communication through separate read and write tasks.
+///
+/// # Message Handling
+/// - Messages can be sent through the [`ControlViewerHandle`]
+/// - Received messages are processed in the read handler
+/// - Messages to be sent are queued and processed asynchronously
+///
+/// # Examples
+/// ```
+/// # async fn example() -> tokio::io::Result<()> {
+/// let viewer = ControlViewer::connect("127.0.0.1:8080").await?;
+/// let handle = viewer.handle();
+///
+/// // Spawn the main connection handling task
+/// tokio::spawn(viewer.run());
+///
+/// // Send messages through the handle
+/// handle.send(Message::Ping).unwrap();
+/// # Ok(())
+/// # }
+/// ```
 #[derive(Debug)]
 pub struct ControlViewer {
     address: String,
@@ -17,6 +42,7 @@ pub struct ControlViewer {
     notify: Arc<Notify>,
 }
 
+/// A [`Clone`] handle to the write channel opened by a [`ControlViewer`].
 #[derive(Clone)]
 pub struct ControlViewerHandle {
     tx: UnboundedSender<Message>,
