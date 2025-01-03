@@ -2,7 +2,7 @@
     url: <a class="struct" href="https://doc.rust-lang.org/1.81.0/alloc/string/struct.String.html" title="struct alloc::string::String">String</a>,
     follow: <a class="primitive" href="https://doc.rust-lang.org/1.81.0/std/primitive.bool.html">bool</a>,
     on_msg: <a class="enum" href="https://doc.rust-lang.org/1.81.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="https://doc.rust-lang.org/1.81.0/alloc/boxed/struct.Box.html" title="struct alloc::boxed::Box">Box</a>&lt;dyn <a class="trait" href="https://doc.rust-lang.org/1.81.0/core/ops/function/trait.Fn.html" title="trait core::ops::function::Fn">Fn</a>() + <a class="trait" href="https://doc.rust-lang.org/1.81.0/core/marker/trait.Send.html" title="trait core::marker::Send">Send</a> + <a class="trait" href="https://doc.rust-lang.org/1.81.0/core/marker/trait.Sync.html" title="trait core::marker::Sync">Sync</a>&gt;&gt;,
-) -&gt; Receiver&lt;<a class="enum" href="../../re_log_types/enum.LogMsg.html" title="enum re_log_types::LogMsg">LogMsg</a>&gt;</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Stream an rrd file from a HTTP server.</p>
+) -&gt; Receiver&lt;LogMsg&gt;</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Stream an rrd file from a HTTP server.</p>
 <p>If <code>follow_if_http</code> is <code>true</code>, and the url is an HTTP source, the viewer will open the stream
 in <code>Following</code> mode rather than <code>Playing</code> mode.</p>
 <p><code>on_msg</code> can be used to wake up the UI thread on Wasm.</p>
