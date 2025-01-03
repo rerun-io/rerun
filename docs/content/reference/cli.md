@@ -72,7 +72,7 @@ The Rerun command-line interface:
 > [Default: `true`]
 
 * `--port <PORT>`
-> What TCP port do we listen to (for SDKs to connect to)?
+> What TCP port do we listen to for SDKs to connect to.
 >
 > [Default: `9876`]
 
@@ -88,7 +88,7 @@ The Rerun command-line interface:
 > Take a screenshot of the app and quit. We use this to generate screenshots of our examples. Useful together with `--window-size`.
 
 * `--serve <SERVE>`
-> `--serve` is deprecated since v0.20. Please use `--serve_web` instead.
+> Deprecated: use `--serve-web` instead.
 
 * `--serve-web <SERVE_WEB>`
 > Serve the recordings over WebSocket to one or more Rerun Viewers.
@@ -125,7 +125,7 @@ The Rerun command-line interface:
 * `--web-viewer <WEB_VIEWER>`
 > Start the viewer in the browser (instead of locally).
 >
-> Requires Rerun to have been compiled with the 'web_viewer' feature.
+> Requires Rerun to have been compiled with the `web_viewer` feature.
 >
 > This implies `--serve-web`.
 >
