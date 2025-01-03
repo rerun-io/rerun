@@ -77,6 +77,7 @@ transform_relation.cpp linguist-generated=true
 transform_relation.hpp linguist-generated=true
 translation3d.hpp linguist-generated=true
 triangle_indices.hpp linguist-generated=true
+uri.hpp linguist-generated=true
 value_range.hpp linguist-generated=true
 vector2d.hpp linguist-generated=true
 vector3d.hpp linguist-generated=true

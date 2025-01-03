@@ -66,6 +66,7 @@ transform_mat3x3.rs linguist-generated=true
 transform_relation.rs linguist-generated=true
 translation3d.rs linguist-generated=true
 triangle_indices.rs linguist-generated=true
+uri.rs linguist-generated=true
 value_range.rs linguist-generated=true
 vector2d.rs linguist-generated=true
 vector3d.rs linguist-generated=true
