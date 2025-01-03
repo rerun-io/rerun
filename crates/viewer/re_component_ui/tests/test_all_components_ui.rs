@@ -14,7 +14,7 @@ use re_component_ui::create_component_ui_registry;
 use re_log_types::{EntityPath, Timeline};
 use re_types::{
     blueprint::components::{ComponentColumnSelector, QueryExpression},
-    components::{self, GraphEdge, GraphNode, ImageFormat, RecordingUri, Text},
+    components::{self, GraphEdge, GraphNode, ImageFormat, RecordingUri, Text, Uri},
     datatypes::{ChannelDatatype, PixelFormat},
 };
 use re_types_core::{reflection::Reflection, Component, ComponentName, LoggableBatch};
@@ -68,6 +68,7 @@ fn test_cases(reflection: &Reflection) -> Vec<TestCase> {
             RecordingUri::from("rerun://0.0.0.0:1234/recordings/XYZ"),
             "simple",
         ),
+        TestCase::from_component(Uri::from("https://rerun.io"), "simple"),
         TestCase::from_component(Text::from("Hello World!"), "simple"),
     ];
 
