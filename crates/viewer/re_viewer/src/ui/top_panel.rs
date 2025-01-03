@@ -379,7 +379,7 @@ fn memory_use_label_ui(ui: &mut egui::Ui, gpu_resource_stats: &WgpuResourcePoolS
             .on_hover_ui(|ui| add_contents_on_hover(ui))
             .clicked()
         {
-            ui.ctx().output_mut(|o| o.copied_text = CODE.to_owned());
+            ui.ctx().copy_text(CODE.to_owned());
         }
     }
 

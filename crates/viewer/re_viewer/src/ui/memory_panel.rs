@@ -403,13 +403,12 @@ impl MemoryPanel {
                                 .on_hover_text("Click to copy callstack to clipboard")
                                 .clicked()
                             {
-                                ui.output_mut(|o| {
-                                    o.copied_text = callstack.readable_backtrace.to_string();
-                                    if o.copied_text.is_empty() {
-                                        // This is weird
-                                        o.copied_text = "No callstack available".to_owned();
-                                    }
-                                });
+                                let mut text = callstack.readable_backtrace.to_string();
+                                if text.is_empty() {
+                                    // This is weird
+                                    text = "No callstack available".to_owned();
+                                }
+                                ui.ctx().copy_text(text);
                             }
                         }
                     });

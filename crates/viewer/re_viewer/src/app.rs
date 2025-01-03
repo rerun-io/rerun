@@ -857,7 +857,7 @@ impl App {
             UICommand::PrintChunkStore => {
                 if let Some(ctx) = store_context {
                     let text = format!("{}", ctx.recording.storage_engine().store());
-                    egui_ctx.output_mut(|o| o.copied_text = text.clone());
+                    egui_ctx.copy_text(text.clone());
                     println!("{text}");
                 }
             }
@@ -865,7 +865,7 @@ impl App {
             UICommand::PrintBlueprintStore => {
                 if let Some(ctx) = store_context {
                     let text = format!("{}", ctx.blueprint.storage_engine().store());
-                    egui_ctx.output_mut(|o| o.copied_text = text.clone());
+                    egui_ctx.copy_text(text.clone());
                     println!("{text}");
                 }
             }
@@ -873,7 +873,7 @@ impl App {
             UICommand::PrintPrimaryCache => {
                 if let Some(ctx) = store_context {
                     let text = format!("{:?}", ctx.recording.storage_engine().cache());
-                    egui_ctx.output_mut(|o| o.copied_text = text.clone());
+                    egui_ctx.copy_text(text.clone());
                     println!("{text}");
                 }
             }
@@ -1939,13 +1939,6 @@ impl eframe::App for App {
                 {
                     self.process_screenshot_result(image, user_data);
                 }
-            }
-        });
-
-        egui_ctx.output_mut(|o| {
-            // Open all links in a new tab (https://github.com/rerun-io/rerun/issues/4105)
-            if let Some(open_url) = &mut o.open_url {
-                open_url.new_tab = true;
             }
         });
     }

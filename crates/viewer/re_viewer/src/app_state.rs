@@ -666,6 +666,8 @@ fn check_for_clicked_hyperlinks(
 
     let mut path = None;
 
+    // TODO: https://github.com/emilk/egui/pull/5532#issuecomment-2569606449
+
     egui_ctx.output_mut(|o| {
         if let Some(open_url) = &o.open_url {
             if let Some(path_str) = open_url.url.strip_prefix(recording_scheme) {

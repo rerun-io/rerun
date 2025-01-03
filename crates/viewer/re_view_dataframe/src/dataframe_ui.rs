@@ -195,7 +195,7 @@ struct DataframeTableDelegate<'a> {
 }
 
 impl DataframeTableDelegate<'_> {
-    const LEFT_RIGHT_MARGIN: f32 = 4.0;
+    const LEFT_RIGHT_MARGIN: i8 = 4;
 }
 
 impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
@@ -229,7 +229,7 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
         }
 
         egui::Frame::none()
-            .inner_margin(egui::Margin::symmetric(4.0, 0.0))
+            .inner_margin(egui::Margin::symmetric(4, 0))
             .show(ui, |ui| {
                 if cell.row_nr == 0 {
                     if let Some(entity_path) = &self.header_entity_paths[cell.group_index] {
@@ -247,7 +247,9 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
                         // Put the text leftmost in the clip rect (so it is always visible)
                         let mut pos = egui::Align2::LEFT_CENTER
                             .anchor_size(
-                                ui.clip_rect().shrink(Self::LEFT_RIGHT_MARGIN).left_center(),
+                                ui.clip_rect()
+                                    .shrink(Self::LEFT_RIGHT_MARGIN as _)
+                                    .left_center(),
                                 size,
                             )
                             .min;
@@ -441,7 +443,7 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
 
                 // Draw the cell content with some margin.
                 egui::Frame::none()
-                    .inner_margin(egui::Margin::symmetric(Self::LEFT_RIGHT_MARGIN, 0.0))
+                    .inner_margin(egui::Margin::symmetric(Self::LEFT_RIGHT_MARGIN, 0))
                     .show(ui, |ui| {
                         line_ui(
                             ui,
