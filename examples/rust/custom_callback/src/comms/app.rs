@@ -1,7 +1,8 @@
+use parking_lot::RwLock;
 use rerun::external::re_log;
 use std::error::Error;
 use std::result::Result;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncWriteExt, ReadHalf, WriteHalf};
 use tokio::net::{TcpListener, TcpSocket, TcpStream};
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
@@ -32,10 +33,7 @@ impl ControlApp {
     }
 
     pub fn add_handler(&self, handler: HandlerFn) -> Result<(), Box<dyn Error>> {
-        let mut handlers = self
-            .handlers
-            .write()
-            .map_err(|_| "Failed to lock handlers")?;
+        let mut handlers = self.handlers.write();
         handlers.push(handler);
         Ok(())
     }
@@ -118,7 +116,7 @@ impl ControlApp {
                 Ok(n) => match Message::decode(&buf[..n]) {
                     Ok(message) => {
                         re_log::info!("Received message: {:?}", message);
-                        let handlers = &self.handlers.read().expect("failed to get reader");
+                        let handlers = &self.handlers.read();
                         for handler in handlers.iter() {
                             handler(&message);
                         }

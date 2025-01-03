@@ -1728,6 +1728,7 @@ version = "0.21.0-alpha.1+dev"
 dependencies = [
  "bincode",
  "mimalloc",
+ "parking_lot",
  "re_crash_handler",
  "re_error",
  "rerun",
