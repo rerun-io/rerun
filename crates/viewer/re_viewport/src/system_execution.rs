@@ -56,7 +56,7 @@ fn run_view_systems(
 pub fn execute_systems_for_view<'a>(
     ctx: &'a ViewerContext<'_>,
     view: &'a ViewBlueprint,
-    latest_at: TimeInt,
+    latest_at: TimeInt, // <- TODO: why not ctx.current_query().at()?
     view_state: &dyn ViewState,
 ) -> (ViewQuery<'a>, SystemExecutionOutput) {
     re_tracing::profile_function!(view.class_identifier().as_str());
@@ -121,6 +121,10 @@ pub fn execute_systems_for_all_views<'a>(
     views: &'a BTreeMap<ViewId, ViewBlueprint>,
     view_states: &mut ViewStates,
 ) -> HashMap<ViewId, (ViewQuery<'a>, SystemExecutionOutput)> {
+    // TODO: wat? why is this not the ctx query?????
+    // Like so:
+    //let time_int = ctx.current_query().at();
+    //
     let Some(time_int) = ctx.rec_cfg.time_ctrl.read().time_int() else {
         return Default::default();
     };

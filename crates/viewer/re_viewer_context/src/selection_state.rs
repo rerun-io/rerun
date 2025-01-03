@@ -64,7 +64,7 @@ pub enum HoverHighlight {
 }
 
 /// Combination of selection & hover highlight which can occur independently.
-#[derive(Copy, Clone, PartialEq, Eq, Default)]
+#[derive(Copy, Clone, PartialEq, Eq, Default, Debug)]
 pub struct InteractionHighlight {
     pub selection: SelectionHighlight,
     pub hover: HoverHighlight,

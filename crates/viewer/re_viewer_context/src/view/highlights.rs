@@ -9,7 +9,7 @@ use crate::{HoverHighlight, InteractionHighlight, SelectionHighlight};
 /// Highlights of a specific entity path in a specific view.
 ///
 /// Using this in bulk on many instances is faster than querying single objects.
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct ViewEntityHighlight {
     overall: InteractionHighlight,
     instances: ahash::HashMap<Instance, InteractionHighlight>,
@@ -70,7 +70,7 @@ impl OptionalViewEntityHighlight<'_> {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct ViewOutlineMasks {
     pub overall: OutlineMaskPreference,
     pub instances: ahash::HashMap<Instance, OutlineMaskPreference>,
@@ -99,7 +99,7 @@ impl ViewOutlineMasks {
 /// Highlights in a specific view.
 ///
 /// Using this in bulk on many objects is faster than querying single objects.
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct ViewHighlights {
     pub highlighted_entity_paths: IntMap<EntityPathHash, ViewEntityHighlight>,
     pub outlines_masks: IntMap<EntityPathHash, ViewOutlineMasks>,

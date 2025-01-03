@@ -9,4 +9,5 @@ mod ui;
 mod view;
 mod visualizers;
 
+pub use ui::GraphViewState;
 pub use view::GraphView;

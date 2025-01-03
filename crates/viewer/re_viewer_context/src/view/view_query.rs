@@ -247,6 +247,7 @@ impl DataResult {
 
 pub type PerSystemDataResults<'a> = BTreeMap<ViewSystemIdentifier, Vec<&'a DataResult>>;
 
+#[derive(Debug)]
 pub struct ViewQuery<'s> {
     /// The id of the space in which context the query happens.
     pub view_id: ViewId,

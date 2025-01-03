@@ -7,12 +7,6 @@ re_string_interner::declare_new_type!(
     pub struct TimelineName;
 );
 
-impl Default for TimelineName {
-    fn default() -> Self {
-        Self::from(String::default())
-    }
-}
-
 // ----------------------------------------------------------------------------
 
 /// A time frame/space, e.g. `log_time` or `frame_nr`, coupled with the type of time
@@ -25,15 +19,6 @@ pub struct Timeline {
 
     /// Sequence or time?
     typ: TimeType,
-}
-
-impl Default for Timeline {
-    fn default() -> Self {
-        Self {
-            name: TimelineName::default(),
-            typ: TimeType::Sequence,
-        }
-    }
 }
 
 impl Timeline {
