@@ -72,7 +72,7 @@ The Rerun command-line interface:
 > [Default: `true`]
 
 * `--port <PORT>`
-> What TCP port do we listen to (for SDKs to connect to)?
+> What TCP port do we listen to for SDKs to connect to.
 >
 > [Default: `9876`]
 
@@ -88,11 +88,14 @@ The Rerun command-line interface:
 > Take a screenshot of the app and quit. We use this to generate screenshots of our examples. Useful together with `--window-size`.
 
 * `--serve <SERVE>`
+> Deprecated: use `--serve-web` instead.
+
+* `--serve-web <SERVE_WEB>`
 > Serve the recordings over WebSocket to one or more Rerun Viewers.
 >
 > This will also host a web-viewer over HTTP that can connect to the WebSocket address, but you can also connect with the native binary.
 >
-> `rerun --serve` will act like a proxy, listening for incoming TCP connection from logging SDKs, and forwarding it to Rerun viewers.
+> `rerun --serve-web` will act like a proxy, listening for incoming TCP connection from logging SDKs, and forwarding it to Rerun viewers.
 >
 > [Default: `false`]
 
@@ -122,9 +125,9 @@ The Rerun command-line interface:
 * `--web-viewer <WEB_VIEWER>`
 > Start the viewer in the browser (instead of locally).
 >
-> Requires Rerun to have been compiled with the 'web_viewer' feature.
+> Requires Rerun to have been compiled with the `web_viewer` feature.
 >
-> This implies `--serve`.
+> This implies `--serve-web`.
 >
 > [Default: `false`]
 
@@ -142,7 +145,7 @@ The Rerun command-line interface:
 > Set the screen resolution (in logical points), e.g. "1920x1080". Useful together with `--screenshot-to`.
 
 * `--ws-server-port <WS_SERVER_PORT>`
-> What port do we listen to for incoming websocket connections from the viewer A port of 0 will pick a random port.
+> What port do we listen to for incoming websocket connections from the viewer. A port of 0 will pick a random port.
 >
 > [Default: `9877`]
 
