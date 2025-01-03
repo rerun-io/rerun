@@ -91,7 +91,7 @@ impl ViewportUi {
             .collect();
 
         ui.scope(|ui| {
-            ui.spacing_mut().item_spacing.x = DesignTokens::view_padding();
+            ui.spacing_mut().item_spacing.x = DesignTokens::view_padding() as f32;
 
             re_tracing::profile_scope!("tree.ui");
 
@@ -761,8 +761,8 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
         );
 
         let frame = egui::Frame {
-            inner_margin: egui::Margin::same(0.),
-            outer_margin: egui::Margin::same(0.),
+            inner_margin: egui::Margin::same(0),
+            outer_margin: egui::Margin::same(0),
             rounding: egui::Rounding::ZERO,
             shadow: Default::default(),
             fill: egui::Color32::TRANSPARENT,

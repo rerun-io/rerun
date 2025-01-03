@@ -1,7 +1,8 @@
 use std::hash::Hash;
 
 use egui::{
-    emath::Rot2, pos2, Align2, CollapsingResponse, Color32, NumExt, Rangef, Rect, Vec2, Widget,
+    emath::{GuiRounding, Rot2},
+    pos2, Align2, CollapsingResponse, Color32, NumExt, Rangef, Rect, Vec2, Widget,
 };
 
 use crate::{
@@ -299,7 +300,7 @@ pub trait UiExt {
 
             painter.hline(
                 ui.full_span(),
-                painter.round_to_pixel(rect.center().y),
+                rect.center().y.round_to_pixels(painter.pixels_per_point()),
                 stroke,
             );
         }
@@ -347,7 +348,7 @@ pub trait UiExt {
                             egui::ScrollArea::vertical().show(ui, |ui| {
                                 egui::Frame {
                                     //TODO(ab): use design token
-                                    inner_margin: egui::Margin::symmetric(8.0, 0.0),
+                                    inner_margin: egui::Margin::symmetric(8, 0),
                                     ..Default::default()
                                 }
                                 .show(ui, |ui| ret = Some(add_contents(ui)))
@@ -764,10 +765,11 @@ pub trait UiExt {
             // Draw icon
             let image_size = DesignTokens::small_icon_size();
             let image_rect = egui::Rect::from_min_size(
-                ui.painter().round_pos_to_pixels(egui::pos2(
+                egui::pos2(
                     rect.min.x.ceil(),
                     (rect.center().y - 0.5 * DesignTokens::small_icon_size().y).ceil(),
-                )),
+                )
+                .round_to_pixels(ui.pixels_per_point()),
                 image_size,
             );
 
@@ -1128,9 +1130,9 @@ pub trait UiExt {
         ui.add_space(-ui.cursor().min.y.fract());
 
         egui::Frame {
-            inner_margin: egui::Margin::same(3.0),
+            inner_margin: egui::Margin::same(3),
             stroke: design_tokens().bottom_bar_stroke,
-            rounding: ui.visuals().widgets.hovered.rounding + egui::Rounding::same(3.0),
+            rounding: ui.visuals().widgets.hovered.rounding + egui::Rounding::same(3),
             ..Default::default()
         }
         .show(ui, |ui| {

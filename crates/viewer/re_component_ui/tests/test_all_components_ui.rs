@@ -229,7 +229,7 @@ fn test_single_component_ui_as_list_item(
 
     //TODO(#8245): enable this everywhere when we have a software renderer setup
     if cfg!(target_os = "macos") {
-        harness.try_wgpu_snapshot_options(&format!("{test_case}"), _snapshot_options)
+        harness.try_snapshot_options(&format!("{test_case}"), _snapshot_options)
     } else {
         Ok(())
     }

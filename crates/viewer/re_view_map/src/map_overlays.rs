@@ -17,7 +17,7 @@ pub fn acknowledgement_overlay(
 
     egui::Frame::none()
         .fill(ui.visuals().window_fill)
-        .inner_margin(egui::Margin::same(2.0))
+        .inner_margin(egui::Margin::same(2))
         .show(&mut ui, |ui| {
             let text = egui::WidgetText::from(attribution.text).small();
             ui.hyperlink_to(text, attribution.url);

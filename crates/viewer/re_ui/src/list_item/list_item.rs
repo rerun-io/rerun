@@ -1,5 +1,6 @@
 //! Core list item functionality.
 
+use egui::emath::GuiRounding;
 use egui::{NumExt, Response, Shape, Ui};
 
 use crate::list_item::{ContentContext, DesiredWidth, LayoutInfoStack, ListItemContent};
@@ -343,10 +344,11 @@ impl ListItem {
 
         // Draw collapsing triangle
         if let Some(openness) = collapse_openness {
-            let triangle_pos = ui.painter().round_pos_to_pixels(egui::pos2(
+            let triangle_pos = egui::pos2(
                 rect.min.x,
                 rect.center().y - 0.5 * DesignTokens::collapsing_triangle_area().y,
-            ));
+            )
+            .round_to_pixels(ui.pixels_per_point());
             let triangle_rect =
                 egui::Rect::from_min_size(triangle_pos, DesignTokens::collapsing_triangle_area());
             let triangle_response = ui.interact(
@@ -381,7 +383,7 @@ impl ListItem {
             // Ensure the background highlight is drawn over round pixel coordinates. Otherwise,
             // there could be artifact between consecutive highlighted items when drawn on
             // fractional pixels.
-            let bg_rect_to_paint = ui.painter().round_rect_to_pixels(bg_rect);
+            let bg_rect_to_paint = bg_rect.round_to_pixels(ui.pixels_per_point());
 
             if drag_target {
                 let stroke = crate::design_tokens().drop_target_container_stroke();

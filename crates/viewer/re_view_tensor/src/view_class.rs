@@ -265,7 +265,7 @@ impl TensorView {
             .map_or(true, |s| !s.is_empty())
         {
             egui::Frame {
-                inner_margin: egui::Margin::symmetric(16.0, 8.0),
+                inner_margin: egui::Margin::symmetric(16, 8),
                 ..Default::default()
             }
             .show(ui, |ui| {

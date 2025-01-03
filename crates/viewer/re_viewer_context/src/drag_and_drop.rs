@@ -256,13 +256,13 @@ fn drag_pill_frame(droppable: bool) -> egui::Frame {
         ),
         rounding: 2.0.into(),
         inner_margin: egui::Margin {
-            left: 6.0,
-            right: 9.0,
-            top: 5.0,
-            bottom: 4.0,
+            left: 6,
+            right: 9,
+            top: 5,
+            bottom: 4,
         },
         //TODO(ab): needed to avoid the pill being cropped, not sure why?
-        outer_margin: egui::Margin::same(1.0),
+        outer_margin: egui::Margin::same(1),
         ..Default::default()
     }
 }

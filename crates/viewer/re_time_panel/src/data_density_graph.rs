@@ -339,7 +339,7 @@ impl DensityGraph {
             }
         }
 
-        painter.add(Shape::Mesh(mesh));
+        painter.add(Shape::Mesh(Arc::new(mesh)));
     }
 }
 

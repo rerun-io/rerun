@@ -140,7 +140,7 @@ egui = { version = "0.30.0", features = [
 ] }
 egui_commonmark = { version = "0.19", default-features = false }
 egui_extras = { version = "0.30.0", features = ["http", "image", "serde"] }
-egui_kittest = { version = "0.30.0", features = ["wgpu", "snapshot"] }
+egui_kittest = { version = "0.30.0", features = ["wgpu", "snapshot", "eframe"] }
 egui_plot = "0.30.0" # https://github.com/emilk/egui_plot
 egui_table = "0.2.0" # https://github.com/rerun-io/egui_table
 egui_tiles = "0.11.0" # https://github.com/rerun-io/egui_tiles
@@ -557,13 +557,13 @@ significant_drop_tightening = "allow" # An update of parking_lot made this trigg
 # As a last resport, patch with a commit to our own repository.
 # ALWAYS document what PR the commit hash is part of, or when it was merged into the upstream trunk.
 
-# ecolor = { git = "https://github.com/emilk/egui.git", rev = "0fb340fe89e9476b2fec15c2eff1405e51e5c04e" }       # egui master 2024-12-16 just pre 0.30.0 release
-# eframe = { git = "https://github.com/emilk/egui.git", rev = "0fb340fe89e9476b2fec15c2eff1405e51e5c04e" }       # egui master 2024-12-16 just pre 0.30.0 release
-# egui = { git = "https://github.com/emilk/egui.git", rev = "0fb340fe89e9476b2fec15c2eff1405e51e5c04e" }         # egui master 2024-12-16 just pre 0.30.0 release
-# egui_extras = { git = "https://github.com/emilk/egui.git", rev = "0fb340fe89e9476b2fec15c2eff1405e51e5c04e" }  # egui master 2024-12-16 just pre 0.30.0 release
-# egui_kittest = { git = "https://github.com/emilk/egui.git", rev = "0fb340fe89e9476b2fec15c2eff1405e51e5c04e" } # egui master 2024-12-16 just pre 0.30.0 release
-# egui-wgpu = { git = "https://github.com/emilk/egui.git", rev = "0fb340fe89e9476b2fec15c2eff1405e51e5c04e" }    # egui master 2024-12-16 just pre 0.30.0 release
-# emath = { git = "https://github.com/emilk/egui.git", rev = "0fb340fe89e9476b2fec15c2eff1405e51e5c04e" }        # egui master 2024-12-16 just pre 0.30.0 release
+ecolor = { git = "https://github.com/emilk/egui.git", rev = "938d8b0d2e2a551ac354d76d6208188e5942b21e" }       # egui master 2025-01-03
+eframe = { git = "https://github.com/emilk/egui.git", rev = "938d8b0d2e2a551ac354d76d6208188e5942b21e" }       # egui master 2025-01-03
+egui = { git = "https://github.com/emilk/egui.git", rev = "938d8b0d2e2a551ac354d76d6208188e5942b21e" }         # egui master 2025-01-03
+egui_extras = { git = "https://github.com/emilk/egui.git", rev = "938d8b0d2e2a551ac354d76d6208188e5942b21e" }  # egui master 2025-01-03
+egui_kittest = { git = "https://github.com/emilk/egui.git", rev = "938d8b0d2e2a551ac354d76d6208188e5942b21e" } # egui master 2025-01-03
+egui-wgpu = { git = "https://github.com/emilk/egui.git", rev = "938d8b0d2e2a551ac354d76d6208188e5942b21e" }    # egui master 2025-01-03
+emath = { git = "https://github.com/emilk/egui.git", rev = "938d8b0d2e2a551ac354d76d6208188e5942b21e" }        # egui master 2025-01-03
 
 # Useful while developing:
 # ecolor = { path = "../../egui/crates/ecolor" }
@@ -574,13 +574,14 @@ significant_drop_tightening = "allow" # An update of parking_lot made this trigg
 # egui-wgpu = { path = "../../egui/crates/egui-wgpu" }
 # emath = { path = "../../egui/crates/emath" }
 
-# egui_plot = { git = "https://github.com/emilk/egui_plot.git", rev = "1f6ae49a5f6bf43a869c215dea0d3028be8d742a" }
+# TODO: should be merged to emilk/egui_plot
+egui_plot = { git = "https://github.com/wumpf/egui_plot.git", rev = "a333844b6a4089fa0134770d6662125458c8e30e" }
 # egui_plot = { path = "../../egui_plot/egui_plot" }
 
 # egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", rev = "48e0ef566479000a23d8dabf84badced98f1b9a6" } # https://github.com/rerun-io/egui_tiles/pull/89 2024-11-19
 #egui_tiles = { path = "../egui_tiles" }
 
-# egui_commonmark = { git = "https://github.com/rerun-io/egui_commonmark", rev = "7a9dc755bfa351a3796274cb8ca87129b051c084" } # https://github.com/lampsitter/egui_commonmark/pull/65
+egui_commonmark = { git = "https://github.com/rerun-io/egui_commonmark", rev = "d08ab5704b9cf6bd4234757c43b49e86c7f053c4" } # https://github.com/lampsitter/egui_commonmark/pull/65
 
 # walkers = { git = "https://github.com/rerun-io/walkers", rev = "8939cceb3fa49ca8648ee16fe1d8432f5ab0bdcc" } # https://github.com/podusowski/walkers/pull/222
 

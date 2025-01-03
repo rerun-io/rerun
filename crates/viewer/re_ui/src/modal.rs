@@ -190,7 +190,7 @@ impl ModalWrapper {
                 })
                 .show(ui, |ui| {
                     Self::title_bar(ui, &self.title, &mut open);
-                    ui.add_space(DesignTokens::view_padding());
+                    ui.add_space(DesignTokens::view_padding() as f32);
                     ui.full_span_separator();
                 });
 
@@ -305,22 +305,18 @@ fn view_padding_frame(params: &ViewPaddingFrameParams) -> egui::Frame {
             left: if left_and_right {
                 DesignTokens::view_padding()
             } else {
-                0.0
+                0
             },
             right: if left_and_right {
                 DesignTokens::view_padding()
             } else {
-                0.0
+                0
             },
-            top: if top {
-                DesignTokens::view_padding()
-            } else {
-                0.0
-            },
+            top: if top { DesignTokens::view_padding() } else { 0 },
             bottom: if bottom {
                 DesignTokens::view_padding()
             } else {
-                0.0
+                0
             },
         },
         ..Default::default()
