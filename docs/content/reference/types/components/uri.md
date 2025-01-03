@@ -17,8 +17,8 @@ utf8
 ```
 
 ## API reference links
- * 🌊 [C++ API docs for `Uri`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1Uri.html)
- * 🐍 [Python API docs for `Uri`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.Uri)
- * 🦀 [Rust API docs for `Uri`](https://docs.rs/rerun/latest/rerun/components/struct.Uri.html)
+ * 🌊 [C++ API docs for `Uri`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1Uri.html?speculative-link)
+ * 🐍 [Python API docs for `Uri`](https://ref.rerun.io/docs/python/stable/common/components?speculative-link#rerun.components.Uri)
+ * 🦀 [Rust API docs for `Uri`](https://docs.rs/rerun/latest/rerun/components/struct.Uri.html?speculative-link)
 
 

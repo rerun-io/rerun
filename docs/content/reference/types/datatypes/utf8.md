@@ -26,6 +26,6 @@ utf8
 * [`RecordingUri`](../components/recording_uri.md)
 * [`TextLogLevel`](../components/text_log_level.md)
 * [`Text`](../components/text.md)
-* [`Uri`](../components/uri.md)
+* [`Uri`](../components/uri.md?speculative-link)
 * [`Utf8Pair`](../datatypes/utf8pair.md)
 * [`VisibleTimeRange`](../datatypes/visible_time_range.md)

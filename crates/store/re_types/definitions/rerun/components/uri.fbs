@@ -6,7 +6,8 @@ namespace rerun.components;
 ///
 /// To specify a recording, use `RecordingUri`.
 table Uri (
-  "attr.rust.derive": "PartialEq, Eq, PartialOrd, Ord, Hash"
+  "attr.rust.derive": "PartialEq, Eq, PartialOrd, Ord, Hash",
+  "attr.docs.unreleased"
 ) {
   uri: rerun.datatypes.Utf8 (order: 100);
 }
