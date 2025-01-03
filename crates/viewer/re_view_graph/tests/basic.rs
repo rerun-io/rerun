@@ -1,18 +1,21 @@
-#![allow(clippy::unwrap_used)]
+#![expect(clippy::unwrap_used)]
+
+//! Basic tests for the graph view, mostly focused on edge cases (pun intended).
 
 use std::sync::Arc;
 
-use crate::{ui::GraphViewState, GraphView};
+use re_view_graph::{GraphViewState, GraphView};
+use re_types::{components, Component as _};
 use egui::Vec2;
+use re_entity_db::EntityPath;
 use re_chunk_store::{Chunk, RowId};
-use re_log_types::EntityPath;
-use re_types::{components, Component};
 use re_viewer_context::{test_context::TestContext, ViewClass, ViewClassExt as _, ViewId};
 use re_viewport_blueprint::ViewBlueprint;
 
 #[test]
-pub fn self_and_multi_edges() {
+pub fn coincident_nodes() {
     let mut test_context = TestContext::default();
+    let name = "coincident_nodes";
 
     // It's important to first register the view class before adding any entities,
     // otherwise the `VisualizerEntitySubscriber` for our visualizers doesn't exist yet,
@@ -22,17 +25,78 @@ pub fn self_and_multi_edges() {
         .add_class::<GraphView>()
         .unwrap();
 
-    setup_store(&mut test_context);
-    run_graph_view_and_save_snapshot(&mut test_context);
-}
-
-fn setup_store(test_context: &mut TestContext) {
-    let entity_path = EntityPath::from(format!("/self_and_multi_edges"));
+    let entity_path = EntityPath::from(name);
 
     let nodes = [
         components::GraphNode("A".into()),
         components::GraphNode("B".into()),
     ];
+
+    let edges = [components::GraphEdge(("A", "B").into())];
+
+    let directed = components::GraphType::Directed;
+
+    let positions = [
+        components::Position2D([42.0, 42.0].into()),
+        components::Position2D([42.0, 42.0].into()),
+    ];
+
+    let mut builder = Chunk::builder(entity_path.clone());
+    builder = builder.with_sparse_component_batches(
+        RowId::new(),
+        [(test_context.active_timeline(), 1)],
+        [
+            (components::GraphNode::descriptor(), Some(&nodes as _)),
+            (components::Position2D::descriptor(), Some(&positions as _)),
+            (components::GraphEdge::descriptor(), Some(&edges as _)),
+            (components::GraphType::descriptor(), Some(&[directed] as _)),
+        ],
+    );
+
+    test_context
+        .recording_store
+        .add_chunk(&Arc::new(builder.build().unwrap()))
+        .unwrap();
+
+    run_graph_view_and_save_snapshot(&mut test_context, name, Vec2::new(100.0, 100.0));
+}
+
+#[test]
+pub fn self_and_multi_edges() {
+    let mut test_context = TestContext::default();
+    let name = "self_and_multi_edges";
+
+    // It's important to first register the view class before adding any entities,
+    // otherwise the `VisualizerEntitySubscriber` for our visualizers doesn't exist yet,
+    // and thus will not find anything applicable to the visualizer.
+    test_context
+        .view_class_registry
+        .add_class::<GraphView>()
+        .unwrap();
+
+    let entity_path = EntityPath::from(name);
+
+    let nodes = [
+        components::GraphNode("A".into()),
+        components::GraphNode("B".into()),
+    ];
+
+    let edges = [
+        // self-edges
+        components::GraphEdge(("A", "A").into()),
+        components::GraphEdge(("B", "B").into()),
+        // duplicated edges
+        components::GraphEdge(("A", "B").into()),
+        components::GraphEdge(("A", "B").into()),
+        components::GraphEdge(("B", "A").into()),
+        // duplicated self-edges
+        components::GraphEdge(("A", "A").into()),
+        // implicit edges
+        components::GraphEdge(("B", "C").into()),
+        components::GraphEdge(("C", "C").into()),
+    ];
+
+    let directed = components::GraphType::Directed;
 
     let positions = [
         components::Position2D([0.0, 0.0].into()),
@@ -46,6 +110,8 @@ fn setup_store(test_context: &mut TestContext) {
         [
             (components::GraphNode::descriptor(), Some(&nodes as _)),
             (components::Position2D::descriptor(), Some(&positions as _)),
+            (components::GraphEdge::descriptor(), Some(&edges as _)),
+            (components::GraphType::descriptor(), Some(&[directed] as _)),
         ],
     );
 
@@ -53,6 +119,8 @@ fn setup_store(test_context: &mut TestContext) {
         .recording_store
         .add_chunk(&Arc::new(builder.build().unwrap()))
         .unwrap();
+
+    run_graph_view_and_save_snapshot(&mut test_context, name, Vec2::new(400.0, 400.0));
 }
 
 pub fn setup_graph_view_blueprint(test_context: &mut TestContext) -> ViewId {
@@ -95,7 +163,7 @@ pub fn setup_graph_view_blueprint(test_context: &mut TestContext) -> ViewId {
     view_id
 }
 
-fn run_graph_view_and_save_snapshot(test_context: &mut TestContext) {
+fn run_graph_view_and_save_snapshot(test_context: &mut TestContext, name: &str, size: Vec2) {
     let view_id = setup_graph_view_blueprint(test_context);
     let view_blueprint = ViewBlueprint::try_from_db(
         view_id,
@@ -148,7 +216,7 @@ fn run_graph_view_and_save_snapshot(test_context: &mut TestContext) {
 
     //TODO(ab): this contains a lot of boilerplate which should be provided by helpers
     let mut harness = egui_kittest::Harness::builder()
-        .with_size(Vec2::new(400.0, 400.0))
+        .with_size(size)
         .build_ui(|ui| {
             test_context.run(&ui.ctx().clone(), |viewer_ctx| {
                 let view_class = test_context
@@ -182,5 +250,5 @@ fn run_graph_view_and_save_snapshot(test_context: &mut TestContext) {
 
     //TODO(#8245): enable this everywhere when we have a software renderer setup
     // #[cfg(target_os = "macos")]
-    harness.wgpu_snapshot("self_and_multi_edges");
+    harness.wgpu_snapshot(name);
 }
