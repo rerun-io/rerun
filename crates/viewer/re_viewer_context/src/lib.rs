@@ -50,7 +50,7 @@ pub use self::{
         ComponentFallbackError, ComponentFallbackProvider, ComponentFallbackProviderResult,
         TypedComponentFallbackProvider,
     },
-    component_ui_registry::{ComponentUiRegistry, ComponentUiTypes, UiLayout},
+    component_ui_registry::{ComponentUiRegistry, ComponentUiTypes},
     contents::{blueprint_id_to_tile_id, Contents, ContentsName},
     data_result_node_or_path::DataResultNodeOrPath,
     drag_and_drop::{DragAndDropFeedback, DragAndDropManager, DragAndDropPayload},
@@ -89,6 +89,8 @@ pub use self::{
     },
     viewer_context::{RecordingConfig, ViewerContext},
 };
+
+pub use re_ui::UiLayout; // Historical reasons
 
 #[cfg(not(target_arch = "wasm32"))]
 mod clipboard;
