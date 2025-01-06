@@ -977,10 +977,10 @@ impl RecordingStream {
     /// [SDK Micro Batching]: https://www.rerun.io/docs/reference/sdk/micro-batching
     /// [component bundle]: [`AsComponents`]
     #[inline]
-    pub fn log(
+    pub fn log<AS: ?Sized + AsComponents>(
         &self,
         ent_path: impl Into<EntityPath>,
-        as_components: &impl AsComponents,
+        as_components: &AS,
     ) -> RecordingStreamResult<()> {
         self.log_with_static(ent_path, false, as_components)
     }
@@ -1108,11 +1108,11 @@ impl RecordingStream {
     /// [SDK Micro Batching]: https://www.rerun.io/docs/reference/sdk/micro-batching
     /// [component bundle]: [`AsComponents`]
     #[inline]
-    pub fn log_with_static(
+    pub fn log_with_static<AS: ?Sized + AsComponents>(
         &self,
         ent_path: impl Into<EntityPath>,
         static_: bool,
-        as_components: &impl AsComponents,
+        as_components: &AS,
     ) -> RecordingStreamResult<()> {
         let row_id = RowId::new(); // Create row-id as early as possible. It has a timestamp and is used to estimate e2e latency.
         self.log_component_batches_impl(
@@ -2286,6 +2286,7 @@ impl RecordingStream {
 #[cfg(test)]
 mod tests {
     use re_chunk::TransportChunk;
+    use re_log_types::example_components::MyLabel;
 
     use super::*;
 
@@ -2622,5 +2623,45 @@ mod tests {
         };
 
         vec![row0, row1, row2]
+    }
+
+    // See <https://github.com/rerun-io/rerun/pull/8587> for context.
+    #[test]
+    fn allows_ascomponents_unsized() {
+        let labels = [
+            MyLabel("a".into()),
+            MyLabel("b".into()),
+            MyLabel("c".into()),
+        ];
+
+        let (rec, _mem) = RecordingStreamBuilder::new("rerun_example_test_ascomponents_unsized")
+            .default_enabled(false)
+            .enabled(false)
+            .memory()
+            .unwrap();
+
+        // This call used to *not* compile due to a lack of `?Sized` bounds.
+        rec.log("labels", &labels as &dyn crate::AsComponents)
+            .unwrap();
+    }
+
+    // See <https://github.com/rerun-io/rerun/pull/8587> for context.
+    #[test]
+    fn allows_componentbatch_unsized() {
+        let labels = [
+            MyLabel("a".into()),
+            MyLabel("b".into()),
+            MyLabel("c".into()),
+        ];
+
+        let (rec, _mem) = RecordingStreamBuilder::new("rerun_example_test_componentbatch_unsized")
+            .default_enabled(false)
+            .enabled(false)
+            .memory()
+            .unwrap();
+
+        // This call used to *not* compile due to a lack of `?Sized` bounds.
+        rec.log("labels", &labels as &dyn crate::ComponentBatch)
+            .unwrap();
     }
 }
