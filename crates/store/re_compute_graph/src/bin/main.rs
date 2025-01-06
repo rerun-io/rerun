@@ -20,142 +20,28 @@
 
 // TODO: remember we don't actually want to slice into things until the very end
 
-use ahash::HashSet;
+// TODO: need to think about hashing at the end, as usual.
+
+// TODO: typed errors
+
+use ahash::{HashMap, HashSet};
+use nohash_hasher::IntMap;
 use slotmap::{SecondaryMap, SlotMap};
 use type_map::concurrent::TypeMap;
 
-// inputs, outputs, bootstraps (aka constant inputs)
+// ---
 
-// TODO: only thing here at this point should be a LRU though
-// TODO: why though?
-pub struct ComputeGraphContext<'a> {
-    // TODO: could even be several i guess, or a ChunkStoreHub or something.
-    store: &'a ChunkStore,
-}
-
-// TODO: how do you define AggregatedLatestAt? How do you define the dependency on specific
-// component names? how do you define that some of these are optional (just Option<> the input?)?
-
-// TODO: at some point we need some form of conditions though? how do you express "go through jpeg
-// decoding if you find these and those columns"? Aka run conditions.
-
-// TODO: we need to think long and hard about wtf does AggregatedLatestAt looks like.
-
-// TODO: Defines a ComputeGraph, compile() it to get an executable graph.
-#[derive(Default)]
-pub struct ComputeGraphSpecification {
-    nodes: TypeMap,
-}
-
-impl ComputeGraphSpecification {
-    pub fn add_node(node: Box<dyn ComputeNode>) -> anyhow::Result<()> {
-        Ok(())
-    }
-}
-
-// TODO: I guess we can just autodetect output nodes, they have no dependees
-
-#[derive(Default)]
-pub struct ComputeGraph {
-    // Specification
-
-    // TODO: in the end im not sure we even need one
-    nodes: SlotMap<slotmap::DefaultKey, Box<dyn ComputeNode>>,
-    dependencies: SecondaryMap<slotmap::DefaultKey, HashSet<slotmap::DefaultKey>>,
-    //
-    // Instantiation (move to other types)
-    outputs: TypeMap,
-}
-
-// TODO: you want to be able to ask the graph a few things... maybe?
-
-// TODO: display the graph in rerun
-
-// TODO: ComputeGraphSpecification which turns into ComputeGraph(Compiled).
-// That falls solely into the land of optimization though.
-
-impl ComputeGraph {
-    pub fn add_edge(&mut self) {}
-
-    // TODO: has to be `self` to it can be erased/dyn
-    // TODO: we don't have a TypeSet lul
-    // TODO: this is missing all the inputs from all the outermost nodes -- and really that's all
-    // there is.
-    pub fn inputs(&self) -> HashSet<NamedTypeId> {
-        dbg!([NamedTypeId::new::<&ChunkStore>(),].into_iter().collect())
-    }
-
-    pub fn execute(&self, ctx: ComputeGraphContext<'_>) -> TypeMap {
-        for (_, node) in self.nodes.iter() {
-            //
-        }
-        Default::default()
-        // ctx.store
-        //     .latest_at_relevant_chunks(query, entity_path, component_name)
-    }
-}
-
-// TODO: reminder, we want to re-use graphs as-is across different stores, different hubs,
-// different queries, different everything. There should be *one* LRU for everything.
-// TODO: a ComputeGraph implements ComputeNode, that's it!
-
-// TODO: AFAICT we want every parameter to be runtime (i.e. via `.inputs`)
-pub trait ComputeNode {
-    // TODO: can we have nice dedicated paths for the usual suspects though? Chunk and such?
-    // TODO: fn inputs() -> Set<TypeId> ?
-    // TODO: fn outputs() -> Map<TypeId, dyn Any> ?
-    // TODO: fn cacheable?
-
-    fn name(&self) -> &'static str {
-        _ = self; // for obect-safety
-        std::any::type_name::<Self>()
-    }
-
-    // TODO: has to be `self` to it can be erased/dyn
-    // TODO: we don't have a TypeSet lul
-    fn inputs(&self) -> HashSet<NamedTypeId>;
-
-    fn outputs(&self) -> HashSet<NamedTypeId>;
-
-    fn execute(&self, ctx: ComputeGraphContext<'_>);
-}
-
-// TODO:
-// * materialize AggregatedLatestAt
-// * materialize AggregatedRange
-// * materialize Dataframe
-// * materialize the stuff in `Caches`:
-//     * ImageDecodeCache
-//     * ImageStatsCache
-//     * TensorStatsCache
-//     * MeshCache
-//     * WireframeCache (wut?)
-//     * SolidCache (wut?)
-//     * VideoCache
-//     * TransformCache (but should be unrelated)
-
-// TODO: AggregatedLatestAt
-// 1. Perform store-level LatestAtRelevantChunks for list of components
-// 2. Perform chunk-level LatestAt for each chunk/component pair
-
-// TODO: we want *one* CPU LRU and *one* GPU LRU
-// -> let's start with CPU though.
-
-// TODO: there is no invalidation, nobody cares -- pure LRU
-
-#[derive(Default)]
-pub struct LatestAtRelevantChunks;
-
-pub struct LatestAtRelevantChunksOutput {
-    pub chunks: Vec<Arc<Chunk>>,
-}
-
-// TODO: Hash of a Chunk is ChunkId and we call it a day?
-
-// TODO: graph definition vs. graph instantiation
-
-#[derive(Debug)]
+/// Combines both [`std::any::type_name`] and [`std::any::TypeId::of`].
+///
+/// (It is not possible to get a name back out of a bare `Typeid`.)
+#[derive(Debug, Clone, Copy)]
 pub struct NamedTypeId(pub &'static str, pub TypeId);
+
+impl std::fmt::Display for NamedTypeId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple(&self.0).field(&self.1).finish()
+    }
+}
 
 impl PartialEq for NamedTypeId {
     #[inline]
@@ -180,45 +66,135 @@ impl NamedTypeId {
     }
 }
 
-// TODO: every intermediate output should be extractable, there's no reason not to. I.e., there's
-// no intermediate output.
-// TODO: similarly, every intermediate output needs to be Hash...
-// TODO: somehow the hash of a chunk needs to take into account it's sorting state? well i guess
-// chunks are always sorted here... or not?
+pub trait ComputeResource {
+    type Type;
 
-// TODO: You want to visualize both the "blueprint" and its instantiation
+    fn get(&self) -> &Self::Type;
+}
 
-// TODO: we already have hierarchical graphs in the form of aggregated queries -> you need to
-// instantiate the LatestAtComponent sub-graph N times
+// TODO: acts as both a spec and an instance because it's easier that way -- whatever.
+pub trait ComputeNode {
+    // TODO: can we have nice dedicated paths for the usual suspects though? Chunk and such?
+    // TODO: fn inputs() -> Set<TypeId> ?
+    // TODO: fn outputs() -> Map<TypeId, dyn Any> ?
+    // TODO: fn cacheable?
 
-// TODO: how does one static assert object safety these days?
-
-// TODO: we have to be able to query with just component-name strings -- not generics only.
-
-// TODO: what does this need?
-// * ChunkStore
-// * LatestAtQuery
-// * EntityPath
-// * ComponentName
-impl ComputeNode for LatestAtRelevantChunks {
-    // TODO: we can move to a cow when we need to
-    fn name(&self) -> &'static str {
+    fn name(&self) -> String {
         _ = self; // for obect-safety
-        std::any::type_name::<Self>()
+        std::any::type_name::<Self>().to_owned()
     }
 
     // TODO: has to be `self` to it can be erased/dyn
     // TODO: we don't have a TypeSet lul
+    fn inputs(&self) -> HashSet<NamedTypeId>;
+
+    fn outputs(&self) -> HashSet<NamedTypeId>;
+
+    fn execute(&self);
+}
+
+slotmap::new_key_type! { struct ComputeNodeKey; }
+
+#[derive(Default, Clone)]
+pub struct ComputeGraphSpecification {
+    nodes: SlotMap<ComputeNodeKey, Arc<dyn ComputeNode>>,
+    nodes_per_output: HashMap<NamedTypeId, ComputeNodeKey>,
+    nodes_per_inputs: HashMap<NamedTypeId, Vec<ComputeNodeKey>>,
+
+    // TODO: the notion of "input nodes" doesn't really make sense -- we can have nodes that are
+    // only partially input nodes.
+    // // Input nodes are nodes with at least one input that cannot be
+    // input_nodes: Vec<ComputeNodeKey>,
+    inputs: Vec<ComputeNodeKey>,
+
+    output_nodes: Vec<ComputeNodeKey>,
+    outputs: Vec<ComputeNodeKey>,
+}
+
+impl ComputeGraphSpecification {
+    pub fn add_node(&mut self, node: Arc<dyn ComputeNode>) -> anyhow::Result<()> {
+        let Self {
+            nodes,
+            nodes_per_output,
+            nodes_per_inputs,
+            inputs,
+            output_nodes,
+            outputs,
+        } = self;
+
+        let node_key = nodes.insert(node.clone());
+
+        for input in node.inputs() {
+            nodes_per_inputs.entry(input).or_default().push(node_key);
+        }
+
+        for output in node.outputs() {
+            if let Some(duped_node_key) = nodes_per_output.get(&output) {
+                let node_a = nodes.get(*duped_node_key).unwrap().name();
+                let node_b = node.name();
+                anyhow::bail!("found duplicated output: {output} shared by {node_a} and {node_b}");
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn compile(self) -> anyhow::Result<ComputeGraph> {
+        Ok(ComputeGraph { spec: self })
+    }
+}
+
+pub struct ComputeGraph {
+    spec: ComputeGraphSpecification,
+}
+
+impl ComputeNode for ComputeGraph {
+    fn name(&self) -> String {
+        // TODO: nice generated name
+        "some_compute_graph".to_owned()
+    }
+
+    fn inputs(&self) -> HashSet<NamedTypeId> {}
+
+    fn outputs(&self) -> HashSet<NamedTypeId> {
+        todo!()
+    }
+
+    fn execute(&self) {
+        todo!()
+    }
+}
+
+/// A [`ComputeNode`] to fetch all relevant `Chunk`s for a single `ComponentName`, according to a
+/// specific `LatestAtQuery`.
+#[derive(Default)]
+pub struct LatestAtRelevantChunks;
+
+pub struct LatestAtRelevantChunksOutput {
+    pub chunks: Vec<Arc<Chunk>>,
+}
+
+impl ComputeResource for LatestAtRelevantChunksOutput {
+    type Type = Vec<Arc<Chunk>>;
+
+    #[inline]
+    fn get(&self) -> &Self::Type {
+        &self.chunks
+    }
+}
+
+impl ComputeNode for LatestAtRelevantChunks {
+    // TODO: has to be `self` to it can be erased/dyn
+    // TODO: we don't have a TypeSet lul
     fn inputs(&self) -> HashSet<NamedTypeId> {
-        // TODO: why is only the store a ref here though?
-        dbg!([
-            NamedTypeId::new::<&ChunkStore>(),
+        [
+            NamedTypeId::new::<ChunkStore>(),
             NamedTypeId::new::<LatestAtQuery>(),
             NamedTypeId::new::<EntityPath>(),
             NamedTypeId::new::<ComponentName>(),
         ]
         .into_iter()
-        .collect())
+        .collect()
     }
 
     fn outputs(&self) -> HashSet<NamedTypeId> {
@@ -227,7 +203,7 @@ impl ComputeNode for LatestAtRelevantChunks {
             .collect())
     }
 
-    fn execute(&self, ctx: ComputeGraphContext<'_>) -> TypeMap {
+    fn execute(&self) -> TypeMap {
         Default::default()
         // ctx.store
         //     .latest_at_relevant_chunks(query, entity_path, component_name)
@@ -239,6 +215,7 @@ impl ComputeNode for LatestAtRelevantChunks {
 // TODO: progress in steps.
 //
 // * A single component LatestAt query, running in a graph, no caching.
+// * A single component AggregatedLatestAt query, running in a graph, no caching, built up from LatestAt subgraphs.
 
 use std::{any::TypeId, sync::Arc};
 
@@ -285,7 +262,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             continue;
         }
 
-        LatestAtRelevantChunks.inputs();
+        // LatestAtRelevantChunks.inputs();
     }
 
     Ok(())
@@ -313,4 +290,274 @@ pub fn latest_at(
 
     // TODO: is there any value in returning a chunk here though?
     Some(unit.into_chunk())
+}
+
+// ---
+
+#[cfg(TODO)]
+mod todo {
+    // inputs, outputs, bootstraps (aka constant inputs)
+
+    // TODO: only thing here at this point should be a LRU though
+    // TODO: why though?
+    pub struct ComputeGraphContext<'a> {
+        // TODO: could even be several i guess, or a ChunkStoreHub or something.
+        store: &'a ChunkStore,
+    }
+
+    slotmap::new_key_type! { struct ComputeNodeKey; }
+
+    // TODO: how do you define AggregatedLatestAt? How do you define the dependency on specific
+    // component names? how do you define that some of these are optional (just Option<> the input?)?
+
+    // TODO: at some point we need some form of conditions though? how do you express "go through jpeg
+    // decoding if you find these and those columns"? Aka run conditions.
+
+    // TODO: we need to think long and hard about wtf does AggregatedLatestAt looks like.
+
+    // TODO: Defines a ComputeGraph, compile() it to get an executable graph.
+    // TODO: mutability within ComputeNodes as a big "?" right now
+    #[derive(Default)]
+    pub struct ComputeGraphSpecification {
+        nodes: SlotMap<ComputeNodeKey, Arc<dyn ComputeNode>>,
+        nodes_per_output: HashMap<NamedTypeId, ComputeNodeKey>,
+        nodes_per_inputs: HashMap<NamedTypeId, Vec<ComputeNodeKey>>,
+
+        // TODO: the notion of "input nodes" doesn't really make sense -- we can have nodes that are
+        // only partially input nodes.
+        // // Input nodes are nodes with at least one input that cannot be
+        // input_nodes: Vec<ComputeNodeKey>,
+        inputs: Vec<ComputeNodeKey>,
+
+        output_nodes: Vec<ComputeNodeKey>,
+        outputs: Vec<ComputeNodeKey>,
+    }
+
+    impl ComputeGraphSpecification {
+        pub fn add_node(&mut self, node: Arc<dyn ComputeNode>) -> anyhow::Result<()> {
+            let Self {
+                nodes,
+                nodes_per_output,
+                nodes_per_inputs,
+                inputs,
+                output_nodes,
+                outputs,
+            } = self;
+
+            let node_key = nodes.insert(node.clone());
+
+            for input in node.inputs() {
+                nodes_per_inputs.entry(input).or_default().push(node_key);
+            }
+
+            for output in node.outputs() {
+                if let Some(duped_node_key) = nodes_per_output.get(&output) {
+                    let node_a = nodes.get(*duped_node_key).unwrap().name();
+                    let node_b = node.name();
+                    anyhow::bail!(
+                        "found duplicated output: {output} shared by {node_a} and {node_b}"
+                    );
+                }
+            }
+
+            Ok(())
+        }
+
+        pub fn compile() -> anyhow::Result<ComputeGraph> {
+            Ok(ComputeGraph::default())
+        }
+    }
+
+    pub trait ComputeResource {
+        type Type;
+    }
+
+    // TODO: impl ComputeNode for ComputeGraph
+
+    // TODO: I guess we can just autodetect output nodes, they have no dependees
+
+    #[derive(Default)]
+    pub struct ComputeGraph {
+        // Specification
+
+        // TODO: in the end im not sure we even need one
+        nodes: SlotMap<slotmap::DefaultKey, Box<dyn ComputeNode>>,
+        dependencies: SecondaryMap<slotmap::DefaultKey, HashSet<slotmap::DefaultKey>>,
+        //
+        // Instantiation (move to other types)
+        outputs: TypeMap,
+    }
+
+    // TODO: you want to be able to ask the graph a few things... maybe?
+
+    // TODO: display the graph in rerun
+
+    // TODO: ComputeGraphSpecification which turns into ComputeGraph(Compiled).
+    // That falls solely into the land of optimization though.
+
+    impl ComputeGraph {
+        pub fn add_edge(&mut self) {}
+
+        // TODO: has to be `self` to it can be erased/dyn
+        // TODO: we don't have a TypeSet lul
+        // TODO: this is missing all the inputs from all the outermost nodes -- and really that's all
+        // there is.
+        pub fn inputs(&self) -> HashSet<NamedTypeId> {
+            dbg!([NamedTypeId::new::<&ChunkStore>(),].into_iter().collect())
+        }
+
+        pub fn execute(&self, ctx: ComputeGraphContext<'_>) -> TypeMap {
+            for (_, node) in self.nodes.iter() {
+                //
+            }
+            Default::default()
+            // ctx.store
+            //     .latest_at_relevant_chunks(query, entity_path, component_name)
+        }
+    }
+
+    // TODO: reminder, we want to re-use graphs as-is across different stores, different hubs,
+    // different queries, different everything. There should be *one* LRU for everything.
+    // TODO: a ComputeGraph implements ComputeNode, that's it!
+
+    // TODO: AFAICT we want every parameter to be runtime (i.e. via `.inputs`)
+    pub trait ComputeNode {
+        // TODO: can we have nice dedicated paths for the usual suspects though? Chunk and such?
+        // TODO: fn inputs() -> Set<TypeId> ?
+        // TODO: fn outputs() -> Map<TypeId, dyn Any> ?
+        // TODO: fn cacheable?
+
+        fn name(&self) -> &'static str {
+            _ = self; // for obect-safety
+            std::any::type_name::<Self>()
+        }
+
+        // TODO: has to be `self` to it can be erased/dyn
+        // TODO: we don't have a TypeSet lul
+        fn inputs(&self) -> HashSet<NamedTypeId>;
+
+        fn outputs(&self) -> HashSet<NamedTypeId>;
+
+        fn execute(&self, ctx: ComputeGraphContext<'_>);
+    }
+
+    // TODO: Hash of a Chunk is ChunkId and we call it a day?
+
+    // TODO: graph definition vs. graph instantiation
+
+    #[derive(Debug, Clone, Copy)]
+    pub struct NamedTypeId(pub &'static str, pub TypeId);
+
+    impl std::fmt::Display for NamedTypeId {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.debug_tuple(&self.0).field(&self.1).finish()
+        }
+    }
+
+    impl PartialEq for NamedTypeId {
+        #[inline]
+        fn eq(&self, other: &Self) -> bool {
+            self.1.eq(&other.1)
+        }
+    }
+
+    impl Eq for NamedTypeId {}
+
+    // TODO: can this be nohash?
+    impl std::hash::Hash for NamedTypeId {
+        fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+            self.1.hash(state);
+        }
+    }
+
+    impl NamedTypeId {
+        #[inline]
+        pub fn new<T: 'static>() -> Self {
+            Self(std::any::type_name::<T>(), std::any::TypeId::of::<T>())
+        }
+    }
+
+    // TODO:
+    // * materialize AggregatedLatestAt
+    // * materialize AggregatedRange
+    // * materialize Dataframe
+    // * materialize the stuff in `Caches`:
+    //     * ImageDecodeCache
+    //     * ImageStatsCache
+    //     * TensorStatsCache
+    //     * MeshCache
+    //     * WireframeCache (wut?)
+    //     * SolidCache (wut?)
+    //     * VideoCache
+    //     * TransformCache (but should be unrelated)
+
+    // TODO: AggregatedLatestAt
+    // 1. Perform store-level LatestAtRelevantChunks for list of components
+    // 2. Perform chunk-level LatestAt for each chunk/component pair
+
+    // TODO: we want *one* CPU LRU and *one* GPU LRU
+    // -> let's start with CPU though.
+
+    // TODO: there is no invalidation, nobody cares -- pure LRU
+
+    #[derive(Default)]
+    pub struct LatestAtRelevantChunks;
+
+    pub struct LatestAtRelevantChunksOutput {
+        pub chunks: Vec<Arc<Chunk>>,
+    }
+
+    // TODO: every intermediate output should be extractable, there's no reason not to. I.e., there's
+    // no intermediate output.
+    // TODO: similarly, every intermediate output needs to be Hash...
+    // TODO: somehow the hash of a chunk needs to take into account it's sorting state? well i guess
+    // chunks are always sorted here... or not?
+
+    // TODO: You want to visualize both the "blueprint" and its instantiation
+
+    // TODO: we already have hierarchical graphs in the form of aggregated queries -> you need to
+    // instantiate the LatestAtComponent sub-graph N times
+
+    // TODO: how does one static assert object safety these days?
+
+    // TODO: we have to be able to query with just component-name strings -- not generics only.
+
+    // TODO: what does this need?
+    // * ChunkStore
+    // * LatestAtQuery
+    // * EntityPath
+    // * ComponentName
+    impl ComputeNode for LatestAtRelevantChunks {
+        // TODO: we can move to a cow when we need to
+        fn name(&self) -> &'static str {
+            _ = self; // for obect-safety
+            std::any::type_name::<Self>()
+        }
+
+        // TODO: has to be `self` to it can be erased/dyn
+        // TODO: we don't have a TypeSet lul
+        fn inputs(&self) -> HashSet<NamedTypeId> {
+            // TODO: why is only the store a ref here though?
+            dbg!([
+                NamedTypeId::new::<&ChunkStore>(),
+                NamedTypeId::new::<LatestAtQuery>(),
+                NamedTypeId::new::<EntityPath>(),
+                NamedTypeId::new::<ComponentName>(),
+            ]
+            .into_iter()
+            .collect())
+        }
+
+        fn outputs(&self) -> HashSet<NamedTypeId> {
+            dbg!([NamedTypeId::new::<LatestAtRelevantChunksOutput>(),]
+                .into_iter()
+                .collect())
+        }
+
+        fn execute(&self, ctx: ComputeGraphContext<'_>) -> TypeMap {
+            Default::default()
+            // ctx.store
+            //     .latest_at_relevant_chunks(query, entity_path, component_name)
+        }
+    }
 }
