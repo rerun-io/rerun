@@ -260,7 +260,7 @@ impl SeriesLineSystem {
                 debug_assert_eq!(Scalar::arrow_datatype(), ArrowDatatype::Float64);
                 all_scalar_chunks
                     .iter()
-                    .flat_map(|chunk| chunk.iter_primitive::<f64>(&Scalar::name()))
+                    .flat_map(|chunk| chunk.iter_slices::<f64>(Scalar::name()))
                     .enumerate()
                     .for_each(|(i, values)| {
                         if !values.is_empty() {
@@ -301,7 +301,7 @@ impl SeriesLineSystem {
                         re_tracing::profile_scope!("override/default fast path");
 
                         let color = all_color_chunks[0]
-                            .iter_primitive::<u32>(&Color::name())
+                            .iter_slices::<u32>(Color::name())
                             .next()
                             .and_then(map_raw_color);
 
@@ -314,7 +314,7 @@ impl SeriesLineSystem {
                         let all_colors = all_color_chunks.iter().flat_map(|chunk| {
                             itertools::izip!(
                                 chunk.iter_component_indices(&query.timeline(), &Color::name()),
-                                chunk.iter_primitive::<u32>(&Color::name())
+                                chunk.iter_slices::<u32>(Color::name())
                             )
                         });
 
@@ -344,7 +344,7 @@ impl SeriesLineSystem {
                         re_tracing::profile_scope!("override/default fast path");
 
                         let stroke_width = all_stroke_width_chunks[0]
-                            .iter_primitive::<f32>(&StrokeWidth::name())
+                            .iter_slices::<f32>(StrokeWidth::name())
                             .next()
                             .and_then(|stroke_widths| stroke_widths.first().copied());
 
@@ -362,7 +362,7 @@ impl SeriesLineSystem {
                                     &query.timeline(),
                                     &StrokeWidth::name()
                                 ),
-                                chunk.iter_primitive::<f32>(&StrokeWidth::name())
+                                chunk.iter_slices::<f32>(StrokeWidth::name())
                             )
                         });
 

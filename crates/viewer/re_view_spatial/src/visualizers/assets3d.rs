@@ -142,7 +142,7 @@ impl VisualizerSystem for Asset3DVisualizer {
 
         let mut instances = Vec::new();
 
-        use super::entity_iterator::{iter_buffer, process_archetype};
+        use super::entity_iterator::{iter_slices, process_archetype};
         process_archetype::<Self, Asset3D, _>(
             ctx,
             view_query,
@@ -155,7 +155,8 @@ impl VisualizerSystem for Asset3DVisualizer {
                 };
 
                 let timeline = ctx.query.timeline();
-                let all_blobs_indexed = iter_buffer::<u8>(&all_blob_chunks, timeline, Blob::name());
+                let all_blobs_indexed =
+                    iter_slices::<&[u8]>(&all_blob_chunks, timeline, Blob::name());
                 let all_media_types = results.iter_as(timeline, MediaType::name());
                 let all_albedo_factors = results.iter_as(timeline, AlbedoFactor::name());
 
@@ -163,8 +164,8 @@ impl VisualizerSystem for Asset3DVisualizer {
 
                 let data = re_query::range_zip_1x2(
                     all_blobs_indexed,
-                    all_media_types.string(),
-                    all_albedo_factors.primitive::<u32>(),
+                    all_media_types.slice::<String>(),
+                    all_albedo_factors.slice::<u32>(),
                 )
                 .filter_map(|(index, blobs, media_types, albedo_factors)| {
                     blobs.first().map(|blob| Asset3DComponentData {
