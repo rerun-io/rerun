@@ -229,9 +229,6 @@ impl crate::Loggable for TimeRangeBoundary {
                     .with_context("rerun.datatypes.TimeRangeBoundary");
                 }
                 let cursor_relative = {
-                    if arrow_data.type_ids().inner().len() <= 1 {
-                        return Ok(Vec::new());
-                    }
                     let arrow_data = arrow_data.child(1).as_ref();
                     arrow_data
                         .as_any()
@@ -247,9 +244,6 @@ impl crate::Loggable for TimeRangeBoundary {
                         .collect::<Vec<_>>()
                 };
                 let absolute = {
-                    if arrow_data.type_ids().inner().len() <= 2 {
-                        return Ok(Vec::new());
-                    }
                     let arrow_data = arrow_data.child(2).as_ref();
                     arrow_data
                         .as_any()

@@ -286,9 +286,6 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                     .with_context("rerun.testing.datatypes.AffixFuzzer3");
                 }
                 let degrees = {
-                    if arrow_data.type_ids().inner().len() <= 1 {
-                        return Ok(Vec::new());
-                    }
                     let arrow_data = arrow_data.child(1).as_ref();
                     arrow_data
                         .as_any()
@@ -303,9 +300,6 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                         .collect::<Vec<_>>()
                 };
                 let craziness = {
-                    if arrow_data.type_ids().inner().len() <= 2 {
-                        return Ok(Vec::new());
-                    }
                     let arrow_data = arrow_data.child(2).as_ref();
                     {
                         let arrow_data = arrow_data
@@ -365,9 +359,6 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                     .collect::<Vec<_>>()
                 };
                 let fixed_size_shenanigans = {
-                    if arrow_data.type_ids().inner().len() <= 3 {
-                        return Ok(Vec::new());
-                    }
                     let arrow_data = arrow_data.child(3).as_ref();
                     {
                         let arrow_data = arrow_data

@@ -785,9 +785,6 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     .with_context("rerun.datatypes.TensorBuffer");
                 }
                 let u8 = {
-                    if arrow_data.type_ids().inner().len() <= 1 {
-                        return Ok(Vec::new());
-                    }
                     let arrow_data = arrow_data.child(1).as_ref();
                     {
                         let arrow_data = arrow_data
@@ -847,9 +844,6 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     .collect::<Vec<_>>()
                 };
                 let u16 = {
-                    if arrow_data.type_ids().inner().len() <= 2 {
-                        return Ok(Vec::new());
-                    }
                     let arrow_data = arrow_data.child(2).as_ref();
                     {
                         let arrow_data = arrow_data
@@ -909,9 +903,6 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     .collect::<Vec<_>>()
                 };
                 let u32 = {
-                    if arrow_data.type_ids().inner().len() <= 3 {
-                        return Ok(Vec::new());
-                    }
                     let arrow_data = arrow_data.child(3).as_ref();
                     {
                         let arrow_data = arrow_data
@@ -971,9 +962,6 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     .collect::<Vec<_>>()
                 };
                 let u64 = {
-                    if arrow_data.type_ids().inner().len() <= 4 {
-                        return Ok(Vec::new());
-                    }
                     let arrow_data = arrow_data.child(4).as_ref();
                     {
                         let arrow_data = arrow_data
@@ -1033,9 +1021,6 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     .collect::<Vec<_>>()
                 };
                 let i8 = {
-                    if arrow_data.type_ids().inner().len() <= 5 {
-                        return Ok(Vec::new());
-                    }
                     let arrow_data = arrow_data.child(5).as_ref();
                     {
                         let arrow_data = arrow_data
@@ -1095,9 +1080,6 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     .collect::<Vec<_>>()
                 };
                 let i16 = {
-                    if arrow_data.type_ids().inner().len() <= 6 {
-                        return Ok(Vec::new());
-                    }
                     let arrow_data = arrow_data.child(6).as_ref();
                     {
                         let arrow_data = arrow_data
@@ -1157,9 +1139,6 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     .collect::<Vec<_>>()
                 };
                 let i32 = {
-                    if arrow_data.type_ids().inner().len() <= 7 {
-                        return Ok(Vec::new());
-                    }
                     let arrow_data = arrow_data.child(7).as_ref();
                     {
                         let arrow_data = arrow_data
@@ -1219,9 +1198,6 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     .collect::<Vec<_>>()
                 };
                 let i64 = {
-                    if arrow_data.type_ids().inner().len() <= 8 {
-                        return Ok(Vec::new());
-                    }
                     let arrow_data = arrow_data.child(8).as_ref();
                     {
                         let arrow_data = arrow_data
@@ -1281,9 +1257,6 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     .collect::<Vec<_>>()
                 };
                 let f16 = {
-                    if arrow_data.type_ids().inner().len() <= 9 {
-                        return Ok(Vec::new());
-                    }
                     let arrow_data = arrow_data.child(9).as_ref();
                     {
                         let arrow_data = arrow_data
@@ -1343,9 +1316,6 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     .collect::<Vec<_>>()
                 };
                 let f32 = {
-                    if arrow_data.type_ids().inner().len() <= 10 {
-                        return Ok(Vec::new());
-                    }
                     let arrow_data = arrow_data.child(10).as_ref();
                     {
                         let arrow_data = arrow_data
@@ -1405,9 +1375,6 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     .collect::<Vec<_>>()
                 };
                 let f64 = {
-                    if arrow_data.type_ids().inner().len() <= 11 {
-                        return Ok(Vec::new());
-                    }
                     let arrow_data = arrow_data.child(11).as_ref();
                     {
                         let arrow_data = arrow_data

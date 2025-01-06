@@ -348,23 +348,15 @@ pub fn quote_arrow_deserializer(
 
                         quote! {
                             let #data_dst = {
-                                // NOTE: `data_src` is a runtime collection of all of the
-                                // input's payload's union arms, while `#type_id` is our comptime union
-                                // arm counter… there's no guarantee it's actually there at
-                                // runtime!
-                                if #data_src.type_ids().inner().len() <= #type_id {
-                                    // By not returning an error but rather defaulting to an empty
-                                    // vector, we introduce some kind of light forwards compatibility:
-                                    // old clients that don't yet know about the new arms can still
-                                    // send data in.
-                                    return Ok(Vec::new());
-
-                                    // return Err(DeserializationError::missing_union_arm(
-                                    //     #quoted_datatype, #obj_field_fqname, #type_id,
-                                    // )).with_context(#obj_fqname);
-                                }
-
-                                // NOTE: indexing is safe: checked above.
+                                // `.child()` will panic if the given `type_id` doesn't exist,
+                                // which could happen if the number of union arms has changed
+                                // between serialization and deserialization.
+                                // There is no simple way to check for this using `arrow-rs`
+                                // (no access to `UnionArray::fields` as of arrow 54:
+                                // https://docs.rs/arrow/latest/arrow/array/struct.UnionArray.html)
+                                //
+                                // Still, we're planning on removing arrow unions entirely, so this is… fine.
+                                // TODO(#6388): stop using arrow unions, and remove this peril
                                 let #data_src = #data_src.child(#type_id).as_ref();
                                 #quoted_deserializer.collect::<Vec<_>>()
                             }

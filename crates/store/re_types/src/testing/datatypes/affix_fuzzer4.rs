@@ -227,9 +227,6 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                     .with_context("rerun.testing.datatypes.AffixFuzzer4");
                 }
                 let single_required = {
-                    if arrow_data.type_ids().inner().len() <= 1 {
-                        return Ok(Vec::new());
-                    }
                     let arrow_data = arrow_data.child(1).as_ref();
                     crate::testing::datatypes::AffixFuzzer3::from_arrow_opt(arrow_data)
                         .with_context("rerun.testing.datatypes.AffixFuzzer4#single_required")?
@@ -237,9 +234,6 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                         .collect::<Vec<_>>()
                 };
                 let many_required = {
-                    if arrow_data.type_ids().inner().len() <= 2 {
-                        return Ok(Vec::new());
-                    }
                     let arrow_data = arrow_data.child(2).as_ref();
                     {
                         let arrow_data = arrow_data
