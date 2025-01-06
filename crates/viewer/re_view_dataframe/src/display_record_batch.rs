@@ -12,7 +12,7 @@ use arrow::{
 use thiserror::Error;
 
 use re_chunk_store::{ColumnDescriptor, ComponentColumnDescriptor, LatestAtQuery};
-use re_log_types::{EntityPath, TimeInt, TimeType, Timeline};
+use re_log_types::{EntityPath, TimeInt, Timeline};
 use re_types_core::ComponentName;
 use re_ui::UiExt;
 use re_viewer_context::{UiLayout, ViewerContext};
@@ -183,32 +183,32 @@ impl DisplayColumn {
     ) -> Result<Self, DisplayRecordBatchError> {
         fn int64_from_nanoseconds(
             duration_array: &ArrowTimestampNanosecondArray,
-        ) -> ArrowInt64Array {
+        ) -> Option<ArrowInt64Array> {
             let data = duration_array.to_data();
-            let buffer = data.buffers()[0].clone();
-            let int64_data = arrow::array::ArrayData::builder(arrow::datatypes::DataType::Int64)
+            let buffer = data.buffers().first()?.clone();
+            arrow::array::ArrayData::builder(arrow::datatypes::DataType::Int64)
                 .len(duration_array.len())
                 .add_buffer(buffer)
                 .build()
-                .expect("Nanonseconds should be represented as i64");
-            ArrowInt64Array::from(int64_data)
+                .ok()
+                .map(ArrowInt64Array::from)
         }
 
         match column_descriptor {
             ColumnDescriptor::Time(desc) => {
                 let timeline = desc.timeline;
 
-                let time_data_result = match timeline.typ() {
-                    TimeType::Time => column_data
-                        .as_any()
-                        .downcast_ref::<ArrowTimestampNanosecondArray>()
-                        .map(int64_from_nanoseconds),
-
-                    TimeType::Sequence => column_data
-                        .as_any()
-                        .downcast_ref::<ArrowInt64Array>()
-                        .cloned(),
-                };
+                // Sequence timelines are i64, but time columns are nanoseconds (also as i64)
+                let time_data_result = column_data
+                    .as_any()
+                    .downcast_ref::<ArrowInt64Array>()
+                    .cloned()
+                    .or_else(|| {
+                        column_data
+                            .as_any()
+                            .downcast_ref::<ArrowTimestampNanosecondArray>()
+                            .and_then(int64_from_nanoseconds)
+                    });
                 let time_data = time_data_result.ok_or_else(|| {
                     DisplayRecordBatchError::UnexpectedTimeColumnDataType(
                         timeline.name().as_str().to_owned(),
