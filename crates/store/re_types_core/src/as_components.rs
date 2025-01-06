@@ -234,8 +234,6 @@ impl AsComponents for Vec<Box<dyn AsComponents>> {
 
 // ---
 
-// TODO: Right now, none of these fail to compile, which is _NOT_ good.
-
 // NOTE: These needs to not be tests in order for doc-tests to work.
 
 /// ```compile_fail
@@ -481,30 +479,6 @@ mod tests {
         Ok(())
     }
 
-    // TODO: That one simply cannot be expressed right now. It's fine.
-    // #[test]
-    // fn many_ascomponents() -> anyhow::Result<()> {
-    //     let (red, green, blue, colors) = data();
-    //
-    //     let got = {
-    //         let colors = &colors as &dyn crate::ComponentBatch;
-    //         let got: Result<Vec<_>, _> = (colors as &dyn crate::AsComponents)
-    //             .as_component_batches()
-    //             .into_iter()
-    //             .map(|batch| batch.to_arrow())
-    //             .collect();
-    //         got?
-    //     };
-    //     let expected = vec![
-    //         Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![red.0])) as Arc<dyn ArrowArray>,
-    //         Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![green.0])) as Arc<dyn ArrowArray>,
-    //         Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![blue.0])) as Arc<dyn ArrowArray>,
-    //     ];
-    //     assert_eq!(&expected, &got);
-    //
-    //     Ok(())
-    // }
-
     #[test]
     fn many_componentbatch() -> anyhow::Result<()> {
         let (red, green, blue, colors) = data();
@@ -540,21 +514,6 @@ mod tests {
         Ok(())
     }
 
-    // TODO: that one will never compile no matter what
-    // #[test]
-    // fn many_componentbatch_wrapped() -> anyhow::Result<()> {
-    //     let (red, green, blue, colors) = data();
-    //
-    //     // Nothing out of the ordinary here, a batch is indeed a batch.
-    //     let got = (&[colors] as &dyn crate::ComponentBatch).to_arrow()?;
-    //     let expected = Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![
-    //         red.0, green.0, blue.0,
-    //     ])) as Arc<dyn ArrowArray>;
-    //     similar_asserts::assert_eq!(&expected, &got);
-    //
-    //     Ok(())
-    // }
-
     #[test]
     fn many_ascomponents_wrapped_many_howto() -> anyhow::Result<()> {
         let (red, green, blue, colors) = data();
@@ -584,20 +543,4 @@ mod tests {
 
         Ok(())
     }
-
-    // TODO: that one will never compile no matter what
-    // #[test]
-    // fn many_componentbatch_wrapped_many() -> anyhow::Result<()> {
-    //     let (red, green, blue, colors) = data();
-    //
-    //     // Nothing out of the ordinary here, a batch is indeed a batch.
-    //     let got = (&[colors.clone(), colors.clone(), colors.clone()] as &dyn crate::ComponentBatch)
-    //         .to_arrow()?;
-    //     let expected = Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![
-    //         red.0, green.0, blue.0,
-    //     ])) as Arc<dyn ArrowArray>;
-    //     similar_asserts::assert_eq!(&expected, &got);
-    //
-    //     Ok(())
-    // }
 }
