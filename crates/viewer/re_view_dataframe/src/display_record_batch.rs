@@ -40,7 +40,6 @@ pub(crate) enum ComponentData {
 }
 
 impl ComponentData {
-    #[allow(clippy::borrowed_box)] // https://github.com/rust-lang/rust-clippy/issues/11940
     fn try_new(
         descriptor: &ComponentColumnDescriptor,
         column_data: &ArrowArrayRef,
@@ -176,7 +175,6 @@ pub(crate) enum DisplayColumn {
 }
 
 impl DisplayColumn {
-    #[allow(clippy::borrowed_box)] // https://github.com/rust-lang/rust-clippy/issues/11940
     fn try_new(
         column_descriptor: &ColumnDescriptor,
         column_data: &ArrowArrayRef,
