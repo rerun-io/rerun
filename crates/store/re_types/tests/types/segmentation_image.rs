@@ -30,7 +30,7 @@ fn segmentation_image_roundtrip() {
         [4, 5, 6]
     ])
     .unwrap()
-    .to_arrow2()
+    .to_arrow()
     .unwrap()];
 
     let expected_extensions: HashMap<_, _> = [("data", vec!["rerun.components.Blob"])].into();
@@ -40,19 +40,19 @@ fn segmentation_image_roundtrip() {
             // NOTE: Keep those around please, very useful when debugging.
             // eprintln!("field = {field:#?}");
             // eprintln!("array = {array:#?}");
-            eprintln!("{} = {array:#?}", field.name);
+            eprintln!("{} = {array:#?}", field.name());
 
             // TODO(cmc): Re-enable extensions and these assertions once `arrow2-convert`
             // has been fully replaced.
             if false {
                 util::assert_extensions(
                     &**array,
-                    expected_extensions[field.name.as_str()].as_slice(),
+                    expected_extensions[field.name().as_str()].as_slice(),
                 );
             }
         }
 
-        let deserialized = SegmentationImage::from_arrow2(serialized).unwrap();
+        let deserialized = SegmentationImage::from_arrow(serialized).unwrap();
         similar_asserts::assert_eq!(expected, deserialized);
     }
 }

@@ -23,19 +23,19 @@ fn image_roundtrip() {
             // NOTE: Keep those around please, very useful when debugging.
             // eprintln!("field = {field:#?}");
             // eprintln!("array = {array:#?}");
-            eprintln!("{} = {array:#?}", field.name);
+            eprintln!("{} = {array:#?}", field.name());
 
             // TODO(cmc): Re-enable extensions and these assertions once `arrow2-convert`
             // has been fully replaced.
             if false {
                 util::assert_extensions(
                     &**array,
-                    expected_extensions[field.name.as_str()].as_slice(),
+                    expected_extensions[field.name().as_str()].as_slice(),
                 );
             }
         }
 
-        let deserialized = Image::from_arrow2(serialized).unwrap();
+        let deserialized = Image::from_arrow(serialized).unwrap();
         similar_asserts::assert_eq!(expected, deserialized);
     }
 }
@@ -70,19 +70,19 @@ fn dynamic_image_roundtrip() {
             // NOTE: Keep those around please, very useful when debugging.
             // eprintln!("field = {field:#?}");
             // eprintln!("array = {array:#?}");
-            eprintln!("{} = {array:#?}", field.name);
+            eprintln!("{} = {array:#?}", field.name());
 
             // TODO(cmc): Re-enable extensions and these assertions once `arrow2-convert`
             // has been fully replaced.
             if false {
                 util::assert_extensions(
                     &**array,
-                    expected_extensions[field.name.as_str()].as_slice(),
+                    expected_extensions[field.name().as_str()].as_slice(),
                 );
             }
         }
 
-        let deserialized = Image::from_arrow2(serialized).unwrap();
+        let deserialized = Image::from_arrow(serialized).unwrap();
         similar_asserts::assert_eq!(expected, deserialized);
     }
 }
