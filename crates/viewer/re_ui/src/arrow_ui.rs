@@ -1,19 +1,11 @@
-use arrow2::array::Utf8Array;
+use arrow::util::display::{ArrayFormatter, FormatOptions};
 use itertools::Itertools as _;
 
-use re_byte_size::SizeBytes as _;
-
-use crate::{UiExt as _, UiLayout};
+use crate::UiLayout;
 
 pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array::Array) {
-    arrow2_ui(
-        ui,
-        ui_layout,
-        Box::<dyn arrow2::array::Array>::from(array).as_ref(),
-    );
-}
+    use arrow::array::{LargeStringArray, StringArray};
 
-pub fn arrow2_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow2::array::Array) {
     ui.scope(|ui| {
         ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
 
@@ -24,51 +16,44 @@ pub fn arrow2_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow2::arr
 
         // Special-treat text.
         // Note: we match on the raw data here, so this works for any component containing text.
-        if let Some(utf8) = array.as_any().downcast_ref::<Utf8Array<i32>>() {
-            if utf8.len() == 1 {
+        if let Some(utf8) = array.as_any().downcast_ref::<StringArray>() {
+            if utf8.values().len() == 1 {
                 let string = utf8.value(0);
                 ui_layout.data_label(ui, string);
                 return;
             }
         }
-        if let Some(utf8) = array.as_any().downcast_ref::<Utf8Array<i64>>() {
-            if utf8.len() == 1 {
+        if let Some(utf8) = array.as_any().downcast_ref::<LargeStringArray>() {
+            if utf8.values().len() == 1 {
                 let string = utf8.value(0);
                 ui_layout.data_label(ui, string);
                 return;
             }
         }
 
-        let num_bytes = array.total_size_bytes();
-        if num_bytes < 3000 {
+        let num_bytes = array.get_array_memory_size();
+        if num_bytes < 3_000 {
             let instance_count = array.len();
-            let display = arrow2::array::get_display(array, "null");
 
-            if instance_count == 1 {
-                let mut string = String::new();
-                match display(&mut string, 0) {
-                    Ok(_) => ui.monospace(&string),
-                    Err(err) => ui.error_with_details_on_hover(err.to_string()),
-                };
-                return;
-            } else {
-                ui_layout
-                    .label(ui, format!("{instance_count} items"))
-                    .on_hover_ui(|ui| {
-                        ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
-                        ui.monospace(format!(
-                            "[{}]",
-                            (0..instance_count)
-                                .filter_map(|index| {
-                                    let mut s = String::new();
-                                    //TODO(ab): should we care about errors here?
-                                    display(&mut s, index).ok().map(|_| s)
-                                })
-                                .join(", ")
-                        ));
-                    });
+            let options = FormatOptions::default();
+            if let Ok(formatter) = ArrayFormatter::try_new(array, &options) {
+                if instance_count == 1 {
+                    ui.monospace(formatter.value(0).to_string());
+                    return;
+                } else {
+                    ui_layout
+                        .label(ui, format!("{instance_count} items"))
+                        .on_hover_ui(|ui| {
+                            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
+                            ui.monospace(format!(
+                                "[{}]",
+                                (0..instance_count)
+                                    .map(|index| formatter.value(index).to_string())
+                                    .join(", ")
+                            ));
+                        });
+                }
             }
-
             return;
         }
 
@@ -86,4 +71,8 @@ pub fn arrow2_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow2::arr
             ui_layout.label(ui, format!("{bytes} of data"));
         }
     });
+}
+
+pub fn arrow2_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow2::array::Array) {
+    arrow_ui(ui, ui_layout, &arrow::array::ArrayRef::from(array));
 }
