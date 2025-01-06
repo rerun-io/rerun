@@ -134,6 +134,9 @@ use re_chunk_store::external::re_chunk;
 
 /// Iterate `chunks` as indexed deserialized batches.
 ///
+/// For simple cases (i.e. everything up to flat structs), prefer [`iter_slices`] instead which is
+/// faster.
+///
 /// See [`Chunk::iter_component`] for more information.
 pub fn iter_component<'a, C: re_types::Component>(
     chunks: &'a std::borrow::Cow<'a, [Chunk]>,
