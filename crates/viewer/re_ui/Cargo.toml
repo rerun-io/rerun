@@ -72,3 +72,4 @@ time = { workspace = true, features = [
 
 [dev-dependencies]
 egui_kittest.workspace = true
+re_types.workspace = true

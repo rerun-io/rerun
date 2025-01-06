@@ -1,17 +1,26 @@
+use arrow2::array::Utf8Array;
 use itertools::Itertools as _;
 
-use crate::UiExt as _;
 use re_byte_size::SizeBytes as _;
 
-use arrow2::array::Utf8Array;
+use crate::{UiExt as _, UiLayout};
 
-pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow2::array::Array) {
-    arrow2_ui(ui, ui_layout, array.into());
+pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array::Array) {
+    arrow2_ui(
+        ui,
+        ui_layout,
+        Box::<dyn arrow2::array::Array>::from(array).as_ref(),
+    );
 }
 
 pub fn arrow2_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow2::array::Array) {
     ui.scope(|ui| {
         ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
+
+        if array.is_empty() {
+            ui.monospace("[]");
+            return;
+        }
 
         // Special-treat text.
         // Note: we match on the raw data here, so this works for any component containing text.
@@ -32,11 +41,6 @@ pub fn arrow2_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow2::arr
 
         let num_bytes = array.total_size_bytes();
         if num_bytes < 3000 {
-            if array.is_empty() {
-                ui.monospace("[]");
-                return;
-            }
-
             let instance_count = array.len();
             let display = arrow2::array::get_display(array, "null");
 
