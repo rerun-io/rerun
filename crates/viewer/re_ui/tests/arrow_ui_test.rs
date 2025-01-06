@@ -24,7 +24,6 @@ pub fn test_arrow_ui() {
 fn show_some_arrow_ui(ui: &mut egui::Ui) {
     // We use a handful of realistic data in this test.
 
-    use re_types::external::re_types_core::Loggable as _;
     use re_types::{
         components::Blob,
         datatypes::{Utf8, Vec3D},

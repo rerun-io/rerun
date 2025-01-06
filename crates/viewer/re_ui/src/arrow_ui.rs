@@ -53,7 +53,7 @@ pub fn arrow2_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow2::arr
                 return;
             } else {
                 ui_layout
-                    .data_label(ui, format!("{instance_count} items"))
+                    .label(ui, format!("{instance_count} items"))
                     .on_hover_ui(|ui| {
                         ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
                         ui.monospace(format!(
@@ -80,10 +80,10 @@ pub fn arrow2_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow2::arr
 
         if data_type_formatted.len() < 20 {
             // e.g. "4.2 KiB of Float32"
-            ui_layout.data_label(ui, format!("{bytes} of {data_type_formatted}"));
+            ui_layout.label(ui, format!("{bytes} of {data_type_formatted}"));
         } else {
             // Huge datatype, probably a union horror show
-            ui_layout.data_label(ui, format!("{bytes} of data"));
+            ui_layout.label(ui, format!("{bytes} of data"));
         }
     });
 }
