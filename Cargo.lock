@@ -6531,6 +6531,7 @@ dependencies = [
  "re_tracing",
  "re_tuid",
  "serde",
+ "similar-asserts",
  "thiserror 1.0.65",
 ]
 

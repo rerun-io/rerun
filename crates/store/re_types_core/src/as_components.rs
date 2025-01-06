@@ -90,6 +90,7 @@ pub trait AsComponents {
     }
 }
 
+// TODO: This is our biggest problem.
 impl<C: Component> AsComponents for C {
     #[inline]
     fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
@@ -239,4 +240,384 @@ impl AsComponents for Vec<Box<dyn AsComponents>> {
             .flat_map(|as_components| as_components.as_component_batches())
             .collect()
     }
+}
+
+// ---
+
+// TODO: Right now, none of these fail to compile, which is _NOT_ good.
+
+// NOTE: These needs to not be tests in order for doc-tests to work.
+
+/// ```compile_fail
+/// let comp = re_types_core::components::ClearIsRecursive::default();
+/// let _ = (&comp as &dyn re_types_core::AsComponents).as_component_batches();
+/// ```
+#[allow(dead_code)]
+fn single_ascomponents() {}
+
+/// ```compile_fail
+/// let comp = re_types_core::components::ClearIsRecursive::default();
+/// let _ = (&[comp] as &dyn re_types_core::AsComponents).as_component_batches();
+/// ```
+#[allow(dead_code)]
+fn single_ascomponents_wrapped() {
+    // This is non-sense (and more importantly: dangerous): a single component shouldn't be able to
+    // autocast straight to a collection of batches.
+}
+
+/// ```compile_fail
+/// let comp = re_types_core::components::ClearIsRecursive::default();
+/// let _ = (&[comp, comp, comp] as &dyn re_types_core::AsComponents).as_component_batches();
+/// ```
+#[allow(dead_code)]
+fn single_ascomponents_wrapped_many() {
+    // This is non-sense (and more importantly: dangerous): a single component shouldn't be able to
+    // autocast straight to a collection of batches.
+}
+
+/// ```compile_fail
+/// let comp = re_types_core::components::ClearIsRecursive::default();
+/// let comps = vec![comp, comp, comp];
+/// let _ = (&comps as &dyn re_types_core::AsComponents).as_component_batches();
+/// ```
+#[allow(dead_code)]
+fn many_ascomponents() {}
+
+/// ```compile_fail
+/// let comp = re_types_core::components::ClearIsRecursive::default();
+/// let comps = vec![comp, comp, comp];
+/// let _ = (&[comps] as &dyn re_types_core::AsComponents).as_component_batches();
+/// ```
+#[allow(dead_code)]
+fn many_ascomponents_wrapped() {}
+
+/// ```compile_fail
+/// let comp = re_types_core::components::ClearIsRecursive::default();
+/// let comps = vec![comp, comp, comp];
+/// let _ = (&[comps] as &dyn re_types_core::ComponentBatch).to_arrow();
+/// ```
+#[allow(dead_code)]
+fn many_componentbatch_wrapped() {}
+
+/// ```compile_fail
+/// let comp = re_types_core::components::ClearIsRecursive::default();
+/// let comps = vec![comp, comp, comp];
+/// let _ = (&[comps.clone(), comps.clone(), comps.clone()] as &dyn re_types_core::AsComponents).as_component_batches();
+/// ```
+#[allow(dead_code)]
+fn many_ascomponents_wrapped_many() {}
+
+/// ```compile_fail
+/// let comp = re_types_core::components::ClearIsRecursive::default();
+/// let comps = vec![comp, comp, comp];
+/// let _ = (&[comps.clone(), comps.clone(), comps.clone()] as &dyn re_types_core::ComponentBatch).to_arrow();
+/// ```
+#[allow(dead_code)]
+fn many_componentbatch_wrapped_many() {}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use arrow::array::{
+        types::UInt32Type, Array as ArrowArray, PrimitiveArray as ArrowPrimitiveArray,
+    };
+    use similar_asserts::assert_eq;
+
+    use crate::LoggableBatch;
+
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, bytemuck::Pod, bytemuck::Zeroable)]
+    #[repr(transparent)]
+    pub struct MyColor(pub u32);
+
+    crate::macros::impl_into_cow!(MyColor);
+
+    impl re_byte_size::SizeBytes for MyColor {
+        #[inline]
+        fn heap_size_bytes(&self) -> u64 {
+            let Self(_) = self;
+            0
+        }
+    }
+
+    impl crate::Loggable for MyColor {
+        fn arrow2_datatype() -> arrow2::datatypes::DataType {
+            arrow2::datatypes::DataType::UInt32
+        }
+
+        fn to_arrow2_opt<'a>(
+            data: impl IntoIterator<Item = Option<impl Into<std::borrow::Cow<'a, Self>>>>,
+        ) -> crate::SerializationResult<Box<dyn arrow2::array::Array>>
+        where
+            Self: 'a,
+        {
+            use crate::datatypes::UInt32;
+            UInt32::to_arrow2_opt(
+                data.into_iter()
+                    .map(|opt| opt.map(Into::into).map(|c| UInt32(c.0))),
+            )
+        }
+
+        fn from_arrow2_opt(
+            data: &dyn arrow2::array::Array,
+        ) -> crate::DeserializationResult<Vec<Option<Self>>> {
+            use crate::datatypes::UInt32;
+            Ok(UInt32::from_arrow2_opt(data)?
+                .into_iter()
+                .map(|opt| opt.map(|v| Self(v.0)))
+                .collect())
+        }
+    }
+
+    impl crate::Component for MyColor {
+        fn descriptor() -> crate::ComponentDescriptor {
+            crate::ComponentDescriptor::new("example.MyColor")
+        }
+    }
+
+    #[allow(dead_code)]
+    fn data() -> (MyColor, MyColor, MyColor, Vec<MyColor>) {
+        let red = MyColor(0xDD0000FF);
+        let green = MyColor(0x00DD00FF);
+        let blue = MyColor(0x0000DDFF);
+        let colors = vec![red, green, blue];
+        (red, green, blue, colors)
+    }
+
+    #[test]
+    fn single_ascomponents() -> anyhow::Result<()> {
+        let (red, _, _, _) = data();
+
+        // TODO: This test should not compile, but this is what it does at the moment.
+        let got = {
+            let got: Result<Vec<_>, _> = (&red as &dyn crate::AsComponents)
+                .as_component_batches()
+                .into_iter()
+                .map(|batch| batch.to_arrow())
+                .collect();
+            got?
+        };
+        let expected = vec![
+            Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![red.0])) as Arc<dyn ArrowArray>,
+        ];
+        assert_eq!(&expected, &got);
+
+        Ok(())
+    }
+
+    #[test]
+    fn single_componentbatch() -> anyhow::Result<()> {
+        let (red, _, _, _) = data();
+
+        // A single component should autocast to a batch with a single instance.
+        let got = (&red as &dyn crate::ComponentBatch).to_arrow()?;
+        let expected =
+            Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![red.0])) as Arc<dyn ArrowArray>;
+        similar_asserts::assert_eq!(&expected, &got);
+
+        Ok(())
+    }
+
+    #[test]
+    fn single_ascomponents_wrapped() -> anyhow::Result<()> {
+        let (red, _, _, _) = data();
+
+        // TODO: This test should not compile, but this is what it does at the moment.
+        let got = {
+            let got: Result<Vec<_>, _> = (&[red] as &dyn crate::AsComponents)
+                .as_component_batches()
+                .into_iter()
+                .map(|batch| batch.to_arrow())
+                .collect();
+            got?
+        };
+        let expected = vec![
+            Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![red.0])) as Arc<dyn ArrowArray>,
+        ];
+        assert_eq!(&expected, &got);
+
+        Ok(())
+    }
+
+    #[test]
+    fn single_componentbatch_wrapped() -> anyhow::Result<()> {
+        let (red, _, _, _) = data();
+
+        // Nothing out of the ordinary here, a slice of components is indeed a batch.
+        let got = (&[red] as &dyn crate::ComponentBatch).to_arrow()?;
+        let expected =
+            Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![red.0])) as Arc<dyn ArrowArray>;
+        similar_asserts::assert_eq!(&expected, &got);
+
+        Ok(())
+    }
+
+    #[test]
+    fn single_ascomponents_wrapped_many() -> anyhow::Result<()> {
+        let (red, green, blue, _) = data();
+
+        // TODO: This test should not compile, but this is what it does at the moment (which is
+        // complete non-sense).
+        // TODO: The issue is that we do want a ComponentBatch to autocast to a AsComponents...
+        let got = {
+            let got: Result<Vec<_>, _> = (&[red, green, blue] as &dyn crate::AsComponents)
+                .as_component_batches()
+                .into_iter()
+                .map(|batch| batch.to_arrow())
+                .collect();
+            got?
+        };
+        let expected = vec![
+            Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![red.0])) as Arc<dyn ArrowArray>,
+            Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![green.0])) as Arc<dyn ArrowArray>,
+            Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![blue.0])) as Arc<dyn ArrowArray>,
+        ];
+        assert_eq!(&expected, &got);
+
+        Ok(())
+    }
+
+    #[test]
+    fn single_componentbatch_wrapped_many() -> anyhow::Result<()> {
+        let (red, green, blue, _) = data();
+
+        // Nothing out of the ordinary here, a slice of components is indeed a batch.
+        let got = (&[red, green, blue] as &dyn crate::ComponentBatch).to_arrow()?;
+        let expected = Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![
+            red.0, green.0, blue.0,
+        ])) as Arc<dyn ArrowArray>;
+        similar_asserts::assert_eq!(&expected, &got);
+
+        Ok(())
+    }
+
+    #[test]
+    fn many_ascomponents() -> anyhow::Result<()> {
+        let (red, green, blue, colors) = data();
+
+        // TODO: This test should not compile, but this is what it does at the moment (which is
+        // complete non-sense).
+        // TODO: The issue is that we do want a ComponentBatch to autocast to a AsComponents...
+        let got = {
+            let got: Result<Vec<_>, _> = (&colors as &dyn crate::AsComponents)
+                .as_component_batches()
+                .into_iter()
+                .map(|batch| batch.to_arrow())
+                .collect();
+            got?
+        };
+        let expected = vec![
+            Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![red.0])) as Arc<dyn ArrowArray>,
+            Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![green.0])) as Arc<dyn ArrowArray>,
+            Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![blue.0])) as Arc<dyn ArrowArray>,
+        ];
+        assert_eq!(&expected, &got);
+
+        Ok(())
+    }
+
+    #[test]
+    fn many_componentbatch() -> anyhow::Result<()> {
+        let (red, green, blue, colors) = data();
+
+        // Nothing out of the ordinary here, a batch is indeed a batch.
+        let got = (&colors as &dyn crate::ComponentBatch).to_arrow()?;
+        let expected = Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![
+            red.0, green.0, blue.0,
+        ])) as Arc<dyn ArrowArray>;
+        similar_asserts::assert_eq!(&expected, &got);
+
+        Ok(())
+    }
+
+    #[test]
+    fn many_ascomponents_wrapped() -> anyhow::Result<()> {
+        let (red, green, blue, colors) = data();
+
+        // TODO: This test should not compile, but this is what it does at the moment (which is
+        // complete non-sense).
+        // TODO: The issue is that we do want a ComponentBatch to autocast to a AsComponents...
+        let got = {
+            let got: Result<Vec<_>, _> = (&[colors] as &dyn crate::AsComponents)
+                .as_component_batches()
+                .into_iter()
+                .map(|batch| batch.to_arrow())
+                .collect();
+            got?
+        };
+        // TODO: This doesn't make any sense at all.
+        // let expected = vec![Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![
+        //     red.0, green.0, blue.0,
+        // ])) as Arc<dyn ArrowArray>];
+        let expected = vec![
+            Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![red.0])) as Arc<dyn ArrowArray>,
+            Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![green.0])) as Arc<dyn ArrowArray>,
+            Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![blue.0])) as Arc<dyn ArrowArray>,
+        ];
+        assert_eq!(&expected, &got);
+
+        Ok(())
+    }
+
+    // TODO: that one will never compile no matter what
+    // #[test]
+    // fn many_componentbatch_wrapped() -> anyhow::Result<()> {
+    //     let (red, green, blue, colors) = data();
+    //
+    //     // Nothing out of the ordinary here, a batch is indeed a batch.
+    //     let got = (&[colors] as &dyn crate::ComponentBatch).to_arrow()?;
+    //     let expected = Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![
+    //         red.0, green.0, blue.0,
+    //     ])) as Arc<dyn ArrowArray>;
+    //     similar_asserts::assert_eq!(&expected, &got);
+    //
+    //     Ok(())
+    // }
+
+    #[test]
+    fn many_ascomponents_wrapped_many() -> anyhow::Result<()> {
+        let (red, green, blue, colors) = data();
+
+        // Nothing out of the ordinary here, a collection of batches is indeed a colletion of batches.
+        let got = {
+            let got: Result<Vec<_>, _> = (&[colors.clone(), colors.clone(), colors.clone()]
+                as &dyn crate::AsComponents)
+                .as_component_batches()
+                .into_iter()
+                .map(|batch| batch.to_arrow())
+                .collect();
+            got?
+        };
+        // TODO: This doesn't make any sense at all.
+        let expected = vec![
+            Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![red.0])) as Arc<dyn ArrowArray>,
+            Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![green.0])),
+            Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![blue.0])),
+            Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![red.0])),
+            Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![green.0])),
+            Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![blue.0])),
+            Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![red.0])),
+            Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![green.0])),
+            Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![blue.0])),
+        ];
+        assert_eq!(&expected, &got);
+
+        Ok(())
+    }
+
+    // TODO: that one will never compile no matter what
+    // #[test]
+    // fn many_componentbatch_wrapped_many() -> anyhow::Result<()> {
+    //     let (red, green, blue, colors) = data();
+    //
+    //     // Nothing out of the ordinary here, a batch is indeed a batch.
+    //     let got = (&[colors.clone(), colors.clone(), colors.clone()] as &dyn crate::ComponentBatch)
+    //         .to_arrow()?;
+    //     let expected = Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![
+    //         red.0, green.0, blue.0,
+    //     ])) as Arc<dyn ArrowArray>;
+    //     similar_asserts::assert_eq!(&expected, &got);
+    //
+    //     Ok(())
+    // }
 }
