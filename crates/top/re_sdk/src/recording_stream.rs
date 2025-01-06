@@ -977,10 +977,10 @@ impl RecordingStream {
     /// [SDK Micro Batching]: https://www.rerun.io/docs/reference/sdk/micro-batching
     /// [component bundle]: [`AsComponents`]
     #[inline]
-    pub fn log(
+    pub fn log<AS: ?Sized + AsComponents>(
         &self,
         ent_path: impl Into<EntityPath>,
-        as_components: &impl AsComponents,
+        as_components: &AS,
     ) -> RecordingStreamResult<()> {
         self.log_with_static(ent_path, false, as_components)
     }
@@ -1108,11 +1108,11 @@ impl RecordingStream {
     /// [SDK Micro Batching]: https://www.rerun.io/docs/reference/sdk/micro-batching
     /// [component bundle]: [`AsComponents`]
     #[inline]
-    pub fn log_with_static(
+    pub fn log_with_static<AS: ?Sized + AsComponents>(
         &self,
         ent_path: impl Into<EntityPath>,
         static_: bool,
-        as_components: &impl AsComponents,
+        as_components: &AS,
     ) -> RecordingStreamResult<()> {
         let row_id = RowId::new(); // Create row-id as early as possible. It has a timestamp and is used to estimate e2e latency.
         self.log_component_batches_impl(
