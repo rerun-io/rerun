@@ -5,7 +5,7 @@ use re_types_core::Component;
 
 pub(crate) fn validate_component<C: Component>(blueprint: &EntityDb) -> bool {
     let engine = blueprint.storage_engine();
-    if let Some(data_type) = engine.store().lookup_datatype(&C::name()) {
+    if let Some(data_type) = engine.store().lookup_datatype_arrow2(&C::name()) {
         if data_type != &C::arrow2_datatype() {
             // If the schemas don't match, we definitely have a problem
             re_log::debug!(

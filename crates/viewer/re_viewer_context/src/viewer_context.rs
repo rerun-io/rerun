@@ -238,9 +238,9 @@ impl ViewerContext<'_> {
         } else {
             self.recording_engine()
                 .store()
-                .lookup_datatype(&component)
+                .lookup_datatype_arrow2(&component)
                 .cloned()
-                .or_else(|| self.blueprint_engine().store().lookup_datatype(&component).cloned())
+                .or_else(|| self.blueprint_engine().store().lookup_datatype_arrow2(&component).cloned())
                 .unwrap_or_else(|| {
                     re_log::error_once!("Could not find datatype for component {component}. Using null array as placeholder.");
                     re_chunk::external::arrow2::datatypes::DataType::Null
