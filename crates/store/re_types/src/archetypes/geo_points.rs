@@ -12,7 +12,7 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 
-use ::re_types_core::external::arrow2;
+use ::re_types_core::external::arrow;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
@@ -183,8 +183,8 @@ impl ::re_types_core::Archetype for GeoPoints {
     }
 
     #[inline]
-    fn from_arrow2_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, Box<dyn arrow2::array::Array>)>,
+    fn from_arrow_components(
+        arrow_data: impl IntoIterator<Item = (ComponentName, arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
@@ -197,7 +197,7 @@ impl ::re_types_core::Archetype for GeoPoints {
                 .get("rerun.components.LatLon")
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.GeoPoints#positions")?;
-            <crate::components::LatLon>::from_arrow2_opt(&**array)
+            <crate::components::LatLon>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.GeoPoints#positions")?
                 .into_iter()
                 .map(|v| v.ok_or_else(DeserializationError::missing_data))
@@ -206,7 +206,7 @@ impl ::re_types_core::Archetype for GeoPoints {
         };
         let radii = if let Some(array) = arrays_by_name.get("rerun.components.Radius") {
             Some({
-                <crate::components::Radius>::from_arrow2_opt(&**array)
+                <crate::components::Radius>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.GeoPoints#radii")?
                     .into_iter()
                     .map(|v| v.ok_or_else(DeserializationError::missing_data))
@@ -218,7 +218,7 @@ impl ::re_types_core::Archetype for GeoPoints {
         };
         let colors = if let Some(array) = arrays_by_name.get("rerun.components.Color") {
             Some({
-                <crate::components::Color>::from_arrow2_opt(&**array)
+                <crate::components::Color>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.GeoPoints#colors")?
                     .into_iter()
                     .map(|v| v.ok_or_else(DeserializationError::missing_data))
@@ -230,7 +230,7 @@ impl ::re_types_core::Archetype for GeoPoints {
         };
         let class_ids = if let Some(array) = arrays_by_name.get("rerun.components.ClassId") {
             Some({
-                <crate::components::ClassId>::from_arrow2_opt(&**array)
+                <crate::components::ClassId>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.GeoPoints#class_ids")?
                     .into_iter()
                     .map(|v| v.ok_or_else(DeserializationError::missing_data))
