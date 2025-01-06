@@ -34,6 +34,12 @@ pub use self::{
     ui_layout::UiLayout,
 };
 
+#[cfg(feature = "arrow")]
+mod arrow_ui;
+
+#[cfg(feature = "arrow")]
+pub use self::arrow_ui::{arrow2_ui, arrow_ui};
+
 // ---------------------------------------------------------------------------
 
 /// If true, we fill the entire window, except for the close/maximize/minimize buttons in the top-left.

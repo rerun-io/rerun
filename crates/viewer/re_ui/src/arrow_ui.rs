@@ -5,7 +5,11 @@ use re_byte_size::SizeBytes as _;
 
 use arrow2::array::Utf8Array;
 
-pub(crate) fn arrow_ui(ui: &mut egui::Ui, array: &dyn arrow2::array::Array) {
+pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow2::array::Array) {
+    arrow2_ui(ui, ui_layout, array.into());
+}
+
+pub fn arrow2_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow2::array::Array) {
     ui.scope(|ui| {
         ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
 
@@ -14,14 +18,14 @@ pub(crate) fn arrow_ui(ui: &mut egui::Ui, array: &dyn arrow2::array::Array) {
         if let Some(utf8) = array.as_any().downcast_ref::<Utf8Array<i32>>() {
             if utf8.len() == 1 {
                 let string = utf8.value(0);
-                ui.monospace(string);
+                ui_layout.data_label(ui, string);
                 return;
             }
         }
         if let Some(utf8) = array.as_any().downcast_ref::<Utf8Array<i64>>() {
             if utf8.len() == 1 {
                 let string = utf8.value(0);
-                ui.monospace(string);
+                ui_layout.data_label(ui, string);
                 return;
             }
         }
@@ -44,7 +48,8 @@ pub(crate) fn arrow_ui(ui: &mut egui::Ui, array: &dyn arrow2::array::Array) {
                 };
                 return;
             } else {
-                ui.label(format!("{instance_count} items"))
+                ui_layout
+                    .data_label(ui, format!("{instance_count} items"))
                     .on_hover_ui(|ui| {
                         ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
                         ui.monospace(format!(
@@ -66,14 +71,15 @@ pub(crate) fn arrow_ui(ui: &mut egui::Ui, array: &dyn arrow2::array::Array) {
         // Fallback:
         let bytes = re_format::format_bytes(num_bytes as _);
 
+        // TODO(emilk): pretty-print data type
         let data_type_formatted = format!("{:?}", array.data_type());
 
         if data_type_formatted.len() < 20 {
             // e.g. "4.2 KiB of Float32"
-            ui.label(format!("{bytes} of {data_type_formatted}"));
+            ui_layout.data_label(ui, format!("{bytes} of {data_type_formatted}"));
         } else {
             // Huge datatype, probably a union horror show
-            ui.label(format!("{bytes} of data"));
+            ui_layout.data_label(ui, format!("{bytes} of data"));
         }
     });
 }

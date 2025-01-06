@@ -29,8 +29,13 @@ all-features = true
 [features]
 default = []
 
+## UI for arrow data
+arrow = ["dep:arrow", "dep:arrow2"]
+
+
 [dependencies]
 re_entity_db.workspace = true # syntax-highlighting for InstancePath. TODO(emilk): move InstancePath
+re_byte_size.workspace = true
 re_format.workspace = true
 re_log.workspace = true
 re_log_types.workspace = true # syntax-highlighting for EntityPath
@@ -41,6 +46,7 @@ egui_commonmark = { workspace = true, features = ["pulldown_cmark"] }
 egui_extras.workspace = true
 egui_tiles.workspace = true
 egui.workspace = true
+itertools.workspace = true
 once_cell.workspace = true
 parking_lot.workspace = true
 rand.workspace = true
@@ -51,6 +57,9 @@ strum_macros.workspace = true
 strum.workspace = true
 sublime_fuzzy.workspace = true
 time = { workspace = true, features = ["formatting", "local-offset"] }
+
+arrow = { workspace = true, optional = true }
+arrow2 = { workspace = true, optional = true, features = ["arrow"]}
 
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
