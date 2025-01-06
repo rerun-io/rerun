@@ -1,5 +1,5 @@
 use crate::{
-    Component, ComponentBatch, ComponentBatchCowWithDescriptor, LoggableBatch as _, ResultExt as _,
+    ComponentBatch, ComponentBatchCowWithDescriptor, LoggableBatch as _, ResultExt as _,
     SerializationResult,
 };
 
@@ -375,12 +375,12 @@ mod tests {
     }
 
     #[test]
-    fn single_ascomponents() -> anyhow::Result<()> {
+    fn single_ascomponents_howto() -> anyhow::Result<()> {
         let (red, _, _, _) = data();
 
-        // TODO: This test should not compile, but this is what it does at the moment.
         let got = {
-            let got: Result<Vec<_>, _> = (&red as &dyn crate::AsComponents)
+            let red = &red as &dyn crate::ComponentBatch;
+            let got: Result<Vec<_>, _> = (&[red] as &dyn crate::AsComponents)
                 .as_component_batches()
                 .into_iter()
                 .map(|batch| batch.to_arrow())
@@ -409,11 +409,11 @@ mod tests {
     }
 
     #[test]
-    fn single_ascomponents_wrapped() -> anyhow::Result<()> {
+    fn single_ascomponents_wrapped_howto() -> anyhow::Result<()> {
         let (red, _, _, _) = data();
 
-        // TODO: This test should not compile, but this is what it does at the moment.
         let got = {
+            let red = &red as &dyn crate::ComponentBatch;
             let got: Result<Vec<_>, _> = (&[red] as &dyn crate::AsComponents)
                 .as_component_batches()
                 .into_iter()
@@ -443,13 +443,13 @@ mod tests {
     }
 
     #[test]
-    fn single_ascomponents_wrapped_many() -> anyhow::Result<()> {
+    fn single_ascomponents_wrapped_many_howto() -> anyhow::Result<()> {
         let (red, green, blue, _) = data();
 
-        // TODO: This test should not compile, but this is what it does at the moment (which is
-        // complete non-sense).
-        // TODO: The issue is that we do want a ComponentBatch to autocast to a AsComponents...
         let got = {
+            let red = &red as &dyn crate::ComponentBatch;
+            let green = &green as &dyn crate::ComponentBatch;
+            let blue = &blue as &dyn crate::ComponentBatch;
             let got: Result<Vec<_>, _> = (&[red, green, blue] as &dyn crate::AsComponents)
                 .as_component_batches()
                 .into_iter()
@@ -481,30 +481,29 @@ mod tests {
         Ok(())
     }
 
-    #[test]
-    fn many_ascomponents() -> anyhow::Result<()> {
-        let (red, green, blue, colors) = data();
-
-        // TODO: This test should not compile, but this is what it does at the moment (which is
-        // complete non-sense).
-        // TODO: The issue is that we do want a ComponentBatch to autocast to a AsComponents...
-        let got = {
-            let got: Result<Vec<_>, _> = (&colors as &dyn crate::AsComponents)
-                .as_component_batches()
-                .into_iter()
-                .map(|batch| batch.to_arrow())
-                .collect();
-            got?
-        };
-        let expected = vec![
-            Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![red.0])) as Arc<dyn ArrowArray>,
-            Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![green.0])) as Arc<dyn ArrowArray>,
-            Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![blue.0])) as Arc<dyn ArrowArray>,
-        ];
-        assert_eq!(&expected, &got);
-
-        Ok(())
-    }
+    // TODO: That one simply cannot be expressed right now. It's fine.
+    // #[test]
+    // fn many_ascomponents() -> anyhow::Result<()> {
+    //     let (red, green, blue, colors) = data();
+    //
+    //     let got = {
+    //         let colors = &colors as &dyn crate::ComponentBatch;
+    //         let got: Result<Vec<_>, _> = (colors as &dyn crate::AsComponents)
+    //             .as_component_batches()
+    //             .into_iter()
+    //             .map(|batch| batch.to_arrow())
+    //             .collect();
+    //         got?
+    //     };
+    //     let expected = vec![
+    //         Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![red.0])) as Arc<dyn ArrowArray>,
+    //         Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![green.0])) as Arc<dyn ArrowArray>,
+    //         Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![blue.0])) as Arc<dyn ArrowArray>,
+    //     ];
+    //     assert_eq!(&expected, &got);
+    //
+    //     Ok(())
+    // }
 
     #[test]
     fn many_componentbatch() -> anyhow::Result<()> {
@@ -521,13 +520,11 @@ mod tests {
     }
 
     #[test]
-    fn many_ascomponents_wrapped() -> anyhow::Result<()> {
+    fn many_ascomponents_wrapped_howto() -> anyhow::Result<()> {
         let (red, green, blue, colors) = data();
 
-        // TODO: This test should not compile, but this is what it does at the moment (which is
-        // complete non-sense).
-        // TODO: The issue is that we do want a ComponentBatch to autocast to a AsComponents...
         let got = {
+            let colors = &colors as &dyn crate::ComponentBatch;
             let got: Result<Vec<_>, _> = (&[colors] as &dyn crate::AsComponents)
                 .as_component_batches()
                 .into_iter()
@@ -535,15 +532,9 @@ mod tests {
                 .collect();
             got?
         };
-        // TODO: This doesn't make any sense at all.
-        // let expected = vec![Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![
-        //     red.0, green.0, blue.0,
-        // ])) as Arc<dyn ArrowArray>];
-        let expected = vec![
-            Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![red.0])) as Arc<dyn ArrowArray>,
-            Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![green.0])) as Arc<dyn ArrowArray>,
-            Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![blue.0])) as Arc<dyn ArrowArray>,
-        ];
+        let expected = vec![Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![
+            red.0, green.0, blue.0,
+        ])) as Arc<dyn ArrowArray>];
         assert_eq!(&expected, &got);
 
         Ok(())
@@ -565,30 +556,29 @@ mod tests {
     // }
 
     #[test]
-    fn many_ascomponents_wrapped_many() -> anyhow::Result<()> {
+    fn many_ascomponents_wrapped_many_howto() -> anyhow::Result<()> {
         let (red, green, blue, colors) = data();
 
         // Nothing out of the ordinary here, a collection of batches is indeed a colletion of batches.
         let got = {
-            let got: Result<Vec<_>, _> = (&[colors.clone(), colors.clone(), colors.clone()]
-                as &dyn crate::AsComponents)
+            let colors = &colors as &dyn crate::ComponentBatch;
+            let got: Result<Vec<_>, _> = (&[colors, colors, colors] as &dyn crate::AsComponents)
                 .as_component_batches()
                 .into_iter()
                 .map(|batch| batch.to_arrow())
                 .collect();
             got?
         };
-        // TODO: This doesn't make any sense at all.
         let expected = vec![
-            Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![red.0])) as Arc<dyn ArrowArray>,
-            Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![green.0])),
-            Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![blue.0])),
-            Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![red.0])),
-            Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![green.0])),
-            Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![blue.0])),
-            Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![red.0])),
-            Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![green.0])),
-            Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![blue.0])),
+            Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![
+                red.0, green.0, blue.0,
+            ])) as Arc<dyn ArrowArray>,
+            Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![
+                red.0, green.0, blue.0,
+            ])) as Arc<dyn ArrowArray>,
+            Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![
+                red.0, green.0, blue.0,
+            ])) as Arc<dyn ArrowArray>,
         ];
         assert_eq!(&expected, &got);
 
