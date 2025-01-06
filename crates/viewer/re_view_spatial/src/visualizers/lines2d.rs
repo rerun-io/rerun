@@ -199,7 +199,7 @@ impl VisualizerSystem for Lines2DVisualizer {
 
                 let num_strips = all_strip_chunks
                     .iter()
-                    .flat_map(|chunk| chunk.iter_slices::<[f32; 2]>(LineStrip2D::name()))
+                    .flat_map(|chunk| chunk.iter_slices::<&[[f32; 2]]>(LineStrip2D::name()))
                     .map(|strips| strips.len())
                     .sum();
                 if num_strips == 0 {
@@ -209,7 +209,7 @@ impl VisualizerSystem for Lines2DVisualizer {
 
                 let num_vertices = all_strip_chunks
                     .iter()
-                    .flat_map(|chunk| chunk.iter_slices::<[f32; 2]>(LineStrip2D::name()))
+                    .flat_map(|chunk| chunk.iter_slices::<&[[f32; 2]]>(LineStrip2D::name()))
                     .map(|strips| strips.iter().map(|strip| strip.len()).sum::<usize>())
                     .sum::<usize>();
                 line_builder.reserve_vertices(num_vertices)?;
