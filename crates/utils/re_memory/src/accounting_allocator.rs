@@ -11,10 +11,10 @@ use crate::{
 };
 
 /// Only track allocations of at least this size.
-const SMALL_SIZE: usize = 128; // TODO(emilk): make this setable by users
+const SMALL_SIZE: usize = 128; // TODO(emilk): make this settable by users
 
 /// Allocations smaller than are stochastically sampled.
-const MEDIUM_SIZE: usize = 4 * 1024; // TODO(emilk): make this setable by users
+const MEDIUM_SIZE: usize = 4 * 1024; // TODO(emilk): make this settable by users
 
 // TODO(emilk): yet another tier would maybe make sense, with a different stochastic rate.
 
