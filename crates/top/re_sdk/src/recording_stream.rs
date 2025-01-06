@@ -2286,6 +2286,7 @@ impl RecordingStream {
 #[cfg(test)]
 mod tests {
     use re_chunk::TransportChunk;
+    use re_log_types::example_components::MyLabel;
 
     use super::*;
 
@@ -2622,5 +2623,45 @@ mod tests {
         };
 
         vec![row0, row1, row2]
+    }
+
+    // See <https://github.com/rerun-io/rerun/pull/8587> for context.
+    #[test]
+    fn allows_ascomponents_unsized() {
+        let labels = [
+            MyLabel("a".into()),
+            MyLabel("b".into()),
+            MyLabel("c".into()),
+        ];
+
+        let (rec, _mem) = RecordingStreamBuilder::new("rerun_example_test_ascomponents_unsized")
+            .default_enabled(false)
+            .enabled(false)
+            .memory()
+            .unwrap();
+
+        // This call used to *not* compile due to a lack of `?Sized` bounds.
+        rec.log("labels", &labels as &dyn crate::AsComponents)
+            .unwrap();
+    }
+
+    // See <https://github.com/rerun-io/rerun/pull/8587> for context.
+    #[test]
+    fn allows_componentbatch_unsized() {
+        let labels = [
+            MyLabel("a".into()),
+            MyLabel("b".into()),
+            MyLabel("c".into()),
+        ];
+
+        let (rec, _mem) = RecordingStreamBuilder::new("rerun_example_test_componentbatch_unsized")
+            .default_enabled(false)
+            .enabled(false)
+            .memory()
+            .unwrap();
+
+        // This call used to *not* compile due to a lack of `?Sized` bounds.
+        rec.log("labels", &labels as &dyn crate::ComponentBatch)
+            .unwrap();
     }
 }
