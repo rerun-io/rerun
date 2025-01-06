@@ -518,7 +518,7 @@ mod tests {
     fn many_ascomponents_wrapped_many_howto() -> anyhow::Result<()> {
         let (red, green, blue, colors) = data();
 
-        // Nothing out of the ordinary here, a collection of batches is indeed a colletion of batches.
+        // Nothing out of the ordinary here, a collection of batches is indeed a collection of batches.
         let got = {
             let colors = &colors as &dyn crate::ComponentBatch;
             let got: Result<Vec<_>, _> = (&[colors, colors, colors] as &dyn crate::AsComponents)
