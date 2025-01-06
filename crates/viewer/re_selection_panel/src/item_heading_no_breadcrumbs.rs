@@ -24,17 +24,10 @@ pub fn item_title_list_item(
         .interactive(true)
         .show_flat(
             ui,
-            list_item::CustomContent::new(|ui, context| {
-                ui.allocate_new_ui(
-                    egui::UiBuilder::new()
-                        .max_rect(context.rect)
-                        .layout(egui::Layout::left_to_right(egui::Align::Center)),
-                    |ui| {
-                        ui.spacing_mut().item_spacing.x = 4.0;
-                        ui.style_mut().interaction.selectable_labels = false;
-                        item_heading_no_breadcrumbs(ctx, viewport, ui, item);
-                    },
-                );
+            list_item::CustomContent::new(|ui, _| {
+                ui.spacing_mut().item_spacing.x = 4.0;
+                ui.style_mut().interaction.selectable_labels = false;
+                item_heading_no_breadcrumbs(ctx, viewport, ui, item);
             }),
         );
     cursor_interact_with_selectable(ctx, response, item.clone());
