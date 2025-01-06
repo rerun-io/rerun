@@ -360,7 +360,10 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
         let display_data = match &self.display_data {
             Ok(display_data) => display_data,
             Err(err) => {
-                error_ui(ui, format!("Error with display data: {err}"));
+                error_ui(
+                    ui,
+                    format!("Error with display data: {}", re_error::format(err)),
+                );
                 return;
             }
         };

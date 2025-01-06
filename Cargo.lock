@@ -6628,6 +6628,7 @@ dependencies = [
  "itertools 0.13.0",
  "re_chunk_store",
  "re_dataframe",
+ "re_error",
  "re_format",
  "re_log",
  "re_log_types",
