@@ -14,6 +14,7 @@ pub mod notifications;
 mod section_collapsing_header;
 pub mod syntax_highlighting;
 mod ui_ext;
+mod ui_layout;
 pub mod zoom_pan_area;
 
 use egui::Color32;
@@ -30,7 +31,14 @@ pub use self::{
     section_collapsing_header::SectionCollapsingHeader,
     syntax_highlighting::SyntaxHighlighting,
     ui_ext::UiExt,
+    ui_layout::UiLayout,
 };
+
+#[cfg(feature = "arrow")]
+mod arrow_ui;
+
+#[cfg(feature = "arrow")]
+pub use self::arrow_ui::{arrow2_ui, arrow_ui};
 
 // ---------------------------------------------------------------------------
 

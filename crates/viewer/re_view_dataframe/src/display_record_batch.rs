@@ -1,19 +1,18 @@
 //! Intermediate data structures to make `re_datastore`'s row data more amenable to displaying in a
 //! table.
 
+use arrow::{
+    array::{
+        Array as ArrowArray, ArrayRef as ArrowArrayRef,
+        Int32DictionaryArray as ArrowInt32DictionaryArray, Int64Array as ArrowInt64Array,
+        ListArray as ArrowListArray, TimestampNanosecondArray as ArrowTimestampNanosecondArray,
+    },
+    datatypes::DataType as ArrowDataType,
+};
 use thiserror::Error;
 
-use re_chunk_store::external::arrow2::{
-    array::{
-        Array as Arrow2Array, DictionaryArray as Arrow2DictionaryArray,
-        ListArray as Arrow2ListArray, PrimitiveArray as Arrow2PrimitiveArray,
-    },
-    datatypes::DataType,
-    datatypes::DataType as Arrow2DataType,
-};
 use re_chunk_store::{ColumnDescriptor, ComponentColumnDescriptor, LatestAtQuery};
 use re_log_types::{EntityPath, TimeInt, Timeline};
-use re_types::external::arrow2::datatypes::IntegerType;
 use re_types_core::ComponentName;
 use re_ui::UiExt;
 use re_viewer_context::{UiLayout, ViewerContext};
@@ -21,10 +20,10 @@ use re_viewer_context::{UiLayout, ViewerContext};
 #[derive(Error, Debug)]
 pub(crate) enum DisplayRecordBatchError {
     #[error("Unexpected column data type for timeline '{0}': {1:?}")]
-    UnexpectedTimeColumnDataType(String, Arrow2DataType),
+    UnexpectedTimeColumnDataType(String, ArrowDataType),
 
     #[error("Unexpected column data type for component '{0}': {1:?}")]
-    UnexpectedComponentColumnDataType(String, Arrow2DataType),
+    UnexpectedComponentColumnDataType(String, ArrowDataType),
 }
 
 /// A single column of component data.
@@ -33,38 +32,37 @@ pub(crate) enum DisplayRecordBatchError {
 #[derive(Debug)]
 pub(crate) enum ComponentData {
     Null,
-    ListArray(Arrow2ListArray<i32>),
+    ListArray(ArrowListArray),
     DictionaryArray {
-        dict: Arrow2DictionaryArray<i32>,
-        values: Arrow2ListArray<i32>,
+        dict: ArrowInt32DictionaryArray,
+        values: ArrowListArray,
     },
 }
 
 impl ComponentData {
-    #[allow(clippy::borrowed_box)] // https://github.com/rust-lang/rust-clippy/issues/11940
     fn try_new(
         descriptor: &ComponentColumnDescriptor,
-        column_data: &Box<dyn Arrow2Array>,
+        column_data: &ArrowArrayRef,
     ) -> Result<Self, DisplayRecordBatchError> {
         match column_data.data_type() {
-            DataType::Null => Ok(Self::Null),
-            DataType::List(_) => Ok(Self::ListArray(
+            ArrowDataType::Null => Ok(Self::Null),
+            ArrowDataType::List(_) => Ok(Self::ListArray(
                 column_data
                     .as_any()
-                    .downcast_ref::<Arrow2ListArray<i32>>()
+                    .downcast_ref::<ArrowListArray>()
                     .expect("`data_type` checked, failure is a bug in re_dataframe")
                     .clone(),
             )),
-            DataType::Dictionary(IntegerType::Int32, _, _) => {
+            ArrowDataType::Dictionary(_, _) => {
                 let dict = column_data
                     .as_any()
-                    .downcast_ref::<Arrow2DictionaryArray<i32>>()
+                    .downcast_ref::<ArrowInt32DictionaryArray>()
                     .expect("`data_type` checked, failure is a bug in re_dataframe")
                     .clone();
                 let values = dict
                     .values()
                     .as_any()
-                    .downcast_ref::<Arrow2ListArray<i32>>()
+                    .downcast_ref::<ArrowListArray>()
                     .expect("`data_type` checked, failure is a bug in re_dataframe")
                     .clone();
                 Ok(Self::DictionaryArray { dict, values })
@@ -90,8 +88,8 @@ impl ComponentData {
                 }
             }
             Self::DictionaryArray { dict, values } => {
-                if dict.is_valid(row_index) {
-                    values.value(dict.key_value(row_index)).len() as u64
+                if let Some(key) = dict.key(row_index) {
+                    values.value(key).len() as u64
                 } else {
                     0
                 }
@@ -131,21 +129,19 @@ impl ComponentData {
             Self::ListArray(list_array) => list_array
                 .is_valid(row_index)
                 .then(|| list_array.value(row_index)),
-            Self::DictionaryArray { dict, values } => dict
-                .is_valid(row_index)
-                .then(|| values.value(dict.key_value(row_index))),
+            Self::DictionaryArray { dict, values } => {
+                dict.key(row_index).map(|key| values.value(key))
+            }
         };
 
         if let Some(data) = data {
             let data_to_display = if let Some(instance_index) = instance_index {
                 // Panics if the instance index is out of bound. This is checked in
                 // `DisplayColumn::data_ui`.
-                data.sliced(instance_index as usize, 1)
+                data.slice(instance_index as usize, 1)
             } else {
                 data
             };
-
-            let data_to_display: arrow::array::ArrayRef = data_to_display.into();
 
             ctx.component_ui_registry.ui_raw(
                 ctx,
@@ -169,7 +165,7 @@ impl ComponentData {
 pub(crate) enum DisplayColumn {
     Timeline {
         timeline: Timeline,
-        time_data: Arrow2PrimitiveArray<i64>,
+        time_data: ArrowInt64Array,
     },
     Component {
         entity_path: EntityPath,
@@ -179,26 +175,47 @@ pub(crate) enum DisplayColumn {
 }
 
 impl DisplayColumn {
-    #[allow(clippy::borrowed_box)] // https://github.com/rust-lang/rust-clippy/issues/11940
     fn try_new(
         column_descriptor: &ColumnDescriptor,
-        column_data: &Box<dyn Arrow2Array>,
+        column_data: &ArrowArrayRef,
     ) -> Result<Self, DisplayRecordBatchError> {
+        fn int64_from_nanoseconds(
+            duration_array: &ArrowTimestampNanosecondArray,
+        ) -> Option<ArrowInt64Array> {
+            let data = duration_array.to_data();
+            let buffer = data.buffers().first()?.clone();
+            arrow::array::ArrayData::builder(arrow::datatypes::DataType::Int64)
+                .len(duration_array.len())
+                .add_buffer(buffer)
+                .build()
+                .ok()
+                .map(ArrowInt64Array::from)
+        }
+
         match column_descriptor {
             ColumnDescriptor::Time(desc) => {
-                let time_data = column_data
+                let timeline = desc.timeline;
+
+                // Sequence timelines are i64, but time columns are nanoseconds (also as i64)
+                let time_data_result = column_data
                     .as_any()
-                    .downcast_ref::<Arrow2PrimitiveArray<i64>>()
-                    .ok_or_else(|| {
-                        DisplayRecordBatchError::UnexpectedTimeColumnDataType(
-                            desc.timeline.name().as_str().to_owned(),
-                            column_data.data_type().to_owned(),
-                        )
-                    })?
-                    .clone();
+                    .downcast_ref::<ArrowInt64Array>()
+                    .cloned()
+                    .or_else(|| {
+                        column_data
+                            .as_any()
+                            .downcast_ref::<ArrowTimestampNanosecondArray>()
+                            .and_then(int64_from_nanoseconds)
+                    });
+                let time_data = time_data_result.ok_or_else(|| {
+                    DisplayRecordBatchError::UnexpectedTimeColumnDataType(
+                        timeline.name().as_str().to_owned(),
+                        column_data.data_type().to_owned(),
+                    )
+                })?;
 
                 Ok(Self::Timeline {
-                    timeline: desc.timeline,
+                    timeline,
                     time_data,
                 })
             }
@@ -307,7 +324,7 @@ impl DisplayRecordBatch {
     /// The columns in the record batch must match the selected columns. This is guaranteed by
     /// `re_datastore`.
     pub(crate) fn try_new(
-        row_data: &Vec<Box<dyn Arrow2Array>>,
+        row_data: &Vec<ArrowArrayRef>,
         selected_columns: &[ColumnDescriptor],
     ) -> Result<Self, DisplayRecordBatchError> {
         let num_rows = row_data.first().map(|arr| arr.len()).unwrap_or(0);
