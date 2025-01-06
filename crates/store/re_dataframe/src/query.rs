@@ -827,7 +827,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     /// }
     /// ```
     #[inline]
-    pub fn next_row_arrow2(&self) -> Option<Vec<Box<dyn Arrow2Array>>> {
+    fn next_row_arrow2(&self) -> Option<Vec<Box<dyn Arrow2Array>>> {
         self.engine
             .with(|store, cache| self._next_row(store, cache))
     }
