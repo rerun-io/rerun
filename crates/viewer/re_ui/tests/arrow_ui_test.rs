@@ -32,9 +32,10 @@ fn show_some_arrow_ui(ui: &mut egui::Ui) {
     };
 
     let tests = [
-        ("Utf8", Utf8::from("Hello world").to_arrow()),
+        ("Empty string", Utf8::from("").to_arrow()),
+        ("One string", Utf8::from("Hello world").to_arrow()),
         (
-            "Many Utf8",
+            "Two strings",
             [Utf8::from("Hello"), Utf8::from("world")].to_arrow(),
         ),
         ("Empty Blob", Blob::from(vec![]).to_arrow()),
