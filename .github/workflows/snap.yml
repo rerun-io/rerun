@@ -1,0 +1,16 @@
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  snap:
+    uses: canonical/robotics-actions-workflows/.github/workflows/snap.yaml@main
+      snap-test-script: |
+        rerun help
+      # secrets:
+      #   snapstore-login: ${{ secrets.SNAPSTORE_LOGIN }}
