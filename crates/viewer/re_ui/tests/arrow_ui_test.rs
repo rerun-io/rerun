@@ -1,5 +1,7 @@
 #![cfg(feature = "arrow")]
 
+use std::f32::consts::PI;
+
 use re_ui::{UiExt as _, UiLayout};
 
 #[test]
@@ -40,7 +42,7 @@ fn show_some_arrow_ui(ui: &mut egui::Ui) {
         ("Empty Blob", Blob::from(vec![]).to_arrow()),
         ("Small Blob", Blob::from(vec![1, 2, 3, 4]).to_arrow()),
         ("Big Blob", Blob::from(vec![42; 1_234_567]).to_arrow()),
-        ("Vec3", Vec3D::from([13.37, 42.0, 3.14]).to_arrow()),
+        ("Vec3", Vec3D::from([13.37, 42.0, PI]).to_arrow()),
     ];
 
     egui::Grid::new("entity_db").num_columns(2).show(ui, |ui| {
