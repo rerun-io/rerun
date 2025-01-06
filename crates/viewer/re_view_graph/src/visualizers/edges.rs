@@ -1,4 +1,4 @@
-use re_chunk::{ArchetypeFieldName, LatestAtQuery};
+use re_chunk::LatestAtQuery;
 use re_log_types::{EntityPath, Instance};
 use re_types::{self, archetypes, components, datatypes, Component as _};
 use re_view::{DataResultQuery, RangeResultsExt};
