@@ -31,7 +31,7 @@ fn validity_checks() {
     let serialized = Position2D::to_arrow2_opt(bad).unwrap();
     let deserialized = Position2D::from_arrow2(serialized.as_ref());
     assert!(deserialized.is_err());
-    let actual_error = deserialized.err().unwrap();
+    let actual_error = deserialized.err().unwrap().without_context();
     assert!(
         matches!(actual_error, DeserializationError::MissingData { .. }),
         "Expected error MissingData, got {actual_error:?}",
