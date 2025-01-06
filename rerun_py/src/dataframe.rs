@@ -649,6 +649,7 @@ impl PyRecordingView {
     /// This schema will only contain the columns that are included in the view via
     /// the view contents.
     fn schema(&self, py: Python<'_>) -> PyResult<PySchema> {
+        #![allow(clippy::unnecessary_wraps)] // In case of feature != "remote"
         match &self.recording {
             PyRecordingHandle::Local(recording) => {
                 let borrowed: PyRef<'_, PyRecording> = recording.borrow(py);
