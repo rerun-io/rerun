@@ -1,6 +1,6 @@
 ---
 name: Project
-about: Define a
+about: A large but finite project involving many sub-tasks
 title: 'Project: <project title>'
 labels: project
 assignees: ''
