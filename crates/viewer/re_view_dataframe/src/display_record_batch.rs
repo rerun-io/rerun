@@ -4,14 +4,15 @@
 use arrow::{
     array::{
         Array as ArrowArray, ArrayRef as ArrowArrayRef,
-        Int32DictionaryArray as ArrowInt32DictionaryArray, Int64Array, ListArray as ArrowListArray,
+        Int32DictionaryArray as ArrowInt32DictionaryArray, Int64Array as ArrowInt64Array,
+        ListArray as ArrowListArray, TimestampNanosecondArray as ArrowTimestampNanosecondArray,
     },
     datatypes::DataType as ArrowDataType,
 };
 use thiserror::Error;
 
 use re_chunk_store::{ColumnDescriptor, ComponentColumnDescriptor, LatestAtQuery};
-use re_log_types::{EntityPath, TimeInt, Timeline};
+use re_log_types::{EntityPath, TimeInt, TimeType, Timeline};
 use re_types_core::ComponentName;
 use re_ui::UiExt;
 use re_viewer_context::{UiLayout, ViewerContext};
@@ -165,7 +166,7 @@ impl ComponentData {
 pub(crate) enum DisplayColumn {
     Timeline {
         timeline: Timeline,
-        time_data: Int64Array,
+        time_data: ArrowInt64Array,
     },
     Component {
         entity_path: EntityPath,
@@ -180,21 +181,43 @@ impl DisplayColumn {
         column_descriptor: &ColumnDescriptor,
         column_data: &ArrowArrayRef,
     ) -> Result<Self, DisplayRecordBatchError> {
+        fn int64_from_nanoseconds(
+            duration_array: &ArrowTimestampNanosecondArray,
+        ) -> ArrowInt64Array {
+            let data = duration_array.to_data();
+            let buffer = data.buffers()[0].clone();
+            let int64_data = arrow::array::ArrayData::builder(arrow::datatypes::DataType::Int64)
+                .len(duration_array.len())
+                .add_buffer(buffer)
+                .build()
+                .expect("Nanonseconds should be represented as i64");
+            ArrowInt64Array::from(int64_data)
+        }
+
         match column_descriptor {
             ColumnDescriptor::Time(desc) => {
-                let time_data = column_data
-                    .as_any()
-                    .downcast_ref::<Int64Array>()
-                    .ok_or_else(|| {
-                        DisplayRecordBatchError::UnexpectedTimeColumnDataType(
-                            desc.timeline.name().as_str().to_owned(),
-                            column_data.data_type().to_owned(),
-                        )
-                    })?
-                    .clone();
+                let timeline = desc.timeline;
+
+                let time_data_result = match timeline.typ() {
+                    TimeType::Time => column_data
+                        .as_any()
+                        .downcast_ref::<ArrowTimestampNanosecondArray>()
+                        .map(int64_from_nanoseconds),
+
+                    TimeType::Sequence => column_data
+                        .as_any()
+                        .downcast_ref::<ArrowInt64Array>()
+                        .cloned(),
+                };
+                let time_data = time_data_result.ok_or_else(|| {
+                    DisplayRecordBatchError::UnexpectedTimeColumnDataType(
+                        timeline.name().as_str().to_owned(),
+                        column_data.data_type().to_owned(),
+                    )
+                })?;
 
                 Ok(Self::Timeline {
-                    timeline: desc.timeline,
+                    timeline,
                     time_data,
                 })
             }
