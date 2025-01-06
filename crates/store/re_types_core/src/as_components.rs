@@ -90,16 +90,6 @@ pub trait AsComponents {
     }
 }
 
-// TODO: This is our biggest problem.
-impl<C: Component> AsComponents for C {
-    #[inline]
-    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
-        vec![ComponentBatchCowWithDescriptor::new(
-            self as &dyn ComponentBatch,
-        )]
-    }
-}
-
 impl AsComponents for dyn ComponentBatch {
     #[inline]
     fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
