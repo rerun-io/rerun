@@ -75,7 +75,7 @@ impl rerun::Loggable for Confidence {
     #[inline]
     fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<std::borrow::Cow<'a, Self>>>>,
-    ) -> re_types::SerializationResult<Box<dyn arrow::array::Array>>
+    ) -> re_types::SerializationResult<arrow::array::ArrayRef>
     where
         Self: 'a,
     {
