@@ -1,4 +1,3 @@
-
 /// Specifies the context in which the UI is used and the constraints it should follow.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum UiLayout {

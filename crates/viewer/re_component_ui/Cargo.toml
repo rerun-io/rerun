@@ -30,7 +30,7 @@ re_types = { workspace = true, features = [
   "egui_plot", # Needed to draw marker shapes.
 ] }
 re_types_core.workspace = true
-re_ui.workspace = true
+re_ui = { workspace = true, features=["arrow"] }
 re_viewer_context.workspace = true
 
 arrow.workspace = true
