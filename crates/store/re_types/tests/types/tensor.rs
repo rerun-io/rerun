@@ -4,10 +4,28 @@ use re_types::{
     archetypes::Tensor,
     datatypes::{TensorBuffer, TensorData},
     tensor_data::TensorCastError,
-    Archetype as _, AsComponents as _,
+    Archetype as _, AsComponents as _, Loggable as _,
 };
 
 use crate::util;
+
+#[test]
+fn tensor_buffer_roundtrip() {
+    let original = TensorBuffer::U8(vec![1, 2, 3, 4, 5, 6].into());
+    let serialized = TensorBuffer::to_arrow([&original]).unwrap();
+    eprintln!("serialized: {serialized:#?}");
+    let deserialized = TensorBuffer::from_arrow(&serialized).unwrap();
+    similar_asserts::assert_eq!(deserialized, vec![original]);
+}
+
+#[test]
+fn tensor_data_roundtrip() {
+    let original = TensorData::new(vec![2, 3], TensorBuffer::U8(vec![1, 2, 3, 4, 5, 6].into()));
+    let serialized = TensorData::to_arrow([&original]).unwrap();
+    eprintln!("serialized: {serialized:#?}");
+    let deserialized = TensorData::from_arrow(&serialized).unwrap();
+    similar_asserts::assert_eq!(deserialized, vec![original]);
+}
 
 #[test]
 fn tensor_roundtrip() {
