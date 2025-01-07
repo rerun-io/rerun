@@ -1,4 +1,5 @@
 use re_types::components::{RecordingUri, Uri};
+use re_ui::UiExt as _;
 use re_viewer_context::{MaybeMutRef, ViewerContext};
 
 pub fn singleline_view_uri(
@@ -7,7 +8,7 @@ pub fn singleline_view_uri(
     value: &mut MaybeMutRef<'_, Uri>,
 ) -> egui::Response {
     let value = value.as_ref();
-    ui.hyperlink(value.uri())
+    ui.re_hyperlink(value.uri())
 }
 
 pub fn singleline_view_recording_uri(

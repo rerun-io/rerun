@@ -38,7 +38,7 @@ impl DataUi for ComponentName {
                 }
 
                 if let Some(url) = self.doc_url() {
-                    ui.re_hyperlink("Full documentation", url);
+                    ui.re_hyperlink_to("Full documentation", url);
                 }
             });
         }

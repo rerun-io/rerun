@@ -955,7 +955,22 @@ pub trait UiExt {
     }
 
     /// Helper for adding a list-item hyperlink.
-    fn re_hyperlink(
+    fn re_hyperlink(&mut self, url: impl ToString) -> egui::Response {
+        let ui = self.ui_mut();
+        let response = ListItem::new()
+            .show_flat(
+                ui,
+                LabelContent::new(url).with_icon(&crate::icons::EXTERNAL_LINK),
+            )
+            .on_hover_cursor(egui::CursorIcon::PointingHand);
+        if response.clicked() {
+            ui.ctx().open_url(egui::OpenUrl::new_tab(url));
+        }
+        response
+    }
+
+    /// Helper for adding a list-item hyperlink with text.
+    fn re_hyperlink_to(
         &mut self,
         text: impl Into<egui::WidgetText>,
         url: impl ToString,

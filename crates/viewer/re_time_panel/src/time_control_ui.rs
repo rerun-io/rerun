@@ -58,7 +58,7 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
                             .trim(),
                         );
 
-                        ui.re_hyperlink(
+                        ui.re_hyperlink_to(
                             "Full documentation",
                             "https://rerun.io/docs/concepts/timelines",
                         );
