@@ -41,35 +41,33 @@ sudo dnf install \
     pkg-config
 ```
 
-### WSL2
-
-In addition to the above packages for Linux, you also need to run:
-
-```sh
-sudo apt-get -y install \
-    libvulkan1 \
-    libxcb-randr0 \
-    mesa-vulkan-drivers \
-    adwaita-icon-theme-full
-```
-
-TODO:
-```
-sudo add-apt-repository ppa:kisak/kisak-mesa
-sudo apt update
-sudo apt install mesa-vulkan-drivers
-```
-
-
 [TODO(#1250)](https://github.com/rerun-io/rerun/issues/1250): Running with the wayland window manager
 sometimes causes Rerun to crash. Try unsetting the wayland display (`unset WAYLAND_DISPLAY` or `WAYLAND_DISPLAY= `) as a workaround.
 
-If you have a multi-gpu setup, Mesa may only report the integrated GPU such that Rerun can't pick the dedicated graphics card.
-To mitigate that set `export MESA_D3D12_DEFAULT_ADAPTER_NAME=NVIDIA` (or `export MESA_D3D12_DEFAULT_ADAPTER_NAME=AMD` respectively for an AMD graphics card).
+## Running on WSL2 (Ubuntu)
+
+WSL's graphics drivers won't work out of the box and you'll have to update to a more recent version.
+To install the latest stable version of the mesa Vulkan drivers run:
+```sh
+sudo add-apt-repository ppa:kisak/kisak-mesa
+sudo apt update
+sudo apt-get install -y mesa-vulkan-drivers
+```
+
+<!-- The following used to be true with older drivers. Now we get all adapters listed and can pick from it ourselves. -->
+<!-- If you have a multi-gpu setup, Mesa may only report the integrated GPU such that Rerun can't pick the dedicated graphics card.
+To mitigate that set `export MESA_D3D12_DEFAULT_ADAPTER_NAME=NVIDIA` (or `export MESA_D3D12_DEFAULT_ADAPTER_NAME=AMD` respectively for an AMD graphics card). -->
 
 Since the Mesa driver on WSL dispatches to the Windows host graphics driver, it is important to keep the Windows drivers up-to-date as well.
 For example, [line rendering issues](https://github.com/rerun-io/rerun/issues/6749) have been observed when running from WSL with an
 outdated AMD driver on the Windows host.
+
+On Ubuntu 24 [issues with Wayland](https://github.com/rerun-io/rerun/issues/6748) have been observed.
+To mitigate this install `libxkbcommon-x11`
+```
+sudo apt install libxkbcommon-x11-0
+```
+And unset the wayland display either by `unset WAYLAND_DISPLAY` or `WAYLAND_DISPLAY= `.
 
 ## `pip install` issues
 

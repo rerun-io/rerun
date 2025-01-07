@@ -23,7 +23,8 @@ const STARTUP_FRAME_IDX: u64 = u64::MAX;
 #[derive(thiserror::Error, Debug)]
 pub enum RenderContextError {
     #[error(
-        "The GPU/graphics driver is lacking some abilities: {0}.\nConsider updating the driver."
+        "The GPU/graphics driver is lacking some abilities: {0}. \
+        Check the troubleshooting guide at https://rerun.io/docs/getting-started/troubleshooting and consider updating your graphics driver."
     )]
     InsufficientDeviceCapabilities(#[from] crate::config::InsufficientDeviceCapabilities),
 }
