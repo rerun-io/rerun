@@ -1,13 +1,9 @@
-use std::collections::HashMap;
-
 use re_types::{
     archetypes::AnnotationContext,
     components,
     datatypes::{ClassDescription, KeypointPair, Rgba32},
     Archetype as _, AsComponents as _,
 };
-
-use crate::util;
 
 #[test]
 fn roundtrip() {
@@ -22,27 +18,15 @@ fn roundtrip() {
 
     let arch = AnnotationContext::new(expected);
 
-    let expected_extensions: HashMap<_, _> =
-        [("context", vec!["rerun.components.AnnotationContext"])].into();
-
     eprintln!("arch = {arch:#?}");
-    let serialized = arch.to_arrow2().unwrap();
+    let serialized = arch.to_arrow().unwrap();
     for (field, array) in &serialized {
         // NOTE: Keep those around please, very useful when debugging.
         // eprintln!("field = {field:#?}");
         // eprintln!("array = {array:#?}");
-        eprintln!("{} = {array:#?}", field.name);
-
-        // TODO(cmc): Re-enable extensions and these assertions once `arrow2-convert`
-        // has been fully replaced.
-        if false {
-            util::assert_extensions(
-                &**array,
-                expected_extensions[field.name.as_str()].as_slice(),
-            );
-        }
+        eprintln!("{} = {array:#?}", field.name());
     }
 
-    let deserialized = AnnotationContext::from_arrow2(serialized).unwrap();
+    let deserialized = AnnotationContext::from_arrow(serialized).unwrap();
     similar_asserts::assert_eq!(arch, deserialized);
 }

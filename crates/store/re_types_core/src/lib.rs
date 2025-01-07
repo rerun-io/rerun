@@ -61,6 +61,32 @@ pub trait AsComponents {
     /// The default implementation will simply serialize the result of [`Self::as_component_batches`]
     /// as-is, which is what you want in 99.9% of cases.
     #[inline]
+    fn to_arrow(
+        &self,
+    ) -> SerializationResult<Vec<(::arrow::datatypes::Field, ::arrow::array::ArrayRef)>> {
+        self.as_component_batches()
+            .into_iter()
+            .map(|comp_batch| {
+                comp_batch
+                    .to_arrow()
+                    .map(|array| {
+                        let field = arrow::datatypes::Field::new(
+                            comp_batch.name().to_string(),
+                            array.data_type().clone(),
+                            false,
+                        );
+                        (field, array)
+                    })
+                    .with_context(comp_batch.name())
+            })
+            .collect()
+    }
+
+    /// Serializes all non-null [`Component`]s of this bundle into Arrow2 arrays.
+    ///
+    /// The default implementation will simply serialize the result of [`Self::as_component_batches`]
+    /// as-is, which is what you want in 99.9% of cases.
+    #[inline]
     fn to_arrow2(
         &self,
     ) -> SerializationResult<Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>>
@@ -241,6 +267,7 @@ mod archetype;
 mod arrow_buffer;
 pub mod arrow_helpers;
 mod arrow_string;
+pub mod arrow_zip_validity;
 mod component_descriptor;
 mod loggable;
 mod loggable_batch;
@@ -345,7 +372,7 @@ pub mod external {
 ///
 #[macro_export]
 macro_rules! static_assert_struct_has_fields {
-    ($strct:ty, $($field:ident: $field_typ:ty),+) => {
+    ($strct:ty, $($field:ident: $field_typ:ty),+ $(,)?) => {
         const _: fn(&$strct) = |s: &$strct| {
             $(let _: &$field_typ = &s.$field;)+
         };

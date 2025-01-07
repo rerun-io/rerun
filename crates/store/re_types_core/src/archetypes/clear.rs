@@ -12,7 +12,7 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 
-use crate::external::arrow2;
+use crate::external::arrow;
 use crate::SerializationResult;
 use crate::{ComponentBatch, ComponentBatchCowWithDescriptor};
 use crate::{ComponentDescriptor, ComponentName};
@@ -163,8 +163,8 @@ impl crate::Archetype for Clear {
     }
 
     #[inline]
-    fn from_arrow2_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, Box<dyn arrow2::array::Array>)>,
+    fn from_arrow_components(
+        arrow_data: impl IntoIterator<Item = (ComponentName, arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
@@ -177,7 +177,7 @@ impl crate::Archetype for Clear {
                 .get("rerun.components.ClearIsRecursive")
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.Clear#is_recursive")?;
-            <crate::components::ClearIsRecursive>::from_arrow2_opt(&**array)
+            <crate::components::ClearIsRecursive>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.Clear#is_recursive")?
                 .into_iter()
                 .next()

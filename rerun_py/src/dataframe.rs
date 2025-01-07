@@ -649,6 +649,7 @@ impl PyRecordingView {
     /// This schema will only contain the columns that are included in the view via
     /// the view contents.
     fn schema(&self, py: Python<'_>) -> PyResult<PySchema> {
+        #![allow(clippy::unnecessary_wraps)] // In case of feature != "remote"
         match &self.recording {
             PyRecordingHandle::Local(recording) => {
                 let borrowed: PyRef<'_, PyRecording> = recording.borrow(py);
@@ -1206,11 +1207,12 @@ impl PyRecording {
             // `str`
 
             let path_filter =
-                EntityPathFilter::parse_strict(&expr, &Default::default()).map_err(|err| {
-                    PyValueError::new_err(format!(
-                        "Could not interpret `contents` as a ViewContentsLike. Failed to parse {expr}: {err}.",
-                    ))
-                })?;
+                EntityPathFilter::parse_strict(&expr)
+                    .map_err(|err| {
+                        PyValueError::new_err(format!(
+                            "Could not interpret `contents` as a ViewContentsLike. Failed to parse {expr}: {err}.",
+                        ))
+                    })?;
 
             let contents = engine
                 .iter_entity_paths_sorted(&path_filter)
@@ -1230,7 +1232,7 @@ impl PyRecording {
                     )
                 })?;
 
-                let path_filter = EntityPathFilter::parse_strict(&key, &Default::default()).map_err(|err| {
+                let path_filter = EntityPathFilter::parse_strict(&key).map_err(|err| {
                     PyValueError::new_err(format!(
                         "Could not interpret `contents` as a ViewContentsLike. Failed to parse {key}: {err}.",
                     ))

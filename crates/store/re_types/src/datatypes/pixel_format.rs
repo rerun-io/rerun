@@ -13,7 +13,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(non_camel_case_types)]
 
-use ::re_types_core::external::arrow2;
+use ::re_types_core::external::arrow;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
@@ -170,16 +170,15 @@ impl ::re_types_core::Loggable for PixelFormat {
         })
     }
 
-    fn from_arrow2_opt(
-        arrow_data: &dyn arrow2::array::Array,
+    fn from_arrow_opt(
+        arrow_data: &dyn arrow::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
         #![allow(clippy::wildcard_imports)]
-        use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow::datatypes::*;
-        use arrow2::{array::*, buffer::*};
+        use ::re_types_core::{arrow_zip_validity::ZipValidity, Loggable as _, ResultExt as _};
+        use arrow::{array::*, buffer::*, datatypes::*};
         Ok(arrow_data
             .as_any()
             .downcast_ref::<UInt8Array>()
@@ -190,7 +189,6 @@ impl ::re_types_core::Loggable for PixelFormat {
             })
             .with_context("rerun.datatypes.PixelFormat#enum")?
             .into_iter()
-            .map(|opt| opt.copied())
             .map(|typ| match typ {
                 Some(20) => Ok(Some(Self::Y_U_V12_LimitedRange)),
                 Some(26) => Ok(Some(Self::NV12)),

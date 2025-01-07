@@ -4,7 +4,7 @@ use nohash_hasher::IntSet;
 
 use re_byte_size::SizeBytes;
 
-use crate::{result::_Backtrace, ComponentDescriptor, DeserializationResult, SerializationResult};
+use crate::{ComponentDescriptor, DeserializationResult, SerializationResult};
 
 #[allow(unused_imports)] // used in docstrings
 use crate::{Archetype, ComponentBatch, LoggableBatch};
@@ -106,11 +106,7 @@ pub trait Loggable: 'static + Send + Sync + Clone + Sized + SizeBytes {
         re_tracing::profile_function!();
         Self::from_arrow_opt(data)?
             .into_iter()
-            .map(|opt| {
-                opt.ok_or_else(|| crate::DeserializationError::MissingData {
-                    backtrace: _Backtrace::new_unresolved(),
-                })
-            })
+            .map(|opt| opt.ok_or_else(crate::DeserializationError::missing_data))
             .collect::<DeserializationResult<Vec<_>>>()
     }
 
@@ -120,11 +116,7 @@ pub trait Loggable: 'static + Send + Sync + Clone + Sized + SizeBytes {
         re_tracing::profile_function!();
         Self::from_arrow2_opt(data)?
             .into_iter()
-            .map(|opt| {
-                opt.ok_or_else(|| crate::DeserializationError::MissingData {
-                    backtrace: _Backtrace::new_unresolved(),
-                })
-            })
+            .map(|opt| opt.ok_or_else(crate::DeserializationError::missing_data))
             .collect::<DeserializationResult<Vec<_>>>()
     }
 

@@ -46,7 +46,6 @@ bitflags.workspace = true
 bytemuck.workspace = true
 crossbeam.workspace = true
 directories.workspace = true
-egui_extras.workspace = true
 egui_tiles.workspace = true
 egui-wgpu.workspace = true
 egui.workspace = true

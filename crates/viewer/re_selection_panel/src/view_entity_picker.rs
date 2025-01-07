@@ -3,7 +3,7 @@ use nohash_hasher::IntMap;
 
 use re_data_ui::item_ui;
 use re_entity_db::{EntityPath, EntityTree, InstancePath};
-use re_log_types::{EntityPathFilter, EntityPathRule};
+use re_log_types::{ResolvedEntityPathFilter, ResolvedEntityPathRule};
 use re_ui::{list_item, UiExt as _};
 use re_viewer_context::{DataQueryResult, ViewId, ViewerContext};
 use re_viewport_blueprint::{
@@ -87,7 +87,7 @@ fn add_entities_tree_ui(
     tree: &EntityTree,
     view: &ViewBlueprint,
     query_result: &DataQueryResult,
-    entity_path_filter: &EntityPathFilter,
+    entity_path_filter: &ResolvedEntityPathFilter,
     entities_add_info: &IntMap<EntityPath, EntityAddInfo>,
 ) {
     let item_content = list_item::CustomContent::new(|ui, content_ctx| {
@@ -153,7 +153,7 @@ fn add_entities_line_ui(
     entity_tree: &EntityTree,
     view: &ViewBlueprint,
     query_result: &DataQueryResult,
-    entity_path_filter: &EntityPathFilter,
+    entity_path_filter: &ResolvedEntityPathFilter,
     entities_add_info: &IntMap<EntityPath, EntityAddInfo>,
 ) {
     re_tracing::profile_function!();
@@ -214,7 +214,7 @@ fn add_entities_line_ui(
             if response.clicked() {
                 view.contents.raw_add_entity_exclusion(
                     ctx,
-                    EntityPathRule::including_subtree(entity_tree.path.clone()),
+                    ResolvedEntityPathRule::including_subtree(&entity_tree.path),
                 );
             }
 
@@ -231,7 +231,7 @@ fn add_entities_line_ui(
                 if response.clicked() {
                     view.contents.raw_add_entity_inclusion(
                         ctx,
-                        EntityPathRule::including_subtree(entity_tree.path.clone()),
+                        ResolvedEntityPathRule::including_subtree(&entity_tree.path),
                     );
                 }
 

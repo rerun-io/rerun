@@ -67,7 +67,7 @@ impl VisualizerSystem for SegmentationImageVisualizer {
             return Err(ViewSystemExecutionError::NoRenderContextError);
         };
 
-        use super::entity_iterator::{iter_buffer, iter_component, process_archetype};
+        use super::entity_iterator::{iter_component, iter_slices, process_archetype};
         process_archetype::<Self, SegmentationImage, _>(
             ctx,
             view_query,
@@ -88,7 +88,7 @@ impl VisualizerSystem for SegmentationImageVisualizer {
 
                 let timeline = ctx.query.timeline();
                 let all_buffers_indexed =
-                    iter_buffer::<u8>(&all_buffer_chunks, timeline, ImageBuffer::name());
+                    iter_slices::<&[u8]>(&all_buffer_chunks, timeline, ImageBuffer::name());
                 let all_formats_indexed = iter_component::<ImageFormat>(
                     &all_formats_chunks,
                     timeline,
@@ -99,7 +99,7 @@ impl VisualizerSystem for SegmentationImageVisualizer {
                 let data = re_query::range_zip_1x2(
                     all_buffers_indexed,
                     all_formats_indexed,
-                    all_opacities.primitive::<f32>(),
+                    all_opacities.slice::<f32>(),
                 )
                 .filter_map(|(index, buffers, formats, opacity)| {
                     let buffer = buffers.first()?;
