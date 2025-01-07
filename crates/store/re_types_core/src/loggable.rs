@@ -113,15 +113,6 @@ pub trait Loggable: 'static + Send + Sync + Clone + Sized + SizeBytes {
     {
         Self::to_arrow_opt(data).map(|array| array.into())
     }
-
-    /// Given an Arrow2 array, deserializes it into a collection of optional [`Loggable`]s.
-    ///
-    /// Legacy arrow2 stuff - do NOT override this!
-    fn from_arrow2_opt(
-        data: &dyn arrow2::array::Array,
-    ) -> DeserializationResult<Vec<Option<Self>>> {
-        Self::from_arrow_opt(arrow::array::ArrayRef::from(data).as_ref())
-    }
 }
 
 /// A [`Component`] describes semantic data that can be used by any number of [`Archetype`]s.
