@@ -285,25 +285,41 @@ impl<C: Component, const N: usize> ComponentBatch for [Option<C>; N] {
     }
 }
 
+// TODO: those slice impls make no sense
+
 // --- Slice ---
 
-impl<L: Loggable> LoggableBatch for &[L] {
+impl<L: Loggable> LoggableBatch for [L] {
     #[inline]
     fn to_arrow2(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>> {
         L::to_arrow2(self.iter().map(|v| std::borrow::Cow::Borrowed(v)))
     }
 }
 
-impl<C: Component> ComponentBatch for &[C] {
+impl<C: Component> ComponentBatch for [C] {
     #[inline]
     fn descriptor(&self) -> Cow<'_, ComponentDescriptor> {
         C::descriptor().into()
     }
 }
+
+// impl<L: Loggable> LoggableBatch for &[L] {
+//     #[inline]
+//     fn to_arrow2(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>> {
+//         L::to_arrow2(self.iter().map(|v| std::borrow::Cow::Borrowed(v)))
+//     }
+// }
+//
+// impl<C: Component> ComponentBatch for &[C] {
+//     #[inline]
+//     fn descriptor(&self) -> Cow<'_, ComponentDescriptor> {
+//         C::descriptor().into()
+//     }
+// }
 
 // --- Slice<Option> ---
 
-impl<L: Loggable> LoggableBatch for &[Option<L>] {
+impl<L: Loggable> LoggableBatch for [Option<L>] {
     #[inline]
     fn to_arrow2(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>> {
         L::to_arrow2_opt(
@@ -313,44 +329,61 @@ impl<L: Loggable> LoggableBatch for &[Option<L>] {
     }
 }
 
-impl<C: Component> ComponentBatch for &[Option<C>] {
+impl<C: Component> ComponentBatch for [Option<C>] {
     #[inline]
     fn descriptor(&self) -> Cow<'_, ComponentDescriptor> {
         C::descriptor().into()
     }
 }
 
-// --- ArrayRef ---
+// impl<L: Loggable> LoggableBatch for &[Option<L>] {
+//     #[inline]
+//     fn to_arrow2(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>> {
+//         L::to_arrow2_opt(
+//             self.iter()
+//                 .map(|opt| opt.as_ref().map(|v| std::borrow::Cow::Borrowed(v))),
+//         )
+//     }
+// }
+//
+// impl<C: Component> ComponentBatch for &[Option<C>] {
+//     #[inline]
+//     fn descriptor(&self) -> Cow<'_, ComponentDescriptor> {
+//         C::descriptor().into()
+//     }
+// }
 
-impl<L: Loggable, const N: usize> LoggableBatch for &[L; N] {
-    #[inline]
-    fn to_arrow2(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>> {
-        L::to_arrow2(self.iter().map(|v| std::borrow::Cow::Borrowed(v)))
-    }
-}
-
-impl<C: Component, const N: usize> ComponentBatch for &[C; N] {
-    #[inline]
-    fn descriptor(&self) -> Cow<'_, ComponentDescriptor> {
-        C::descriptor().into()
-    }
-}
-
-// --- ArrayRef<Option> ---
-
-impl<L: Loggable, const N: usize> LoggableBatch for &[Option<L>; N] {
-    #[inline]
-    fn to_arrow2(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>> {
-        L::to_arrow2_opt(
-            self.iter()
-                .map(|opt| opt.as_ref().map(|v| std::borrow::Cow::Borrowed(v))),
-        )
-    }
-}
-
-impl<C: Component, const N: usize> ComponentBatch for &[Option<C>; N] {
-    #[inline]
-    fn descriptor(&self) -> Cow<'_, ComponentDescriptor> {
-        C::descriptor().into()
-    }
-}
+// // --- ArrayRef ---
+//
+// impl<'a, L: Loggable, const N: usize> LoggableBatch for &'a [L; N] {
+//     #[inline]
+//     fn to_arrow2(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>> {
+//         L::to_arrow2(self.iter().map(|v| std::borrow::Cow::Borrowed(v)))
+//     }
+// }
+//
+// impl<'a, C: Component, const N: usize> ComponentBatch for &'a [C; N] {
+//     #[inline]
+//     fn descriptor(&self) -> Cow<'_, ComponentDescriptor> {
+//         C::descriptor().into()
+//     }
+// }
+//
+// // --- ArrayRef<Option> ---
+//
+// impl<'a, L: Loggable, const N: usize> LoggableBatch for &'a [Option<L>; N] {
+//     #[inline]
+//     fn to_arrow2(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>> {
+//         L::to_arrow2_opt(
+//             self.iter()
+//                 .map(|opt| opt.as_ref().map(|v| std::borrow::Cow::Borrowed(v))),
+//         )
+//     }
+// }
+//
+// impl<'a, C: Component, const N: usize> ComponentBatch for &'a [Option<C>; N] {
+//     #[inline]
+//     fn descriptor(&self) -> Cow<'_, ComponentDescriptor> {
+//         C::descriptor().into()
+//     }
+// }

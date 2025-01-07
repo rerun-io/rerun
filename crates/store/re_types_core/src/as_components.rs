@@ -36,6 +36,11 @@ pub trait AsComponents {
     // depending on their presence (or lack thereof) at runtime anyway.
     fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>>;
 
+    // TODO
+    // fn to_component_batches(self) -> Vec<ComponentBatchCowWithDescriptor<'static>> {
+    //     self.as_component_batches().into_iter().map(f)
+    // }
+
     // ---
 
     /// Serializes all non-null [`Component`]s of this bundle into Arrow arrays.
