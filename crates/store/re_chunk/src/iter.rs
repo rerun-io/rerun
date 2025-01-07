@@ -841,8 +841,8 @@ impl Chunk {
             };
         };
 
-        let values = list_array.values();
-        let values = match C::from_arrow2(&**values) {
+        let values = arrow::array::ArrayRef::from(list_array.values().clone());
+        let values = match C::from_arrow(&values) {
             Ok(values) => values,
             Err(err) => {
                 if cfg!(debug_assertions) {

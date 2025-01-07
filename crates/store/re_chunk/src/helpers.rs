@@ -78,8 +78,8 @@ impl Chunk {
         component_name: &ComponentName,
         row_index: usize,
         instance_index: usize,
-    ) -> Option<ChunkResult<Box<dyn Arrow2Array>>> {
-        let res = self.component_batch_raw_arrow2(component_name, row_index)?;
+    ) -> Option<ChunkResult<ArrayRef>> {
+        let res = self.component_batch_raw(component_name, row_index)?;
 
         let array = match res {
             Ok(array) => array,
@@ -87,7 +87,7 @@ impl Chunk {
         };
 
         if array.len() > instance_index {
-            Some(Ok(array.sliced(instance_index, 1)))
+            Some(Ok(array.slice(instance_index, 1)))
         } else {
             Some(Err(crate::ChunkError::IndexOutOfBounds {
                 kind: "instance".to_owned(),
@@ -114,7 +114,7 @@ impl Chunk {
             Err(err) => return Some(Err(err)),
         };
 
-        match C::from_arrow2(&*array) {
+        match C::from_arrow(&*array) {
             Ok(data) => data.into_iter().next().map(Ok), // NOTE: It's already sliced!
             Err(err) => Some(Err(err.into())),
         }
@@ -131,8 +131,8 @@ impl Chunk {
         &self,
         component_name: &ComponentName,
         row_index: usize,
-    ) -> Option<ChunkResult<Box<dyn Arrow2Array>>> {
-        let res = self.component_batch_raw_arrow2(component_name, row_index)?;
+    ) -> Option<ChunkResult<ArrayRef>> {
+        let res = self.component_batch_raw(component_name, row_index)?;
 
         let array = match res {
             Ok(array) => array,
@@ -140,7 +140,7 @@ impl Chunk {
         };
 
         if array.len() == 1 {
-            Some(Ok(array.sliced(0, 1)))
+            Some(Ok(array.slice(0, 1)))
         } else {
             Some(Err(crate::ChunkError::IndexOutOfBounds {
                 kind: "mono".to_owned(),
@@ -163,7 +163,7 @@ impl Chunk {
             Err(err) => return Some(Err(err)),
         };
 
-        match C::from_arrow2(&*array) {
+        match C::from_arrow(&*array) {
             Ok(data) => data.into_iter().next().map(Ok), // NOTE: It's already sliced!
             Err(err) => Some(Err(err.into())),
         }
@@ -335,11 +335,11 @@ impl UnitChunkShared {
         let res = self.component_instance_raw(&C::name(), instance_index)?;
 
         let array = match res {
-            Ok(array) => array,
+            Ok(array) => ArrayRef::from(array),
             Err(err) => return Some(Err(err)),
         };
 
-        match C::from_arrow2(&*array) {
+        match C::from_arrow(&*array) {
             Ok(data) => data.into_iter().next().map(Ok), // NOTE: It's already sliced!
             Err(err) => Some(Err(err.into())),
         }
@@ -375,11 +375,11 @@ impl UnitChunkShared {
         let res = self.component_mono_raw(&C::name())?;
 
         let array = match res {
-            Ok(array) => array,
+            Ok(array) => ArrayRef::from(array),
             Err(err) => return Some(Err(err)),
         };
 
-        match C::from_arrow2(&*array) {
+        match C::from_arrow(&*array) {
             Ok(data) => data.into_iter().next().map(Ok), // NOTE: It's already sliced!
             Err(err) => Some(Err(err.into())),
         }

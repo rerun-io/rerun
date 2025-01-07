@@ -6707,6 +6707,7 @@ version = "0.22.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "anyhow",
+ "arrow",
  "bitflags 2.6.0",
  "bytemuck",
  "criterion",
