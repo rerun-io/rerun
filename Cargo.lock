@@ -2060,7 +2060,7 @@ dependencies = [
 [[package]]
 name = "egui_commonmark"
 version = "0.19.0"
-source = "git+https://github.com/rerun-io/egui_commonmark?rev=d08ab5704b9cf6bd4234757c43b49e86c7f053c4#d08ab5704b9cf6bd4234757c43b49e86c7f053c4"
+source = "git+https://github.com/rerun-io/egui_commonmark.git?branch=egui-update#d08ab5704b9cf6bd4234757c43b49e86c7f053c4"
 dependencies = [
  "egui",
  "egui_commonmark_backend",
@@ -2071,7 +2071,7 @@ dependencies = [
 [[package]]
 name = "egui_commonmark_backend"
 version = "0.19.0"
-source = "git+https://github.com/rerun-io/egui_commonmark?rev=d08ab5704b9cf6bd4234757c43b49e86c7f053c4#d08ab5704b9cf6bd4234757c43b49e86c7f053c4"
+source = "git+https://github.com/rerun-io/egui_commonmark.git?branch=egui-update#d08ab5704b9cf6bd4234757c43b49e86c7f053c4"
 dependencies = [
  "egui",
  "egui_extras",
@@ -3871,7 +3871,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4979f22fdb869068da03c9f7528f8297c6fd2606bc3a4affe42e6a823fdb8da4"
 dependencies = [
  "cfg-if",
- "windows-targets 0.52.6",
+ "windows-targets 0.48.5",
 ]
 
 [[package]]
