@@ -1582,7 +1582,6 @@ impl App {
         false
     }
 
-    #[allow(clippy::needless_pass_by_ref_mut)] // False positive on wasm
     fn process_screenshot_result(
         &mut self,
         image: &Arc<egui::ColorImage>,
@@ -1923,17 +1922,29 @@ impl eframe::App for App {
         // Return the `StoreHub` to the Viewer so we have it on the next frame
         self.store_hub = Some(store_hub);
 
-        // Check for returned screenshot:
-        egui_ctx.input(|i| {
-            for event in &i.raw.events {
-                if let egui::Event::Screenshot {
-                    image, user_data, ..
-                } = event
-                {
-                    self.process_screenshot_result(image, user_data);
-                }
+        {
+            // Check for returned screenshots:
+            let screenshots: Vec<_> = egui_ctx.input(|i| {
+                i.raw
+                    .events
+                    .iter()
+                    .filter_map(|event| {
+                        if let egui::Event::Screenshot {
+                            image, user_data, ..
+                        } = event
+                        {
+                            Some((image.clone(), user_data.clone()))
+                        } else {
+                            None
+                        }
+                    })
+                    .collect()
+            });
+
+            for (image, user_data) in screenshots {
+                self.process_screenshot_result(&image, &user_data);
             }
-        });
+        }
     }
 
     #[cfg(target_arch = "wasm32")]
