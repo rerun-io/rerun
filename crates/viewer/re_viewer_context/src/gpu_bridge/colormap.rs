@@ -69,27 +69,23 @@ fn colormap_preview_ui(
 }
 
 fn colormap_variant_ui(
-    render_ctx: Option<&re_renderer::RenderContext>,
+    render_ctx: &re_renderer::RenderContext,
     ui: &mut egui::Ui,
     option: &re_types::components::Colormap,
     map: &mut re_types::components::Colormap,
 ) -> egui::Response {
     let list_item = list_item::ListItem::new().selected(option == map);
 
-    let mut response = if let Some(render_ctx) = render_ctx {
-        list_item.show_flat(
-            ui,
-            list_item::PropertyContent::new(option.to_string())
-                .min_desired_width(MIN_WIDTH)
-                .value_fn(|ui, _| {
-                    if let Err(err) = colormap_preview_ui(render_ctx, ui, *option) {
-                        re_log::error_once!("Failed to paint colormap preview: {err}");
-                    }
-                }),
-        )
-    } else {
-        list_item.show_flat(ui, list_item::LabelContent::new(option.to_string()))
-    };
+    let mut response = list_item.show_flat(
+        ui,
+        list_item::PropertyContent::new(option.to_string())
+            .min_desired_width(MIN_WIDTH)
+            .value_fn(|ui, _| {
+                if let Err(err) = colormap_preview_ui(render_ctx, ui, *option) {
+                    re_log::error_once!("Failed to paint colormap preview: {err}");
+                }
+            }),
+    );
 
     if response.clicked() {
         *map = *option;
@@ -135,14 +131,12 @@ pub fn colormap_edit_or_view_ui(
         inner_response.response
     } else {
         let map: re_types::components::Colormap = **map;
-        let colormap_response = if let Some(render_ctx) = ctx.render_ctx {
-            let result = colormap_preview_ui(render_ctx, ui, map);
+        let colormap_response = {
+            let result = colormap_preview_ui(ctx.render_ctx, ui, map);
             if let Err(err) = &result {
                 re_log::error_once!("Failed to paint colormap preview: {err}");
             }
             result.ok()
-        } else {
-            None
         };
 
         let label_response = ui.add(egui::Label::new(map.to_string()).truncate());

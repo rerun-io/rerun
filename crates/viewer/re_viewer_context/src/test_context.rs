@@ -309,7 +309,7 @@ impl TestContext {
             selection_state: &self.selection_state,
             blueprint_query: &self.blueprint_query,
             egui_ctx,
-            render_ctx: Some(render_ctx),
+            render_ctx,
             command_sender: &self.command_sender,
             focused_item: &None,
             drag_and_drop_manager: &drag_and_drop_manager,

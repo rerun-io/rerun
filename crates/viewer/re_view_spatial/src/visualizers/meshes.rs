@@ -170,10 +170,6 @@ impl VisualizerSystem for Mesh3DVisualizer {
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
-        let Some(render_ctx) = ctx.viewer_ctx.render_ctx else {
-            return Err(ViewSystemExecutionError::NoRenderContextError);
-        };
-
         let mut instances = Vec::new();
 
         use super::entity_iterator::{iter_slices, process_archetype};
@@ -261,13 +257,19 @@ impl VisualizerSystem for Mesh3DVisualizer {
                     },
                 );
 
-                self.process_data(ctx, render_ctx, &mut instances, spatial_ctx, data);
+                self.process_data(
+                    ctx,
+                    ctx.viewer_ctx.render_ctx,
+                    &mut instances,
+                    spatial_ctx,
+                    data,
+                );
 
                 Ok(())
             },
         )?;
 
-        match re_renderer::renderer::MeshDrawData::new(render_ctx, &instances) {
+        match re_renderer::renderer::MeshDrawData::new(ctx.viewer_ctx.render_ctx, &instances) {
             Ok(draw_data) => Ok(vec![draw_data.into()]),
             Err(err) => {
                 re_log::error_once!("Failed to create mesh draw data from mesh instances: {err}");

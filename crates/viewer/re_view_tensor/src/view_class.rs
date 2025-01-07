@@ -355,15 +355,12 @@ impl TensorView {
         let mag_filter: MagnificationFilter =
             scalar_mapping.component_or_fallback(ctx, self, state)?;
 
-        let Some(render_ctx) = ctx.render_ctx else {
-            return Err(anyhow::Error::msg("No render context available."));
-        };
         let colormap = ColormapWithRange {
             colormap,
             value_range: [data_range.start() as f32, data_range.end() as f32],
         };
         let colormapped_texture = super::tensor_slice_to_gpu::colormapped_texture(
-            render_ctx,
+            ctx.render_ctx,
             *tensor_row_id,
             tensor,
             slice_selection,
@@ -404,7 +401,7 @@ impl TensorView {
         };
 
         gpu_bridge::render_image(
-            render_ctx,
+            ctx.render_ctx,
             &painter,
             image_rect,
             colormapped_texture,
