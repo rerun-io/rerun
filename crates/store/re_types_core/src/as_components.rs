@@ -18,6 +18,7 @@ use crate::{
 ///
 /// [IDL definitions]: https://github.com/rerun-io/rerun/tree/latest/crates/store/re_types/definitions/rerun
 /// [Custom Data Loader]: https://github.com/rerun-io/rerun/blob/latest/examples/rust/custom_data_loader
+/// [`Component`]: [crate::Component]
 pub trait AsComponents {
     /// Exposes the object's contents as a set of [`ComponentBatch`]s.
     ///
@@ -40,6 +41,8 @@ pub trait AsComponents {
     ///
     /// The default implementation will simply serialize the result of [`Self::as_component_batches`]
     /// as-is, which is what you want in 99.9% of cases.
+    ///
+    /// [`Component`]: [crate::Component]
     #[inline]
     fn to_arrow(
         &self,
@@ -241,6 +244,7 @@ impl AsComponents for Vec<Box<dyn AsComponents>> {
 /// let _ = (&comp as &dyn re_types_core::AsComponents).as_component_batches();
 /// ```
 #[allow(dead_code)]
+#[allow(rustdoc::private_doc_tests)] // doc-tests are the only way to assert failed compilation
 fn single_ascomponents() {}
 
 /// ```compile_fail
@@ -248,6 +252,7 @@ fn single_ascomponents() {}
 /// let _ = (&[comp] as &dyn re_types_core::AsComponents).as_component_batches();
 /// ```
 #[allow(dead_code)]
+#[allow(rustdoc::private_doc_tests)] // doc-tests are the only way to assert failed compilation
 fn single_ascomponents_wrapped() {
     // This is non-sense (and more importantly: dangerous): a single component shouldn't be able to
     // autocast straight to a collection of batches.
@@ -258,6 +263,7 @@ fn single_ascomponents_wrapped() {
 /// let _ = (&[comp, comp, comp] as &dyn re_types_core::AsComponents).as_component_batches();
 /// ```
 #[allow(dead_code)]
+#[allow(rustdoc::private_doc_tests)] // doc-tests are the only way to assert failed compilation
 fn single_ascomponents_wrapped_many() {
     // This is non-sense (and more importantly: dangerous): a single component shouldn't be able to
     // autocast straight to a collection of batches.
@@ -269,6 +275,7 @@ fn single_ascomponents_wrapped_many() {
 /// let _ = (&comps as &dyn re_types_core::AsComponents).as_component_batches();
 /// ```
 #[allow(dead_code)]
+#[allow(rustdoc::private_doc_tests)] // doc-tests are the only way to assert failed compilation
 fn many_ascomponents() {}
 
 /// ```compile_fail
@@ -277,6 +284,7 @@ fn many_ascomponents() {}
 /// let _ = (&[comps] as &dyn re_types_core::AsComponents).as_component_batches();
 /// ```
 #[allow(dead_code)]
+#[allow(rustdoc::private_doc_tests)] // doc-tests are the only way to assert failed compilation
 fn many_ascomponents_wrapped() {}
 
 /// ```compile_fail
@@ -285,6 +293,7 @@ fn many_ascomponents_wrapped() {}
 /// let _ = (&[comps] as &dyn re_types_core::ComponentBatch).to_arrow();
 /// ```
 #[allow(dead_code)]
+#[allow(rustdoc::private_doc_tests)] // doc-tests are the only way to assert failed compilation
 fn many_componentbatch_wrapped() {}
 
 /// ```compile_fail
@@ -293,6 +302,7 @@ fn many_componentbatch_wrapped() {}
 /// let _ = (&[comps.clone(), comps.clone(), comps.clone()] as &dyn re_types_core::AsComponents).as_component_batches();
 /// ```
 #[allow(dead_code)]
+#[allow(rustdoc::private_doc_tests)] // doc-tests are the only way to assert failed compilation
 fn many_ascomponents_wrapped_many() {}
 
 /// ```compile_fail
@@ -301,6 +311,7 @@ fn many_ascomponents_wrapped_many() {}
 /// let _ = (&[comps.clone(), comps.clone(), comps.clone()] as &dyn re_types_core::ComponentBatch).to_arrow();
 /// ```
 #[allow(dead_code)]
+#[allow(rustdoc::private_doc_tests)] // doc-tests are the only way to assert failed compilation
 fn many_componentbatch_wrapped_many() {}
 
 #[cfg(test)]
