@@ -199,7 +199,7 @@ impl VisualizerSystem for Boxes2DVisualizer {
             re_view::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
         );
 
-        use super::entity_iterator::{iter_primitive_array, process_archetype};
+        use super::entity_iterator::{iter_slices, process_archetype};
         process_archetype::<Self, Boxes2D, _>(
             ctx,
             view_query,
@@ -214,7 +214,7 @@ impl VisualizerSystem for Boxes2DVisualizer {
 
                 let num_boxes: usize = all_half_size_chunks
                     .iter()
-                    .flat_map(|chunk| chunk.iter_primitive_array::<2, f32>(&HalfSize2D::name()))
+                    .flat_map(|chunk| chunk.iter_slices::<[f32; 2]>(HalfSize2D::name()))
                     .map(|vectors| vectors.len())
                     .sum();
                 if num_boxes == 0 {
@@ -226,11 +226,8 @@ impl VisualizerSystem for Boxes2DVisualizer {
                 line_builder.reserve_vertices(num_boxes * 5)?;
 
                 let timeline = ctx.query.timeline();
-                let all_half_sizes_indexed = iter_primitive_array::<2, f32>(
-                    &all_half_size_chunks,
-                    timeline,
-                    HalfSize2D::name(),
-                );
+                let all_half_sizes_indexed =
+                    iter_slices::<[f32; 2]>(&all_half_size_chunks, timeline, HalfSize2D::name());
                 let all_centers = results.iter_as(timeline, Position2D::name());
                 let all_colors = results.iter_as(timeline, Color::name());
                 let all_radii = results.iter_as(timeline, Radius::name());
@@ -240,12 +237,12 @@ impl VisualizerSystem for Boxes2DVisualizer {
 
                 let data = re_query::range_zip_1x6(
                     all_half_sizes_indexed,
-                    all_centers.primitive_array::<2, f32>(),
-                    all_colors.primitive::<u32>(),
-                    all_radii.primitive::<f32>(),
-                    all_labels.string(),
-                    all_class_ids.primitive::<u16>(),
-                    all_show_labels.bool(),
+                    all_centers.slice::<[f32; 2]>(),
+                    all_colors.slice::<u32>(),
+                    all_radii.slice::<f32>(),
+                    all_labels.slice::<String>(),
+                    all_class_ids.slice::<u16>(),
+                    all_show_labels.slice::<bool>(),
                 )
                 .map(
                     |(

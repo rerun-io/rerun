@@ -19,7 +19,8 @@ use itertools::Itertools;
 
 use nohash_hasher::{IntMap, IntSet};
 use re_chunk::{
-    Chunk, ComponentName, EntityPath, RangeQuery, RowId, TimeInt, Timeline, UnitChunkShared,
+    external::arrow::array::ArrayRef, Chunk, ComponentName, EntityPath, RangeQuery, RowId, TimeInt,
+    Timeline, UnitChunkShared,
 };
 use re_chunk_store::{
     ChunkStore, ColumnDescriptor, ColumnSelector, ComponentColumnDescriptor,
@@ -799,7 +800,39 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     /// }
     /// ```
     #[inline]
-    pub fn next_row(&self) -> Option<Vec<Box<dyn Arrow2Array>>> {
+    pub fn next_row(&self) -> Option<Vec<ArrayRef>> {
+        self.engine
+            .with(|store, cache| self._next_row(store, cache))
+            .map(|vec| vec.into_iter().map(|a| a.into()).collect())
+    }
+
+    /// Returns the next row's worth of data.
+    ///
+    /// The returned vector of Arrow arrays strictly follows the schema specified by [`Self::schema`].
+    /// Columns that do not yield any data will still be present in the results, filled with null values.
+    ///
+    /// Each cell in the result corresponds to the latest _locally_ known value at that particular point in
+    /// the index, for each respective `ColumnDescriptor`.
+    /// See [`QueryExpression::sparse_fill_strategy`] to go beyond local resolution.
+    ///
+    /// Example:
+    /// ```ignore
+    /// while let Some(row) = query_handle.next_row() {
+    ///     // …
+    /// }
+    /// ```
+    ///
+    /// ## Pagination
+    ///
+    /// Use [`Self::seek_to_row`]:
+    /// ```ignore
+    /// query_handle.seek_to_row(42);
+    /// for row in query_handle.into_iter().take(len) {
+    ///     // …
+    /// }
+    /// ```
+    #[inline]
+    fn next_row_arrow2(&self) -> Option<Vec<Box<dyn Arrow2Array>>> {
         self.engine
             .with(|store, cache| self._next_row(store, cache))
     }
@@ -1244,7 +1277,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     pub fn next_row_batch(&self) -> Option<RecordBatch> {
         Some(RecordBatch {
             schema: self.schema().clone(),
-            data: Arrow2Chunk::new(self.next_row()?),
+            data: Arrow2Chunk::new(self.next_row_arrow2()?),
         })
     }
 
@@ -1271,13 +1304,13 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     /// Returns an iterator backed by [`Self::next_row`].
     #[allow(clippy::should_implement_trait)] // we need an anonymous closure, this won't work
     pub fn iter(&self) -> impl Iterator<Item = Vec<Box<dyn Arrow2Array>>> + '_ {
-        std::iter::from_fn(move || self.next_row())
+        std::iter::from_fn(move || self.next_row_arrow2())
     }
 
     /// Returns an iterator backed by [`Self::next_row`].
     #[allow(clippy::should_implement_trait)] // we need an anonymous closure, this won't work
     pub fn into_iter(self) -> impl Iterator<Item = Vec<Box<dyn Arrow2Array>>> {
-        std::iter::from_fn(move || self.next_row())
+        std::iter::from_fn(move || self.next_row_arrow2())
     }
 
     /// Returns an iterator backed by [`Self::next_row_batch`].

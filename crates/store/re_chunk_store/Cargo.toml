@@ -41,6 +41,7 @@ re_types_core.workspace = true
 # External dependencies:
 ahash.workspace = true
 anyhow.workspace = true
+arrow.workspace = true
 arrow2 = { workspace = true, features = ["compute_concatenate"] }
 document-features.workspace = true
 indent.workspace = true
