@@ -163,7 +163,7 @@ pub fn setup_graph_view_blueprint(test_context: &mut TestContext) -> ViewId {
     view_id
 }
 
-fn run_graph_view_and_save_snapshot(test_context: &mut TestContext, name: &str, size: Vec2) {
+fn run_graph_view_and_save_snapshot(test_context: &mut TestContext, _name: &str, size: Vec2) {
     let view_id = setup_graph_view_blueprint(test_context);
     let view_blueprint = ViewBlueprint::try_from_db(
         view_id,
@@ -248,5 +248,5 @@ fn run_graph_view_and_save_snapshot(test_context: &mut TestContext, name: &str, 
 
     //TODO(#8245): enable this everywhere when we have a software renderer setup
     #[cfg(target_os = "macos")]
-    harness.wgpu_snapshot(name);
+    harness.wgpu_snapshot(_name);
 }
