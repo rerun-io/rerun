@@ -21,6 +21,7 @@ Please check the following:
 def log_readme() -> None:
     rr.log("readme", rr.TextDocument(README, media_type=rr.MediaType.MARKDOWN), static=True)
 
+
 def log_graphs() -> None:
     DATA = [
         ("A", None),
