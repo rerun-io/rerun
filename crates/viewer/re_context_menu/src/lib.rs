@@ -114,7 +114,6 @@ fn action_list(
                 Box::new(RemoveAction),
             ],
             vec![
-                #[cfg(not(target_arch = "wasm32"))] // TODO(#8264): copy-to-screenshot on web
                 Box::new(actions::ScreenshotAction::CopyScreenshot),
                 Box::new(actions::ScreenshotAction::SaveScreenshot),
             ],

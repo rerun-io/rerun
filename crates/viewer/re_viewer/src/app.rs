@@ -1609,14 +1609,8 @@ impl App {
             };
 
             match target {
-                #[cfg(not(target_arch = "wasm32"))] // TODO(#8264): copy-to-screenshot on web
                 re_viewer_context::ScreenshotTarget::CopyToClipboard => {
-                    re_viewer_context::Clipboard::with(|clipboard| {
-                        clipboard.set_image(
-                            [rgba.width(), rgba.height()],
-                            bytemuck::cast_slice(rgba.as_raw()),
-                        );
-                    });
+                    self.egui_ctx.copy_image((**image).clone());
                 }
 
                 re_viewer_context::ScreenshotTarget::SaveToDisk => {
@@ -1644,7 +1638,7 @@ impl App {
             }
         } else {
             #[cfg(not(target_arch = "wasm32"))] // no full-app screenshotting on web
-            self.screenshotter.save(image);
+            self.screenshotter.save(&self.egui_ctx, image);
         }
     }
 }

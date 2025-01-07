@@ -5,7 +5,6 @@ use crate::{ContextMenuAction, ContextMenuContext};
 /// View screenshot action.
 pub enum ScreenshotAction {
     /// Screenshot the view, and copy the results to clipboard.
-    #[cfg(not(target_arch = "wasm32"))] // TODO(#8264): copy-to-screenshot on web
     CopyScreenshot,
 
     /// Screenshot the view, and save the results to disk.
@@ -39,7 +38,6 @@ impl ContextMenuAction for ScreenshotAction {
 
     fn label(&self, _ctx: &ContextMenuContext<'_>) -> String {
         match self {
-            #[cfg(not(target_arch = "wasm32"))] // TODO(#8264): copy-to-screenshot on web
             Self::CopyScreenshot => "Copy screenshot".to_owned(),
             Self::SaveScreenshot => "Save screenshot…".to_owned(),
         }
@@ -65,7 +63,6 @@ impl ContextMenuAction for ScreenshotAction {
         }
 
         let target = match self {
-            #[cfg(not(target_arch = "wasm32"))] // TODO(#8264): copy-to-screenshot on web
             Self::CopyScreenshot => ScreenshotTarget::CopyToClipboard,
             Self::SaveScreenshot => ScreenshotTarget::SaveToDisk,
         };
