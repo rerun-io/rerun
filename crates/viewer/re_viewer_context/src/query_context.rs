@@ -109,7 +109,7 @@ impl Clone for DataQueryResult {
 }
 
 /// A hierarchical tree of [`DataResult`]s
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 pub struct DataResultTree {
     data_results: SlotMap<DataResultHandle, DataResultNode>,
     // TODO(jleibs): Decide if we really want to compute this per-query.

@@ -30,6 +30,7 @@ pub trait AsComponents {
     /// [`ComponentDescriptor`], see [`ComponentBatchCowWithDescriptor::descriptor_override`].
     ///
     /// [Custom Data Loader]: https://github.com/rerun-io/rerun/tree/latest/examples/rust/custom_data_loader
+    /// [`ComponentDescriptor`]: [crate::ComponentDescriptor]
     //
     // NOTE: Don't bother returning a CoW here: we need to dynamically discard optional components
     // depending on their presence (or lack thereof) at runtime anyway.
@@ -69,6 +70,8 @@ pub trait AsComponents {
     ///
     /// The default implementation will simply serialize the result of [`Self::as_component_batches`]
     /// as-is, which is what you want in 99.9% of cases.
+    ///
+    /// [`Component`]: [crate::Component]
     #[inline]
     fn to_arrow2(
         &self,

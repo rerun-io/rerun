@@ -1724,7 +1724,7 @@ checksum = "96a6ac251f4a2aca6b3f91340350eab87ae57c3f127ffeb585e92bd336717991"
 
 [[package]]
 name = "custom_callback"
-version = "0.21.0-alpha.1+dev"
+version = "0.22.0-alpha.1+dev"
 dependencies = [
  "bincode",
  "mimalloc",
@@ -6668,10 +6668,12 @@ version = "0.22.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "egui",
+ "egui_kittest",
  "fjadra",
  "itertools 0.13.0",
  "nohash-hasher",
  "re_chunk",
+ "re_chunk_store",
  "re_data_ui",
  "re_entity_db",
  "re_format",
@@ -6684,6 +6686,7 @@ dependencies = [
  "re_ui",
  "re_view",
  "re_viewer_context",
+ "re_viewport",
  "re_viewport_blueprint",
 ]
 
