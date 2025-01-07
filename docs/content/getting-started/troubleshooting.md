@@ -53,6 +53,14 @@ sudo apt-get -y install \
     adwaita-icon-theme-full
 ```
 
+TODO:
+```
+sudo add-apt-repository ppa:kisak/kisak-mesa
+sudo apt update
+sudo apt install mesa-vulkan-drivers
+```
+
+
 [TODO(#1250)](https://github.com/rerun-io/rerun/issues/1250): Running with the wayland window manager
 sometimes causes Rerun to crash. Try unsetting the wayland display (`unset WAYLAND_DISPLAY` or `WAYLAND_DISPLAY= `) as a workaround.
 

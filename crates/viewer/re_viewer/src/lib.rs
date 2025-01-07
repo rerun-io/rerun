@@ -211,7 +211,7 @@ pub(crate) fn wgpu_options(force_wgpu_backend: Option<String>) -> egui_wgpu::Wgp
                 instance_descriptor:
                 wgpu::InstanceDescriptor {
                     backends: supported_graphics_backends(force_wgpu_backend),
-                    flags: wgpu::InstanceFlags::default().with_env(),
+                    flags: wgpu::InstanceFlags::default().union(wgpu::InstanceFlags::ALLOW_UNDERLYING_NONCOMPLIANT_ADAPTER).with_env(),
                     ..Default::default()
                 },
                 ..Default::default()

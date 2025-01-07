@@ -61,7 +61,17 @@ impl DeviceTier {
             flags: match self {
                 Self::Gles => wgpu::DownlevelFlags::empty(),
                 // Require fully WebGPU compliance for the native tier.
-                Self::FullWebGpuSupport => wgpu::DownlevelFlags::all(),
+                Self::FullWebGpuSupport => {
+                    // Turn a blind eye on a few features that are missing as of writing in WSL even with latest Vulkan drivers
+                    // and pretend we still have full WebGPU support anyways.
+                    wgpu::DownlevelFlags::compliant()
+                        // Lack means that we can't set the format of views on suface textures (the result of `get_current_texture`) surface won't tell us which formats are supported.
+                        // We avoid doing anything wonky with surfaces anyways, so we won't hit this.
+                        .intersection(wgpu::DownlevelFlags::SURFACE_VIEW_FORMATS.complement())
+                        // Lack means we only get 2^24-1 indices for drawing.
+                        // Typically we don't reach this limit.
+                        .intersection(wgpu::DownlevelFlags::FULL_DRAW_INDEX_UINT32.complement())
+                }
             },
             limits: Default::default(), // unused so far both here and in wgpu as of writing.
 
@@ -84,6 +94,7 @@ impl DeviceTier {
         downlevel_caps: &wgpu::DownlevelCapabilities,
     ) -> Result<(), InsufficientDeviceCapabilities> {
         let required_downlevel_caps_webgpu = self.required_downlevel_capabilities();
+
         if downlevel_caps.shader_model < required_downlevel_caps_webgpu.shader_model {
             Err(InsufficientDeviceCapabilities::TooLowShaderModel {
                 required: required_downlevel_caps_webgpu.shader_model,
