@@ -994,6 +994,10 @@ impl TimePanel {
             self.time_control_ui.playback_speed_ui(time_ctrl, ui);
             self.time_control_ui.fps_ui(time_ctrl, ui);
             current_time_ui(ctx, ui, time_ctrl);
+
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                help_button(ui);
+            });
         }
     }
 }
