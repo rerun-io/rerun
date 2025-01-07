@@ -1,10 +1,6 @@
-
-
 use re_types::{
     archetypes::TextDocument, components::MediaType, Archetype as _, AsComponents as _,
 };
-
-
 
 #[test]
 fn roundtrip() {

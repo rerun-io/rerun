@@ -1,13 +1,9 @@
-
-
 use re_types::{
     archetypes::Arrows3D,
     components::{ClassId, Color, Position3D, Radius, Vector3D},
     datatypes::Vec3D,
     Archetype as _, AsComponents as _,
 };
-
-
 
 #[test]
 fn roundtrip() {
@@ -55,7 +51,6 @@ fn roundtrip() {
         // eprintln!("field = {field:#?}");
         // eprintln!("array = {array:#?}");
         eprintln!("{} = {array:#?}", field.name());
-
     }
 
     let deserialized = Arrows3D::from_arrow(serialized).unwrap();

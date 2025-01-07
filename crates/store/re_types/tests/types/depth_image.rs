@@ -1,13 +1,9 @@
-
-
 use re_types::{
     archetypes::DepthImage,
     components::DepthMeter,
     datatypes::{ChannelDatatype, ImageFormat},
     Archetype as _, AsComponents as _,
 };
-
-
 
 #[test]
 fn depth_image_roundtrip() {

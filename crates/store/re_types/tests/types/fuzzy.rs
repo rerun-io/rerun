@@ -1,7 +1,5 @@
 #![allow(clippy::redundant_clone)]
 
-
-
 use re_types::{
     testing::{
         archetypes::{AffixFuzzer1, AffixFuzzer2, AffixFuzzer3, AffixFuzzer4},
@@ -11,8 +9,6 @@ use re_types::{
 };
 
 use half::f16;
-
-
 
 #[test]
 fn roundtrip() {

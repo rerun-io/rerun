@@ -1,8 +1,4 @@
-
-
 use re_types::{archetypes::Pinhole, components, Archetype as _, AsComponents as _};
-
-
 
 #[test]
 fn roundtrip() {

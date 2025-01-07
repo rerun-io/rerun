@@ -1,13 +1,9 @@
-
-
 use re_types::{
     archetypes::Mesh3D,
     components::{ClassId, Position3D, Texcoord2D, TriangleIndices, Vector3D},
     datatypes::{Rgba32, UVec3D, Vec2D, Vec3D},
     Archetype as _, AsComponents as _,
 };
-
-
 
 #[test]
 fn roundtrip() {

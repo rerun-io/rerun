@@ -1,12 +1,8 @@
-
-
 use re_types::{
     archetypes::LineStrips3D,
     components::{ClassId, Color, LineStrip3D, Radius},
     Archetype as _, AsComponents as _,
 };
-
-
 
 #[test]
 fn roundtrip() {
@@ -55,7 +51,6 @@ fn roundtrip() {
         // eprintln!("field = {field:#?}");
         // eprintln!("array = {array:#?}");
         eprintln!("{} = {array:#?}", field.name());
-
     }
 
     let deserialized = LineStrips3D::from_arrow(serialized).unwrap();

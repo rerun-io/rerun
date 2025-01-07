@@ -1,8 +1,4 @@
-
-
 use re_types::{archetypes::Boxes2D, components, Archetype as _, AsComponents as _};
-
-
 
 #[test]
 fn roundtrip() {
@@ -52,7 +48,6 @@ fn roundtrip() {
         // eprintln!("field = {field:#?}");
         // eprintln!("array = {array:#?}");
         eprintln!("{} = {array:#?}", field.name());
-
     }
 
     let deserialized = Boxes2D::from_arrow(serialized).unwrap();

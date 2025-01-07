@@ -1,12 +1,8 @@
-
-
 use re_types::{
     archetypes::LineStrips2D,
     components::{ClassId, Color, DrawOrder, LineStrip2D, Radius},
     Archetype as _, AsComponents as _,
 };
-
-
 
 #[test]
 fn roundtrip() {
