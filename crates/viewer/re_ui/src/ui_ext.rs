@@ -1125,10 +1125,6 @@ pub trait UiExt {
     fn selectable_toggle<R>(&mut self, content: impl FnOnce(&mut egui::Ui) -> R) -> R {
         let ui = self.ui_mut();
 
-        // ensure cursor is on an integer value, otherwise we get weird optical alignment of the text
-        //TODO(ab): fix when https://github.com/emilk/egui/issues/4928 is resolved
-        ui.add_space(-ui.cursor().min.y.fract());
-
         egui::Frame {
             inner_margin: egui::Margin::same(3),
             stroke: design_tokens().bottom_bar_stroke,
