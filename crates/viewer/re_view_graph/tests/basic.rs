@@ -125,7 +125,7 @@ pub fn self_and_multi_edges() {
 
 pub fn setup_graph_view_blueprint(test_context: &mut TestContext) -> ViewId {
     // Views are always logged at `/{view_id}` in the blueprint store.
-    let view_id = ViewId::random(); // TODO: is this fishy for testing?
+    let view_id = ViewId::random(); // TODO(andreas): Is this fishy for testing?
 
     // Use the timeline that is queried for blueprints.
     let timepoint = [(test_context.blueprint_query.timeline(), 0)];
@@ -143,7 +143,7 @@ pub fn setup_graph_view_blueprint(test_context: &mut TestContext) -> ViewId {
         .add_chunk(&Arc::new(view_chunk))
         .unwrap();
 
-    // TODO: can we use the `ViewProperty` utilities for this?
+    // TODO(andreas): can we use the `ViewProperty` utilities for this?
     let view_contents_chunk =
         Chunk::builder(format!("{}/ViewContents", view_id.as_entity_path()).into())
             .with_archetype(
@@ -179,7 +179,7 @@ fn run_graph_view_and_save_snapshot(test_context: &mut TestContext, name: &str, 
     let applicable_entities_per_visualizer = view_class_registry
         .applicable_entities_for_visualizer_systems(&test_context.recording_store.store_id());
 
-    // TODO: this is c&p from TestContext::run. Make it nicer plz ;)
+    // TODO(andreas): this is c&p from TestContext::run. Make it nicer plz ;)
     let store_context = re_viewer_context::StoreContext {
         app_id: "rerun_test".into(),
         blueprint: &test_context.blueprint_store,
@@ -243,8 +243,6 @@ fn run_graph_view_and_save_snapshot(test_context: &mut TestContext, name: &str, 
 
             test_context.handle_system_commands();
         });
-
-    // todo: figure out how we do this for n iterations
 
     harness.run();
 
