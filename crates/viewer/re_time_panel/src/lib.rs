@@ -135,8 +135,11 @@ pub struct TimePanel {
     /// Ui elements for controlling time.
     time_control_ui: TimeControlUi,
 
-    /// Which source is the time panel controlling
+    /// Which source is the time panel controlling?
     source: TimePanelSource,
+
+    /// The filter widget state
+    filter_state: re_ui::FilterState,
 }
 
 impl Default for TimePanel {
@@ -150,6 +153,7 @@ impl Default for TimePanel {
             time_ranges_ui: Default::default(),
             time_control_ui: TimeControlUi,
             source: TimePanelSource::Recording,
+            filter_state: Default::default(),
         }
     }
 }
@@ -391,7 +395,10 @@ impl TimePanel {
         //               ▲
         //               └ tree_max_y (= time_x_left)
 
-        self.next_col_right = ui.min_rect().left(); // next_col_right will expand during the call
+        // We use this to track what the rightmost coordinate for the tree section should be. We
+        // clamp it to a minimum of 150.0px for the filter widget to behave correctly even when the
+        // tree is fully collapsed (and thus narrow).
+        self.next_col_right = ui.min_rect().left() + 150.0;
 
         let time_x_left =
             (ui.min_rect().left() + self.prev_col_width + ui.spacing().item_spacing.x)
@@ -427,11 +434,18 @@ impl TimePanel {
                 ui.set_min_size(size);
                 ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
                 ui.add_space(4.0); // hack to vertically center the text
-                if self.source == TimePanelSource::Blueprint {
-                    ui.strong("Blueprint Streams");
-                } else {
-                    ui.strong("Streams");
-                }
+
+                ui.full_span_scope(0.0..=time_x_left, |ui| {
+                    self.filter_state.ui(
+                        ui,
+                        egui::RichText::new(if self.source == TimePanelSource::Blueprint {
+                            "Blueprint Streams"
+                        } else {
+                            "Streams"
+                        })
+                        .strong(),
+                    );
+                });
             })
             .response
             .on_hover_text(
