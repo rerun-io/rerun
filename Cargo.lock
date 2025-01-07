@@ -2129,7 +2129,7 @@ dependencies = [
 [[package]]
 name = "egui_plot"
 version = "0.30.0"
-source = "git+https://github.com/wumpf/egui_plot.git?rev=a333844b6a4089fa0134770d6662125458c8e30e#a333844b6a4089fa0134770d6662125458c8e30e"
+source = "git+https://github.com/wumpf/egui_plot.git?rev=d10a4f4a5e6b43fa97a2cedcd2754e3f4c08355e#d10a4f4a5e6b43fa97a2cedcd2754e3f4c08355e"
 dependencies = [
  "ahash",
  "egui",

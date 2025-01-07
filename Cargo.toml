@@ -577,7 +577,7 @@ emath = { git = "https://github.com/emilk/egui.git", rev = "938d8b0d2e2a551ac354
 # emath = { path = "../../egui/crates/emath" }
 
 # TODO: should be merged to emilk/egui_plot
-egui_plot = { git = "https://github.com/wumpf/egui_plot.git", rev = "a333844b6a4089fa0134770d6662125458c8e30e" }
+egui_plot = { git = "https://github.com/wumpf/egui_plot.git", rev = "d10a4f4a5e6b43fa97a2cedcd2754e3f4c08355e" }
 # egui_plot = { path = "../../egui_plot/egui_plot" }
 
 # egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", rev = "48e0ef566479000a23d8dabf84badced98f1b9a6" } # https://github.com/rerun-io/egui_tiles/pull/89 2024-11-19
