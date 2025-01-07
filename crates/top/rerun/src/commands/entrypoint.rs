@@ -857,7 +857,7 @@ fn run_impl(
                 }
                 Box::new(app)
             }),
-            args.renderer,
+            args.renderer.as_deref(),
         )
         .map_err(|err| err.into());
 

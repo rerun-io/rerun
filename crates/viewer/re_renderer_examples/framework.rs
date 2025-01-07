@@ -112,14 +112,12 @@ fn preferred_framebuffer_format(formats: &[wgpu::TextureFormat]) -> wgpu::Textur
 impl<E: Example + 'static> Application<E> {
     async fn new(window: Window) -> anyhow::Result<Self> {
         let window = Arc::new(window);
-        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
-            backends: supported_backends(),
-            flags: wgpu::InstanceFlags::default()
-                // Run without validation layers, they can be annoying on shader reload depending on the backend.
-                .intersection(wgpu::InstanceFlags::VALIDATION.complement()),
-            dx12_shader_compiler: wgpu::Dx12Compiler::Fxc,
-            gles_minor_version: wgpu::Gles3MinorVersion::Automatic,
-        });
+
+        let mut instance_desc = re_renderer::config::instance_descriptor(None);
+        // Run without validation layers, they can be annoying on shader reload depending on the backend.
+        instance_desc.flags.remove(wgpu::InstanceFlags::VALIDATION);
+
+        let instance = wgpu::Instance::new(instance_desc);
         let surface = instance.create_surface(window.clone()).unwrap();
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {

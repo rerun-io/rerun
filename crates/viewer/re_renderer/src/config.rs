@@ -307,6 +307,47 @@ impl DeviceCaps {
     }
 }
 
+pub fn instance_descriptor(force_backend: Option<&str>) -> wgpu::InstanceDescriptor {
+    let backends = if let Some(force_backend) = force_backend {
+        if let Some(backend) = parse_graphics_backend(force_backend) {
+            if let Err(err) = validate_graphics_backend_applicability(backend) {
+                re_log::error!("Failed to force rendering backend parsed from {force_backend:?}: {err}\nUsing default backend instead.");
+                supported_backends()
+            } else {
+                re_log::info!("Forcing graphics backend to {backend:?}.");
+                backend.into()
+            }
+        } else {
+            re_log::error!("Failed to parse rendering backend string {force_backend:?}. Using default backend instead.");
+            supported_backends()
+        }
+    } else {
+        supported_backends()
+    };
+
+    wgpu::InstanceDescriptor {
+        backends,
+
+        flags: wgpu::InstanceFlags::default()
+            // Allow adapters that aren't compliant with the backend they're implementing.
+            // A concrete example of this is the latest Vulkan drivers on WSL which (as of writing)
+            // advertise themselves as not being Vulkan compliant but work fine for the most part.
+            //
+            // In the future we might consider enabling this _only_ for WSL as this might otherwise
+            // cause us to run with arbitrary development versions of drivers.
+            // (then again, if a user has such a driver they likely *want* us to run with it anyways!)
+            .union(wgpu::InstanceFlags::ALLOW_UNDERLYING_NONCOMPLIANT_ADAPTER)
+            // Allow manipulation via environment variables.
+            .with_env(),
+
+        // FXC isn't great (slow & outdated), but DXC is painful to ship as it has to be provided separately.
+        // (Note though that we generally prefer running with Vulkan)
+        dx12_shader_compiler: wgpu::Dx12Compiler::Fxc,
+
+        gles_minor_version: wgpu::Gles3MinorVersion::Automatic,
+    }
+}
+
 /// Backends that are officially supported by `re_renderer`.
 ///
 /// Other backend might work as well, but lack of support isn't regarded as a bug.

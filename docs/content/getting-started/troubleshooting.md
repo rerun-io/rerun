@@ -50,13 +50,9 @@ WSL's graphics drivers won't work out of the box and you'll have to update to a 
 To install the latest stable version of the mesa Vulkan drivers run:
 ```sh
 sudo add-apt-repository ppa:kisak/kisak-mesa
-sudo apt update
+sudo apt-get update
 sudo apt-get install -y mesa-vulkan-drivers
 ```
-
-<!-- The following used to be true with older drivers. Now we get all adapters listed and can pick from it ourselves. -->
-<!-- If you have a multi-gpu setup, Mesa may only report the integrated GPU such that Rerun can't pick the dedicated graphics card.
-To mitigate that set `export MESA_D3D12_DEFAULT_ADAPTER_NAME=NVIDIA` (or `export MESA_D3D12_DEFAULT_ADAPTER_NAME=AMD` respectively for an AMD graphics card). -->
 
 Since the Mesa driver on WSL dispatches to the Windows host graphics driver, it is important to keep the Windows drivers up-to-date as well.
 For example, [line rendering issues](https://github.com/rerun-io/rerun/issues/6749) have been observed when running from WSL with an

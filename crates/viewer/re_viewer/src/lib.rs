@@ -153,27 +153,7 @@ impl AppEnvironment {
 
 // ---------------------------------------------------------------------------
 
-fn supported_graphics_backends(force_wgpu_backend: Option<String>) -> wgpu::Backends {
-    if let Some(force_wgpu_backend) = force_wgpu_backend {
-        if let Some(backend) = re_renderer::config::parse_graphics_backend(&force_wgpu_backend) {
-            if let Err(err) = re_renderer::config::validate_graphics_backend_applicability(backend)
-            {
-                re_log::error!("Failed to force rendering backend parsed from {force_wgpu_backend:?}: {err}\nUsing default backend instead.");
-                re_renderer::config::supported_backends()
-            } else {
-                re_log::info!("Forcing graphics backend to {backend:?}.");
-                backend.into()
-            }
-        } else {
-            re_log::error!("Failed to parse rendering backend string {force_wgpu_backend:?}. Using default backend instead.");
-            re_renderer::config::supported_backends()
-        }
-    } else {
-        re_renderer::config::supported_backends()
-    }
-}
-
-pub(crate) fn wgpu_options(force_wgpu_backend: Option<String>) -> egui_wgpu::WgpuConfiguration {
+pub(crate) fn wgpu_options(force_wgpu_backend: Option<&str>) -> egui_wgpu::WgpuConfiguration {
     re_tracing::profile_function!();
 
     egui_wgpu::WgpuConfiguration {
@@ -195,25 +175,17 @@ pub(crate) fn wgpu_options(force_wgpu_backend: Option<String>) -> egui_wgpu::Wgp
                     egui_wgpu::SurfaceErrorAction::SkipFrame
                 }
             }),
-            // TODO(#8475): It would be great to use `egui_wgpu::WgpuSetup::Existing` and put the
-            // full control of adapter creation into the hands of `re_renderer`.
-            // However, we generally need to take into account the _surface_ as well:
-            // * this is a strict *requirement* when using WebGL
-            // * on OpenGL & Linux it _helps_ to know the surface because either Vulkan or OpenGL may not be happy with all surfaces
-            //
-            // Next better thing that we should aspire for is to allow rejecting adapters on native in egui.
-            // I.e. instead of always providing a device descriptor, we should allow it to fail for a given device.
-            // This rejection should happen with reason-message so it's tractable why a given adapter wasn't chosen.
-            // Which is obviously what we want to show when we're rejecting all adapters, but it would
-            // also be great to be able to show that information later on.
+
             wgpu_setup: egui_wgpu::WgpuSetup::CreateNew(egui_wgpu::WgpuSetupCreateNew {
+                instance_descriptor: re_renderer::config::instance_descriptor(force_wgpu_backend),
+
+                // TODO(#8475): Install custom native adapter selector with more extensive logging and the ability to pick adapter by name
+                // (user may e.g. request "nvidia" or "intel" and it should just work!)
+                // ideally producing structured reasoning of why which one was picked in the process.
+                // This should live in re_renderer::config so that we can reuse it in tests & re_renderer examples.
+                native_adapter_selector: None,
                 device_descriptor: std::sync::Arc::new(|adapter| re_renderer::config::DeviceCaps::from_adapter_without_validation(adapter).device_descriptor()),
-                instance_descriptor:
-                wgpu::InstanceDescriptor {
-                    backends: supported_graphics_backends(force_wgpu_backend),
-                    flags: wgpu::InstanceFlags::default().union(wgpu::InstanceFlags::ALLOW_UNDERLYING_NONCOMPLIANT_ADAPTER).with_env(),
-                    ..Default::default()
-                },
+
                 ..Default::default()
              }),
             ..Default::default()
