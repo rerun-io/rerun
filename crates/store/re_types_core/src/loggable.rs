@@ -23,46 +23,7 @@ use crate::{Archetype, ComponentBatch, LoggableBatch};
 /// which makes it possible to work with lists' worth of data in a generic fashion.
 pub trait Loggable: 'static + Send + Sync + Clone + Sized + SizeBytes {
     /// The underlying [`arrow::datatypes::DataType`], excluding datatype extensions.
-    fn arrow_datatype() -> arrow::datatypes::DataType {
-        Self::arrow2_datatype().into() // TODO(#3741): remove as part of porting to arrow2 (obviously)
-    }
-
-    /// The underlying [`arrow2::datatypes::DataType`], excluding datatype extensions.
-    fn arrow2_datatype() -> arrow2::datatypes::DataType {
-        Self::arrow_datatype().into()
-    }
-
-    /// Given an iterator of options of owned or reference values to the current
-    /// [`Loggable`], serializes them into an Arrow array.
-    ///
-    /// When using Rerun's builtin components & datatypes, this can only fail if the data
-    /// exceeds the maximum number of entries in an Arrow array (2^31 for standard arrays,
-    /// 2^63 for large arrays).
-    fn to_arrow_opt<'a>(
-        data: impl IntoIterator<Item = Option<impl Into<std::borrow::Cow<'a, Self>>>>,
-    ) -> SerializationResult<arrow::array::ArrayRef>
-    where
-        Self: 'a,
-    {
-        Self::to_arrow2_opt(data).map(|array| array.into())
-    }
-
-    /// Given an iterator of options of owned or reference values to the current
-    /// [`Loggable`], serializes them into an Arrow2 array.
-    ///
-    /// When using Rerun's builtin components & datatypes, this can only fail if the data
-    /// exceeds the maximum number of entries in an Arrow2 array (2^31 for standard arrays,
-    /// 2^63 for large arrays).
-    fn to_arrow2_opt<'a>(
-        data: impl IntoIterator<Item = Option<impl Into<std::borrow::Cow<'a, Self>>>>,
-    ) -> SerializationResult<Box<dyn arrow2::array::Array>>
-    where
-        Self: 'a,
-    {
-        Self::to_arrow_opt(data).map(|array| array.into())
-    }
-
-    // --- Optional serialization methods ---
+    fn arrow_datatype() -> arrow::datatypes::DataType;
 
     /// Given an iterator of owned or reference values to the current [`Loggable`], serializes
     /// them into an Arrow array.
@@ -77,8 +38,45 @@ pub trait Loggable: 'static + Send + Sync + Clone + Sized + SizeBytes {
     where
         Self: 'a,
     {
-        re_tracing::profile_function!();
-        Self::to_arrow_opt(data.into_iter().map(Some))
+        Self::to_arrow_opt(data.into_iter().map(|v| Some(v)))
+    }
+
+    /// Given an iterator of options of owned or reference values to the current
+    /// [`Loggable`], serializes them into an Arrow array.
+    ///
+    /// When using Rerun's builtin components & datatypes, this can only fail if the data
+    /// exceeds the maximum number of entries in an Arrow array (2^31 for standard arrays,
+    /// 2^63 for large arrays).
+    fn to_arrow_opt<'a>(
+        data: impl IntoIterator<Item = Option<impl Into<std::borrow::Cow<'a, Self>>>>,
+    ) -> SerializationResult<arrow::array::ArrayRef>
+    where
+        Self: 'a;
+
+    /// Given an Arrow array, deserializes it into a collection of [`Loggable`]s.
+    #[inline]
+    fn from_arrow(data: &dyn arrow::array::Array) -> DeserializationResult<Vec<Self>> {
+        Self::from_arrow_opt(data)?
+            .into_iter()
+            .map(|opt| opt.ok_or_else(crate::DeserializationError::missing_data))
+            .collect::<DeserializationResult<Vec<_>>>()
+    }
+
+    /// Given an Arrow array, deserializes it into a collection of optional [`Loggable`]s.
+    #[inline]
+    fn from_arrow_opt(
+        data: &dyn arrow::array::Array,
+    ) -> crate::DeserializationResult<Vec<Option<Self>>> {
+        Self::from_arrow(data).map(|v| v.into_iter().map(Some).collect())
+    }
+
+    // ------------- Legacy arrow2 helpers - do NOT override these! -------------
+
+    /// The underlying [`arrow2::datatypes::DataType`], excluding datatype extensions.
+    ///
+    /// Legacy arrow2 stuff - do NOT override this!
+    fn arrow2_datatype() -> arrow2::datatypes::DataType {
+        Self::arrow_datatype().into()
     }
 
     /// Given an iterator of owned or reference values to the current [`Loggable`], serializes
@@ -87,6 +85,8 @@ pub trait Loggable: 'static + Send + Sync + Clone + Sized + SizeBytes {
     /// When using Rerun's builtin components & datatypes, this can only fail if the data
     /// exceeds the maximum number of entries in an Arrow2 array (2^31 for standard arrays,
     /// 2^63 for large arrays).
+    ///
+    /// Legacy arrow2 stuff - do NOT override this!
     #[inline]
     fn to_arrow2<'a>(
         data: impl IntoIterator<Item = impl Into<std::borrow::Cow<'a, Self>>>,
@@ -94,44 +94,41 @@ pub trait Loggable: 'static + Send + Sync + Clone + Sized + SizeBytes {
     where
         Self: 'a,
     {
-        re_tracing::profile_function!();
-        Self::to_arrow2_opt(data.into_iter().map(Some))
+        Self::to_arrow(data).map(|arr| arr.into())
     }
 
-    // --- Optional deserialization methods ---
-
-    /// Given an Arrow array, deserializes it into a collection of [`Loggable`]s.
-    #[inline]
-    fn from_arrow(data: &dyn arrow::array::Array) -> DeserializationResult<Vec<Self>> {
-        re_tracing::profile_function!();
-        Self::from_arrow_opt(data)?
-            .into_iter()
-            .map(|opt| opt.ok_or_else(crate::DeserializationError::missing_data))
-            .collect::<DeserializationResult<Vec<_>>>()
+    /// Given an iterator of options of owned or reference values to the current
+    /// [`Loggable`], serializes them into an Arrow2 array.
+    ///
+    /// When using Rerun's builtin components & datatypes, this can only fail if the data
+    /// exceeds the maximum number of entries in an Arrow2 array (2^31 for standard arrays,
+    /// 2^63 for large arrays).
+    ///
+    /// Legacy arrow2 stuff - do NOT override this!
+    fn to_arrow2_opt<'a>(
+        data: impl IntoIterator<Item = Option<impl Into<std::borrow::Cow<'a, Self>>>>,
+    ) -> SerializationResult<Box<dyn arrow2::array::Array>>
+    where
+        Self: 'a,
+    {
+        Self::to_arrow_opt(data).map(|array| array.into())
     }
 
     /// Given an Arrow2 array, deserializes it into a collection of [`Loggable`]s.
+    ///
+    /// Legacy arrow2 stuff - do NOT override this!
     #[inline]
     fn from_arrow2(data: &dyn arrow2::array::Array) -> DeserializationResult<Vec<Self>> {
-        re_tracing::profile_function!();
-        Self::from_arrow2_opt(data)?
-            .into_iter()
-            .map(|opt| opt.ok_or_else(crate::DeserializationError::missing_data))
-            .collect::<DeserializationResult<Vec<_>>>()
-    }
-
-    /// Given an Arrow array, deserializes it into a collection of optional [`Loggable`]s.
-    fn from_arrow_opt(data: &dyn arrow::array::Array) -> DeserializationResult<Vec<Option<Self>>> {
-        let boxed_arrow2_array: Box<dyn arrow2::array::Array> = data.into();
-        Self::from_arrow2_opt(boxed_arrow2_array.as_ref())
+        Self::from_arrow(arrow::array::ArrayRef::from(data).as_ref())
     }
 
     /// Given an Arrow2 array, deserializes it into a collection of optional [`Loggable`]s.
+    ///
+    /// Legacy arrow2 stuff - do NOT override this!
     fn from_arrow2_opt(
         data: &dyn arrow2::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>> {
-        let boxed_arrow_array = arrow::array::ArrayRef::from(data);
-        Self::from_arrow_opt(boxed_arrow_array.as_ref())
+        Self::from_arrow_opt(arrow::array::ArrayRef::from(data).as_ref())
     }
 }
 

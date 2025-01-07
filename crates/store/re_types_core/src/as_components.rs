@@ -343,28 +343,28 @@ mod tests {
     }
 
     impl crate::Loggable for MyColor {
-        fn arrow2_datatype() -> arrow2::datatypes::DataType {
-            arrow2::datatypes::DataType::UInt32
+        fn arrow_datatype() -> arrow::datatypes::DataType {
+            arrow::datatypes::DataType::UInt32
         }
 
-        fn to_arrow2_opt<'a>(
+        fn to_arrow_opt<'a>(
             data: impl IntoIterator<Item = Option<impl Into<std::borrow::Cow<'a, Self>>>>,
-        ) -> crate::SerializationResult<Box<dyn arrow2::array::Array>>
+        ) -> crate::SerializationResult<arrow::array::ArrayRef>
         where
             Self: 'a,
         {
             use crate::datatypes::UInt32;
-            UInt32::to_arrow2_opt(
+            UInt32::to_arrow_opt(
                 data.into_iter()
                     .map(|opt| opt.map(Into::into).map(|c| UInt32(c.0))),
             )
         }
 
-        fn from_arrow2_opt(
-            data: &dyn arrow2::array::Array,
+        fn from_arrow_opt(
+            data: &dyn arrow::array::Array,
         ) -> crate::DeserializationResult<Vec<Option<Self>>> {
             use crate::datatypes::UInt32;
-            Ok(UInt32::from_arrow2_opt(data)?
+            Ok(UInt32::from_arrow_opt(data)?
                 .into_iter()
                 .map(|opt| opt.map(|v| Self(v.0)))
                 .collect())
