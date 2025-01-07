@@ -974,8 +974,7 @@ impl App {
             _ => href,
         };
 
-        self.egui_ctx
-            .output_mut(|o| o.copied_text = direct_link.clone());
+        self.egui_ctx.copy_text(direct_link.clone());
         self.notifications
             .success(format!("Copied {direct_link:?} to clipboard"));
     }
