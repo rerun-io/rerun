@@ -4,11 +4,11 @@
 
 use std::sync::Arc;
 
-use re_view_graph::{GraphViewState, GraphView};
-use re_types::{components, Component as _};
 use egui::Vec2;
-use re_entity_db::EntityPath;
 use re_chunk_store::{Chunk, RowId};
+use re_entity_db::EntityPath;
+use re_types::{components, Component as _};
+use re_view_graph::{GraphView, GraphViewState};
 use re_viewer_context::{test_context::TestContext, ViewClass, ViewClassExt as _, ViewId};
 use re_viewport_blueprint::ViewBlueprint;
 
@@ -249,6 +249,6 @@ fn run_graph_view_and_save_snapshot(test_context: &mut TestContext, name: &str, 
     harness.run();
 
     //TODO(#8245): enable this everywhere when we have a software renderer setup
-    // #[cfg(target_os = "macos")]
+    #[cfg(target_os = "macos")]
     harness.wgpu_snapshot(name);
 }
