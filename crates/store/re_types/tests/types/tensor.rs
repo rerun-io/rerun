@@ -1,13 +1,9 @@
-use std::collections::HashMap;
-
 use re_types::{
     archetypes::Tensor,
     datatypes::{TensorBuffer, TensorData},
     tensor_data::TensorCastError,
     Archetype as _, AsComponents as _, Loggable as _,
 };
-
-use crate::util;
 
 #[test]
 fn tensor_buffer_roundtrip() {
@@ -39,23 +35,12 @@ fn tensor_roundtrip() {
         .to_arrow()
         .unwrap()];
 
-    let expected_extensions: HashMap<_, _> = [("data", vec!["rerun.components.TensorData"])].into();
-
     for (expected, serialized) in all_expected.into_iter().zip(all_arch_serialized) {
         for (field, array) in &serialized {
             // NOTE: Keep those around please, very useful when debugging.
             // eprintln!("field = {field:#?}");
             // eprintln!("array = {array:#?}");
             eprintln!("{} = {array:#?}", field.name());
-
-            // TODO(cmc): Re-enable extensions and these assertions once `arrow2-convert`
-            // has been fully replaced.
-            if false {
-                util::assert_extensions(
-                    &**array,
-                    expected_extensions[field.name().as_str()].as_slice(),
-                );
-            }
         }
 
         let deserialized = Tensor::from_arrow(serialized).unwrap();

@@ -1,4 +1,4 @@
-use std::{collections::HashMap, f32::consts::TAU};
+use std::f32::consts::TAU;
 
 use re_types::{
     archetypes::Transform3D,
@@ -6,8 +6,6 @@ use re_types::{
     datatypes::{Angle, Mat3x3, RotationAxisAngle, Vec3D},
     Archetype as _, AsComponents as _,
 };
-
-use crate::util;
 
 #[test]
 fn roundtrip() {
@@ -75,11 +73,6 @@ fn roundtrip() {
             .with_relation(TransformRelation::ParentFromChild),
     ];
 
-    let expected_extensions: HashMap<_, _> = [
-        ("transform", vec!["rerun.components.Transform3D"]), //
-    ]
-    .into();
-
     for (expected, arch) in all_expected.into_iter().zip(all_arch) {
         similar_asserts::assert_eq!(expected, arch);
 
@@ -90,15 +83,6 @@ fn roundtrip() {
             // eprintln!("field = {field:#?}");
             // eprintln!("array = {array:#?}");
             eprintln!("{} = {array:#?}", field.name());
-
-            // TODO(cmc): Re-enable extensions and these assertions once `arrow2-convert`
-            // has been fully replaced.
-            if false {
-                util::assert_extensions(
-                    &**array,
-                    expected_extensions[field.name().as_str()].as_slice(),
-                );
-            }
         }
 
         let deserialized = Transform3D::from_arrow(serialized).unwrap();

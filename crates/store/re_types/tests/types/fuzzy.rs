@@ -1,6 +1,6 @@
 #![allow(clippy::redundant_clone)]
 
-use std::collections::HashMap;
+
 
 use re_types::{
     testing::{
@@ -12,7 +12,7 @@ use re_types::{
 
 use half::f16;
 
-use crate::util;
+
 
 #[test]
 fn roundtrip() {
@@ -236,17 +236,6 @@ fn roundtrip() {
             fuzzy22_1.clone(),
         );
 
-        #[rustfmt::skip]
-        let expected_extensions: HashMap<_, _> = [
-            ("fuzz1001", vec!["rerun.testing.components.AffixFuzzer1", "rerun.testing.datatypes.AffixFuzzer1"]),
-            ("fuzz1002", vec!["rerun.testing.components.AffixFuzzer2", "rerun.testing.datatypes.AffixFuzzer1"]),
-            ("fuzz1003", vec!["rerun.testing.components.AffixFuzzer3", "rerun.testing.datatypes.AffixFuzzer1"]),
-            ("fuzz1004", vec!["rerun.testing.components.AffixFuzzer4", "rerun.testing.datatypes.AffixFuzzer1"]),
-            ("fuzz1005", vec!["rerun.testing.components.AffixFuzzer5", "rerun.testing.datatypes.AffixFuzzer1"]),
-            ("fuzz1006", vec!["rerun.testing.components.AffixFuzzer6", "rerun.testing.datatypes.AffixFuzzer1"]),
-        ]
-        .into();
-
         eprintln!("arch = {arch:#?}");
         let serialized = arch.to_arrow().unwrap();
         for (field, array) in &serialized {
@@ -262,15 +251,6 @@ fn roundtrip() {
                 );
             } else {
                 eprintln!("{} = {array:#?}", field.name());
-            }
-
-            // TODO(#3741): Re-enable extensions and these assertions once `arrow2-convert`
-            // has been fully replaced.
-            if false {
-                util::assert_extensions(
-                    &**array,
-                    expected_extensions[field.name().as_str()].as_slice(),
-                );
             }
         }
 
@@ -301,17 +281,6 @@ fn roundtrip() {
             [fuzzy22_1.clone(), fuzzy22_2.clone(), fuzzy22_1.clone()],
         );
 
-        #[rustfmt::skip]
-        let expected_extensions: HashMap<_, _> = [
-            ("fuzz1101", vec!["rerun.testing.components.AffixFuzzer1", "rerun.testing.datatypes.AffixFuzzer1"]),
-            ("fuzz1102", vec!["rerun.testing.components.AffixFuzzer2", "rerun.testing.datatypes.AffixFuzzer1"]),
-            ("fuzz1103", vec!["rerun.testing.components.AffixFuzzer3", "rerun.testing.datatypes.AffixFuzzer1"]),
-            ("fuzz1104", vec!["rerun.testing.components.AffixFuzzer4", "rerun.testing.datatypes.AffixFuzzer1"]),
-            ("fuzz1105", vec!["rerun.testing.components.AffixFuzzer5", "rerun.testing.datatypes.AffixFuzzer1"]),
-            ("fuzz1106", vec!["rerun.testing.components.AffixFuzzer6", "rerun.testing.datatypes.AffixFuzzer1"]),
-        ]
-        .into();
-
         eprintln!("arch = {arch:#?}");
         let serialized = arch.to_arrow().unwrap();
         for (field, array) in &serialized {
@@ -327,15 +296,6 @@ fn roundtrip() {
                 );
             } else {
                 eprintln!("{} = {array:#?}", field.name());
-            }
-
-            // TODO(#3741): Re-enable extensions and these assertions once `arrow2-convert`
-            // has been fully replaced.
-            if false {
-                util::assert_extensions(
-                    &**array,
-                    expected_extensions[field.name().as_str()].as_slice(),
-                );
             }
         }
 
@@ -357,17 +317,6 @@ fn roundtrip() {
             .with_fuzz2017(fuzzy17_1.clone())
             .with_fuzz2018(fuzzy18_1.clone());
 
-        #[rustfmt::skip]
-        let expected_extensions: HashMap<_, _> = [
-            ("fuzz2001", vec!["rerun.testing.components.AffixFuzzer1", "rerun.testing.datatypes.AffixFuzzer1"]),
-            ("fuzz2002", vec!["rerun.testing.components.AffixFuzzer2", "rerun.testing.datatypes.AffixFuzzer1"]),
-            ("fuzz2003", vec!["rerun.testing.components.AffixFuzzer3", "rerun.testing.datatypes.AffixFuzzer1"]),
-            ("fuzz2004", vec!["rerun.testing.components.AffixFuzzer4", "rerun.testing.datatypes.AffixFuzzer1"]),
-            ("fuzz2005", vec!["rerun.testing.components.AffixFuzzer5", "rerun.testing.datatypes.AffixFuzzer1"]),
-            ("fuzz2006", vec!["rerun.testing.components.AffixFuzzer6", "rerun.testing.datatypes.AffixFuzzer1"]),
-        ]
-        .into();
-
         eprintln!("arch = {arch:#?}");
         let serialized = arch.to_arrow().unwrap();
         for (field, array) in &serialized {
@@ -383,15 +332,6 @@ fn roundtrip() {
                 );
             } else {
                 eprintln!("{} = {array:#?}", field.name());
-            }
-
-            // TODO(#3741): Re-enable extensions and these assertions once `arrow2-convert`
-            // has been fully replaced.
-            if false {
-                util::assert_extensions(
-                    &**array,
-                    expected_extensions[field.name().as_str()].as_slice(),
-                );
             }
         }
 
@@ -413,17 +353,6 @@ fn roundtrip() {
             .with_fuzz2117([fuzzy17_1.clone(), fuzzy17_2.clone(), fuzzy17_1.clone()])
             .with_fuzz2118([fuzzy18_1.clone(), fuzzy18_2.clone(), fuzzy18_3.clone()]);
 
-        #[rustfmt::skip]
-        let expected_extensions: HashMap<_, _> = [
-            ("fuzz2101", vec!["rerun.testing.components.AffixFuzzer1", "rerun.testing.datatypes.AffixFuzzer1"]),
-            ("fuzz2102", vec!["rerun.testing.components.AffixFuzzer2", "rerun.testing.datatypes.AffixFuzzer1"]),
-            ("fuzz2103", vec!["rerun.testing.components.AffixFuzzer3", "rerun.testing.datatypes.AffixFuzzer1"]),
-            ("fuzz2104", vec!["rerun.testing.components.AffixFuzzer4", "rerun.testing.datatypes.AffixFuzzer1"]),
-            ("fuzz2105", vec!["rerun.testing.components.AffixFuzzer5", "rerun.testing.datatypes.AffixFuzzer1"]),
-            ("fuzz2106", vec!["rerun.testing.components.AffixFuzzer6", "rerun.testing.datatypes.AffixFuzzer1"]),
-        ]
-        .into();
-
         eprintln!("arch = {arch:#?}");
         let serialized = arch.to_arrow().unwrap();
         for (field, array) in &serialized {
@@ -439,15 +368,6 @@ fn roundtrip() {
                 );
             } else {
                 eprintln!("{} = {array:#?}", field.name());
-            }
-
-            // TODO(#3741): Re-enable extensions and these assertions once `arrow2-convert`
-            // has been fully replaced.
-            if false {
-                util::assert_extensions(
-                    &**array,
-                    expected_extensions[field.name().as_str()].as_slice(),
-                );
             }
         }
 

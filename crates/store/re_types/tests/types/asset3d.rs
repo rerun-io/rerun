@@ -19,10 +19,6 @@ fn roundtrip() {
         .with_albedo_factor(0xEE112233);
     similar_asserts::assert_eq!(expected, arch);
 
-    // let expected_extensions: HashMap<_, _> = [
-    // ]
-    // .into();
-
     eprintln!("arch = {arch:#?}");
     let serialized = arch.to_arrow().unwrap();
     for (field, array) in &serialized {
@@ -30,13 +26,6 @@ fn roundtrip() {
         // eprintln!("field = {field:#?}");
         // eprintln!("array = {array:#?}");
         eprintln!("{} = {array:#?}", field.name());
-
-        // TODO(cmc): Re-enable extensions and these assertions once `arrow2-convert`
-        // has been fully replaced.
-        // util::assert_extensions(
-        //     &**array,
-        //     expected_extensions[field.name().as_str()].as_slice(),
-        // );
     }
 
     let deserialized = Asset3D::from_arrow(serialized).unwrap();

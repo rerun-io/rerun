@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+
 
 use re_types::{
     archetypes::Mesh3D,
@@ -7,7 +7,7 @@ use re_types::{
     Archetype as _, AsComponents as _,
 };
 
-use crate::util;
+
 
 #[test]
 fn roundtrip() {
@@ -54,11 +54,6 @@ fn roundtrip() {
         .with_albedo_texture(texture_format, texture_buffer);
     similar_asserts::assert_eq!(expected, arch);
 
-    let expected_extensions: HashMap<_, _> = [
-        ("class_ids", vec!["rerun.components.ClassId"]), //
-    ]
-    .into();
-
     eprintln!("arch = {arch:#?}");
     let serialized = arch.to_arrow().unwrap();
     for (field, array) in &serialized {
@@ -66,15 +61,6 @@ fn roundtrip() {
         // eprintln!("field = {field:#?}");
         // eprintln!("array = {array:#?}");
         eprintln!("{} = {array:#?}", field.name());
-
-        // TODO(cmc): Re-enable extensions and these assertions once `arrow2-convert`
-        // has been fully replaced.
-        if false {
-            util::assert_extensions(
-                &**array,
-                expected_extensions[field.name().as_str()].as_slice(),
-            );
-        }
     }
 
     let deserialized = Mesh3D::from_arrow(serialized).unwrap();

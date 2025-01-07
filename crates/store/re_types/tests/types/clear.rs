@@ -1,8 +1,8 @@
-use std::collections::HashMap;
+
 
 use re_types::{archetypes::Clear, Archetype as _, AsComponents as _};
 
-use crate::util;
+
 
 #[test]
 fn roundtrip() {
@@ -20,11 +20,6 @@ fn roundtrip() {
         Clear::flat(),      //
     ];
 
-    let expected_extensions: HashMap<_, _> = [
-        ("recursive", vec!["rerun.components.Clear"]), //
-    ]
-    .into();
-
     for (expected, arch) in all_expected.into_iter().zip(all_arch) {
         similar_asserts::assert_eq!(expected, arch);
 
@@ -35,15 +30,6 @@ fn roundtrip() {
             // eprintln!("field = {field:#?}");
             // eprintln!("array = {array:#?}");
             eprintln!("{} = {array:#?}", field.name());
-
-            // TODO(cmc): Re-enable extensions and these assertions once `arrow2-convert`
-            // has been fully replaced.
-            if false {
-                util::assert_extensions(
-                    &**array,
-                    expected_extensions[field.name().as_str()].as_slice(),
-                );
-            }
         }
 
         let deserialized = Clear::from_arrow(serialized).unwrap();
