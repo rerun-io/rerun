@@ -253,9 +253,8 @@ impl eframe::App for ExampleApp {
                 ui.spacing_mut().item_spacing.y = 0.0;
 
                 ui.full_span_separator();
-                self.filter_state.ui(ui, |ui| {
-                    ui.strong("Filter demo");
-                });
+                self.filter_state
+                    .ui(ui, egui::RichText::new("Filter demo").strong());
                 ui.full_span_separator();
 
                 let names = vec![

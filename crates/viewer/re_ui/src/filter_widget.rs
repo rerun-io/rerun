@@ -36,9 +36,9 @@ impl FilterState {
 
     /// Display the filter widget.
     ///
-    /// Note: this delegates to [`list_item::ListItem`], so you may need to setup the full span
-    /// scope.
-    pub fn ui(&mut self, ui: &mut egui::Ui, default_ui: impl FnOnce(&mut egui::Ui)) {
+    /// Note: this uses [`egui::Ui::available_width`] to determine the location of the right-aligned
+    /// search button, as per usual for [`list_item::ListItem`]-based widgets.
+    pub fn ui(&mut self, ui: &mut egui::Ui, section_title: impl Into<egui::WidgetText>) {
         let mut button_clicked = false;
 
         let icon = if self.filter_query.is_none() {
@@ -46,6 +46,16 @@ impl FilterState {
         } else {
             &crate::icons::CLOSE
         };
+
+        // precompute the title layout such that we know the size we need for the list item content
+        let section_title = section_title.into();
+        let galley = section_title.into_galley(
+            ui,
+            Some(egui::TextWrapMode::Extend),
+            f32::INFINITY,
+            egui::FontSelection::default(),
+        );
+        let text_width = galley.size().x;
 
         list_item::list_item_scope(ui, ui.next_auto_id(), |ui| {
             ui.list_item()
@@ -67,9 +77,10 @@ impl FilterState {
                                 response.request_focus();
                             }
                         } else {
-                            default_ui(ui);
+                            ui.label(galley);
                         }
                     })
+                    .with_content_width(text_width)
                     .action_button(icon, || {
                         button_clicked = true;
                     }),
