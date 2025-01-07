@@ -7,7 +7,6 @@ use re_viewer_context::{
 };
 
 /// Show a button letting the user copy the image
-#[cfg(not(target_arch = "wasm32"))]
 pub fn copy_image_button_ui(ui: &mut egui::Ui, image: &ImageInfo, data_range: egui::Rangef) {
     if ui
         .button("Copy image")
