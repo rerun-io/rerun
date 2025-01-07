@@ -723,7 +723,7 @@ impl ChunkStore {
             .filter_map(|(entity_path, component_descr)| {
                 let metadata =
                     self.lookup_column_metadata(entity_path, &component_descr.component_name)?;
-                let datatype = self.lookup_datatype(&component_descr.component_name)?;
+                let datatype = self.lookup_datatype_arrow2(&component_descr.component_name)?;
 
                 Some(((entity_path, component_descr), (metadata, datatype)))
             })
@@ -833,7 +833,7 @@ impl ChunkStore {
             });
 
         let datatype = self
-            .lookup_datatype(&component_name)
+            .lookup_datatype_arrow2(&component_name)
             .cloned()
             .unwrap_or(Arrow2Datatype::Null);
 
