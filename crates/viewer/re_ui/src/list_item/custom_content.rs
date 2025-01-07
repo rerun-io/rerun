@@ -1,12 +1,30 @@
+use egui::{NumExt as _, Ui};
+
 use crate::list_item::{ContentContext, DesiredWidth, ListItemContent};
 use crate::DesignTokens;
-use egui::{NumExt as _, Ui};
+
+/// Control how the [`CustomContent`] advertises its width.
+#[derive(Debug, Clone, Copy)]
+enum CustomContentDesiredWidth {
+    /// Use the provided [`DesiredWidth`].
+    DesiredWidth(DesiredWidth),
+
+    /// Use [`DesiredWidth::AtLeast`] with a width computed from the provided content, plus any
+    /// extras such as a button.
+    ContentWidth(f32),
+}
+
+impl Default for CustomContentDesiredWidth {
+    fn default() -> Self {
+        Self::DesiredWidth(Default::default())
+    }
+}
 
 /// [`ListItemContent`] that mostly delegates to a closure.
 #[expect(clippy::type_complexity)]
 pub struct CustomContent<'a> {
     ui: Box<dyn FnOnce(&mut egui::Ui, &ContentContext<'_>) + 'a>,
-    desired_width: DesiredWidth,
+    desired_width: CustomContentDesiredWidth,
 
     //TODO(ab): in the future, that should be a `Vec`, with some auto expanding mini-toolbar
     button: Option<Box<dyn super::ItemButton + 'a>>,
@@ -26,10 +44,17 @@ impl<'a> CustomContent<'a> {
         }
     }
 
-    /// Set the minimum desired width for the entire content.
+    /// Set the desired width for the entire content.
     #[inline]
     pub fn with_desired_width(mut self, desired_width: DesiredWidth) -> Self {
-        self.desired_width = desired_width;
+        self.desired_width = CustomContentDesiredWidth::DesiredWidth(desired_width);
+        self
+    }
+
+    /// Set the desired width based on the provided content width. If a button is set, its width
+    /// will be taken into account and added to the content width.
+    pub fn with_content_width(mut self, desired_content_width: f32) -> Self {
+        self.desired_width = CustomContentDesiredWidth::ContentWidth(desired_content_width);
         self
     }
 
@@ -137,7 +162,18 @@ impl ListItemContent for CustomContent<'_> {
         }
     }
 
-    fn desired_width(&self, _ui: &Ui) -> DesiredWidth {
-        self.desired_width
+    //TODO: add snapshot test for this logic
+    fn desired_width(&self, ui: &Ui) -> DesiredWidth {
+        match self.desired_width {
+            CustomContentDesiredWidth::DesiredWidth(desired_width) => desired_width,
+            CustomContentDesiredWidth::ContentWidth(mut content_width) => {
+                if self.button.is_some() {
+                    content_width += DesignTokens::small_icon_size().x
+                        + 2.0 * ui.spacing().button_padding.x
+                        + DesignTokens::text_to_icon_padding();
+                }
+                DesiredWidth::AtLeast(content_width)
+            }
+        }
     }
 }
