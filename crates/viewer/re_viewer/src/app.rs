@@ -1941,15 +1941,6 @@ impl eframe::App for App {
                 }
             }
         });
-
-        egui_ctx.output_mut(|o| {
-            // Open all links in a new tab (https://github.com/rerun-io/rerun/issues/4105)
-            for command in o.commands.iter_mut() {
-                if let egui::OutputCommand::OpenUrl(open_url) = &mut command {
-                    open_url.new_tab = true;
-                }
-            }
-        });
     }
 
     #[cfg(target_arch = "wasm32")]

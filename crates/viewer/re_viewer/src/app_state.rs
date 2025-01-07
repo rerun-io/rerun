@@ -666,18 +666,19 @@ fn check_for_clicked_hyperlinks(
 
     let mut path = None;
 
-    // TODO: https://github.com/emilk/egui/pull/5532#issuecomment-2569606449
-
     egui_ctx.output_mut(|o| {
-        for command in o.commands.retain(|command| {
-            if let egui::OutputCommand::OpenUrl(open_url) = &mut command {
+        o.commands.retain_mut(|command| {
+            if let egui::OutputCommand::OpenUrl(open_url) = command {
                 if let Some(path_str) = open_url.url.strip_prefix(recording_scheme) {
                     path = Some(path_str.to_owned());
                     return false;
+                } else {
+                    // Open all links in a new tab (https://github.com/rerun-io/rerun/issues/4105)
+                    open_url.new_tab = true;
                 }
             }
             true
-        })
+        });
     });
 
     if let Some(path) = path {
