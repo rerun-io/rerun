@@ -1723,6 +1723,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "96a6ac251f4a2aca6b3f91340350eab87ae57c3f127ffeb585e92bd336717991"
 
 [[package]]
+name = "custom_callback"
+version = "0.21.0-alpha.1+dev"
+dependencies = [
+ "bincode",
+ "mimalloc",
+ "parking_lot",
+ "re_crash_handler",
+ "re_error",
+ "rerun",
+ "serde",
+ "tokio",
+]
+
+[[package]]
 name = "custom_data_loader"
 version = "0.22.0-alpha.1+dev"
 dependencies = [
