@@ -139,13 +139,13 @@ struct SharedWgpuResources {
     adapter: Arc<wgpu::Adapter>,
     device: Arc<wgpu::Device>,
 
-    // Sharing the queue accross parallel running tests should work fine in theory - it's obviously threadsafe.
+    // Sharing the queue across parallel running tests should work fine in theory - it's obviously threadsafe.
     // Note though that this becomes an odd sync point that is shared with all tests that put in work here.
     queue: Arc<wgpu::Queue>,
 }
 
 static SHARED_WGPU_RENDERER_SETUP: Lazy<SharedWgpuResources> = Lazy::new(|| {
-    // TODO(andreas, emilk/egui#5506): Use centralized wgpu setup logic that...
+    // TODO(andreas, emilk/egui#5506): Use centralized wgpu setup logic that…
     // * lives mostly in re_renderer and is shared with viewer & renderer examples
     // * can be told to prefer software rendering
     // * can be told to match a specific device tier
