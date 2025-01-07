@@ -203,5 +203,5 @@ pub fn test_list_items_should_match_snapshot() {
 
     //TODO(#8245): enable this everywhere when we have a software renderer setup
     #[cfg(target_os = "macos")]
-    harness.wgpu_snapshot("list_items");
+    harness.snapshot("list_items");
 }
