@@ -106,11 +106,12 @@ impl<E: StorageEngineLike + Clone> QueryEngine<E> {
         &self,
         filter: &'a EntityPathFilter,
     ) -> impl Iterator<Item = EntityPath> + 'a {
+        let filter = filter.clone().resolve_without_substitutions();
         self.engine.with(|store, _cache| {
             store
                 .all_entities_sorted()
                 .into_iter()
-                .filter(|entity_path| filter.matches(entity_path))
+                .filter(move |entity_path| filter.matches(entity_path))
         })
     }
 }
