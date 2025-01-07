@@ -72,7 +72,8 @@ impl TryFrom<&str> for EntityPathFilter {
 
 /// An [`EntityPathFilter`] with all variables Resolved.
 ///
-/// [`ResolvedEntityPathFilter`] sorts the rule by entity path, with recursive coming before non-recursive.
+/// [`ResolvedEntityPathFilter`] sorts the rule by specificity of the entity path,
+/// with recursive coming before non-recursive.
 /// This means the last matching rule is also the most specific one.
 /// For instance:
 ///
@@ -298,9 +299,8 @@ impl EntityPathFilter {
     /// The rest of the line is trimmed and treated as an entity path after variable substitution through [`Self::resolve_forgiving`]/[`Self::resolve_strict`].
     ///
     /// Conflicting rules are resolved by the last rule.
-    #[allow(clippy::unnecessary_wraps)]
+    #[allow(clippy::unnecessary_wraps)] // TODO(andreas): Do some error checking here?
     pub fn parse_strict(rules: &str) -> Result<Self, EntityPathFilterError> {
-        // TODO(andreas): Do some error checking here.
         Ok(Self::parse_forgiving(rules))
     }
 
