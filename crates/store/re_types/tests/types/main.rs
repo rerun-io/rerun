@@ -1,9 +1,5 @@
 //! Tests mainly, but not exclusively, of [`re_types::archetypes`].
 
-// Test helpers
-
-mod util;
-
 // Tests of archetypes and their related components and datatypes
 
 mod annotation_context;

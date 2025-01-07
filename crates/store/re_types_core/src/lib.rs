@@ -61,6 +61,32 @@ pub trait AsComponents {
     /// The default implementation will simply serialize the result of [`Self::as_component_batches`]
     /// as-is, which is what you want in 99.9% of cases.
     #[inline]
+    fn to_arrow(
+        &self,
+    ) -> SerializationResult<Vec<(::arrow::datatypes::Field, ::arrow::array::ArrayRef)>> {
+        self.as_component_batches()
+            .into_iter()
+            .map(|comp_batch| {
+                comp_batch
+                    .to_arrow()
+                    .map(|array| {
+                        let field = arrow::datatypes::Field::new(
+                            comp_batch.name().to_string(),
+                            array.data_type().clone(),
+                            false,
+                        );
+                        (field, array)
+                    })
+                    .with_context(comp_batch.name())
+            })
+            .collect()
+    }
+
+    /// Serializes all non-null [`Component`]s of this bundle into Arrow2 arrays.
+    ///
+    /// The default implementation will simply serialize the result of [`Self::as_component_batches`]
+    /// as-is, which is what you want in 99.9% of cases.
+    #[inline]
     fn to_arrow2(
         &self,
     ) -> SerializationResult<Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>>
