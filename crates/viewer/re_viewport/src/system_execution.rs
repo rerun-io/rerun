@@ -56,7 +56,7 @@ fn run_view_systems(
 pub fn execute_systems_for_view<'a>(
     ctx: &'a ViewerContext<'_>,
     view: &'a ViewBlueprint,
-    latest_at: TimeInt,
+    latest_at: TimeInt, // <- TODO(andreas): why not ctx.current_query().at()?
     view_state: &dyn ViewState,
 ) -> (ViewQuery<'a>, SystemExecutionOutput) {
     re_tracing::profile_function!(view.class_identifier().as_str());

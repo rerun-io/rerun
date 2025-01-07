@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use ahash::HashMap;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_log_types::{StoreId, StoreKind};
@@ -7,8 +8,8 @@ use re_types_core::reflection::Reflection;
 
 use crate::{
     blueprint_timeline, command_channel, ApplicationSelectionState, CommandReceiver, CommandSender,
-    ComponentUiRegistry, ItemCollection, RecordingConfig, StoreContext, SystemCommand,
-    ViewClassRegistry, ViewerContext,
+    ComponentUiRegistry, DataQueryResult, ItemCollection, RecordingConfig, StoreContext,
+    SystemCommand, ViewClassRegistry, ViewId, ViewerContext,
 };
 
 /// Harness to execute code that rely on [`crate::ViewerContext`].
@@ -29,6 +30,9 @@ pub struct TestContext {
     pub view_class_registry: ViewClassRegistry,
     pub selection_state: ApplicationSelectionState,
     pub recording_config: RecordingConfig,
+
+    // Populating this in `run` would pull in too many dependencies into the test harness for now.
+    pub query_results: HashMap<ViewId, DataQueryResult>,
 
     pub blueprint_query: LatestAtQuery,
     pub component_ui_registry: ComponentUiRegistry,
@@ -63,6 +67,7 @@ impl Default for TestContext {
             selection_state: Default::default(),
             recording_config,
             blueprint_query,
+            query_results: Default::default(),
             component_ui_registry,
             reflection,
             command_sender,
@@ -72,6 +77,11 @@ impl Default for TestContext {
 }
 
 impl TestContext {
+    /// Timeline the recording config is using by default.
+    pub fn active_timeline(&self) -> re_chunk::Timeline {
+        *self.recording_config.time_ctrl.read().timeline()
+    }
+
     pub fn edit_selection(&mut self, edit_fn: impl FnOnce(&mut ApplicationSelectionState)) {
         edit_fn(&mut self.selection_state);
 
@@ -107,7 +117,7 @@ impl TestContext {
             store_context: &store_context,
             applicable_entities_per_visualizer: &Default::default(),
             indicated_entities_per_visualizer: &Default::default(),
-            query_results: &Default::default(),
+            query_results: &self.query_results,
             rec_cfg: &self.recording_config,
             blueprint_cfg: &Default::default(),
             selection_state: &self.selection_state,
