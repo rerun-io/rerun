@@ -72,7 +72,3 @@ pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array
         }
     });
 }
-
-pub fn arrow2_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow2::array::Array) {
-    arrow_ui(ui, ui_layout, &arrow::array::ArrayRef::from(array));
-}

@@ -21,6 +21,19 @@ impl Chunk {
         &self,
         component_name: &ComponentName,
         row_index: usize,
+    ) -> Option<ChunkResult<ArrayRef>> {
+        self.component_batch_raw_arrow2(component_name, row_index)
+            .map(|res| res.map(|array| array.into()))
+    }
+
+    /// Returns the raw data for the specified component.
+    ///
+    /// Returns an error if the row index is out of bounds.
+    #[inline]
+    fn component_batch_raw_arrow2(
+        &self,
+        component_name: &ComponentName,
+        row_index: usize,
     ) -> Option<ChunkResult<Box<dyn Arrow2Array>>> {
         self.get_first_component(component_name)
             .and_then(|list_array| {
@@ -50,7 +63,7 @@ impl Chunk {
             Err(err) => return Some(Err(err)),
         };
 
-        let data = C::from_arrow2(&*array);
+        let data = C::from_arrow(&*array);
         Some(data.map_err(Into::into))
     }
 
@@ -66,7 +79,7 @@ impl Chunk {
         row_index: usize,
         instance_index: usize,
     ) -> Option<ChunkResult<Box<dyn Arrow2Array>>> {
-        let res = self.component_batch_raw(component_name, row_index)?;
+        let res = self.component_batch_raw_arrow2(component_name, row_index)?;
 
         let array = match res {
             Ok(array) => array,
@@ -119,7 +132,7 @@ impl Chunk {
         component_name: &ComponentName,
         row_index: usize,
     ) -> Option<ChunkResult<Box<dyn Arrow2Array>>> {
-        let res = self.component_batch_raw(component_name, row_index)?;
+        let res = self.component_batch_raw_arrow2(component_name, row_index)?;
 
         let array = match res {
             Ok(array) => array,
@@ -284,7 +297,7 @@ impl UnitChunkShared {
     /// Returns an error if the data cannot be deserialized.
     #[inline]
     pub fn component_batch<C: Component>(&self) -> Option<ChunkResult<Vec<C>>> {
-        let data = C::from_arrow2(&*self.component_batch_raw_arrow2(&C::name())?);
+        let data = C::from_arrow(&*self.component_batch_raw(&C::name())?);
         Some(data.map_err(Into::into))
     }
 

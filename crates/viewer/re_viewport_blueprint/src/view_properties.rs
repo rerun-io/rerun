@@ -152,10 +152,9 @@ impl ViewProperty {
     }
 
     pub fn component_raw(&self, component_name: ComponentName) -> Option<arrow::array::ArrayRef> {
-        self.query_results.get(&component_name).and_then(|unit| {
-            unit.component_batch_raw_arrow2(&component_name)
-                .map(|array| array.into())
-        })
+        self.query_results
+            .get(&component_name)
+            .and_then(|unit| unit.component_batch_raw(&component_name))
     }
 
     fn component_or_fallback_raw(
