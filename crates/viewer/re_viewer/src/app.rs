@@ -1589,7 +1589,7 @@ impl App {
     ) {
         use re_viewer_context::ScreenshotInfo;
 
-        if let Some(info) = &user_data
+        if let Some(info) = user_data
             .data
             .as_ref()
             .and_then(|data| data.downcast_ref::<ScreenshotInfo>())
@@ -1609,7 +1609,7 @@ impl App {
 
             match target {
                 re_viewer_context::ScreenshotTarget::CopyToClipboard => {
-                    self.egui_ctx.copy_image((**image).clone());
+                    self.egui_ctx.copy_image((*rgba).clone());
                 }
 
                 re_viewer_context::ScreenshotTarget::SaveToDisk => {
