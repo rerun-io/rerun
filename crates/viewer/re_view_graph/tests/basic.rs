@@ -1,5 +1,3 @@
-#![expect(clippy::unwrap_used)]
-
 //! Basic tests for the graph view, mostly focused on edge cases (pun intended).
 
 use std::sync::Arc;
@@ -58,7 +56,7 @@ pub fn coincident_nodes() {
         .add_chunk(&Arc::new(builder.build().unwrap()))
         .unwrap();
 
-    run_graph_view_and_save_snapshot(&mut test_context, name, Vec2::new(100.0, 100.0));
+    run_graph_view_and_save_snapshot(&mut test_context, name, Vec2::new(100.0, 100.0)).unwrap();
 }
 
 #[test]
@@ -120,12 +118,14 @@ pub fn self_and_multi_edges() {
         .add_chunk(&Arc::new(builder.build().unwrap()))
         .unwrap();
 
-    run_graph_view_and_save_snapshot(&mut test_context, name, Vec2::new(400.0, 400.0));
+    run_graph_view_and_save_snapshot(&mut test_context, name, Vec2::new(400.0, 400.0)).unwrap();
 }
 
-pub fn setup_graph_view_blueprint(test_context: &mut TestContext) -> ViewId {
+pub fn setup_graph_view_blueprint(
+    test_context: &mut TestContext,
+) -> Result<ViewId, Box<dyn std::error::Error>> {
     // Views are always logged at `/{view_id}` in the blueprint store.
-    let view_id = ViewId::random(); // TODO(andreas): Is this fishy for testing?
+    let view_id = ViewId::hashed_from_str("/graph");
 
     // Use the timeline that is queried for blueprints.
     let timepoint = [(test_context.blueprint_query.timeline(), 0)];
@@ -136,12 +136,10 @@ pub fn setup_graph_view_blueprint(test_context: &mut TestContext) -> ViewId {
             timepoint,
             &re_types::blueprint::archetypes::ViewBlueprint::new(GraphView::identifier().as_str()),
         )
-        .build()
-        .unwrap();
+        .build()?;
     test_context
         .blueprint_store
-        .add_chunk(&Arc::new(view_chunk))
-        .unwrap();
+        .add_chunk(&Arc::new(view_chunk))?;
 
     // TODO(andreas): can we use the `ViewProperty` utilities for this?
     let view_contents_chunk =
@@ -153,18 +151,20 @@ pub fn setup_graph_view_blueprint(test_context: &mut TestContext) -> ViewId {
                     re_types::datatypes::Utf8::from("/**"),
                 )),
             )
-            .build()
-            .unwrap();
+            .build()?;
     test_context
         .blueprint_store
-        .add_chunk(&Arc::new(view_contents_chunk))
-        .unwrap();
+        .add_chunk(&Arc::new(view_contents_chunk))?;
 
-    view_id
+    Ok(view_id)
 }
 
-fn run_graph_view_and_save_snapshot(test_context: &mut TestContext, _name: &str, size: Vec2) {
-    let view_id = setup_graph_view_blueprint(test_context);
+fn run_graph_view_and_save_snapshot(
+    test_context: &mut TestContext,
+    _name: &str,
+    size: Vec2,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let view_id = setup_graph_view_blueprint(test_context)?;
     let view_blueprint = ViewBlueprint::try_from_db(
         view_id,
         &test_context.blueprint_store,
@@ -249,4 +249,6 @@ fn run_graph_view_and_save_snapshot(test_context: &mut TestContext, _name: &str,
     //TODO(#8245): enable this everywhere when we have a software renderer setup
     #[cfg(target_os = "macos")]
     harness.wgpu_snapshot(_name);
+
+    Ok(())
 }

@@ -121,10 +121,6 @@ pub fn execute_systems_for_all_views<'a>(
     views: &'a BTreeMap<ViewId, ViewBlueprint>,
     view_states: &mut ViewStates,
 ) -> HashMap<ViewId, (ViewQuery<'a>, SystemExecutionOutput)> {
-    // TODO(andreas): wat? why is this not the ctx query?????
-    // Like so:
-    //let time_int = ctx.current_query().at();
-    //
     let Some(time_int) = ctx.rec_cfg.time_ctrl.read().time_int() else {
         return Default::default();
     };
