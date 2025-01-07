@@ -6551,7 +6551,6 @@ dependencies = [
  "parking_lot",
  "rand",
  "re_arrow2",
- "re_byte_size",
  "re_entity_db",
  "re_format",
  "re_log",
