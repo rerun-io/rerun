@@ -4,8 +4,8 @@ mod right_panel;
 
 use re_ui::notifications;
 use re_ui::{
-    list_item, CommandPalette, ContextExt as _, DesignTokens, UICommand, UICommandSender,
-    UiExt as _,
+    list_item, CommandPalette, ContextExt as _, DesignTokens, FilterState, UICommand,
+    UICommandSender, UiExt as _,
 };
 
 /// Sender that queues up the execution of a command.
@@ -86,6 +86,8 @@ pub struct ExampleApp {
 
     dummy_bool: bool,
 
+    filter_state: FilterState,
+
     cmd_palette: CommandPalette,
 
     /// Commands to run at the end of the frame.
@@ -118,6 +120,8 @@ impl ExampleApp {
             right_panel: right_panel::RightPanel::default(),
 
             dummy_bool: true,
+
+            filter_state: FilterState::default(),
 
             cmd_palette: CommandPalette::default(),
             command_sender,
@@ -244,6 +248,28 @@ impl eframe::App for ExampleApp {
                     ui.re_checkbox(&mut self.dummy_bool, "Checkbox");
                 });
             });
+
+            ui.scope(|ui| {
+                ui.spacing_mut().item_spacing.y = 0.0;
+
+                ui.full_span_separator();
+                self.filter_state.ui(ui, |ui| {
+                    ui.strong("Filter demo");
+                });
+                ui.full_span_separator();
+
+                let names = vec![
+                    "Andreas", "Antoine", "Clement", "Emil", "Jan", "Jeremy", "Jochen", "Katya",
+                    "Moritz", "Niko", "Zeljko",
+                ];
+
+                let filter = self.filter_state.filter();
+                for name in names {
+                    if let Some(widget_text) = filter.matches_formatted(ui.ctx(), name) {
+                        ui.list_item_flat_noninteractive(list_item::LabelContent::new(widget_text));
+                    }
+                }
+            });
         };
 
         // UI code
@@ -364,7 +390,10 @@ impl ExampleApp {
                     // (last added widget has priority for input).
                     let title_bar_response = ui.interact(
                         ui.max_rect(),
-                        ui.id().with("background"),
+                        ui.id().with(
+                            "bac\
+                        kground",
+                        ),
                         egui::Sense::click(),
                     );
                     if title_bar_response.double_clicked() {

@@ -6,6 +6,7 @@ mod command_palette;
 mod context_ext;
 mod design_tokens;
 pub mod drag_and_drop;
+mod filter_widget;
 pub mod icons;
 pub mod list_item;
 mod markdown_utils;
@@ -26,6 +27,7 @@ pub use self::{
     command_palette::CommandPalette,
     context_ext::ContextExt,
     design_tokens::DesignTokens,
+    filter_widget::{FilterMatcher, FilterState},
     icons::Icon,
     markdown_utils::*,
     section_collapsing_header::SectionCollapsingHeader,
