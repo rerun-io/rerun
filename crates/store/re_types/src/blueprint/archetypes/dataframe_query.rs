@@ -12,7 +12,7 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 
-use ::re_types_core::external::arrow2;
+use ::re_types_core::external::arrow;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
@@ -168,8 +168,8 @@ impl ::re_types_core::Archetype for DataframeQuery {
     }
 
     #[inline]
-    fn from_arrow2_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, Box<dyn arrow2::array::Array>)>,
+    fn from_arrow_components(
+        arrow_data: impl IntoIterator<Item = (ComponentName, arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
@@ -179,7 +179,7 @@ impl ::re_types_core::Archetype for DataframeQuery {
             .collect();
         let timeline =
             if let Some(array) = arrays_by_name.get("rerun.blueprint.components.TimelineName") {
-                <crate::blueprint::components::TimelineName>::from_arrow2_opt(&**array)
+                <crate::blueprint::components::TimelineName>::from_arrow_opt(&**array)
                     .with_context("rerun.blueprint.archetypes.DataframeQuery#timeline")?
                     .into_iter()
                     .next()
@@ -189,7 +189,7 @@ impl ::re_types_core::Archetype for DataframeQuery {
             };
         let filter_by_range =
             if let Some(array) = arrays_by_name.get("rerun.blueprint.components.FilterByRange") {
-                <crate::blueprint::components::FilterByRange>::from_arrow2_opt(&**array)
+                <crate::blueprint::components::FilterByRange>::from_arrow_opt(&**array)
                     .with_context("rerun.blueprint.archetypes.DataframeQuery#filter_by_range")?
                     .into_iter()
                     .next()
@@ -199,7 +199,7 @@ impl ::re_types_core::Archetype for DataframeQuery {
             };
         let filter_is_not_null =
             if let Some(array) = arrays_by_name.get("rerun.blueprint.components.FilterIsNotNull") {
-                <crate::blueprint::components::FilterIsNotNull>::from_arrow2_opt(&**array)
+                <crate::blueprint::components::FilterIsNotNull>::from_arrow_opt(&**array)
                     .with_context("rerun.blueprint.archetypes.DataframeQuery#filter_is_not_null")?
                     .into_iter()
                     .next()
@@ -209,7 +209,7 @@ impl ::re_types_core::Archetype for DataframeQuery {
             };
         let apply_latest_at =
             if let Some(array) = arrays_by_name.get("rerun.blueprint.components.ApplyLatestAt") {
-                <crate::blueprint::components::ApplyLatestAt>::from_arrow2_opt(&**array)
+                <crate::blueprint::components::ApplyLatestAt>::from_arrow_opt(&**array)
                     .with_context("rerun.blueprint.archetypes.DataframeQuery#apply_latest_at")?
                     .into_iter()
                     .next()
@@ -219,7 +219,7 @@ impl ::re_types_core::Archetype for DataframeQuery {
             };
         let select =
             if let Some(array) = arrays_by_name.get("rerun.blueprint.components.SelectedColumns") {
-                <crate::blueprint::components::SelectedColumns>::from_arrow2_opt(&**array)
+                <crate::blueprint::components::SelectedColumns>::from_arrow_opt(&**array)
                     .with_context("rerun.blueprint.archetypes.DataframeQuery#select")?
                     .into_iter()
                     .next()

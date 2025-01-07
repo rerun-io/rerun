@@ -12,7 +12,7 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 
-use ::re_types_core::external::arrow2;
+use ::re_types_core::external::arrow;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
@@ -160,8 +160,8 @@ impl ::re_types_core::Archetype for ViewBlueprint {
     }
 
     #[inline]
-    fn from_arrow2_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, Box<dyn arrow2::array::Array>)>,
+    fn from_arrow_components(
+        arrow_data: impl IntoIterator<Item = (ComponentName, arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
@@ -174,7 +174,7 @@ impl ::re_types_core::Archetype for ViewBlueprint {
                 .get("rerun.blueprint.components.ViewClass")
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.blueprint.archetypes.ViewBlueprint#class_identifier")?;
-            <crate::blueprint::components::ViewClass>::from_arrow2_opt(&**array)
+            <crate::blueprint::components::ViewClass>::from_arrow_opt(&**array)
                 .with_context("rerun.blueprint.archetypes.ViewBlueprint#class_identifier")?
                 .into_iter()
                 .next()
@@ -183,7 +183,7 @@ impl ::re_types_core::Archetype for ViewBlueprint {
                 .with_context("rerun.blueprint.archetypes.ViewBlueprint#class_identifier")?
         };
         let display_name = if let Some(array) = arrays_by_name.get("rerun.components.Name") {
-            <crate::components::Name>::from_arrow2_opt(&**array)
+            <crate::components::Name>::from_arrow_opt(&**array)
                 .with_context("rerun.blueprint.archetypes.ViewBlueprint#display_name")?
                 .into_iter()
                 .next()
@@ -193,7 +193,7 @@ impl ::re_types_core::Archetype for ViewBlueprint {
         };
         let space_origin =
             if let Some(array) = arrays_by_name.get("rerun.blueprint.components.ViewOrigin") {
-                <crate::blueprint::components::ViewOrigin>::from_arrow2_opt(&**array)
+                <crate::blueprint::components::ViewOrigin>::from_arrow_opt(&**array)
                     .with_context("rerun.blueprint.archetypes.ViewBlueprint#space_origin")?
                     .into_iter()
                     .next()
@@ -203,7 +203,7 @@ impl ::re_types_core::Archetype for ViewBlueprint {
             };
         let visible = if let Some(array) = arrays_by_name.get("rerun.blueprint.components.Visible")
         {
-            <crate::blueprint::components::Visible>::from_arrow2_opt(&**array)
+            <crate::blueprint::components::Visible>::from_arrow_opt(&**array)
                 .with_context("rerun.blueprint.archetypes.ViewBlueprint#visible")?
                 .into_iter()
                 .next()

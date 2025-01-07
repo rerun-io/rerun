@@ -65,6 +65,12 @@ impl Reflection {
 ///
 /// See also [`ComponentReflection::custom_placeholder`].
 pub fn generic_placeholder_for_datatype(
+    datatype: &arrow::datatypes::DataType,
+) -> arrow::array::ArrayRef {
+    generic_placeholder_for_datatype_arrow2(&datatype.clone().into()).into()
+}
+
+fn generic_placeholder_for_datatype_arrow2(
     datatype: &arrow2::datatypes::DataType,
 ) -> Box<dyn arrow2::array::Array> {
     use arrow2::{
@@ -121,7 +127,7 @@ pub fn generic_placeholder_for_datatype(
         DataType::Utf8 => Box::new(array::Utf8Array::<i32>::from_slice([""])),
         DataType::LargeUtf8 => Box::new(array::Utf8Array::<i64>::from_slice([""])),
         DataType::List(field) => {
-            let inner = generic_placeholder_for_datatype(field.data_type());
+            let inner = generic_placeholder_for_datatype_arrow2(field.data_type());
             let offsets = arrow2::offset::Offsets::try_from_lengths(std::iter::once(inner.len()))
                 .expect("failed to create offsets buffer");
             Box::new(array::ListArray::<i32>::new(
@@ -140,7 +146,7 @@ pub fn generic_placeholder_for_datatype(
         }
 
         DataType::LargeList(field) => {
-            let inner = generic_placeholder_for_datatype(field.data_type());
+            let inner = generic_placeholder_for_datatype_arrow2(field.data_type());
             let offsets = arrow2::offset::Offsets::try_from_lengths(std::iter::once(inner.len()))
                 .expect("failed to create offsets buffer");
             Box::new(array::ListArray::<i64>::new(
@@ -153,7 +159,7 @@ pub fn generic_placeholder_for_datatype(
         DataType::Struct(fields) => {
             let inners = fields
                 .iter()
-                .map(|field| generic_placeholder_for_datatype(field.data_type()));
+                .map(|field| generic_placeholder_for_datatype_arrow2(field.data_type()));
             Box::new(array::StructArray::new(
                 datatype.clone(),
                 inners.collect(),
@@ -162,7 +168,7 @@ pub fn generic_placeholder_for_datatype(
         }
         DataType::Union(fields, _types, _union_mode) => {
             if let Some(first_field) = fields.first() {
-                let first_field = generic_placeholder_for_datatype(first_field.data_type());
+                let first_field = generic_placeholder_for_datatype_arrow2(first_field.data_type());
                 let first_field_len = first_field.len(); // Should be 1, but let's play this safe!
                 let other_fields = fields
                     .iter()
@@ -199,7 +205,7 @@ pub fn generic_placeholder_for_datatype(
             )]))
         }
 
-        DataType::Extension(_, datatype, _) => generic_placeholder_for_datatype(datatype),
+        DataType::Extension(_, datatype, _) => generic_placeholder_for_datatype_arrow2(datatype),
     }
 }
 
@@ -223,7 +229,7 @@ pub struct ComponentReflection {
     pub custom_placeholder: Option<ArrayRef>,
 
     /// Datatype of the component.
-    pub datatype: arrow2::datatypes::DataType,
+    pub datatype: arrow::datatypes::DataType,
 }
 
 /// Runtime reflection about archetypes.

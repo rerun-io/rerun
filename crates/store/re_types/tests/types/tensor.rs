@@ -1,13 +1,27 @@
-use std::collections::HashMap;
-
 use re_types::{
     archetypes::Tensor,
     datatypes::{TensorBuffer, TensorData},
     tensor_data::TensorCastError,
-    Archetype as _, AsComponents as _,
+    Archetype as _, AsComponents as _, Loggable as _,
 };
 
-use crate::util;
+#[test]
+fn tensor_buffer_roundtrip() {
+    let original = TensorBuffer::U8(vec![1, 2, 3, 4, 5, 6].into());
+    let serialized = TensorBuffer::to_arrow([&original]).unwrap();
+    eprintln!("serialized: {serialized:#?}");
+    let deserialized = TensorBuffer::from_arrow(&serialized).unwrap();
+    similar_asserts::assert_eq!(deserialized, vec![original]);
+}
+
+#[test]
+fn tensor_data_roundtrip() {
+    let original = TensorData::new(vec![2, 3], TensorBuffer::U8(vec![1, 2, 3, 4, 5, 6].into()));
+    let serialized = TensorData::to_arrow([&original]).unwrap();
+    eprintln!("serialized: {serialized:#?}");
+    let deserialized = TensorData::from_arrow(&serialized).unwrap();
+    similar_asserts::assert_eq!(deserialized, vec![original]);
+}
 
 #[test]
 fn tensor_roundtrip() {
@@ -18,29 +32,18 @@ fn tensor_roundtrip() {
 
     let all_arch_serialized = [Tensor::try_from(ndarray::array![[1u8, 2, 3], [4, 5, 6]])
         .unwrap()
-        .to_arrow2()
+        .to_arrow()
         .unwrap()];
-
-    let expected_extensions: HashMap<_, _> = [("data", vec!["rerun.components.TensorData"])].into();
 
     for (expected, serialized) in all_expected.into_iter().zip(all_arch_serialized) {
         for (field, array) in &serialized {
             // NOTE: Keep those around please, very useful when debugging.
             // eprintln!("field = {field:#?}");
             // eprintln!("array = {array:#?}");
-            eprintln!("{} = {array:#?}", field.name);
-
-            // TODO(cmc): Re-enable extensions and these assertions once `arrow2-convert`
-            // has been fully replaced.
-            if false {
-                util::assert_extensions(
-                    &**array,
-                    expected_extensions[field.name.as_str()].as_slice(),
-                );
-            }
+            eprintln!("{} = {array:#?}", field.name());
         }
 
-        let deserialized = Tensor::from_arrow2(serialized).unwrap();
+        let deserialized = Tensor::from_arrow(serialized).unwrap();
         similar_asserts::assert_eq!(expected, deserialized);
     }
 }

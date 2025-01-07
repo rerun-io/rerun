@@ -511,14 +511,14 @@ impl PyRemoteRecording {
     ) -> PyResult<re_chunk_store::ViewContentsSelector> {
         if let Ok(expr) = expr.extract::<String>() {
             let path_filter =
-            EntityPathFilter::parse_strict(&expr, &Default::default()).map_err(|err| {
+            EntityPathFilter::parse_strict(&expr).map_err(|err| {
                 PyValueError::new_err(format!(
                     "Could not interpret `contents` as a ViewContentsLike. Failed to parse {expr}: {err}.",
                 ))
             })?;
 
             for (rule, _) in path_filter.rules() {
-                if rule.include_subtree {
+                if rule.include_subtree() {
                     return Err(PyValueError::new_err(
                         "SubTree path expressions (/**) are not allowed yet for remote recordings.",
                     ));
@@ -526,9 +526,11 @@ impl PyRemoteRecording {
             }
 
             // Since these are all exact rules, just include them directly
+            // TODO(jleibs): This needs access to the schema to resolve paths and components
             let contents = path_filter
+                .resolve_without_substitutions()
                 .rules()
-                .map(|(rule, _)| (rule.path.clone(), None))
+                .map(|(rule, _)| (rule.resolved_path.clone(), None))
                 .collect();
 
             Ok(contents)
@@ -544,14 +546,14 @@ impl PyRemoteRecording {
                     )
                 })?;
 
-                let path_filter = EntityPathFilter::parse_strict(&key, &Default::default()).map_err(|err| {
+                let path_filter = EntityPathFilter::parse_strict(&key).map_err(|err| {
                     PyValueError::new_err(format!(
                         "Could not interpret `contents` as a ViewContentsLike. Failed to parse {key}: {err}.",
                     ))
                 })?;
 
                 for (rule, _) in path_filter.rules() {
-                    if rule.include_subtree {
+                    if rule.include_subtree() {
                         return Err(PyValueError::new_err(
                             "SubTree path expressions (/**) are not allowed yet for remote recordings.",
                         ));
@@ -570,17 +572,18 @@ impl PyRemoteRecording {
                         ));
                 };
 
-                contents.append(
-                    &mut path_filter
+                contents.extend(
+                    // TODO(jleibs): This needs access to the schema to resolve paths and components
+                    path_filter
+                        .resolve_without_substitutions()
                         .rules()
                         .map(|(rule, _)| {
                             let components = component_strs
                                 .iter()
                                 .map(|component_name| ComponentName::from(component_name.clone()))
                                 .collect();
-                            (rule.path.clone(), Some(components))
-                        })
-                        .collect(),
+                            (rule.resolved_path.clone(), Some(components))
+                        }),
                 );
             }
 

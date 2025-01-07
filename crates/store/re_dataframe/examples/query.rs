@@ -30,7 +30,8 @@ fn main() -> anyhow::Result<()> {
     let time_to = args.get(4).map_or(TimeInt::MAX, |s| {
         TimeInt::new_temporal(s.parse::<i64>().unwrap())
     });
-    let entity_path_filter = EntityPathFilter::try_from(args.get(5).map_or("/**", |s| s.as_str()))?;
+    let entity_path_filter =
+        EntityPathFilter::parse_strict(args.get(5).map_or("/**", |s| s.as_str()))?;
 
     // TODO(cmc): We need to take a selector, not a Timeline.
     let timeline = match timeline_name {

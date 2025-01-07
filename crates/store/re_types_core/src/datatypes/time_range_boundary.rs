@@ -12,7 +12,7 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 
-use crate::external::arrow2;
+use crate::external::arrow;
 use crate::SerializationResult;
 use crate::{ComponentBatch, ComponentBatchCowWithDescriptor};
 use crate::{ComponentDescriptor, ComponentName};
@@ -190,20 +190,19 @@ impl crate::Loggable for TimeRangeBoundary {
         })
     }
 
-    fn from_arrow2_opt(
-        arrow_data: &dyn arrow2::array::Array,
+    fn from_arrow_opt(
+        arrow_data: &dyn arrow::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
         #![allow(clippy::wildcard_imports)]
-        use crate::{Loggable as _, ResultExt as _};
-        use arrow::datatypes::*;
-        use arrow2::{array::*, buffer::*};
+        use crate::{arrow_zip_validity::ZipValidity, Loggable as _, ResultExt as _};
+        use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let arrow_data = arrow_data
                 .as_any()
-                .downcast_ref::<arrow2::array::UnionArray>()
+                .downcast_ref::<arrow::array::UnionArray>()
                 .ok_or_else(|| {
                     let expected = Self::arrow_datatype();
                     let actual = arrow_data.data_type().clone();
@@ -213,8 +212,7 @@ impl crate::Loggable for TimeRangeBoundary {
             if arrow_data.is_empty() {
                 Vec::new()
             } else {
-                let (arrow_data_types, arrow_data_arrays) =
-                    (arrow_data.types(), arrow_data.fields());
+                let arrow_data_type_ids = arrow_data.type_ids();
                 let arrow_data_offsets = arrow_data
                     .offsets()
                     .ok_or_else(|| {
@@ -223,18 +221,15 @@ impl crate::Loggable for TimeRangeBoundary {
                         DeserializationError::datatype_mismatch(expected, actual)
                     })
                     .with_context("rerun.datatypes.TimeRangeBoundary")?;
-                if arrow_data_types.len() != arrow_data_offsets.len() {
+                if arrow_data_type_ids.len() != arrow_data_offsets.len() {
                     return Err(DeserializationError::offset_slice_oob(
-                        (0, arrow_data_types.len()),
+                        (0, arrow_data_type_ids.len()),
                         arrow_data_offsets.len(),
                     ))
                     .with_context("rerun.datatypes.TimeRangeBoundary");
                 }
                 let cursor_relative = {
-                    if arrow_data_arrays.len() <= 1 {
-                        return Ok(Vec::new());
-                    }
-                    let arrow_data = &*arrow_data_arrays[1];
+                    let arrow_data = arrow_data.child(1).as_ref();
                     arrow_data
                         .as_any()
                         .downcast_ref::<Int64Array>()
@@ -245,15 +240,11 @@ impl crate::Loggable for TimeRangeBoundary {
                         })
                         .with_context("rerun.datatypes.TimeRangeBoundary#CursorRelative")?
                         .into_iter()
-                        .map(|opt| opt.copied())
                         .map(|res_or_opt| res_or_opt.map(crate::datatypes::TimeInt))
                         .collect::<Vec<_>>()
                 };
                 let absolute = {
-                    if arrow_data_arrays.len() <= 2 {
-                        return Ok(Vec::new());
-                    }
-                    let arrow_data = &*arrow_data_arrays[2];
+                    let arrow_data = arrow_data.child(2).as_ref();
                     arrow_data
                         .as_any()
                         .downcast_ref::<Int64Array>()
@@ -264,11 +255,10 @@ impl crate::Loggable for TimeRangeBoundary {
                         })
                         .with_context("rerun.datatypes.TimeRangeBoundary#Absolute")?
                         .into_iter()
-                        .map(|opt| opt.copied())
                         .map(|res_or_opt| res_or_opt.map(crate::datatypes::TimeInt))
                         .collect::<Vec<_>>()
                 };
-                arrow_data_types
+                arrow_data_type_ids
                     .iter()
                     .enumerate()
                     .map(|(i, typ)| {

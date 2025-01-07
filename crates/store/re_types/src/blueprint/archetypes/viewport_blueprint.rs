@@ -12,7 +12,7 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 
-use ::re_types_core::external::arrow2;
+use ::re_types_core::external::arrow;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
@@ -177,8 +177,8 @@ impl ::re_types_core::Archetype for ViewportBlueprint {
     }
 
     #[inline]
-    fn from_arrow2_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, Box<dyn arrow2::array::Array>)>,
+    fn from_arrow_components(
+        arrow_data: impl IntoIterator<Item = (ComponentName, arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
@@ -188,7 +188,7 @@ impl ::re_types_core::Archetype for ViewportBlueprint {
             .collect();
         let root_container =
             if let Some(array) = arrays_by_name.get("rerun.blueprint.components.RootContainer") {
-                <crate::blueprint::components::RootContainer>::from_arrow2_opt(&**array)
+                <crate::blueprint::components::RootContainer>::from_arrow_opt(&**array)
                     .with_context("rerun.blueprint.archetypes.ViewportBlueprint#root_container")?
                     .into_iter()
                     .next()
@@ -198,7 +198,7 @@ impl ::re_types_core::Archetype for ViewportBlueprint {
             };
         let maximized =
             if let Some(array) = arrays_by_name.get("rerun.blueprint.components.ViewMaximized") {
-                <crate::blueprint::components::ViewMaximized>::from_arrow2_opt(&**array)
+                <crate::blueprint::components::ViewMaximized>::from_arrow_opt(&**array)
                     .with_context("rerun.blueprint.archetypes.ViewportBlueprint#maximized")?
                     .into_iter()
                     .next()
@@ -208,7 +208,7 @@ impl ::re_types_core::Archetype for ViewportBlueprint {
             };
         let auto_layout =
             if let Some(array) = arrays_by_name.get("rerun.blueprint.components.AutoLayout") {
-                <crate::blueprint::components::AutoLayout>::from_arrow2_opt(&**array)
+                <crate::blueprint::components::AutoLayout>::from_arrow_opt(&**array)
                     .with_context("rerun.blueprint.archetypes.ViewportBlueprint#auto_layout")?
                     .into_iter()
                     .next()
@@ -218,7 +218,7 @@ impl ::re_types_core::Archetype for ViewportBlueprint {
             };
         let auto_views =
             if let Some(array) = arrays_by_name.get("rerun.blueprint.components.AutoViews") {
-                <crate::blueprint::components::AutoViews>::from_arrow2_opt(&**array)
+                <crate::blueprint::components::AutoViews>::from_arrow_opt(&**array)
                     .with_context("rerun.blueprint.archetypes.ViewportBlueprint#auto_views")?
                     .into_iter()
                     .next()
@@ -230,7 +230,7 @@ impl ::re_types_core::Archetype for ViewportBlueprint {
             arrays_by_name.get("rerun.blueprint.components.ViewerRecommendationHash")
         {
             Some({
-                <crate::blueprint::components::ViewerRecommendationHash>::from_arrow2_opt(&**array)
+                <crate::blueprint::components::ViewerRecommendationHash>::from_arrow_opt(&**array)
                     .with_context(
                         "rerun.blueprint.archetypes.ViewportBlueprint#past_viewer_recommendations",
                     )?
