@@ -21,15 +21,21 @@ use super::protocol::Message;
 ///
 /// # Examples
 /// ```
+/// # use custom_callback::comms::viewer::ControlViewer;
+/// # use custom_callback::comms::protocol::Message;
 /// # async fn example() -> tokio::io::Result<()> {
-/// let viewer = ControlViewer::connect("127.0.0.1:8080").await?;
+/// let viewer = ControlViewer::connect("127.0.0.1:8080".to_owned()).await?;
 /// let handle = viewer.handle();
 ///
 /// // Spawn the main connection handling task
 /// tokio::spawn(viewer.run());
 ///
 /// // Send messages through the handle
-/// handle.send(Message::Ping).unwrap();
+/// handle.send(Message::Point3d {
+///     path: "path".to_owned(),
+///     position: (1.0, 2.0, 3.0),
+///     radius: 1.0,
+/// }).unwrap();
 /// # Ok(())
 /// # }
 /// ```

@@ -41,10 +41,10 @@ impl DesignTokens {
             bottom_bar_color: color_table.gray(S150),
             bottom_bar_stroke: egui::Stroke::new(1.0, color_table.gray(S250)),
             bottom_bar_rounding: egui::Rounding {
-                nw: 6.0,
-                ne: 6.0,
-                sw: 0.0,
-                se: 0.0,
+                nw: 6,
+                ne: 6,
+                sw: 0,
+                se: 0,
             }, // copied from figma, should be top only
             shadow_gradient_dark_start: egui::Color32::from_black_alpha(77), //TODO(ab): use ColorToken!
             tab_bar_color: color_table.gray(S200),
@@ -200,9 +200,9 @@ impl DesignTokens {
 
         // From figma
         let shadow = egui::epaint::Shadow {
-            offset: egui::vec2(0.0, 15.0),
-            blur: 50.0,
-            spread: 0.0,
+            offset: [0, 15],
+            blur: 50,
+            spread: 0,
             color: egui::Color32::from_black_alpha(128),
         };
         egui_style.visuals.popup_shadow = shadow;
@@ -286,12 +286,12 @@ impl DesignTokens {
     }
 
     /// Margin on all sides of views.
-    pub fn view_padding() -> f32 {
-        12.0
+    pub fn view_padding() -> i8 {
+        12
     }
 
     pub fn panel_margin() -> egui::Margin {
-        egui::Margin::symmetric(Self::view_padding(), 0.0)
+        egui::Margin::symmetric(Self::view_padding(), 0)
     }
 
     pub fn window_rounding() -> f32 {
@@ -315,7 +315,7 @@ impl DesignTokens {
     }
 
     pub fn top_bar_margin() -> egui::Margin {
-        egui::Margin::symmetric(8.0, 2.0)
+        egui::Margin::symmetric(8, 2)
     }
 
     pub fn text_to_icon_padding() -> f32 {
@@ -337,8 +337,8 @@ impl DesignTokens {
         24.0
     }
 
-    pub fn native_window_rounding() -> f32 {
-        10.0
+    pub fn native_window_rounding() -> u8 {
+        10
     }
 
     pub fn top_panel_frame() -> egui::Frame {
@@ -362,7 +362,7 @@ impl DesignTokens {
     pub fn bottom_panel_frame() -> egui::Frame {
         // Show a stroke only on the top. To achieve this, we add a negative outer margin.
         // (on the inner margin we counteract this again)
-        let margin_offset = design_tokens().bottom_bar_stroke.width * 0.5;
+        let margin_offset = (design_tokens().bottom_bar_stroke.width * 0.5) as i8;
 
         let margin = Self::bottom_panel_margin();
 
@@ -375,7 +375,7 @@ impl DesignTokens {
                 left: -margin_offset,
                 right: -margin_offset,
                 // Add a proper stoke width thick margin on the top.
-                top: design_tokens.bottom_bar_stroke.width,
+                top: design_tokens.bottom_bar_stroke.width as i8,
                 bottom: -margin_offset,
             },
             stroke: design_tokens.bottom_bar_stroke,
