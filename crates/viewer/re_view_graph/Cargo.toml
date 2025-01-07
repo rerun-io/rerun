@@ -40,9 +40,7 @@ fjadra.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true
 
-
-# TODO:
-#[dev-dependencies]
+[dev-dependencies]
 egui_kittest.workspace = true
 re_chunk_store.workspace = true
 re_viewport.workspace = true

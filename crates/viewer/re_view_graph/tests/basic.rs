@@ -226,7 +226,7 @@ fn run_graph_view_and_save_snapshot(test_context: &mut TestContext, name: &str, 
                 let (view_query, system_execution_output) = re_viewport::execute_systems_for_view(
                     viewer_ctx,
                     &view_blueprint,
-                    viewer_ctx.current_query().at(), // TODO: why is this even needed to be passed in?
+                    viewer_ctx.current_query().at(), // TODO(andreas): why is this even needed to be passed in?
                     &view_state,
                 );
 
