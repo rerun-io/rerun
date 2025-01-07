@@ -365,6 +365,5 @@ fn placeholder_for_component(
         None
     };
 
-    datatype
-        .map(|datatype| re_types::reflection::generic_placeholder_for_datatype(&datatype).into())
+    datatype.map(|datatype| re_types::reflection::generic_placeholder_for_datatype(&datatype))
 }

@@ -2,7 +2,7 @@
 
 use rerun::{
     demo_util::grid,
-    external::{arrow2, glam, re_types},
+    external::{arrow, glam, re_types},
     ComponentBatch,
 };
 
@@ -68,18 +68,18 @@ impl rerun::SizeBytes for Confidence {
 
 impl rerun::Loggable for Confidence {
     #[inline]
-    fn arrow2_datatype() -> arrow2::datatypes::DataType {
-        rerun::Float32::arrow2_datatype()
+    fn arrow_datatype() -> arrow::datatypes::DataType {
+        rerun::Float32::arrow_datatype()
     }
 
     #[inline]
-    fn to_arrow2_opt<'a>(
+    fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<std::borrow::Cow<'a, Self>>>>,
-    ) -> re_types::SerializationResult<Box<dyn arrow2::array::Array>>
+    ) -> re_types::SerializationResult<arrow::array::ArrayRef>
     where
         Self: 'a,
     {
-        rerun::Float32::to_arrow2_opt(data.into_iter().map(|opt| opt.map(Into::into).map(|c| c.0)))
+        rerun::Float32::to_arrow_opt(data.into_iter().map(|opt| opt.map(Into::into).map(|c| c.0)))
     }
 }
 

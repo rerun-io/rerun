@@ -102,14 +102,14 @@ pub trait Archetype {
     /// logged to stderr.
     #[inline]
     fn from_arrow(
-        data: impl IntoIterator<Item = (arrow2::datatypes::Field, ::arrow::array::ArrayRef)>,
+        data: impl IntoIterator<Item = (arrow::datatypes::Field, ::arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self>
     where
         Self: Sized,
     {
         Self::from_arrow_components(
             data.into_iter()
-                .map(|(field, array)| (field.name.into(), array)),
+                .map(|(field, array)| (ComponentName::new(field.name()), array)),
         )
     }
 

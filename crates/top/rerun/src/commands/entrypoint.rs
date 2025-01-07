@@ -127,7 +127,7 @@ When persisted, the state will be stored at the following locations:
     )]
     persist_state: bool,
 
-    /// What TCP port do we listen to (for SDKs to connect to)?
+    /// What TCP port do we listen to for SDKs to connect to.
     #[cfg(feature = "server")]
     #[clap(long, default_value_t = re_sdk_comms::DEFAULT_SERVER_PORT)]
     port: u16,
@@ -193,7 +193,7 @@ When persisted, the state will be stored at the following locations:
 If no arguments are given, a server will be hosted which a Rerun SDK can connect to.")]
     url_or_paths: Vec<String>,
 
-    /// Print version and quit
+    /// Print version and quit.
     #[clap(long)]
     version: bool,
 
@@ -220,7 +220,7 @@ If no arguments are given, a server will be hosted which a Rerun SDK can connect
     #[clap(long)]
     window_size: Option<String>,
 
-    /// What port do we listen to for incoming websocket connections from the viewer
+    /// What port do we listen to for incoming websocket connections from the viewer.
     /// A port of 0 will pick a random port.
     #[cfg(feature = "server")]
     #[clap(long, default_value_t = Default::default())]
@@ -455,7 +455,7 @@ impl Args {
             // **Options**
             //
             // `--bind <BIND>`
-            // > What bind address IP to use
+            // > What bind address IP to use.
             // >
             // > [default: 0.0.0.0]
             //

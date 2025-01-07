@@ -12,7 +12,7 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 
-use ::re_types_core::external::arrow2;
+use ::re_types_core::external::arrow;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
@@ -158,20 +158,19 @@ impl ::re_types_core::Loggable for AnnotationInfo {
         })
     }
 
-    fn from_arrow2_opt(
-        arrow_data: &dyn arrow2::array::Array,
+    fn from_arrow_opt(
+        arrow_data: &dyn arrow::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
         #![allow(clippy::wildcard_imports)]
-        use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow::datatypes::*;
-        use arrow2::{array::*, buffer::*};
+        use ::re_types_core::{arrow_zip_validity::ZipValidity, Loggable as _, ResultExt as _};
+        use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let arrow_data = arrow_data
                 .as_any()
-                .downcast_ref::<arrow2::array::StructArray>()
+                .downcast_ref::<arrow::array::StructArray>()
                 .ok_or_else(|| {
                     let expected = Self::arrow_datatype();
                     let actual = arrow_data.data_type().clone();
@@ -182,10 +181,10 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                 Vec::new()
             } else {
                 let (arrow_data_fields, arrow_data_arrays) =
-                    (arrow_data.fields(), arrow_data.values());
+                    (arrow_data.fields(), arrow_data.columns());
                 let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data_fields
                     .iter()
-                    .map(|field| field.name.as_str())
+                    .map(|field| field.name().as_str())
                     .zip(arrow_data_arrays)
                     .collect();
                 let id = {
@@ -207,7 +206,6 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                         })
                         .with_context("rerun.datatypes.AnnotationInfo#id")?
                         .into_iter()
-                        .map(|opt| opt.copied())
                 };
                 let label = {
                     if !arrays_by_name.contains_key("label") {
@@ -221,7 +219,7 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                     {
                         let arrow_data = arrow_data
                             .as_any()
-                            .downcast_ref::<arrow2::array::Utf8Array<i32>>()
+                            .downcast_ref::<StringArray>()
                             .ok_or_else(|| {
                                 let expected = DataType::Utf8;
                                 let actual = arrow_data.data_type().clone();
@@ -230,39 +228,37 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                             .with_context("rerun.datatypes.AnnotationInfo#label")?;
                         let arrow_data_buf = arrow_data.values();
                         let offsets = arrow_data.offsets();
-                        arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                            offsets.windows(2),
-                            arrow_data.validity(),
-                        )
-                        .map(|elem| {
-                            elem.map(|window| {
-                                let start = window[0] as usize;
-                                let end = window[1] as usize;
-                                let len = end - start;
-                                if arrow_data_buf.len() < end {
-                                    return Err(DeserializationError::offset_slice_oob(
-                                        (start, end),
-                                        arrow_data_buf.len(),
-                                    ));
-                                }
+                        ZipValidity::new_with_validity(offsets.windows(2), arrow_data.nulls())
+                            .map(|elem| {
+                                elem.map(|window| {
+                                    let start = window[0] as usize;
+                                    let end = window[1] as usize;
+                                    let len = end - start;
+                                    if arrow_data_buf.len() < end {
+                                        return Err(DeserializationError::offset_slice_oob(
+                                            (start, end),
+                                            arrow_data_buf.len(),
+                                        ));
+                                    }
 
-                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                let data =
-                                    unsafe { arrow_data_buf.clone().sliced_unchecked(start, len) };
-                                Ok(data)
+                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                    let data = arrow_data_buf.slice_with_length(start, len);
+                                    Ok(data)
+                                })
+                                .transpose()
                             })
-                            .transpose()
-                        })
-                        .map(|res_or_opt| {
-                            res_or_opt.map(|res_or_opt| {
-                                res_or_opt.map(|v| {
-                                    crate::datatypes::Utf8(::re_types_core::ArrowString::from(v))
+                            .map(|res_or_opt| {
+                                res_or_opt.map(|res_or_opt| {
+                                    res_or_opt.map(|v| {
+                                        crate::datatypes::Utf8(::re_types_core::ArrowString::from(
+                                            v,
+                                        ))
+                                    })
                                 })
                             })
-                        })
-                        .collect::<DeserializationResult<Vec<Option<_>>>>()
-                        .with_context("rerun.datatypes.AnnotationInfo#label")?
-                        .into_iter()
+                            .collect::<DeserializationResult<Vec<Option<_>>>>()
+                            .with_context("rerun.datatypes.AnnotationInfo#label")?
+                            .into_iter()
                     }
                 };
                 let color = {
@@ -284,12 +280,11 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                         })
                         .with_context("rerun.datatypes.AnnotationInfo#color")?
                         .into_iter()
-                        .map(|opt| opt.copied())
                         .map(|res_or_opt| res_or_opt.map(crate::datatypes::Rgba32))
                 };
-                arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                ZipValidity::new_with_validity(
                     ::itertools::izip!(id, label, color),
-                    arrow_data.validity(),
+                    arrow_data.nulls(),
                 )
                 .map(|opt| {
                     opt.map(|(id, label, color)| {

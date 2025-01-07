@@ -12,7 +12,7 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 
-use ::re_types_core::external::arrow2;
+use ::re_types_core::external::arrow;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
@@ -340,8 +340,8 @@ impl ::re_types_core::Archetype for Transform3D {
     }
 
     #[inline]
-    fn from_arrow2_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, Box<dyn arrow2::array::Array>)>,
+    fn from_arrow_components(
+        arrow_data: impl IntoIterator<Item = (ComponentName, arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
@@ -351,7 +351,7 @@ impl ::re_types_core::Archetype for Transform3D {
             .collect();
         let translation = if let Some(array) = arrays_by_name.get("rerun.components.Translation3D")
         {
-            <crate::components::Translation3D>::from_arrow2_opt(&**array)
+            <crate::components::Translation3D>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.Transform3D#translation")?
                 .into_iter()
                 .next()
@@ -361,7 +361,7 @@ impl ::re_types_core::Archetype for Transform3D {
         };
         let rotation_axis_angle =
             if let Some(array) = arrays_by_name.get("rerun.components.RotationAxisAngle") {
-                <crate::components::RotationAxisAngle>::from_arrow2_opt(&**array)
+                <crate::components::RotationAxisAngle>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Transform3D#rotation_axis_angle")?
                     .into_iter()
                     .next()
@@ -370,7 +370,7 @@ impl ::re_types_core::Archetype for Transform3D {
                 None
             };
         let quaternion = if let Some(array) = arrays_by_name.get("rerun.components.RotationQuat") {
-            <crate::components::RotationQuat>::from_arrow2_opt(&**array)
+            <crate::components::RotationQuat>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.Transform3D#quaternion")?
                 .into_iter()
                 .next()
@@ -379,7 +379,7 @@ impl ::re_types_core::Archetype for Transform3D {
             None
         };
         let scale = if let Some(array) = arrays_by_name.get("rerun.components.Scale3D") {
-            <crate::components::Scale3D>::from_arrow2_opt(&**array)
+            <crate::components::Scale3D>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.Transform3D#scale")?
                 .into_iter()
                 .next()
@@ -388,7 +388,7 @@ impl ::re_types_core::Archetype for Transform3D {
             None
         };
         let mat3x3 = if let Some(array) = arrays_by_name.get("rerun.components.TransformMat3x3") {
-            <crate::components::TransformMat3x3>::from_arrow2_opt(&**array)
+            <crate::components::TransformMat3x3>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.Transform3D#mat3x3")?
                 .into_iter()
                 .next()
@@ -398,7 +398,7 @@ impl ::re_types_core::Archetype for Transform3D {
         };
         let relation = if let Some(array) = arrays_by_name.get("rerun.components.TransformRelation")
         {
-            <crate::components::TransformRelation>::from_arrow2_opt(&**array)
+            <crate::components::TransformRelation>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.Transform3D#relation")?
                 .into_iter()
                 .next()
@@ -407,7 +407,7 @@ impl ::re_types_core::Archetype for Transform3D {
             None
         };
         let axis_length = if let Some(array) = arrays_by_name.get("rerun.components.AxisLength") {
-            <crate::components::AxisLength>::from_arrow2_opt(&**array)
+            <crate::components::AxisLength>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.Transform3D#axis_length")?
                 .into_iter()
                 .next()

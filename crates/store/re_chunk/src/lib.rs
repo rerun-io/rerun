@@ -28,7 +28,9 @@ pub use self::builder::{ChunkBuilder, TimeColumnBuilder};
 pub use self::chunk::{Chunk, ChunkComponents, ChunkError, ChunkResult, TimeColumn};
 pub use self::helpers::{ChunkShared, UnitChunkShared};
 pub use self::id::{ChunkId, RowId};
-pub use self::iter::{ChunkComponentIter, ChunkComponentIterItem, ChunkIndicesIter};
+pub use self::iter::{
+    ChunkComponentIter, ChunkComponentIterItem, ChunkComponentSlicer, ChunkIndicesIter,
+};
 pub use self::latest_at::LatestAtQuery;
 pub use self::range::{RangeQuery, RangeQueryOptions};
 pub use self::transport::TransportChunk;

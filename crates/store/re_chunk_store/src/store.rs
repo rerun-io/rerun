@@ -2,6 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::sync::atomic::AtomicU64;
 use std::sync::Arc;
 
+use arrow::datatypes::DataType as ArrowDataType;
 use arrow2::datatypes::DataType as Arrow2DataType;
 use nohash_hasher::IntMap;
 
@@ -632,9 +633,20 @@ impl ChunkStore {
         self.chunks_per_chunk_id.len()
     }
 
+    /// Lookup the _latest_ arrow [`ArrowDataType`] used by a specific [`re_types_core::Component`].
+    #[inline]
+    pub fn lookup_datatype(&self, component_name: &ComponentName) -> Option<ArrowDataType> {
+        self.type_registry
+            .get(component_name)
+            .map(|dt| dt.clone().into())
+    }
+
     /// Lookup the _latest_ arrow [`Arrow2DataType`] used by a specific [`re_types_core::Component`].
     #[inline]
-    pub fn lookup_datatype(&self, component_name: &ComponentName) -> Option<&Arrow2DataType> {
+    pub fn lookup_datatype_arrow2(
+        &self,
+        component_name: &ComponentName,
+    ) -> Option<&Arrow2DataType> {
         self.type_registry.get(component_name)
     }
 

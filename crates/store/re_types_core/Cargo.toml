@@ -63,6 +63,7 @@ serde = { workspace = true, optional = true }
 
 [dev-dependencies]
 criterion.workspace = true
+similar-asserts.workspace = true
 
 [lib]
 bench = false

@@ -130,12 +130,14 @@ where
 // ---
 
 use re_chunk::{Chunk, ChunkComponentIterItem, ComponentName, RowId};
-use re_chunk_store::external::{re_chunk, re_chunk::external::arrow2};
+use re_chunk_store::external::re_chunk;
 
 /// Iterate `chunks` as indexed deserialized batches.
 ///
+/// For simple cases (i.e. everything up to flat structs), prefer [`iter_slices`] instead which is
+/// faster.
+///
 /// See [`Chunk::iter_component`] for more information.
-#[allow(unused)]
 pub fn iter_component<'a, C: re_types::Component>(
     chunks: &'a std::borrow::Cow<'a, [Chunk]>,
     timeline: Timeline,
@@ -151,91 +153,16 @@ pub fn iter_component<'a, C: re_types::Component>(
 
 /// Iterate `chunks` as indexed primitives.
 ///
-/// See [`Chunk::iter_primitive`] for more information.
-#[allow(unused)]
-pub fn iter_primitive<'a, T: arrow2::types::NativeType>(
+/// See [`Chunk::iter_slices`] for more information.
+pub fn iter_slices<'a, T: 'a + re_chunk::ChunkComponentSlicer>(
     chunks: &'a std::borrow::Cow<'a, [Chunk]>,
     timeline: Timeline,
     component_name: ComponentName,
-) -> impl Iterator<Item = ((TimeInt, RowId), &'a [T])> + 'a {
+) -> impl Iterator<Item = ((TimeInt, RowId), T::Item<'a>)> + 'a {
     chunks.iter().flat_map(move |chunk| {
         itertools::izip!(
             chunk.iter_component_indices(&timeline, &component_name),
-            chunk.iter_primitive::<T>(&component_name)
-        )
-    })
-}
-
-/// Iterate `chunks` as indexed primitive arrays.
-///
-/// See [`Chunk::iter_primitive_array`] for more information.
-#[allow(unused)]
-pub fn iter_primitive_array<'a, const N: usize, T: arrow2::types::NativeType>(
-    chunks: &'a std::borrow::Cow<'a, [Chunk]>,
-    timeline: Timeline,
-    component_name: ComponentName,
-) -> impl Iterator<Item = ((TimeInt, RowId), &'a [[T; N]])> + 'a
-where
-    [T; N]: bytemuck::Pod,
-{
-    chunks.iter().flat_map(move |chunk| {
-        itertools::izip!(
-            chunk.iter_component_indices(&timeline, &component_name),
-            chunk.iter_primitive_array::<N, T>(&component_name)
-        )
-    })
-}
-
-/// Iterate `chunks` as indexed list of primitive arrays.
-///
-/// See [`Chunk::iter_primitive_array_list`] for more information.
-#[allow(unused)]
-pub fn iter_primitive_array_list<'a, const N: usize, T: arrow2::types::NativeType>(
-    chunks: &'a std::borrow::Cow<'a, [Chunk]>,
-    timeline: Timeline,
-    component_name: ComponentName,
-) -> impl Iterator<Item = ((TimeInt, RowId), Vec<&'a [[T; N]]>)> + 'a
-where
-    [T; N]: bytemuck::Pod,
-{
-    chunks.iter().flat_map(move |chunk| {
-        itertools::izip!(
-            chunk.iter_component_indices(&timeline, &component_name),
-            chunk.iter_primitive_array_list::<N, T>(&component_name)
-        )
-    })
-}
-
-/// Iterate `chunks` as indexed UTF-8 strings.
-///
-/// See [`Chunk::iter_string`] for more information.
-#[allow(unused)]
-pub fn iter_string<'a>(
-    chunks: &'a std::borrow::Cow<'a, [Chunk]>,
-    timeline: Timeline,
-    component_name: ComponentName,
-) -> impl Iterator<Item = ((TimeInt, RowId), Vec<re_types::ArrowString>)> + 'a {
-    chunks.iter().flat_map(move |chunk| {
-        itertools::izip!(
-            chunk.iter_component_indices(&timeline, &component_name),
-            chunk.iter_string(&component_name)
-        )
-    })
-}
-
-/// Iterate `chunks` as indexed buffers.
-///
-/// See [`Chunk::iter_buffer`] for more information.
-#[allow(unused)]
-pub fn iter_buffer<'a, T: arrow::datatypes::ArrowNativeType + arrow2::types::NativeType>(
-    chunks: &'a std::borrow::Cow<'a, [Chunk]>,
-    timeline: Timeline,
-    component_name: ComponentName,
-) -> impl Iterator<Item = ((TimeInt, RowId), Vec<re_types::ArrowBuffer<T>>)> + 'a {
-    chunks.iter().flat_map(move |chunk| {
-        itertools::izip!(
-            chunk.iter_component_indices(&timeline, &component_name),
-            chunk.iter_buffer(&component_name)
+            chunk.iter_slices::<T>(component_name)
         )
     })
 }

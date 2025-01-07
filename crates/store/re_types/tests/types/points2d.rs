@@ -1,8 +1,4 @@
-use std::collections::HashMap;
-
 use re_types::{archetypes::Points2D, components, Archetype as _, AsComponents as _};
-
-use crate::util;
 
 #[test]
 fn roundtrip() {
@@ -45,36 +41,15 @@ fn roundtrip() {
         .with_show_labels(false);
     similar_asserts::assert_eq!(expected, arch);
 
-    let expected_extensions: HashMap<_, _> = [
-        ("points", vec!["rerun.components.Position2D"]),
-        ("radii", vec!["rerun.components.Radius"]),
-        ("colors", vec!["rerun.components.Color"]),
-        ("labels", vec!["rerun.components.Label"]),
-        ("draw_order", vec!["rerun.components.DrawOrder"]),
-        ("class_ids", vec!["rerun.components.ClassId"]),
-        ("keypoint_ids", vec!["rerun.components.KeypointId"]),
-        ("show_labels", vec!["rerun.components.ShowLabels"]),
-    ]
-    .into();
-
     eprintln!("arch = {arch:#?}");
-    let serialized = arch.to_arrow2().unwrap();
+    let serialized = arch.to_arrow().unwrap();
     for (field, array) in &serialized {
         // NOTE: Keep those around please, very useful when debugging.
         // eprintln!("field = {field:#?}");
         // eprintln!("array = {array:#?}");
-        eprintln!("{} = {array:#?}", field.name);
-
-        // TODO(cmc): Re-enable extensions and these assertions once `arrow2-convert`
-        // has been fully replaced.
-        if false {
-            util::assert_extensions(
-                &**array,
-                expected_extensions[field.name.as_str()].as_slice(),
-            );
-        }
+        eprintln!("{} = {array:#?}", field.name());
     }
 
-    let deserialized = Points2D::from_arrow2(serialized).unwrap();
+    let deserialized = Points2D::from_arrow(serialized).unwrap();
     similar_asserts::assert_eq!(expected, deserialized);
 }

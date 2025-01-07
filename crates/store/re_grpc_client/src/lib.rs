@@ -480,7 +480,7 @@ async fn stream_catalog_async(
             )))?;
 
         let recording_uri_arrays: Vec<Box<dyn Arrow2Array>> = chunk
-            .iter_string(&"id".into())
+            .iter_slices::<String>("id".into())
             .map(|id| {
                 let rec_id = &id[0]; // each component batch is of length 1 i.e. single 'id' value
 
@@ -567,7 +567,7 @@ fn activate_catalog_blueprint(
         .with_archetype(RowId::new(), timepoint, &vb)
         .build()?;
 
-    let epf = EntityPathFilter::parse_forgiving("/**", &Default::default());
+    let epf = EntityPathFilter::parse_forgiving("/**");
     let vc = ViewContents::new(epf.iter_expressions());
     let view_contents_chunk = ChunkBuilder::new(
         ChunkId::new(),

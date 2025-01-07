@@ -12,7 +12,7 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 
-use crate::external::arrow2;
+use crate::external::arrow;
 use crate::SerializationResult;
 use crate::{ComponentBatch, ComponentBatchCowWithDescriptor};
 use crate::{ComponentDescriptor, ComponentName};
@@ -68,16 +68,15 @@ impl crate::Loggable for Float32 {
         })
     }
 
-    fn from_arrow2_opt(
-        arrow_data: &dyn arrow2::array::Array,
+    fn from_arrow_opt(
+        arrow_data: &dyn arrow::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
         #![allow(clippy::wildcard_imports)]
-        use crate::{Loggable as _, ResultExt as _};
-        use arrow::datatypes::*;
-        use arrow2::{array::*, buffer::*};
+        use crate::{arrow_zip_validity::ZipValidity, Loggable as _, ResultExt as _};
+        use arrow::{array::*, buffer::*, datatypes::*};
         Ok(arrow_data
             .as_any()
             .downcast_ref::<Float32Array>()
@@ -88,7 +87,6 @@ impl crate::Loggable for Float32 {
             })
             .with_context("rerun.datatypes.Float32#value")?
             .into_iter()
-            .map(|opt| opt.copied())
             .map(|v| v.ok_or_else(DeserializationError::missing_data))
             .map(|res| res.map(|v| Some(Self(v))))
             .collect::<DeserializationResult<Vec<Option<_>>>>()
@@ -97,16 +95,15 @@ impl crate::Loggable for Float32 {
     }
 
     #[inline]
-    fn from_arrow2(arrow_data: &dyn arrow2::array::Array) -> DeserializationResult<Vec<Self>>
+    fn from_arrow(arrow_data: &dyn arrow::array::Array) -> DeserializationResult<Vec<Self>>
     where
         Self: Sized,
     {
         #![allow(clippy::wildcard_imports)]
-        use crate::{Loggable as _, ResultExt as _};
-        use arrow::datatypes::*;
-        use arrow2::{array::*, buffer::*};
-        if let Some(validity) = arrow_data.validity() {
-            if validity.unset_bits() != 0 {
+        use crate::{arrow_zip_validity::ZipValidity, Loggable as _, ResultExt as _};
+        use arrow::{array::*, buffer::*, datatypes::*};
+        if let Some(nulls) = arrow_data.nulls() {
+            if nulls.null_count() != 0 {
                 return Err(DeserializationError::missing_data());
             }
         }
@@ -121,7 +118,7 @@ impl crate::Loggable for Float32 {
                 })
                 .with_context("rerun.datatypes.Float32#value")?
                 .values()
-                .as_slice();
+                .as_ref();
             {
                 slice.iter().copied().map(Self).collect::<Vec<_>>()
             }

@@ -26,7 +26,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             (glam::Vec3::from(vertex_positions[1]) * factor).into(),
             (glam::Vec3::from(vertex_positions[2]) * factor).into(),
         ];
-        rec.log("triangle", &vertex_positions)?;
+        rec.log("triangle", &vertex_positions as &dyn rerun::ComponentBatch)?;
     }
 
     Ok(())

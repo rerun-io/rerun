@@ -376,6 +376,14 @@ impl DeserializationError {
             Self::DataCellError(_) | Self::ValidationError(_) => None,
         }
     }
+
+    /// The source of the error, without any [`Self::Context`].
+    pub fn without_context(self) -> Self {
+        match self {
+            Self::Context { source, .. } => source.without_context(),
+            _ => self,
+        }
+    }
 }
 
 pub type DeserializationResult<T> = ::std::result::Result<T, DeserializationError>;

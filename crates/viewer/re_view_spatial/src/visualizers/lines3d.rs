@@ -187,7 +187,7 @@ impl VisualizerSystem for Lines3DVisualizer {
             re_view::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
         );
 
-        use super::entity_iterator::{iter_primitive_array_list, process_archetype};
+        use super::entity_iterator::{iter_slices, process_archetype};
         process_archetype::<Self, LineStrips3D, _>(
             ctx,
             view_query,
@@ -202,9 +202,7 @@ impl VisualizerSystem for Lines3DVisualizer {
 
                 let num_strips = all_strip_chunks
                     .iter()
-                    .flat_map(|chunk| {
-                        chunk.iter_primitive_array_list::<3, f32>(&LineStrip3D::name())
-                    })
+                    .flat_map(|chunk| chunk.iter_slices::<&[[f32; 3]]>(LineStrip3D::name()))
                     .map(|strips| strips.len())
                     .sum();
                 if num_strips == 0 {
@@ -214,16 +212,14 @@ impl VisualizerSystem for Lines3DVisualizer {
 
                 let num_vertices = all_strip_chunks
                     .iter()
-                    .flat_map(|chunk| {
-                        chunk.iter_primitive_array_list::<3, f32>(&LineStrip3D::name())
-                    })
+                    .flat_map(|chunk| chunk.iter_slices::<&[[f32; 3]]>(LineStrip3D::name()))
                     .map(|strips| strips.iter().map(|strip| strip.len()).sum::<usize>())
                     .sum::<usize>();
                 line_builder.reserve_vertices(num_vertices)?;
 
                 let timeline = ctx.query.timeline();
                 let all_strips_indexed =
-                    iter_primitive_array_list(&all_strip_chunks, timeline, LineStrip3D::name());
+                    iter_slices::<&[[f32; 3]]>(&all_strip_chunks, timeline, LineStrip3D::name());
                 let all_colors = results.iter_as(timeline, Color::name());
                 let all_radii = results.iter_as(timeline, Radius::name());
                 let all_labels = results.iter_as(timeline, Text::name());
@@ -232,11 +228,11 @@ impl VisualizerSystem for Lines3DVisualizer {
 
                 let data = re_query::range_zip_1x5(
                     all_strips_indexed,
-                    all_colors.primitive::<u32>(),
-                    all_radii.primitive::<f32>(),
-                    all_labels.string(),
-                    all_class_ids.primitive::<u16>(),
-                    all_show_labels.bool(),
+                    all_colors.slice::<u32>(),
+                    all_radii.slice::<f32>(),
+                    all_labels.slice::<String>(),
+                    all_class_ids.slice::<u16>(),
+                    all_show_labels.slice::<bool>(),
                 )
                 .map(
                     |(_index, strips, colors, radii, labels, class_ids, show_labels)| {
