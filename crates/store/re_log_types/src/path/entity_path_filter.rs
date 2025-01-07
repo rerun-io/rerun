@@ -441,6 +441,11 @@ impl EntityPathFilter {
             rules: BTreeMap::from_iter(rules),
         })
     }
+
+    /// Resolve variables & parse paths, without any substitutions.
+    pub fn resolve_without_substitutions(self) -> ResolvedEntityPathFilter {
+        self.resolve_forgiving(&EntityPathSubs::empty())
+    }
 }
 
 impl ResolvedEntityPathFilter {

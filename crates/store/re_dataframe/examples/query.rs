@@ -3,8 +3,8 @@
 use itertools::Itertools;
 
 use re_dataframe::{
-    ChunkStoreConfig, EntityPathFilter, EntityPathSubs, QueryEngine, QueryExpression,
-    ResolvedTimeRange, SparseFillStrategy, StoreKind, TimeInt, Timeline,
+    ChunkStoreConfig, EntityPathFilter, QueryEngine, QueryExpression, ResolvedTimeRange,
+    SparseFillStrategy, StoreKind, TimeInt, Timeline,
 };
 use re_log_encoding::VersionPolicy;
 
@@ -31,8 +31,7 @@ fn main() -> anyhow::Result<()> {
         TimeInt::new_temporal(s.parse::<i64>().unwrap())
     });
     let entity_path_filter =
-        EntityPathFilter::parse_strict(args.get(5).map_or("/**", |s| s.as_str()))?
-            .resolve_strict(&EntityPathSubs::empty())?;
+        EntityPathFilter::parse_strict(args.get(5).map_or("/**", |s| s.as_str()))?;
 
     // TODO(cmc): We need to take a selector, not a Timeline.
     let timeline = match timeline_name {
