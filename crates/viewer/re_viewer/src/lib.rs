@@ -206,11 +206,16 @@ pub(crate) fn wgpu_options(force_wgpu_backend: Option<String>) -> egui_wgpu::Wgp
             // This rejection should happen with reason-message so it's tractable why a given adapter wasn't chosen.
             // Which is obviously what we want to show when we're rejecting all adapters, but it would
             // also be great to be able to show that information later on.
-            wgpu_setup: egui_wgpu::WgpuSetup::CreateNew {
+            wgpu_setup: egui_wgpu::WgpuSetup::CreateNew(egui_wgpu::WgpuSetupCreateNew {
                 device_descriptor: std::sync::Arc::new(|adapter| re_renderer::config::DeviceCaps::from_adapter_without_validation(adapter).device_descriptor()),
-                supported_backends: supported_graphics_backends(force_wgpu_backend),
-                power_preference: wgpu::util::power_preference_from_env().unwrap_or(wgpu::PowerPreference::HighPerformance),
-             },
+                instance_descriptor:
+                wgpu::InstanceDescriptor {
+                    backends: supported_graphics_backends(force_wgpu_backend),
+                    flags: wgpu::InstanceFlags::default().with_env(),
+                    ..Default::default()
+                },
+                ..Default::default()
+             }),
             ..Default::default()
         }
 }
