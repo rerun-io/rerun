@@ -238,16 +238,7 @@ fn roundtrip() {
             // NOTE: Keep those around please, very useful when debugging.
             // eprintln!("field = {field:#?}");
             // eprintln!("array = {array:#?}");
-            if field.name() == "rerun.testing.components.AffixFuzzer21" {
-                // TODO(#3741): Fields that contain Float16 apparently don't supported fmt
-                // https://github.com/rerun-io/re_arrow2/blob/33a32000001df800e4840d92c33b03e7007311e1/src/array/primitive/fmt.rs#L39
-                eprintln!(
-                    "{} = Can't be printed (float16 not supported)",
-                    field.name()
-                );
-            } else {
-                eprintln!("{} = {array:#?}", field.name());
-            }
+            eprintln!("{} = {array:#?}", field.name());
         }
 
         let deserialized = AffixFuzzer1::from_arrow(serialized).unwrap();
@@ -283,16 +274,7 @@ fn roundtrip() {
             // NOTE: Keep those around please, very useful when debugging.
             // eprintln!("field = {field:#?}");
             // eprintln!("array = {array:#?}");
-            if field.name() == "rerun.testing.components.AffixFuzzer21" {
-                // TODO(#3741): Fields that contain Float16 apparently don't supported fmt
-                // https://github.com/rerun-io/re_arrow2/blob/33a32000001df800e4840d92c33b03e7007311e1/src/array/primitive/fmt.rs#L39
-                eprintln!(
-                    "{} = Can't be printed (float16 not supported)",
-                    field.name()
-                );
-            } else {
-                eprintln!("{} = {array:#?}", field.name());
-            }
+            eprintln!("{} = {array:#?}", field.name());
         }
 
         let deserialized = AffixFuzzer2::from_arrow(serialized).unwrap();
@@ -319,16 +301,7 @@ fn roundtrip() {
             // NOTE: Keep those around please, very useful when debugging.
             // eprintln!("field = {field:#?}");
             // eprintln!("array = {array:#?}");
-            if field.name() == "rerun.testing.components.AffixFuzzer21" {
-                // TODO(#3741): Fields that contain Float16 apparently don't supported fmt
-                // https://github.com/rerun-io/re_arrow2/blob/33a32000001df800e4840d92c33b03e7007311e1/src/array/primitive/fmt.rs#L39
-                eprintln!(
-                    "{} = Can't be printed (float16 not supported)",
-                    field.name()
-                );
-            } else {
-                eprintln!("{} = {array:#?}", field.name());
-            }
+            eprintln!("{} = {array:#?}", field.name());
         }
 
         let deserialized = AffixFuzzer3::from_arrow(serialized).unwrap();
@@ -355,16 +328,7 @@ fn roundtrip() {
             // NOTE: Keep those around please, very useful when debugging.
             // eprintln!("field = {field:#?}");
             // eprintln!("array = {array:#?}");
-            if field.name() == "rerun.testing.components.AffixFuzzer21" {
-                // TODO(#3741): Fields that contain Float16 apparently don't supported fmt
-                // https://github.com/rerun-io/re_arrow2/blob/33a32000001df800e4840d92c33b03e7007311e1/src/array/primitive/fmt.rs#L39
-                eprintln!(
-                    "{} = Can't be printed (float16 not supported)",
-                    field.name()
-                );
-            } else {
-                eprintln!("{} = {array:#?}", field.name());
-            }
+            eprintln!("{} = {array:#?}", field.name());
         }
 
         let deserialized = AffixFuzzer4::from_arrow(serialized).unwrap();
