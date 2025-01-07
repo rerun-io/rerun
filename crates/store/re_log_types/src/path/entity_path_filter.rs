@@ -326,7 +326,7 @@ impl EntityPathFilter {
                 _ => (RuleEffect::Include, line),
             };
 
-            let rule = EntityPathRule::parse(path_pattern);
+            let rule = EntityPathRule::new(path_pattern);
 
             filter.rules.insert(rule, effect);
         }
@@ -445,6 +445,12 @@ impl EntityPathFilter {
     /// Resolve variables & parse paths, without any substitutions.
     pub fn resolve_without_substitutions(self) -> ResolvedEntityPathFilter {
         self.resolve_forgiving(&EntityPathSubs::empty())
+    }
+
+    #[inline]
+    /// Iterate over all rules in the filter.
+    pub fn rules(&self) -> impl Iterator<Item = (&EntityPathRule, &RuleEffect)> {
+        self.rules.iter()
     }
 }
 
@@ -679,12 +685,17 @@ impl ResolvedEntityPathFilter {
 
     #[inline]
     /// Iterate over all rules in the filter.
-    pub fn rules(&self) -> impl Iterator<Item = (&EntityPathRule, &RuleEffect)> {
+    pub fn rules(&self) -> impl Iterator<Item = (&ResolvedEntityPathRule, &RuleEffect)> {
         self.rules.iter()
     }
 }
 
 impl EntityPathRule {
+    /// Create a new [`EntityPathRule`] from a string.
+    pub fn new(expression: &str) -> Self {
+        Self(expression.trim().to_owned())
+    }
+
     /// Whether this rule includes a subtree.
     #[inline]
     pub fn include_subtree(&self) -> bool {
@@ -713,10 +724,6 @@ impl EntityPathRule {
     #[inline]
     pub fn including_entity_subtree(entity_path: &EntityPath) -> Self {
         Self::including_subtree(&entity_path.to_string())
-    }
-
-    pub fn parse(expression: &str) -> Self {
-        Self(expression.trim().to_owned())
     }
 }
 
@@ -765,7 +772,7 @@ impl ResolvedEntityPathRule {
         expression: &str,
         subst_env: &EntityPathSubs,
     ) -> Result<Self, EntityPathFilterError> {
-        let rule = EntityPathRule::parse(expression);
+        let rule = EntityPathRule::new(expression);
         let expression_sub = Self::substitute_variables(&rule, subst_env);
 
         // Check for unresolved substitutions.
@@ -796,7 +803,7 @@ impl ResolvedEntityPathRule {
     }
 
     pub fn parse_forgiving(expression: &str, subst_env: &EntityPathSubs) -> Self {
-        let rule = EntityPathRule::parse(expression);
+        let rule = EntityPathRule::new(expression);
         let expression_sub = Self::substitute_variables(&rule, subst_env);
 
         if expression_sub == "/**" {
