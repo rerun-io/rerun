@@ -14,6 +14,8 @@ mod time_control_ui;
 mod time_ranges_ui;
 mod time_selection_ui;
 
+use std::sync::Arc;
+
 use egui::emath::Rangef;
 use egui::{pos2, Color32, CursorIcon, NumExt, Painter, PointerButton, Rect, Shape, Ui, Vec2};
 
@@ -185,10 +187,10 @@ impl TimePanel {
 
         if state.is_expanded() {
             // Since we use scroll bars we want to fill the whole vertical space downwards:
-            panel_frame.inner_margin.bottom = 0.0;
+            panel_frame.inner_margin.bottom = 0;
 
             // Similarly, let the data get close to the right edge:
-            panel_frame.inner_margin.right = 0.0;
+            panel_frame.inner_margin.right = 0;
         }
 
         let window_height = ui.ctx().screen_rect().height();
@@ -1321,8 +1323,8 @@ fn paint_time_ranges_gaps(
         // Regular & shadow mesh have the same topology!
         shadow_mesh.indices.clone_from(&mesh.indices);
 
-        painter.add(Shape::Mesh(mesh));
-        painter.add(Shape::Mesh(shadow_mesh));
+        painter.add(Shape::Mesh(Arc::new(mesh)));
+        painter.add(Shape::Mesh(Arc::new(shadow_mesh)));
         painter.add(Shape::line(left_line_strip, stroke));
         painter.add(Shape::line(right_line_strip, stroke));
     };

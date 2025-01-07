@@ -342,7 +342,7 @@ impl Toasts {
             let response = response.on_hover_text("Click to close and copy contents");
 
             if response.clicked() {
-                egui_ctx.output_mut(|o| o.copied_text = notification.text.clone());
+                egui_ctx.copy_text(notification.text.clone());
                 notification.toast_ttl = Duration::ZERO;
             }
 

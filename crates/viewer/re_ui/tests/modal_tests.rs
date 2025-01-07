@@ -64,5 +64,5 @@ fn run_modal_test(
 
     //TODO(#8245): enable this everywhere when we have a software renderer setup
     #[cfg(target_os = "macos")]
-    harness.wgpu_snapshot(_test_name);
+    harness.snapshot(_test_name);
 }

@@ -6,7 +6,7 @@ use re_viewer_context::AppOptions;
 
 pub fn settings_screen_ui(ui: &mut egui::Ui, app_options: &mut AppOptions, keep_open: &mut bool) {
     egui::Frame {
-        inner_margin: egui::Margin::same(5.0),
+        inner_margin: egui::Margin::same(5),
         ..Default::default()
     }
     .show(ui, |ui| {

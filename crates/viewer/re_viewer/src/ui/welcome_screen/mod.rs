@@ -41,10 +41,10 @@ impl WelcomeScreen {
             .show(ui, |ui| {
                 egui::Frame {
                     inner_margin: egui::Margin {
-                        left: 40.0,
-                        right: 40.0,
-                        top: 50.0,
-                        bottom: 8.0,
+                        left: 40,
+                        right: 40,
+                        top: 50,
+                        bottom: 8,
                     },
                     ..Default::default()
                 }

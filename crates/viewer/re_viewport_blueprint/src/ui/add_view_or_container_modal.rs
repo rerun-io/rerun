@@ -148,7 +148,7 @@ fn row_ui(ui: &mut egui::Ui, icon: &re_ui::Icon, title: &str, subtitle: &str) ->
     let row_space = 14.0;
     let row_height = 42.0;
     let icon_size = egui::vec2(18.0, 18.0);
-    let thumbnail_rounding = 6.0;
+    let thumbnail_rounding = 6;
     let thumbnail_width = 62.0;
 
     let top_left_corner = ui.cursor().min;
@@ -171,8 +171,8 @@ fn row_ui(ui: &mut egui::Ui, icon: &re_ui::Icon, title: &str, subtitle: &str) ->
 
             egui::Frame {
                 inner_margin: egui::Margin::symmetric(
-                    (thumbnail_width - icon_size.x) / 2.0,
-                    (row_height - icon_size.y) / 2.0,
+                    ((thumbnail_width - icon_size.x) / 2.0) as i8,
+                    ((row_height - icon_size.y) / 2.0) as i8,
                 ), // should be 62x42 when combined with icon size
                 rounding: egui::Rounding::same(thumbnail_rounding),
                 fill: re_ui::design_tokens().thumbnail_background_color(),

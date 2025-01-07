@@ -20,7 +20,7 @@ pub fn test_arrow_ui() {
 
     //TODO(#8245): enable this everywhere when we have a software renderer setup
     #[cfg(target_os = "macos")]
-    harness.wgpu_snapshot("arrow_ui");
+    harness.snapshot("arrow_ui");
 }
 
 fn show_some_arrow_ui(ui: &mut egui::Ui) {
