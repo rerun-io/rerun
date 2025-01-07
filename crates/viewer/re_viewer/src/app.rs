@@ -1810,7 +1810,6 @@ impl eframe::App for App {
         }
 
         // NOTE: GPU resource stats are cheap to compute so we always do.
-        // TODO(andreas): store the re_renderer somewhere else.
         let gpu_resource_stats = {
             re_tracing::profile_scope!("gpu_resource_stats");
 
@@ -1840,7 +1839,6 @@ impl eframe::App for App {
         self.purge_memory_if_needed(&mut store_hub);
 
         {
-            // TODO(andreas): store the re_renderer somewhere else.
             let egui_renderer = {
                 let render_state = frame.wgpu_render_state().unwrap();
                 &mut render_state.renderer.read()

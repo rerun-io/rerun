@@ -213,7 +213,8 @@ fn test_single_component_ui_as_list_item(
         );
     };
 
-    let mut harness = egui_kittest::Harness::builder()
+    let mut harness = test_context
+        .setup_kittest_for_rendering()
         .with_size(Vec2::new(ui_width, 40.0))
         .build_ui(|ui| {
             test_context.run(&ui.ctx().clone(), |ctx| {

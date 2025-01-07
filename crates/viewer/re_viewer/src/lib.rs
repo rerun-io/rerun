@@ -224,15 +224,15 @@ pub fn customize_eframe_and_setup_renderer(
     if let Some(render_state) = &cc.wgpu_render_state {
         use re_renderer::RenderContext;
 
+        // Put the renderer into paint callback resources, so we have access to the renderer
+        // when we need to process egui draw callbacks.
         let paint_callback_resources = &mut render_state.renderer.write().callback_resources;
-
         let render_ctx = RenderContext::new(
             &render_state.adapter,
             render_state.device.clone(),
             render_state.queue.clone(),
             render_state.target_format,
         )?;
-
         paint_callback_resources.insert(render_ctx);
     }
 

@@ -215,7 +215,8 @@ fn run_graph_view_and_save_snapshot(
     .collect();
 
     //TODO(ab): this contains a lot of boilerplate which should be provided by helpers
-    let mut harness = egui_kittest::Harness::builder()
+    let mut harness = test_context
+        .setup_kittest_for_rendering()
         .with_size(size)
         .build_ui(|ui| {
             test_context.run(&ui.ctx().clone(), |viewer_ctx| {
