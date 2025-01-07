@@ -30,7 +30,7 @@ all-features = true
 default = []
 
 ## UI for arrow data
-arrow = ["dep:arrow", "dep:arrow2"]
+arrow = ["dep:arrow"]
 
 
 [dependencies]
@@ -58,7 +58,6 @@ sublime_fuzzy.workspace = true
 time = { workspace = true, features = ["formatting", "local-offset"] }
 
 arrow = { workspace = true, optional = true }
-arrow2 = { workspace = true, optional = true, features = ["arrow"] }
 
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]

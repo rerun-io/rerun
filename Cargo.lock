@@ -6538,7 +6538,6 @@ dependencies = [
  "once_cell",
  "parking_lot",
  "rand",
- "re_arrow2",
  "re_entity_db",
  "re_format",
  "re_log",
