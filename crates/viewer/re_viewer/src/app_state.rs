@@ -669,12 +669,15 @@ fn check_for_clicked_hyperlinks(
     // TODO: https://github.com/emilk/egui/pull/5532#issuecomment-2569606449
 
     egui_ctx.output_mut(|o| {
-        if let Some(open_url) = &o.open_url {
-            if let Some(path_str) = open_url.url.strip_prefix(recording_scheme) {
-                path = Some(path_str.to_owned());
-                o.open_url = None;
+        for command in o.commands.retain(|command| {
+            if let egui::OutputCommand::OpenUrl(open_url) = &mut command {
+                if let Some(path_str) = open_url.url.strip_prefix(recording_scheme) {
+                    path = Some(path_str.to_owned());
+                    return false;
+                }
             }
-        }
+            true
+        })
     });
 
     if let Some(path) = path {
