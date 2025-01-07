@@ -31,7 +31,7 @@ pub struct TestContext {
     pub selection_state: ApplicationSelectionState,
     pub recording_config: RecordingConfig,
 
-    // TODO(andreas): Can we just always populate this in `run`?
+    // Populating this in `run` would pull in too many dependencies into the test harness for now.
     pub query_results: HashMap<ViewId, DataQueryResult>,
 
     pub blueprint_query: LatestAtQuery,
