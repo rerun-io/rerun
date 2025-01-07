@@ -160,10 +160,11 @@ examples = [
 examples = [
   "_empty_rerun_sdk",
   "all_examples",
+  "custom_callback",
   "custom_collection_adapter",
   "custom_data_loader",
-  "custom_view",
   "custom_store_subscriber",
+  "custom_view",
   "dataframe_query",
   "drone_lidar",
   "extend_viewer_ui",
