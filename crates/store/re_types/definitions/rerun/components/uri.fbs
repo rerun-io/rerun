@@ -4,7 +4,7 @@ namespace rerun.components;
 
 /// A general URI (Uniform Resource Identifier).
 ///
-/// To specify a recording, use `RecordingUri`.
+/// To specify a recording, use [archetypes.RecordingUri].
 table Uri (
   "attr.rust.derive": "PartialEq, Eq, PartialOrd, Ord, Hash",
   "attr.docs.unreleased"

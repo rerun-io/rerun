@@ -874,9 +874,9 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <Uri as Component>::name(),
             ComponentReflection {
-                docstring_md: "A general URI (Uniform Resource Identifier).\n\nTo specify a recording, use `RecordingUri`.",
+                docstring_md: "A general URI (Uniform Resource Identifier).\n\nTo specify a recording, use [archetypes.RecordingUri].",
                 custom_placeholder: None,
-                datatype: Uri::arrow2_datatype(),
+                datatype: Uri::arrow_datatype(),
             },
         ),
         (

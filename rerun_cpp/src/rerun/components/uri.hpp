@@ -15,7 +15,7 @@
 namespace rerun::components {
     /// **Component**: A general URI (Uniform Resource Identifier).
     ///
-    /// To specify a recording, use `RecordingUri`.
+    /// To specify a recording, use [archetypes.RecordingUri].
     struct Uri {
         rerun::datatypes::Utf8 uri;
 

@@ -19,7 +19,7 @@ class Uri(datatypes.Utf8, ComponentMixin):
     """
     **Component**: A general URI (Uniform Resource Identifier).
 
-    To specify a recording, use `RecordingUri`.
+    To specify a recording, use [archetypes.RecordingUri].
     """
 
     _BATCH_TYPE = None

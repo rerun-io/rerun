@@ -5,7 +5,7 @@ title: "Uri"
 
 A general URI (Uniform Resource Identifier).
 
-To specify a recording, use `RecordingUri`.
+To specify a recording, use [archetypes.RecordingUri].
 
 ## Rerun datatype
 [`Utf8`](../datatypes/utf8.md)
