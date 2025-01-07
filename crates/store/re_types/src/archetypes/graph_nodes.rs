@@ -12,7 +12,7 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 
-use ::re_types_core::external::arrow2;
+use ::re_types_core::external::arrow;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
@@ -208,8 +208,8 @@ impl ::re_types_core::Archetype for GraphNodes {
     }
 
     #[inline]
-    fn from_arrow2_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, Box<dyn arrow2::array::Array>)>,
+    fn from_arrow_components(
+        arrow_data: impl IntoIterator<Item = (ComponentName, arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
@@ -222,7 +222,7 @@ impl ::re_types_core::Archetype for GraphNodes {
                 .get("rerun.components.GraphNode")
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.GraphNodes#node_ids")?;
-            <crate::components::GraphNode>::from_arrow2_opt(&**array)
+            <crate::components::GraphNode>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.GraphNodes#node_ids")?
                 .into_iter()
                 .map(|v| v.ok_or_else(DeserializationError::missing_data))
@@ -231,7 +231,7 @@ impl ::re_types_core::Archetype for GraphNodes {
         };
         let positions = if let Some(array) = arrays_by_name.get("rerun.components.Position2D") {
             Some({
-                <crate::components::Position2D>::from_arrow2_opt(&**array)
+                <crate::components::Position2D>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.GraphNodes#positions")?
                     .into_iter()
                     .map(|v| v.ok_or_else(DeserializationError::missing_data))
@@ -243,7 +243,7 @@ impl ::re_types_core::Archetype for GraphNodes {
         };
         let colors = if let Some(array) = arrays_by_name.get("rerun.components.Color") {
             Some({
-                <crate::components::Color>::from_arrow2_opt(&**array)
+                <crate::components::Color>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.GraphNodes#colors")?
                     .into_iter()
                     .map(|v| v.ok_or_else(DeserializationError::missing_data))
@@ -255,7 +255,7 @@ impl ::re_types_core::Archetype for GraphNodes {
         };
         let labels = if let Some(array) = arrays_by_name.get("rerun.components.Text") {
             Some({
-                <crate::components::Text>::from_arrow2_opt(&**array)
+                <crate::components::Text>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.GraphNodes#labels")?
                     .into_iter()
                     .map(|v| v.ok_or_else(DeserializationError::missing_data))
@@ -266,7 +266,7 @@ impl ::re_types_core::Archetype for GraphNodes {
             None
         };
         let show_labels = if let Some(array) = arrays_by_name.get("rerun.components.ShowLabels") {
-            <crate::components::ShowLabels>::from_arrow2_opt(&**array)
+            <crate::components::ShowLabels>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.GraphNodes#show_labels")?
                 .into_iter()
                 .next()
@@ -276,7 +276,7 @@ impl ::re_types_core::Archetype for GraphNodes {
         };
         let radii = if let Some(array) = arrays_by_name.get("rerun.components.Radius") {
             Some({
-                <crate::components::Radius>::from_arrow2_opt(&**array)
+                <crate::components::Radius>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.GraphNodes#radii")?
                     .into_iter()
                     .map(|v| v.ok_or_else(DeserializationError::missing_data))

@@ -12,7 +12,7 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 
-use crate::external::arrow2;
+use crate::external::arrow;
 use crate::SerializationResult;
 use crate::{ComponentBatch, ComponentBatchCowWithDescriptor};
 use crate::{ComponentDescriptor, ComponentName};
@@ -126,20 +126,19 @@ impl crate::Loggable for TimeRange {
         })
     }
 
-    fn from_arrow2_opt(
-        arrow_data: &dyn arrow2::array::Array,
+    fn from_arrow_opt(
+        arrow_data: &dyn arrow::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
         #![allow(clippy::wildcard_imports)]
-        use crate::{Loggable as _, ResultExt as _};
-        use arrow::datatypes::*;
-        use arrow2::{array::*, buffer::*};
+        use crate::{arrow_zip_validity::ZipValidity, Loggable as _, ResultExt as _};
+        use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let arrow_data = arrow_data
                 .as_any()
-                .downcast_ref::<arrow2::array::StructArray>()
+                .downcast_ref::<arrow::array::StructArray>()
                 .ok_or_else(|| {
                     let expected = Self::arrow_datatype();
                     let actual = arrow_data.data_type().clone();
@@ -150,10 +149,10 @@ impl crate::Loggable for TimeRange {
                 Vec::new()
             } else {
                 let (arrow_data_fields, arrow_data_arrays) =
-                    (arrow_data.fields(), arrow_data.values());
+                    (arrow_data.fields(), arrow_data.columns());
                 let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data_fields
                     .iter()
-                    .map(|field| field.name.as_str())
+                    .map(|field| field.name().as_str())
                     .zip(arrow_data_arrays)
                     .collect();
                 let start = {
@@ -165,7 +164,7 @@ impl crate::Loggable for TimeRange {
                         .with_context("rerun.datatypes.TimeRange");
                     }
                     let arrow_data = &**arrays_by_name["start"];
-                    crate::datatypes::TimeRangeBoundary::from_arrow2_opt(arrow_data)
+                    crate::datatypes::TimeRangeBoundary::from_arrow_opt(arrow_data)
                         .with_context("rerun.datatypes.TimeRange#start")?
                         .into_iter()
                 };
@@ -178,29 +177,26 @@ impl crate::Loggable for TimeRange {
                         .with_context("rerun.datatypes.TimeRange");
                     }
                     let arrow_data = &**arrays_by_name["end"];
-                    crate::datatypes::TimeRangeBoundary::from_arrow2_opt(arrow_data)
+                    crate::datatypes::TimeRangeBoundary::from_arrow_opt(arrow_data)
                         .with_context("rerun.datatypes.TimeRange#end")?
                         .into_iter()
                 };
-                arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                    ::itertools::izip!(start, end),
-                    arrow_data.validity(),
-                )
-                .map(|opt| {
-                    opt.map(|(start, end)| {
-                        Ok(Self {
-                            start: start
-                                .ok_or_else(DeserializationError::missing_data)
-                                .with_context("rerun.datatypes.TimeRange#start")?,
-                            end: end
-                                .ok_or_else(DeserializationError::missing_data)
-                                .with_context("rerun.datatypes.TimeRange#end")?,
+                ZipValidity::new_with_validity(::itertools::izip!(start, end), arrow_data.nulls())
+                    .map(|opt| {
+                        opt.map(|(start, end)| {
+                            Ok(Self {
+                                start: start
+                                    .ok_or_else(DeserializationError::missing_data)
+                                    .with_context("rerun.datatypes.TimeRange#start")?,
+                                end: end
+                                    .ok_or_else(DeserializationError::missing_data)
+                                    .with_context("rerun.datatypes.TimeRange#end")?,
+                            })
                         })
+                        .transpose()
                     })
-                    .transpose()
-                })
-                .collect::<DeserializationResult<Vec<_>>>()
-                .with_context("rerun.datatypes.TimeRange")?
+                    .collect::<DeserializationResult<Vec<_>>>()
+                    .with_context("rerun.datatypes.TimeRange")?
             }
         })
     }
