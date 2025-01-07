@@ -8,7 +8,7 @@ use crate::ViewSystemIdentifier;
 /// List of entities that are *applicable* to a given visualizer.
 ///
 /// An entity is applicable if it at any point in time on any timeline has all required components.
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Debug)]
 pub struct ApplicableEntities(pub IntSet<EntityPath>);
 
 impl std::ops::Deref for ApplicableEntities {
@@ -45,7 +45,7 @@ impl std::ops::Deref for IndicatedEntities {
 ///
 /// This is a subset of [`ApplicableEntities`] and differs on a
 /// per view instance base.
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Debug)]
 pub struct VisualizableEntities(pub IntSet<EntityPath>);
 
 impl std::ops::Deref for VisualizableEntities {
@@ -57,7 +57,7 @@ impl std::ops::Deref for VisualizableEntities {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct PerVisualizer<T: Default>(pub IntMap<ViewSystemIdentifier, T>);
 
 impl<T: Default> std::ops::Deref for PerVisualizer<T> {

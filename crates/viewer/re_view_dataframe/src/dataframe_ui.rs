@@ -9,7 +9,7 @@ use itertools::Itertools;
 use re_chunk_store::{ColumnDescriptor, LatestAtQuery};
 use re_dataframe::external::re_query::StorageEngineArcReadGuard;
 use re_dataframe::QueryHandle;
-use re_log_types::{EntityPath, TimeInt, Timeline, TimelineName};
+use re_log_types::{EntityPath, TimeInt, TimeType, Timeline, TimelineName};
 use re_types_core::ComponentName;
 use re_ui::UiExt as _;
 use re_viewer_context::{SystemCommandSender, ViewId, ViewerContext};
@@ -203,7 +203,11 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
         re_tracing::profile_function!();
 
         // TODO(ab): actual static-only support
-        let filtered_index = self.query_handle.query().filtered_index.unwrap_or_default();
+        let filtered_index = self
+            .query_handle
+            .query()
+            .filtered_index
+            .unwrap_or_else(|| Timeline::new("", TimeType::Sequence));
 
         self.query_handle
             .seek_to_row(info.visible_rows.start as usize);
@@ -270,8 +274,11 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
                     let column = &self.selected_columns[cell.col_range.start];
 
                     // TODO(ab): actual static-only support
-                    let filtered_index =
-                        self.query_handle.query().filtered_index.unwrap_or_default();
+                    let filtered_index = self
+                        .query_handle
+                        .query()
+                        .filtered_index
+                        .unwrap_or_else(|| Timeline::new("", TimeType::Sequence));
 
                     // if this column can actually be hidden, then that's the corresponding action
                     let hide_action = match column {
@@ -396,7 +403,11 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
             .unwrap_or(TimeInt::MAX);
 
         // TODO(ab): actual static-only support
-        let filtered_index = self.query_handle.query().filtered_index.unwrap_or_default();
+        let filtered_index = self
+            .query_handle
+            .query()
+            .filtered_index
+            .unwrap_or_else(|| Timeline::new("", TimeType::Sequence));
         let latest_at_query = LatestAtQuery::new(filtered_index, timestamp);
 
         if ui.is_sizing_pass() {

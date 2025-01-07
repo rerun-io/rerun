@@ -16,3 +16,6 @@ pub mod external {
     pub use re_types;
     pub use re_view;
 }
+
+// TODO(andreas): cfg test this only?
+pub use system_execution::execute_systems_for_view;
