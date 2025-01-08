@@ -86,7 +86,6 @@ jobs:
 
   # Run some basics tests on Mac and Windows
   mac-windows-tests:
-    #if: ${{ inputs.CHANNEL != 'pr' }} # TODO: uncomment this, only here for quicker testing of ci.
     name: Test on ${{ matrix.name }}
     strategy:
       matrix:
@@ -99,7 +98,7 @@ jobs:
             name: "windows"
 
     # Note: we can't use `matrix.os` here because its evaluated before the matrix stuff.
-    if: ${{ inputs.CHANNEL == 'main' || inputs.CHANNEL == 'nightly' }}
+    #if: ${{ inputs.CHANNEL == 'main' || inputs.CHANNEL == 'nightly' }} # TODO: uncomment this, only here for quicker testing of ci.
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
