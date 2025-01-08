@@ -55,6 +55,7 @@ impl ViewerAnalytics {
     }
 
     /// When the viewer is first started
+    #[allow(unused_variables)]
     pub fn on_viewer_started(
         &self,
         build_info: re_build_info::BuildInfo,
@@ -80,9 +81,6 @@ impl ViewerAnalytics {
                 device_tier,
             ));
         }
-
-        #[cfg(not(feature = "analytics"))]
-        let _ = build_info;
     }
 
     /// When we have loaded the start of a new recording.
