@@ -1,12 +1,12 @@
 use arrow2::{
     array::{
         Array as Arrow2Array, BooleanArray as Arrow2BooleanArray,
-        DictionaryArray as ArrowDictionaryArray, ListArray as ArrowListArray,
+        DictionaryArray as Arrow2DictionaryArray, ListArray as Arrow2ListArray,
         PrimitiveArray as Arrow2PrimitiveArray,
     },
-    bitmap::Bitmap as ArrowBitmap,
+    bitmap::Bitmap as Arrow2Bitmap,
     datatypes::DataType as Arrow2Datatype,
-    offset::Offsets as ArrowOffsets,
+    offset::Offsets as Arrow2Offsets,
 };
 use itertools::Itertools;
 
@@ -19,7 +19,7 @@ use crate::TransportChunk;
 /// Semantic emptiness is defined as either one of these:
 /// * The list is physically empty (literally no data).
 /// * The list only contains null entries, or empty arrays, or a mix of both.
-pub fn is_list_array_semantically_empty(list_array: &ArrowListArray<i32>) -> bool {
+pub fn is_list_array_semantically_empty(list_array: &Arrow2ListArray<i32>) -> bool {
     let is_physically_empty = || list_array.is_empty();
 
     let is_all_nulls = || {
@@ -44,7 +44,7 @@ pub fn is_list_array_semantically_empty(list_array: &ArrowListArray<i32>) -> boo
 #[inline]
 pub fn arrays_to_list_array_opt(
     arrays: &[Option<&dyn Arrow2Array>],
-) -> Option<ArrowListArray<i32>> {
+) -> Option<Arrow2ListArray<i32>> {
     let datatype = arrays
         .iter()
         .flatten()
@@ -61,7 +61,7 @@ pub fn arrays_to_list_array_opt(
 pub fn arrays_to_list_array(
     array_datatype: Arrow2Datatype,
     arrays: &[Option<&dyn Arrow2Array>],
-) -> Option<ArrowListArray<i32>> {
+) -> Option<Arrow2ListArray<i32>> {
     let arrays_dense = arrays.iter().flatten().copied().collect_vec();
 
     let data = if arrays_dense.is_empty() {
@@ -76,10 +76,10 @@ pub fn arrays_to_list_array(
             .ok()?
     };
 
-    let datatype = ArrowListArray::<i32>::default_datatype(array_datatype);
+    let datatype = Arrow2ListArray::<i32>::default_datatype(array_datatype);
 
     #[allow(clippy::unwrap_used)] // yes, these are indeed lengths
-    let offsets = ArrowOffsets::try_from_lengths(
+    let offsets = Arrow2Offsets::try_from_lengths(
         arrays
             .iter()
             .map(|array| array.map_or(0, |array| array.len())),
@@ -87,9 +87,9 @@ pub fn arrays_to_list_array(
     .unwrap();
 
     #[allow(clippy::from_iter_instead_of_collect)]
-    let validity = ArrowBitmap::from_iter(arrays.iter().map(Option::is_some));
+    let validity = Arrow2Bitmap::from_iter(arrays.iter().map(Option::is_some));
 
-    Some(ArrowListArray::<i32>::new(
+    Some(Arrow2ListArray::<i32>::new(
         datatype,
         offsets.into(),
         data,
@@ -111,7 +111,7 @@ pub fn arrays_to_list_array(
 pub fn arrays_to_dictionary<Idx: Copy + Eq>(
     array_datatype: &Arrow2Datatype,
     arrays: &[Option<(Idx, &dyn Arrow2Array)>],
-) -> Option<ArrowDictionaryArray<i32>> {
+) -> Option<Arrow2DictionaryArray<i32>> {
     // Dedupe the input arrays based on the given primary key.
     let arrays_dense_deduped = arrays
         .iter()
@@ -156,10 +156,10 @@ pub fn arrays_to_dictionary<Idx: Copy + Eq>(
 
         #[allow(clippy::unwrap_used)] // yes, these are indeed lengths
         let offsets =
-            ArrowOffsets::try_from_lengths(arrays_dense_deduped.iter().map(|array| array.len()))
+            Arrow2Offsets::try_from_lengths(arrays_dense_deduped.iter().map(|array| array.len()))
                 .unwrap();
 
-        ArrowListArray::<i32>::new(array_datatype.clone(), offsets.into(), values, None).to_boxed()
+        Arrow2ListArray::<i32>::new(array_datatype.clone(), offsets.into(), values, None).to_boxed()
     };
 
     let datatype = Arrow2Datatype::Dictionary(
@@ -170,7 +170,7 @@ pub fn arrays_to_dictionary<Idx: Copy + Eq>(
 
     // And finally we build our dictionary, which indexes into our concatenated list-array of
     // unique values.
-    ArrowDictionaryArray::try_new(
+    Arrow2DictionaryArray::try_new(
         datatype,
         Arrow2PrimitiveArray::<i32>::from(keys),
         data.to_boxed(),
@@ -178,14 +178,14 @@ pub fn arrays_to_dictionary<Idx: Copy + Eq>(
     .ok()
 }
 
-/// Given a sparse `ArrowListArray` (i.e. an array with a validity bitmap that contains at least
-/// one falsy value), returns a dense `ArrowListArray` that only contains the non-null values from
+/// Given a sparse `Arrow2ListArray` (i.e. an array with a validity bitmap that contains at least
+/// one falsy value), returns a dense `Arrow2ListArray` that only contains the non-null values from
 /// the original list.
 ///
 /// This is a no-op if the original array is already dense.
 pub fn sparse_list_array_to_dense_list_array(
-    list_array: &ArrowListArray<i32>,
-) -> ArrowListArray<i32> {
+    list_array: &Arrow2ListArray<i32>,
+) -> Arrow2ListArray<i32> {
     if list_array.is_empty() {
         return list_array.clone();
     }
@@ -199,10 +199,10 @@ pub fn sparse_list_array_to_dense_list_array(
 
     #[allow(clippy::unwrap_used)] // yes, these are indeed lengths
     let offsets =
-        ArrowOffsets::try_from_lengths(list_array.iter().flatten().map(|array| array.len()))
+        Arrow2Offsets::try_from_lengths(list_array.iter().flatten().map(|array| array.len()))
             .unwrap();
 
-    ArrowListArray::<i32>::new(
+    Arrow2ListArray::<i32>::new(
         list_array.data_type().clone(),
         offsets.into(),
         list_array.values().clone(),
@@ -214,9 +214,9 @@ pub fn sparse_list_array_to_dense_list_array(
 ///
 /// This will share the same child data array buffer, but will create new offset and validity buffers.
 pub fn pad_list_array_back(
-    list_array: &ArrowListArray<i32>,
+    list_array: &Arrow2ListArray<i32>,
     target_len: usize,
-) -> ArrowListArray<i32> {
+) -> Arrow2ListArray<i32> {
     let missing_len = target_len.saturating_sub(list_array.len());
     if missing_len == 0 {
         return list_array.clone();
@@ -226,7 +226,7 @@ pub fn pad_list_array_back(
 
     let offsets = {
         #[allow(clippy::unwrap_used)] // yes, these are indeed lengths
-        ArrowOffsets::try_from_lengths(
+        Arrow2Offsets::try_from_lengths(
             list_array
                 .iter()
                 .map(|array| array.map_or(0, |array| array.len()))
@@ -240,14 +240,14 @@ pub fn pad_list_array_back(
     let validity = {
         if let Some(validity) = list_array.validity() {
             #[allow(clippy::from_iter_instead_of_collect)]
-            ArrowBitmap::from_iter(
+            Arrow2Bitmap::from_iter(
                 validity
                     .iter()
                     .chain(std::iter::repeat(false).take(missing_len)),
             )
         } else {
             #[allow(clippy::from_iter_instead_of_collect)]
-            ArrowBitmap::from_iter(
+            Arrow2Bitmap::from_iter(
                 std::iter::repeat(true)
                     .take(list_array.len())
                     .chain(std::iter::repeat(false).take(missing_len)),
@@ -255,16 +255,16 @@ pub fn pad_list_array_back(
         }
     };
 
-    ArrowListArray::new(datatype, offsets.into(), values, Some(validity))
+    Arrow2ListArray::new(datatype, offsets.into(), values, Some(validity))
 }
 
 /// Create a new `ListArray` of target length by appending null values to its front.
 ///
 /// This will share the same child data array buffer, but will create new offset and validity buffers.
 pub fn pad_list_array_front(
-    list_array: &ArrowListArray<i32>,
+    list_array: &Arrow2ListArray<i32>,
     target_len: usize,
-) -> ArrowListArray<i32> {
+) -> Arrow2ListArray<i32> {
     let missing_len = target_len.saturating_sub(list_array.len());
     if missing_len == 0 {
         return list_array.clone();
@@ -274,7 +274,7 @@ pub fn pad_list_array_front(
 
     let offsets = {
         #[allow(clippy::unwrap_used)] // yes, these are indeed lengths
-        ArrowOffsets::try_from_lengths(
+        Arrow2Offsets::try_from_lengths(
             std::iter::repeat(0).take(missing_len).chain(
                 list_array
                     .iter()
@@ -289,14 +289,14 @@ pub fn pad_list_array_front(
     let validity = {
         if let Some(validity) = list_array.validity() {
             #[allow(clippy::from_iter_instead_of_collect)]
-            ArrowBitmap::from_iter(
+            Arrow2Bitmap::from_iter(
                 std::iter::repeat(false)
                     .take(missing_len)
                     .chain(validity.iter()),
             )
         } else {
             #[allow(clippy::from_iter_instead_of_collect)]
-            ArrowBitmap::from_iter(
+            Arrow2Bitmap::from_iter(
                 std::iter::repeat(false)
                     .take(missing_len)
                     .chain(std::iter::repeat(true).take(list_array.len())),
@@ -304,23 +304,23 @@ pub fn pad_list_array_front(
         }
     };
 
-    ArrowListArray::new(datatype, offsets.into(), values, Some(validity))
+    Arrow2ListArray::new(datatype, offsets.into(), values, Some(validity))
 }
 
-/// Returns a new [`ArrowListArray`] with len `entries`.
+/// Returns a new [`Arrow2ListArray`] with len `entries`.
 ///
 /// Each entry will be an empty array of the given `child_datatype`.
 pub fn new_list_array_of_empties(
     child_datatype: Arrow2Datatype,
     len: usize,
-) -> ArrowListArray<i32> {
+) -> Arrow2ListArray<i32> {
     let empty_array = arrow2::array::new_empty_array(child_datatype);
 
     #[allow(clippy::unwrap_used)] // yes, these are indeed lengths
-    let offsets = ArrowOffsets::try_from_lengths(std::iter::repeat(0).take(len)).unwrap();
+    let offsets = Arrow2Offsets::try_from_lengths(std::iter::repeat(0).take(len)).unwrap();
 
-    ArrowListArray::<i32>::new(
-        ArrowListArray::<i32>::default_datatype(empty_array.data_type().clone()),
+    Arrow2ListArray::<i32>::new(
+        Arrow2ListArray::<i32>::default_datatype(empty_array.data_type().clone()),
         offsets.into(),
         empty_array.to_boxed(),
         None,
