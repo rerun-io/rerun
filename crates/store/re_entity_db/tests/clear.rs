@@ -122,14 +122,7 @@ fn clears() -> anyhow::Result<()> {
         let timepoint = TimePoint::from_iter([(timeline_frame, 10)]);
         let clear = Clear::flat();
         let chunk = Chunk::builder(entity_path_parent.clone())
-            .with_component_batches(
-                row_id,
-                timepoint,
-                clear
-                    .as_component_batches()
-                    .iter()
-                    .map(|b| b as &dyn re_types_core::ComponentBatch),
-            )
+            .with_component_batches_v2(row_id, timepoint, clear.as_component_batches_v2())
             .build()?;
 
         db.add_chunk(&Arc::new(chunk))?;
@@ -163,14 +156,7 @@ fn clears() -> anyhow::Result<()> {
         let timepoint = TimePoint::from_iter([(timeline_frame, 10)]);
         let clear = Clear::recursive();
         let chunk = Chunk::builder(entity_path_parent.clone())
-            .with_component_batches(
-                row_id,
-                timepoint,
-                clear
-                    .as_component_batches()
-                    .iter()
-                    .map(|b| b as &dyn re_types_core::ComponentBatch),
-            )
+            .with_component_batches_v2(row_id, timepoint, clear.as_component_batches_v2())
             .build()?;
 
         db.add_chunk(&Arc::new(chunk))?;
@@ -351,13 +337,10 @@ fn clears_respect_index_order() -> anyhow::Result<()> {
 
     let clear = Clear::recursive();
     let chunk = Chunk::builder(entity_path.clone())
-        .with_component_batches(
+        .with_component_batches_v2(
             row_id1, // older row id!
             timepoint.clone(),
-            clear
-                .as_component_batches()
-                .iter()
-                .map(|b| b as &dyn re_types_core::ComponentBatch),
+            clear.as_component_batches_v2(),
         )
         .build()?;
 
@@ -378,13 +361,10 @@ fn clears_respect_index_order() -> anyhow::Result<()> {
 
     let clear = Clear::recursive();
     let chunk = Chunk::builder(entity_path.clone())
-        .with_component_batches(
+        .with_component_batches_v2(
             row_id3, // newer row id!
             timepoint.clone(),
-            clear
-                .as_component_batches()
-                .iter()
-                .map(|b| b as &dyn re_types_core::ComponentBatch),
+            clear.as_component_batches_v2(),
         )
         .build()?;
 

@@ -1,6 +1,9 @@
 use std::borrow::Cow;
 
-use crate::{Component, ComponentDescriptor, ComponentName, Loggable, SerializationResult};
+use crate::{
+    ArchetypeFieldName, ArchetypeName, Component, ComponentDescriptor, ComponentName, Loggable,
+    SerializationResult,
+};
 
 use arrow2::array::ListArray as Arrow2ListArray;
 
@@ -55,6 +58,9 @@ pub trait ComponentBatch: LoggableBatch {
     fn descriptor(&self) -> Cow<'_, ComponentDescriptor>;
 
     // Wraps the current [`ComponentBatch`] with the given descriptor.
+    //
+    // TODO(cmc): This should probably go away, but we'll see about that once I start tackling
+    // partial updates themselves.
     fn with_descriptor(
         &self,
         descriptor: ComponentDescriptor,
@@ -64,6 +70,68 @@ pub trait ComponentBatch: LoggableBatch {
     {
         ComponentBatchCowWithDescriptor::new(ComponentBatchCow::Ref(self as &dyn ComponentBatch))
             .with_descriptor_override(descriptor)
+    }
+
+    /// Serializes the contents of this [`ComponentBatch`].
+    ///
+    /// Once serialized, the data is ready to be logged into Rerun via the [`AsComponents`] trait.
+    ///
+    /// # Fallibility
+    ///
+    /// There are very few ways in which serialization can fail, all of which are very rare to hit
+    /// in practice.
+    ///
+    /// For that reason, this method favors a nice user experience over error handling: errors will
+    /// merely be logged, not returned (except in debug builds, where all errors panic).
+    ///
+    /// See also [`ComponentBatch::try_serialized`].
+    ///
+    /// [`AsComponents`]: [crate::AsComponents]
+    #[inline]
+    fn serialized(&self) -> Option<SerializedComponentBatch> {
+        match self.try_serialized() {
+            Ok(array) => Some(array),
+
+            #[cfg(debug_assertions)]
+            Err(err) => {
+                panic!(
+                    "failed to serialize data for {}: {}",
+                    self.descriptor(),
+                    re_error::format_ref(&err)
+                )
+            }
+
+            #[cfg(not(debug_assertions))]
+            Err(err) => {
+                re_log::error!(
+                    descriptor = %self.descriptor(),
+                    "failed to serialize data: {}",
+                    re_error::format_ref(&err)
+                );
+                None
+            }
+        }
+    }
+
+    /// Serializes the contents of this [`ComponentBatch`].
+    ///
+    /// Once serialized, the data is ready to be logged into Rerun via the [`AsComponents`] trait.
+    ///
+    /// # Fallibility
+    ///
+    /// There are very few ways in which serialization can fail, all of which are very rare to hit
+    /// in practice.
+    ///
+    /// For that reason, it generally makes sense to favor a nice user experience over error handling
+    /// in most cases, see [`ComponentBatch::serialized`].
+    ///
+    /// [`AsComponents`]: [crate::AsComponents]
+    #[inline]
+    fn try_serialized(&self) -> SerializationResult<SerializedComponentBatch> {
+        Ok(SerializedComponentBatch {
+            array: self.to_arrow()?,
+            descriptor: self.descriptor().into_owned(),
+        })
     }
 
     /// The fully-qualified name of this component batch, e.g. `rerun.components.Position2D`.
@@ -84,6 +152,89 @@ pub trait ComponentBatch: LoggableBatch {
 fn assert_component_batch_object_safe() {
     let _: &dyn LoggableBatch;
 }
+
+/// The serialized contents of a [`ComponentBatch`] with associated [`ComponentDescriptor`].
+///
+/// This is what gets logged into Rerun:
+/// * See [`ComponentBatch`] to easily serialize component data.
+/// * See [`AsComponents`] for logging serialized data.
+///
+/// [`AsComponents`]: [crate::AsComponents]
+#[derive(Debug, Clone)]
+pub struct SerializedComponentBatch {
+    pub array: arrow::array::ArrayRef,
+
+    // TODO(cmc): Maybe Cow<> this one if it grows bigger. Or intern descriptors altogether, most likely.
+    pub descriptor: ComponentDescriptor,
+}
+
+impl re_byte_size::SizeBytes for SerializedComponentBatch {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        let Self { array, descriptor } = self;
+        array.heap_size_bytes() + descriptor.heap_size_bytes()
+    }
+}
+
+impl PartialEq for SerializedComponentBatch {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        let Self { array, descriptor } = self;
+
+        // Descriptor first!
+        *descriptor == other.descriptor && **array == *other.array
+    }
+}
+
+impl SerializedComponentBatch {
+    #[inline]
+    pub fn new(array: arrow::array::ArrayRef, descriptor: ComponentDescriptor) -> Self {
+        Self { array, descriptor }
+    }
+
+    #[inline]
+    pub fn with_descriptor_override(self, descriptor: ComponentDescriptor) -> Self {
+        Self { descriptor, ..self }
+    }
+
+    /// Unconditionally sets the descriptor's `archetype_name` to the given one.
+    #[inline]
+    pub fn with_archetype_name(mut self, archetype_name: ArchetypeName) -> Self {
+        self.descriptor = self.descriptor.with_archetype_name(archetype_name);
+        self
+    }
+
+    /// Unconditionally sets the descriptor's `archetype_field_name` to the given one.
+    #[inline]
+    pub fn with_archetype_field_name(mut self, archetype_field_name: ArchetypeFieldName) -> Self {
+        self.descriptor = self
+            .descriptor
+            .with_archetype_field_name(archetype_field_name);
+        self
+    }
+
+    /// Sets the descriptor's `archetype_name` to the given one iff it's not already set.
+    #[inline]
+    pub fn or_with_archetype_name(mut self, archetype_name: impl Fn() -> ArchetypeName) -> Self {
+        self.descriptor = self.descriptor.or_with_archetype_name(archetype_name);
+        self
+    }
+
+    /// Sets the descriptor's `archetype_field_name` to the given one iff it's not already set.
+    #[inline]
+    pub fn or_with_archetype_field_name(
+        mut self,
+        archetype_field_name: impl FnOnce() -> ArchetypeFieldName,
+    ) -> Self {
+        self.descriptor = self
+            .descriptor
+            .or_with_archetype_field_name(archetype_field_name);
+        self
+    }
+}
+
+// TODO(cmc): All these crazy types are about to disappear. ComponentBatch should only live at the
+// edge, and therefore not require all these crazy kinds of derivatives (require eager serialization).
 
 /// Some [`ComponentBatch`], optionally with an overridden [`ComponentDescriptor`].
 ///

@@ -3,7 +3,7 @@
 use rerun::{
     demo_util::grid,
     external::{arrow, glam, re_types},
-    ComponentBatch,
+    ComponentBatch, SerializedComponentBatch,
 };
 
 // ---
@@ -18,27 +18,22 @@ struct CustomPoints3D {
 }
 
 impl rerun::AsComponents for CustomPoints3D {
-    fn as_component_batches(&self) -> Vec<rerun::ComponentBatchCowWithDescriptor<'_>> {
+    fn as_component_batches_v2(&self) -> Vec<SerializedComponentBatch> {
         let indicator = rerun::NamedIndicatorComponent("user.CustomPoints3DIndicator".into());
         self.points3d
-            .as_component_batches()
+            .as_component_batches_v2()
             .into_iter()
             .chain(
                 [
-                    Some(indicator.to_batch()),
-                    self.confidences.as_ref().map(|batch| {
-                        rerun::ComponentBatchCowWithDescriptor::new(
-                            batch as &dyn rerun::ComponentBatch,
-                        )
-                        // Optionally override the descriptor with extra information.
-                        .with_descriptor_override(
+                    indicator.serialized(),
+                    self.confidences
+                        .as_ref()
+                        .and_then(|batch| batch.serialized())
+                        .map(|batch|
+                            // Optionally override the descriptor with extra information.
                             batch
-                                .descriptor()
-                                .into_owned()
                                 .or_with_archetype_name(|| "user.CustomPoints3D".into())
-                                .or_with_archetype_field_name(|| "confidences".into()),
-                        )
-                    }),
+                                .or_with_archetype_field_name(|| "confidences".into())),
                 ]
                 .into_iter()
                 .flatten(),

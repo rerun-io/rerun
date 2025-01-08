@@ -1,6 +1,5 @@
 use crate::{
-    ComponentBatch, ComponentBatchCowWithDescriptor, LoggableBatch as _, ResultExt as _,
-    SerializationResult,
+    ComponentBatch, ComponentBatchCowWithDescriptor, SerializationResult, SerializedComponentBatch,
 };
 
 /// Describes the interface for interpreting an object as a bundle of [`Component`]s.
@@ -34,7 +33,37 @@ pub trait AsComponents {
     //
     // NOTE: Don't bother returning a CoW here: we need to dynamically discard optional components
     // depending on their presence (or lack thereof) at runtime anyway.
-    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>>;
+    #[deprecated(since = "0.22.0", note = "use as_component_batches_v2 instead")]
+    #[allow(clippy::unimplemented)] // temporary, this method is about to be replaced
+    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
+        // Eagerly serialized archetypes simply cannot implement this.
+        //
+        // This method only exist while we are in the process of making all existing archetypes
+        // eagerly serialized, at which point it'll be removed.
+        unimplemented!()
+    }
+
+    /// Exposes the object's contents as a set of [`SerializedComponentBatch`]es.
+    ///
+    /// This is the main mechanism for easily extending builtin archetypes or even writing
+    /// fully custom ones.
+    /// Have a look at our [Custom Data Loader] example to learn more about extending archetypes.
+    ///
+    /// Implementers of [`AsComponents`] get one last chance to override the tags in the
+    /// [`ComponentDescriptor`], see [`SerializedComponentBatch::with_descriptor_override`].
+    ///
+    /// [Custom Data Loader]: https://github.com/rerun-io/rerun/blob/latest/docs/snippets/all/tutorials/custom_data.rs
+    /// [`ComponentDescriptor`]: [crate::ComponentDescriptor]
+    //
+    // NOTE: Don't bother returning a CoW here: we need to dynamically discard optional components
+    // depending on their presence (or lack thereof) at runtime anyway.
+    fn as_component_batches_v2(&self) -> Vec<SerializedComponentBatch> {
+        #[allow(deprecated)] // that's the whole point
+        self.as_component_batches()
+            .into_iter()
+            .filter_map(|batch| batch.serialized())
+            .collect()
+    }
 
     // ---
 
@@ -48,20 +77,15 @@ pub trait AsComponents {
     fn to_arrow(
         &self,
     ) -> SerializationResult<Vec<(::arrow::datatypes::Field, ::arrow::array::ArrayRef)>> {
-        self.as_component_batches()
+        self.as_component_batches_v2()
             .into_iter()
             .map(|comp_batch| {
-                comp_batch
-                    .to_arrow()
-                    .map(|array| {
-                        let field = arrow::datatypes::Field::new(
-                            comp_batch.name().to_string(),
-                            array.data_type().clone(),
-                            false,
-                        );
-                        (field, array)
-                    })
-                    .with_context(comp_batch.name())
+                let field = arrow::datatypes::Field::new(
+                    comp_batch.descriptor.component_name.to_string(),
+                    comp_batch.array.data_type().clone(),
+                    false,
+                );
+                Ok((field, comp_batch.array))
             })
             .collect()
     }
@@ -77,20 +101,15 @@ pub trait AsComponents {
         &self,
     ) -> SerializationResult<Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>>
     {
-        self.as_component_batches()
+        self.as_component_batches_v2()
             .into_iter()
             .map(|comp_batch| {
-                comp_batch
-                    .to_arrow2()
-                    .map(|array| {
-                        let field = arrow2::datatypes::Field::new(
-                            comp_batch.name().to_string(),
-                            array.data_type().clone(),
-                            false,
-                        );
-                        (field, array)
-                    })
-                    .with_context(comp_batch.name())
+                let field = arrow2::datatypes::Field::new(
+                    comp_batch.descriptor.component_name.to_string(),
+                    comp_batch.array.data_type().clone().into(),
+                    false,
+                );
+                Ok((field, comp_batch.array.into()))
             })
             .collect()
     }
@@ -103,106 +122,96 @@ fn assert_object_safe() {
 
 impl AsComponents for dyn ComponentBatch {
     #[inline]
-    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
-        vec![ComponentBatchCowWithDescriptor::new(self)]
+    fn as_component_batches_v2(&self) -> Vec<SerializedComponentBatch> {
+        self.serialized().into_iter().collect()
     }
 }
 
 impl<const N: usize> AsComponents for [&dyn ComponentBatch; N] {
     #[inline]
-    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
-        self.iter()
-            .map(|batch| ComponentBatchCowWithDescriptor::new(*batch))
-            .collect()
+    fn as_component_batches_v2(&self) -> Vec<SerializedComponentBatch> {
+        self.iter().filter_map(|batch| batch.serialized()).collect()
     }
 }
 
 impl<const N: usize> AsComponents for [Box<dyn ComponentBatch>; N] {
     #[inline]
-    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
-        self.iter()
-            .map(|batch| ComponentBatchCowWithDescriptor::new(&**batch))
-            .collect()
+    fn as_component_batches_v2(&self) -> Vec<SerializedComponentBatch> {
+        self.iter().filter_map(|batch| batch.serialized()).collect()
     }
 }
 
 impl AsComponents for Vec<&dyn ComponentBatch> {
     #[inline]
-    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
-        self.iter()
-            .map(|batch| ComponentBatchCowWithDescriptor::new(*batch))
-            .collect()
+    fn as_component_batches_v2(&self) -> Vec<SerializedComponentBatch> {
+        self.iter().filter_map(|batch| batch.serialized()).collect()
     }
 }
 
 impl AsComponents for Vec<Box<dyn ComponentBatch>> {
     #[inline]
-    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
-        self.iter()
-            .map(|batch| ComponentBatchCowWithDescriptor::new(&**batch))
-            .collect()
+    fn as_component_batches_v2(&self) -> Vec<SerializedComponentBatch> {
+        self.iter().filter_map(|batch| batch.serialized()).collect()
     }
 }
 
-impl<AS: AsComponents> AsComponents for [AS] {
+impl AsComponents for SerializedComponentBatch {
     #[inline]
-    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
-        self.iter()
-            .flat_map(|as_components| as_components.as_component_batches())
-            .collect()
+    fn as_component_batches_v2(&self) -> Vec<SerializedComponentBatch> {
+        vec![self.clone()]
     }
 }
 
 impl<AS: AsComponents, const N: usize> AsComponents for [AS; N] {
     #[inline]
-    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
+    fn as_component_batches_v2(&self) -> Vec<SerializedComponentBatch> {
         self.iter()
-            .flat_map(|as_components| as_components.as_component_batches())
+            .flat_map(|as_components| as_components.as_component_batches_v2())
             .collect()
     }
 }
 
 impl<const N: usize> AsComponents for [&dyn AsComponents; N] {
     #[inline]
-    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
+    fn as_component_batches_v2(&self) -> Vec<SerializedComponentBatch> {
         self.iter()
-            .flat_map(|as_components| as_components.as_component_batches())
+            .flat_map(|as_components| as_components.as_component_batches_v2())
             .collect()
     }
 }
 
 impl<const N: usize> AsComponents for [Box<dyn AsComponents>; N] {
     #[inline]
-    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
+    fn as_component_batches_v2(&self) -> Vec<SerializedComponentBatch> {
         self.iter()
-            .flat_map(|as_components| as_components.as_component_batches())
+            .flat_map(|as_components| as_components.as_component_batches_v2())
             .collect()
     }
 }
 
 impl<AS: AsComponents> AsComponents for Vec<AS> {
     #[inline]
-    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
+    fn as_component_batches_v2(&self) -> Vec<SerializedComponentBatch> {
         self.iter()
-            .flat_map(|as_components| as_components.as_component_batches())
+            .flat_map(|as_components| as_components.as_component_batches_v2())
             .collect()
     }
 }
 
 impl AsComponents for Vec<&dyn AsComponents> {
     #[inline]
-    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
+    fn as_component_batches_v2(&self) -> Vec<SerializedComponentBatch> {
         self.iter()
-            .flat_map(|as_components| as_components.as_component_batches())
+            .flat_map(|as_components| as_components.as_component_batches_v2())
             .collect()
     }
 }
 
 impl AsComponents for Vec<Box<dyn AsComponents>> {
     #[inline]
-    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
+    fn as_component_batches_v2(&self) -> Vec<SerializedComponentBatch> {
         self.iter()
-            .flat_map(|as_components| as_components.as_component_batches())
+            .flat_map(|as_components| as_components.as_component_batches_v2())
             .collect()
     }
 }
@@ -293,9 +302,8 @@ mod tests {
     use arrow::array::{
         types::UInt32Type, Array as ArrowArray, PrimitiveArray as ArrowPrimitiveArray,
     };
+    use itertools::Itertools;
     use similar_asserts::assert_eq;
-
-    use crate::LoggableBatch;
 
     #[derive(Clone, Copy, Debug, PartialEq, Eq, bytemuck::Pod, bytemuck::Zeroable)]
     #[repr(transparent)]
@@ -356,24 +364,21 @@ mod tests {
     }
 
     #[test]
-    fn single_ascomponents_howto() -> anyhow::Result<()> {
+    fn single_ascomponents_howto() {
         let (red, _, _, _) = data();
 
         let got = {
             let red = &red as &dyn crate::ComponentBatch;
-            let got: Result<Vec<_>, _> = (&[red] as &dyn crate::AsComponents)
-                .as_component_batches()
+            (&[red] as &dyn crate::AsComponents)
+                .as_component_batches_v2()
                 .into_iter()
-                .map(|batch| batch.to_arrow())
-                .collect();
-            got?
+                .map(|batch| batch.array)
+                .collect_vec()
         };
         let expected = vec![
             Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![red.0])) as Arc<dyn ArrowArray>,
         ];
         assert_eq!(&expected, &got);
-
-        Ok(())
     }
 
     #[test]
@@ -390,24 +395,21 @@ mod tests {
     }
 
     #[test]
-    fn single_ascomponents_wrapped_howto() -> anyhow::Result<()> {
+    fn single_ascomponents_wrapped_howto() {
         let (red, _, _, _) = data();
 
         let got = {
             let red = &red as &dyn crate::ComponentBatch;
-            let got: Result<Vec<_>, _> = (&[red] as &dyn crate::AsComponents)
-                .as_component_batches()
+            (&[red] as &dyn crate::AsComponents)
+                .as_component_batches_v2()
                 .into_iter()
-                .map(|batch| batch.to_arrow())
-                .collect();
-            got?
+                .map(|batch| batch.array)
+                .collect_vec()
         };
         let expected = vec![
             Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![red.0])) as Arc<dyn ArrowArray>,
         ];
         assert_eq!(&expected, &got);
-
-        Ok(())
     }
 
     #[test]
@@ -424,19 +426,18 @@ mod tests {
     }
 
     #[test]
-    fn single_ascomponents_wrapped_many_howto() -> anyhow::Result<()> {
+    fn single_ascomponents_wrapped_many_howto() {
         let (red, green, blue, _) = data();
 
         let got = {
             let red = &red as &dyn crate::ComponentBatch;
             let green = &green as &dyn crate::ComponentBatch;
             let blue = &blue as &dyn crate::ComponentBatch;
-            let got: Result<Vec<_>, _> = (&[red, green, blue] as &dyn crate::AsComponents)
-                .as_component_batches()
+            (&[red, green, blue] as &dyn crate::AsComponents)
+                .as_component_batches_v2()
                 .into_iter()
-                .map(|batch| batch.to_arrow())
-                .collect();
-            got?
+                .map(|batch| batch.array)
+                .collect_vec()
         };
         let expected = vec![
             Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![red.0])) as Arc<dyn ArrowArray>,
@@ -444,8 +445,6 @@ mod tests {
             Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![blue.0])) as Arc<dyn ArrowArray>,
         ];
         assert_eq!(&expected, &got);
-
-        Ok(())
     }
 
     #[test]
@@ -477,39 +476,35 @@ mod tests {
     }
 
     #[test]
-    fn many_ascomponents_wrapped_howto() -> anyhow::Result<()> {
+    fn many_ascomponents_wrapped_howto() {
         let (red, green, blue, colors) = data();
 
         let got = {
             let colors = &colors as &dyn crate::ComponentBatch;
-            let got: Result<Vec<_>, _> = (&[colors] as &dyn crate::AsComponents)
-                .as_component_batches()
+            (&[colors] as &dyn crate::AsComponents)
+                .as_component_batches_v2()
                 .into_iter()
-                .map(|batch| batch.to_arrow())
-                .collect();
-            got?
+                .map(|batch| batch.array)
+                .collect_vec()
         };
         let expected = vec![Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![
             red.0, green.0, blue.0,
         ])) as Arc<dyn ArrowArray>];
         assert_eq!(&expected, &got);
-
-        Ok(())
     }
 
     #[test]
-    fn many_ascomponents_wrapped_many_howto() -> anyhow::Result<()> {
+    fn many_ascomponents_wrapped_many_howto() {
         let (red, green, blue, colors) = data();
 
         // Nothing out of the ordinary here, a collection of batches is indeed a collection of batches.
         let got = {
             let colors = &colors as &dyn crate::ComponentBatch;
-            let got: Result<Vec<_>, _> = (&[colors, colors, colors] as &dyn crate::AsComponents)
-                .as_component_batches()
+            (&[colors, colors, colors] as &dyn crate::AsComponents)
+                .as_component_batches_v2()
                 .into_iter()
-                .map(|batch| batch.to_arrow())
-                .collect();
-            got?
+                .map(|batch| batch.array)
+                .collect_vec()
         };
         let expected = vec![
             Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![
@@ -523,7 +518,5 @@ mod tests {
             ])) as Arc<dyn ArrowArray>,
         ];
         assert_eq!(&expected, &got);
-
-        Ok(())
     }
 }
