@@ -90,7 +90,7 @@ const CATALOG_BP_STORE_ID: &str = "catalog_blueprint";
 const CATALOG_REC_STORE_ID: &str = "catalog";
 const CATALOG_APPLICATION_ID: &str = "redap_catalog";
 
-/// Stream an rrd file or metadsasta catalog over gRPC from a Rerun Data Platform server.
+/// Stream an rrd file or metadata catalog over gRPC from a Rerun Data Platform server.
 ///
 /// `on_msg` can be used to wake up the UI thread on Wasm.
 pub fn stream_from_redap(
