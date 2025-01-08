@@ -65,7 +65,7 @@ impl DeviceTier {
                     // Turn a blind eye on a few features that are missing as of writing in WSL even with latest Vulkan drivers
                     // and pretend we still have full WebGPU support anyways.
                     wgpu::DownlevelFlags::compliant()
-                        // Lack means that we can't set the format of views on suface textures (the result of `get_current_texture`) surface won't tell us which formats are supported.
+                        // Lack means that we can't set the format of views on surface textures (the result of `get_current_texture`) surface won't tell us which formats are supported.
                         // We avoid doing anything wonky with surfaces anyways, so we won't hit this.
                         .intersection(wgpu::DownlevelFlags::SURFACE_VIEW_FORMATS.complement())
                         // Lack means we only get 2^24-1 indices for drawing.
