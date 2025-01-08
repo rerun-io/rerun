@@ -39,7 +39,7 @@ pub(crate) fn edit_marker_shape_ui(
 
                             if response.clicked() {
                                 *edit_marker = marker;
-                                response.changed = true;
+                                response.flags |= egui::response::Flags::CHANGED;
                             }
 
                             combined_response = Some(match combined_response {

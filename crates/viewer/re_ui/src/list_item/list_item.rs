@@ -332,8 +332,8 @@ impl ListItem {
         // override_hover should not affect the returned response
         let mut style_response = response.clone();
         if force_hovered {
-            style_response.contains_pointer = true;
-            style_response.hovered = true;
+            style_response.flags |= egui::response::Flags::CONTAINS_POINTER;
+            style_response.flags |= egui::response::Flags::HOVERED;
         }
 
         let mut collapse_response = None;
