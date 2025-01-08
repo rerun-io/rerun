@@ -72,7 +72,7 @@ impl WebHandle {
 
         let app_options = self.app_options.clone();
         let web_options = eframe::WebOptions {
-            wgpu_options: crate::wgpu_options(app_options.render_backend.clone()),
+            wgpu_options: crate::wgpu_options(app_options.render_backend.as_deref()),
             depth_buffer: 0,
             dithering: true,
             ..Default::default()
