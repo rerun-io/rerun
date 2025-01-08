@@ -5617,6 +5617,7 @@ dependencies = [
 name = "re_build_info"
 version = "0.22.0-alpha.1+dev"
 dependencies = [
+ "re_byte_size",
  "serde",
 ]
 
@@ -6003,6 +6004,32 @@ dependencies = [
  "tonic-web-wasm-client",
  "url",
  "wasm-bindgen-futures",
+]
+
+[[package]]
+name = "re_grpc_server"
+version = "0.22.0-alpha.1+dev"
+dependencies = [
+ "prost",
+ "re_build_info",
+ "re_byte_size",
+ "re_chunk",
+ "re_error",
+ "re_format",
+ "re_log",
+ "re_log_encoding",
+ "re_log_types",
+ "re_memory",
+ "re_protos",
+ "re_smart_channel",
+ "re_tracing",
+ "re_types",
+ "thiserror 1.0.65",
+ "tokio",
+ "tokio-stream",
+ "tokio-util",
+ "tonic",
+ "url",
 ]
 
 [[package]]
@@ -8820,6 +8847,7 @@ dependencies = [
  "futures-core",
  "pin-project-lite",
  "tokio",
+ "tokio-util",
 ]
 
 [[package]]
