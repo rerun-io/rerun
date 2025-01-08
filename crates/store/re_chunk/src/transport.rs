@@ -651,7 +651,7 @@ impl Chunk {
                 let component_desc = TransportChunk::component_descriptor_from_field(field);
 
                 if components
-                    .insert_descriptor(component_desc, column.clone())
+                    .insert_descriptor_arrow2(component_desc, column.clone())
                     .is_some()
                 {
                     return Err(ChunkError::Malformed {

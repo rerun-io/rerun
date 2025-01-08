@@ -63,7 +63,7 @@ pub struct ChunkComponents(
 impl ChunkComponents {
     /// Like `Self::insert`, but automatically infers the [`ComponentName`] layer.
     #[inline]
-    pub fn insert_descriptor_arrow1(
+    pub fn insert_descriptor(
         &mut self,
         component_desc: ComponentDescriptor,
         list_array: ArrowListArray,
@@ -79,7 +79,7 @@ impl ChunkComponents {
 
     /// Like `Self::insert`, but automatically infers the [`ComponentName`] layer.
     #[inline]
-    pub fn insert_descriptor(
+    pub fn insert_descriptor_arrow2(
         &mut self,
         component_desc: ComponentDescriptor,
         list_array: Arrow2ListArray<i32>,
@@ -161,7 +161,7 @@ impl FromIterator<(ComponentDescriptor, ArrowListArray)> for ChunkComponents {
         let mut this = Self::default();
         {
             for (component_desc, list_array) in iter {
-                this.insert_descriptor(component_desc, list_array.into());
+                this.insert_descriptor_arrow2(component_desc, list_array.into());
             }
         }
         this
@@ -190,7 +190,7 @@ impl FromIterator<(ComponentDescriptor, Arrow2ListArray<i32>)> for ChunkComponen
         let mut this = Self::default();
         {
             for (component_desc, list_array) in iter {
-                this.insert_descriptor(component_desc, list_array);
+                this.insert_descriptor_arrow2(component_desc, list_array);
             }
         }
         this
@@ -959,7 +959,7 @@ impl Chunk {
         list_array: Arrow2ListArray<i32>,
     ) -> ChunkResult<()> {
         self.components
-            .insert_descriptor(component_desc, list_array);
+            .insert_descriptor_arrow2(component_desc, list_array);
         self.sanity_check()
     }
 
