@@ -1,6 +1,7 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use ahash::HashMap;
+use arrow::array::ListArray as ArrowListArray;
 use arrow2::{
     array::{
         Array as Arrow2Array, ListArray as Arrow2ListArray, PrimitiveArray as Arrow2PrimitiveArray,
@@ -60,6 +61,22 @@ pub struct ChunkComponents(
 );
 
 impl ChunkComponents {
+    /// Like `Self::insert`, but automatically infers the [`ComponentName`] layer.
+    #[inline]
+    pub fn insert_descriptor_arrow1(
+        &mut self,
+        component_desc: ComponentDescriptor,
+        list_array: ArrowListArray,
+    ) -> Option<ArrowListArray> {
+        // TODO(cmc): revert me
+        let component_desc = component_desc.untagged();
+        self.0
+            .entry(component_desc.component_name)
+            .or_default()
+            .insert(component_desc, list_array.into())
+            .map(|la| la.into())
+    }
+
     /// Like `Self::insert`, but automatically infers the [`ComponentName`] layer.
     #[inline]
     pub fn insert_descriptor(

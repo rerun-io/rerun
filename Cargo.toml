@@ -587,3 +587,5 @@ egui_commonmark = { git = "https://github.com/rerun-io/egui_commonmark.git", bra
 # walkers = { git = "https://github.com/rerun-io/walkers", rev = "8939cceb3fa49ca8648ee16fe1d8432f5ab0bdcc" } # https://github.com/podusowski/walkers/pull/222
 
 # dav1d = { path = "/home/cmc/dev/rerun-io/rav1d", package = "re_rav1d", version = "0.1.1" }
+
+re_arrow2 = { git = "https://github.com/rerun-io/re_arrow2.git", branch = "emilk/more-arrow-compatibility" } # TODO : point to main branmch

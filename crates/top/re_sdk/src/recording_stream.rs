@@ -1176,7 +1176,7 @@ impl RecordingStream {
             .into_iter()
             .map(|comp_batch| {
                 comp_batch
-                    .to_arrow2()
+                    .to_arrow()
                     .map(|array| (comp_batch.descriptor().into_owned(), array))
             })
             .collect();

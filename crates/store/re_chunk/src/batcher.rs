@@ -4,7 +4,8 @@ use std::{
     time::{Duration, Instant},
 };
 
-use arrow2::array::{Array as Arrow2Array, PrimitiveArray as Arrow2PrimitiveArray};
+use arrow::array::{Array as ArrowArray, ArrayRef};
+use arrow2::array::PrimitiveArray as Arrow2PrimitiveArray;
 use crossbeam::channel::{Receiver, Sender};
 use nohash_hasher::IntMap;
 
@@ -12,7 +13,7 @@ use re_byte_size::SizeBytes as _;
 use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt, TimePoint, Timeline};
 use re_types_core::ComponentDescriptor;
 
-use crate::{arrow2_util, chunk::ChunkComponents, Chunk, ChunkId, ChunkResult, RowId, TimeColumn};
+use crate::{arrow_util, chunk::ChunkComponents, Chunk, ChunkId, ChunkResult, RowId, TimeColumn};
 
 // ---
 
@@ -679,15 +680,12 @@ pub struct PendingRow {
     /// The component data.
     ///
     /// Each array is a single component, i.e. _not_ a list array.
-    pub components: IntMap<ComponentDescriptor, Box<dyn Arrow2Array>>,
+    pub components: IntMap<ComponentDescriptor, ArrayRef>,
 }
 
 impl PendingRow {
     #[inline]
-    pub fn new(
-        timepoint: TimePoint,
-        components: IntMap<ComponentDescriptor, Box<dyn Arrow2Array>>,
-    ) -> Self {
+    pub fn new(timepoint: TimePoint, components: IntMap<ComponentDescriptor, ArrayRef>) -> Self {
         Self {
             row_id: RowId::new(),
             timepoint,
@@ -734,9 +732,9 @@ impl PendingRow {
 
         let mut per_name = ChunkComponents::default();
         for (component_desc, array) in components {
-            let list_array = arrow2_util::arrays_to_list_array_opt(&[Some(&*array as _)]);
+            let list_array = arrow_util::arrays_to_list_array_opt(&[Some(&*array as _)]);
             if let Some(list_array) = list_array {
-                per_name.insert_descriptor(component_desc, list_array);
+                per_name.insert_descriptor_arrow1(component_desc, list_array);
             }
         }
 
@@ -826,7 +824,7 @@ impl PendingRow {
 
                 // Create all the logical list arrays that we're going to need, accounting for the
                 // possibility of sparse components in the data.
-                let mut all_components: IntMap<ComponentDescriptor, Vec<Option<&dyn Arrow2Array>>> =
+                let mut all_components: IntMap<ComponentDescriptor, Vec<Option<&dyn ArrowArray>>> =
                     IntMap::default();
                 for row in &rows {
                     for component_desc in row.components.keys() {
@@ -870,9 +868,12 @@ impl PendingRow {
                                     for (component_desc, arrays) in std::mem::take(&mut components)
                                     {
                                         let list_array =
-                                            arrow2_util::arrays_to_list_array_opt(&arrays);
+                                            arrow_util::arrays_to_list_array_opt(&arrays);
                                         if let Some(list_array) = list_array {
-                                            per_name.insert_descriptor(component_desc, list_array);
+                                            per_name.insert_descriptor_arrow1(
+                                                component_desc,
+                                                list_array,
+                                            );
                                         }
                                     }
                                     per_name
@@ -898,7 +899,7 @@ impl PendingRow {
                         arrays.push(
                             row_components
                                 .get(component_desc)
-                                .map(|array| &**array as &dyn Arrow2Array),
+                                .map(|array| &**array as &dyn ArrowArray),
                         );
                     }
                 }
@@ -915,9 +916,9 @@ impl PendingRow {
                     {
                         let mut per_name = ChunkComponents::default();
                         for (component_desc, arrays) in components {
-                            let list_array = arrow2_util::arrays_to_list_array_opt(&arrays);
+                            let list_array = arrow_util::arrays_to_list_array_opt(&arrays);
                             if let Some(list_array) = list_array {
-                                per_name.insert_descriptor(component_desc, list_array);
+                                per_name.insert_descriptor_arrow1(component_desc, list_array);
                             }
                         }
                         per_name
