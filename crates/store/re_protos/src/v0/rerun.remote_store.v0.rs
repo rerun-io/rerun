@@ -46,6 +46,58 @@ impl ::prost::Name for RegisterRecordingRequest {
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
+pub struct UnregisterRecordingRequest {
+    /// unique identifier of the recording
+    #[prost(message, optional, tag = "1")]
+    pub recording_id: ::core::option::Option<super::super::common::v0::RecordingId>,
+}
+impl ::prost::Name for UnregisterRecordingRequest {
+    const NAME: &'static str = "UnregisterRecordingRequest";
+    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.remote_store.v0.UnregisterRecordingRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.remote_store.v0.UnregisterRecordingRequest".into()
+    }
+}
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct UnregisterRecordingResponse {}
+impl ::prost::Name for UnregisterRecordingResponse {
+    const NAME: &'static str = "UnregisterRecordingResponse";
+    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.remote_store.v0.UnregisterRecordingResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.remote_store.v0.UnregisterRecordingResponse".into()
+    }
+}
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct UnregisterAllRecordingsRequest {}
+impl ::prost::Name for UnregisterAllRecordingsRequest {
+    const NAME: &'static str = "UnregisterAllRecordingsRequest";
+    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.remote_store.v0.UnregisterAllRecordingsRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.remote_store.v0.UnregisterAllRecordingsRequest".into()
+    }
+}
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct UnregisterAllRecordingsResponse {}
+impl ::prost::Name for UnregisterAllRecordingsResponse {
+    const NAME: &'static str = "UnregisterAllRecordingsResponse";
+    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.remote_store.v0.UnregisterAllRecordingsResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.remote_store.v0.UnregisterAllRecordingsResponse".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UpdateCatalogRequest {
     #[prost(message, optional, tag = "2")]
     pub metadata: ::core::option::Option<DataframePart>,
@@ -463,6 +515,46 @@ pub mod storage_node_client {
             ));
             self.inner.unary(req, path, codec).await
         }
+        pub async fn unregister_recording(
+            &mut self,
+            request: impl tonic::IntoRequest<super::UnregisterRecordingRequest>,
+        ) -> std::result::Result<tonic::Response<super::UnregisterRecordingResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.remote_store.v0.StorageNode/UnregisterRecording",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.remote_store.v0.StorageNode",
+                "UnregisterRecording",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+        pub async fn unregister_all_recordings(
+            &mut self,
+            request: impl tonic::IntoRequest<super::UnregisterAllRecordingsRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::UnregisterAllRecordingsResponse>,
+            tonic::Status,
+        > {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.remote_store.v0.StorageNode/UnregisterAllRecordings",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.remote_store.v0.StorageNode",
+                "UnregisterAllRecordings",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
     }
 }
 /// Generated server implementations.
@@ -519,6 +611,17 @@ pub mod storage_node_server {
             &self,
             request: tonic::Request<super::RegisterRecordingRequest>,
         ) -> std::result::Result<tonic::Response<super::DataframePart>, tonic::Status>;
+        async fn unregister_recording(
+            &self,
+            request: tonic::Request<super::UnregisterRecordingRequest>,
+        ) -> std::result::Result<tonic::Response<super::UnregisterRecordingResponse>, tonic::Status>;
+        async fn unregister_all_recordings(
+            &self,
+            request: tonic::Request<super::UnregisterAllRecordingsRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::UnregisterAllRecordingsResponse>,
+            tonic::Status,
+        >;
     }
     #[derive(Debug)]
     pub struct StorageNodeServer<T> {
@@ -789,6 +892,90 @@ pub mod storage_node_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = RegisterRecordingSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.remote_store.v0.StorageNode/UnregisterRecording" => {
+                    #[allow(non_camel_case_types)]
+                    struct UnregisterRecordingSvc<T: StorageNode>(pub Arc<T>);
+                    impl<T: StorageNode>
+                        tonic::server::UnaryService<super::UnregisterRecordingRequest>
+                        for UnregisterRecordingSvc<T>
+                    {
+                        type Response = super::UnregisterRecordingResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::UnregisterRecordingRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as StorageNode>::unregister_recording(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = UnregisterRecordingSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.remote_store.v0.StorageNode/UnregisterAllRecordings" => {
+                    #[allow(non_camel_case_types)]
+                    struct UnregisterAllRecordingsSvc<T: StorageNode>(pub Arc<T>);
+                    impl<T: StorageNode>
+                        tonic::server::UnaryService<super::UnregisterAllRecordingsRequest>
+                        for UnregisterAllRecordingsSvc<T>
+                    {
+                        type Response = super::UnregisterAllRecordingsResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::UnregisterAllRecordingsRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as StorageNode>::unregister_all_recordings(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = UnregisterAllRecordingsSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
