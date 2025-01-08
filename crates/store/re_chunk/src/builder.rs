@@ -9,7 +9,7 @@ use nohash_hasher::IntMap;
 use re_log_types::{EntityPath, TimeInt, TimePoint, Timeline};
 use re_types_core::{AsComponents, ComponentBatch, ComponentDescriptor};
 
-use crate::{chunk::ChunkComponents, Chunk, ChunkId, ChunkResult, RowId, TimeColumn};
+use crate::{arrow2_util, chunk::ChunkComponents, Chunk, ChunkId, ChunkResult, RowId, TimeColumn};
 
 // ---
 
@@ -236,7 +236,7 @@ impl ChunkBuilder {
                     .into_iter()
                     .filter_map(|(component_desc, arrays)| {
                         let arrays = arrays.iter().map(|array| array.as_deref()).collect_vec();
-                        crate::util::arrays_to_list_array_opt(&arrays)
+                        arrow2_util::arrays_to_list_array_opt(&arrays)
                             .map(|list_array| (component_desc, list_array))
                     })
             {
@@ -295,10 +295,10 @@ impl ChunkBuilder {
                             // If we know the datatype in advance, we're able to keep even fully sparse
                             // columns around.
                             if let Some(datatype) = datatypes.get(&component_desc) {
-                                crate::util::arrays_to_list_array(datatype.clone(), &arrays)
+                                arrow2_util::arrays_to_list_array(datatype.clone(), &arrays)
                                     .map(|list_array| (component_desc, list_array))
                             } else {
-                                crate::util::arrays_to_list_array_opt(&arrays)
+                                arrow2_util::arrays_to_list_array_opt(&arrays)
                                     .map(|list_array| (component_desc, list_array))
                             }
                         })

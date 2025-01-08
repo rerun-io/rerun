@@ -12,7 +12,7 @@ use re_byte_size::SizeBytes as _;
 use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt, TimePoint, Timeline};
 use re_types_core::ComponentDescriptor;
 
-use crate::{chunk::ChunkComponents, Chunk, ChunkId, ChunkResult, RowId, TimeColumn};
+use crate::{arrow2_util, chunk::ChunkComponents, Chunk, ChunkId, ChunkResult, RowId, TimeColumn};
 
 // ---
 
@@ -734,7 +734,7 @@ impl PendingRow {
 
         let mut per_name = ChunkComponents::default();
         for (component_desc, array) in components {
-            let list_array = crate::util::arrays_to_list_array_opt(&[Some(&*array as _)]);
+            let list_array = arrow2_util::arrays_to_list_array_opt(&[Some(&*array as _)]);
             if let Some(list_array) = list_array {
                 per_name.insert_descriptor(component_desc, list_array);
             }
@@ -870,7 +870,7 @@ impl PendingRow {
                                     for (component_desc, arrays) in std::mem::take(&mut components)
                                     {
                                         let list_array =
-                                            crate::util::arrays_to_list_array_opt(&arrays);
+                                            arrow2_util::arrays_to_list_array_opt(&arrays);
                                         if let Some(list_array) = list_array {
                                             per_name.insert_descriptor(component_desc, list_array);
                                         }
@@ -915,7 +915,7 @@ impl PendingRow {
                     {
                         let mut per_name = ChunkComponents::default();
                         for (component_desc, arrays) in components {
-                            let list_array = crate::util::arrays_to_list_array_opt(&arrays);
+                            let list_array = arrow2_util::arrays_to_list_array_opt(&arrays);
                             if let Some(list_array) = list_array {
                                 per_name.insert_descriptor(component_desc, list_array);
                             }
@@ -995,6 +995,8 @@ mod tests {
     use re_log_types::example_components::{MyPoint, MyPoint64};
     use re_types_core::{Component as _, Loggable as _};
 
+    use crate::arrow2_util;
+
     use super::*;
 
     /// A bunch of rows that don't fit any of the split conditions should end up together.
@@ -1060,7 +1062,7 @@ mod tests {
             )];
             let expected_components = [(
                 MyPoint::descriptor(),
-                crate::util::arrays_to_list_array_opt(&[&*points1, &*points2, &*points3].map(Some))
+                arrow2_util::arrays_to_list_array_opt(&[&*points1, &*points2, &*points3].map(Some))
                     .unwrap(),
             )];
             let expected_chunk = Chunk::from_native_row_ids(
@@ -1132,7 +1134,7 @@ mod tests {
             let expected_timelines = [];
             let expected_components = [(
                 MyPoint::descriptor(),
-                crate::util::arrays_to_list_array_opt(&[&*points1, &*points2, &*points3].map(Some))
+                arrow2_util::arrays_to_list_array_opt(&[&*points1, &*points2, &*points3].map(Some))
                     .unwrap(),
             )];
             let expected_chunk = Chunk::from_native_row_ids(
@@ -1216,7 +1218,7 @@ mod tests {
             )];
             let expected_components = [(
                 MyPoint::descriptor(),
-                crate::util::arrays_to_list_array_opt(&[&*points1, &*points3].map(Some)).unwrap(),
+                arrow2_util::arrays_to_list_array_opt(&[&*points1, &*points3].map(Some)).unwrap(),
             )];
             let expected_chunk = Chunk::from_native_row_ids(
                 chunks[0].id,
@@ -1244,7 +1246,7 @@ mod tests {
             )];
             let expected_components = [(
                 MyPoint::descriptor(),
-                crate::util::arrays_to_list_array_opt(&[&*points2].map(Some)).unwrap(),
+                arrow2_util::arrays_to_list_array_opt(&[&*points2].map(Some)).unwrap(),
             )];
             let expected_chunk = Chunk::from_native_row_ids(
                 chunks[1].id,
@@ -1331,7 +1333,7 @@ mod tests {
             )];
             let expected_components = [(
                 MyPoint::descriptor(),
-                crate::util::arrays_to_list_array_opt(&[&*points1].map(Some)).unwrap(),
+                arrow2_util::arrays_to_list_array_opt(&[&*points1].map(Some)).unwrap(),
             )];
             let expected_chunk = Chunk::from_native_row_ids(
                 chunks[0].id,
@@ -1369,7 +1371,7 @@ mod tests {
             ];
             let expected_components = [(
                 MyPoint::descriptor(),
-                crate::util::arrays_to_list_array_opt(&[&*points2, &*points3].map(Some)).unwrap(),
+                arrow2_util::arrays_to_list_array_opt(&[&*points2, &*points3].map(Some)).unwrap(),
             )];
             let expected_chunk = Chunk::from_native_row_ids(
                 chunks[1].id,
@@ -1452,7 +1454,7 @@ mod tests {
             )];
             let expected_components = [(
                 MyPoint::descriptor(),
-                crate::util::arrays_to_list_array_opt(&[&*points1, &*points3].map(Some)).unwrap(),
+                arrow2_util::arrays_to_list_array_opt(&[&*points1, &*points3].map(Some)).unwrap(),
             )];
             let expected_chunk = Chunk::from_native_row_ids(
                 chunks[0].id,
@@ -1480,7 +1482,7 @@ mod tests {
             )];
             let expected_components = [(
                 MyPoint::descriptor(),
-                crate::util::arrays_to_list_array_opt(&[&*points2].map(Some)).unwrap(),
+                arrow2_util::arrays_to_list_array_opt(&[&*points2].map(Some)).unwrap(),
             )];
             let expected_chunk = Chunk::from_native_row_ids(
                 chunks[1].id,
@@ -1591,7 +1593,7 @@ mod tests {
             ];
             let expected_components = [(
                 MyPoint::descriptor(),
-                crate::util::arrays_to_list_array_opt(
+                arrow2_util::arrays_to_list_array_opt(
                     &[&*points1, &*points2, &*points3, &*points4].map(Some),
                 )
                 .unwrap(),
@@ -1705,7 +1707,7 @@ mod tests {
             ];
             let expected_components = [(
                 MyPoint::descriptor(),
-                crate::util::arrays_to_list_array_opt(&[&*points1, &*points2, &*points3].map(Some))
+                arrow2_util::arrays_to_list_array_opt(&[&*points1, &*points2, &*points3].map(Some))
                     .unwrap(),
             )];
             let expected_chunk = Chunk::from_native_row_ids(
@@ -1744,7 +1746,7 @@ mod tests {
             ];
             let expected_components = [(
                 MyPoint::descriptor(),
-                crate::util::arrays_to_list_array_opt(&[&*points4].map(Some)).unwrap(),
+                arrow2_util::arrays_to_list_array_opt(&[&*points4].map(Some)).unwrap(),
             )];
             let expected_chunk = Chunk::from_native_row_ids(
                 chunks[1].id,

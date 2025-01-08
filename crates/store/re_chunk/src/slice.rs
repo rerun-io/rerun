@@ -9,7 +9,7 @@ use nohash_hasher::IntSet;
 use re_log_types::Timeline;
 use re_types_core::{ComponentDescriptor, ComponentName};
 
-use crate::{Chunk, RowId, TimeColumn};
+use crate::{arrow2_util, Chunk, RowId, TimeColumn};
 
 // ---
 
@@ -369,7 +369,7 @@ impl Chunk {
             entity_path: entity_path.clone(),
             heap_size_bytes: Default::default(),
             is_sorted,
-            row_ids: crate::util::filter_array(row_ids, &validity_filter),
+            row_ids: arrow2_util::filter_array(row_ids, &validity_filter),
             timelines: timelines
                 .iter()
                 .map(|(&timeline, time_column)| (timeline, time_column.filtered(&validity_filter)))
@@ -377,7 +377,7 @@ impl Chunk {
             components: components
                 .iter_flattened()
                 .map(|(component_desc, list_array)| {
-                    let filtered = crate::util::filter_array(list_array, &validity_filter);
+                    let filtered = arrow2_util::filter_array(list_array, &validity_filter);
                     let filtered = if component_desc.component_name == component_name_pov {
                         // Make sure we fully remove the validity bitmap for the densified
                         // component.
@@ -546,7 +546,7 @@ impl Chunk {
             entity_path: self.entity_path.clone(),
             heap_size_bytes: Default::default(),
             is_sorted: self.is_sorted,
-            row_ids: crate::util::take_array(&self.row_ids, &indices),
+            row_ids: arrow2_util::take_array(&self.row_ids, &indices),
             timelines: self
                 .timelines
                 .iter()
@@ -556,7 +556,7 @@ impl Chunk {
                 .components
                 .iter_flattened()
                 .map(|(component_desc, list_array)| {
-                    let filtered = crate::util::take_array(list_array, &indices);
+                    let filtered = arrow2_util::take_array(list_array, &indices);
                     (component_desc.clone(), filtered)
                 })
                 .collect(),
@@ -619,7 +619,7 @@ impl Chunk {
             entity_path: entity_path.clone(),
             heap_size_bytes: Default::default(),
             is_sorted,
-            row_ids: crate::util::filter_array(row_ids, filter),
+            row_ids: arrow2_util::filter_array(row_ids, filter),
             timelines: timelines
                 .iter()
                 .map(|(&timeline, time_column)| (timeline, time_column.filtered(filter)))
@@ -627,7 +627,7 @@ impl Chunk {
             components: components
                 .iter_flattened()
                 .map(|(component_desc, list_array)| {
-                    let filtered = crate::util::filter_array(list_array, filter);
+                    let filtered = arrow2_util::filter_array(list_array, filter);
                     (component_desc.clone(), filtered)
                 })
                 .collect(),
@@ -699,7 +699,7 @@ impl Chunk {
             entity_path: entity_path.clone(),
             heap_size_bytes: Default::default(),
             is_sorted,
-            row_ids: crate::util::take_array(row_ids, indices),
+            row_ids: arrow2_util::take_array(row_ids, indices),
             timelines: timelines
                 .iter()
                 .map(|(&timeline, time_column)| (timeline, time_column.taken(indices)))
@@ -707,7 +707,7 @@ impl Chunk {
             components: components
                 .iter_flattened()
                 .map(|(component_desc, list_array)| {
-                    let taken = crate::util::take_array(list_array, indices);
+                    let taken = arrow2_util::take_array(list_array, indices);
                     (component_desc.clone(), taken)
                 })
                 .collect(),
@@ -852,7 +852,7 @@ impl TimeColumn {
         Self::new(
             is_sorted_opt,
             *timeline,
-            crate::util::filter_array(times, filter),
+            arrow2_util::filter_array(times, filter),
         )
     }
 
@@ -871,7 +871,7 @@ impl TimeColumn {
         Self::new(
             Some(*is_sorted),
             *timeline,
-            crate::util::take_array(times, indices),
+            arrow2_util::take_array(times, indices),
         )
     }
 }

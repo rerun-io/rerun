@@ -5,7 +5,9 @@ use arrow2::array::{
 use itertools::{izip, Itertools};
 use nohash_hasher::IntMap;
 
-use crate::{chunk::ChunkComponents, Chunk, ChunkError, ChunkId, ChunkResult, TimeColumn};
+use crate::{
+    arrow2_util, chunk::ChunkComponents, Chunk, ChunkError, ChunkId, ChunkResult, TimeColumn,
+};
 
 // ---
 
@@ -46,7 +48,7 @@ impl Chunk {
         let row_ids = {
             re_tracing::profile_scope!("row_ids");
 
-            let row_ids = crate::util::concat_arrays(&[&cl.row_ids, &cr.row_ids])?;
+            let row_ids = arrow2_util::concat_arrays(&[&cl.row_ids, &cr.row_ids])?;
             #[allow(clippy::unwrap_used)]
             // concatenating 2 RowId arrays must yield another RowId array
             row_ids
@@ -105,7 +107,7 @@ impl Chunk {
                         ));
 
                         let list_array =
-                            crate::util::concat_arrays(&[lhs_list_array, rhs_list_array]).ok()?;
+                            arrow2_util::concat_arrays(&[lhs_list_array, rhs_list_array]).ok()?;
                         let list_array = list_array
                             .as_any()
                             .downcast_ref::<Arrow2ListArray<i32>>()?
@@ -116,7 +118,7 @@ impl Chunk {
                         re_tracing::profile_scope!("pad");
                         Some((
                             component_desc.clone(),
-                            crate::util::pad_list_array_back(
+                            arrow2_util::pad_list_array_back(
                                 lhs_list_array,
                                 self.num_rows() + rhs.num_rows(),
                             ),
@@ -147,7 +149,7 @@ impl Chunk {
                         ));
 
                         let list_array =
-                            crate::util::concat_arrays(&[lhs_list_array, rhs_list_array]).ok()?;
+                            arrow2_util::concat_arrays(&[lhs_list_array, rhs_list_array]).ok()?;
                         let list_array = list_array
                             .as_any()
                             .downcast_ref::<Arrow2ListArray<i32>>()?
@@ -158,7 +160,7 @@ impl Chunk {
                         re_tracing::profile_scope!("pad");
                         Some((
                             component_desc.clone(),
-                            crate::util::pad_list_array_front(
+                            arrow2_util::pad_list_array_front(
                                 rhs_list_array,
                                 self.num_rows() + rhs.num_rows(),
                             ),
@@ -285,7 +287,7 @@ impl TimeColumn {
 
         let time_range = self.time_range.union(rhs.time_range);
 
-        let times = crate::util::concat_arrays(&[&self.times, &rhs.times]).ok()?;
+        let times = arrow2_util::concat_arrays(&[&self.times, &rhs.times]).ok()?;
         let times = times
             .as_any()
             .downcast_ref::<Arrow2PrimitiveArray<i64>>()?

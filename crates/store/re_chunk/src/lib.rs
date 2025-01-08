@@ -4,6 +4,7 @@
 #![doc = document_features::document_features!()]
 //!
 
+pub mod arrow2_util;
 mod builder;
 mod chunk;
 mod helpers;
@@ -16,7 +17,6 @@ mod range;
 mod shuffle;
 mod slice;
 mod transport;
-pub mod util;
 
 #[cfg(not(target_arch = "wasm32"))]
 mod batcher;
