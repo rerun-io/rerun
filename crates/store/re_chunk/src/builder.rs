@@ -7,7 +7,7 @@ use itertools::Itertools;
 use nohash_hasher::IntMap;
 
 use re_log_types::{EntityPath, TimeInt, TimePoint, Timeline};
-use re_types_core::{AsComponents, ComponentBatch, ComponentDescriptor};
+use re_types_core::{AsComponents, ComponentBatch, ComponentDescriptor, SerializedComponentBatch};
 
 use crate::{chunk::ChunkComponents, Chunk, ChunkId, ChunkResult, RowId, TimeColumn};
 
@@ -125,14 +125,8 @@ impl ChunkBuilder {
         timepoint: impl Into<TimePoint>,
         as_components: &dyn AsComponents,
     ) -> Self {
-        let batches = as_components.as_component_batches();
-        self.with_component_batches(
-            row_id,
-            timepoint,
-            batches
-                .iter()
-                .map(|batch| batch as &dyn re_types_core::ComponentBatch),
-        )
+        let batches = as_components.as_component_batches_v2();
+        self.with_component_batches_v2(row_id, timepoint, batches)
     }
 
     /// Add a row's worth of data by serializing a single [`ComponentBatch`].
@@ -192,6 +186,62 @@ impl ChunkBuilder {
                     (
                         component_desc,
                         component_batch.and_then(|batch| batch.to_arrow2().ok()),
+                    )
+                }),
+        )
+    }
+
+    /// Add a row's worth of data by serializing a single [`ComponentBatch`].
+    #[inline]
+    pub fn with_component_batch_v2(
+        self,
+        row_id: RowId,
+        timepoint: impl Into<TimePoint>,
+        component_batch: SerializedComponentBatch,
+    ) -> Self {
+        self.with_row(
+            row_id,
+            timepoint,
+            [(component_batch.descriptor, component_batch.array)],
+        )
+    }
+
+    /// Add a row's worth of data by serializing many [`ComponentBatch`]es.
+    #[inline]
+    pub fn with_component_batches_v2(
+        self,
+        row_id: RowId,
+        timepoint: impl Into<TimePoint>,
+        component_batches: impl IntoIterator<Item = SerializedComponentBatch>,
+    ) -> Self {
+        self.with_row(
+            row_id,
+            timepoint,
+            component_batches
+                .into_iter()
+                .map(|component_batch| (component_batch.descriptor, component_batch.array)),
+        )
+    }
+
+    /// Add a row's worth of data by serializing many sparse [`ComponentBatch`]es.
+    #[inline]
+    pub fn with_sparse_component_batches_v2(
+        self,
+        row_id: RowId,
+        timepoint: impl Into<TimePoint>,
+        component_batches: impl IntoIterator<
+            Item = (ComponentDescriptor, Option<SerializedComponentBatch>),
+        >,
+    ) -> Self {
+        self.with_sparse_row(
+            row_id,
+            timepoint,
+            component_batches
+                .into_iter()
+                .map(|(component_desc, component_batch)| {
+                    (
+                        component_desc,
+                        component_batch.map(|batch| batch.array.into()),
                     )
                 }),
         )

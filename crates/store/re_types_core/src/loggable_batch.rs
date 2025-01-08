@@ -7,6 +7,24 @@ use arrow2::array::ListArray as Arrow2ListArray;
 #[allow(unused_imports)] // used in docstrings
 use crate::Archetype;
 
+// TODO
+
+// TODO
+// TODO: fairly cheap to clone.
+#[derive(Debug, Clone)]
+pub struct SerializedComponentBatch {
+    pub array: arrow::array::ArrayRef,
+    // TODO: question is whether this should be a cow still
+    pub descriptor: ComponentDescriptor,
+}
+
+impl SerializedComponentBatch {
+    #[inline]
+    pub fn with_descriptor_override(self, descriptor: ComponentDescriptor) -> Self {
+        Self { descriptor, ..self }
+    }
+}
+
 // ---
 
 /// A [`LoggableBatch`] represents an array's worth of [`Loggable`] instances, ready to be
@@ -66,6 +84,36 @@ pub trait ComponentBatch: LoggableBatch {
             .with_descriptor_override(descriptor)
     }
 
+    // TODO: explain infallbility
+    fn serialized(&self) -> SerializedComponentBatch {
+        let array = match self.to_arrow() {
+            Ok(array) => array,
+
+            #[cfg(debug_assertions)]
+            Err(err) => {
+                panic!(
+                    "failed to serialize data for {}: {}",
+                    self.name(),
+                    re_error::format_ref(&err)
+                )
+            }
+
+            #[cfg(not(debug_assertions))]
+            Err(err) => {
+                re_log::error!(
+                    component_name = self.name(),
+                    "failed to serialize data: {}",
+                    re_error::format_ref(&err)
+                )
+            }
+        };
+
+        SerializedComponentBatch {
+            array,
+            descriptor: self.descriptor().into_owned(),
+        }
+    }
+
     /// The fully-qualified name of this component batch, e.g. `rerun.components.Position2D`.
     ///
     /// This is a trivial but useful helper for `self.descriptor().component_name`.
@@ -85,6 +133,7 @@ fn assert_component_batch_object_safe() {
     let _: &dyn LoggableBatch;
 }
 
+// TODO: I definitely want this to disappear
 /// Some [`ComponentBatch`], optionally with an overridden [`ComponentDescriptor`].
 ///
 /// Used by implementers of [`crate::AsComponents`] to both efficiently expose their component data
@@ -144,6 +193,7 @@ impl<'a> ComponentBatch for ComponentBatchCowWithDescriptor<'a> {
     }
 }
 
+// TODO: I definitely want this to disappear
 /// Holds either an owned [`ComponentBatch`] that lives on heap, or a reference to one.
 ///
 /// This doesn't use [`std::borrow::Cow`] on purpose: `Cow` requires `Clone`, which would break
@@ -327,5 +377,14 @@ impl<C: Component> ComponentBatch for [Option<C>] {
     #[inline]
     fn descriptor(&self) -> Cow<'_, ComponentDescriptor> {
         C::descriptor().into()
+    }
+}
+
+// TODO
+#[cfg(TODO)]
+impl<I: Iterator<Item = L>, L: Loggable> LoggableBatch for I {
+    #[inline]
+    fn to_arrow2(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>> {
+        L::to_arrow2(self.map(|v| std::borrow::Cow::Owned(v)))
     }
 }

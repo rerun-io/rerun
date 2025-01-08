@@ -52,6 +52,7 @@ pub use self::{
     },
     loggable_batch::{
         ComponentBatch, ComponentBatchCow, ComponentBatchCowWithDescriptor, LoggableBatch,
+        SerializedComponentBatch,
     },
     result::{
         DeserializationError, DeserializationResult, ResultExt, SerializationError,

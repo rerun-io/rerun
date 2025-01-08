@@ -1035,10 +1035,10 @@ impl RecordingStream {
     #[deprecated(since = "0.16.0", note = "use `log_static` instead")]
     #[doc(hidden)]
     #[inline]
-    pub fn log_timeless(
+    pub fn log_timeless<AS: ?Sized + AsComponents>(
         &self,
         ent_path: impl Into<EntityPath>,
-        arch: &impl AsComponents,
+        arch: &AS,
     ) -> RecordingStreamResult<()> {
         self.log_static(ent_path, arch)
     }
@@ -1065,10 +1065,10 @@ impl RecordingStream {
     /// [SDK Micro Batching]: https://www.rerun.io/docs/reference/sdk/micro-batching
     /// [component bundle]: [`AsComponents`]
     #[inline]
-    pub fn log_static(
+    pub fn log_static<AS: ?Sized + AsComponents>(
         &self,
         ent_path: impl Into<EntityPath>,
-        as_components: &impl AsComponents,
+        as_components: &AS,
     ) -> RecordingStreamResult<()> {
         self.log_with_static(ent_path, true, as_components)
     }
@@ -1076,11 +1076,11 @@ impl RecordingStream {
     #[deprecated(since = "0.16.0", note = "use `log_static` instead")]
     #[doc(hidden)]
     #[inline]
-    pub fn log_with_timeless(
+    pub fn log_with_timeless<AS: ?Sized + AsComponents>(
         &self,
         ent_path: impl Into<EntityPath>,
         static_: bool,
-        arch: &impl AsComponents,
+        arch: &AS,
     ) -> RecordingStreamResult<()> {
         self.log_with_static(ent_path, static_, arch)
     }
@@ -1115,14 +1115,11 @@ impl RecordingStream {
         as_components: &AS,
     ) -> RecordingStreamResult<()> {
         let row_id = RowId::new(); // Create row-id as early as possible. It has a timestamp and is used to estimate e2e latency.
-        self.log_component_batches_impl(
+        self.log_component_batches_impl_v2(
             row_id,
             ent_path,
             static_,
-            as_components
-                .as_component_batches()
-                .iter()
-                .map(|any_comp_batch| any_comp_batch as &dyn re_types_core::ComponentBatch),
+            as_components.as_component_batches_v2(),
         )
     }
 
@@ -1181,6 +1178,44 @@ impl RecordingStream {
             })
             .collect();
         let components: IntMap<_, _> = comp_batches?.into_iter().collect();
+
+        // NOTE: The timepoint is irrelevant, the `RecordingStream` will overwrite it using its
+        // internal clock.
+        let timepoint = TimePoint::default();
+
+        if !components.is_empty() {
+            let row = PendingRow {
+                row_id,
+                timepoint,
+                components,
+            };
+            self.record_row(entity_path, row, !static_);
+        }
+
+        Ok(())
+    }
+
+    // NOTE: For bw and fw compatibility reasons, we need our logging APIs to be fallible, even
+    // though they really aren't at the moment.
+    #[allow(clippy::unnecessary_wraps)]
+    fn log_component_batches_impl_v2(
+        &self,
+        row_id: RowId,
+        entity_path: impl Into<EntityPath>,
+        static_: bool,
+        comp_batches: impl IntoIterator<Item = re_types_core::SerializedComponentBatch>,
+    ) -> RecordingStreamResult<()> {
+        if !self.is_enabled() {
+            return Ok(()); // silently drop the message
+        }
+
+        let entity_path = entity_path.into();
+
+        let comp_batches: Vec<_> = comp_batches
+            .into_iter()
+            .map(|comp_batch| (comp_batch.descriptor, comp_batch.array.into()))
+            .collect();
+        let components: IntMap<_, _> = comp_batches.into_iter().collect();
 
         // NOTE: The timepoint is irrelevant, the `RecordingStream` will overwrite it using its
         // internal clock.

@@ -6452,6 +6452,7 @@ dependencies = [
  "re_arrow2",
  "re_build_tools",
  "re_byte_size",
+ "re_error",
  "re_format",
  "re_log",
  "re_log_types",

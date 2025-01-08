@@ -12,9 +12,8 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 
-use ::re_types_core::external::arrow;
-use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{Archetype, SerializationResult};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
@@ -94,30 +93,30 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/point3d_ui_radius/e051a65b4317438bcaea8d0eee016ac9460b5336/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct Points3D {
     /// All the 3D positions at which the point cloud shows points.
-    pub positions: Vec<crate::components::Position3D>,
+    pub positions: ::arrow::array::ArrayRef,
 
     /// Optional radii for the points, effectively turning them into circles.
-    pub radii: Option<Vec<crate::components::Radius>>,
+    pub radii: Option<::arrow::array::ArrayRef>,
 
     /// Optional colors for the points.
-    pub colors: Option<Vec<crate::components::Color>>,
+    pub colors: Option<::arrow::array::ArrayRef>,
 
     /// Optional text labels for the points.
     ///
     /// If there's a single label present, it will be placed at the center of the entity.
     /// Otherwise, each instance will have its own label.
-    pub labels: Option<Vec<crate::components::Text>>,
+    pub labels: Option<::arrow::array::ArrayRef>,
 
     /// Optional choice of whether the text labels should be shown by default.
-    pub show_labels: Option<crate::components::ShowLabels>,
+    pub show_labels: Option<::arrow::array::ArrayRef>,
 
     /// Optional class Ids for the points.
     ///
     /// The [`components::ClassId`][crate::components::ClassId] provides colors and labels if not specified explicitly.
-    pub class_ids: Option<Vec<crate::components::ClassId>>,
+    pub class_ids: Option<::arrow::array::ArrayRef>,
 
     /// Optional keypoint IDs for the points, identifying them within a class.
     ///
@@ -127,8 +126,23 @@ pub struct Points3D {
     /// with `class_id`).
     /// E.g. the classification might be 'Person' and the keypoints refer to joints on a
     /// detected skeleton.
-    pub keypoint_ids: Option<Vec<crate::components::KeypointId>>,
+    pub keypoint_ids: Option<::arrow::array::ArrayRef>,
 }
+
+impl PartialEq for Points3D {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        *self.positions == *other.positions
+            && self.radii == other.radii
+            && self.colors == other.colors
+            && self.labels == other.labels
+            && self.show_labels == other.show_labels
+            && self.class_ids == other.class_ids
+            && self.keypoint_ids == other.keypoint_ids
+    }
+}
+
+// TODO: still I would like some re-use here
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| {
@@ -279,9 +293,10 @@ impl ::re_types_core::Archetype for Points3D {
         ALL_COMPONENTS.as_slice().into()
     }
 
+    // TODO: still, why is this not using C::name() everywhere?
     #[inline]
     fn from_arrow_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, arrow::array::ArrayRef)>,
+        arrow_data: impl IntoIterator<Item = (ComponentName, ::arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
@@ -290,86 +305,18 @@ impl ::re_types_core::Archetype for Points3D {
             .map(|(name, array)| (name.full_name(), array))
             .collect();
         let positions = {
-            let array = arrays_by_name
+            arrays_by_name
                 .get("rerun.components.Position3D")
                 .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.Points3D#positions")?;
-            <crate::components::Position3D>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.Points3D#positions")?
-                .into_iter()
-                .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                .collect::<DeserializationResult<Vec<_>>>()
-                .with_context("rerun.archetypes.Points3D#positions")?
+                .clone()
         };
-        let radii = if let Some(array) = arrays_by_name.get("rerun.components.Radius") {
-            Some({
-                <crate::components::Radius>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Points3D#radii")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                    .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.Points3D#radii")?
-            })
-        } else {
-            None
-        };
-        let colors = if let Some(array) = arrays_by_name.get("rerun.components.Color") {
-            Some({
-                <crate::components::Color>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Points3D#colors")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                    .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.Points3D#colors")?
-            })
-        } else {
-            None
-        };
-        let labels = if let Some(array) = arrays_by_name.get("rerun.components.Text") {
-            Some({
-                <crate::components::Text>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Points3D#labels")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                    .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.Points3D#labels")?
-            })
-        } else {
-            None
-        };
-        let show_labels = if let Some(array) = arrays_by_name.get("rerun.components.ShowLabels") {
-            <crate::components::ShowLabels>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Points3D#show_labels")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
-        let class_ids = if let Some(array) = arrays_by_name.get("rerun.components.ClassId") {
-            Some({
-                <crate::components::ClassId>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Points3D#class_ids")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                    .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.Points3D#class_ids")?
-            })
-        } else {
-            None
-        };
-        let keypoint_ids = if let Some(array) = arrays_by_name.get("rerun.components.KeypointId") {
-            Some({
-                <crate::components::KeypointId>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Points3D#keypoint_ids")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                    .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.Points3D#keypoint_ids")?
-            })
-        } else {
-            None
-        };
+        let radii = arrays_by_name.get("rerun.components.Radius").cloned();
+        let colors = arrays_by_name.get("rerun.components.Color").cloned();
+        let labels = arrays_by_name.get("rerun.components.Text").cloned();
+        let show_labels = arrays_by_name.get("rerun.components.ShowLabels").cloned();
+        let class_ids = arrays_by_name.get("rerun.components.ClassId").cloned();
+        let keypoint_ids = arrays_by_name.get("rerun.components.KeypointId").cloned();
         Ok(Self {
             positions,
             radii,
@@ -383,92 +330,77 @@ impl ::re_types_core::Archetype for Points3D {
 }
 
 impl ::re_types_core::AsComponents for Points3D {
-    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
-        re_tracing::profile_function!();
-        use ::re_types_core::Archetype as _;
+    fn as_component_batches_v2(&self) -> Vec<re_types_core::SerializedComponentBatch> {
         [
-            Some(Self::indicator()),
-            (Some(&self.positions as &dyn ComponentBatch)).map(|batch| {
-                ::re_types_core::ComponentBatchCowWithDescriptor {
-                    batch: batch.into(),
-                    descriptor_override: Some(ComponentDescriptor {
+            // TODO: can we please just re-use those upstairs, ffs.
+            Some(Self::indicator().serialized()),
+            Some(::re_types_core::SerializedComponentBatch {
+                array: self.positions.clone(),
+                descriptor: ComponentDescriptor {
+                    archetype_name: Some("rerun.archetypes.Points3D".into()),
+                    archetype_field_name: Some(("positions").into()),
+                    component_name: ("rerun.components.Position3D").into(),
+                },
+            }),
+            self.radii
+                .as_ref()
+                .map(|radii| ::re_types_core::SerializedComponentBatch {
+                    array: radii.clone(),
+                    descriptor: ComponentDescriptor {
                         archetype_name: Some("rerun.archetypes.Points3D".into()),
-                        archetype_field_name: Some(("positions").into()),
-                        component_name: ("rerun.components.Position3D").into(),
-                    }),
+                        archetype_field_name: Some(("radii").into()),
+                        component_name: ("rerun.components.Radius").into(),
+                    },
+                }),
+            self.colors
+                .as_ref()
+                .map(|colors| ::re_types_core::SerializedComponentBatch {
+                    array: colors.clone(),
+                    descriptor: ComponentDescriptor {
+                        archetype_name: Some("rerun.archetypes.Points3D".into()),
+                        archetype_field_name: Some(("colors").into()),
+                        component_name: ("rerun.components.Color").into(),
+                    },
+                }),
+            self.labels
+                .as_ref()
+                .map(|labels| ::re_types_core::SerializedComponentBatch {
+                    array: labels.clone(),
+                    descriptor: ComponentDescriptor {
+                        archetype_name: Some("rerun.archetypes.Points3D".into()),
+                        archetype_field_name: Some(("labels").into()),
+                        component_name: ("rerun.components.Text").into(),
+                    },
+                }),
+            self.show_labels.as_ref().map(|show_labels| {
+                ::re_types_core::SerializedComponentBatch {
+                    array: show_labels.clone(),
+                    descriptor: ComponentDescriptor {
+                        archetype_name: Some("rerun.archetypes.Points3D".into()),
+                        archetype_field_name: Some(("show_labels").into()),
+                        component_name: ("rerun.components.ShowLabels").into(),
+                    },
                 }
             }),
-            (self
-                .radii
+            self.class_ids
                 .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.Points3D".into()),
-                    archetype_field_name: Some(("radii").into()),
-                    component_name: ("rerun.components.Radius").into(),
+                .map(|class_ids| ::re_types_core::SerializedComponentBatch {
+                    array: class_ids.clone(),
+                    descriptor: ComponentDescriptor {
+                        archetype_name: Some("rerun.archetypes.Points3D".into()),
+                        archetype_field_name: Some(("class_ids").into()),
+                        component_name: ("rerun.components.ClassId").into(),
+                    },
                 }),
-            }),
-            (self
-                .colors
-                .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.Points3D".into()),
-                    archetype_field_name: Some(("colors").into()),
-                    component_name: ("rerun.components.Color").into(),
-                }),
-            }),
-            (self
-                .labels
-                .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.Points3D".into()),
-                    archetype_field_name: Some(("labels").into()),
-                    component_name: ("rerun.components.Text").into(),
-                }),
-            }),
-            (self
-                .show_labels
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.Points3D".into()),
-                    archetype_field_name: Some(("show_labels").into()),
-                    component_name: ("rerun.components.ShowLabels").into(),
-                }),
-            }),
-            (self
-                .class_ids
-                .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.Points3D".into()),
-                    archetype_field_name: Some(("class_ids").into()),
-                    component_name: ("rerun.components.ClassId").into(),
-                }),
-            }),
-            (self
-                .keypoint_ids
-                .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.Points3D".into()),
-                    archetype_field_name: Some(("keypoint_ids").into()),
-                    component_name: ("rerun.components.KeypointId").into(),
-                }),
+            self.keypoint_ids.as_ref().map(|keypoint_ids| {
+                ::re_types_core::SerializedComponentBatch {
+                    array: keypoint_ids.clone(),
+                    descriptor: ComponentDescriptor {
+                        archetype_name: Some("rerun.archetypes.Points3D".into()),
+                        archetype_field_name: Some(("keypoint_ids").into()),
+                        component_name: ("rerun.components.KeypointId").into(),
+                    },
+                }
             }),
         ]
         .into_iter()
@@ -479,6 +411,38 @@ impl ::re_types_core::AsComponents for Points3D {
 
 impl ::re_types_core::ArchetypeReflectionMarker for Points3D {}
 
+// TODO: a macro would be better compile time wise though
+// TODO: better name
+// TODO: doc
+// TODO: makes no sense to codegen that for every arch, this needs to be shared
+fn fire_and_forget<L: crate::Component>(
+    instances: impl IntoIterator<Item = impl Into<L>>,
+) -> ::arrow::array::ArrayRef {
+    let res = L::to_arrow(
+        instances
+            .into_iter()
+            .map(|v| std::borrow::Cow::Owned(v.into())),
+    );
+
+    match res {
+        Ok(array) => array,
+
+        #[cfg(debug_assertions)]
+        Err(err) => {
+            panic!("{}", re_error::format_ref(&err))
+        }
+
+        #[cfg(not(debug_assertions))]
+        Err(err) => {
+            re_log::error!(
+                component_name = C::name(),
+                "failed to serialize data: {}",
+                re_error::format_ref(&err)
+            )
+        }
+    }
+}
+
 impl Points3D {
     /// Create a new `Points3D`.
     #[inline]
@@ -486,7 +450,7 @@ impl Points3D {
         positions: impl IntoIterator<Item = impl Into<crate::components::Position3D>>,
     ) -> Self {
         Self {
-            positions: positions.into_iter().map(Into::into).collect(),
+            positions: fire_and_forget(positions),
             radii: None,
             colors: None,
             labels: None,
@@ -502,7 +466,7 @@ impl Points3D {
         mut self,
         radii: impl IntoIterator<Item = impl Into<crate::components::Radius>>,
     ) -> Self {
-        self.radii = Some(radii.into_iter().map(Into::into).collect());
+        self.radii = Some(fire_and_forget(radii));
         self
     }
 
@@ -512,7 +476,7 @@ impl Points3D {
         mut self,
         colors: impl IntoIterator<Item = impl Into<crate::components::Color>>,
     ) -> Self {
-        self.colors = Some(colors.into_iter().map(Into::into).collect());
+        self.colors = Some(fire_and_forget(colors));
         self
     }
 
@@ -525,7 +489,7 @@ impl Points3D {
         mut self,
         labels: impl IntoIterator<Item = impl Into<crate::components::Text>>,
     ) -> Self {
-        self.labels = Some(labels.into_iter().map(Into::into).collect());
+        self.labels = Some(fire_and_forget(labels));
         self
     }
 
@@ -535,7 +499,7 @@ impl Points3D {
         mut self,
         show_labels: impl Into<crate::components::ShowLabels>,
     ) -> Self {
-        self.show_labels = Some(show_labels.into());
+        self.show_labels = Some(fire_and_forget([show_labels]));
         self
     }
 
@@ -547,7 +511,7 @@ impl Points3D {
         mut self,
         class_ids: impl IntoIterator<Item = impl Into<crate::components::ClassId>>,
     ) -> Self {
-        self.class_ids = Some(class_ids.into_iter().map(Into::into).collect());
+        self.class_ids = Some(fire_and_forget(class_ids));
         self
     }
 
@@ -564,7 +528,7 @@ impl Points3D {
         mut self,
         keypoint_ids: impl IntoIterator<Item = impl Into<crate::components::KeypointId>>,
     ) -> Self {
-        self.keypoint_ids = Some(keypoint_ids.into_iter().map(Into::into).collect());
+        self.keypoint_ids = Some(fire_and_forget(keypoint_ids));
         self
     }
 }
