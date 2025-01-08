@@ -1582,6 +1582,7 @@ impl App {
         false
     }
 
+    #[allow(clippy::needless_pass_by_ref_mut)] // False positive on wasm
     fn process_screenshot_result(
         &mut self,
         image: &Arc<egui::ColorImage>,
