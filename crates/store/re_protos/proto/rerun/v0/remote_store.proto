@@ -12,8 +12,12 @@ service StorageNode {
     // metadata API calls
     rpc QueryCatalog(QueryCatalogRequest) returns (stream DataframePart) {}
     rpc UpdateCatalog(UpdateCatalogRequest) returns (UpdateCatalogResponse) {}
+
     // TODO(zehiko) support registering more than one recording at a time
     rpc RegisterRecording(RegisterRecordingRequest) returns (DataframePart) {}
+
+    rpc UnregisterRecording(UnregisterRecordingRequest) returns (UnregisterRecordingResponse) {}
+    rpc UnregisterAllRecordings(UnregisterAllRecordingsRequest) returns (UnregisterAllRecordingsResponse) {}
 }
 
 // ---------------- Common response message ------------------
@@ -40,6 +44,18 @@ message RegisterRecordingRequest {
     // You can associate any arbtrirary number of columns with a specific recording
     DataframePart metadata = 4;
 }
+
+// ---------------- Unregister from catalog ------------------
+
+message UnregisterRecordingRequest {
+    // unique identifier of the recording
+    rerun.common.v0.RecordingId recording_id = 1;
+}
+message UnregisterRecordingResponse {}
+
+message UnregisterAllRecordingsRequest {}
+message UnregisterAllRecordingsResponse {}
+
 
 // ---------------- UpdateCatalog  -----------------
 
