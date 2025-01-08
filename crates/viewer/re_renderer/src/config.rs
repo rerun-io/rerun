@@ -11,12 +11,13 @@
 /// See also `global_bindings.wgsl`
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DeviceTier {
-    /// Limited feature support as provided by WebGL and typically only by GLES2/OpenGL3(ish).
+    /// Limited feature support as provided by WebGL and some OpenGL drivers.
     ///
-    /// Note that we do not distinguish between WebGL & native GL here,
-    /// instead, we go with the lowest common denominator.
+    /// On desktop this happens typically with GLES 2 & OpenGL 3.x, as well as some OpenGL 4.x drivers
+    /// with lack of key rendering abilities.
+    ///
     /// In theory this path can also be hit on Vulkan & Metal drivers, but this is exceedingly rare.
-    Gles = 0,
+    Limited = 0,
 
     /// Full support of WebGPU spec without additional feature requirements.
     ///
@@ -30,7 +31,7 @@ pub enum DeviceTier {
 impl std::fmt::Display for DeviceTier {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
-            Self::Gles => "gles",
+            Self::Limited => "limited",
             Self::FullWebGpuSupport => "full_webgpu_support",
         })
     }
@@ -40,7 +41,7 @@ impl DeviceTier {
     /// Whether the current device tier supports sampling from textures with a sample count higher than 1.
     pub fn support_sampling_msaa_texture(&self) -> bool {
         match self {
-            Self::Gles => false,
+            Self::Limited => false,
             Self::FullWebGpuSupport => true,
         }
     }
@@ -50,7 +51,7 @@ impl DeviceTier {
     /// If this returns false, we first have to create a copy of the depth buffer by rendering depth to a different texture.
     pub fn support_depth_readback(&self) -> bool {
         match self {
-            Self::Gles => false,
+            Self::Limited => false,
             Self::FullWebGpuSupport => true,
         }
     }
@@ -59,7 +60,7 @@ impl DeviceTier {
         match self {
             // TODO(wgpu#3583): Incorrectly reported by wgpu right now.
             // GLES2 does not support BGRA textures!
-            Self::Gles => false,
+            Self::Limited => false,
             Self::FullWebGpuSupport => true,
         }
     }
@@ -68,7 +69,7 @@ impl DeviceTier {
     pub fn required_downlevel_capabilities(&self) -> wgpu::DownlevelCapabilities {
         wgpu::DownlevelCapabilities {
             flags: match self {
-                Self::Gles => wgpu::DownlevelFlags::empty(),
+                Self::Limited => wgpu::DownlevelFlags::empty(),
                 // Require fully WebGPU compliance for the native tier.
                 Self::FullWebGpuSupport => wgpu::DownlevelFlags::all(),
             },
@@ -191,7 +192,7 @@ impl DeviceCaps {
             // We pass the WebGPU min-spec!
             DeviceTier::FullWebGpuSupport
         } else {
-            DeviceTier::Gles
+            DeviceTier::Limited
         };
 
         let backend_type = match adapter.get_info().backend {
@@ -229,7 +230,7 @@ impl DeviceCaps {
         caps.tier
             .check_required_downlevel_capabilities(&adapter.get_downlevel_capabilities())?;
 
-        if caps.tier == DeviceTier::Gles {
+        if caps.tier == DeviceTier::Limited {
             // Check texture format support. If `WEBGPU_TEXTURE_FORMAT_SUPPORT` is enabled, we're generally fine.
             // This is an implicit requirement for the WebGPU tier and above.
             if !adapter
