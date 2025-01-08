@@ -1,6 +1,6 @@
 use custom_callback::{comms::viewer::ControlViewer, panel::Control};
 
-use rerun::external::{eframe, egui, re_log, re_memory, re_sdk_comms, re_viewer};
+use rerun::external::{eframe, re_log, re_memory, re_sdk_comms, re_viewer};
 
 use std::net::Ipv4Addr;
 
