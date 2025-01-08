@@ -261,7 +261,6 @@ impl message_proxy_server::MessageProxy for MessageProxy {
 mod tests {
     use super::*;
 
-    use message_proxy_server::MessageProxy;
     use re_build_info::CrateVersion;
     use re_chunk::RowId;
     use re_log_encoding::protobuf_conversions::{log_msg_from_proto, log_msg_to_proto};
@@ -269,7 +268,6 @@ mod tests {
     use re_log_types::{
         ApplicationId, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource, Time,
     };
-    use re_protos::log_msg;
     use re_protos::sdk_comms::v0::{
         message_proxy_client::MessageProxyClient, message_proxy_server::MessageProxyServer,
     };
@@ -358,6 +356,10 @@ mod tests {
     }
 
     async fn setup() -> (Completion, SocketAddr) {
+        setup_with_memory_limit(MemoryLimit::UNLIMITED).await
+    }
+
+    async fn setup_with_memory_limit(memory_limit: MemoryLimit) -> (Completion, SocketAddr) {
         let completion = Completion::new();
 
         let tcp_listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
@@ -368,7 +370,7 @@ mod tests {
             async move {
                 tonic::transport::Server::builder()
                     .add_service(MessageProxyServer::new(super::MessageProxy::new(
-                        MemoryLimit::UNLIMITED,
+                        memory_limit,
                     )))
                     .serve_with_incoming_shutdown(
                         TcpIncoming::from_listener(tcp_listener, true, None).unwrap(),
