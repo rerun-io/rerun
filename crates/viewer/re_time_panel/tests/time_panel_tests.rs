@@ -103,8 +103,5 @@ fn run_time_panel_and_save_snapshot(mut test_context: TestContext, _snapshot_nam
         });
 
     harness.run();
-
-    //TODO(#8245): enable this everywhere when we have a software renderer setup
-    #[cfg(target_os = "macos")]
     harness.snapshot(_snapshot_name);
 }
