@@ -29,6 +29,9 @@ mod v0 {
 
     #[path = "./rerun.remote_store.v0.rs"]
     pub mod rerun_remote_store_v0;
+
+    #[path = "./rerun.sdk_comms.v0.rs"]
+    pub mod rerun_sdk_comms_v0;
 }
 
 pub mod common {
@@ -47,6 +50,12 @@ pub mod log_msg {
 pub mod remote_store {
     pub mod v0 {
         pub use crate::v0::rerun_remote_store_v0::*;
+    }
+}
+
+pub mod sdk_comms {
+    pub mod v0 {
+        pub use crate::v0::rerun_sdk_comms_v0::*;
     }
 }
 
