@@ -74,7 +74,7 @@ impl DeviceTier {
                         // I.e. we can only draw with about 16.8mio vertices per mesh.
                         // Typically we don't reach this limit.
                         //
-                        // This can happen if...
+                        // This can happen if…
                         // * OpenGL: `GL_MAX_ELEMENT_INDEX` reports a value lower than `std::u32::MAX`
                         // * Vulkan: `VkPhysicalDeviceLimits::fullDrawIndexUint32` is false.
                         // The consequence of exceeding this limit seems to be undefined.
