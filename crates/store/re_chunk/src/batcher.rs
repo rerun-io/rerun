@@ -996,8 +996,6 @@ mod tests {
     use re_log_types::example_components::{MyPoint, MyPoint64};
     use re_types_core::{Component as _, Loggable as _};
 
-    use crate::arrow2_util;
-
     use super::*;
 
     /// A bunch of rows that don't fit any of the split conditions should end up together.
@@ -1011,9 +1009,9 @@ mod tests {
         let timepoint2 = TimePoint::default().with(timeline1, 43);
         let timepoint3 = TimePoint::default().with(timeline1, 44);
 
-        let points1 = MyPoint::to_arrow2([MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)])?;
-        let points2 = MyPoint::to_arrow2([MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)])?;
-        let points3 = MyPoint::to_arrow2([MyPoint::new(100.0, 200.0), MyPoint::new(300.0, 400.0)])?;
+        let points1 = MyPoint::to_arrow([MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)])?;
+        let points2 = MyPoint::to_arrow([MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)])?;
+        let points3 = MyPoint::to_arrow([MyPoint::new(100.0, 200.0), MyPoint::new(300.0, 400.0)])?;
 
         let components1 = [(MyPoint::descriptor(), points1.clone())];
         let components2 = [(MyPoint::descriptor(), points2.clone())];
@@ -1063,7 +1061,7 @@ mod tests {
             )];
             let expected_components = [(
                 MyPoint::descriptor(),
-                arrow2_util::arrays_to_list_array_opt(&[&*points1, &*points2, &*points3].map(Some))
+                arrow_util::arrays_to_list_array_opt(&[&*points1, &*points2, &*points3].map(Some))
                     .unwrap(),
             )];
             let expected_chunk = Chunk::from_native_row_ids(
@@ -1090,9 +1088,9 @@ mod tests {
 
         let timeless = TimePoint::default();
 
-        let points1 = MyPoint::to_arrow2([MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)])?;
-        let points2 = MyPoint::to_arrow2([MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)])?;
-        let points3 = MyPoint::to_arrow2([MyPoint::new(100.0, 200.0), MyPoint::new(300.0, 400.0)])?;
+        let points1 = MyPoint::to_arrow([MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)])?;
+        let points2 = MyPoint::to_arrow([MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)])?;
+        let points3 = MyPoint::to_arrow([MyPoint::new(100.0, 200.0), MyPoint::new(300.0, 400.0)])?;
 
         let components1 = [(MyPoint::descriptor(), points1.clone())];
         let components2 = [(MyPoint::descriptor(), points2.clone())];
@@ -1135,7 +1133,7 @@ mod tests {
             let expected_timelines = [];
             let expected_components = [(
                 MyPoint::descriptor(),
-                arrow2_util::arrays_to_list_array_opt(&[&*points1, &*points2, &*points3].map(Some))
+                arrow_util::arrays_to_list_array_opt(&[&*points1, &*points2, &*points3].map(Some))
                     .unwrap(),
             )];
             let expected_chunk = Chunk::from_native_row_ids(
@@ -1166,9 +1164,9 @@ mod tests {
         let timepoint2 = TimePoint::default().with(timeline1, 43);
         let timepoint3 = TimePoint::default().with(timeline1, 44);
 
-        let points1 = MyPoint::to_arrow2([MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)])?;
-        let points2 = MyPoint::to_arrow2([MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)])?;
-        let points3 = MyPoint::to_arrow2([MyPoint::new(100.0, 200.0), MyPoint::new(300.0, 400.0)])?;
+        let points1 = MyPoint::to_arrow([MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)])?;
+        let points2 = MyPoint::to_arrow([MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)])?;
+        let points3 = MyPoint::to_arrow([MyPoint::new(100.0, 200.0), MyPoint::new(300.0, 400.0)])?;
 
         let components1 = [(MyPoint::descriptor(), points1.clone())];
         let components2 = [(MyPoint::descriptor(), points2.clone())];
@@ -1219,7 +1217,7 @@ mod tests {
             )];
             let expected_components = [(
                 MyPoint::descriptor(),
-                arrow2_util::arrays_to_list_array_opt(&[&*points1, &*points3].map(Some)).unwrap(),
+                arrow_util::arrays_to_list_array_opt(&[&*points1, &*points3].map(Some)).unwrap(),
             )];
             let expected_chunk = Chunk::from_native_row_ids(
                 chunks[0].id,
@@ -1247,7 +1245,7 @@ mod tests {
             )];
             let expected_components = [(
                 MyPoint::descriptor(),
-                arrow2_util::arrays_to_list_array_opt(&[&*points2].map(Some)).unwrap(),
+                arrow_util::arrays_to_list_array_opt(&[&*points2].map(Some)).unwrap(),
             )];
             let expected_chunk = Chunk::from_native_row_ids(
                 chunks[1].id,
@@ -1282,9 +1280,9 @@ mod tests {
             .with(timeline1, 44)
             .with(timeline2, 1001);
 
-        let points1 = MyPoint::to_arrow2([MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)])?;
-        let points2 = MyPoint::to_arrow2([MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)])?;
-        let points3 = MyPoint::to_arrow2([MyPoint::new(100.0, 200.0), MyPoint::new(300.0, 400.0)])?;
+        let points1 = MyPoint::to_arrow([MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)])?;
+        let points2 = MyPoint::to_arrow([MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)])?;
+        let points3 = MyPoint::to_arrow([MyPoint::new(100.0, 200.0), MyPoint::new(300.0, 400.0)])?;
 
         let components1 = [(MyPoint::descriptor(), points1.clone())];
         let components2 = [(MyPoint::descriptor(), points2.clone())];
@@ -1334,7 +1332,7 @@ mod tests {
             )];
             let expected_components = [(
                 MyPoint::descriptor(),
-                arrow2_util::arrays_to_list_array_opt(&[&*points1].map(Some)).unwrap(),
+                arrow_util::arrays_to_list_array_opt(&[&*points1].map(Some)).unwrap(),
             )];
             let expected_chunk = Chunk::from_native_row_ids(
                 chunks[0].id,
@@ -1372,7 +1370,7 @@ mod tests {
             ];
             let expected_components = [(
                 MyPoint::descriptor(),
-                arrow2_util::arrays_to_list_array_opt(&[&*points2, &*points3].map(Some)).unwrap(),
+                arrow_util::arrays_to_list_array_opt(&[&*points2, &*points3].map(Some)).unwrap(),
             )];
             let expected_chunk = Chunk::from_native_row_ids(
                 chunks[1].id,
@@ -1402,10 +1400,10 @@ mod tests {
         let timepoint2 = TimePoint::default().with(timeline1, 43);
         let timepoint3 = TimePoint::default().with(timeline1, 44);
 
-        let points1 = MyPoint::to_arrow2([MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)])?;
+        let points1 = MyPoint::to_arrow([MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)])?;
         let points2 =
-            MyPoint64::to_arrow2([MyPoint64::new(10.0, 20.0), MyPoint64::new(30.0, 40.0)])?;
-        let points3 = MyPoint::to_arrow2([MyPoint::new(100.0, 200.0), MyPoint::new(300.0, 400.0)])?;
+            MyPoint64::to_arrow([MyPoint64::new(10.0, 20.0), MyPoint64::new(30.0, 40.0)])?;
+        let points3 = MyPoint::to_arrow([MyPoint::new(100.0, 200.0), MyPoint::new(300.0, 400.0)])?;
 
         let components1 = [(MyPoint::descriptor(), points1.clone())];
         let components2 = [(MyPoint::descriptor(), points2.clone())]; // same name, different datatype
@@ -1455,7 +1453,7 @@ mod tests {
             )];
             let expected_components = [(
                 MyPoint::descriptor(),
-                arrow2_util::arrays_to_list_array_opt(&[&*points1, &*points3].map(Some)).unwrap(),
+                arrow_util::arrays_to_list_array_opt(&[&*points1, &*points3].map(Some)).unwrap(),
             )];
             let expected_chunk = Chunk::from_native_row_ids(
                 chunks[0].id,
@@ -1483,7 +1481,7 @@ mod tests {
             )];
             let expected_components = [(
                 MyPoint::descriptor(),
-                arrow2_util::arrays_to_list_array_opt(&[&*points2].map(Some)).unwrap(),
+                arrow_util::arrays_to_list_array_opt(&[&*points2].map(Some)).unwrap(),
             )];
             let expected_chunk = Chunk::from_native_row_ids(
                 chunks[1].id,
@@ -1527,11 +1525,11 @@ mod tests {
             .with(timeline2, 1003)
             .with(timeline1, 45);
 
-        let points1 = MyPoint::to_arrow2([MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)])?;
-        let points2 = MyPoint::to_arrow2([MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)])?;
-        let points3 = MyPoint::to_arrow2([MyPoint::new(100.0, 200.0), MyPoint::new(300.0, 400.0)])?;
+        let points1 = MyPoint::to_arrow([MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)])?;
+        let points2 = MyPoint::to_arrow([MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)])?;
+        let points3 = MyPoint::to_arrow([MyPoint::new(100.0, 200.0), MyPoint::new(300.0, 400.0)])?;
         let points4 =
-            MyPoint::to_arrow2([MyPoint::new(1000.0, 2000.0), MyPoint::new(3000.0, 4000.0)])?;
+            MyPoint::to_arrow([MyPoint::new(1000.0, 2000.0), MyPoint::new(3000.0, 4000.0)])?;
 
         let components1 = [(MyPoint::descriptor(), points1.clone())];
         let components2 = [(MyPoint::descriptor(), points2.clone())];
@@ -1594,7 +1592,7 @@ mod tests {
             ];
             let expected_components = [(
                 MyPoint::descriptor(),
-                arrow2_util::arrays_to_list_array_opt(
+                arrow_util::arrays_to_list_array_opt(
                     &[&*points1, &*points2, &*points3, &*points4].map(Some),
                 )
                 .unwrap(),
@@ -1641,11 +1639,11 @@ mod tests {
             .with(timeline2, 1003)
             .with(timeline1, 45);
 
-        let points1 = MyPoint::to_arrow2([MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)])?;
-        let points2 = MyPoint::to_arrow2([MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)])?;
-        let points3 = MyPoint::to_arrow2([MyPoint::new(100.0, 200.0), MyPoint::new(300.0, 400.0)])?;
+        let points1 = MyPoint::to_arrow([MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)])?;
+        let points2 = MyPoint::to_arrow([MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)])?;
+        let points3 = MyPoint::to_arrow([MyPoint::new(100.0, 200.0), MyPoint::new(300.0, 400.0)])?;
         let points4 =
-            MyPoint::to_arrow2([MyPoint::new(1000.0, 2000.0), MyPoint::new(3000.0, 4000.0)])?;
+            MyPoint::to_arrow([MyPoint::new(1000.0, 2000.0), MyPoint::new(3000.0, 4000.0)])?;
 
         let components1 = [(MyPoint::descriptor(), points1.clone())];
         let components2 = [(MyPoint::descriptor(), points2.clone())];
@@ -1708,7 +1706,7 @@ mod tests {
             ];
             let expected_components = [(
                 MyPoint::descriptor(),
-                arrow2_util::arrays_to_list_array_opt(&[&*points1, &*points2, &*points3].map(Some))
+                arrow_util::arrays_to_list_array_opt(&[&*points1, &*points2, &*points3].map(Some))
                     .unwrap(),
             )];
             let expected_chunk = Chunk::from_native_row_ids(
@@ -1747,7 +1745,7 @@ mod tests {
             ];
             let expected_components = [(
                 MyPoint::descriptor(),
-                arrow2_util::arrays_to_list_array_opt(&[&*points4].map(Some)).unwrap(),
+                arrow_util::arrays_to_list_array_opt(&[&*points4].map(Some)).unwrap(),
             )];
             let expected_chunk = Chunk::from_native_row_ids(
                 chunks[1].id,

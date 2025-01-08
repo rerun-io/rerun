@@ -155,6 +155,33 @@ impl std::ops::DerefMut for ChunkComponents {
     }
 }
 
+impl FromIterator<(ComponentDescriptor, ArrowListArray)> for ChunkComponents {
+    #[inline]
+    fn from_iter<T: IntoIterator<Item = (ComponentDescriptor, ArrowListArray)>>(iter: T) -> Self {
+        let mut this = Self::default();
+        {
+            for (component_desc, list_array) in iter {
+                this.insert_descriptor(component_desc, list_array.into());
+            }
+        }
+        this
+    }
+}
+
+// TODO(cmc): Kinda disgusting but it makes our lives easier during the interim, as long as we're
+// in this weird halfway in-between state where we still have a bunch of things indexed by name only.
+impl FromIterator<(ComponentName, ArrowListArray)> for ChunkComponents {
+    #[inline]
+    fn from_iter<T: IntoIterator<Item = (ComponentName, ArrowListArray)>>(iter: T) -> Self {
+        iter.into_iter()
+            .map(|(component_name, list_array)| {
+                let component_desc = ComponentDescriptor::new(component_name);
+                (component_desc, list_array)
+            })
+            .collect()
+    }
+}
+
 impl FromIterator<(ComponentDescriptor, Arrow2ListArray<i32>)> for ChunkComponents {
     #[inline]
     fn from_iter<T: IntoIterator<Item = (ComponentDescriptor, Arrow2ListArray<i32>)>>(
