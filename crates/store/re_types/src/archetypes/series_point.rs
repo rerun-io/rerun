@@ -216,15 +216,12 @@ impl ::re_types_core::Archetype for SeriesPoint {
 
     #[inline]
     fn from_arrow_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, arrow::array::ArrayRef)>,
+        arrow_data: impl IntoIterator<Item = (ComponentDescriptor, arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(name, array)| (name.full_name(), array))
-            .collect();
-        let color = if let Some(array) = arrays_by_name.get("rerun.components.Color") {
+        let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
+        let color = if let Some(array) = arrays_by_descr.get(&Self::descriptor_color()) {
             <crate::components::Color>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.SeriesPoint#color")?
                 .into_iter()
@@ -233,7 +230,7 @@ impl ::re_types_core::Archetype for SeriesPoint {
         } else {
             None
         };
-        let marker = if let Some(array) = arrays_by_name.get("rerun.components.MarkerShape") {
+        let marker = if let Some(array) = arrays_by_descr.get(&Self::descriptor_marker()) {
             <crate::components::MarkerShape>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.SeriesPoint#marker")?
                 .into_iter()
@@ -242,7 +239,7 @@ impl ::re_types_core::Archetype for SeriesPoint {
         } else {
             None
         };
-        let name = if let Some(array) = arrays_by_name.get("rerun.components.Name") {
+        let name = if let Some(array) = arrays_by_descr.get(&Self::descriptor_name()) {
             <crate::components::Name>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.SeriesPoint#name")?
                 .into_iter()
@@ -251,7 +248,8 @@ impl ::re_types_core::Archetype for SeriesPoint {
         } else {
             None
         };
-        let marker_size = if let Some(array) = arrays_by_name.get("rerun.components.MarkerSize") {
+        let marker_size = if let Some(array) = arrays_by_descr.get(&Self::descriptor_marker_size())
+        {
             <crate::components::MarkerSize>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.SeriesPoint#marker_size")?
                 .into_iter()

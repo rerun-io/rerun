@@ -238,17 +238,14 @@ impl ::re_types_core::Archetype for ContainerBlueprint {
 
     #[inline]
     fn from_arrow_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, arrow::array::ArrayRef)>,
+        arrow_data: impl IntoIterator<Item = (ComponentDescriptor, arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(name, array)| (name.full_name(), array))
-            .collect();
+        let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
         let container_kind = {
-            let array = arrays_by_name
-                .get("rerun.blueprint.components.ContainerKind")
+            let array = arrays_by_descr
+                .get(&Self::descriptor_container_kind())
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.blueprint.archetypes.ContainerBlueprint#container_kind")?;
             <crate::blueprint::components::ContainerKind>::from_arrow_opt(&**array)
@@ -259,66 +256,62 @@ impl ::re_types_core::Archetype for ContainerBlueprint {
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.blueprint.archetypes.ContainerBlueprint#container_kind")?
         };
-        let display_name = if let Some(array) = arrays_by_name.get("rerun.components.Name") {
-            <crate::components::Name>::from_arrow_opt(&**array)
-                .with_context("rerun.blueprint.archetypes.ContainerBlueprint#display_name")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
-        let contents =
-            if let Some(array) = arrays_by_name.get("rerun.blueprint.components.IncludedContent") {
-                Some({
-                    <crate::blueprint::components::IncludedContent>::from_arrow_opt(&**array)
-                        .with_context("rerun.blueprint.archetypes.ContainerBlueprint#contents")?
-                        .into_iter()
-                        .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                        .collect::<DeserializationResult<Vec<_>>>()
-                        .with_context("rerun.blueprint.archetypes.ContainerBlueprint#contents")?
-                })
-            } else {
-                None
-            };
-        let col_shares =
-            if let Some(array) = arrays_by_name.get("rerun.blueprint.components.ColumnShare") {
-                Some({
-                    <crate::blueprint::components::ColumnShare>::from_arrow_opt(&**array)
-                        .with_context("rerun.blueprint.archetypes.ContainerBlueprint#col_shares")?
-                        .into_iter()
-                        .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                        .collect::<DeserializationResult<Vec<_>>>()
-                        .with_context("rerun.blueprint.archetypes.ContainerBlueprint#col_shares")?
-                })
-            } else {
-                None
-            };
-        let row_shares =
-            if let Some(array) = arrays_by_name.get("rerun.blueprint.components.RowShare") {
-                Some({
-                    <crate::blueprint::components::RowShare>::from_arrow_opt(&**array)
-                        .with_context("rerun.blueprint.archetypes.ContainerBlueprint#row_shares")?
-                        .into_iter()
-                        .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                        .collect::<DeserializationResult<Vec<_>>>()
-                        .with_context("rerun.blueprint.archetypes.ContainerBlueprint#row_shares")?
-                })
-            } else {
-                None
-            };
-        let active_tab =
-            if let Some(array) = arrays_by_name.get("rerun.blueprint.components.ActiveTab") {
-                <crate::blueprint::components::ActiveTab>::from_arrow_opt(&**array)
-                    .with_context("rerun.blueprint.archetypes.ContainerBlueprint#active_tab")?
+        let display_name =
+            if let Some(array) = arrays_by_descr.get(&Self::descriptor_display_name()) {
+                <crate::components::Name>::from_arrow_opt(&**array)
+                    .with_context("rerun.blueprint.archetypes.ContainerBlueprint#display_name")?
                     .into_iter()
                     .next()
                     .flatten()
             } else {
                 None
             };
-        let visible = if let Some(array) = arrays_by_name.get("rerun.blueprint.components.Visible")
-        {
+        let contents = if let Some(array) = arrays_by_descr.get(&Self::descriptor_contents()) {
+            Some({
+                <crate::blueprint::components::IncludedContent>::from_arrow_opt(&**array)
+                    .with_context("rerun.blueprint.archetypes.ContainerBlueprint#contents")?
+                    .into_iter()
+                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
+                    .collect::<DeserializationResult<Vec<_>>>()
+                    .with_context("rerun.blueprint.archetypes.ContainerBlueprint#contents")?
+            })
+        } else {
+            None
+        };
+        let col_shares = if let Some(array) = arrays_by_descr.get(&Self::descriptor_col_shares()) {
+            Some({
+                <crate::blueprint::components::ColumnShare>::from_arrow_opt(&**array)
+                    .with_context("rerun.blueprint.archetypes.ContainerBlueprint#col_shares")?
+                    .into_iter()
+                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
+                    .collect::<DeserializationResult<Vec<_>>>()
+                    .with_context("rerun.blueprint.archetypes.ContainerBlueprint#col_shares")?
+            })
+        } else {
+            None
+        };
+        let row_shares = if let Some(array) = arrays_by_descr.get(&Self::descriptor_row_shares()) {
+            Some({
+                <crate::blueprint::components::RowShare>::from_arrow_opt(&**array)
+                    .with_context("rerun.blueprint.archetypes.ContainerBlueprint#row_shares")?
+                    .into_iter()
+                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
+                    .collect::<DeserializationResult<Vec<_>>>()
+                    .with_context("rerun.blueprint.archetypes.ContainerBlueprint#row_shares")?
+            })
+        } else {
+            None
+        };
+        let active_tab = if let Some(array) = arrays_by_descr.get(&Self::descriptor_active_tab()) {
+            <crate::blueprint::components::ActiveTab>::from_arrow_opt(&**array)
+                .with_context("rerun.blueprint.archetypes.ContainerBlueprint#active_tab")?
+                .into_iter()
+                .next()
+                .flatten()
+        } else {
+            None
+        };
+        let visible = if let Some(array) = arrays_by_descr.get(&Self::descriptor_visible()) {
             <crate::blueprint::components::Visible>::from_arrow_opt(&**array)
                 .with_context("rerun.blueprint.archetypes.ContainerBlueprint#visible")?
                 .into_iter()
@@ -328,7 +321,7 @@ impl ::re_types_core::Archetype for ContainerBlueprint {
             None
         };
         let grid_columns =
-            if let Some(array) = arrays_by_name.get("rerun.blueprint.components.GridColumns") {
+            if let Some(array) = arrays_by_descr.get(&Self::descriptor_grid_columns()) {
                 <crate::blueprint::components::GridColumns>::from_arrow_opt(&**array)
                     .with_context("rerun.blueprint.archetypes.ContainerBlueprint#grid_columns")?
                     .into_iter()

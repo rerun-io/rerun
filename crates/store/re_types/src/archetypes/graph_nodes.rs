@@ -221,17 +221,14 @@ impl ::re_types_core::Archetype for GraphNodes {
 
     #[inline]
     fn from_arrow_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, arrow::array::ArrayRef)>,
+        arrow_data: impl IntoIterator<Item = (ComponentDescriptor, arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(name, array)| (name.full_name(), array))
-            .collect();
+        let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
         let node_ids = {
-            let array = arrays_by_name
-                .get("rerun.components.GraphNode")
+            let array = arrays_by_descr
+                .get(&Self::descriptor_node_ids())
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.GraphNodes#node_ids")?;
             <crate::components::GraphNode>::from_arrow_opt(&**array)
@@ -241,7 +238,7 @@ impl ::re_types_core::Archetype for GraphNodes {
                 .collect::<DeserializationResult<Vec<_>>>()
                 .with_context("rerun.archetypes.GraphNodes#node_ids")?
         };
-        let positions = if let Some(array) = arrays_by_name.get("rerun.components.Position2D") {
+        let positions = if let Some(array) = arrays_by_descr.get(&Self::descriptor_positions()) {
             Some({
                 <crate::components::Position2D>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.GraphNodes#positions")?
@@ -253,7 +250,7 @@ impl ::re_types_core::Archetype for GraphNodes {
         } else {
             None
         };
-        let colors = if let Some(array) = arrays_by_name.get("rerun.components.Color") {
+        let colors = if let Some(array) = arrays_by_descr.get(&Self::descriptor_colors()) {
             Some({
                 <crate::components::Color>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.GraphNodes#colors")?
@@ -265,7 +262,7 @@ impl ::re_types_core::Archetype for GraphNodes {
         } else {
             None
         };
-        let labels = if let Some(array) = arrays_by_name.get("rerun.components.Text") {
+        let labels = if let Some(array) = arrays_by_descr.get(&Self::descriptor_labels()) {
             Some({
                 <crate::components::Text>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.GraphNodes#labels")?
@@ -277,7 +274,8 @@ impl ::re_types_core::Archetype for GraphNodes {
         } else {
             None
         };
-        let show_labels = if let Some(array) = arrays_by_name.get("rerun.components.ShowLabels") {
+        let show_labels = if let Some(array) = arrays_by_descr.get(&Self::descriptor_show_labels())
+        {
             <crate::components::ShowLabels>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.GraphNodes#show_labels")?
                 .into_iter()
@@ -286,7 +284,7 @@ impl ::re_types_core::Archetype for GraphNodes {
         } else {
             None
         };
-        let radii = if let Some(array) = arrays_by_name.get("rerun.components.Radius") {
+        let radii = if let Some(array) = arrays_by_descr.get(&Self::descriptor_radii()) {
             Some({
                 <crate::components::Radius>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.GraphNodes#radii")?

@@ -109,7 +109,7 @@ pub trait Archetype {
     {
         Self::from_arrow_components(
             data.into_iter()
-                .map(|(field, array)| (ComponentName::new(field.name()), array)),
+                .map(|(field, array)| (ComponentDescriptor::from(field), array)),
         )
     }
 
@@ -120,7 +120,7 @@ pub trait Archetype {
     /// logged to stderr.
     #[inline]
     fn from_arrow_components(
-        data: impl IntoIterator<Item = (ComponentName, ::arrow::array::ArrayRef)>,
+        data: impl IntoIterator<Item = (ComponentDescriptor, ::arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self>
     where
         Self: Sized,
@@ -139,14 +139,15 @@ pub trait Archetype {
     /// logged to stderr.
     #[inline]
     fn from_arrow2_components(
-        data: impl IntoIterator<Item = (ComponentName, Box<dyn ::arrow2::array::Array>)>,
+        data: impl IntoIterator<Item = (ComponentDescriptor, Box<dyn ::arrow2::array::Array>)>,
     ) -> DeserializationResult<Self>
     where
         Self: Sized,
     {
-        Self::from_arrow_components(data.into_iter().map(|(component, arrow2_array)| {
-            (component, arrow::array::ArrayRef::from(arrow2_array))
-        }))
+        Self::from_arrow_components(
+            data.into_iter()
+                .map(|(descr, arrow2_array)| (descr, arrow::array::ArrayRef::from(arrow2_array))),
+        )
     }
 }
 

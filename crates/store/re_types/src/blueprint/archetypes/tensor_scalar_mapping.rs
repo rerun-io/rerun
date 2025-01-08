@@ -156,25 +156,21 @@ impl ::re_types_core::Archetype for TensorScalarMapping {
 
     #[inline]
     fn from_arrow_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, arrow::array::ArrayRef)>,
+        arrow_data: impl IntoIterator<Item = (ComponentDescriptor, arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(name, array)| (name.full_name(), array))
-            .collect();
-        let mag_filter =
-            if let Some(array) = arrays_by_name.get("rerun.components.MagnificationFilter") {
-                <crate::components::MagnificationFilter>::from_arrow_opt(&**array)
-                    .with_context("rerun.blueprint.archetypes.TensorScalarMapping#mag_filter")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-            } else {
-                None
-            };
-        let colormap = if let Some(array) = arrays_by_name.get("rerun.components.Colormap") {
+        let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
+        let mag_filter = if let Some(array) = arrays_by_descr.get(&Self::descriptor_mag_filter()) {
+            <crate::components::MagnificationFilter>::from_arrow_opt(&**array)
+                .with_context("rerun.blueprint.archetypes.TensorScalarMapping#mag_filter")?
+                .into_iter()
+                .next()
+                .flatten()
+        } else {
+            None
+        };
+        let colormap = if let Some(array) = arrays_by_descr.get(&Self::descriptor_colormap()) {
             <crate::components::Colormap>::from_arrow_opt(&**array)
                 .with_context("rerun.blueprint.archetypes.TensorScalarMapping#colormap")?
                 .into_iter()
@@ -183,7 +179,7 @@ impl ::re_types_core::Archetype for TensorScalarMapping {
         } else {
             None
         };
-        let gamma = if let Some(array) = arrays_by_name.get("rerun.components.GammaCorrection") {
+        let gamma = if let Some(array) = arrays_by_descr.get(&Self::descriptor_gamma()) {
             <crate::components::GammaCorrection>::from_arrow_opt(&**array)
                 .with_context("rerun.blueprint.archetypes.TensorScalarMapping#gamma")?
                 .into_iter()

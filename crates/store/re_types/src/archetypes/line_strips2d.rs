@@ -283,17 +283,14 @@ impl ::re_types_core::Archetype for LineStrips2D {
 
     #[inline]
     fn from_arrow_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, arrow::array::ArrayRef)>,
+        arrow_data: impl IntoIterator<Item = (ComponentDescriptor, arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(name, array)| (name.full_name(), array))
-            .collect();
+        let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
         let strips = {
-            let array = arrays_by_name
-                .get("rerun.components.LineStrip2D")
+            let array = arrays_by_descr
+                .get(&Self::descriptor_strips())
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.LineStrips2D#strips")?;
             <crate::components::LineStrip2D>::from_arrow_opt(&**array)
@@ -303,7 +300,7 @@ impl ::re_types_core::Archetype for LineStrips2D {
                 .collect::<DeserializationResult<Vec<_>>>()
                 .with_context("rerun.archetypes.LineStrips2D#strips")?
         };
-        let radii = if let Some(array) = arrays_by_name.get("rerun.components.Radius") {
+        let radii = if let Some(array) = arrays_by_descr.get(&Self::descriptor_radii()) {
             Some({
                 <crate::components::Radius>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.LineStrips2D#radii")?
@@ -315,7 +312,7 @@ impl ::re_types_core::Archetype for LineStrips2D {
         } else {
             None
         };
-        let colors = if let Some(array) = arrays_by_name.get("rerun.components.Color") {
+        let colors = if let Some(array) = arrays_by_descr.get(&Self::descriptor_colors()) {
             Some({
                 <crate::components::Color>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.LineStrips2D#colors")?
@@ -327,7 +324,7 @@ impl ::re_types_core::Archetype for LineStrips2D {
         } else {
             None
         };
-        let labels = if let Some(array) = arrays_by_name.get("rerun.components.Text") {
+        let labels = if let Some(array) = arrays_by_descr.get(&Self::descriptor_labels()) {
             Some({
                 <crate::components::Text>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.LineStrips2D#labels")?
@@ -339,7 +336,8 @@ impl ::re_types_core::Archetype for LineStrips2D {
         } else {
             None
         };
-        let show_labels = if let Some(array) = arrays_by_name.get("rerun.components.ShowLabels") {
+        let show_labels = if let Some(array) = arrays_by_descr.get(&Self::descriptor_show_labels())
+        {
             <crate::components::ShowLabels>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.LineStrips2D#show_labels")?
                 .into_iter()
@@ -348,7 +346,7 @@ impl ::re_types_core::Archetype for LineStrips2D {
         } else {
             None
         };
-        let draw_order = if let Some(array) = arrays_by_name.get("rerun.components.DrawOrder") {
+        let draw_order = if let Some(array) = arrays_by_descr.get(&Self::descriptor_draw_order()) {
             <crate::components::DrawOrder>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.LineStrips2D#draw_order")?
                 .into_iter()
@@ -357,7 +355,7 @@ impl ::re_types_core::Archetype for LineStrips2D {
         } else {
             None
         };
-        let class_ids = if let Some(array) = arrays_by_name.get("rerun.components.ClassId") {
+        let class_ids = if let Some(array) = arrays_by_descr.get(&Self::descriptor_class_ids()) {
             Some({
                 <crate::components::ClassId>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.LineStrips2D#class_ids")?

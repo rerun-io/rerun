@@ -115,17 +115,14 @@ impl ::re_types_core::Archetype for MapBackground {
 
     #[inline]
     fn from_arrow_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, arrow::array::ArrayRef)>,
+        arrow_data: impl IntoIterator<Item = (ComponentDescriptor, arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(name, array)| (name.full_name(), array))
-            .collect();
+        let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
         let provider = {
-            let array = arrays_by_name
-                .get("rerun.blueprint.components.MapProvider")
+            let array = arrays_by_descr
+                .get(&Self::descriptor_provider())
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.blueprint.archetypes.MapBackground#provider")?;
             <crate::blueprint::components::MapProvider>::from_arrow_opt(&**array)

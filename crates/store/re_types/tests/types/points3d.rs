@@ -43,9 +43,9 @@ fn roundtrip() {
     let serialized = arch.to_arrow().unwrap();
     for (field, array) in &serialized {
         // NOTE: Keep those around please, very useful when debugging.
-        // eprintln!("field = {field:#?}");
-        // eprintln!("array = {array:#?}");
-        eprintln!("{} = {array:#?}", field.name());
+        eprintln!("field = {field:#?}");
+        eprintln!("array = {array:#?}");
+        // eprintln!("{} = {array:#?}", field.name());
     }
 
     let deserialized = Points3D::from_arrow(serialized).unwrap();

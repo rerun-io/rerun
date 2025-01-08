@@ -185,17 +185,14 @@ impl ::re_types_core::Archetype for GeoLineStrings {
 
     #[inline]
     fn from_arrow_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, arrow::array::ArrayRef)>,
+        arrow_data: impl IntoIterator<Item = (ComponentDescriptor, arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(name, array)| (name.full_name(), array))
-            .collect();
+        let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
         let line_strings = {
-            let array = arrays_by_name
-                .get("rerun.components.GeoLineString")
+            let array = arrays_by_descr
+                .get(&Self::descriptor_line_strings())
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.GeoLineStrings#line_strings")?;
             <crate::components::GeoLineString>::from_arrow_opt(&**array)
@@ -205,7 +202,7 @@ impl ::re_types_core::Archetype for GeoLineStrings {
                 .collect::<DeserializationResult<Vec<_>>>()
                 .with_context("rerun.archetypes.GeoLineStrings#line_strings")?
         };
-        let radii = if let Some(array) = arrays_by_name.get("rerun.components.Radius") {
+        let radii = if let Some(array) = arrays_by_descr.get(&Self::descriptor_radii()) {
             Some({
                 <crate::components::Radius>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.GeoLineStrings#radii")?
@@ -217,7 +214,7 @@ impl ::re_types_core::Archetype for GeoLineStrings {
         } else {
             None
         };
-        let colors = if let Some(array) = arrays_by_name.get("rerun.components.Color") {
+        let colors = if let Some(array) = arrays_by_descr.get(&Self::descriptor_colors()) {
             Some({
                 <crate::components::Color>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.GeoLineStrings#colors")?

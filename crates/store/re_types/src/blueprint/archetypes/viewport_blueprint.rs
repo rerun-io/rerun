@@ -190,16 +190,13 @@ impl ::re_types_core::Archetype for ViewportBlueprint {
 
     #[inline]
     fn from_arrow_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, arrow::array::ArrayRef)>,
+        arrow_data: impl IntoIterator<Item = (ComponentDescriptor, arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(name, array)| (name.full_name(), array))
-            .collect();
+        let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
         let root_container =
-            if let Some(array) = arrays_by_name.get("rerun.blueprint.components.RootContainer") {
+            if let Some(array) = arrays_by_descr.get(&Self::descriptor_root_container()) {
                 <crate::blueprint::components::RootContainer>::from_arrow_opt(&**array)
                     .with_context("rerun.blueprint.archetypes.ViewportBlueprint#root_container")?
                     .into_iter()
@@ -208,38 +205,36 @@ impl ::re_types_core::Archetype for ViewportBlueprint {
             } else {
                 None
             };
-        let maximized =
-            if let Some(array) = arrays_by_name.get("rerun.blueprint.components.ViewMaximized") {
-                <crate::blueprint::components::ViewMaximized>::from_arrow_opt(&**array)
-                    .with_context("rerun.blueprint.archetypes.ViewportBlueprint#maximized")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-            } else {
-                None
-            };
-        let auto_layout =
-            if let Some(array) = arrays_by_name.get("rerun.blueprint.components.AutoLayout") {
-                <crate::blueprint::components::AutoLayout>::from_arrow_opt(&**array)
-                    .with_context("rerun.blueprint.archetypes.ViewportBlueprint#auto_layout")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-            } else {
-                None
-            };
-        let auto_views =
-            if let Some(array) = arrays_by_name.get("rerun.blueprint.components.AutoViews") {
-                <crate::blueprint::components::AutoViews>::from_arrow_opt(&**array)
-                    .with_context("rerun.blueprint.archetypes.ViewportBlueprint#auto_views")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-            } else {
-                None
-            };
+        let maximized = if let Some(array) = arrays_by_descr.get(&Self::descriptor_maximized()) {
+            <crate::blueprint::components::ViewMaximized>::from_arrow_opt(&**array)
+                .with_context("rerun.blueprint.archetypes.ViewportBlueprint#maximized")?
+                .into_iter()
+                .next()
+                .flatten()
+        } else {
+            None
+        };
+        let auto_layout = if let Some(array) = arrays_by_descr.get(&Self::descriptor_auto_layout())
+        {
+            <crate::blueprint::components::AutoLayout>::from_arrow_opt(&**array)
+                .with_context("rerun.blueprint.archetypes.ViewportBlueprint#auto_layout")?
+                .into_iter()
+                .next()
+                .flatten()
+        } else {
+            None
+        };
+        let auto_views = if let Some(array) = arrays_by_descr.get(&Self::descriptor_auto_views()) {
+            <crate::blueprint::components::AutoViews>::from_arrow_opt(&**array)
+                .with_context("rerun.blueprint.archetypes.ViewportBlueprint#auto_views")?
+                .into_iter()
+                .next()
+                .flatten()
+        } else {
+            None
+        };
         let past_viewer_recommendations = if let Some(array) =
-            arrays_by_name.get("rerun.blueprint.components.ViewerRecommendationHash")
+            arrays_by_descr.get(&Self::descriptor_past_viewer_recommendations())
         {
             Some({
                 <crate::blueprint::components::ViewerRecommendationHash>::from_arrow_opt(&**array)

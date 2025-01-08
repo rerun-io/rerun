@@ -192,17 +192,14 @@ impl ::re_types_core::Archetype for GeoPoints {
 
     #[inline]
     fn from_arrow_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, arrow::array::ArrayRef)>,
+        arrow_data: impl IntoIterator<Item = (ComponentDescriptor, arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(name, array)| (name.full_name(), array))
-            .collect();
+        let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
         let positions = {
-            let array = arrays_by_name
-                .get("rerun.components.LatLon")
+            let array = arrays_by_descr
+                .get(&Self::descriptor_positions())
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.GeoPoints#positions")?;
             <crate::components::LatLon>::from_arrow_opt(&**array)
@@ -212,7 +209,7 @@ impl ::re_types_core::Archetype for GeoPoints {
                 .collect::<DeserializationResult<Vec<_>>>()
                 .with_context("rerun.archetypes.GeoPoints#positions")?
         };
-        let radii = if let Some(array) = arrays_by_name.get("rerun.components.Radius") {
+        let radii = if let Some(array) = arrays_by_descr.get(&Self::descriptor_radii()) {
             Some({
                 <crate::components::Radius>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.GeoPoints#radii")?
@@ -224,7 +221,7 @@ impl ::re_types_core::Archetype for GeoPoints {
         } else {
             None
         };
-        let colors = if let Some(array) = arrays_by_name.get("rerun.components.Color") {
+        let colors = if let Some(array) = arrays_by_descr.get(&Self::descriptor_colors()) {
             Some({
                 <crate::components::Color>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.GeoPoints#colors")?
@@ -236,7 +233,7 @@ impl ::re_types_core::Archetype for GeoPoints {
         } else {
             None
         };
-        let class_ids = if let Some(array) = arrays_by_name.get("rerun.components.ClassId") {
+        let class_ids = if let Some(array) = arrays_by_descr.get(&Self::descriptor_class_ids()) {
             Some({
                 <crate::components::ClassId>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.GeoPoints#class_ids")?
