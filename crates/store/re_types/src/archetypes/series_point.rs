@@ -128,74 +128,42 @@ impl SeriesPoint {
             archetype_field_name: Some("marker_size".into()),
         }
     }
+
+    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
+    #[inline]
+    pub fn descriptor_indicator() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.SeriesPoint".into()),
+            component_name: "rerun.components.SeriesPointIndicator".into(),
+            archetype_field_name: None,
+        }
+    }
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.SeriesPoint".into()),
-            component_name: "rerun.components.SeriesPointIndicator".into(),
-            archetype_field_name: None,
-        }]
-    });
+    once_cell::sync::Lazy::new(|| [SeriesPoint::descriptor_indicator()]);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.SeriesPoint".into()),
-                component_name: "rerun.components.Color".into(),
-                archetype_field_name: Some("color".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.SeriesPoint".into()),
-                component_name: "rerun.components.MarkerShape".into(),
-                archetype_field_name: Some("marker".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.SeriesPoint".into()),
-                component_name: "rerun.components.Name".into(),
-                archetype_field_name: Some("name".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.SeriesPoint".into()),
-                component_name: "rerun.components.MarkerSize".into(),
-                archetype_field_name: Some("marker_size".into()),
-            },
+            SeriesPoint::descriptor_color(),
+            SeriesPoint::descriptor_marker(),
+            SeriesPoint::descriptor_name(),
+            SeriesPoint::descriptor_marker_size(),
         ]
     });
 
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.SeriesPoint".into()),
-                component_name: "rerun.components.SeriesPointIndicator".into(),
-                archetype_field_name: None,
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.SeriesPoint".into()),
-                component_name: "rerun.components.Color".into(),
-                archetype_field_name: Some("color".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.SeriesPoint".into()),
-                component_name: "rerun.components.MarkerShape".into(),
-                archetype_field_name: Some("marker".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.SeriesPoint".into()),
-                component_name: "rerun.components.Name".into(),
-                archetype_field_name: Some("name".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.SeriesPoint".into()),
-                component_name: "rerun.components.MarkerSize".into(),
-                archetype_field_name: Some("marker_size".into()),
-            },
+            SeriesPoint::descriptor_indicator(),
+            SeriesPoint::descriptor_color(),
+            SeriesPoint::descriptor_marker(),
+            SeriesPoint::descriptor_name(),
+            SeriesPoint::descriptor_marker_size(),
         ]
     });
 
@@ -313,11 +281,7 @@ impl ::re_types_core::AsComponents for SeriesPoint {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.SeriesPoint".into()),
-                    archetype_field_name: Some(("color").into()),
-                    component_name: ("rerun.components.Color").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_color()),
             }),
             (self
                 .marker
@@ -325,20 +289,12 @@ impl ::re_types_core::AsComponents for SeriesPoint {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.SeriesPoint".into()),
-                    archetype_field_name: Some(("marker").into()),
-                    component_name: ("rerun.components.MarkerShape").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_marker()),
             }),
             (self.name.as_ref().map(|comp| (comp as &dyn ComponentBatch))).map(|batch| {
                 ::re_types_core::ComponentBatchCowWithDescriptor {
                     batch: batch.into(),
-                    descriptor_override: Some(ComponentDescriptor {
-                        archetype_name: Some("rerun.archetypes.SeriesPoint".into()),
-                        archetype_field_name: Some(("name").into()),
-                        component_name: ("rerun.components.Name").into(),
-                    }),
+                    descriptor_override: Some(Self::descriptor_name()),
                 }
             }),
             (self
@@ -347,11 +303,7 @@ impl ::re_types_core::AsComponents for SeriesPoint {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.SeriesPoint".into()),
-                    archetype_field_name: Some(("marker_size").into()),
-                    component_name: ("rerun.components.MarkerSize").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_marker_size()),
             }),
         ]
         .into_iter()

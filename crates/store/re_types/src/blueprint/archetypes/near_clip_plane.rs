@@ -37,42 +37,32 @@ impl NearClipPlane {
             archetype_field_name: Some("near_clip_plane".into()),
         }
     }
+
+    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
+    #[inline]
+    pub fn descriptor_indicator() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.NearClipPlane".into()),
+            component_name: "rerun.blueprint.components.NearClipPlaneIndicator".into(),
+            archetype_field_name: None,
+        }
+    }
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.NearClipPlane".into()),
-            component_name: "rerun.blueprint.components.NearClipPlaneIndicator".into(),
-            archetype_field_name: None,
-        }]
-    });
+    once_cell::sync::Lazy::new(|| [NearClipPlane::descriptor_indicator()]);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.NearClipPlane".into()),
-            component_name: "rerun.blueprint.components.NearClipPlane".into(),
-            archetype_field_name: Some("near_clip_plane".into()),
-        }]
-    });
+    once_cell::sync::Lazy::new(|| [NearClipPlane::descriptor_near_clip_plane()]);
 
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.NearClipPlane".into()),
-                component_name: "rerun.blueprint.components.NearClipPlaneIndicator".into(),
-                archetype_field_name: None,
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.NearClipPlane".into()),
-                component_name: "rerun.blueprint.components.NearClipPlane".into(),
-                archetype_field_name: Some("near_clip_plane".into()),
-            },
+            NearClipPlane::descriptor_indicator(),
+            NearClipPlane::descriptor_near_clip_plane(),
         ]
     });
 
@@ -159,11 +149,7 @@ impl ::re_types_core::AsComponents for NearClipPlane {
             (Some(&self.near_clip_plane as &dyn ComponentBatch)).map(|batch| {
                 ::re_types_core::ComponentBatchCowWithDescriptor {
                     batch: batch.into(),
-                    descriptor_override: Some(ComponentDescriptor {
-                        archetype_name: Some("rerun.blueprint.archetypes.NearClipPlane".into()),
-                        archetype_field_name: Some(("near_clip_plane").into()),
-                        component_name: ("rerun.blueprint.components.NearClipPlane").into(),
-                    }),
+                    descriptor_override: Some(Self::descriptor_near_clip_plane()),
                 }
             }),
         ]

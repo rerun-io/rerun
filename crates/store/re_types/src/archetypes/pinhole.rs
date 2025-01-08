@@ -176,77 +176,45 @@ impl Pinhole {
             archetype_field_name: Some("image_plane_distance".into()),
         }
     }
+
+    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
+    #[inline]
+    pub fn descriptor_indicator() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Pinhole".into()),
+            component_name: "rerun.components.PinholeIndicator".into(),
+            archetype_field_name: None,
+        }
+    }
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Pinhole".into()),
-            component_name: "rerun.components.PinholeProjection".into(),
-            archetype_field_name: Some("image_from_camera".into()),
-        }]
-    });
+    once_cell::sync::Lazy::new(|| [Pinhole::descriptor_image_from_camera()]);
 
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Pinhole".into()),
-                component_name: "rerun.components.Resolution".into(),
-                archetype_field_name: Some("resolution".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Pinhole".into()),
-                component_name: "rerun.components.PinholeIndicator".into(),
-                archetype_field_name: None,
-            },
+            Pinhole::descriptor_resolution(),
+            Pinhole::descriptor_indicator(),
         ]
     });
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Pinhole".into()),
-                component_name: "rerun.components.ViewCoordinates".into(),
-                archetype_field_name: Some("camera_xyz".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Pinhole".into()),
-                component_name: "rerun.components.ImagePlaneDistance".into(),
-                archetype_field_name: Some("image_plane_distance".into()),
-            },
+            Pinhole::descriptor_camera_xyz(),
+            Pinhole::descriptor_image_plane_distance(),
         ]
     });
 
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Pinhole".into()),
-                component_name: "rerun.components.PinholeProjection".into(),
-                archetype_field_name: Some("image_from_camera".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Pinhole".into()),
-                component_name: "rerun.components.Resolution".into(),
-                archetype_field_name: Some("resolution".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Pinhole".into()),
-                component_name: "rerun.components.PinholeIndicator".into(),
-                archetype_field_name: None,
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Pinhole".into()),
-                component_name: "rerun.components.ViewCoordinates".into(),
-                archetype_field_name: Some("camera_xyz".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Pinhole".into()),
-                component_name: "rerun.components.ImagePlaneDistance".into(),
-                archetype_field_name: Some("image_plane_distance".into()),
-            },
+            Pinhole::descriptor_image_from_camera(),
+            Pinhole::descriptor_resolution(),
+            Pinhole::descriptor_indicator(),
+            Pinhole::descriptor_camera_xyz(),
+            Pinhole::descriptor_image_plane_distance(),
         ]
     });
 
@@ -367,11 +335,7 @@ impl ::re_types_core::AsComponents for Pinhole {
             (Some(&self.image_from_camera as &dyn ComponentBatch)).map(|batch| {
                 ::re_types_core::ComponentBatchCowWithDescriptor {
                     batch: batch.into(),
-                    descriptor_override: Some(ComponentDescriptor {
-                        archetype_name: Some("rerun.archetypes.Pinhole".into()),
-                        archetype_field_name: Some(("image_from_camera").into()),
-                        component_name: ("rerun.components.PinholeProjection").into(),
-                    }),
+                    descriptor_override: Some(Self::descriptor_image_from_camera()),
                 }
             }),
             (self
@@ -380,11 +344,7 @@ impl ::re_types_core::AsComponents for Pinhole {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.Pinhole".into()),
-                    archetype_field_name: Some(("resolution").into()),
-                    component_name: ("rerun.components.Resolution").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_resolution()),
             }),
             (self
                 .camera_xyz
@@ -392,11 +352,7 @@ impl ::re_types_core::AsComponents for Pinhole {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.Pinhole".into()),
-                    archetype_field_name: Some(("camera_xyz").into()),
-                    component_name: ("rerun.components.ViewCoordinates").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_camera_xyz()),
             }),
             (self
                 .image_plane_distance
@@ -404,11 +360,7 @@ impl ::re_types_core::AsComponents for Pinhole {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.Pinhole".into()),
-                    archetype_field_name: Some(("image_plane_distance").into()),
-                    component_name: ("rerun.components.ImagePlaneDistance").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_image_plane_distance()),
             }),
         ]
         .into_iter()

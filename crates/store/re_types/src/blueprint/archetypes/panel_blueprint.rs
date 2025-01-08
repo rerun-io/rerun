@@ -35,42 +35,32 @@ impl PanelBlueprint {
             archetype_field_name: Some("state".into()),
         }
     }
+
+    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
+    #[inline]
+    pub fn descriptor_indicator() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.PanelBlueprint".into()),
+            component_name: "rerun.blueprint.components.PanelBlueprintIndicator".into(),
+            archetype_field_name: None,
+        }
+    }
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.PanelBlueprint".into()),
-            component_name: "rerun.blueprint.components.PanelBlueprintIndicator".into(),
-            archetype_field_name: None,
-        }]
-    });
+    once_cell::sync::Lazy::new(|| [PanelBlueprint::descriptor_indicator()]);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.PanelBlueprint".into()),
-            component_name: "rerun.blueprint.components.PanelState".into(),
-            archetype_field_name: Some("state".into()),
-        }]
-    });
+    once_cell::sync::Lazy::new(|| [PanelBlueprint::descriptor_state()]);
 
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.PanelBlueprint".into()),
-                component_name: "rerun.blueprint.components.PanelBlueprintIndicator".into(),
-                archetype_field_name: None,
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.PanelBlueprint".into()),
-                component_name: "rerun.blueprint.components.PanelState".into(),
-                archetype_field_name: Some("state".into()),
-            },
+            PanelBlueprint::descriptor_indicator(),
+            PanelBlueprint::descriptor_state(),
         ]
     });
 
@@ -157,11 +147,7 @@ impl ::re_types_core::AsComponents for PanelBlueprint {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.blueprint.archetypes.PanelBlueprint".into()),
-                    archetype_field_name: Some(("state").into()),
-                    component_name: ("rerun.blueprint.components.PanelState").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_state()),
             }),
         ]
         .into_iter()

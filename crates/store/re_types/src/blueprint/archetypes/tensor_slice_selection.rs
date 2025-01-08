@@ -84,74 +84,42 @@ impl TensorSliceSelection {
             archetype_field_name: Some("slider".into()),
         }
     }
+
+    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
+    #[inline]
+    pub fn descriptor_indicator() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.TensorSliceSelection".into()),
+            component_name: "rerun.blueprint.components.TensorSliceSelectionIndicator".into(),
+            archetype_field_name: None,
+        }
+    }
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.TensorSliceSelection".into()),
-            component_name: "rerun.blueprint.components.TensorSliceSelectionIndicator".into(),
-            archetype_field_name: None,
-        }]
-    });
+    once_cell::sync::Lazy::new(|| [TensorSliceSelection::descriptor_indicator()]);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.TensorSliceSelection".into()),
-                component_name: "rerun.components.TensorWidthDimension".into(),
-                archetype_field_name: Some("width".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.TensorSliceSelection".into()),
-                component_name: "rerun.components.TensorHeightDimension".into(),
-                archetype_field_name: Some("height".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.TensorSliceSelection".into()),
-                component_name: "rerun.components.TensorDimensionIndexSelection".into(),
-                archetype_field_name: Some("indices".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.TensorSliceSelection".into()),
-                component_name: "rerun.blueprint.components.TensorDimensionIndexSlider".into(),
-                archetype_field_name: Some("slider".into()),
-            },
+            TensorSliceSelection::descriptor_width(),
+            TensorSliceSelection::descriptor_height(),
+            TensorSliceSelection::descriptor_indices(),
+            TensorSliceSelection::descriptor_slider(),
         ]
     });
 
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.TensorSliceSelection".into()),
-                component_name: "rerun.blueprint.components.TensorSliceSelectionIndicator".into(),
-                archetype_field_name: None,
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.TensorSliceSelection".into()),
-                component_name: "rerun.components.TensorWidthDimension".into(),
-                archetype_field_name: Some("width".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.TensorSliceSelection".into()),
-                component_name: "rerun.components.TensorHeightDimension".into(),
-                archetype_field_name: Some("height".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.TensorSliceSelection".into()),
-                component_name: "rerun.components.TensorDimensionIndexSelection".into(),
-                archetype_field_name: Some("indices".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.TensorSliceSelection".into()),
-                component_name: "rerun.blueprint.components.TensorDimensionIndexSlider".into(),
-                archetype_field_name: Some("slider".into()),
-            },
+            TensorSliceSelection::descriptor_indicator(),
+            TensorSliceSelection::descriptor_width(),
+            TensorSliceSelection::descriptor_height(),
+            TensorSliceSelection::descriptor_indices(),
+            TensorSliceSelection::descriptor_slider(),
         ]
     });
 
@@ -282,11 +250,7 @@ impl ::re_types_core::AsComponents for TensorSliceSelection {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.blueprint.archetypes.TensorSliceSelection".into()),
-                    archetype_field_name: Some(("width").into()),
-                    component_name: ("rerun.components.TensorWidthDimension").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_width()),
             }),
             (self
                 .height
@@ -294,11 +258,7 @@ impl ::re_types_core::AsComponents for TensorSliceSelection {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.blueprint.archetypes.TensorSliceSelection".into()),
-                    archetype_field_name: Some(("height").into()),
-                    component_name: ("rerun.components.TensorHeightDimension").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_height()),
             }),
             (self
                 .indices
@@ -306,11 +266,7 @@ impl ::re_types_core::AsComponents for TensorSliceSelection {
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.blueprint.archetypes.TensorSliceSelection".into()),
-                    archetype_field_name: Some(("indices").into()),
-                    component_name: ("rerun.components.TensorDimensionIndexSelection").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_indices()),
             }),
             (self
                 .slider
@@ -318,12 +274,7 @@ impl ::re_types_core::AsComponents for TensorSliceSelection {
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.blueprint.archetypes.TensorSliceSelection".into()),
-                    archetype_field_name: Some(("slider").into()),
-                    component_name: ("rerun.blueprint.components.TensorDimensionIndexSlider")
-                        .into(),
-                }),
+                descriptor_override: Some(Self::descriptor_slider()),
             }),
         ]
         .into_iter()

@@ -43,25 +43,23 @@ impl VisualBounds2D {
             archetype_field_name: Some("range".into()),
         }
     }
-}
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.VisualBounds2D".into()),
-            component_name: "rerun.blueprint.components.VisualBounds2D".into(),
-            archetype_field_name: Some("range".into()),
-        }]
-    });
-
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
+    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
+    #[inline]
+    pub fn descriptor_indicator() -> ComponentDescriptor {
+        ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.VisualBounds2D".into()),
             component_name: "rerun.blueprint.components.VisualBounds2DIndicator".into(),
             archetype_field_name: None,
-        }]
-    });
+        }
+    }
+}
+
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [VisualBounds2D::descriptor_range()]);
+
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [VisualBounds2D::descriptor_indicator()]);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
@@ -69,16 +67,8 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]>
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.VisualBounds2D".into()),
-                component_name: "rerun.blueprint.components.VisualBounds2D".into(),
-                archetype_field_name: Some("range".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.VisualBounds2D".into()),
-                component_name: "rerun.blueprint.components.VisualBounds2DIndicator".into(),
-                archetype_field_name: None,
-            },
+            VisualBounds2D::descriptor_range(),
+            VisualBounds2D::descriptor_indicator(),
         ]
     });
 
@@ -165,11 +155,7 @@ impl ::re_types_core::AsComponents for VisualBounds2D {
             (Some(&self.range as &dyn ComponentBatch)).map(|batch| {
                 ::re_types_core::ComponentBatchCowWithDescriptor {
                     batch: batch.into(),
-                    descriptor_override: Some(ComponentDescriptor {
-                        archetype_name: Some("rerun.blueprint.archetypes.VisualBounds2D".into()),
-                        archetype_field_name: Some(("range").into()),
-                        component_name: ("rerun.blueprint.components.VisualBounds2D").into(),
-                    }),
+                    descriptor_override: Some(Self::descriptor_range()),
                 }
             }),
         ]

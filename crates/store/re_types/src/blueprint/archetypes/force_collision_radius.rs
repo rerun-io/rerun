@@ -65,64 +65,40 @@ impl ForceCollisionRadius {
             archetype_field_name: Some("iterations".into()),
         }
     }
+
+    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
+    #[inline]
+    pub fn descriptor_indicator() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ForceCollisionRadius".into()),
+            component_name: "rerun.blueprint.components.ForceCollisionRadiusIndicator".into(),
+            archetype_field_name: None,
+        }
+    }
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ForceCollisionRadius".into()),
-            component_name: "rerun.blueprint.components.ForceCollisionRadiusIndicator".into(),
-            archetype_field_name: None,
-        }]
-    });
+    once_cell::sync::Lazy::new(|| [ForceCollisionRadius::descriptor_indicator()]);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ForceCollisionRadius".into()),
-                component_name: "rerun.blueprint.components.Enabled".into(),
-                archetype_field_name: Some("enabled".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ForceCollisionRadius".into()),
-                component_name: "rerun.blueprint.components.ForceStrength".into(),
-                archetype_field_name: Some("strength".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ForceCollisionRadius".into()),
-                component_name: "rerun.blueprint.components.ForceIterations".into(),
-                archetype_field_name: Some("iterations".into()),
-            },
+            ForceCollisionRadius::descriptor_enabled(),
+            ForceCollisionRadius::descriptor_strength(),
+            ForceCollisionRadius::descriptor_iterations(),
         ]
     });
 
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ForceCollisionRadius".into()),
-                component_name: "rerun.blueprint.components.ForceCollisionRadiusIndicator".into(),
-                archetype_field_name: None,
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ForceCollisionRadius".into()),
-                component_name: "rerun.blueprint.components.Enabled".into(),
-                archetype_field_name: Some("enabled".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ForceCollisionRadius".into()),
-                component_name: "rerun.blueprint.components.ForceStrength".into(),
-                archetype_field_name: Some("strength".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ForceCollisionRadius".into()),
-                component_name: "rerun.blueprint.components.ForceIterations".into(),
-                archetype_field_name: Some("iterations".into()),
-            },
+            ForceCollisionRadius::descriptor_indicator(),
+            ForceCollisionRadius::descriptor_enabled(),
+            ForceCollisionRadius::descriptor_strength(),
+            ForceCollisionRadius::descriptor_iterations(),
         ]
     });
 
@@ -234,11 +210,7 @@ impl ::re_types_core::AsComponents for ForceCollisionRadius {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.blueprint.archetypes.ForceCollisionRadius".into()),
-                    archetype_field_name: Some(("enabled").into()),
-                    component_name: ("rerun.blueprint.components.Enabled").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_enabled()),
             }),
             (self
                 .strength
@@ -246,11 +218,7 @@ impl ::re_types_core::AsComponents for ForceCollisionRadius {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.blueprint.archetypes.ForceCollisionRadius".into()),
-                    archetype_field_name: Some(("strength").into()),
-                    component_name: ("rerun.blueprint.components.ForceStrength").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_strength()),
             }),
             (self
                 .iterations
@@ -258,11 +226,7 @@ impl ::re_types_core::AsComponents for ForceCollisionRadius {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.blueprint.archetypes.ForceCollisionRadius".into()),
-                    archetype_field_name: Some(("iterations").into()),
-                    component_name: ("rerun.blueprint.components.ForceIterations").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_iterations()),
             }),
         ]
         .into_iter()

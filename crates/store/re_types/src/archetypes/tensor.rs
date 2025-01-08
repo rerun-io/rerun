@@ -87,53 +87,33 @@ impl Tensor {
             archetype_field_name: Some("value_range".into()),
         }
     }
-}
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Tensor".into()),
-            component_name: "rerun.components.TensorData".into(),
-            archetype_field_name: Some("data".into()),
-        }]
-    });
-
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
+    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
+    #[inline]
+    pub fn descriptor_indicator() -> ComponentDescriptor {
+        ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Tensor".into()),
             component_name: "rerun.components.TensorIndicator".into(),
             archetype_field_name: None,
-        }]
-    });
+        }
+    }
+}
+
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [Tensor::descriptor_data()]);
+
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [Tensor::descriptor_indicator()]);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Tensor".into()),
-            component_name: "rerun.components.ValueRange".into(),
-            archetype_field_name: Some("value_range".into()),
-        }]
-    });
+    once_cell::sync::Lazy::new(|| [Tensor::descriptor_value_range()]);
 
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Tensor".into()),
-                component_name: "rerun.components.TensorData".into(),
-                archetype_field_name: Some("data".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Tensor".into()),
-                component_name: "rerun.components.TensorIndicator".into(),
-                archetype_field_name: None,
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Tensor".into()),
-                component_name: "rerun.components.ValueRange".into(),
-                archetype_field_name: Some("value_range".into()),
-            },
+            Tensor::descriptor_data(),
+            Tensor::descriptor_indicator(),
+            Tensor::descriptor_value_range(),
         ]
     });
 
@@ -229,11 +209,7 @@ impl ::re_types_core::AsComponents for Tensor {
             (Some(&self.data as &dyn ComponentBatch)).map(|batch| {
                 ::re_types_core::ComponentBatchCowWithDescriptor {
                     batch: batch.into(),
-                    descriptor_override: Some(ComponentDescriptor {
-                        archetype_name: Some("rerun.archetypes.Tensor".into()),
-                        archetype_field_name: Some(("data").into()),
-                        component_name: ("rerun.components.TensorData").into(),
-                    }),
+                    descriptor_override: Some(Self::descriptor_data()),
                 }
             }),
             (self
@@ -242,11 +218,7 @@ impl ::re_types_core::AsComponents for Tensor {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.Tensor".into()),
-                    archetype_field_name: Some(("value_range").into()),
-                    component_name: ("rerun.components.ValueRange").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_value_range()),
             }),
         ]
         .into_iter()
