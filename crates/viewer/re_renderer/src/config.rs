@@ -62,13 +62,15 @@ impl DeviceTier {
                 Self::Gles => wgpu::DownlevelFlags::empty(),
                 // Require fully WebGPU compliance for the native tier.
                 Self::FullWebGpuSupport => {
-                    // Turn a blind eye on a few features that are missing as of writing in WSL even with latest Vulkan drivers
-                    // and pretend we still have full WebGPU support anyways.
+                    // Turn a blind eye on a few features that are missing as of writing in WSL even with latest Vulkan drivers.
+                    // Pretend we still have full WebGPU support anyways.
                     wgpu::DownlevelFlags::compliant()
-                        // Lack means that we can't set the format of views on surface textures (the result of `get_current_texture`) surface won't tell us which formats are supported.
+                        // Lacking `SURFACE_VIEW_FORMATS` means we can't set the format of views on surface textures
+                        // (the result of `get_current_texture`).
+                        // And the surface won't tell us which formats are supported.
                         // We avoid doing anything wonky with surfaces anyways, so we won't hit this.
                         .intersection(wgpu::DownlevelFlags::SURFACE_VIEW_FORMATS.complement())
-                        // Lack means we only get 2^24-1 indices for drawing.
+                        // Lacking `FULL_DRAW_INDEX_UINT32` means we only get 2^24-1 indices for drawing.
                         // Typically we don't reach this limit.
                         .intersection(wgpu::DownlevelFlags::FULL_DRAW_INDEX_UINT32.complement())
                 }
