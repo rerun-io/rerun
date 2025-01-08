@@ -4,6 +4,19 @@ package rerun.log_msg.v0;
 
 import "rerun/v0/common.proto";
 
+message LogMsg {
+    oneof msg {
+        // A message that contains a new store info.
+        SetStoreInfo set_store_info = 1;
+
+        // A message that contains an Arrow-IPC encoded message.
+        ArrowMsg arrow_msg = 2;
+
+        // A message that contains a blueprint activation command.
+        BlueprintActivationCommand blueprint_activation_command = 3;
+    }
+}
+
 // Corresponds to `LogMsg::SetStoreInfo`. Used to identify a recording.
 message SetStoreInfo {
     // A time-based UID that is used to determine how a `StoreInfo` fits in the global ordering of events.
