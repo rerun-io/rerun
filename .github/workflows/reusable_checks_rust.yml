@@ -65,11 +65,18 @@ jobs:
         with:
           pixi-version: v0.39.0
 
-      - name: Rust checks & tests
-        if: ${{ inputs.CHANNEL == 'pr' }}
-        run: pixi run rs-check --skip individual_crates tests docs_slow
+      - name: Setup software rasterizer
+        run: pixi run python ./scripts/ci/setup_software_rasterizer.py
 
-      - name: Rust checks & tests
+      - name: Rust checks (PR subset)
+        if: ${{ inputs.CHANNEL == 'pr' }}
+        run: pixi run rs-check --only base_checks sdk_variations cargo_deny wasm docs
+
+      - name: Run tests (`cargo test --all-targets --all-features`)
+        if: ${{ inputs.CHANNEL == 'pr' }}
+        run: pixi run cargo test --all-targets --all-features
+
+      - name: Rust most checks & tests
         if: ${{ inputs.CHANNEL == 'main' }}
         run: pixi run rs-check --skip individual_crates docs_slow
 
@@ -79,14 +86,17 @@ jobs:
 
   # Run some basics tests on Mac and Windows
   mac-windows-tests:
+    #if: ${{ inputs.CHANNEL != 'pr' }} # TODO: uncomment this, only here for quicker testing of ci.
     name: Test on ${{ matrix.name }}
     strategy:
       matrix:
         include:
           # TODO(#8245): we run mac tests on `main` because that's the only platform where UI snapshot tests are covered.
           # When the linux runners are able to run these tests (with a software renderer), we can move that back to all nightly.
-          - os: ${{ inputs.CHANNEL == 'main' && 'macos-latest' || 'windows-latest-8-cores' }}
-            name: ${{ inputs.CHANNEL == 'main' && 'macos' || 'windows' }}
+          - os: "macos-latest"
+            name: "macos"
+          - os: "windows-latest-8-cores"
+            name: "windows"
 
     # Note: we can't use `matrix.os` here because its evaluated before the matrix stuff.
     if: ${{ inputs.CHANNEL == 'main' || inputs.CHANNEL == 'nightly' }}
@@ -104,6 +114,9 @@ jobs:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
+      - name: Setup software rasterizer
+        run: pixi run python ./scripts/ci/setup_software_rasterizer.py
+
       # Building with `--all-features` requires extra build tools like `nasm`.
       - uses: prefix-dev/setup-pixi@v0.8.1
         with:
@@ -112,5 +125,10 @@ jobs:
       - name: Download test assets
         run: pixi run python ./tests/assets/download_test_assets.py
 
-      - name: pixi run cargo test --all-targets --all-features
+      - name: Run tests (`cargo test --all-targets --all-features`)
+        if: ${{ inputs.CHANNEL != 'nightly' }}
         run: pixi run cargo test --all-targets --all-features
+
+      - name: Rust all checks & tests
+        if: ${{ inputs.CHANNEL == 'nightly' }}
+        run: pixi run rs-check

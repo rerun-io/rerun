@@ -172,6 +172,8 @@ fn init_shared_renderer_setup() -> SharedWgpuResources {
     }))
     .expect("Failed to request adapter");
 
+    re_log::info!("Picked adapter: {:?}", adapter.get_info());
+
     let device_caps = re_renderer::config::DeviceCaps::from_adapter(&adapter)
         .expect("Failed to determine device capabilities");
     let (device, queue) =
