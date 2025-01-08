@@ -1,6 +1,6 @@
 use custom_callback::{comms::viewer::ControlViewer, panel::Control};
 
-use rerun::external::{eframe, egui, re_log, re_memory, re_sdk_comms, re_viewer};
+use rerun::external::{eframe, re_log, re_memory, re_sdk_comms, re_viewer};
 
 use std::net::Ipv4Addr;
 
@@ -42,10 +42,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     // Then we start the Rerun viewer
-    let native_options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default().with_app_id("rerun_custom_callback_example"),
-        ..re_viewer::native::eframe_options(None)
-    };
+    let mut native_options = re_viewer::native::eframe_options(None);
+    native_options.viewport = native_options
+        .viewport
+        .with_app_id("rerun_custom_callback_example");
 
     // This is used for analytics, if the `analytics` feature is on in `Cargo.toml`
     let app_env = re_viewer::AppEnvironment::Custom("My Custom Callback".to_owned());
