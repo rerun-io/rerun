@@ -8,7 +8,18 @@ pub fn singleline_view_uri(
     value: &mut MaybeMutRef<'_, Uri>,
 ) -> egui::Response {
     let value = value.as_ref();
-    ui.re_hyperlink(value.uri())
+    ui.scope(|ui| {
+        if ui.style().wrap_mode.is_none() {
+            ui.style_mut().wrap_mode = Some(if ui.is_sizing_pass() {
+                egui::TextWrapMode::Extend
+            } else {
+                egui::TextWrapMode::Truncate
+            });
+        }
+
+        ui.re_hyperlink(value.uri())
+    })
+    .inner
 }
 
 pub fn singleline_view_recording_uri(

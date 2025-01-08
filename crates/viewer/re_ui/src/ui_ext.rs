@@ -962,7 +962,9 @@ pub trait UiExt {
         let response = ListItem::new()
             .show_flat(
                 ui,
-                LabelContent::new(url.to_string()).with_icon(&crate::icons::EXTERNAL_LINK),
+                LabelContent::new(url.to_string())
+                    .truncate(true)
+                    .with_icon(&crate::icons::EXTERNAL_LINK),
             )
             .on_hover_cursor(egui::CursorIcon::PointingHand);
         if response.clicked() {
@@ -981,7 +983,9 @@ pub trait UiExt {
         let response = ListItem::new()
             .show_flat(
                 ui,
-                LabelContent::new(text).with_icon(&crate::icons::EXTERNAL_LINK),
+                LabelContent::new(text)
+                    .truncate(true)
+                    .with_icon(&crate::icons::EXTERNAL_LINK),
             )
             .on_hover_cursor(egui::CursorIcon::PointingHand);
         if response.clicked() {
