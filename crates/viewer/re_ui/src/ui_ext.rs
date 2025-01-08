@@ -25,7 +25,7 @@ fn notification_label(
     visible_text: &str,
     full_text: &str,
 ) -> egui::Response {
-    egui::Frame::none()
+    egui::Frame::new()
         .stroke((1.0, fg_color))
         .fill(error_label_bg_color(fg_color))
         .rounding(4.0)
