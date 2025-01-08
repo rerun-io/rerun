@@ -1,8 +1,8 @@
 #pragma once
 
+#include <cstdint>
 #include <optional>
 #include <string_view>
-#include <cstdint>
 
 namespace rerun {
     /// See `ComponentDescriptor::hashed`.
