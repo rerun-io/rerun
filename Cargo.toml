@@ -576,7 +576,7 @@ emath = { git = "https://github.com/emilk/egui.git", rev = "f0d7c74e838b8e8920a2
 # egui-wgpu = { path = "../../egui/crates/egui-wgpu" }
 # emath = { path = "../../egui/crates/emath" }
 
-egui_plot = { git = "https://github.com/emilk/egui_plot.git", rev = "4a16b8842aa39e6ea6b6c9c98afe20e060e767b6" }
+egui_plot = { git = "https://github.com/emilk/egui_plot.git", rev = "80e2199a2e121db288fe6b0099d91c35acc75a7c" }
 # egui_plot = { path = "../../egui_plot/egui_plot" }
 
 # egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", rev = "48e0ef566479000a23d8dabf84badced98f1b9a6" } # https://github.com/rerun-io/egui_tiles/pull/89 2024-11-19
