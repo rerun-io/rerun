@@ -7,11 +7,7 @@ use std::sync::Arc;
 use anyhow::Context as _;
 use web_time::Instant;
 
-use re_renderer::{
-    config::{supported_backends, DeviceCaps},
-    view_builder::ViewBuilder,
-    RenderContext,
-};
+use re_renderer::{config::DeviceCaps, view_builder::ViewBuilder, RenderContext};
 
 use winit::{
     application::ApplicationHandler,
