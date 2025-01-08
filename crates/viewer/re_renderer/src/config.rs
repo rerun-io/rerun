@@ -296,19 +296,6 @@ impl DeviceCaps {
     }
 }
 
-pub fn instance_descriptor(supported_backends: wgpu::Backends) -> wgpu::InstanceDescriptor {
-    wgpu::InstanceDescriptor {
-        backends: supported_backends,
-        // TODO(#8466): Experiment with `ALLOW_UNDERLYING_NONCOMPLIANT_ADAPTER`
-        flags: wgpu::InstanceFlags::from_build_config().with_env(),
-
-        gles_minor_version: wgpu::Gles3MinorVersion::Automatic,
-
-        // Fxc is slow and has many issues but shipping with DXC is more complex.
-        dx12_shader_compiler: wgpu::Dx12Compiler::Fxc,
-    }
-}
-
 /// Backends that are officially supported by `re_renderer`.
 ///
 /// Other backend might work as well, but lack of support isn't regarded as a bug.
