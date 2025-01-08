@@ -19,7 +19,7 @@ fn encode(
     }
 }
 
-/// Trait that enables encoding a type into a protobuf ("wire") type.
+/// Encode an object into a wire (protobuf) type.
 pub trait Encode<O> {
     fn encode(&self) -> Result<O, CodecError>;
 }

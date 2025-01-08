@@ -3,13 +3,13 @@ pub mod encoder;
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        codec::wire::{decode, encode},
-        codec::CodecError,
+    use crate::codec::{
+        wire::{decoder::Decode, encoder::Encode},
+        CodecError,
     };
     use re_chunk::{Chunk, RowId};
     use re_log_types::{example_components::MyPoint, Timeline};
-    use re_protos::common::v0::EncoderVersion;
+    use re_protos::{common::v0::EncoderVersion, remote_store::v0::DataframePart};
 
     fn get_test_chunk() -> Chunk {
         let row_id1 = RowId::new();
@@ -37,7 +37,11 @@ mod tests {
     #[test]
     fn test_invalid_data() {
         let data = vec![2, 3, 4];
-        let decoded = decode(EncoderVersion::V0, &data);
+        let dataframe_part = DataframePart {
+            encoder_version: EncoderVersion::V0 as i32,
+            payload: data.clone(),
+        };
+        let decoded = dataframe_part.decode();
 
         assert!(matches!(
             decoded.err().unwrap(),
@@ -49,12 +53,14 @@ mod tests {
     fn test_v0_codec() {
         let expected_chunk = get_test_chunk();
 
-        let encoded = encode(
-            EncoderVersion::V0,
-            &expected_chunk.clone().to_transport().unwrap(),
-        )
-        .unwrap();
-        let decoded = decode(EncoderVersion::V0, &encoded).unwrap();
+        let encoded: DataframePart = expected_chunk
+            .clone()
+            .to_transport()
+            .unwrap()
+            .encode()
+            .unwrap();
+
+        let decoded = encoded.decode().unwrap();
         let decoded_chunk = Chunk::from_transport(&decoded).unwrap();
 
         assert_eq!(expected_chunk, decoded_chunk);

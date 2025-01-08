@@ -24,8 +24,7 @@ fn decode(
     }
 }
 
-/// Trait that enables decoding a type from a byte stream,
-/// introduced for more ergonomic dealing with our protobuf ("wire") tpyes.
+/// Decode an object from a its wire (protobuf) representation.
 pub trait Decode {
     fn decode(&self) -> Result<TransportChunk, CodecError>;
 }
