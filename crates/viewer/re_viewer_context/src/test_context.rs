@@ -165,13 +165,36 @@ fn init_shared_renderer_setup() -> SharedWgpuResources {
     // For the moment we just use wgpu defaults.
 
     let instance = wgpu::Instance::default();
-    let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
-        power_preference: wgpu::PowerPreference::default(),
-        force_fallback_adapter: false,
-        compatible_surface: None,
-    }))
-    .expect("Failed to request adapter");
 
+    let mut adapters = instance.enumerate_adapters(wgpu::Backends::VULKAN | wgpu::Backends::METAL);
+    if adapters.is_empty() {
+        panic!("No graphics adapter found!");
+    }
+    re_log::info!("Found the following adapters:");
+    for adapter in &adapters {
+        re_log::info!("* {}", egui_wgpu::adapter_info_summary(&adapter.get_info()));
+    }
+
+    // Adapters are already sorted by preferred backend by wgpu, but let's be explicit.
+    adapters.sort_by_key(|a| match a.get_info().backend {
+        wgpu::Backend::Metal => 0,
+        wgpu::Backend::Vulkan => 1,
+        wgpu::Backend::Dx12 => 2,
+        wgpu::Backend::Gl => 4,
+        wgpu::Backend::BrowserWebGpu => 6,
+        wgpu::Backend::Empty => 7,
+    });
+
+    // Prefer CPU adapters, otherwise if we can't, prefer discrete GPU over integrated GPU.
+    adapters.sort_by_key(|a| match a.get_info().device_type {
+        wgpu::DeviceType::Cpu => 0, // CPU is the best for our purposes!
+        wgpu::DeviceType::DiscreteGpu => 1,
+        wgpu::DeviceType::Other
+        | wgpu::DeviceType::IntegratedGpu
+        | wgpu::DeviceType::VirtualGpu => 2,
+    });
+
+    let adapter = adapters.remove(0);
     re_log::info!("Picked adapter: {:?}", adapter.get_info());
 
     let device_caps = re_renderer::config::DeviceCaps::from_adapter(&adapter)

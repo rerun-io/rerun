@@ -65,6 +65,7 @@ wheels
 mesa
 mesa.7z
 mesa.tar.xz
+icd.json
 
 *.rrd
 
