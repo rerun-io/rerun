@@ -37,6 +37,7 @@ mod protobuf_conversions;
 use std::sync::Arc;
 
 use re_build_info::CrateVersion;
+use re_byte_size::SizeBytes;
 
 pub use self::arrow_msg::{ArrowChunkReleaseCallback, ArrowMsg};
 pub use self::instance::Instance;
@@ -633,6 +634,132 @@ pub fn build_frame_nr(frame_nr: impl TryInto<TimeInt>) -> (Timeline, TimeInt) {
         Timeline::new("frame_nr", TimeType::Sequence),
         frame_nr.try_into().unwrap_or(TimeInt::MIN),
     )
+}
+
+impl SizeBytes for ApplicationId {
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+}
+
+impl SizeBytes for StoreId {
+    fn heap_size_bytes(&self) -> u64 {
+        self.id.heap_size_bytes()
+    }
+}
+
+impl SizeBytes for PythonVersion {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            major: _,
+            minor: _,
+            patch: _,
+            suffix,
+        } = self;
+
+        suffix.heap_size_bytes()
+    }
+}
+
+impl SizeBytes for FileSource {
+    fn heap_size_bytes(&self) -> u64 {
+        match self {
+            Self::Uri | Self::Sdk | Self::Cli => 0,
+            Self::DragAndDrop {
+                recommended_application_id,
+                recommended_recording_id,
+                force_store_info,
+            }
+            | Self::FileDialog {
+                recommended_application_id,
+                recommended_recording_id,
+                force_store_info,
+            } => {
+                recommended_application_id.heap_size_bytes()
+                    + recommended_recording_id.heap_size_bytes()
+                    + force_store_info.heap_size_bytes()
+            }
+        }
+    }
+}
+
+impl SizeBytes for StoreSource {
+    fn heap_size_bytes(&self) -> u64 {
+        match self {
+            Self::Unknown | Self::CSdk | Self::Viewer => 0,
+            Self::PythonSdk(python_version) => python_version.heap_size_bytes(),
+            Self::RustSdk {
+                rustc_version,
+                llvm_version,
+            } => rustc_version.heap_size_bytes() + llvm_version.heap_size_bytes(),
+            Self::File { file_source } => file_source.heap_size_bytes(),
+            Self::Other(description) => description.heap_size_bytes(),
+        }
+    }
+}
+
+impl SizeBytes for StoreInfo {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            application_id,
+            store_id,
+            cloned_from: _,
+            is_official_example: _,
+            started: _,
+            store_source,
+            store_version,
+        } = self;
+
+        application_id.heap_size_bytes()
+            + store_id.heap_size_bytes()
+            + store_source.heap_size_bytes()
+            + store_version.heap_size_bytes()
+    }
+}
+
+impl SizeBytes for SetStoreInfo {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self { row_id, info } = self;
+
+        row_id.heap_size_bytes() + info.heap_size_bytes()
+    }
+}
+
+impl SizeBytes for BlueprintActivationCommand {
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+}
+
+impl SizeBytes for ArrowMsg {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            chunk_id,
+            timepoint_max,
+            schema,
+            chunk,
+            on_release: _,
+        } = self;
+
+        chunk_id.heap_size_bytes()
+            + timepoint_max.heap_size_bytes()
+            + schema.heap_size_bytes()
+            + chunk.heap_size_bytes()
+    }
+}
+
+impl SizeBytes for LogMsg {
+    fn heap_size_bytes(&self) -> u64 {
+        match self {
+            Self::SetStoreInfo(set_store_info) => set_store_info.heap_size_bytes(),
+            Self::ArrowMsg(store_id, arrow_msg) => {
+                store_id.heap_size_bytes() + arrow_msg.heap_size_bytes()
+            }
+            Self::BlueprintActivationCommand(blueprint_activation_command) => {
+                blueprint_activation_command.heap_size_bytes()
+            }
+        }
+    }
 }
 
 #[cfg(test)]
