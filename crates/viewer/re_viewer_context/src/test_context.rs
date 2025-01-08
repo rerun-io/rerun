@@ -167,9 +167,7 @@ fn init_shared_renderer_setup() -> SharedWgpuResources {
     let instance = wgpu::Instance::default();
 
     let mut adapters = instance.enumerate_adapters(wgpu::Backends::VULKAN | wgpu::Backends::METAL);
-    if adapters.is_empty() {
-        panic!("No graphics adapter found!");
-    }
+    assert!(!adapters.is_empty(), "No graphics adapter found!");
     re_log::info!("Found the following adapters:");
     for adapter in &adapters {
         re_log::info!("* {}", egui_wgpu::adapter_info_summary(&adapter.get_info()));
