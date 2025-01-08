@@ -51,8 +51,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 re_viewer::build_info(),
                 &app_env,
                 startup_options,
-                cc.egui_ctx.clone(),
-                cc.storage,
+                cc,
             );
             rerun_app.add_receiver(rx);
             Ok(Box::new(MyApp { rerun_app }))

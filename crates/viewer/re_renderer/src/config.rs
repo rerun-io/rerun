@@ -27,6 +27,15 @@ pub enum DeviceTier {
     //HighEnd
 }
 
+impl std::fmt::Display for DeviceTier {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Self::Gles => "gles",
+            Self::FullWebGpuSupport => "full_webgpu_support",
+        })
+    }
+}
+
 impl DeviceTier {
     /// Whether the current device tier supports sampling from textures with a sample count higher than 1.
     pub fn support_sampling_msaa_texture(&self) -> bool {
