@@ -486,13 +486,19 @@ impl PySchema {
                 .schema
                 .clone()
                 .into_iter()
-                .map(|col| match col {
-                    ColumnDescriptor::Time(col) => PyIndexColumnDescriptor(col).into_py(py),
-                    ColumnDescriptor::Component(col) => {
-                        PyComponentColumnDescriptor(col).into_py(py)
-                    }
+                .map(|col| {
+                    Ok(match col {
+                        ColumnDescriptor::Time(col) => PyIndexColumnDescriptor(col)
+                            .into_pyobject(py)?
+                            .into_any()
+                            .unbind(),
+                        ColumnDescriptor::Component(col) => PyComponentColumnDescriptor(col)
+                            .into_pyobject(py)?
+                            .into_any()
+                            .unbind(),
+                    })
                 })
-                .collect::<Vec<PyObject>>()
+                .collect::<PyResult<Vec<PyObject>>>()?
                 .into_iter(),
         };
         Py::new(slf.py(), iter)
