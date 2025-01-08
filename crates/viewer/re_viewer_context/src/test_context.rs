@@ -162,11 +162,19 @@ fn init_shared_renderer_setup() -> SharedWgpuResources {
     // * lives mostly in re_renderer and is shared with viewer & renderer examples
     // * can be told to prefer software rendering
     // * can be told to match a specific device tier
-    // For the moment we just use wgpu defaults.
 
-    let instance = wgpu::Instance::default();
-
-    let mut adapters = instance.enumerate_adapters(wgpu::Backends::VULKAN | wgpu::Backends::METAL);
+    // We don't test on GL & DX12 right now (and don't want to do so by mistake!).
+    let backends = wgpu::Backends::VULKAN | wgpu::Backends::METAL;
+    let flags = (wgpu::InstanceFlags::ALLOW_UNDERLYING_NONCOMPLIANT_ADAPTER
+        | wgpu::InstanceFlags::VALIDATION
+        | wgpu::InstanceFlags::GPU_BASED_VALIDATION)
+        .with_env(); // Allow overwriting flags via env vars.
+    let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+        backends,
+        flags,
+        ..Default::default()
+    });
+    let mut adapters = instance.enumerate_adapters(backends);
     assert!(!adapters.is_empty(), "No graphics adapter found!");
     re_log::info!("Found the following adapters:");
     for adapter in &adapters {
