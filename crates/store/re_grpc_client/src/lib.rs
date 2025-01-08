@@ -4,6 +4,7 @@ mod address;
 
 pub use address::{InvalidRedapAddress, RedapAddress};
 use re_chunk::external::arrow2;
+use re_log_encoding::codec::wire::decoder::Decode;
 use re_log_types::external::re_types_core::ComponentDescriptor;
 use re_protos::remote_store::v0::CatalogFilter;
 use re_types::blueprint::archetypes::{ContainerBlueprint, ViewportBlueprint};
@@ -24,7 +25,7 @@ use arrow2::datatypes::Field as Arrow2Field;
 use re_chunk::{
     Arrow2Array, Chunk, ChunkBuilder, ChunkId, EntityPath, RowId, Timeline, TransportChunk,
 };
-use re_log_encoding::codec::{wire::decode, CodecError};
+use re_log_encoding::codec::CodecError;
 use re_log_types::{
     ApplicationId, BlueprintActivationCommand, EntityPathFilter, LogMsg, SetStoreInfo, StoreId,
     StoreInfo, StoreKind, StoreSource, Time,
@@ -193,7 +194,7 @@ async fn stream_recording_async(
         .into_inner()
         .map(|resp| {
             resp.and_then(|r| {
-                decode(r.encoder_version(), &r.payload)
+                r.decode()
                     .map_err(|err| tonic::Status::internal(err.to_string()))
             })
         })
@@ -226,7 +227,7 @@ async fn stream_recording_async(
         .into_inner()
         .map(|resp| {
             resp.and_then(|r| {
-                decode(r.encoder_version(), &r.payload)
+                r.decode()
                     .map_err(|err| tonic::Status::internal(err.to_string()))
             })
         });
@@ -347,7 +348,7 @@ async fn stream_catalog_async(
         .into_inner()
         .map(|resp| {
             resp.and_then(|r| {
-                decode(r.encoder_version(), &r.payload)
+                r.decode()
                     .map_err(|err| tonic::Status::internal(err.to_string()))
             })
         });

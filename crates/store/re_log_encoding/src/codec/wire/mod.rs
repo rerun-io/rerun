@@ -1,9 +1,6 @@
 pub mod decoder;
 pub mod encoder;
 
-pub use decoder::decode;
-pub use encoder::encode;
-
 #[cfg(test)]
 mod tests {
     use crate::{

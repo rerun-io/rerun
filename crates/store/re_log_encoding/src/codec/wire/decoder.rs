@@ -1,9 +1,11 @@
 use crate::codec::arrow::read_arrow_from_bytes;
 use crate::codec::CodecError;
 use re_chunk::TransportChunk;
+use re_protos::common::v0::RerunChunk;
+use re_protos::remote_store::v0::DataframePart;
 
-/// Decode transport data from a byte stream - if there's a record batch present, return it, otherwise return `None`.
-pub fn decode(
+/// Decode transport data from a byte stream.
+fn decode(
     version: re_protos::common::v0::EncoderVersion,
     data: &[u8],
 ) -> Result<TransportChunk, CodecError> {
@@ -19,5 +21,23 @@ pub fn decode(
 
             Ok(tc)
         }
+    }
+}
+
+/// Trait that enables decoding a type from a byte stream,
+/// introduced for more ergonomic dealing with our protobuf ("wire") tpyes.
+pub trait Decode {
+    fn decode(&self) -> Result<TransportChunk, CodecError>;
+}
+
+impl Decode for DataframePart {
+    fn decode(&self) -> Result<TransportChunk, CodecError> {
+        decode(self.encoder_version(), &self.payload)
+    }
+}
+
+impl Decode for RerunChunk {
+    fn decode(&self) -> Result<TransportChunk, CodecError> {
+        decode(self.encoder_version(), &self.payload)
     }
 }
