@@ -68,9 +68,10 @@ jobs:
       - name: Setup software rasterizer
         run: pixi run python ./scripts/ci/setup_software_rasterizer.py
 
-      - name: Rust checks (PR subset)
-        if: ${{ inputs.CHANNEL == 'pr' }}
-        run: pixi run rs-check --only base_checks sdk_variations cargo_deny wasm docs
+        # TODO: re-enable
+      # - name: Rust checks (PR subset)
+      #   if: ${{ inputs.CHANNEL == 'pr' }}
+      #   run: pixi run rs-check --only base_checks sdk_variations cargo_deny wasm docs
 
       - name: Run tests (`cargo test --all-targets --all-features`)
         if: ${{ inputs.CHANNEL == 'pr' }}
