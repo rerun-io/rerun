@@ -362,7 +362,6 @@ fn preview_if_image_ui(
     ui.horizontal(|ui| {
         image_download_button_ui(ctx, ui, entity_path, &image, data_range);
 
-        #[cfg(not(target_arch = "wasm32"))]
         crate::image::copy_image_button_ui(ui, &image, data_range);
     });
 

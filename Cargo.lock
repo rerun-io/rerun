@@ -6908,7 +6908,6 @@ version = "0.22.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "anyhow",
- "arboard",
  "arrow",
  "bit-vec",
  "bitflags 2.6.0",
@@ -6956,6 +6955,7 @@ dependencies = [
  "thiserror 1.0.65",
  "uuid",
  "wasm-bindgen-futures",
+ "web-sys",
  "wgpu",
 ]
 

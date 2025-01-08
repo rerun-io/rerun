@@ -7,7 +7,6 @@ use re_viewer_context::{
 };
 
 /// Show a button letting the user copy the image
-#[cfg(not(target_arch = "wasm32"))]
 pub fn copy_image_button_ui(ui: &mut egui::Ui, image: &ImageInfo, data_range: egui::Rangef) {
     if ui
         .button("Copy image")
@@ -15,12 +14,11 @@ pub fn copy_image_button_ui(ui: &mut egui::Ui, image: &ImageInfo, data_range: eg
         .clicked()
     {
         if let Some(rgba) = image.to_rgba8_image(data_range.into()) {
-            re_viewer_context::Clipboard::with(|clipboard| {
-                clipboard.set_image(
-                    [rgba.width() as _, rgba.height() as _],
-                    bytemuck::cast_slice(rgba.as_raw()),
-                );
-            });
+            let egui_image = egui::ColorImage::from_rgba_unmultiplied(
+                [rgba.width() as _, rgba.height() as _],
+                bytemuck::cast_slice(rgba.as_raw()),
+            );
+            ui.ctx().copy_image(egui_image);
         } else {
             re_log::error!("Invalid image");
         }

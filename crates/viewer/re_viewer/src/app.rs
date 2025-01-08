@@ -1590,7 +1590,7 @@ impl App {
     ) {
         use re_viewer_context::ScreenshotInfo;
 
-        if let Some(info) = &user_data
+        if let Some(info) = user_data
             .data
             .as_ref()
             .and_then(|data| data.downcast_ref::<ScreenshotInfo>())
@@ -1609,14 +1609,8 @@ impl App {
             };
 
             match target {
-                #[cfg(not(target_arch = "wasm32"))] // TODO(#8264): copy-to-screenshot on web
                 re_viewer_context::ScreenshotTarget::CopyToClipboard => {
-                    re_viewer_context::Clipboard::with(|clipboard| {
-                        clipboard.set_image(
-                            [rgba.width(), rgba.height()],
-                            bytemuck::cast_slice(rgba.as_raw()),
-                        );
-                    });
+                    self.egui_ctx.copy_image((*rgba).clone());
                 }
 
                 re_viewer_context::ScreenshotTarget::SaveToDisk => {
@@ -1644,7 +1638,7 @@ impl App {
             }
         } else {
             #[cfg(not(target_arch = "wasm32"))] // no full-app screenshotting on web
-            self.screenshotter.save(image);
+            self.screenshotter.save(&self.egui_ctx, image);
         }
     }
 }
@@ -1929,17 +1923,29 @@ impl eframe::App for App {
         // Return the `StoreHub` to the Viewer so we have it on the next frame
         self.store_hub = Some(store_hub);
 
-        // Check for returned screenshot:
-        egui_ctx.input(|i| {
-            for event in &i.raw.events {
-                if let egui::Event::Screenshot {
-                    image, user_data, ..
-                } = event
-                {
-                    self.process_screenshot_result(image, user_data);
-                }
+        {
+            // Check for returned screenshots:
+            let screenshots: Vec<_> = egui_ctx.input(|i| {
+                i.raw
+                    .events
+                    .iter()
+                    .filter_map(|event| {
+                        if let egui::Event::Screenshot {
+                            image, user_data, ..
+                        } = event
+                        {
+                            Some((image.clone(), user_data.clone()))
+                        } else {
+                            None
+                        }
+                    })
+                    .collect()
+            });
+
+            for (image, user_data) in screenshots {
+                self.process_screenshot_result(&image, &user_data);
             }
-        });
+        }
     }
 
     #[cfg(target_arch = "wasm32")]
