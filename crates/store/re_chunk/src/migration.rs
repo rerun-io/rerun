@@ -88,7 +88,7 @@ impl Chunk {
         }
 
         for (desc, list_array) in components_patched {
-            chunk.components.insert_descriptor_arrow2(desc, list_array);
+            chunk.components.insert_descriptor(desc, list_array.into());
         }
 
         chunk

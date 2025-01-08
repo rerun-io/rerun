@@ -77,21 +77,6 @@ impl ChunkComponents {
             .map(|la| la.into())
     }
 
-    /// Like `Self::insert`, but automatically infers the [`ComponentName`] layer.
-    #[inline]
-    pub fn insert_descriptor_arrow2(
-        &mut self,
-        component_desc: ComponentDescriptor,
-        list_array: Arrow2ListArray<i32>,
-    ) -> Option<Arrow2ListArray<i32>> {
-        // TODO(cmc): revert me
-        let component_desc = component_desc.untagged();
-        self.0
-            .entry(component_desc.component_name)
-            .or_default()
-            .insert(component_desc, list_array)
-    }
-
     /// Returns all list arrays for the given component name.
     ///
     /// I.e semantically equivalent to `get("MyComponent:*.*")`
@@ -161,7 +146,7 @@ impl FromIterator<(ComponentDescriptor, ArrowListArray)> for ChunkComponents {
         let mut this = Self::default();
         {
             for (component_desc, list_array) in iter {
-                this.insert_descriptor_arrow2(component_desc, list_array.into());
+                this.insert_descriptor(component_desc, list_array);
             }
         }
         this
@@ -190,7 +175,7 @@ impl FromIterator<(ComponentDescriptor, Arrow2ListArray<i32>)> for ChunkComponen
         let mut this = Self::default();
         {
             for (component_desc, list_array) in iter {
-                this.insert_descriptor_arrow2(component_desc, list_array);
+                this.insert_descriptor(component_desc, list_array.into());
             }
         }
         this
@@ -959,7 +944,7 @@ impl Chunk {
         list_array: Arrow2ListArray<i32>,
     ) -> ChunkResult<()> {
         self.components
-            .insert_descriptor_arrow2(component_desc, list_array);
+            .insert_descriptor(component_desc, list_array.into());
         self.sanity_check()
     }
 

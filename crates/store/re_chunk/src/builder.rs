@@ -240,7 +240,7 @@ impl ChunkBuilder {
                             .map(|list_array| (component_desc, list_array))
                     })
             {
-                per_name.insert_descriptor_arrow2(component_desc, list_array);
+                per_name.insert_descriptor(component_desc, list_array.into());
             }
             per_name
         };
@@ -303,7 +303,7 @@ impl ChunkBuilder {
                             }
                         })
                 {
-                    per_name.insert_descriptor_arrow2(component_desc, list_array);
+                    per_name.insert_descriptor(component_desc, list_array.into());
                 }
                 per_name
             },
