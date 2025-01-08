@@ -117,23 +117,6 @@ impl ChunkBuilder {
         )
     }
 
-    /// Add a row's worth of data using the given component data.
-    #[inline]
-    pub fn with_row_arrow2(
-        self,
-        row_id: RowId,
-        timepoint: impl Into<TimePoint>,
-        components: impl IntoIterator<Item = (ComponentDescriptor, Box<dyn Arrow2Array>)>,
-    ) -> Self {
-        self.with_sparse_row(
-            row_id,
-            timepoint,
-            components
-                .into_iter()
-                .map(|(component_descr, array)| (component_descr, Some(array))),
-        )
-    }
-
     /// Add a row's worth of data by destructuring an archetype into component columns.
     #[inline]
     pub fn with_archetype(
@@ -160,11 +143,11 @@ impl ChunkBuilder {
         timepoint: impl Into<TimePoint>,
         component_batch: &dyn ComponentBatch,
     ) -> Self {
-        self.with_row_arrow2(
+        self.with_row(
             row_id,
             timepoint,
             component_batch
-                .to_arrow2()
+                .to_arrow()
                 .ok()
                 .map(|array| (component_batch.descriptor().into_owned(), array)),
         )
@@ -178,12 +161,12 @@ impl ChunkBuilder {
         timepoint: impl Into<TimePoint>,
         component_batches: impl IntoIterator<Item = &'a dyn ComponentBatch>,
     ) -> Self {
-        self.with_row_arrow2(
+        self.with_row(
             row_id,
             timepoint,
             component_batches.into_iter().filter_map(|component_batch| {
                 component_batch
-                    .to_arrow2()
+                    .to_arrow()
                     .ok()
                     .map(|array| (component_batch.descriptor().into_owned(), array))
             }),

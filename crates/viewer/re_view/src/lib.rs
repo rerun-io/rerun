@@ -55,7 +55,9 @@ pub fn diff_component_filter<T: re_types_core::Component>(
         .any(|list_array| {
             list_array
                 .iter()
-                .filter_map(|array| array.and_then(|array| T::from_arrow2(&*array).ok()))
+                .filter_map(|array| {
+                    array.and_then(|array| T::from_arrow(&arrow::array::ArrayRef::from(array)).ok())
+                })
                 .any(|instances| instances.iter().any(filter))
         })
 }

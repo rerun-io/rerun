@@ -70,7 +70,8 @@ impl PerStoreChunkSubscriber for MaxImageDimensionsStoreSubscriber {
             {
                 for new_dim in all_dimensions.iter().filter_map(|array| {
                     array.and_then(|array| {
-                        ImageFormat::from_arrow2(&*array).ok()?.into_iter().next()
+                        let array = arrow::array::ArrayRef::from(array);
+                        ImageFormat::from_arrow(&array).ok()?.into_iter().next()
                     })
                 }) {
                     let max_dim = self

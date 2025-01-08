@@ -107,7 +107,7 @@ impl ChunkUi {
                         });
 
                     if response.clicked() {
-                        ui.output_mut(|o| o.copied_text = datatype.clone());
+                        ui.ctx().copy_text(datatype.clone());
                     }
                 });
             }
@@ -149,7 +149,7 @@ impl ChunkUi {
                         chunk.component_batch_raw(&component_desc.component_name, row_index);
                     match component_data {
                         Some(Ok(data)) => {
-                            re_ui::arrow2_ui(ui, re_ui::UiLayout::List, &*data);
+                            re_ui::arrow_ui(ui, re_ui::UiLayout::List, &*data);
                         }
                         Some(Err(err)) => {
                             ui.error_with_details_on_hover(err.to_string());
@@ -269,8 +269,7 @@ impl ChunkUi {
                 .clicked()
             {
                 //TODO(#7282): make sure the output is not dependant on the parent terminal's width
-                let s = self.chunk.to_string();
-                ui.output_mut(|o| o.copied_text = s);
+                ui.ctx().copy_text(self.chunk.to_string());
             }
         });
 

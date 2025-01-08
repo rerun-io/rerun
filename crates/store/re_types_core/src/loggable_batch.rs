@@ -32,6 +32,11 @@ pub trait LoggableBatch {
     fn to_arrow2(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>>;
 }
 
+#[allow(dead_code)]
+fn assert_loggablebatch_object_safe() {
+    let _: &dyn LoggableBatch;
+}
+
 /// A [`ComponentBatch`] represents an array's worth of [`Component`] instances.
 pub trait ComponentBatch: LoggableBatch {
     /// Serializes the batch into an Arrow list array with a single component per list.
@@ -73,6 +78,11 @@ pub trait ComponentBatch: LoggableBatch {
     fn name(&self) -> ComponentName {
         self.descriptor().component_name
     }
+}
+
+#[allow(dead_code)]
+fn assert_component_batch_object_safe() {
+    let _: &dyn LoggableBatch;
 }
 
 /// Some [`ComponentBatch`], optionally with an overridden [`ComponentDescriptor`].
@@ -287,14 +297,14 @@ impl<C: Component, const N: usize> ComponentBatch for [Option<C>; N] {
 
 // --- Slice ---
 
-impl<L: Loggable> LoggableBatch for &[L] {
+impl<L: Loggable> LoggableBatch for [L] {
     #[inline]
     fn to_arrow2(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>> {
         L::to_arrow2(self.iter().map(|v| std::borrow::Cow::Borrowed(v)))
     }
 }
 
-impl<C: Component> ComponentBatch for &[C] {
+impl<C: Component> ComponentBatch for [C] {
     #[inline]
     fn descriptor(&self) -> Cow<'_, ComponentDescriptor> {
         C::descriptor().into()
@@ -303,7 +313,7 @@ impl<C: Component> ComponentBatch for &[C] {
 
 // --- Slice<Option> ---
 
-impl<L: Loggable> LoggableBatch for &[Option<L>] {
+impl<L: Loggable> LoggableBatch for [Option<L>] {
     #[inline]
     fn to_arrow2(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>> {
         L::to_arrow2_opt(
@@ -313,42 +323,7 @@ impl<L: Loggable> LoggableBatch for &[Option<L>] {
     }
 }
 
-impl<C: Component> ComponentBatch for &[Option<C>] {
-    #[inline]
-    fn descriptor(&self) -> Cow<'_, ComponentDescriptor> {
-        C::descriptor().into()
-    }
-}
-
-// --- ArrayRef ---
-
-impl<L: Loggable, const N: usize> LoggableBatch for &[L; N] {
-    #[inline]
-    fn to_arrow2(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>> {
-        L::to_arrow2(self.iter().map(|v| std::borrow::Cow::Borrowed(v)))
-    }
-}
-
-impl<C: Component, const N: usize> ComponentBatch for &[C; N] {
-    #[inline]
-    fn descriptor(&self) -> Cow<'_, ComponentDescriptor> {
-        C::descriptor().into()
-    }
-}
-
-// --- ArrayRef<Option> ---
-
-impl<L: Loggable, const N: usize> LoggableBatch for &[Option<L>; N] {
-    #[inline]
-    fn to_arrow2(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>> {
-        L::to_arrow2_opt(
-            self.iter()
-                .map(|opt| opt.as_ref().map(|v| std::borrow::Cow::Borrowed(v))),
-        )
-    }
-}
-
-impl<C: Component, const N: usize> ComponentBatch for &[Option<C>; N] {
+impl<C: Component> ComponentBatch for [Option<C>] {
     #[inline]
     fn descriptor(&self) -> Cow<'_, ComponentDescriptor> {
         C::descriptor().into()

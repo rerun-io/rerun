@@ -37,13 +37,13 @@ const COLUMN_HSPACE: f32 = 20.0;
 const AFTER_HEADER_VSPACE: f32 = 48.0;
 const TITLE_TO_GRID_VSPACE: f32 = 24.0;
 const ROW_VSPACE: f32 = 20.0;
-const THUMBNAIL_RADIUS: f32 = 12.0;
+const THUMBNAIL_RADIUS: u8 = 12;
 
 const CARD_THUMBNAIL_ASPECT_RATIO: f32 = 337.0 / 250.0;
 
 const CARD_DESCRIPTION_HEIGHT: f32 = 130.0;
 
-const DESCRIPTION_INNER_MARGIN: f32 = 20.0;
+const DESCRIPTION_INNER_MARGIN: i8 = 20;
 
 /// Structure to track both an example description and its layout in the grid.
 ///
@@ -389,7 +389,7 @@ impl ExampleSection {
                                     // on wrapping, so we use the bottom of the example card as
                                     // reference to position the source link.
                                     example.move_cursor_to_bottom(ui);
-                                    ui.add_space(-DESCRIPTION_INNER_MARGIN - 15.0);
+                                    ui.add_space(-DESCRIPTION_INNER_MARGIN as f32 - 15.0);
 
                                     example.github_link_and_size_ui(ui);
 
@@ -491,8 +491,8 @@ impl ExampleDescLayout {
         let rounding = egui::Rounding {
             nw: THUMBNAIL_RADIUS,
             ne: THUMBNAIL_RADIUS,
-            sw: 0.0,
-            se: 0.0,
+            sw: 0,
+            se: 0,
         };
         egui::Image::new(&self.desc.thumbnail.url)
             .uv(uv_rect)
@@ -507,9 +507,9 @@ impl ExampleDescLayout {
             .line_height(Some(16.0))
             .text_style(re_ui::DesignTokens::welcome_screen_example_title());
 
-        ui.add_space(DESCRIPTION_INNER_MARGIN);
+        ui.add_space(DESCRIPTION_INNER_MARGIN as _);
         egui::Frame {
-            inner_margin: egui::Margin::symmetric(DESCRIPTION_INNER_MARGIN, 0.0),
+            inner_margin: egui::Margin::symmetric(DESCRIPTION_INNER_MARGIN, 0),
             ..Default::default()
         }
         .show(ui, |ui| {
@@ -521,7 +521,7 @@ impl ExampleDescLayout {
         ui.add_space(10.0);
 
         egui::Frame {
-            inner_margin: egui::Margin::symmetric(DESCRIPTION_INNER_MARGIN, 0.0),
+            inner_margin: egui::Margin::symmetric(DESCRIPTION_INNER_MARGIN, 0),
             ..Default::default()
         }
         .show(ui, |ui| {
@@ -553,7 +553,7 @@ impl ExampleDescLayout {
         let source_url = self.desc.source_url.as_deref();
 
         egui::Frame {
-            inner_margin: egui::Margin::symmetric(DESCRIPTION_INNER_MARGIN, 0.0),
+            inner_margin: egui::Margin::symmetric(DESCRIPTION_INNER_MARGIN, 0),
             ..Default::default()
         }
         .show(ui, |ui| {

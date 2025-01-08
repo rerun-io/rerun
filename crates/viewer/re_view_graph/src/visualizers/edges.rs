@@ -16,7 +16,7 @@ pub struct EdgesVisualizer {
 
 pub struct EdgeInstance {
     // We will need this in the future, when we want to select individual edges.
-    pub _instance: Instance,
+    pub instance: Instance,
     pub source: components::GraphNode,
     pub target: components::GraphNode,
     pub source_index: NodeId,
@@ -86,7 +86,7 @@ impl VisualizerSystem for EdgesVisualizer {
                         let target_index = NodeId::from_entity_node(entity_path, &target);
 
                         EdgeInstance {
-                            _instance: Instance::from(i as u64),
+                            instance: Instance::from(i as u64),
                             source,
                             target,
                             source_index,

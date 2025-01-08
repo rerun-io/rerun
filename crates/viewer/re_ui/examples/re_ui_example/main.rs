@@ -264,7 +264,7 @@ impl eframe::App for ExampleApp {
                         .frame(egui::Frame {
                             inner_margin: egui::Margin::symmetric(
                                 re_ui::DesignTokens::view_padding(),
-                                0.0,
+                                0,
                             ),
                             ..Default::default()
                         })

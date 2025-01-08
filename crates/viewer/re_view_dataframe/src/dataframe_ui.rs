@@ -9,7 +9,7 @@ use itertools::Itertools;
 use re_chunk_store::{ColumnDescriptor, LatestAtQuery};
 use re_dataframe::external::re_query::StorageEngineArcReadGuard;
 use re_dataframe::QueryHandle;
-use re_log_types::{EntityPath, TimeInt, Timeline, TimelineName};
+use re_log_types::{EntityPath, TimeInt, TimeType, Timeline, TimelineName};
 use re_types_core::ComponentName;
 use re_ui::UiExt as _;
 use re_viewer_context::{SystemCommandSender, ViewId, ViewerContext};
@@ -195,7 +195,7 @@ struct DataframeTableDelegate<'a> {
 }
 
 impl DataframeTableDelegate<'_> {
-    const LEFT_RIGHT_MARGIN: f32 = 4.0;
+    const LEFT_RIGHT_MARGIN: i8 = 4;
 }
 
 impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
@@ -203,7 +203,11 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
         re_tracing::profile_function!();
 
         // TODO(ab): actual static-only support
-        let filtered_index = self.query_handle.query().filtered_index.unwrap_or_default();
+        let filtered_index = self
+            .query_handle
+            .query()
+            .filtered_index
+            .unwrap_or_else(|| Timeline::new("", TimeType::Sequence));
 
         self.query_handle
             .seek_to_row(info.visible_rows.start as usize);
@@ -229,7 +233,7 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
         }
 
         egui::Frame::none()
-            .inner_margin(egui::Margin::symmetric(4.0, 0.0))
+            .inner_margin(egui::Margin::symmetric(4, 0))
             .show(ui, |ui| {
                 if cell.row_nr == 0 {
                     if let Some(entity_path) = &self.header_entity_paths[cell.group_index] {
@@ -247,7 +251,9 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
                         // Put the text leftmost in the clip rect (so it is always visible)
                         let mut pos = egui::Align2::LEFT_CENTER
                             .anchor_size(
-                                ui.clip_rect().shrink(Self::LEFT_RIGHT_MARGIN).left_center(),
+                                ui.clip_rect()
+                                    .shrink(Self::LEFT_RIGHT_MARGIN as _)
+                                    .left_center(),
                                 size,
                             )
                             .min;
@@ -270,8 +276,11 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
                     let column = &self.selected_columns[cell.col_range.start];
 
                     // TODO(ab): actual static-only support
-                    let filtered_index =
-                        self.query_handle.query().filtered_index.unwrap_or_default();
+                    let filtered_index = self
+                        .query_handle
+                        .query()
+                        .filtered_index
+                        .unwrap_or_else(|| Timeline::new("", TimeType::Sequence));
 
                     // if this column can actually be hidden, then that's the corresponding action
                     let hide_action = match column {
@@ -396,7 +405,11 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
             .unwrap_or(TimeInt::MAX);
 
         // TODO(ab): actual static-only support
-        let filtered_index = self.query_handle.query().filtered_index.unwrap_or_default();
+        let filtered_index = self
+            .query_handle
+            .query()
+            .filtered_index
+            .unwrap_or_else(|| Timeline::new("", TimeType::Sequence));
         let latest_at_query = LatestAtQuery::new(filtered_index, timestamp);
 
         if ui.is_sizing_pass() {
@@ -444,7 +457,7 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
 
                 // Draw the cell content with some margin.
                 egui::Frame::none()
-                    .inner_margin(egui::Margin::symmetric(Self::LEFT_RIGHT_MARGIN, 0.0))
+                    .inner_margin(egui::Margin::symmetric(Self::LEFT_RIGHT_MARGIN, 0))
                     .show(ui, |ui| {
                         line_ui(
                             ui,
