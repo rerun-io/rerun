@@ -6,7 +6,6 @@ use parking_lot::Mutex;
 
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
-use re_log::ResultExt as _;
 use re_log_types::{StoreId, StoreKind};
 use re_types_core::reflection::Reflection;
 
@@ -89,12 +88,10 @@ impl Default for TestContext {
 }
 
 /// Create an `egui_wgpu::RenderState` for tests.
-///
-/// May be `None` if we failed to initialize the wgpu renderer setup.
-fn create_egui_renderstate() -> Option<egui_wgpu::RenderState> {
+fn create_egui_renderstate() -> egui_wgpu::RenderState {
     re_tracing::profile_function!();
 
-    let shared_wgpu_setup = (*SHARED_WGPU_RENDERER_SETUP).as_ref()?;
+    let shared_wgpu_setup = &*SHARED_WGPU_RENDERER_SETUP;
 
     let config = egui_wgpu::WgpuConfiguration {
         wgpu_setup: egui_wgpu::WgpuSetupExisting {
@@ -142,7 +139,8 @@ fn create_egui_renderstate() -> Option<egui_wgpu::RenderState> {
         )
         .expect("Failed to initialize re_renderer"),
     );
-    Some(render_state)
+
+    render_state
 }
 
 /// Instance & adapter
@@ -156,54 +154,50 @@ struct SharedWgpuResources {
     queue: Arc<wgpu::Queue>,
 }
 
-static SHARED_WGPU_RENDERER_SETUP: Lazy<Option<SharedWgpuResources>> =
-    Lazy::new(try_init_shared_renderer_setup);
+static SHARED_WGPU_RENDERER_SETUP: Lazy<SharedWgpuResources> =
+    Lazy::new(init_shared_renderer_setup);
 
-fn try_init_shared_renderer_setup() -> Option<SharedWgpuResources> {
+fn init_shared_renderer_setup() -> SharedWgpuResources {
     // TODO(andreas, emilk/egui#5506): Use centralized wgpu setup logic that…
     // * lives mostly in re_renderer and is shared with viewer & renderer examples
     // * can be told to prefer software rendering
     // * can be told to match a specific device tier
     // For the moment we just use wgpu defaults.
 
-    // TODO(#8245): Should we require this to succeed?
-
     let instance = wgpu::Instance::default();
     let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
         power_preference: wgpu::PowerPreference::default(),
         force_fallback_adapter: false,
         compatible_surface: None,
-    }))?;
+    }))
+    .expect("Failed to request adapter");
 
     let device_caps = re_renderer::config::DeviceCaps::from_adapter(&adapter)
-        .warn_on_err_once("Failed to determine device capabilities")?;
+        .expect("Failed to determine device capabilities");
     let (device, queue) =
         pollster::block_on(adapter.request_device(&device_caps.device_descriptor(), None))
-            .warn_on_err_once("Failed to request device.")?;
+            .expect("Failed to request device.");
 
-    Some(SharedWgpuResources {
+    SharedWgpuResources {
         instance: Arc::new(instance),
         adapter: Arc::new(adapter),
         device: Arc::new(device),
         queue: Arc::new(queue),
-    })
+    }
 }
 
 impl TestContext {
     pub fn setup_kittest_for_rendering(&self) -> egui_kittest::HarnessBuilder<()> {
-        if let Some(new_render_state) = create_egui_renderstate() {
-            let builder = egui_kittest::Harness::builder().renderer(
-                // Note that render state clone is mostly cloning of inner `Arc`.
-                // This does _not_ duplicate re_renderer's context.
-                egui_kittest::wgpu::WgpuTestRenderer::from_render_state(new_render_state.clone()),
-            );
+        let new_render_state = create_egui_renderstate();
+        let builder = egui_kittest::Harness::builder().renderer(
+            // Note that render state clone is mostly cloning of inner `Arc`.
+            // This does _not_ duplicate re_renderer's context.
+            egui_kittest::wgpu::WgpuTestRenderer::from_render_state(new_render_state.clone()),
+        );
+        // Egui kittests insists on having a fresh render state for each test.
+        self.egui_render_state.lock().replace(new_render_state);
 
-            // Egui kittests insists on having a fresh render state for each test.
-            self.egui_render_state.lock().replace(new_render_state);
-            builder
-        } else {
-            egui_kittest::Harness::builder()
-        }
+        builder
     }
 
     /// Timeline the recording config is using by default.
@@ -237,19 +231,14 @@ impl TestContext {
 
         let drag_and_drop_manager = crate::DragAndDropManager::new(ItemCollection::default());
 
-        let context_render_state = self.egui_render_state.lock();
-        let mut renderer;
-        let render_ctx = if let Some(render_state) = context_render_state.as_ref() {
-            renderer = render_state.renderer.write();
-            let render_ctx = renderer
-                .callback_resources
-                .get_mut::<re_renderer::RenderContext>()
-                .expect("No re_renderer::RenderContext in egui_render_state");
-            render_ctx.begin_frame();
-            Some(render_ctx)
-        } else {
-            None
-        };
+        let mut context_render_state = self.egui_render_state.lock();
+        let render_state = context_render_state.get_or_insert_with(create_egui_renderstate);
+        let mut egui_renderer = render_state.renderer.write();
+        let render_ctx = egui_renderer
+            .callback_resources
+            .get_mut::<re_renderer::RenderContext>()
+            .expect("No re_renderer::RenderContext in egui_render_state");
+        render_ctx.begin_frame();
 
         let ctx = ViewerContext {
             app_options: &Default::default(),
@@ -266,7 +255,7 @@ impl TestContext {
             selection_state: &self.selection_state,
             blueprint_query: &self.blueprint_query,
             egui_ctx,
-            render_ctx: render_ctx.as_deref(),
+            render_ctx: Some(render_ctx),
             command_sender: &self.command_sender,
             focused_item: &None,
             drag_and_drop_manager: &drag_and_drop_manager,
@@ -274,9 +263,7 @@ impl TestContext {
 
         func(&ctx);
 
-        if let Some(render_ctx) = render_ctx {
-            render_ctx.before_submit();
-        }
+        render_ctx.before_submit();
     }
 
     /// Run the given function with a [`ViewerContext`] produced by the [`Self`], in the context of
