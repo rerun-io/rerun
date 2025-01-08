@@ -148,7 +148,7 @@ struct SharedWgpuResources {
 }
 
 static SHARED_WGPU_RENDERER_SETUP: Lazy<Option<SharedWgpuResources>> =
-    Lazy::new(|| try_init_shared_renderer_setup());
+    Lazy::new(try_init_shared_renderer_setup);
 
 fn try_init_shared_renderer_setup() -> Option<SharedWgpuResources> {
     // TODO(andreas, emilk/egui#5506): Use centralized wgpu setup logic that…
