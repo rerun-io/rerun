@@ -6538,7 +6538,6 @@ dependencies = [
  "once_cell",
  "parking_lot",
  "rand",
- "re_arrow2",
  "re_entity_db",
  "re_format",
  "re_log",
@@ -6707,6 +6706,7 @@ version = "0.22.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "anyhow",
+ "arrow",
  "bitflags 2.6.0",
  "bytemuck",
  "criterion",

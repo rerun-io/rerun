@@ -21,6 +21,19 @@ impl Chunk {
         &self,
         component_name: &ComponentName,
         row_index: usize,
+    ) -> Option<ChunkResult<ArrayRef>> {
+        self.component_batch_raw_arrow2(component_name, row_index)
+            .map(|res| res.map(|array| array.into()))
+    }
+
+    /// Returns the raw data for the specified component.
+    ///
+    /// Returns an error if the row index is out of bounds.
+    #[inline]
+    fn component_batch_raw_arrow2(
+        &self,
+        component_name: &ComponentName,
+        row_index: usize,
     ) -> Option<ChunkResult<Box<dyn Arrow2Array>>> {
         self.get_first_component(component_name)
             .and_then(|list_array| {
@@ -50,7 +63,7 @@ impl Chunk {
             Err(err) => return Some(Err(err)),
         };
 
-        let data = C::from_arrow2(&*array);
+        let data = C::from_arrow(&*array);
         Some(data.map_err(Into::into))
     }
 
@@ -65,7 +78,7 @@ impl Chunk {
         component_name: &ComponentName,
         row_index: usize,
         instance_index: usize,
-    ) -> Option<ChunkResult<Box<dyn Arrow2Array>>> {
+    ) -> Option<ChunkResult<ArrayRef>> {
         let res = self.component_batch_raw(component_name, row_index)?;
 
         let array = match res {
@@ -74,7 +87,7 @@ impl Chunk {
         };
 
         if array.len() > instance_index {
-            Some(Ok(array.sliced(instance_index, 1)))
+            Some(Ok(array.slice(instance_index, 1)))
         } else {
             Some(Err(crate::ChunkError::IndexOutOfBounds {
                 kind: "instance".to_owned(),
@@ -101,7 +114,7 @@ impl Chunk {
             Err(err) => return Some(Err(err)),
         };
 
-        match C::from_arrow2(&*array) {
+        match C::from_arrow(&*array) {
             Ok(data) => data.into_iter().next().map(Ok), // NOTE: It's already sliced!
             Err(err) => Some(Err(err.into())),
         }
@@ -118,7 +131,7 @@ impl Chunk {
         &self,
         component_name: &ComponentName,
         row_index: usize,
-    ) -> Option<ChunkResult<Box<dyn Arrow2Array>>> {
+    ) -> Option<ChunkResult<ArrayRef>> {
         let res = self.component_batch_raw(component_name, row_index)?;
 
         let array = match res {
@@ -127,7 +140,7 @@ impl Chunk {
         };
 
         if array.len() == 1 {
-            Some(Ok(array.sliced(0, 1)))
+            Some(Ok(array.slice(0, 1)))
         } else {
             Some(Err(crate::ChunkError::IndexOutOfBounds {
                 kind: "mono".to_owned(),
@@ -150,7 +163,7 @@ impl Chunk {
             Err(err) => return Some(Err(err)),
         };
 
-        match C::from_arrow2(&*array) {
+        match C::from_arrow(&*array) {
             Ok(data) => data.into_iter().next().map(Ok), // NOTE: It's already sliced!
             Err(err) => Some(Err(err.into())),
         }
@@ -284,7 +297,7 @@ impl UnitChunkShared {
     /// Returns an error if the data cannot be deserialized.
     #[inline]
     pub fn component_batch<C: Component>(&self) -> Option<ChunkResult<Vec<C>>> {
-        let data = C::from_arrow2(&*self.component_batch_raw_arrow2(&C::name())?);
+        let data = C::from_arrow(&*self.component_batch_raw(&C::name())?);
         Some(data.map_err(Into::into))
     }
 
@@ -322,11 +335,11 @@ impl UnitChunkShared {
         let res = self.component_instance_raw(&C::name(), instance_index)?;
 
         let array = match res {
-            Ok(array) => array,
+            Ok(array) => ArrayRef::from(array),
             Err(err) => return Some(Err(err)),
         };
 
-        match C::from_arrow2(&*array) {
+        match C::from_arrow(&*array) {
             Ok(data) => data.into_iter().next().map(Ok), // NOTE: It's already sliced!
             Err(err) => Some(Err(err.into())),
         }
@@ -362,11 +375,11 @@ impl UnitChunkShared {
         let res = self.component_mono_raw(&C::name())?;
 
         let array = match res {
-            Ok(array) => array,
+            Ok(array) => ArrayRef::from(array),
             Err(err) => return Some(Err(err)),
         };
 
-        match C::from_arrow2(&*array) {
+        match C::from_arrow(&*array) {
             Ok(data) => data.into_iter().next().map(Ok), // NOTE: It's already sliced!
             Err(err) => Some(Err(err.into())),
         }

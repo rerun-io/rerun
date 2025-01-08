@@ -43,6 +43,7 @@ re_viewport_blueprint.workspace = true
 
 ahash.workspace = true
 anyhow.workspace = true
+arrow.workspace = true
 bitflags.workspace = true
 bytemuck.workspace = true
 egui = { workspace = true, features = ["serde"] }

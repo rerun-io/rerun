@@ -67,7 +67,8 @@ fn parse_tuid(array: &dyn Array, index: usize) -> Option<Tuid> {
         _ => (array.to_boxed(), index),
     };
 
-    let tuids = Tuid::from_arrow2(array.as_ref()).ok()?;
+    let array = re_types_core::external::arrow::array::ArrayRef::from(array);
+    let tuids = Tuid::from_arrow(&array).ok()?;
     tuids.get(index).copied()
 }
 
