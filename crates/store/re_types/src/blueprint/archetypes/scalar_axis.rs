@@ -30,6 +30,28 @@ pub struct ScalarAxis {
     pub zoom_lock: Option<crate::blueprint::components::LockRangeDuringZoom>,
 }
 
+impl ScalarAxis {
+    /// Returns the [`ComponentDescriptor`] for [`Self::range`].
+    #[inline]
+    pub fn descriptor_range() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ScalarAxis".into()),
+            component_name: "rerun.components.Range1D".into(),
+            archetype_field_name: Some("range".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::zoom_lock`].
+    #[inline]
+    pub fn descriptor_zoom_lock() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ScalarAxis".into()),
+            component_name: "rerun.blueprint.components.LockRangeDuringZoom".into(),
+            archetype_field_name: Some("zoom_lock".into()),
+        }
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 

@@ -39,6 +39,38 @@ pub struct TensorScalarMapping {
     pub gamma: Option<crate::components::GammaCorrection>,
 }
 
+impl TensorScalarMapping {
+    /// Returns the [`ComponentDescriptor`] for [`Self::mag_filter`].
+    #[inline]
+    pub fn descriptor_mag_filter() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.TensorScalarMapping".into()),
+            component_name: "rerun.components.MagnificationFilter".into(),
+            archetype_field_name: Some("mag_filter".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::colormap`].
+    #[inline]
+    pub fn descriptor_colormap() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.TensorScalarMapping".into()),
+            component_name: "rerun.components.Colormap".into(),
+            archetype_field_name: Some("colormap".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::gamma`].
+    #[inline]
+    pub fn descriptor_gamma() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.TensorScalarMapping".into()),
+            component_name: "rerun.components.GammaCorrection".into(),
+            archetype_field_name: Some("gamma".into()),
+        }
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 

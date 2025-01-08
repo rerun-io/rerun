@@ -64,6 +64,18 @@ pub struct ViewContents {
     pub query: Vec<crate::blueprint::components::QueryExpression>,
 }
 
+impl ViewContents {
+    /// Returns the [`ComponentDescriptor`] for [`Self::query`].
+    #[inline]
+    pub fn descriptor_query() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ViewContents".into()),
+            component_name: "rerun.blueprint.components.QueryExpression".into(),
+            archetype_field_name: Some("query".into()),
+        }
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 

@@ -78,6 +78,18 @@ pub struct Clear {
     pub is_recursive: crate::components::ClearIsRecursive,
 }
 
+impl Clear {
+    /// Returns the [`ComponentDescriptor`] for [`Self::is_recursive`].
+    #[inline]
+    pub fn descriptor_is_recursive() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Clear".into()),
+            component_name: "rerun.components.ClearIsRecursive".into(),
+            archetype_field_name: Some("is_recursive".into()),
+        }
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| {
         [ComponentDescriptor {

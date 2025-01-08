@@ -75,6 +75,18 @@ pub struct AnnotationContext {
     pub context: crate::components::AnnotationContext,
 }
 
+impl AnnotationContext {
+    /// Returns the [`ComponentDescriptor`] for [`Self::context`].
+    #[inline]
+    pub fn descriptor_context() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.AnnotationContext".into()),
+            component_name: "rerun.components.AnnotationContext".into(),
+            archetype_field_name: Some("context".into()),
+        }
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| {
         [ComponentDescriptor {

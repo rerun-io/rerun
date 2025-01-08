@@ -69,6 +69,38 @@ pub struct GeoLineStrings {
     pub colors: Option<Vec<crate::components::Color>>,
 }
 
+impl GeoLineStrings {
+    /// Returns the [`ComponentDescriptor`] for [`Self::line_strings`].
+    #[inline]
+    pub fn descriptor_line_strings() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.GeoLineStrings".into()),
+            component_name: "rerun.components.GeoLineString".into(),
+            archetype_field_name: Some("line_strings".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::radii`].
+    #[inline]
+    pub fn descriptor_radii() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.GeoLineStrings".into()),
+            component_name: "rerun.components.Radius".into(),
+            archetype_field_name: Some("radii".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::colors`].
+    #[inline]
+    pub fn descriptor_colors() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.GeoLineStrings".into()),
+            component_name: "rerun.components.Color".into(),
+            archetype_field_name: Some("colors".into()),
+        }
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| {
         [ComponentDescriptor {

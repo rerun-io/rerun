@@ -66,6 +66,18 @@ pub struct ViewCoordinates {
     pub xyz: crate::components::ViewCoordinates,
 }
 
+impl ViewCoordinates {
+    /// Returns the [`ComponentDescriptor`] for [`Self::xyz`].
+    #[inline]
+    pub fn descriptor_xyz() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.ViewCoordinates".into()),
+            component_name: "rerun.components.ViewCoordinates".into(),
+            archetype_field_name: Some("xyz".into()),
+        }
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| {
         [ComponentDescriptor {

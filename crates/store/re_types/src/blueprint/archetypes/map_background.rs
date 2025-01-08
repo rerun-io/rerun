@@ -27,6 +27,18 @@ pub struct MapBackground {
     pub provider: crate::blueprint::components::MapProvider,
 }
 
+impl MapBackground {
+    /// Returns the [`ComponentDescriptor`] for [`Self::provider`].
+    #[inline]
+    pub fn descriptor_provider() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.MapBackground".into()),
+            component_name: "rerun.blueprint.components.MapProvider".into(),
+            archetype_field_name: Some("provider".into()),
+        }
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 

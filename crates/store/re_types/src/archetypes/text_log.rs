@@ -72,6 +72,38 @@ pub struct TextLog {
     pub color: Option<crate::components::Color>,
 }
 
+impl TextLog {
+    /// Returns the [`ComponentDescriptor`] for [`Self::text`].
+    #[inline]
+    pub fn descriptor_text() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.TextLog".into()),
+            component_name: "rerun.components.Text".into(),
+            archetype_field_name: Some("text".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::level`].
+    #[inline]
+    pub fn descriptor_level() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.TextLog".into()),
+            component_name: "rerun.components.TextLogLevel".into(),
+            archetype_field_name: Some("level".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::color`].
+    #[inline]
+    pub fn descriptor_color() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.TextLog".into()),
+            component_name: "rerun.components.Color".into(),
+            archetype_field_name: Some("color".into()),
+        }
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| {
         [ComponentDescriptor {

@@ -35,6 +35,28 @@ pub struct ForceManyBody {
     pub strength: Option<crate::blueprint::components::ForceStrength>,
 }
 
+impl ForceManyBody {
+    /// Returns the [`ComponentDescriptor`] for [`Self::enabled`].
+    #[inline]
+    pub fn descriptor_enabled() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ForceManyBody".into()),
+            component_name: "rerun.blueprint.components.Enabled".into(),
+            archetype_field_name: Some("enabled".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::strength`].
+    #[inline]
+    pub fn descriptor_strength() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ForceManyBody".into()),
+            component_name: "rerun.blueprint.components.ForceStrength".into(),
+            archetype_field_name: Some("strength".into()),
+        }
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 

@@ -67,6 +67,28 @@ pub struct Tensor {
     pub value_range: Option<crate::components::ValueRange>,
 }
 
+impl Tensor {
+    /// Returns the [`ComponentDescriptor`] for [`Self::data`].
+    #[inline]
+    pub fn descriptor_data() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Tensor".into()),
+            component_name: "rerun.components.TensorData".into(),
+            archetype_field_name: Some("data".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::value_range`].
+    #[inline]
+    pub fn descriptor_value_range() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Tensor".into()),
+            component_name: "rerun.components.ValueRange".into(),
+            archetype_field_name: Some("value_range".into()),
+        }
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| {
         [ComponentDescriptor {

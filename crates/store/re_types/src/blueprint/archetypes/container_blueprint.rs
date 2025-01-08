@@ -62,6 +62,88 @@ pub struct ContainerBlueprint {
     pub grid_columns: Option<crate::blueprint::components::GridColumns>,
 }
 
+impl ContainerBlueprint {
+    /// Returns the [`ComponentDescriptor`] for [`Self::container_kind`].
+    #[inline]
+    pub fn descriptor_container_kind() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+            component_name: "rerun.blueprint.components.ContainerKind".into(),
+            archetype_field_name: Some("container_kind".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::display_name`].
+    #[inline]
+    pub fn descriptor_display_name() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+            component_name: "rerun.components.Name".into(),
+            archetype_field_name: Some("display_name".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::contents`].
+    #[inline]
+    pub fn descriptor_contents() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+            component_name: "rerun.blueprint.components.IncludedContent".into(),
+            archetype_field_name: Some("contents".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::col_shares`].
+    #[inline]
+    pub fn descriptor_col_shares() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+            component_name: "rerun.blueprint.components.ColumnShare".into(),
+            archetype_field_name: Some("col_shares".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::row_shares`].
+    #[inline]
+    pub fn descriptor_row_shares() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+            component_name: "rerun.blueprint.components.RowShare".into(),
+            archetype_field_name: Some("row_shares".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::active_tab`].
+    #[inline]
+    pub fn descriptor_active_tab() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+            component_name: "rerun.blueprint.components.ActiveTab".into(),
+            archetype_field_name: Some("active_tab".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::visible`].
+    #[inline]
+    pub fn descriptor_visible() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+            component_name: "rerun.blueprint.components.Visible".into(),
+            archetype_field_name: Some("visible".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::grid_columns`].
+    #[inline]
+    pub fn descriptor_grid_columns() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+            component_name: "rerun.blueprint.components.GridColumns".into(),
+            archetype_field_name: Some("grid_columns".into()),
+        }
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| {
         [ComponentDescriptor {

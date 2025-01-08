@@ -102,6 +102,28 @@ pub struct TextDocument {
     pub media_type: Option<crate::components::MediaType>,
 }
 
+impl TextDocument {
+    /// Returns the [`ComponentDescriptor`] for [`Self::text`].
+    #[inline]
+    pub fn descriptor_text() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.TextDocument".into()),
+            component_name: "rerun.components.Text".into(),
+            archetype_field_name: Some("text".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::media_type`].
+    #[inline]
+    pub fn descriptor_media_type() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.TextDocument".into()),
+            component_name: "rerun.components.MediaType".into(),
+            archetype_field_name: Some("media_type".into()),
+        }
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| {
         [ComponentDescriptor {

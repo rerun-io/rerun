@@ -50,6 +50,58 @@ pub struct ViewportBlueprint {
         Option<Vec<crate::blueprint::components::ViewerRecommendationHash>>,
 }
 
+impl ViewportBlueprint {
+    /// Returns the [`ComponentDescriptor`] for [`Self::root_container`].
+    #[inline]
+    pub fn descriptor_root_container() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
+            component_name: "rerun.blueprint.components.RootContainer".into(),
+            archetype_field_name: Some("root_container".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::maximized`].
+    #[inline]
+    pub fn descriptor_maximized() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
+            component_name: "rerun.blueprint.components.ViewMaximized".into(),
+            archetype_field_name: Some("maximized".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::auto_layout`].
+    #[inline]
+    pub fn descriptor_auto_layout() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
+            component_name: "rerun.blueprint.components.AutoLayout".into(),
+            archetype_field_name: Some("auto_layout".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::auto_views`].
+    #[inline]
+    pub fn descriptor_auto_views() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
+            component_name: "rerun.blueprint.components.AutoViews".into(),
+            archetype_field_name: Some("auto_views".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::past_viewer_recommendations`].
+    #[inline]
+    pub fn descriptor_past_viewer_recommendations() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
+            component_name: "rerun.blueprint.components.ViewerRecommendationHash".into(),
+            archetype_field_name: Some("past_viewer_recommendations".into()),
+        }
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 

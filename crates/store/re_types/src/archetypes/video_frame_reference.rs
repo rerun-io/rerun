@@ -146,6 +146,28 @@ pub struct VideoFrameReference {
     pub video_reference: Option<crate::components::EntityPath>,
 }
 
+impl VideoFrameReference {
+    /// Returns the [`ComponentDescriptor`] for [`Self::timestamp`].
+    #[inline]
+    pub fn descriptor_timestamp() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.VideoFrameReference".into()),
+            component_name: "rerun.components.VideoTimestamp".into(),
+            archetype_field_name: Some("timestamp".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::video_reference`].
+    #[inline]
+    pub fn descriptor_video_reference() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.VideoFrameReference".into()),
+            component_name: "rerun.components.EntityPath".into(),
+            archetype_field_name: Some("video_reference".into()),
+        }
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| {
         [ComponentDescriptor {

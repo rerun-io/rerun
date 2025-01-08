@@ -35,6 +35,38 @@ pub struct ForceCollisionRadius {
     pub iterations: Option<crate::blueprint::components::ForceIterations>,
 }
 
+impl ForceCollisionRadius {
+    /// Returns the [`ComponentDescriptor`] for [`Self::enabled`].
+    #[inline]
+    pub fn descriptor_enabled() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ForceCollisionRadius".into()),
+            component_name: "rerun.blueprint.components.Enabled".into(),
+            archetype_field_name: Some("enabled".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::strength`].
+    #[inline]
+    pub fn descriptor_strength() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ForceCollisionRadius".into()),
+            component_name: "rerun.blueprint.components.ForceStrength".into(),
+            archetype_field_name: Some("strength".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::iterations`].
+    #[inline]
+    pub fn descriptor_iterations() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ForceCollisionRadius".into()),
+            component_name: "rerun.blueprint.components.ForceIterations".into(),
+            archetype_field_name: Some("iterations".into()),
+        }
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 

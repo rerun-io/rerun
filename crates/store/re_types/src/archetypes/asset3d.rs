@@ -78,6 +78,38 @@ pub struct Asset3D {
     pub albedo_factor: Option<crate::components::AlbedoFactor>,
 }
 
+impl Asset3D {
+    /// Returns the [`ComponentDescriptor`] for [`Self::blob`].
+    #[inline]
+    pub fn descriptor_blob() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Asset3D".into()),
+            component_name: "rerun.components.Blob".into(),
+            archetype_field_name: Some("blob".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::media_type`].
+    #[inline]
+    pub fn descriptor_media_type() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Asset3D".into()),
+            component_name: "rerun.components.MediaType".into(),
+            archetype_field_name: Some("media_type".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::albedo_factor`].
+    #[inline]
+    pub fn descriptor_albedo_factor() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Asset3D".into()),
+            component_name: "rerun.components.AlbedoFactor".into(),
+            archetype_field_name: Some("albedo_factor".into()),
+        }
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| {
         [ComponentDescriptor {

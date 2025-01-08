@@ -49,6 +49,58 @@ pub struct LineGrid3D {
     pub color: Option<crate::components::Color>,
 }
 
+impl LineGrid3D {
+    /// Returns the [`ComponentDescriptor`] for [`Self::visible`].
+    #[inline]
+    pub fn descriptor_visible() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
+            component_name: "rerun.blueprint.components.Visible".into(),
+            archetype_field_name: Some("visible".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::spacing`].
+    #[inline]
+    pub fn descriptor_spacing() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
+            component_name: "rerun.blueprint.components.GridSpacing".into(),
+            archetype_field_name: Some("spacing".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::plane`].
+    #[inline]
+    pub fn descriptor_plane() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
+            component_name: "rerun.components.Plane3D".into(),
+            archetype_field_name: Some("plane".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::stroke_width`].
+    #[inline]
+    pub fn descriptor_stroke_width() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
+            component_name: "rerun.components.StrokeWidth".into(),
+            archetype_field_name: Some("stroke_width".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::color`].
+    #[inline]
+    pub fn descriptor_color() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
+            component_name: "rerun.components.Color".into(),
+            archetype_field_name: Some("color".into()),
+        }
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 

@@ -88,6 +88,48 @@ pub struct SeriesPoint {
     pub marker_size: Option<crate::components::MarkerSize>,
 }
 
+impl SeriesPoint {
+    /// Returns the [`ComponentDescriptor`] for [`Self::color`].
+    #[inline]
+    pub fn descriptor_color() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.SeriesPoint".into()),
+            component_name: "rerun.components.Color".into(),
+            archetype_field_name: Some("color".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::marker`].
+    #[inline]
+    pub fn descriptor_marker() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.SeriesPoint".into()),
+            component_name: "rerun.components.MarkerShape".into(),
+            archetype_field_name: Some("marker".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::name`].
+    #[inline]
+    pub fn descriptor_name() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.SeriesPoint".into()),
+            component_name: "rerun.components.Name".into(),
+            archetype_field_name: Some("name".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::marker_size`].
+    #[inline]
+    pub fn descriptor_marker_size() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.SeriesPoint".into()),
+            component_name: "rerun.components.MarkerSize".into(),
+            archetype_field_name: Some("marker_size".into()),
+        }
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 

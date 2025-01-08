@@ -1078,6 +1078,36 @@ fn quote_trait_impls_for_archetype(obj: &Object) -> TokenStream {
         (num_descriptors, quoted_descriptors)
     }
 
+    let all_descriptor_methods = obj
+        .fields
+        .iter()
+        .map(|field| {
+            let Some(component_name) = field.typ.fqname() else {
+                panic!("Archetype field must be an object/union or an array/vector of such")
+            };
+
+            let archetype_name = &obj.fqname;
+            let archetype_field_name = field.snake_case_name();
+
+            let doc = format!(
+                "Returns the [`ComponentDescriptor`] for [`Self::{archetype_field_name}`]."
+            );
+            let fn_name = format_ident!("descriptor_{archetype_field_name}");
+
+            quote! {
+                #[doc = #doc]
+                #[inline]
+                pub fn #fn_name() -> ComponentDescriptor {
+                    ComponentDescriptor {
+                        archetype_name: Some(#archetype_name.into()),
+                        component_name: #component_name.into(),
+                        archetype_field_name: Some(#archetype_field_name.into()),
+                    }
+                }
+            }
+        })
+        .collect_vec();
+
     let indicator_name = format!("{}Indicator", obj.name);
 
     let quoted_indicator_name = format_ident!("{indicator_name}");
@@ -1261,6 +1291,10 @@ fn quote_trait_impls_for_archetype(obj: &Object) -> TokenStream {
     };
 
     quote! {
+        impl #name {
+            #(#all_descriptor_methods)*
+        }
+
         static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; #num_required_descriptors]> =
             once_cell::sync::Lazy::new(|| {[#required_descriptors]});
 

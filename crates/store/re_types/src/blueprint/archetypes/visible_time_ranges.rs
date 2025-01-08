@@ -35,6 +35,18 @@ pub struct VisibleTimeRanges {
     pub ranges: Vec<crate::blueprint::components::VisibleTimeRange>,
 }
 
+impl VisibleTimeRanges {
+    /// Returns the [`ComponentDescriptor`] for [`Self::ranges`].
+    #[inline]
+    pub fn descriptor_ranges() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.VisibleTimeRanges".into()),
+            component_name: "rerun.blueprint.components.VisibleTimeRange".into(),
+            archetype_field_name: Some("ranges".into()),
+        }
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| {
         [ComponentDescriptor {

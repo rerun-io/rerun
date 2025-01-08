@@ -83,6 +83,48 @@ pub struct SegmentationImage {
     pub draw_order: Option<crate::components::DrawOrder>,
 }
 
+impl SegmentationImage {
+    /// Returns the [`ComponentDescriptor`] for [`Self::buffer`].
+    #[inline]
+    pub fn descriptor_buffer() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.SegmentationImage".into()),
+            component_name: "rerun.components.ImageBuffer".into(),
+            archetype_field_name: Some("buffer".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::format`].
+    #[inline]
+    pub fn descriptor_format() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.SegmentationImage".into()),
+            component_name: "rerun.components.ImageFormat".into(),
+            archetype_field_name: Some("format".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::opacity`].
+    #[inline]
+    pub fn descriptor_opacity() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.SegmentationImage".into()),
+            component_name: "rerun.components.Opacity".into(),
+            archetype_field_name: Some("opacity".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::draw_order`].
+    #[inline]
+    pub fn descriptor_draw_order() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.SegmentationImage".into()),
+            component_name: "rerun.components.DrawOrder".into(),
+            archetype_field_name: Some("draw_order".into()),
+        }
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [

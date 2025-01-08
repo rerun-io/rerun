@@ -130,6 +130,78 @@ pub struct Points3D {
     pub keypoint_ids: Option<Vec<crate::components::KeypointId>>,
 }
 
+impl Points3D {
+    /// Returns the [`ComponentDescriptor`] for [`Self::positions`].
+    #[inline]
+    pub fn descriptor_positions() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Points3D".into()),
+            component_name: "rerun.components.Position3D".into(),
+            archetype_field_name: Some("positions".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::radii`].
+    #[inline]
+    pub fn descriptor_radii() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Points3D".into()),
+            component_name: "rerun.components.Radius".into(),
+            archetype_field_name: Some("radii".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::colors`].
+    #[inline]
+    pub fn descriptor_colors() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Points3D".into()),
+            component_name: "rerun.components.Color".into(),
+            archetype_field_name: Some("colors".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::labels`].
+    #[inline]
+    pub fn descriptor_labels() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Points3D".into()),
+            component_name: "rerun.components.Text".into(),
+            archetype_field_name: Some("labels".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::show_labels`].
+    #[inline]
+    pub fn descriptor_show_labels() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Points3D".into()),
+            component_name: "rerun.components.ShowLabels".into(),
+            archetype_field_name: Some("show_labels".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::class_ids`].
+    #[inline]
+    pub fn descriptor_class_ids() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Points3D".into()),
+            component_name: "rerun.components.ClassId".into(),
+            archetype_field_name: Some("class_ids".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::keypoint_ids`].
+    #[inline]
+    pub fn descriptor_keypoint_ids() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Points3D".into()),
+            component_name: "rerun.components.KeypointId".into(),
+            archetype_field_name: Some("keypoint_ids".into()),
+        }
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| {
         [ComponentDescriptor {

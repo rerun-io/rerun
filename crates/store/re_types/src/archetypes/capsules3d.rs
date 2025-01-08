@@ -112,6 +112,98 @@ pub struct Capsules3D {
     pub class_ids: Option<Vec<crate::components::ClassId>>,
 }
 
+impl Capsules3D {
+    /// Returns the [`ComponentDescriptor`] for [`Self::lengths`].
+    #[inline]
+    pub fn descriptor_lengths() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Capsules3D".into()),
+            component_name: "rerun.components.Length".into(),
+            archetype_field_name: Some("lengths".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::radii`].
+    #[inline]
+    pub fn descriptor_radii() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Capsules3D".into()),
+            component_name: "rerun.components.Radius".into(),
+            archetype_field_name: Some("radii".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::translations`].
+    #[inline]
+    pub fn descriptor_translations() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Capsules3D".into()),
+            component_name: "rerun.components.PoseTranslation3D".into(),
+            archetype_field_name: Some("translations".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::rotation_axis_angles`].
+    #[inline]
+    pub fn descriptor_rotation_axis_angles() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Capsules3D".into()),
+            component_name: "rerun.components.PoseRotationAxisAngle".into(),
+            archetype_field_name: Some("rotation_axis_angles".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::quaternions`].
+    #[inline]
+    pub fn descriptor_quaternions() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Capsules3D".into()),
+            component_name: "rerun.components.PoseRotationQuat".into(),
+            archetype_field_name: Some("quaternions".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::colors`].
+    #[inline]
+    pub fn descriptor_colors() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Capsules3D".into()),
+            component_name: "rerun.components.Color".into(),
+            archetype_field_name: Some("colors".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::labels`].
+    #[inline]
+    pub fn descriptor_labels() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Capsules3D".into()),
+            component_name: "rerun.components.Text".into(),
+            archetype_field_name: Some("labels".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::show_labels`].
+    #[inline]
+    pub fn descriptor_show_labels() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Capsules3D".into()),
+            component_name: "rerun.components.ShowLabels".into(),
+            archetype_field_name: Some("show_labels".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::class_ids`].
+    #[inline]
+    pub fn descriptor_class_ids() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Capsules3D".into()),
+            component_name: "rerun.components.ClassId".into(),
+            archetype_field_name: Some("class_ids".into()),
+        }
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [

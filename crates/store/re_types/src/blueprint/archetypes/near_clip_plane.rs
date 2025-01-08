@@ -27,6 +27,18 @@ pub struct NearClipPlane {
     pub near_clip_plane: crate::blueprint::components::NearClipPlane,
 }
 
+impl NearClipPlane {
+    /// Returns the [`ComponentDescriptor`] for [`Self::near_clip_plane`].
+    #[inline]
+    pub fn descriptor_near_clip_plane() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.NearClipPlane".into()),
+            component_name: "rerun.blueprint.components.NearClipPlane".into(),
+            archetype_field_name: Some("near_clip_plane".into()),
+        }
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 

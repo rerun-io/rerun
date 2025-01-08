@@ -108,6 +108,58 @@ pub struct InstancePoses3D {
     pub mat3x3: Option<Vec<crate::components::PoseTransformMat3x3>>,
 }
 
+impl InstancePoses3D {
+    /// Returns the [`ComponentDescriptor`] for [`Self::translations`].
+    #[inline]
+    pub fn descriptor_translations() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
+            component_name: "rerun.components.PoseTranslation3D".into(),
+            archetype_field_name: Some("translations".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::rotation_axis_angles`].
+    #[inline]
+    pub fn descriptor_rotation_axis_angles() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
+            component_name: "rerun.components.PoseRotationAxisAngle".into(),
+            archetype_field_name: Some("rotation_axis_angles".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::quaternions`].
+    #[inline]
+    pub fn descriptor_quaternions() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
+            component_name: "rerun.components.PoseRotationQuat".into(),
+            archetype_field_name: Some("quaternions".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::scales`].
+    #[inline]
+    pub fn descriptor_scales() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
+            component_name: "rerun.components.PoseScale3D".into(),
+            archetype_field_name: Some("scales".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::mat3x3`].
+    #[inline]
+    pub fn descriptor_mat3x3() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
+            component_name: "rerun.components.PoseTransformMat3x3".into(),
+            archetype_field_name: Some("mat3x3".into()),
+        }
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 

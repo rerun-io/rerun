@@ -70,6 +70,68 @@ pub struct GraphNodes {
     pub radii: Option<Vec<crate::components::Radius>>,
 }
 
+impl GraphNodes {
+    /// Returns the [`ComponentDescriptor`] for [`Self::node_ids`].
+    #[inline]
+    pub fn descriptor_node_ids() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.GraphNodes".into()),
+            component_name: "rerun.components.GraphNode".into(),
+            archetype_field_name: Some("node_ids".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::positions`].
+    #[inline]
+    pub fn descriptor_positions() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.GraphNodes".into()),
+            component_name: "rerun.components.Position2D".into(),
+            archetype_field_name: Some("positions".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::colors`].
+    #[inline]
+    pub fn descriptor_colors() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.GraphNodes".into()),
+            component_name: "rerun.components.Color".into(),
+            archetype_field_name: Some("colors".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::labels`].
+    #[inline]
+    pub fn descriptor_labels() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.GraphNodes".into()),
+            component_name: "rerun.components.Text".into(),
+            archetype_field_name: Some("labels".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::show_labels`].
+    #[inline]
+    pub fn descriptor_show_labels() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.GraphNodes".into()),
+            component_name: "rerun.components.ShowLabels".into(),
+            archetype_field_name: Some("show_labels".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::radii`].
+    #[inline]
+    pub fn descriptor_radii() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.GraphNodes".into()),
+            component_name: "rerun.components.Radius".into(),
+            archetype_field_name: Some("radii".into()),
+        }
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| {
         [ComponentDescriptor {

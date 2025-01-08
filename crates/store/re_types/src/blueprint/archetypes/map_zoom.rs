@@ -27,6 +27,18 @@ pub struct MapZoom {
     pub zoom: crate::blueprint::components::ZoomLevel,
 }
 
+impl MapZoom {
+    /// Returns the [`ComponentDescriptor`] for [`Self::zoom`].
+    #[inline]
+    pub fn descriptor_zoom() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.MapZoom".into()),
+            component_name: "rerun.blueprint.components.ZoomLevel".into(),
+            archetype_field_name: Some("zoom".into()),
+        }
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 

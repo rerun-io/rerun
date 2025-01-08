@@ -80,6 +80,88 @@ pub struct Boxes2D {
     pub class_ids: Option<Vec<crate::components::ClassId>>,
 }
 
+impl Boxes2D {
+    /// Returns the [`ComponentDescriptor`] for [`Self::half_sizes`].
+    #[inline]
+    pub fn descriptor_half_sizes() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Boxes2D".into()),
+            component_name: "rerun.components.HalfSize2D".into(),
+            archetype_field_name: Some("half_sizes".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::centers`].
+    #[inline]
+    pub fn descriptor_centers() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Boxes2D".into()),
+            component_name: "rerun.components.Position2D".into(),
+            archetype_field_name: Some("centers".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::colors`].
+    #[inline]
+    pub fn descriptor_colors() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Boxes2D".into()),
+            component_name: "rerun.components.Color".into(),
+            archetype_field_name: Some("colors".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::radii`].
+    #[inline]
+    pub fn descriptor_radii() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Boxes2D".into()),
+            component_name: "rerun.components.Radius".into(),
+            archetype_field_name: Some("radii".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::labels`].
+    #[inline]
+    pub fn descriptor_labels() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Boxes2D".into()),
+            component_name: "rerun.components.Text".into(),
+            archetype_field_name: Some("labels".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::show_labels`].
+    #[inline]
+    pub fn descriptor_show_labels() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Boxes2D".into()),
+            component_name: "rerun.components.ShowLabels".into(),
+            archetype_field_name: Some("show_labels".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::draw_order`].
+    #[inline]
+    pub fn descriptor_draw_order() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Boxes2D".into()),
+            component_name: "rerun.components.DrawOrder".into(),
+            archetype_field_name: Some("draw_order".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::class_ids`].
+    #[inline]
+    pub fn descriptor_class_ids() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Boxes2D".into()),
+            component_name: "rerun.components.ClassId".into(),
+            archetype_field_name: Some("class_ids".into()),
+        }
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| {
         [ComponentDescriptor {

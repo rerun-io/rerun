@@ -136,6 +136,48 @@ pub struct Pinhole {
     pub image_plane_distance: Option<crate::components::ImagePlaneDistance>,
 }
 
+impl Pinhole {
+    /// Returns the [`ComponentDescriptor`] for [`Self::image_from_camera`].
+    #[inline]
+    pub fn descriptor_image_from_camera() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Pinhole".into()),
+            component_name: "rerun.components.PinholeProjection".into(),
+            archetype_field_name: Some("image_from_camera".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::resolution`].
+    #[inline]
+    pub fn descriptor_resolution() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Pinhole".into()),
+            component_name: "rerun.components.Resolution".into(),
+            archetype_field_name: Some("resolution".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::camera_xyz`].
+    #[inline]
+    pub fn descriptor_camera_xyz() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Pinhole".into()),
+            component_name: "rerun.components.ViewCoordinates".into(),
+            archetype_field_name: Some("camera_xyz".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::image_plane_distance`].
+    #[inline]
+    pub fn descriptor_image_plane_distance() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Pinhole".into()),
+            component_name: "rerun.components.ImagePlaneDistance".into(),
+            archetype_field_name: Some("image_plane_distance".into()),
+        }
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| {
         [ComponentDescriptor {

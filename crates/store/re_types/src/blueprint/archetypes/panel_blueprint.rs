@@ -25,6 +25,18 @@ pub struct PanelBlueprint {
     pub state: Option<crate::blueprint::components::PanelState>,
 }
 
+impl PanelBlueprint {
+    /// Returns the [`ComponentDescriptor`] for [`Self::state`].
+    #[inline]
+    pub fn descriptor_state() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.PanelBlueprint".into()),
+            component_name: "rerun.blueprint.components.PanelState".into(),
+            archetype_field_name: Some("state".into()),
+        }
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 

@@ -33,6 +33,38 @@ pub struct ForcePosition {
     pub position: Option<crate::components::Position2D>,
 }
 
+impl ForcePosition {
+    /// Returns the [`ComponentDescriptor`] for [`Self::enabled`].
+    #[inline]
+    pub fn descriptor_enabled() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ForcePosition".into()),
+            component_name: "rerun.blueprint.components.Enabled".into(),
+            archetype_field_name: Some("enabled".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::strength`].
+    #[inline]
+    pub fn descriptor_strength() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ForcePosition".into()),
+            component_name: "rerun.blueprint.components.ForceStrength".into(),
+            archetype_field_name: Some("strength".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::position`].
+    #[inline]
+    pub fn descriptor_position() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ForcePosition".into()),
+            component_name: "rerun.components.Position2D".into(),
+            archetype_field_name: Some("position".into()),
+        }
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 

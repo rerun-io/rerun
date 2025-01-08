@@ -44,6 +44,48 @@ pub struct TensorSliceSelection {
     pub slider: Option<Vec<crate::blueprint::components::TensorDimensionIndexSlider>>,
 }
 
+impl TensorSliceSelection {
+    /// Returns the [`ComponentDescriptor`] for [`Self::width`].
+    #[inline]
+    pub fn descriptor_width() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.TensorSliceSelection".into()),
+            component_name: "rerun.components.TensorWidthDimension".into(),
+            archetype_field_name: Some("width".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::height`].
+    #[inline]
+    pub fn descriptor_height() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.TensorSliceSelection".into()),
+            component_name: "rerun.components.TensorHeightDimension".into(),
+            archetype_field_name: Some("height".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::indices`].
+    #[inline]
+    pub fn descriptor_indices() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.TensorSliceSelection".into()),
+            component_name: "rerun.components.TensorDimensionIndexSelection".into(),
+            archetype_field_name: Some("indices".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::slider`].
+    #[inline]
+    pub fn descriptor_slider() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.TensorSliceSelection".into()),
+            component_name: "rerun.blueprint.components.TensorDimensionIndexSlider".into(),
+            archetype_field_name: Some("slider".into()),
+        }
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 

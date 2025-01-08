@@ -55,6 +55,28 @@ pub struct BarChart {
     pub color: Option<crate::components::Color>,
 }
 
+impl BarChart {
+    /// Returns the [`ComponentDescriptor`] for [`Self::values`].
+    #[inline]
+    pub fn descriptor_values() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.BarChart".into()),
+            component_name: "rerun.components.TensorData".into(),
+            archetype_field_name: Some("values".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::color`].
+    #[inline]
+    pub fn descriptor_color() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.BarChart".into()),
+            component_name: "rerun.components.Color".into(),
+            archetype_field_name: Some("color".into()),
+        }
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| {
         [ComponentDescriptor {

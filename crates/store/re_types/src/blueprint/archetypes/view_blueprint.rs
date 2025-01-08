@@ -42,6 +42,48 @@ pub struct ViewBlueprint {
     pub visible: Option<crate::blueprint::components::Visible>,
 }
 
+impl ViewBlueprint {
+    /// Returns the [`ComponentDescriptor`] for [`Self::class_identifier`].
+    #[inline]
+    pub fn descriptor_class_identifier() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ViewBlueprint".into()),
+            component_name: "rerun.blueprint.components.ViewClass".into(),
+            archetype_field_name: Some("class_identifier".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::display_name`].
+    #[inline]
+    pub fn descriptor_display_name() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ViewBlueprint".into()),
+            component_name: "rerun.components.Name".into(),
+            archetype_field_name: Some("display_name".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::space_origin`].
+    #[inline]
+    pub fn descriptor_space_origin() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ViewBlueprint".into()),
+            component_name: "rerun.blueprint.components.ViewOrigin".into(),
+            archetype_field_name: Some("space_origin".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::visible`].
+    #[inline]
+    pub fn descriptor_visible() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ViewBlueprint".into()),
+            component_name: "rerun.blueprint.components.Visible".into(),
+            archetype_field_name: Some("visible".into()),
+        }
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| {
         [ComponentDescriptor {

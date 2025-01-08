@@ -28,6 +28,28 @@ pub struct Background {
     pub color: Option<crate::components::Color>,
 }
 
+impl Background {
+    /// Returns the [`ComponentDescriptor`] for [`Self::kind`].
+    #[inline]
+    pub fn descriptor_kind() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.Background".into()),
+            component_name: "rerun.blueprint.components.BackgroundKind".into(),
+            archetype_field_name: Some("kind".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::color`].
+    #[inline]
+    pub fn descriptor_color() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.Background".into()),
+            component_name: "rerun.components.Color".into(),
+            archetype_field_name: Some("color".into()),
+        }
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| {
         [ComponentDescriptor {

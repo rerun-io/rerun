@@ -32,6 +32,28 @@ pub struct PlotLegend {
     pub visible: Option<crate::blueprint::components::Visible>,
 }
 
+impl PlotLegend {
+    /// Returns the [`ComponentDescriptor`] for [`Self::corner`].
+    #[inline]
+    pub fn descriptor_corner() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.PlotLegend".into()),
+            component_name: "rerun.blueprint.components.Corner2D".into(),
+            archetype_field_name: Some("corner".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::visible`].
+    #[inline]
+    pub fn descriptor_visible() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.PlotLegend".into()),
+            component_name: "rerun.blueprint.components.Visible".into(),
+            archetype_field_name: Some("visible".into()),
+        }
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 

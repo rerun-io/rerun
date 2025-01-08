@@ -59,6 +59,18 @@ pub struct Scalar {
     pub scalar: crate::components::Scalar,
 }
 
+impl Scalar {
+    /// Returns the [`ComponentDescriptor`] for [`Self::scalar`].
+    #[inline]
+    pub fn descriptor_scalar() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Scalar".into()),
+            component_name: "rerun.components.Scalar".into(),
+            archetype_field_name: Some("scalar".into()),
+        }
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| {
         [ComponentDescriptor {

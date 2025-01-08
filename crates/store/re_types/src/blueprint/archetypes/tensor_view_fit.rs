@@ -25,6 +25,18 @@ pub struct TensorViewFit {
     pub scaling: Option<crate::blueprint::components::ViewFit>,
 }
 
+impl TensorViewFit {
+    /// Returns the [`ComponentDescriptor`] for [`Self::scaling`].
+    #[inline]
+    pub fn descriptor_scaling() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.TensorViewFit".into()),
+            component_name: "rerun.blueprint.components.ViewFit".into(),
+            archetype_field_name: Some("scaling".into()),
+        }
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 

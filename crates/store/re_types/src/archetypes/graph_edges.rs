@@ -62,6 +62,28 @@ pub struct GraphEdges {
     pub graph_type: Option<crate::components::GraphType>,
 }
 
+impl GraphEdges {
+    /// Returns the [`ComponentDescriptor`] for [`Self::edges`].
+    #[inline]
+    pub fn descriptor_edges() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.GraphEdges".into()),
+            component_name: "rerun.components.GraphEdge".into(),
+            archetype_field_name: Some("edges".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::graph_type`].
+    #[inline]
+    pub fn descriptor_graph_type() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.GraphEdges".into()),
+            component_name: "rerun.components.GraphType".into(),
+            archetype_field_name: Some("graph_type".into()),
+        }
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| {
         [ComponentDescriptor {

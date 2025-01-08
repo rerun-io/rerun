@@ -33,6 +33,18 @@ pub struct VisualBounds2D {
     pub range: crate::blueprint::components::VisualBounds2D,
 }
 
+impl VisualBounds2D {
+    /// Returns the [`ComponentDescriptor`] for [`Self::range`].
+    #[inline]
+    pub fn descriptor_range() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.VisualBounds2D".into()),
+            component_name: "rerun.blueprint.components.VisualBounds2D".into(),
+            archetype_field_name: Some("range".into()),
+        }
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| {
         [ComponentDescriptor {

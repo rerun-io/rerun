@@ -40,6 +40,188 @@ pub struct AffixFuzzer4 {
     pub fuzz2118: Option<Vec<crate::testing::components::AffixFuzzer18>>,
 }
 
+impl AffixFuzzer4 {
+    /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2101`].
+    #[inline]
+    pub fn descriptor_fuzz2101() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.testing.archetypes.AffixFuzzer4".into()),
+            component_name: "rerun.testing.components.AffixFuzzer1".into(),
+            archetype_field_name: Some("fuzz2101".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2102`].
+    #[inline]
+    pub fn descriptor_fuzz2102() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.testing.archetypes.AffixFuzzer4".into()),
+            component_name: "rerun.testing.components.AffixFuzzer2".into(),
+            archetype_field_name: Some("fuzz2102".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2103`].
+    #[inline]
+    pub fn descriptor_fuzz2103() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.testing.archetypes.AffixFuzzer4".into()),
+            component_name: "rerun.testing.components.AffixFuzzer3".into(),
+            archetype_field_name: Some("fuzz2103".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2104`].
+    #[inline]
+    pub fn descriptor_fuzz2104() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.testing.archetypes.AffixFuzzer4".into()),
+            component_name: "rerun.testing.components.AffixFuzzer4".into(),
+            archetype_field_name: Some("fuzz2104".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2105`].
+    #[inline]
+    pub fn descriptor_fuzz2105() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.testing.archetypes.AffixFuzzer4".into()),
+            component_name: "rerun.testing.components.AffixFuzzer5".into(),
+            archetype_field_name: Some("fuzz2105".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2106`].
+    #[inline]
+    pub fn descriptor_fuzz2106() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.testing.archetypes.AffixFuzzer4".into()),
+            component_name: "rerun.testing.components.AffixFuzzer6".into(),
+            archetype_field_name: Some("fuzz2106".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2107`].
+    #[inline]
+    pub fn descriptor_fuzz2107() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.testing.archetypes.AffixFuzzer4".into()),
+            component_name: "rerun.testing.components.AffixFuzzer7".into(),
+            archetype_field_name: Some("fuzz2107".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2108`].
+    #[inline]
+    pub fn descriptor_fuzz2108() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.testing.archetypes.AffixFuzzer4".into()),
+            component_name: "rerun.testing.components.AffixFuzzer8".into(),
+            archetype_field_name: Some("fuzz2108".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2109`].
+    #[inline]
+    pub fn descriptor_fuzz2109() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.testing.archetypes.AffixFuzzer4".into()),
+            component_name: "rerun.testing.components.AffixFuzzer9".into(),
+            archetype_field_name: Some("fuzz2109".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2110`].
+    #[inline]
+    pub fn descriptor_fuzz2110() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.testing.archetypes.AffixFuzzer4".into()),
+            component_name: "rerun.testing.components.AffixFuzzer10".into(),
+            archetype_field_name: Some("fuzz2110".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2111`].
+    #[inline]
+    pub fn descriptor_fuzz2111() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.testing.archetypes.AffixFuzzer4".into()),
+            component_name: "rerun.testing.components.AffixFuzzer11".into(),
+            archetype_field_name: Some("fuzz2111".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2112`].
+    #[inline]
+    pub fn descriptor_fuzz2112() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.testing.archetypes.AffixFuzzer4".into()),
+            component_name: "rerun.testing.components.AffixFuzzer12".into(),
+            archetype_field_name: Some("fuzz2112".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2113`].
+    #[inline]
+    pub fn descriptor_fuzz2113() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.testing.archetypes.AffixFuzzer4".into()),
+            component_name: "rerun.testing.components.AffixFuzzer13".into(),
+            archetype_field_name: Some("fuzz2113".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2114`].
+    #[inline]
+    pub fn descriptor_fuzz2114() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.testing.archetypes.AffixFuzzer4".into()),
+            component_name: "rerun.testing.components.AffixFuzzer14".into(),
+            archetype_field_name: Some("fuzz2114".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2115`].
+    #[inline]
+    pub fn descriptor_fuzz2115() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.testing.archetypes.AffixFuzzer4".into()),
+            component_name: "rerun.testing.components.AffixFuzzer15".into(),
+            archetype_field_name: Some("fuzz2115".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2116`].
+    #[inline]
+    pub fn descriptor_fuzz2116() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.testing.archetypes.AffixFuzzer4".into()),
+            component_name: "rerun.testing.components.AffixFuzzer16".into(),
+            archetype_field_name: Some("fuzz2116".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2117`].
+    #[inline]
+    pub fn descriptor_fuzz2117() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.testing.archetypes.AffixFuzzer4".into()),
+            component_name: "rerun.testing.components.AffixFuzzer17".into(),
+            archetype_field_name: Some("fuzz2117".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2118`].
+    #[inline]
+    pub fn descriptor_fuzz2118() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.testing.archetypes.AffixFuzzer4".into()),
+            component_name: "rerun.testing.components.AffixFuzzer18".into(),
+            archetype_field_name: Some("fuzz2118".into()),
+        }
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 

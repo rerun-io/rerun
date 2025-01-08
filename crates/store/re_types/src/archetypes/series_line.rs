@@ -90,6 +90,48 @@ pub struct SeriesLine {
     pub aggregation_policy: Option<crate::components::AggregationPolicy>,
 }
 
+impl SeriesLine {
+    /// Returns the [`ComponentDescriptor`] for [`Self::color`].
+    #[inline]
+    pub fn descriptor_color() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.SeriesLine".into()),
+            component_name: "rerun.components.Color".into(),
+            archetype_field_name: Some("color".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::width`].
+    #[inline]
+    pub fn descriptor_width() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.SeriesLine".into()),
+            component_name: "rerun.components.StrokeWidth".into(),
+            archetype_field_name: Some("width".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::name`].
+    #[inline]
+    pub fn descriptor_name() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.SeriesLine".into()),
+            component_name: "rerun.components.Name".into(),
+            archetype_field_name: Some("name".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::aggregation_policy`].
+    #[inline]
+    pub fn descriptor_aggregation_policy() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.SeriesLine".into()),
+            component_name: "rerun.components.AggregationPolicy".into(),
+            archetype_field_name: Some("aggregation_policy".into()),
+        }
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 

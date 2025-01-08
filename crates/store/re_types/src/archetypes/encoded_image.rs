@@ -66,6 +66,48 @@ pub struct EncodedImage {
     pub draw_order: Option<crate::components::DrawOrder>,
 }
 
+impl EncodedImage {
+    /// Returns the [`ComponentDescriptor`] for [`Self::blob`].
+    #[inline]
+    pub fn descriptor_blob() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.EncodedImage".into()),
+            component_name: "rerun.components.Blob".into(),
+            archetype_field_name: Some("blob".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::media_type`].
+    #[inline]
+    pub fn descriptor_media_type() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.EncodedImage".into()),
+            component_name: "rerun.components.MediaType".into(),
+            archetype_field_name: Some("media_type".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::opacity`].
+    #[inline]
+    pub fn descriptor_opacity() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.EncodedImage".into()),
+            component_name: "rerun.components.Opacity".into(),
+            archetype_field_name: Some("opacity".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::draw_order`].
+    #[inline]
+    pub fn descriptor_draw_order() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.EncodedImage".into()),
+            component_name: "rerun.components.DrawOrder".into(),
+            archetype_field_name: Some("draw_order".into()),
+        }
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| {
         [ComponentDescriptor {

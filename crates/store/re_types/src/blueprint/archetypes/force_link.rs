@@ -35,6 +35,38 @@ pub struct ForceLink {
     pub iterations: Option<crate::blueprint::components::ForceIterations>,
 }
 
+impl ForceLink {
+    /// Returns the [`ComponentDescriptor`] for [`Self::enabled`].
+    #[inline]
+    pub fn descriptor_enabled() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ForceLink".into()),
+            component_name: "rerun.blueprint.components.Enabled".into(),
+            archetype_field_name: Some("enabled".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::distance`].
+    #[inline]
+    pub fn descriptor_distance() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ForceLink".into()),
+            component_name: "rerun.blueprint.components.ForceDistance".into(),
+            archetype_field_name: Some("distance".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::iterations`].
+    #[inline]
+    pub fn descriptor_iterations() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ForceLink".into()),
+            component_name: "rerun.blueprint.components.ForceIterations".into(),
+            archetype_field_name: Some("iterations".into()),
+        }
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
