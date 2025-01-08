@@ -83,7 +83,7 @@ jobs:
 
       - name: Run tests (`cargo test --all-targets --all-features`)
         if: ${{ inputs.CHANNEL == 'pr' }}
-        run: pixi run cargo test --all-targets --all-features
+        run: RUST_LOG=trace cargo test --all-targets --all-features
 
       - name: Rust most checks & tests
         if: ${{ inputs.CHANNEL == 'main' }}
@@ -146,7 +146,7 @@ jobs:
 
       - name: Run tests (`cargo test --all-targets --all-features`)
         if: ${{ inputs.CHANNEL != 'nightly' }}
-        run: pixi run cargo test --all-targets --all-features
+        run: pixi run RUST_LOG=trace cargo test --all-targets --all-features
 
       - name: Rust all checks & tests
         if: ${{ inputs.CHANNEL == 'nightly' }}
