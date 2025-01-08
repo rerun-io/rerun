@@ -5,6 +5,7 @@
 //!
 
 pub mod arrow2_util;
+pub mod arrow_util;
 mod builder;
 mod chunk;
 mod helpers;
