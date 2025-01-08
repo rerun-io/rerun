@@ -65,6 +65,14 @@ jobs:
         with:
           pixi-version: v0.39.0
 
+      - name: Install Vulkan SDK
+        uses: jakoch/install-vulkan-sdk-action@v1.0.0
+        with:
+          vulkan_version: 1.3.231.1 # TODO: set as variable
+          install_runtime: true
+          cache: true
+          stripdown: true
+
       - name: Setup software rasterizer
         run: pixi run python ./scripts/ci/setup_software_rasterizer.py
 
@@ -118,6 +126,17 @@ jobs:
       - uses: prefix-dev/setup-pixi@v0.8.1
         with:
           pixi-version: v0.39.0
+
+      # TODO: if this works, also put it on user ci
+      # TODO: explain here and in script
+      - name: Install Vulkan SDK
+        if: ${{ matrix.name != 'macos' }}
+        uses: jakoch/install-vulkan-sdk-action@v1.0.0
+        with:
+          vulkan_version: 1.3.231.1 # TODO: set as variable
+          install_runtime: true
+          cache: true
+          stripdown: true
 
       - name: Setup software rasterizer
         run: pixi run python ./scripts/ci/setup_software_rasterizer.py

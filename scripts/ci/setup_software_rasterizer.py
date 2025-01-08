@@ -53,8 +53,8 @@ def set_environment_variables(variables: dict[str, str]) -> None:
                 f.write(f"{key}={value}\n")
 
 
-def setup_llvmpipe_for_linux() -> None:
-    """Sets up llvmpipe mesa driver for Linux (x64)."""
+def setup_lavapipe_for_linux() -> None:
+    """Sets up lavapipe mesa driver for Linux (x64)."""
     # Download mesa
     run([
         "curl",
@@ -85,13 +85,12 @@ def setup_llvmpipe_for_linux() -> None:
     # Update environment variables
     set_environment_variables({
         "VK_DRIVER_FILES": f"{os.getcwd()}/icd.json",
-        "LD_LIBRARY_PATH": f"{os.getcwd()}/mesa/lib/x86_64-linux-gnu/:{os.environ.get('LD_LIBRARY_PATH', '')}",
-        "LIBGL_DRIVERS_PATH": f"{os.getcwd()}/mesa/lib/x86_64-linux-gnu/dri",
+        "LD_LIBRARY_PATH": f"{os.getcwd()}/mesa/lib/x86_64-linux-gnu/:{os.environ.get('LD_LIBRARY_PATH', '')}"
     })
 
 
-def setup_llvmpipe_for_windows() -> None:
-    """Sets up llvmpipe mesa driver for Windows (x64)."""
+def setup_lavapipe_for_windows() -> None:
+    """Sets up lavapipe mesa driver for Windows (x64)."""
 
     # Download mesa
     run([
@@ -111,9 +110,6 @@ def setup_llvmpipe_for_windows() -> None:
         "mesa.7z",
         "-aoa",
         "-omesa",
-        "x64/opengl32.dll",
-        "x64/libgallium_wgl.dll",
-        "x64/libglapi.dll",
         "x64/vulkan_lvp.dll",
         "x64/lvp_icd.x86_64.json",
     ])
@@ -126,7 +122,7 @@ def setup_llvmpipe_for_windows() -> None:
     mesa_json_path = (
         Path(os.path.join(os.getcwd(), "mesa", "lvp_icd.x86_64.json")).resolve().as_posix().replace("/", "\\")
     )
-    set_environment_variables({"VK_DRIVER_FILES": mesa_json_path, "GALLIUM_DRIVER": "llvmpipe"})
+    set_environment_variables({"VK_DRIVER_FILES": mesa_json_path})
 
 
 def main() -> None:
@@ -135,9 +131,9 @@ def main() -> None:
         # (wgpu tests with both llvmpip and WARP)
         # But practically speaking we prefer Vulkan anyways on Windows today and as such this is
         # both less variation and closer to what Rerun uses when running on a "real" machine.
-        setup_llvmpipe_for_windows()
+        setup_lavapipe_for_windows()
     elif os.name == "posix" and sys.platform != "darwin" and platform.machine() == "x86_64":
-        setup_llvmpipe_for_linux()
+        setup_lavapipe_for_linux()
     elif os.name == "posix" and sys.platform == "darwin":
         pass  # We don't have a software rasterizer for macOS.
     else:
