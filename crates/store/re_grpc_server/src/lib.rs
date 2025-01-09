@@ -387,7 +387,7 @@ mod tests {
 
     async fn make_client(addr: SocketAddr) -> MessageProxyClient<Channel> {
         MessageProxyClient::new(
-            Endpoint::from_shared(format!("http://{}", addr))
+            Endpoint::from_shared(format!("http://{addr}"))
                 .unwrap()
                 .connect()
                 .await
