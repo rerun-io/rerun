@@ -25,15 +25,19 @@ CI_BINARY_BUILD = "build19"
 
 TARGET_DIR = Path("target/debug")
 
+# Environment variables for calls to `run()` within this script.
+env_for_run_calls: dict[str, str] | None = os.environ.copy()
 
-def run(
-    args: list[str], *, env: dict[str, str] | None = None, timeout: int | None = None, cwd: str | None = None
-) -> None:
+
+def run(args: list[str], *, timeout: int | None = None, cwd: str | None = None) -> subprocess.CompletedProcess[str]:
     print(f"> {subprocess.list2cmdline(args)}")
-    result = subprocess.run(args, env=env, cwd=cwd, timeout=timeout, check=False, capture_output=True, text=True)
+    result = subprocess.run(
+        args, env=env_for_run_calls, cwd=cwd, timeout=timeout, check=False, capture_output=True, text=True
+    )
     assert result.returncode == 0, (
         f"{subprocess.list2cmdline(args)} failed with exit-code {result.returncode}. Output:\n{result.stdout}\n{result.stderr}"
     )
+    return result
 
 
 def set_environment_variables(variables: dict[str, str]) -> None:
@@ -42,12 +46,17 @@ def set_environment_variables(variables: dict[str, str]) -> None:
 
     If `GITHUB_ENV` is not set (i.e. when running locally), prints the variables to stdout.
     """
+    # Set for subsequent calls within this script via `run()`.
+    global env_for_run_calls
+    if env_for_run_calls is not None:
+        env_for_run_calls.update(variables)
+    else:
+        env_for_run_calls = variables
 
-    # Set to current process (relevant for things called from this script).
     for key, value in variables.items():
         os.environ[key] = value
 
-    # Set in GITHUB_ENV file (relevant for things called after this script).
+    # Set in GITHUB_ENV file.
     github_env = os.environ.get("GITHUB_ENV")
     if github_env is None:
         print(f"GITHUB_ENV is not set. The following environment variables need to be set:\n{variables}")
@@ -137,11 +146,11 @@ def vulkan_info_windows() -> None:
     if vulkan_sdk_path is None:
         print("WARNING: VULKAN_SDK is not set")
     else:
-        run([f"{vulkan_sdk_path}/runtime/x64/vulkaninfo.exe", "--summary"])
+        print(run([f"{vulkan_sdk_path}/runtime/x64/vulkaninfo.exe", "--summary"]).stdout)
 
 
 def vulkan_info_linux() -> None:
-    run(["vulkaninfo", "--summary"])
+    print(run(["vulkaninfo", "--summary"]).stdout)
 
 
 def main() -> None:
