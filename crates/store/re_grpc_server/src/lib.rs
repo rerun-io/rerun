@@ -443,7 +443,14 @@ mod tests {
 
         // the messages should be echoed to us
         let actual = read_log_stream(&mut log_stream, messages.len()).await;
+
         assert_eq!(messages, actual);
+
+        // While `SetStoreInfo` is sent first in `fake_log_stream`,
+        // we can observe that it's also received first,
+        // even though it is actually stored out of order in `persistent_message_queue`.
+        assert!(matches!(messages[0], LogMsg::SetStoreInfo(..)));
+        assert!(matches!(actual[0], LogMsg::SetStoreInfo(..)));
 
         completion.finish();
     }
