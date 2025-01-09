@@ -50,7 +50,8 @@ impl Default for TestContext {
     fn default() -> Self {
         // We rely a lot on logging in the viewer to identify issues.
         // Make sure logging is set up if it hasn't been done yet.
-        let _ = env_logger::builder().is_test(true).try_init();
+        //let _ = env_logger::builder().is_test(true).try_init();
+        let _ = env_logger::builder().is_test(false).try_init();
 
         let recording_store = EntityDb::new(StoreId::random(StoreKind::Recording));
         let blueprint_store = EntityDb::new(StoreId::random(StoreKind::Blueprint));
@@ -92,6 +93,11 @@ fn create_egui_renderstate() -> egui_wgpu::RenderState {
     re_tracing::profile_function!();
 
     let shared_wgpu_setup = &*SHARED_WGPU_RENDERER_SETUP;
+
+    // TODO: temp
+    let vk_driver_files = std::env::var("VK_DRIVER_FILES").unwrap_or_default();
+    println!("VK_DRIVER_FILES: {}", vk_driver_files);
+    println!("{}", std::fs::read_to_string(vk_driver_files).unwrap());
 
     let config = egui_wgpu::WgpuConfiguration {
         wgpu_setup: egui_wgpu::WgpuSetupExisting {
