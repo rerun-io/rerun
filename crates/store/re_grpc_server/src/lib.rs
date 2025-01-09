@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 use std::pin::Pin;
 
-use prost::Message as _;
+use re_byte_size::SizeBytes;
 use re_memory::MemoryLimit;
 use re_protos::{
     log_msg::v0::LogMsg as LogMsgProto,
@@ -153,7 +153,7 @@ impl QueueState {
 
 fn message_size(msg: &LogMsgProto) -> u64 {
     // TODO(jan): don't use encoded len
-    msg.encoded_len() as u64
+    msg.total_size_bytes()
 }
 
 struct Queue {
@@ -273,6 +273,7 @@ mod tests {
     };
     use std::net::SocketAddr;
     use std::sync::Arc;
+    use std::time::Duration;
     use tokio::net::TcpListener;
     use tokio_util::sync::CancellationToken;
     use tonic::transport::server::TcpIncoming;
@@ -533,6 +534,78 @@ mod tests {
             let actual = read_log_stream(log_stream, expected.len()).await;
             assert_eq!(expected, actual);
         }
+
+        completion.finish();
+    }
+
+    #[tokio::test]
+    async fn memory_limit_drops_messages() {
+        // Use an absurdly low memory limit to force all messages to be dropped immediately from history
+        let (completion, addr) = setup_with_memory_limit(MemoryLimit::from_bytes(1)).await;
+        let mut client = make_client(addr).await;
+        let messages = fake_log_stream(3);
+
+        // Write some messages
+        client
+            .write_messages(tokio_stream::iter(
+                messages
+                    .clone()
+                    .into_iter()
+                    .map(|msg| log_msg_to_proto(msg, Compression::Off).unwrap()),
+            ))
+            .await
+            .unwrap();
+
+        // Start reading
+        let mut log_stream = client.read_messages(Empty {}).await.unwrap();
+        let mut actual = vec![];
+        loop {
+            let timeout_stream = log_stream.get_mut().timeout(Duration::from_millis(100));
+            tokio::pin!(timeout_stream);
+            let timeout_result = timeout_stream.try_next().await;
+            match timeout_result {
+                Ok(Some(value)) => {
+                    actual.push(log_msg_from_proto(value.unwrap()).unwrap());
+                }
+
+                // Stream closed
+                Ok(None) => break,
+
+                // Timed out
+                Err(_) => break,
+            }
+        }
+
+        // The GC runs _before_ a message is stored, so we should see the static message, and the last message sent.
+        assert_eq!(actual.len(), 2);
+        assert_eq!(&actual[0], &messages[0]);
+        assert_eq!(&actual[1], messages.last().unwrap());
+    }
+
+    #[tokio::test]
+    async fn memory_limit_does_not_interrupt_stream() {
+        // Use an absurdly low memory limit to force all messages to be dropped immediately from history
+        let (completion, addr) = setup_with_memory_limit(MemoryLimit::from_bytes(1)).await;
+        let mut client = make_client(addr).await; // We use the same client for both producing and consuming
+        let messages = fake_log_stream(3);
+
+        // Start reading
+        let mut log_stream = client.read_messages(Empty {}).await.unwrap();
+
+        // Write a few messages
+        client
+            .write_messages(tokio_stream::iter(
+                messages
+                    .clone()
+                    .into_iter()
+                    .map(|msg| log_msg_to_proto(msg, Compression::Off).unwrap()),
+            ))
+            .await
+            .unwrap();
+
+        // The messages should be echoed to us, even though none of them will be stored in history
+        let actual = read_log_stream(&mut log_stream, messages.len()).await;
+        assert_eq!(messages, actual);
 
         completion.finish();
     }
