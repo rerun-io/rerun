@@ -637,18 +637,21 @@ pub fn build_frame_nr(frame_nr: impl TryInto<TimeInt>) -> (Timeline, TimeInt) {
 }
 
 impl SizeBytes for ApplicationId {
+    #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.0.heap_size_bytes()
     }
 }
 
 impl SizeBytes for StoreId {
+    #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.id.heap_size_bytes()
     }
 }
 
 impl SizeBytes for PythonVersion {
+    #[inline]
     fn heap_size_bytes(&self) -> u64 {
         let Self {
             major: _,
@@ -662,6 +665,7 @@ impl SizeBytes for PythonVersion {
 }
 
 impl SizeBytes for FileSource {
+    #[inline]
     fn heap_size_bytes(&self) -> u64 {
         match self {
             Self::Uri | Self::Sdk | Self::Cli => 0,
@@ -684,6 +688,7 @@ impl SizeBytes for FileSource {
 }
 
 impl SizeBytes for StoreSource {
+    #[inline]
     fn heap_size_bytes(&self) -> u64 {
         match self {
             Self::Unknown | Self::CSdk | Self::Viewer => 0,
@@ -699,6 +704,7 @@ impl SizeBytes for StoreSource {
 }
 
 impl SizeBytes for StoreInfo {
+    #[inline]
     fn heap_size_bytes(&self) -> u64 {
         let Self {
             application_id,
@@ -718,6 +724,7 @@ impl SizeBytes for StoreInfo {
 }
 
 impl SizeBytes for SetStoreInfo {
+    #[inline]
     fn heap_size_bytes(&self) -> u64 {
         let Self { row_id, info } = self;
 
@@ -726,12 +733,14 @@ impl SizeBytes for SetStoreInfo {
 }
 
 impl SizeBytes for BlueprintActivationCommand {
+    #[inline]
     fn heap_size_bytes(&self) -> u64 {
         0
     }
 }
 
 impl SizeBytes for ArrowMsg {
+    #[inline]
     fn heap_size_bytes(&self) -> u64 {
         let Self {
             chunk_id,
@@ -749,6 +758,7 @@ impl SizeBytes for ArrowMsg {
 }
 
 impl SizeBytes for LogMsg {
+    #[inline]
     fn heap_size_bytes(&self) -> u64 {
         match self {
             Self::SetStoreInfo(set_store_info) => set_store_info.heap_size_bytes(),

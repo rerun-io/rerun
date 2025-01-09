@@ -471,6 +471,7 @@ impl std::fmt::Display for CrateVersion {
 }
 
 impl re_byte_size::SizeBytes for CrateVersion {
+    #[inline]
     fn heap_size_bytes(&self) -> u64 {
         0
     }
