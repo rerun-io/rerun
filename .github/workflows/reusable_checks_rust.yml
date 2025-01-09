@@ -63,7 +63,7 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           cache_key: "build-linux"
-          save_cache: true
+          save_cache: false
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
@@ -150,7 +150,7 @@ jobs:
       # TODO: explain here and in script
       - name: Install Vulkan SDK
         if: ${{ matrix.name != 'macos' }}
-        uses: jakoch/install-vulkan-sdk-action@v1.0.0
+        uses: jakoch/install-vulkan-sdk-action@v1.0.5
         with:
           vulkan_version: ${{ env.VULKAN_SDK_VERSION }}
           install_runtime: true
