@@ -144,44 +144,48 @@ def setup_lavapipe_for_windows() -> dict[str, str]:
         print(f.read())
 
     # Set environment variables, make sure to use windows path style.
-    vulkan_runtime_path = f"{os.environ.get('VULKAN_SDK', '')}/runtime"
+    vulkan_runtime_path = f"{os.environ['VULKAN_SDK']}/runtime"
     env_vars = {
         "VK_DRIVER_FILES": mesa_json_path.as_posix().replace("/", "\\"),
+        # Vulkan runtime install should do this, but the CI action we're using right now for instance doesn't,
+        # causing `vulkaninfo` to fail since it can't find the vulkan loader.
         "PATH": f"{os.environ.get('PATH', '')};{vulkan_runtime_path}",
     }
     set_environment_variables(env_vars)
 
     # For debugging: List files in Vulkan runtime path.
-    if vulkan_runtime_path:
-        print(f"\nListing files in Vulkan runtime path '{vulkan_runtime_path}':")
-        try:
-            files = os.listdir(vulkan_runtime_path)
-            for file in files:
-                print(f"  {file}")
-        except Exception as e:
-            print(f"Error listing Vulkan runtime directory: {e}")
-    else:
-        print("No Vulkan runtime path available")
+    print(f"\nListing files in Vulkan runtime path '{vulkan_runtime_path}':")
+    try:
+        files = os.listdir(vulkan_runtime_path)
+        for file in files:
+            print(f"  {file}")
+    except Exception as e:
+        print(f"Error listing Vulkan runtime directory: {e}")
 
     return env_vars
 
 
 def vulkan_info(extra_env_vars: dict[str, str]) -> None:
-    vulkan_sdk_path = os.environ.get("VULKAN_SDK")
-    print(f"VULKAN_SDK: {vulkan_sdk_path}")
-    if vulkan_sdk_path is None:
-        print("WARNING: VULKAN_SDK is not set")
-    else:
-        env = os.environ.copy()
-        env["VK_LOADER_DEBUG"] = "all"  # Enable verbose logging of vulkan loader for debugging.
-        for key, value in extra_env_vars.items():
-            env[key] = value
+    vulkan_sdk_path = os.environ["VULKAN_SDK"]
+    env = os.environ.copy()
+    env["VK_LOADER_DEBUG"] = "all"  # Enable verbose logging of vulkan loader for debugging.
+    for key, value in extra_env_vars.items():
+        env[key] = value
 
-        if os.name == "nt":
-            vulkaninfo_path = f"{vulkan_sdk_path}/bin/vulkaninfoSDK.exe"
-        else:
-            vulkaninfo_path = f"{vulkan_sdk_path}/x86_64/bin/vulkaninfo"
-        print(run([vulkaninfo_path], env=env).stdout)  #  "--summary" ?
+    if os.name == "nt":
+        vulkaninfo_path = f"{vulkan_sdk_path}/bin/vulkaninfoSDK.exe"
+    else:
+        vulkaninfo_path = f"{vulkan_sdk_path}/x86_64/bin/vulkaninfo"
+    print(run([vulkaninfo_path], env=env).stdout)
+
+
+def check_for_vulkan_sdk() -> None:
+    vulkan_sdk_path = os.environ.get("VULKAN_SDK")
+    if vulkan_sdk_path is None:
+        print(
+            "ERROR: VULKAN_SDK is not set. The sdk needs to be installed prior including runtime & vulkaninfo utility."
+        )
+        sys.exit(1)
 
 
 def main() -> None:
@@ -190,9 +194,11 @@ def main() -> None:
         # (wgpu tests with both llvmpip and WARP)
         # But practically speaking we prefer Vulkan anyways on Windows today and as such this is
         # both less variation and closer to what Rerun uses when running on a "real" machine.
+        check_for_vulkan_sdk()
         env_vars = setup_lavapipe_for_windows()
         vulkan_info(env_vars)
     elif os.name == "posix" and sys.platform != "darwin" and platform.machine() == "x86_64":
+        check_for_vulkan_sdk()
         env_vars = setup_lavapipe_for_linux()
         vulkan_info(env_vars)
     elif os.name == "posix" and sys.platform == "darwin":
