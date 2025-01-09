@@ -157,6 +157,7 @@ arrow = { version = "53.1", default-features = false }
 arrow2 = { package = "re_arrow2", version = "0.18" }
 async-executor = "1.0"
 backtrace = "0.3"
+base64 = "0.22"
 bincode = "1.3"
 bit-vec = "0.8"
 bitflags = { version = "2.4", features = ["bytemuck"] }
@@ -203,6 +204,7 @@ infer = "0.16" # infer MIME type by checking the magic number signaturefer MIME 
 insta = "1.23"
 itertools = "0.13"
 js-sys = "0.3"
+jwt-simple = "0.12"
 libc = "0.2"
 linked-hash-map = { version = "0.5", default-features = false }
 log = "0.4"
