@@ -260,7 +260,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                                     archetype_name: descr.archetype_name,
                                     archetype_field_name: descr.archetype_field_name,
                                 },
-                                re_chunk::util::new_list_array_of_empties(
+                                re_chunk::arrow2_util::new_list_array_of_empties(
                                     child_datatype,
                                     chunk.num_rows(),
                                 ),
@@ -1334,7 +1334,7 @@ mod tests {
     use std::sync::Arc;
 
     use re_chunk::{
-        util::concatenate_record_batches, Chunk, ChunkId, RowId, TimePoint, TransportChunk,
+        arrow2_util::concatenate_record_batches, Chunk, ChunkId, RowId, TimePoint, TransportChunk,
     };
     use re_chunk_store::{
         ChunkStore, ChunkStoreConfig, ChunkStoreHandle, ResolvedTimeRange, TimeInt,

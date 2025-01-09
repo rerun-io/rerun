@@ -62,6 +62,7 @@ use arrow2::{
     offset::Offsets as Arrow2Offsets,
 };
 use itertools::Itertools;
+use re_chunk::arrow2_util;
 
 // --- concat ---
 
@@ -89,8 +90,7 @@ fn concat_does_allocate() {
             .map(|a| &**a as &dyn Arrow2Array)
             .collect_vec();
 
-        let concatenated =
-            memory_use(|| re_chunk::util::concat_arrays(&unconcatenated_refs).unwrap());
+        let concatenated = memory_use(|| arrow2_util::concat_arrays(&unconcatenated_refs).unwrap());
 
         (unconcatenated, concatenated)
     });
@@ -122,7 +122,7 @@ fn concat_single_is_noop() {
         });
 
         let concatenated =
-            memory_use(|| re_chunk::util::concat_arrays(&[&*unconcatenated.0]).unwrap());
+            memory_use(|| arrow2_util::concat_arrays(&[&*unconcatenated.0]).unwrap());
 
         (unconcatenated, concatenated)
     });
@@ -185,7 +185,7 @@ fn filter_does_allocate() {
             let filter = Arrow2BooleanArray::from_slice(
                 (0..unfiltered.0.len()).map(|i| i % 2 == 0).collect_vec(),
             );
-            let filtered = memory_use(|| re_chunk::util::filter_array(&unfiltered.0, &filter));
+            let filtered = memory_use(|| arrow2_util::filter_array(&unfiltered.0, &filter));
 
             (unfiltered, filtered)
         });
@@ -249,7 +249,7 @@ fn filter_empty_or_full_is_noop() {
                     .take(unfiltered.0.len())
                     .collect_vec(),
             );
-            let filtered = memory_use(|| re_chunk::util::filter_array(&unfiltered.0, &filter));
+            let filtered = memory_use(|| arrow2_util::filter_array(&unfiltered.0, &filter));
 
             (unfiltered, filtered)
         });
@@ -320,7 +320,7 @@ fn take_does_not_allocate() {
                     .filter(|i| i % 2 == 0)
                     .collect_vec(),
             );
-            let taken = memory_use(|| re_chunk::util::take_array(&untaken.0, &indices));
+            let taken = memory_use(|| arrow2_util::take_array(&untaken.0, &indices));
 
             (untaken, taken)
         });
@@ -380,7 +380,7 @@ fn take_empty_or_full_is_noop() {
             });
 
             let indices = Arrow2PrimitiveArray::from_vec((0..untaken.0.len() as i32).collect_vec());
-            let taken = memory_use(|| re_chunk::util::take_array(&untaken.0, &indices));
+            let taken = memory_use(|| arrow2_util::take_array(&untaken.0, &indices));
 
             (untaken, taken)
         });

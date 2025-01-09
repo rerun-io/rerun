@@ -651,7 +651,7 @@ impl Chunk {
                 let component_desc = TransportChunk::component_descriptor_from_field(field);
 
                 if components
-                    .insert_descriptor(component_desc, column.clone())
+                    .insert_descriptor(component_desc, column.clone().into())
                     .is_some()
                 {
                     return Err(ChunkError::Malformed {
@@ -724,6 +724,8 @@ mod tests {
         Timeline,
     };
 
+    use crate::arrow2_util;
+
     use super::*;
 
     #[test]
@@ -763,7 +765,7 @@ mod tests {
 
         let components = [
             (MyPoint::descriptor(), {
-                let list_array = crate::util::arrays_to_list_array_opt(&[
+                let list_array = arrow2_util::arrays_to_list_array_opt(&[
                     Some(&*points1),
                     points2,
                     Some(&*points3),
@@ -774,7 +776,7 @@ mod tests {
                 list_array
             }),
             (MyPoint::descriptor(), {
-                let list_array = crate::util::arrays_to_list_array_opt(&[
+                let list_array = arrow2_util::arrays_to_list_array_opt(&[
                     Some(&*colors1),
                     Some(&*colors2),
                     colors3,
