@@ -284,6 +284,15 @@ fn quote_struct(
     let quoted_repr_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_REPR, "repr");
     let quoted_custom_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_CUSTOM_CLAUSE, "");
 
+    // Eager archetypes must always derive Default.
+    let quoted_eager_derive_default_clause = (obj.is_eager_rust_archetype()
+        && !quoted_derive_clause.to_string().contains("Default"))
+    .then(|| {
+        quote! {
+            #[derive(Default)]
+        }
+    });
+
     let quoted_fields = fields
         .iter()
         .map(|obj_field| ObjectFieldTokenizer(reporter, obj, obj_field).quoted(objects));
@@ -353,6 +362,7 @@ fn quote_struct(
         #quoted_doc
         #quoted_derive_clone_debug
         #quoted_derive_clause
+        #quoted_eager_derive_default_clause
         #quoted_repr_clause
         #quoted_custom_clause
         #quoted_deprecation_notice
