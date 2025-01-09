@@ -8,6 +8,9 @@
 #[cfg(feature = "analytics")]
 mod event;
 
+#[cfg(feature = "analytics")]
+mod wsl;
+
 use crate::AppEnvironment;
 use crate::StartupOptions;
 
@@ -52,7 +55,13 @@ impl ViewerAnalytics {
     }
 
     /// When the viewer is first started
-    pub fn on_viewer_started(&self, build_info: re_build_info::BuildInfo) {
+    #[allow(unused_variables)]
+    pub fn on_viewer_started(
+        &self,
+        build_info: re_build_info::BuildInfo,
+        adapter_backend: wgpu::Backend,
+        device_tier: re_renderer::config::DeviceTier,
+    ) {
         re_tracing::profile_function!();
 
         #[cfg(feature = "analytics")]
@@ -66,11 +75,12 @@ impl ViewerAnalytics {
                 build_info,
                 &self.app_env,
             ));
-            analytics.record(event::viewer_started(&self.app_env));
+            analytics.record(event::viewer_started(
+                &self.app_env,
+                adapter_backend,
+                device_tier,
+            ));
         }
-
-        #[cfg(not(feature = "analytics"))]
-        let _ = build_info;
     }
 
     /// When we have loaded the start of a new recording.
