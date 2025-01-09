@@ -1,5 +1,6 @@
 use eframe::epaint::Color32;
 use egui::NumExt;
+use itertools::Either;
 
 use crate::{list_item, UiExt as _};
 
@@ -116,6 +117,10 @@ impl FilterMatcher {
         }
     }
 
+    pub fn matches_everything(&self) -> bool {
+        self.lowercase_query.is_none() || self.lowercase_query.as_deref() == Some("")
+    }
+
     pub fn matches(&self, text: &str) -> bool {
         match self.lowercase_query.as_deref() {
             None | Some("") => true,
@@ -123,58 +128,84 @@ impl FilterMatcher {
         }
     }
 
-    pub fn matches_formatted(&self, ctx: &egui::Context, text: &str) -> Option<egui::WidgetText> {
-        match self.lowercase_query.as_deref() {
-            None | Some("") => Some(text.into()),
-
-            Some(query) => {
-                let lower_case_text = text.to_lowercase();
-
-                if !lower_case_text.contains(query) {
-                    return None;
-                }
-
-                let mut job = egui::text::LayoutJob::default();
-
-                let mut start = 0;
-                while let Some(index) = lower_case_text[start..].find(query) {
-                    //highlight_builder.append()
-                    job.append(
-                        &text[start..start + index],
-                        0.0,
-                        egui::TextFormat {
-                            font_id: egui::TextStyle::Body.resolve(&ctx.style()),
-                            color: Color32::PLACEHOLDER,
-                            ..Default::default()
-                        },
-                    );
-
-                    job.append(
-                        &text[start + index..start + index + query.len()],
-                        0.0,
-                        egui::TextFormat {
-                            font_id: egui::TextStyle::Body.resolve(&ctx.style()),
-                            color: Color32::PLACEHOLDER,
-                            background: ctx.style().visuals.selection.bg_fill,
-                            ..Default::default()
-                        },
-                    );
-
-                    start += index + query.len();
-                }
-
-                job.append(
-                    &text[start..],
-                    0.0,
-                    egui::TextFormat {
-                        font_id: egui::TextStyle::Body.resolve(&ctx.style()),
-                        color: Color32::PLACEHOLDER,
-                        ..Default::default()
-                    },
-                );
-
-                Some(job.into())
+    pub fn find_matches(&self, text: &str) -> Option<impl Iterator<Item = (usize, usize)> + '_> {
+        let query = match self.lowercase_query.as_deref() {
+            None | Some("") => {
+                return Some(Either::Left(std::iter::empty()));
             }
+            Some(query) => query,
+        };
+
+        let mut start = 0;
+        let lower_case_text = text.to_lowercase();
+        let query_len = query.len();
+
+        if !lower_case_text.contains(query) {
+            return None;
         }
+
+        Some(Either::Right(std::iter::from_fn(move || {
+            let index = lower_case_text[start..].find(query)?;
+            let start_index = start + index;
+            start = start_index + query_len;
+            Some((start_index, start_index + query_len))
+        })))
     }
+
+    pub fn matches_formatted(&self, ctx: &egui::Context, text: &str) -> Option<egui::WidgetText> {
+        self.find_matches(text)
+            .map(|match_iter| format_matching_text(ctx, text, match_iter))
+    }
+}
+
+/// Given a list of highlight sections defined by start/end indices and a string, produce a properly
+/// highlighted [`egui::WidgetText`].
+pub fn format_matching_text(
+    ctx: &egui::Context,
+    text: &str,
+    match_iter: impl Iterator<Item = (usize, usize)>,
+) -> egui::WidgetText {
+    let mut current = 0;
+    let mut job = egui::text::LayoutJob::default();
+
+    for (start_idx, end_idx) in match_iter {
+        if current < start_idx {
+            job.append(
+                &text[current..start_idx],
+                0.0,
+                egui::TextFormat {
+                    font_id: egui::TextStyle::Body.resolve(&ctx.style()),
+                    color: Color32::PLACEHOLDER,
+                    ..Default::default()
+                },
+            );
+        }
+
+        job.append(
+            &text[start_idx..end_idx],
+            0.0,
+            egui::TextFormat {
+                font_id: egui::TextStyle::Body.resolve(&ctx.style()),
+                color: Color32::PLACEHOLDER,
+                background: ctx.style().visuals.selection.bg_fill,
+                ..Default::default()
+            },
+        );
+
+        current = end_idx;
+    }
+
+    if current < text.len() {
+        job.append(
+            &text[current..],
+            0.0,
+            egui::TextFormat {
+                font_id: egui::TextStyle::Body.resolve(&ctx.style()),
+                color: Color32::PLACEHOLDER,
+                ..Default::default()
+            },
+        );
+    }
+
+    job.into()
 }

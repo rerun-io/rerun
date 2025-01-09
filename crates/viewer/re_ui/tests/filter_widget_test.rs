@@ -1,6 +1,6 @@
 use egui::Vec2;
 
-use re_ui::FilterState;
+use re_ui::filter_widget::FilterState;
 
 #[test]
 pub fn test_filter_widget() {
@@ -34,5 +34,5 @@ pub fn test_filter_widget() {
 
     //TODO(#8245): enable this everywhere when we have a software renderer setup
     #[cfg(target_os = "macos")]
-    harness.wgpu_snapshot("filter_widget");
+    harness.snapshot("filter_widget");
 }

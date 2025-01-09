@@ -4,8 +4,8 @@ mod right_panel;
 
 use re_ui::notifications;
 use re_ui::{
-    list_item, CommandPalette, ContextExt as _, DesignTokens, FilterState, UICommand,
-    UICommandSender, UiExt as _,
+    filter_widget::FilterState, list_item, CommandPalette, ContextExt as _, DesignTokens,
+    UICommand, UICommandSender, UiExt as _,
 };
 
 /// Sender that queues up the execution of a command.
