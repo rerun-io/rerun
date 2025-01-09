@@ -23,14 +23,16 @@ if __name__ == "__main__":
 
     register_cmd.add_argument("storage_url", help="Storage URL to register")
 
+    print_cmd.add_argument("--columns", nargs="*", help="Define which columns to print")
+    print_cmd.add_argument("--recording-ids", nargs="*", help="Select specific recordings to print")
+
     args = parser.parse_args()
 
     # Register the new rrd
     conn = rr.remote.connect("http://0.0.0.0:51234")
 
-    catalog = pl.from_arrow(conn.query_catalog().read_all())
-
     if args.subcommand == "print":
+        catalog = pl.from_arrow(conn.query_catalog(args.columns, args.recording_ids).read_all())
         print(catalog)
 
     elif args.subcommand == "register":
@@ -39,6 +41,8 @@ if __name__ == "__main__":
         print(f"Registered new recording with ID: {id}")
 
     elif args.subcommand == "update":
+        catalog = pl.from_arrow(conn.query_catalog().read_all())
+
         id = (
             catalog.filter(catalog["rerun_recording_id"].str.starts_with(args.id))
             .select(pl.first("rerun_recording_id"))
