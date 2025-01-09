@@ -568,11 +568,8 @@ mod tests {
                     actual.push(log_msg_from_proto(value.unwrap()).unwrap());
                 }
 
-                // Stream closed
-                Ok(None) => break,
-
-                // Timed out
-                Err(_) => break,
+                // Stream closed | Timed out
+                Ok(None) | Err(_) => break,
             }
         }
 
@@ -580,6 +577,8 @@ mod tests {
         assert_eq!(actual.len(), 2);
         assert_eq!(&actual[0], &messages[0]);
         assert_eq!(&actual[1], messages.last().unwrap());
+
+        completion.finish();
     }
 
     #[tokio::test]
