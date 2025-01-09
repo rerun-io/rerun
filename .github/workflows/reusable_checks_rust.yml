@@ -15,7 +15,6 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  PYTHON_VERSION: "3.8"
   # web_sys_unstable_apis is required to enable the web_sys clipboard API which egui_web uses
   # https://rustwasm.github.io/wasm-bindgen/api/web_sys/struct.Clipboard.html
   # https://rustwasm.github.io/docs/wasm-bindgen/web-sys/unstable-apis.html
@@ -33,6 +32,9 @@ env:
   # Not only `sccache` cannot cache incremental builds, it's counter-productive to generate all
   # these incremental artifacts when running on CI.
   CARGO_INCREMENTAL: "0"
+
+  # Improve diagnostics for crashes.
+  RUST_BACKTRACE: full
 
 defaults:
   run:
@@ -83,7 +85,7 @@ jobs:
 
       - name: Run tests (`cargo test --all-targets --all-features`)
         if: ${{ inputs.CHANNEL == 'pr' }}
-        run: RUST_LOG=trace cargo test --all-targets --all-features
+        run: cargo test --all-targets --all-features
 
       - name: Rust most checks & tests
         if: ${{ inputs.CHANNEL == 'main' }}
@@ -146,7 +148,7 @@ jobs:
 
       - name: Run tests (`cargo test --all-targets --all-features`)
         if: ${{ inputs.CHANNEL != 'nightly' }}
-        run: pixi run RUST_LOG=trace cargo test --all-targets --all-features
+        run: cargo test --all-targets --all-features
 
       - name: Rust all checks & tests
         if: ${{ inputs.CHANNEL == 'nightly' }}
