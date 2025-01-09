@@ -5569,7 +5569,7 @@ dependencies = [
 [[package]]
 name = "re_arrow2"
 version = "0.18.1"
-source = "git+https://github.com/rerun-io/re_arrow2.git?branch=main#c762f392ded92c5978fcdc2195988587a4976417"
+source = "git+https://github.com/rerun-io/re_arrow2.git?branch=main#82095762a42eed76e4043c82833e391893d5821c"
 dependencies = [
  "ahash",
  "arrow-array",
