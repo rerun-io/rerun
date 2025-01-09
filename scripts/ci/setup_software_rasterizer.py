@@ -58,7 +58,7 @@ def set_environment_variables(variables: dict[str, str]) -> None:
                 f.write(f"{key}={value}\n")
 
 
-def setup_lavapipe_for_linux() -> Path:
+def setup_lavapipe_for_linux() -> dict[str, str]:
     """Sets up lavapipe mesa driver for Linux (x64)."""
     # Download mesa
     run([
@@ -89,10 +89,11 @@ def setup_lavapipe_for_linux() -> Path:
         f.write(icd_json)
 
     # Update environment variables
-    set_environment_variables({
+    env_vars = {
         "VK_DRIVER_FILES": f"{os.getcwd()}/{icd_json_path}",
         "LD_LIBRARY_PATH": f"{os.getcwd()}/mesa/lib/x86_64-linux-gnu/:{os.environ.get('LD_LIBRARY_PATH', '')}",
-    })
+    }
+    set_environment_variables(env_vars)
 
     # On CI it seems that VK_DRIVER_FILES is ignored unless we install the Vulkan SDK via apt
     # (which takes quite a while since it drags in a lot of other dependencies).
@@ -104,10 +105,10 @@ def setup_lavapipe_for_linux() -> Path:
     target_path.mkdir(parents=True, exist_ok=True)
     shutil.copy(icd_json_path, target_path)
 
-    return icd_json_path
+    return env_vars
 
 
-def setup_lavapipe_for_windows() -> Path:
+def setup_lavapipe_for_windows() -> dict[str, str]:
     """Sets up lavapipe mesa driver for Windows (x64)."""
 
     # Download mesa
@@ -143,24 +144,42 @@ def setup_lavapipe_for_windows() -> Path:
         print(f.read())
 
     # Set environment variables, make sure to use windows path style.
-    set_environment_variables({"VK_DRIVER_FILES": mesa_json_path.as_posix().replace("/", "\\")})
-    return mesa_json_path
+    vulkan_runtime_path = f"{os.environ.get('VULKAN_SDK', '')}/runtime"
+    env_vars = {
+        "VK_DRIVER_FILES": mesa_json_path.as_posix().replace("/", "\\"),
+        "PATH": f"{os.environ.get('PATH', '')};{vulkan_runtime_path}",
+    }
+    set_environment_variables(env_vars)
+
+    # For debugging: List files in Vulkan runtime path.
+    if vulkan_runtime_path:
+        print(f"\nListing files in Vulkan runtime path '{vulkan_runtime_path}':")
+        try:
+            files = os.listdir(vulkan_runtime_path)
+            for file in files:
+                print(f"  {file}")
+        except Exception as e:
+            print(f"Error listing Vulkan runtime directory: {e}")
+    else:
+        print("No Vulkan runtime path available")
+
+    return env_vars
 
 
-def vulkan_info(icd_json_path: Path) -> None:
+def vulkan_info(extra_env_vars: dict[str, str]) -> None:
     vulkan_sdk_path = os.environ.get("VULKAN_SDK")
     print(f"VULKAN_SDK: {vulkan_sdk_path}")
     if vulkan_sdk_path is None:
         print("WARNING: VULKAN_SDK is not set")
     else:
         env = os.environ.copy()
-        env["VK_LOADER_DEBUG"] = "all"
+        env["VK_LOADER_DEBUG"] = "all"  # Enable verbose logging of vulkan loader for debugging.
+        for key, value in extra_env_vars.items():
+            env[key] = value
 
         if os.name == "nt":
-            env["VK_DRIVER_FILES"] = icd_json_path.as_posix().replace("/", "\\")
             vulkaninfo_path = f"{vulkan_sdk_path}/bin/vulkaninfoSDK.exe"
         else:
-            env["VK_DRIVER_FILES"] = icd_json_path.as_posix()
             vulkaninfo_path = f"{vulkan_sdk_path}/x86_64/bin/vulkaninfo"
         print(run([vulkaninfo_path], env=env).stdout)  #  "--summary" ?
 
@@ -171,11 +190,11 @@ def main() -> None:
         # (wgpu tests with both llvmpip and WARP)
         # But practically speaking we prefer Vulkan anyways on Windows today and as such this is
         # both less variation and closer to what Rerun uses when running on a "real" machine.
-        icd_json_path = setup_lavapipe_for_windows()
-        vulkan_info(icd_json_path)
+        env_vars = setup_lavapipe_for_windows()
+        vulkan_info(env_vars)
     elif os.name == "posix" and sys.platform != "darwin" and platform.machine() == "x86_64":
-        icd_json_path = setup_lavapipe_for_linux()
-        vulkan_info(icd_json_path)
+        env_vars = setup_lavapipe_for_linux()
+        vulkan_info(env_vars)
     elif os.name == "posix" and sys.platform == "darwin":
         pass  # We don't have a software rasterizer for macOS.
     else:
