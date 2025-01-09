@@ -63,7 +63,7 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           cache_key: "build-linux"
-          save_cache: false
+          save_cache: true
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
@@ -76,7 +76,7 @@ jobs:
         with:
           vulkan_version: ${{ env.VULKAN_SDK_VERSION }}
           install_runtime: true
-          cache: true
+          cache: false
           stripdown: true
 
       # TODO: why does this one work and the other one doesn't?
