@@ -845,8 +845,7 @@ fn run_impl(
                     _build_info,
                     &call_source.app_env(),
                     startup_options,
-                    cc.egui_ctx.clone(),
-                    cc.storage,
+                    cc,
                 );
                 for rx in rxs {
                     app.add_receiver(rx);

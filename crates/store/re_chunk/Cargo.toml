@@ -52,6 +52,7 @@ ahash.workspace = true
 anyhow.workspace = true
 arrow.workspace = true
 arrow2 = { workspace = true, features = [
+  "arrow",
   "compute_concatenate",
   "compute_filter",
   "compute_take",

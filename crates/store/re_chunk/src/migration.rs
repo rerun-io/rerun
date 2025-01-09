@@ -78,7 +78,8 @@ impl Chunk {
                         .map(|a| a.as_deref() as Option<&dyn Array>)
                         .collect_vec();
 
-                    if let Some(list_array_patched) = crate::util::arrays_to_list_array_opt(&arrays)
+                    if let Some(list_array_patched) =
+                        crate::arrow2_util::arrays_to_list_array_opt(&arrays)
                     {
                         *list_array = list_array_patched;
                     }
@@ -87,7 +88,7 @@ impl Chunk {
         }
 
         for (desc, list_array) in components_patched {
-            chunk.components.insert_descriptor(desc, list_array);
+            chunk.components.insert_descriptor(desc, list_array.into());
         }
 
         chunk

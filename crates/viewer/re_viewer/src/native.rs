@@ -100,14 +100,8 @@ pub fn run_native_viewer_with_messages(
     run_native_app(
         main_thread_token,
         Box::new(move |cc| {
-            let mut app = crate::App::new(
-                main_thread_token,
-                build_info,
-                &app_env,
-                startup_options,
-                cc.egui_ctx.clone(),
-                cc.storage,
-            );
+            let mut app =
+                crate::App::new(main_thread_token, build_info, &app_env, startup_options, cc);
             app.add_receiver(rx);
             Box::new(app)
         }),

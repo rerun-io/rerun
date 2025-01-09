@@ -229,8 +229,7 @@ impl App {
         build_info: re_build_info::BuildInfo,
         app_env: &crate::AppEnvironment,
         startup_options: StartupOptions,
-        egui_ctx: egui::Context,
-        storage: Option<&dyn eframe::Storage>,
+        creation_context: &eframe::CreationContext<'_>,
     ) -> Self {
         re_tracing::profile_function!();
 
@@ -246,7 +245,7 @@ impl App {
         }
 
         let mut state: AppState = if startup_options.persist_state {
-            storage
+            creation_context.storage
                 .and_then(|storage| {
                     // This re-implements: `eframe::get_value` so we can customize the warning message.
                     // TODO(#2849): More thorough error-handling.
@@ -283,7 +282,7 @@ impl App {
 
         #[cfg(not(target_arch = "wasm32"))]
         if let Some(screenshot_path) = startup_options.screenshot_to_path_then_quit.clone() {
-            screenshotter.screenshot_to_path_then_quit(&egui_ctx, screenshot_path);
+            screenshotter.screenshot_to_path_then_quit(&creation_context.egui_ctx, screenshot_path);
         }
 
         let (command_sender, command_receiver) = command_channel();
@@ -296,7 +295,26 @@ impl App {
             .checked_sub(web_time::Duration::from_secs(1_000_000_000))
             .unwrap_or(web_time::Instant::now());
 
-        analytics.on_viewer_started(build_info);
+        let (adapter_backend, device_tier) = creation_context.wgpu_render_state.as_ref().map_or(
+            (
+                wgpu::Backend::Empty,
+                re_renderer::config::DeviceTier::Limited,
+            ),
+            |render_state| {
+                let egui_renderer = render_state.renderer.read();
+                let render_ctx = egui_renderer
+                    .callback_resources
+                    .get::<re_renderer::RenderContext>();
+
+                (
+                    render_state.adapter.get_info().backend,
+                    render_ctx.map_or(re_renderer::config::DeviceTier::Limited, |ctx| {
+                        ctx.device_caps().tier
+                    }),
+                )
+            },
+        );
+        analytics.on_viewer_started(build_info, adapter_backend, device_tier);
 
         let panel_state_overrides = startup_options.panel_state_overrides;
 
@@ -313,7 +331,7 @@ impl App {
             startup_options,
             start_time: web_time::Instant::now(),
             ram_limit_warner: re_memory::RamLimitWarner::warn_at_fraction_of_max(0.75),
-            egui_ctx,
+            egui_ctx: creation_context.egui_ctx.clone(),
             screenshotter,
 
             #[cfg(target_arch = "wasm32")]
