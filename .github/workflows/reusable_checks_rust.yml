@@ -37,9 +37,7 @@ env:
   RUST_BACKTRACE: full
 
   # Sourced from https://vulkan.lunarg.com/sdk/home#linux
-  #
-  # We don't include the 4th version number, as it's not used in any URL.
-  VULKAN_SDK_VERSION: "1.3.290"
+  VULKAN_SDK_VERSION: "1.3.296.0"
 
 defaults:
   run:
@@ -154,7 +152,7 @@ jobs:
         if: ${{ matrix.name != 'macos' }}
         uses: jakoch/install-vulkan-sdk-action@v1.0.0
         with:
-          vulkan_version: 1.3.231.1 # TODO: set as variable
+          vulkan_version: ${{ env.VULKAN_SDK_VERSION }}
           install_runtime: true
           cache: true
           stripdown: true
