@@ -555,6 +555,7 @@ impl SizeBytes for StructArray {
 }
 
 impl SizeBytes for Schema {
+    #[inline]
     fn heap_size_bytes(&self) -> u64 {
         let Self { fields, metadata } = self;
 
@@ -563,6 +564,7 @@ impl SizeBytes for Schema {
 }
 
 impl SizeBytes for Chunk<Box<dyn Array>> {
+    #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.arrays()
             .iter()
