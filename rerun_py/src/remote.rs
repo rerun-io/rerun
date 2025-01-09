@@ -294,12 +294,12 @@ impl PyStorageNodeClient {
 
             let recording_id = metadata
                 .all_columns()
-                .find(|(field, _data)| field.name == "id")
+                .find(|(field, _data)| field.name == "rerun_recording_id")
                 .map(|(_field, data)| data)
-                .ok_or(PyRuntimeError::new_err("No id"))?
+                .ok_or(PyRuntimeError::new_err("No rerun_recording_id"))?
                 .as_any()
                 .downcast_ref::<arrow2::array::Utf8Array<i32>>()
-                .ok_or(PyRuntimeError::new_err("Id is not a string"))?
+                .ok_or(PyRuntimeError::new_err("Recording Id is not a string"))?
                 .value(0)
                 .to_owned();
 
@@ -325,9 +325,13 @@ impl PyStorageNodeClient {
             let metadata = metadata.into_record_batch()?;
 
             // TODO(jleibs): This id name should probably come from `re_protos`
-            if metadata.schema().column_with_name("id").is_none() {
+            if metadata
+                .schema()
+                .column_with_name("rerun_recording_id")
+                .is_none()
+            {
                 return Err(PyRuntimeError::new_err(
-                    "Metadata must contain an 'id' column",
+                    "Metadata must contain 'rerun_recording_id' column",
                 ));
             }
 
