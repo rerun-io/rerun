@@ -31,9 +31,9 @@ def run(
 ) -> None:
     print(f"> {subprocess.list2cmdline(args)}")
     result = subprocess.run(args, env=env, cwd=cwd, timeout=timeout, check=False, capture_output=True, text=True)
-    assert (
-        result.returncode == 0
-    ), f"{subprocess.list2cmdline(args)} failed with exit-code {result.returncode}. Output:\n{result.stdout}\n{result.stderr}"
+    assert result.returncode == 0, (
+        f"{subprocess.list2cmdline(args)} failed with exit-code {result.returncode}. Output:\n{result.stdout}\n{result.stderr}"
+    )
 
 
 def set_environment_variables(variables: dict[str, str]) -> None:
@@ -48,6 +48,7 @@ def set_environment_variables(variables: dict[str, str]) -> None:
         print(f"GITHUB_ENV is not set. The following environment variables need to be set:\n{variables}")
     else:
         print(f"Setting environment variables in {github_env}:\n{variables}")
+        # Write to GITHUB_ENV file.
         with open(github_env, "a", encoding="utf-8") as f:
             for key, value in variables.items():
                 f.write(f"{key}={value}\n")
@@ -85,7 +86,7 @@ def setup_lavapipe_for_linux() -> None:
     # Update environment variables
     set_environment_variables({
         "VK_DRIVER_FILES": f"{os.getcwd()}/icd.json",
-        "LD_LIBRARY_PATH": f"{os.getcwd()}/mesa/lib/x86_64-linux-gnu/:{os.environ.get('LD_LIBRARY_PATH', '')}"
+        "LD_LIBRARY_PATH": f"{os.getcwd()}/mesa/lib/x86_64-linux-gnu/:{os.environ.get('LD_LIBRARY_PATH', '')}",
     })
 
 
@@ -125,6 +126,19 @@ def setup_lavapipe_for_windows() -> None:
     set_environment_variables({"VK_DRIVER_FILES": mesa_json_path})
 
 
+def vulkan_info_windows() -> None:
+    vulkan_sdk_path = os.environ.get("VULKAN_SDK")
+    print(f"VULKAN_SDK: {vulkan_sdk_path}")
+    if vulkan_sdk_path is None:
+        print("WARNING: VULKAN_SDK is not set")
+    else:
+        run([f"{vulkan_sdk_path}/runtime/x64/vulkaninfo.exe", "--summary"])
+
+
+def vulkan_info_linux() -> None:
+    run(["vulkaninfo", "--summary"])
+
+
 def main() -> None:
     if os.name == "nt" and platform.machine() == "AMD64":
         # Note that we could also use WARP, the DX12 software rasterizer.
@@ -132,8 +146,10 @@ def main() -> None:
         # But practically speaking we prefer Vulkan anyways on Windows today and as such this is
         # both less variation and closer to what Rerun uses when running on a "real" machine.
         setup_lavapipe_for_windows()
+        vulkan_info_windows()
     elif os.name == "posix" and sys.platform != "darwin" and platform.machine() == "x86_64":
         setup_lavapipe_for_linux()
+        vulkan_info_linux()
     elif os.name == "posix" and sys.platform == "darwin":
         pass  # We don't have a software rasterizer for macOS.
     else:
