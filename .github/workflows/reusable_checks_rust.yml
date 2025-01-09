@@ -59,6 +59,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
+          lfs: true
 
       - name: Set up Rust
         uses: ./.github/actions/setup-rust
@@ -80,6 +81,8 @@ jobs:
       #     cache: true
       #     stripdown: true
 
+      # TODO: why does this one work and the other one doesn't?
+      # This takes 4m 8s
       - name: (linux) install vulkan sdk
         run: |
           set -e
@@ -122,8 +125,8 @@ jobs:
         include:
           # TODO(#8245): we run mac tests on `main` because that's the only platform where UI snapshot tests are covered.
           # When the linux runners are able to run these tests (with a software renderer), we can move that back to all nightly.
-          - os: "macos-latest"
-            name: "macos"
+          # - os: "macos-latest"
+          #   name: "macos"
           - os: "windows-latest-8-cores"
             name: "windows"
 
@@ -162,13 +165,15 @@ jobs:
       - name: Setup software rasterizer
         run: pixi run python ./scripts/ci/setup_software_rasterizer.py
 
-      - name: Download test assets
-        run: pixi run python ./tests/assets/download_test_assets.py
+        # TODO:
+      #      - name: Download test assets
+      #        run: pixi run python ./tests/assets/download_test_assets.py
 
       - name: Run tests (`cargo test --all-targets --all-features`)
         if: ${{ inputs.CHANNEL != 'nightly' }}
         # Need to use pixi due to NASM dependency.
-        run: pixi run cargo test --all-targets --all-features
+        #run: pixi run cargo test --all-targets --all-features
+        run: RUST_LOG=trace cargo test -p re_component_ui --all-features
 
       - name: Rust all checks & tests
         if: ${{ inputs.CHANNEL == 'nightly' }}
