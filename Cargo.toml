@@ -588,4 +588,4 @@ egui_commonmark = { git = "https://github.com/rerun-io/egui_commonmark.git", bra
 
 # dav1d = { path = "/home/cmc/dev/rerun-io/rav1d", package = "re_rav1d", version = "0.1.1" }
 
-re_arrow2 = { git = "https://github.com/rerun-io/re_arrow2.git", branch = "emilk/more-arrow-compatibility" } # TODO : point to main branmch
+re_arrow2 = { git = "https://github.com/rerun-io/re_arrow2.git", branch = "main" }

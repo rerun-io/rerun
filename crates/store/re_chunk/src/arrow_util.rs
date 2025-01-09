@@ -218,7 +218,7 @@ pub fn new_list_array_of_empties(child_datatype: &DataType, len: usize) -> ListA
 pub fn concat_arrays(arrays: &[&dyn Array]) -> arrow::error::Result<ArrayRef> {
     #[allow(clippy::disallowed_methods)] // that's the whole point
     arrow::compute::concat(arrays)
-    // TODO: call .shrink_to_fit on the result
+    // TODO(#3741): call .shrink_to_fit on the result
 }
 
 /// Applies a [filter] kernel to the given `array`.
