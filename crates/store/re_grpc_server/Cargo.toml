@@ -33,7 +33,6 @@ re_tracing.workspace = true
 re_types.workspace = true
 
 # External
-prost.workspace = true
 tokio.workspace = true
 tokio-stream = { workspace = true, features = ["sync"] }
 tokio-util.workspace = true

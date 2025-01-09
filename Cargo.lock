@@ -6008,7 +6008,6 @@ dependencies = [
 name = "re_grpc_server"
 version = "0.22.0-alpha.1+dev"
 dependencies = [
- "prost",
  "re_build_info",
  "re_byte_size",
  "re_chunk",

@@ -1,7 +1,6 @@
 use re_protos::missing_field;
 
 use crate::codec::CodecError;
-use crate::Compression;
 
 impl From<re_protos::log_msg::v0::Compression> for crate::Compression {
     fn from(value: re_protos::log_msg::v0::Compression) -> Self {
@@ -71,7 +70,7 @@ pub fn log_msg_from_proto(
 #[cfg(feature = "encoder")]
 pub fn log_msg_to_proto(
     message: re_log_types::LogMsg,
-    compression: Compression,
+    compression: crate::Compression,
 ) -> Result<re_protos::log_msg::v0::LogMsg, crate::encoder::EncodeError> {
     use crate::codec::arrow::encode_arrow;
     use re_protos::log_msg::v0::{
@@ -92,8 +91,8 @@ pub fn log_msg_to_proto(
             let arrow_msg = ArrowMsg {
                 store_id: Some(store_id.into()),
                 compression: match compression {
-                    Compression::Off => re_protos::log_msg::v0::Compression::None as i32,
-                    Compression::LZ4 => re_protos::log_msg::v0::Compression::Lz4 as i32,
+                    crate::Compression::Off => re_protos::log_msg::v0::Compression::None as i32,
+                    crate::Compression::LZ4 => re_protos::log_msg::v0::Compression::Lz4 as i32,
                 },
                 uncompressed_size: payload.uncompressed_size as i32,
                 encoding: re_protos::log_msg::v0::Encoding::ArrowIpc as i32,
