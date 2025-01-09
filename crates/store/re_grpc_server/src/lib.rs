@@ -47,6 +47,8 @@ impl QueueState {
     fn new(server_memory_limit: MemoryLimit, event_rx: mpsc::Receiver<Event>) -> Self {
         Self {
             server_memory_limit,
+            // Channel capacity is completely arbitrary.
+            // We just want enough capacity to handle bursts of messages.
             broadcast_tx: broadcast::channel(1024).0,
             event_rx,
             temporal_message_queue: Default::default(),
@@ -162,6 +164,8 @@ struct Queue {
 
 impl Queue {
     fn spawn(server_memory_limit: MemoryLimit) -> Self {
+        // Channel capacity is completely arbitrary.
+        // We just want something large enough to handle bursts of messages.
         let (event_tx, event_rx) = mpsc::channel(1024);
 
         let task_handle = tokio::spawn(async move {
