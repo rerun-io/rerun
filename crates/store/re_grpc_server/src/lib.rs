@@ -152,7 +152,6 @@ impl QueueState {
 }
 
 fn message_size(msg: &LogMsgProto) -> u64 {
-    // TODO(jan): don't use encoded len
     msg.total_size_bytes()
 }
 
