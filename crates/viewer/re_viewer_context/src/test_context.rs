@@ -88,7 +88,7 @@ impl Default for TestContext {
     }
 }
 
-/// Create an egui_wgpu::RenderState for tests.
+/// Create an `egui_wgpu::RenderState` for tests.
 ///
 /// May be `None` if we failed to initialize the wgpu renderer setup.
 fn create_egui_renderstate() -> Option<egui_wgpu::RenderState> {
