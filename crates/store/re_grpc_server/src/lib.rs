@@ -37,7 +37,7 @@ struct QueueState {
     ordered_message_queue: VecDeque<LogMsgProto>,
 
     /// Total size of `temporal_message_queue` in bytes.
-    temporal_message_bytes: u64,
+    ordered_message_bytes: u64,
 
     /// Messages potentially out of order with the rest of the message stream. These are never garbage collected.
     persistent_message_queue: VecDeque<LogMsgProto>,
@@ -52,7 +52,7 @@ impl QueueState {
             broadcast_tx: broadcast::channel(1024).0,
             event_rx,
             ordered_message_queue: Default::default(),
-            temporal_message_bytes: 0,
+            ordered_message_bytes: 0,
             persistent_message_queue: Default::default(),
         }
     }
@@ -108,7 +108,7 @@ impl QueueState {
             // as it's the last message sent by the SDK when submitting a blueprint.
             Msg::ArrowMsg(..) | Msg::BlueprintActivationCommand(..) => {
                 let approx_size_bytes = message_size(&msg);
-                self.temporal_message_bytes += approx_size_bytes;
+                self.ordered_message_bytes += approx_size_bytes;
                 self.ordered_message_queue.push_back(msg);
             }
             Msg::SetStoreInfo(..) => {
@@ -126,7 +126,7 @@ impl QueueState {
         };
 
         let max_bytes = max_bytes as u64;
-        if max_bytes >= self.temporal_message_bytes {
+        if max_bytes >= self.ordered_message_bytes {
             // We're not using too much memory.
             return;
         };
@@ -138,7 +138,7 @@ impl QueueState {
                 re_format::format_bytes(max_bytes as _)
             );
 
-            let bytes_to_free = self.temporal_message_bytes - max_bytes;
+            let bytes_to_free = self.ordered_message_bytes - max_bytes;
 
             let mut bytes_dropped = 0;
             let mut messages_dropped = 0;
