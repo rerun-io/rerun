@@ -4,6 +4,7 @@ package rerun.log_msg.v0;
 
 import "rerun/v0/common.proto";
 
+// TODO(#8631): Remove `LogMsg`
 message LogMsg {
     oneof msg {
         // A message that contains a new store info.

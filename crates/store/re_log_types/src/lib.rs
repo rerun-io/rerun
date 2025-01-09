@@ -261,6 +261,7 @@ impl BlueprintActivationCommand {
 #[derive(Clone, Debug, PartialEq)] // `PartialEq` used for tests in another crate
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[allow(clippy::large_enum_variant)]
+// TODO(#8631): Remove `LogMsg`
 pub enum LogMsg {
     /// A new recording has begun.
     ///
