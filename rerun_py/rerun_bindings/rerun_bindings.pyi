@@ -585,10 +585,11 @@ class StorageNodeClient:
 
         Parameters
         ----------
-        column_projection : Optional[list[str]], optional
+        columns : Optional[list[str]], optional
             The columns to include in the output, by default None.
         recording_ids : Optional[list[str]]
             Filter specific recordings by Recording Id
+
         """
         ...
 
