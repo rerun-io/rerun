@@ -107,7 +107,8 @@ jobs:
       - name: Run tests (`cargo test --all-targets --all-features`)
         if: ${{ inputs.CHANNEL == 'pr' }}
         # Need to use pixi due to NASM dependency.
-        run: pixi run cargo test --all-targets --all-features
+        #run: pixi run cargo test --all-targets --all-features
+        run: RUST_LOG=trace cargo test -p re_component_ui --all-features
 
       - name: Rust most checks & tests
         if: ${{ inputs.CHANNEL == 'main' }}
