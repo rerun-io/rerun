@@ -29,10 +29,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Default::default(),
     )?;
 
-    let native_options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default().with_app_id("rerun_extend_viewer_ui_example"),
-        ..re_viewer::native::eframe_options(None)
-    };
+    let mut native_options = re_viewer::native::eframe_options(None);
+    native_options.viewport = native_options
+        .viewport
+        .with_app_id("rerun_extend_viewer_ui_example");
 
     let startup_options = re_viewer::StartupOptions::default();
 
@@ -51,8 +51,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 re_viewer::build_info(),
                 &app_env,
                 startup_options,
-                cc.egui_ctx.clone(),
-                cc.storage,
+                cc,
             );
             rerun_app.add_receiver(rx);
             Ok(Box::new(MyApp { rerun_app }))

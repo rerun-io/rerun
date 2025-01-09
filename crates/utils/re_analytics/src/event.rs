@@ -54,6 +54,43 @@ pub struct ViewerStarted {
 
     /// The environment in which the viewer is running.
     pub app_env: &'static str,
+
+    /// Sparse information about the runtime environment the viewer is running in.
+    pub runtime_info: ViewerRuntimeInformation,
+}
+
+/// Some sparse information about the runtime environment the viewer is running in.
+pub struct ViewerRuntimeInformation {
+    /// Whether the viewer is started directly from within Windows Subsystem for Linux (WSL).
+    pub is_wsl: bool,
+
+    /// The wgpu graphics backend used by the viewer.
+    ///
+    /// For possible values see [`wgpu::Backend`](https://docs.rs/wgpu/latest/wgpu/enum.Backend.html).
+    pub graphics_adapter_backend: String,
+
+    /// The device tier `re_renderer` identified for the graphics adapter.
+    ///
+    /// For possible values see [`re_renderer::config::DeviceTier`](https://docs.rs/re_renderer/latest/re_renderer/config/enum.DeviceTier.html).
+    /// This is a very rough indication of the capabilities of the graphics adapter.
+    /// We do not want to send details graphics driver/capability information here since
+    /// it's too detailed (could be used for fingerprinting which we don't want) and not as useful
+    /// anyways since it's hard to learn about the typically identified capabilities.
+    pub re_renderer_device_tier: String,
+}
+
+impl Properties for ViewerRuntimeInformation {
+    fn serialize(self, event: &mut AnalyticsEvent) {
+        let Self {
+            is_wsl,
+            graphics_adapter_backend,
+            re_renderer_device_tier,
+        } = self;
+
+        event.insert("is_wsl", is_wsl);
+        event.insert("graphics_adapter_backend", graphics_adapter_backend);
+        event.insert("re_renderer_device_tier", re_renderer_device_tier);
+    }
 }
 
 /// Sent when a new recording is opened.
@@ -202,11 +239,15 @@ fn add_sanitized_url_properties(event: &mut AnalyticsEvent, url: Option<String>)
 
 impl Properties for ViewerStarted {
     fn serialize(self, event: &mut AnalyticsEvent) {
-        let Self { url, app_env } = self;
+        let Self {
+            url,
+            app_env,
+            runtime_info,
+        } = self;
 
         event.insert("app_env", app_env);
-
         add_sanitized_url_properties(event, url);
+        runtime_info.serialize(event);
     }
 }
 

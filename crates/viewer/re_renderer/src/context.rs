@@ -8,7 +8,7 @@ use type_map::concurrent::{self, TypeMap};
 
 use crate::{
     allocator::{CpuWriteGpuReadBelt, GpuReadbackBelt},
-    config::{DeviceCaps, DeviceTier},
+    config::{DeviceCaps, WgpuBackendType},
     error_handling::{ErrorTracker, WgpuErrorScope},
     global_bindings::GlobalBindings,
     renderer::Renderer,
@@ -23,7 +23,8 @@ const STARTUP_FRAME_IDX: u64 = u64::MAX;
 #[derive(thiserror::Error, Debug)]
 pub enum RenderContextError {
     #[error(
-        "The GPU/graphics driver is lacking some abilities: {0}.\nConsider updating the driver."
+        "The GPU/graphics driver is lacking some abilities: {0}. \
+        Check the troubleshooting guide at https://rerun.io/docs/getting-started/troubleshooting and consider updating your graphics driver."
     )]
     InsufficientDeviceCapabilities(#[from] crate::config::InsufficientDeviceCapabilities),
 }
@@ -236,7 +237,9 @@ impl RenderContext {
         //          knowing that we're not _actually_ blocking.
         //
         //          For more details check https://github.com/gfx-rs/wgpu/issues/3601
-        if cfg!(target_arch = "wasm32") && self.device_caps.tier == DeviceTier::Gles {
+        if cfg!(target_arch = "wasm32")
+            && self.device_caps.backend_type == WgpuBackendType::WgpuCore
+        {
             self.device.poll(wgpu::Maintain::Wait);
             return;
         }

@@ -250,6 +250,25 @@ impl ViewerContext<'_> {
         // The nice thing about this would be that we could always give out references (but updating said cache wouldn't be easy in that case).
         re_types::reflection::generic_placeholder_for_datatype(&datatype)
     }
+
+    /// Are we running inside the Safari browser?
+    pub fn is_safari_browser(&self) -> bool {
+        #![allow(clippy::unused_self)]
+
+        #[cfg(target_arch = "wasm32")]
+        fn is_safari_browser_inner() -> Option<bool> {
+            use web_sys::wasm_bindgen::JsValue;
+            let window = web_sys::window()?;
+            Some(window.has_own_property(&JsValue::from("safari")))
+        }
+
+        #[cfg(not(target_arch = "wasm32"))]
+        fn is_safari_browser_inner() -> Option<bool> {
+            None
+        }
+
+        is_safari_browser_inner().unwrap_or(false)
+    }
 }
 
 // ----------------------------------------------------------------------------

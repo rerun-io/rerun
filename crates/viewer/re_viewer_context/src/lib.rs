@@ -92,12 +92,6 @@ pub use self::{
 
 pub use re_ui::UiLayout; // Historical reasons
 
-#[cfg(not(target_arch = "wasm32"))]
-mod clipboard;
-
-#[cfg(not(target_arch = "wasm32"))]
-pub use clipboard::Clipboard;
-
 pub mod external {
     pub use nohash_hasher;
     pub use {re_chunk_store, re_entity_db, re_log_types, re_query, re_ui};
@@ -152,7 +146,6 @@ pub struct ScreenshotInfo {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ScreenshotTarget {
     /// The screenshot will be copied to the clipboard.
-    #[cfg(not(target_arch = "wasm32"))] // TODO(#8264): copy-to-screenshot on web
     CopyToClipboard,
 
     /// The screenshot will be saved to disk.

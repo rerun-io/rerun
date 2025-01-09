@@ -71,11 +71,9 @@ wgpu.workspace = true
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-arboard = { workspace = true, default-features = false, features = [
-  "image-data",
-] }
 home.workspace = true
 
 # Web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen-futures.workspace = true
+web-sys = { workspace = true, features = ["Window"] }

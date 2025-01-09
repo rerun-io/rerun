@@ -163,7 +163,6 @@ pub fn blob_preview_and_save_ui(
                 );
             }
 
-            #[cfg(not(target_arch = "wasm32"))]
             if let Some(image) = image {
                 let image_stats = ctx
                     .cache

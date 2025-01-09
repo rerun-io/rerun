@@ -15,7 +15,7 @@ pub fn acknowledgement_overlay(
     let mut ui = ui.new_child(egui::UiBuilder::new().max_rect(rect));
     ui.multiply_opacity(0.7);
 
-    egui::Frame::none()
+    egui::Frame::new()
         .fill(ui.visuals().window_fill)
         .inner_margin(egui::Margin::same(2))
         .show(&mut ui, |ui| {

@@ -19,14 +19,14 @@ use re_chunk::{Chunk, TransportChunk};
 use re_chunk_store::ChunkStore;
 use re_dataframe::{ChunkStoreHandle, QueryExpression, SparseFillStrategy, ViewContentsSelector};
 use re_grpc_client::TonicStatusError;
-use re_log_encoding::codec::wire::{decode, encode};
+use re_log_encoding::codec::wire::{decoder::Decode, encoder::Encode};
 use re_log_types::{EntityPathFilter, StoreInfo, StoreSource};
 use re_protos::{
-    common::v0::{EncoderVersion, RecordingId},
+    common::v0::RecordingId,
     remote_store::v0::{
-        storage_node_client::StorageNodeClient, CatalogFilter, DataframePart,
-        FetchRecordingRequest, QueryCatalogRequest, QueryRequest, RecordingType,
-        RegisterRecordingRequest, UpdateCatalogRequest,
+        storage_node_client::StorageNodeClient, CatalogFilter, FetchRecordingRequest,
+        QueryCatalogRequest, QueryRequest, RecordingType, RegisterRecordingRequest,
+        UpdateCatalogRequest,
     },
 };
 use re_sdk::{ApplicationId, ComponentName, StoreId, StoreKind, Time, Timeline};
@@ -109,7 +109,7 @@ impl PyStorageNodeClient {
                     .into_inner()
                     .map(|resp| {
                         resp.and_then(|r| {
-                            decode(r.encoder_version(), &r.payload)
+                            r.decode()
                                 .map_err(|err| tonic::Status::internal(err.to_string()))
                         })
                     })
@@ -157,7 +157,7 @@ impl PyStorageNodeClient {
                 .into_inner()
                 .map(|resp| {
                     resp.and_then(|r| {
-                        decode(r.encoder_version(), &r.payload)
+                        r.decode()
                             .map_err(|err| tonic::Status::internal(err.to_string()))
                     })
                 })
@@ -207,7 +207,7 @@ impl PyStorageNodeClient {
                 .into_inner()
                 .map(|resp| {
                     resp.and_then(|r| {
-                        decode(r.encoder_version(), &r.payload)
+                        r.decode()
                             .map_err(|err| tonic::Status::internal(err.to_string()))
                     })
                 })
@@ -268,15 +268,11 @@ impl PyStorageNodeClient {
                     }
 
                     let metadata_tc = TransportChunk::from_arrow_record_batch(&metadata);
-
-                    encode(EncoderVersion::V0, &metadata_tc)
+                    metadata_tc
+                        .encode()
                         .map_err(|err| PyRuntimeError::new_err(err.to_string()))
                 })
-                .transpose()?
-                .map(|payload| DataframePart {
-                    encoder_version: EncoderVersion::V0 as i32,
-                    payload,
-                });
+                .transpose()?;
 
             let request = RegisterRecordingRequest {
                 // TODO(jleibs): Description should really just be in the metadata
@@ -292,7 +288,8 @@ impl PyStorageNodeClient {
                 .await
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
                 .into_inner();
-            let metadata = decode(resp.encoder_version(), &resp.payload)
+            let metadata = resp
+                .decode()
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
             let recording_id = metadata
@@ -337,11 +334,11 @@ impl PyStorageNodeClient {
             let metadata_tc = TransportChunk::from_arrow_record_batch(&metadata);
 
             let request = UpdateCatalogRequest {
-                metadata: Some(DataframePart {
-                    encoder_version: EncoderVersion::V0 as i32,
-                    payload: encode(EncoderVersion::V0, &metadata_tc)
+                metadata: Some(
+                    metadata_tc
+                        .encode()
                         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?,
-                }),
+                ),
             };
 
             self.client
@@ -429,7 +426,7 @@ impl PyStorageNodeClient {
 
             while let Some(result) = resp.next().await {
                 let response = result.map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
-                let tc = match decode(EncoderVersion::V0, &response.payload) {
+                let tc = match response.decode() {
                     Ok(tc) => tc,
                     Err(err) => {
                         return Err(PyRuntimeError::new_err(err.to_string()));

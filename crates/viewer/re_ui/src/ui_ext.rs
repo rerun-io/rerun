@@ -25,7 +25,7 @@ fn notification_label(
     visible_text: &str,
     full_text: &str,
 ) -> egui::Response {
-    egui::Frame::none()
+    egui::Frame::new()
         .stroke((1.0, fg_color))
         .fill(error_label_bg_color(fg_color))
         .rounding(4.0)
@@ -1124,10 +1124,6 @@ pub trait UiExt {
     /// ```
     fn selectable_toggle<R>(&mut self, content: impl FnOnce(&mut egui::Ui) -> R) -> R {
         let ui = self.ui_mut();
-
-        // ensure cursor is on an integer value, otherwise we get weird optical alignment of the text
-        //TODO(ab): fix when https://github.com/emilk/egui/issues/4928 is resolved
-        ui.add_space(-ui.cursor().min.y.fract());
 
         egui::Frame {
             inner_margin: egui::Margin::same(3),
