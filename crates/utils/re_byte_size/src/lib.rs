@@ -12,6 +12,7 @@ mod tuple_sizes;
 /// Approximations of stack and heap size for both internal and external types.
 ///
 /// Motly used for statistics and triggering events such as garbage collection.
+// TODO(#8630): Derive macro for this trait.
 pub trait SizeBytes {
     /// Returns the total size of `self` in bytes, accounting for both stack and heap space.
     #[inline]
