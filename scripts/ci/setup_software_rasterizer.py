@@ -14,6 +14,7 @@ import platform
 import shutil
 import subprocess
 import sys
+import winreg
 from distutils.dir_util import copy_tree
 from pathlib import Path
 
@@ -31,9 +32,9 @@ def run(
     args: list[str], *, env: dict[str, str] | None = None, timeout: int | None = None, cwd: str | None = None
 ) -> subprocess.CompletedProcess[str]:
     result = subprocess.run(args, env=env, cwd=cwd, timeout=timeout, check=False, capture_output=True, text=True)
-    assert result.returncode == 0, (
-        f"{subprocess.list2cmdline(args)} failed with exit-code {result.returncode}. Output:\n{result.stdout}\n{result.stderr}"
-    )
+    assert (
+        result.returncode == 0
+    ), f"{subprocess.list2cmdline(args)} failed with exit-code {result.returncode}. Output:\n{result.stdout}\n{result.stderr}"
     return result
 
 
@@ -95,11 +96,10 @@ def setup_lavapipe_for_linux() -> dict[str, str]:
     }
     set_environment_variables(env_vars)
 
-    # On CI it seems that VK_DRIVER_FILES is ignored unless we install the Vulkan SDK via apt
-    # (which takes quite a while since it drags in a lot of other dependencies).
+    # On CI we run with elevated priviledges, therefore VK_DRIVER_FILES is ignored.
     # According to https://github.com/KhronosGroup/Vulkan-Loader/blob/main/docs/LoaderInterfaceArchitecture.md#elevated-privilege-caveats
-    # this can happen when running with elevated privileges.
-    # Unclear if that's the case, but in any case we're on the safe side if we copy the icd file into one of the standard search paths.
+    # (curiously, when installing the Vulkan SDK via apt, it seems to work fine).
+    # Therefore, we copy the icd file into one of the standard search paths.
     target_path = Path("~/.config/vulkan/icd.d").expanduser()
     print(f"Copying icd file to {target_path}")
     target_path.mkdir(parents=True, exist_ok=True)
@@ -138,15 +138,16 @@ def setup_lavapipe_for_windows() -> dict[str, str]:
     copy_tree("mesa", TARGET_DIR / "deps")
 
     # Print icd file that should be used.
-    mesa_json_path = Path(os.path.join(os.getcwd(), "mesa", "lvp_icd.x86_64.json")).resolve()
-    print(f"Using ICD file at '{mesa_json_path}':")
-    with open(mesa_json_path, encoding="utf-8") as f:
+    icd_json_path = Path(os.path.join(os.getcwd(), "mesa", "lvp_icd.x86_64.json")).resolve()
+    print(f"Using ICD file at '{icd_json_path}':")
+    with open(icd_json_path, encoding="utf-8") as f:
         print(f.read())
+    icd_json_path = icd_json_path.as_posix().replace("/", "\\")
 
     # Set environment variables, make sure to use windows path style.
     vulkan_runtime_path = f"{os.environ['VULKAN_SDK']}/runtime/x64"
     env_vars = {
-        "VK_DRIVER_FILES": mesa_json_path.as_posix().replace("/", "\\"),
+        "VK_DRIVER_FILES": icd_json_path,
         # Vulkan runtime install should do this, but the CI action we're using right now for instance doesn't,
         # causing `vulkaninfo` to fail since it can't find the vulkan loader.
         "PATH": f"{os.environ.get('PATH', '')};{vulkan_runtime_path}",
@@ -154,13 +155,25 @@ def setup_lavapipe_for_windows() -> dict[str, str]:
     set_environment_variables(env_vars)
 
     # For debugging: List files in Vulkan runtime path.
-    print(f"\nListing files in Vulkan runtime path '{vulkan_runtime_path}':")
-    try:
-        files = os.listdir(vulkan_runtime_path)
-        for file in files:
-            print(f"  {file}")
-    except Exception as e:
-        print(f"Error listing Vulkan runtime directory: {e}")
+    if False:
+        print(f"\nListing files in Vulkan runtime path '{vulkan_runtime_path}':")
+        try:
+            files = os.listdir(vulkan_runtime_path)
+            for file in files:
+                print(f"  {file}")
+        except Exception as e:
+            print(f"Error listing Vulkan runtime directory: {e}")
+
+    # On CI we run with elevated priviledges, therefore VK_DRIVER_FILES is ignored.
+    # According to https://github.com/KhronosGroup/Vulkan-Loader/blob/main/docs/LoaderInterfaceArchitecture.md#elevated-privilege-caveats
+    # Therefore, we have to set one of the registry keys that is checked to find the driver.
+    # See https://vulkan.lunarg.com/doc/view/1.3.243.0/windows/LoaderDriverInterface.html#user-content-driver-discovery-on-windows
+
+    # Write registry keys to configure Vulkan drivers
+    key_path = "SOFTWARE\\Khronos\\Vulkan\\Drivers"
+    key = winreg.CreateKeyEx(winreg.HKEY_LOCAL_MACHINE, key_path)
+    winreg.SetValueEx(key, icd_json_path, 0, winreg.REG_DWORD, 0)
+    winreg.CloseKey(key)
 
     return env_vars
 
@@ -202,7 +215,7 @@ def main() -> None:
         env_vars = setup_lavapipe_for_linux()
         vulkan_info(env_vars)
     elif os.name == "posix" and sys.platform == "darwin":
-        pass  # We don't have a software rasterizer for macOS.
+        print("Skipping software rasterizer setup for macOS - we have to rely on a real GPU here.")
     else:
         raise ValueError(f"Unsupported OS / architecture: {os.name} / {platform.machine()}")
 
