@@ -25,16 +25,11 @@ CI_BINARY_BUILD = "build19"
 
 TARGET_DIR = Path("target/debug")
 
-# Environment variables for calls to `run()` within this script.
-env_for_run_calls: dict[str, str] | None = os.environ.copy()
 
-
-def run(args: list[str], *, timeout: int | None = None, cwd: str | None = None) -> subprocess.CompletedProcess[str]:
-    print(f"> {subprocess.list2cmdline(args)}")
-    print(f"env: {env_for_run_calls}")
-    result = subprocess.run(
-        args, env=env_for_run_calls, cwd=cwd, timeout=timeout, check=False, capture_output=True, text=True
-    )
+def run(
+    args: list[str], *, env: dict[str, str] | None = None, timeout: int | None = None, cwd: str | None = None
+) -> subprocess.CompletedProcess[str]:
+    result = subprocess.run(args, env=env, cwd=cwd, timeout=timeout, check=False, capture_output=True, text=True)
     assert result.returncode == 0, (
         f"{subprocess.list2cmdline(args)} failed with exit-code {result.returncode}. Output:\n{result.stdout}\n{result.stderr}"
     )
@@ -43,17 +38,10 @@ def run(args: list[str], *, timeout: int | None = None, cwd: str | None = None) 
 
 def set_environment_variables(variables: dict[str, str]) -> None:
     """
-    Sets environment variables for current process and in the GITHUB_ENV file.
+    Sets environment variables in the GITHUB_ENV file.
 
     If `GITHUB_ENV` is not set (i.e. when running locally), prints the variables to stdout.
     """
-    # Set for subsequent calls within this script via `run()`.
-    global env_for_run_calls
-    if env_for_run_calls is not None:
-        env_for_run_calls.update(variables)
-    else:
-        env_for_run_calls = variables
-
     for key, value in variables.items():
         os.environ[key] = value
 
@@ -69,7 +57,7 @@ def set_environment_variables(variables: dict[str, str]) -> None:
                 f.write(f"{key}={value}\n")
 
 
-def setup_lavapipe_for_linux() -> None:
+def setup_lavapipe_for_linux() -> Path:
     """Sets up lavapipe mesa driver for Linux (x64)."""
     # Download mesa
     run([
@@ -95,17 +83,19 @@ def setup_lavapipe_for_linux() -> None:
     }},
     "file_format_version": "1.0.0"
 }}"""
-    with open("icd.json", "w", encoding="utf-8") as f:
+    icd_json_path = Path("icd.json")
+    with open(icd_json_path, "w", encoding="utf-8") as f:
         f.write(icd_json)
 
     # Update environment variables
     set_environment_variables({
-        "VK_DRIVER_FILES": f"{os.getcwd()}/icd.json",
+        "VK_DRIVER_FILES": f"{os.getcwd()}/{icd_json_path}",
         "LD_LIBRARY_PATH": f"{os.getcwd()}/mesa/lib/x86_64-linux-gnu/:{os.environ.get('LD_LIBRARY_PATH', '')}",
     })
+    return icd_json_path
 
 
-def setup_lavapipe_for_windows() -> None:
+def setup_lavapipe_for_windows() -> Path:
     """Sets up lavapipe mesa driver for Windows (x64)."""
 
     # Download mesa
@@ -135,26 +125,32 @@ def setup_lavapipe_for_windows() -> None:
     copy_tree("mesa", TARGET_DIR / "deps")
 
     # Print icd file that should be used.
-    mesa_json_path = Path(os.path.join(os.getcwd(), "mesa", "lvp_icd.x86_64.json"))
+    mesa_json_path = Path(os.path.join(os.getcwd(), "mesa", "lvp_icd.x86_64.json")).resolve()
     print(f"Using ICD file at '{mesa_json_path}':")
     with open(mesa_json_path, encoding="utf-8") as f:
         print(f.read())
 
     # Set environment variables, make sure to use windows path style.
-    set_environment_variables({"VK_DRIVER_FILES": mesa_json_path.resolve().as_posix().replace("/", "\\")})
+    set_environment_variables({"VK_DRIVER_FILES": mesa_json_path.as_posix().replace("/", "\\")})
+    return mesa_json_path
 
 
-def vulkan_info() -> None:
+def vulkan_info(icd_json_path: Path) -> None:
     vulkan_sdk_path = os.environ.get("VULKAN_SDK")
     print(f"VULKAN_SDK: {vulkan_sdk_path}")
     if vulkan_sdk_path is None:
         print("WARNING: VULKAN_SDK is not set")
     else:
+        env = os.environ.copy()
+        env["VK_LOADER_DEBUG"] = "all"
+
         if os.name == "nt":
+            env["VK_DRIVER_FILES"] = icd_json_path.as_posix().replace("/", "\\")
             vulkaninfo_path = f"{vulkan_sdk_path}/bin/vulkaninfoSDK.exe"
         else:
+            env["VK_DRIVER_FILES"] = icd_json_path.as_posix()
             vulkaninfo_path = f"{vulkan_sdk_path}/x86_64/bin/vulkaninfo"
-        print(run([vulkaninfo_path]).stdout)  #  "--summary" ?
+        print(run([vulkaninfo_path], env=env).stdout)  #  "--summary" ?
 
 
 def main() -> None:
@@ -163,11 +159,11 @@ def main() -> None:
         # (wgpu tests with both llvmpip and WARP)
         # But practically speaking we prefer Vulkan anyways on Windows today and as such this is
         # both less variation and closer to what Rerun uses when running on a "real" machine.
-        setup_lavapipe_for_windows()
-        vulkan_info()
+        icd_json_path = setup_lavapipe_for_windows()
+        vulkan_info(icd_json_path)
     elif os.name == "posix" and sys.platform != "darwin" and platform.machine() == "x86_64":
-        setup_lavapipe_for_linux()
-        vulkan_info()
+        icd_json_path = setup_lavapipe_for_linux()
+        vulkan_info(icd_json_path)
     elif os.name == "posix" and sys.platform == "darwin":
         pass  # We don't have a software rasterizer for macOS.
     else:
