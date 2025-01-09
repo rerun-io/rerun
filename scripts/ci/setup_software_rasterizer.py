@@ -31,6 +31,7 @@ env_for_run_calls: dict[str, str] | None = os.environ.copy()
 
 def run(args: list[str], *, timeout: int | None = None, cwd: str | None = None) -> subprocess.CompletedProcess[str]:
     print(f"> {subprocess.list2cmdline(args)}")
+    print(f"env: {env_for_run_calls}")
     result = subprocess.run(
         args, env=env_for_run_calls, cwd=cwd, timeout=timeout, check=False, capture_output=True, text=True
     )
