@@ -38,11 +38,16 @@ def run(
 
 def set_environment_variables(variables: dict[str, str]) -> None:
     """
-    Sets environment variables in the GITHUB_ENV file.
+    Sets environment variables for current process and in the GITHUB_ENV file.
 
     If `GITHUB_ENV` is not set (i.e. when running locally), prints the variables to stdout.
     """
 
+    # Set to current process (relevant for things called from this script).
+    for key, value in variables.items():
+        os.environ[key] = value
+
+    # Set in GITHUB_ENV file (relevant for things called after this script).
     github_env = os.environ.get("GITHUB_ENV")
     if github_env is None:
         print(f"GITHUB_ENV is not set. The following environment variables need to be set:\n{variables}")
