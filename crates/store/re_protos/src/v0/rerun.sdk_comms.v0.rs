@@ -99,6 +99,8 @@ pub mod message_proxy_client {
             self.inner = self.inner.max_encoding_message_size(limit);
             self
         }
+        /// TODO(jan): Would it be more efficient to send a "message batch" instead of individual messages?
+        ///            It may allow us to amortize the overhead of the gRPC protocol.
         pub async fn write_messages(
             &mut self,
             request: impl tonic::IntoStreamingRequest<
@@ -155,6 +157,8 @@ pub mod message_proxy_server {
     /// Generated trait containing gRPC methods that should be implemented for use with MessageProxyServer.
     #[async_trait]
     pub trait MessageProxy: std::marker::Send + std::marker::Sync + 'static {
+        /// TODO(jan): Would it be more efficient to send a "message batch" instead of individual messages?
+        ///            It may allow us to amortize the overhead of the gRPC protocol.
         async fn write_messages(
             &self,
             request: tonic::Request<tonic::Streaming<super::super::super::log_msg::v0::LogMsg>>,
