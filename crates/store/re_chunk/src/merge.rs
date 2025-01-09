@@ -1,12 +1,13 @@
+use arrow::array::Int64Array as ArrowInt64Array;
 use arrow2::array::{
-    Array as Arrow2Array, ListArray as Arrow2ListArray, PrimitiveArray as Arrow2PrimitiveArray,
-    StructArray as Arrow2StructArray,
+    Array as Arrow2Array, ListArray as Arrow2ListArray, StructArray as Arrow2StructArray,
 };
 use itertools::{izip, Itertools};
 use nohash_hasher::IntMap;
 
 use crate::{
-    arrow2_util, chunk::ChunkComponents, Chunk, ChunkError, ChunkId, ChunkResult, TimeColumn,
+    arrow2_util, arrow_util, chunk::ChunkComponents, Chunk, ChunkError, ChunkId, ChunkResult,
+    TimeColumn,
 };
 
 // ---
@@ -287,11 +288,8 @@ impl TimeColumn {
 
         let time_range = self.time_range.union(rhs.time_range);
 
-        let times = arrow2_util::concat_arrays(&[&self.times, &rhs.times]).ok()?;
-        let times = times
-            .as_any()
-            .downcast_ref::<Arrow2PrimitiveArray<i64>>()?
-            .clone();
+        let times = arrow_util::concat_arrays(&[&self.times, &rhs.times]).ok()?;
+        let times = times.as_any().downcast_ref::<ArrowInt64Array>()?.clone();
 
         Some(Self {
             timeline: self.timeline,

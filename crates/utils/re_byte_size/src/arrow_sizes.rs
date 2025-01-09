@@ -1,4 +1,4 @@
-use arrow::array::{Array, ArrayRef};
+use arrow::array::{Array, ArrayRef, ArrowPrimitiveType, PrimitiveArray};
 
 use super::SizeBytes;
 
@@ -13,5 +13,12 @@ impl SizeBytes for ArrayRef {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.get_array_memory_size() as u64
+    }
+}
+
+impl<T: ArrowPrimitiveType> SizeBytes for PrimitiveArray<T> {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        Array::get_array_memory_size(self) as u64
     }
 }

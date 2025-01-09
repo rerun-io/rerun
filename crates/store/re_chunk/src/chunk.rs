@@ -1,7 +1,7 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use ahash::HashMap;
-use arrow::array::ListArray as ArrowListArray;
+use arrow::array::{Array as _, Int64Array as ArrowInt64Array, ListArray as ArrowListArray};
 use arrow2::{
     array::{
         Array as Arrow2Array, ListArray as Arrow2ListArray, PrimitiveArray as Arrow2PrimitiveArray,
@@ -781,7 +781,7 @@ pub struct TimeColumn {
     /// * This is guaranteed to always be dense, because chunks are split anytime a timeline is
     ///   added or removed.
     /// * This cannot ever contain `TimeInt::STATIC`, since static data doesn't even have timelines.
-    pub(crate) times: Arrow2PrimitiveArray<i64>,
+    pub(crate) times: ArrowInt64Array,
 
     /// Is [`Self::times`] sorted?
     ///
@@ -971,12 +971,13 @@ impl TimeColumn {
     pub fn new(
         is_sorted: Option<bool>,
         timeline: Timeline,
-        times: Arrow2PrimitiveArray<i64>,
+        times: impl Into<ArrowInt64Array>,
     ) -> Self {
+        let times = times.into();
         re_tracing::profile_function_if!(1000 < times.len(), format!("{} times", times.len()));
 
-        let times = times.to(timeline.datatype());
-        let time_slice = times.values().as_slice();
+        let times = times.with_data_type(timeline.datatype().into());
+        let time_slice = times.values().as_ref();
 
         let is_sorted =
             is_sorted.unwrap_or_else(|| time_slice.windows(2).all(|times| times[0] <= times[1]));
@@ -1021,7 +1022,7 @@ impl TimeColumn {
         name: impl Into<re_log_types::TimelineName>,
         times: impl IntoIterator<Item = impl Into<i64>>,
     ) -> Self {
-        let time_vec = times.into_iter().map(|t| {
+        let time_vec: Vec<_> = times.into_iter().map(|t| {
             let t = t.into();
             TimeInt::try_from(t)
                 .unwrap_or_else(|_| {
@@ -1038,7 +1039,7 @@ impl TimeColumn {
         Self::new(
             None,
             Timeline::new_sequence(name.into()),
-            Arrow2PrimitiveArray::<i64>::from_vec(time_vec),
+            ArrowInt64Array::from(time_vec),
         )
     }
 
@@ -1060,12 +1061,12 @@ impl TimeColumn {
                     TimeInt::MIN
                 })
                 .as_i64()
-        }).collect();
+        }).collect_vec();
 
         Self::new(
             None,
             Timeline::new_temporal(name.into()),
-            Arrow2PrimitiveArray::<i64>::from_vec(time_vec),
+            ArrowInt64Array::from(time_vec),
         )
     }
 
@@ -1090,12 +1091,12 @@ impl TimeColumn {
                     })
                     .as_i64()
             })
-            .collect();
+            .collect_vec();
 
         Self::new(
             None,
             Timeline::new_temporal(name.into()),
-            Arrow2PrimitiveArray::<i64>::from_vec(time_vec),
+            ArrowInt64Array::from(time_vec),
         )
     }
 }
@@ -1188,7 +1189,7 @@ impl Chunk {
     #[inline]
     pub fn row_ids(&self) -> impl Iterator<Item = RowId> + '_ {
         let (times, counters) = self.row_ids_raw();
-        izip!(times.values().as_slice(), counters.values().as_slice())
+        izip!(times.values().as_ref(), counters.values().as_slice())
             .map(|(&time, &counter)| RowId::from_u128((time as u128) << 64 | (counter as u128)))
     }
 
@@ -1230,7 +1231,7 @@ impl Chunk {
         }
 
         let (times, counters) = self.row_ids_raw();
-        let (times, counters) = (times.values().as_slice(), counters.values().as_slice());
+        let (times, counters) = (times.values().as_ref(), counters.values().as_slice());
 
         #[allow(clippy::unwrap_used)] // checked above
         let (index_min, index_max) = if self.is_sorted() {
@@ -1333,20 +1334,20 @@ impl TimeColumn {
     }
 
     #[inline]
-    pub fn times_array(&self) -> &Arrow2PrimitiveArray<i64> {
+    pub fn times_array(&self) -> &ArrowInt64Array {
         &self.times
     }
 
     #[inline]
     pub fn times_raw(&self) -> &[i64] {
-        self.times.values().as_slice()
+        self.times.values()
     }
 
     #[inline]
     pub fn times(&self) -> impl DoubleEndedIterator<Item = TimeInt> + '_ {
         self.times
             .values()
-            .as_slice()
+            .as_ref()
             .iter()
             .copied()
             .map(TimeInt::new_temporal)
@@ -1609,7 +1610,7 @@ impl TimeColumn {
             time_range,
         } = self;
 
-        if *times.data_type() != timeline.datatype() {
+        if *times.data_type() != timeline.datatype_arrow1() {
             return Err(ChunkError::Malformed {
                 reason: format!(
                     "Time data for timeline {} has the wrong datatype: expected {:?} but got {:?} instead",
@@ -1620,7 +1621,7 @@ impl TimeColumn {
             });
         }
 
-        let times = times.values().as_slice();
+        let times = times.values().as_ref();
 
         #[allow(clippy::collapsible_if)] // readability
         if cfg!(debug_assertions) {

@@ -1,3 +1,4 @@
+use arrow::array::Int64Array as ArrowInt64Array;
 use arrow2::{
     array::{
         Array as Arrow2Array, ListArray as Arrow2ListArray, PrimitiveArray as Arrow2PrimitiveArray,
@@ -250,7 +251,7 @@ impl Chunk {
                 }
 
                 *is_sorted = sorted.windows(2).all(|times| times[0] <= times[1]);
-                *times = Arrow2PrimitiveArray::<i64>::from_vec(sorted).to(timeline.datatype());
+                *times = ArrowInt64Array::from(sorted).with_data_type(timeline.datatype_arrow1());
             }
         }
 

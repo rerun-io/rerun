@@ -1,3 +1,4 @@
+use arrow::array::Array as _;
 use arrow2::array::{
     Array as Arrow2Array, BooleanArray as Arrow2BooleanArray, ListArray as Arrow2ListArray,
     PrimitiveArray as Arrow2PrimitiveArray, StructArray as Arrow2StructArray,
@@ -9,7 +10,7 @@ use nohash_hasher::IntSet;
 use re_log_types::Timeline;
 use re_types_core::{ComponentDescriptor, ComponentName};
 
-use crate::{arrow2_util, Chunk, RowId, TimeColumn};
+use crate::{arrow2_util, arrow_util, Chunk, RowId, TimeColumn};
 
 // ---
 
@@ -671,7 +672,10 @@ impl Chunk {
     /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
     #[must_use]
     #[inline]
-    pub fn taken<O: arrow2::types::Index>(&self, indices: &Arrow2PrimitiveArray<O>) -> Self {
+    pub fn taken<O: arrow2::types::Index + arrow::datatypes::ArrowNativeType>(
+        &self,
+        indices: &Arrow2PrimitiveArray<O>,
+    ) -> Self {
         let Self {
             id,
             entity_path,
@@ -792,11 +796,7 @@ impl TimeColumn {
         // The original chunk is unsorted, but the new sliced one actually ends up being sorted.
         let is_sorted_opt = is_sorted.then_some(is_sorted);
 
-        Self::new(
-            is_sorted_opt,
-            *timeline,
-            Arrow2PrimitiveArray::sliced(times.clone(), index, len),
-        )
+        Self::new(is_sorted_opt, *timeline, times.clone().slice(index, len))
     }
 
     /// Empties the [`TimeColumn`] vertically.
@@ -814,7 +814,9 @@ impl TimeColumn {
         Self::new(
             Some(true),
             *timeline,
-            Arrow2PrimitiveArray::new_empty(times.data_type().clone()),
+            arrow::array::Int64Builder::new()
+                .finish()
+                .with_data_type(times.data_type().clone()),
         )
     }
 
@@ -852,7 +854,7 @@ impl TimeColumn {
         Self::new(
             is_sorted_opt,
             *timeline,
-            arrow2_util::filter_array(times, filter),
+            arrow_util::filter_array(times, &filter.clone().into()),
         )
     }
 
@@ -868,11 +870,10 @@ impl TimeColumn {
             time_range: _,
         } = self;
 
-        Self::new(
-            Some(*is_sorted),
-            *timeline,
-            arrow2_util::take_array(times, indices),
-        )
+        let new_times =
+            arrow2_util::take_array(&Arrow2PrimitiveArray::from_arrow(times.clone()), indices);
+
+        Self::new(Some(*is_sorted), *timeline, new_times)
     }
 }
 

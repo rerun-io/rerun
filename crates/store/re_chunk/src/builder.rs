@@ -353,7 +353,8 @@ impl TimeColumnBuilder {
     pub fn build(self) -> TimeColumn {
         let Self { timeline, times } = self;
 
-        let times = arrow2::array::PrimitiveArray::<i64>::from_vec(times).to(timeline.datatype());
+        let times =
+            arrow::array::Int64Array::from(times).with_data_type(timeline.datatype().into());
         TimeColumn::new(None, timeline, times)
     }
 }

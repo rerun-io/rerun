@@ -1,3 +1,6 @@
+use std::sync::Arc;
+
+use arrow::array::{Array as _, ArrayRef as ArrowArrayRef};
 use arrow2::{
     array::{
         Array as Arrow2Array, ListArray, PrimitiveArray as Arrow2PrimitiveArray,
@@ -457,7 +460,7 @@ impl Chunk {
 
                     let field = ArrowField::new(
                         timeline.name().to_string(),
-                        times.data_type().clone(),
+                        times.data_type().clone().into(),
                         false, // timelines within a single chunk are always dense
                     )
                     .with_metadata({
@@ -468,7 +471,7 @@ impl Chunk {
                         metadata
                     });
 
-                    let times = times.clone().boxed() /* cheap */;
+                    let times: ArrowArrayRef = Arc::new(times.clone()) /* cheap */;
 
                     (field, times)
                 })
@@ -478,7 +481,7 @@ impl Chunk {
 
             for (field, times) in timelines {
                 schema.fields.push(field);
-                columns.push(times);
+                columns.push(times.into());
             }
         }
 

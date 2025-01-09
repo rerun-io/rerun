@@ -6,6 +6,7 @@ use std::{
     },
 };
 
+use arrow::array::Int64Array as ArrowInt64Array;
 use arrow2::{
     array::{
         Array as Arrow2Array, BooleanArray as Arrow2BooleanArray,
@@ -1158,7 +1159,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                             .map(|time| {
                                 (
                                     *time_column.timeline(),
-                                    (time, time_column.times_array().sliced(cursor, 1)),
+                                    (time, time_column.times_array().slice(cursor, 1)),
                                 )
                             })
                     })
@@ -1182,9 +1183,8 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                     state.filtered_index,
                     (
                         *cur_index_value,
-                        Arrow2PrimitiveArray::<i64>::from_vec(vec![cur_index_value.as_i64()])
-                            .to(state.filtered_index.datatype())
-                            .to_boxed(),
+                        ArrowInt64Array::from(vec![cur_index_value.as_i64()])
+                            .with_data_type(state.filtered_index.datatype().into()),
                     ),
                 );
             }
@@ -1250,7 +1250,9 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                 ColumnDescriptor::Time(descr) => {
                     max_value_per_index.get(&descr.timeline).map_or_else(
                         || arrow2::array::new_null_array(column.datatype(), 1),
-                        |(_time, time_sliced)| time_sliced.clone(),
+                        |(_time, time_sliced)| {
+                            Arrow2PrimitiveArray::from_arrow(time_sliced.clone()).boxed()
+                        },
                     )
                 }
 

@@ -4,8 +4,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use arrow::array::{Array as ArrowArray, ArrayRef};
-use arrow2::array::PrimitiveArray as Arrow2PrimitiveArray;
+use arrow::array::{Array as ArrowArray, ArrayRef, Int64Array as ArrowInt64Array};
 use crossbeam::channel::{Receiver, Sender};
 use nohash_hasher::IntMap;
 
@@ -724,7 +723,7 @@ impl PendingRow {
         let timelines = timepoint
             .into_iter()
             .map(|(timeline, time)| {
-                let times = Arrow2PrimitiveArray::<i64>::from_vec(vec![time.as_i64()]);
+                let times = ArrowInt64Array::from(vec![time.as_i64()]);
                 let time_column = TimeColumn::new(Some(true), timeline, times);
                 (timeline, time_column)
             })
@@ -973,7 +972,7 @@ impl PendingTimeColumn {
 
         TimeColumn {
             timeline,
-            times: Arrow2PrimitiveArray::<i64>::from_vec(times).to(timeline.datatype()),
+            times: ArrowInt64Array::from(times).with_data_type(timeline.datatype().into()),
             is_sorted,
             time_range,
         }
@@ -988,6 +987,7 @@ impl PendingTimeColumn {
 
 #[cfg(test)]
 mod tests {
+    use arrow2::array::PrimitiveArray as Arrow2PrimitiveArray;
     use crossbeam::channel::TryRecvError;
 
     use re_log_types::example_components::{MyPoint, MyPoint64};
