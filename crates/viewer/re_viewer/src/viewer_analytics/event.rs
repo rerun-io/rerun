@@ -1,7 +1,7 @@
 use crate::AppEnvironment;
 
 use re_analytics::{
-    event::{Id, Identify, OpenRecording, StoreInfo, ViewerStarted},
+    event::{Id, Identify, OpenRecording, StoreInfo, ViewerRuntimeInformation, ViewerStarted},
     Config, Property,
 };
 
@@ -32,10 +32,19 @@ pub fn identify(
     }
 }
 
-pub fn viewer_started(app_env: &AppEnvironment) -> ViewerStarted {
+pub fn viewer_started(
+    app_env: &AppEnvironment,
+    adapter_backend: wgpu::Backend,
+    device_tier: re_renderer::config::DeviceTier,
+) -> ViewerStarted {
     ViewerStarted {
         url: app_env.url().cloned(),
         app_env: app_env.name(),
+        runtime_info: ViewerRuntimeInformation {
+            is_wsl: super::wsl::is_wsl(),
+            graphics_adapter_backend: adapter_backend.to_string(),
+            re_renderer_device_tier: device_tier.to_string(),
+        },
     }
 }
 

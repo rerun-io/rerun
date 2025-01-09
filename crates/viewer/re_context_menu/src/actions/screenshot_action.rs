@@ -3,9 +3,9 @@ use re_viewer_context::{Item, PublishedViewInfo, ScreenshotTarget, ViewId, ViewR
 use crate::{ContextMenuAction, ContextMenuContext};
 
 /// View screenshot action.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ScreenshotAction {
     /// Screenshot the view, and copy the results to clipboard.
-    #[cfg(not(target_arch = "wasm32"))] // TODO(#8264): copy-to-screenshot on web
     CopyScreenshot,
 
     /// Screenshot the view, and save the results to disk.
@@ -13,18 +13,22 @@ pub enum ScreenshotAction {
 }
 
 impl ContextMenuAction for ScreenshotAction {
-    /// Do we have a context menu for this selection?
-    fn supports_selection(&self, ctx: &ContextMenuContext<'_>) -> bool {
-        // Allow if there is a single view selected.
-        ctx.selection.len() == 1
-            && ctx
-                .selection
-                .iter()
-                .all(|(item, _)| self.supports_item(ctx, item))
+    fn supports_multi_selection(&self, _ctx: &ContextMenuContext<'_>) -> bool {
+        match self {
+            Self::CopyScreenshot => false,
+            Self::SaveScreenshot => true,
+        }
     }
 
     /// Do we have a context menu for this item?
     fn supports_item(&self, ctx: &ContextMenuContext<'_>, item: &Item) -> bool {
+        if *self == Self::CopyScreenshot && ctx.viewer_context.is_safari_browser() {
+            // Safari only allows access to clipboard on user action (e.g. on-click).
+            // However, the screenshot capture results arrives a frame later.
+            re_log::debug_once!("Copying screenshots not supported on Safari");
+            return false;
+        }
+
         let Item::View(view_id) = item else {
             return false;
         };
@@ -39,7 +43,6 @@ impl ContextMenuAction for ScreenshotAction {
 
     fn label(&self, _ctx: &ContextMenuContext<'_>) -> String {
         match self {
-            #[cfg(not(target_arch = "wasm32"))] // TODO(#8264): copy-to-screenshot on web
             Self::CopyScreenshot => "Copy screenshot".to_owned(),
             Self::SaveScreenshot => "Save screenshot…".to_owned(),
         }
@@ -65,7 +68,6 @@ impl ContextMenuAction for ScreenshotAction {
         }
 
         let target = match self {
-            #[cfg(not(target_arch = "wasm32"))] // TODO(#8264): copy-to-screenshot on web
             Self::CopyScreenshot => ScreenshotTarget::CopyToClipboard,
             Self::SaveScreenshot => ScreenshotTarget::SaveToDisk,
         };

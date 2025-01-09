@@ -150,7 +150,6 @@ emath = "0.30.0"
 # All of our direct external dependencies should be found here:
 ahash = "0.8"
 anyhow = { version = "1.0", default-features = false }
-arboard = { version = "3.2", default-features = false }
 argh = "0.1.12"
 array-init = "2.1"
 arrow = { version = "53.1", default-features = false }
@@ -559,13 +558,13 @@ significant_drop_tightening = "allow" # An update of parking_lot made this trigg
 # As a last resport, patch with a commit to our own repository.
 # ALWAYS document what PR the commit hash is part of, or when it was merged into the upstream trunk.
 
-ecolor = { git = "https://github.com/emilk/egui.git", rev = "938d8b0d2e2a551ac354d76d6208188e5942b21e" }       # egui master 2025-01-03
-eframe = { git = "https://github.com/emilk/egui.git", rev = "938d8b0d2e2a551ac354d76d6208188e5942b21e" }       # egui master 2025-01-03
-egui = { git = "https://github.com/emilk/egui.git", rev = "938d8b0d2e2a551ac354d76d6208188e5942b21e" }         # egui master 2025-01-03
-egui_extras = { git = "https://github.com/emilk/egui.git", rev = "938d8b0d2e2a551ac354d76d6208188e5942b21e" }  # egui master 2025-01-03
-egui_kittest = { git = "https://github.com/emilk/egui.git", rev = "938d8b0d2e2a551ac354d76d6208188e5942b21e" } # egui master 2025-01-03
-egui-wgpu = { git = "https://github.com/emilk/egui.git", rev = "938d8b0d2e2a551ac354d76d6208188e5942b21e" }    # egui master 2025-01-03
-emath = { git = "https://github.com/emilk/egui.git", rev = "938d8b0d2e2a551ac354d76d6208188e5942b21e" }        # egui master 2025-01-03
+ecolor = { git = "https://github.com/emilk/egui.git", rev = "f0d7c74e838b8e8920a22e7515990fbe057ec218" }       # egui master 2025-01-08
+eframe = { git = "https://github.com/emilk/egui.git", rev = "f0d7c74e838b8e8920a22e7515990fbe057ec218" }       # egui master 2025-01-08
+egui = { git = "https://github.com/emilk/egui.git", rev = "f0d7c74e838b8e8920a22e7515990fbe057ec218" }         # egui master 2025-01-08
+egui_extras = { git = "https://github.com/emilk/egui.git", rev = "f0d7c74e838b8e8920a22e7515990fbe057ec218" }  # egui master 2025-01-08
+egui_kittest = { git = "https://github.com/emilk/egui.git", rev = "f0d7c74e838b8e8920a22e7515990fbe057ec218" } # egui master 2025-01-08
+egui-wgpu = { git = "https://github.com/emilk/egui.git", rev = "f0d7c74e838b8e8920a22e7515990fbe057ec218" }    # egui master 2025-01-08
+emath = { git = "https://github.com/emilk/egui.git", rev = "f0d7c74e838b8e8920a22e7515990fbe057ec218" }        # egui master 2025-01-08
 
 # Useful while developing:
 # ecolor = { path = "../../egui/crates/ecolor" }
@@ -576,7 +575,7 @@ emath = { git = "https://github.com/emilk/egui.git", rev = "938d8b0d2e2a551ac354
 # egui-wgpu = { path = "../../egui/crates/egui-wgpu" }
 # emath = { path = "../../egui/crates/emath" }
 
-egui_plot = { git = "https://github.com/emilk/egui_plot.git", rev = "4a16b8842aa39e6ea6b6c9c98afe20e060e767b6" }
+egui_plot = { git = "https://github.com/emilk/egui_plot.git", rev = "80e2199a2e121db288fe6b0099d91c35acc75a7c" }
 # egui_plot = { path = "../../egui_plot/egui_plot" }
 
 # egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", rev = "48e0ef566479000a23d8dabf84badced98f1b9a6" } # https://github.com/rerun-io/egui_tiles/pull/89 2024-11-19
@@ -587,3 +586,5 @@ egui_commonmark = { git = "https://github.com/rerun-io/egui_commonmark.git", bra
 # walkers = { git = "https://github.com/rerun-io/walkers", rev = "8939cceb3fa49ca8648ee16fe1d8432f5ab0bdcc" } # https://github.com/podusowski/walkers/pull/222
 
 # dav1d = { path = "/home/cmc/dev/rerun-io/rav1d", package = "re_rav1d", version = "0.1.1" }
+
+re_arrow2 = { git = "https://github.com/rerun-io/re_arrow2.git", branch = "main" }

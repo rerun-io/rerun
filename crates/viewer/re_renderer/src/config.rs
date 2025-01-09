@@ -11,12 +11,13 @@
 /// See also `global_bindings.wgsl`
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DeviceTier {
-    /// Limited feature support as provided by WebGL and typically only by GLES2/OpenGL3(ish).
+    /// Limited feature support as provided by WebGL and some OpenGL drivers.
     ///
-    /// Note that we do not distinguish between WebGL & native GL here,
-    /// instead, we go with the lowest common denominator.
+    /// On desktop this happens typically with GLES 2 & OpenGL 3.x, as well as some OpenGL 4.x drivers
+    /// with lack of key rendering abilities.
+    ///
     /// In theory this path can also be hit on Vulkan & Metal drivers, but this is exceedingly rare.
-    Gles = 0,
+    Limited = 0,
 
     /// Full support of WebGPU spec without additional feature requirements.
     ///
@@ -27,11 +28,20 @@ pub enum DeviceTier {
     //HighEnd
 }
 
+impl std::fmt::Display for DeviceTier {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Self::Limited => "limited",
+            Self::FullWebGpuSupport => "full_webgpu_support",
+        })
+    }
+}
+
 impl DeviceTier {
     /// Whether the current device tier supports sampling from textures with a sample count higher than 1.
     pub fn support_sampling_msaa_texture(&self) -> bool {
         match self {
-            Self::Gles => false,
+            Self::Limited => false,
             Self::FullWebGpuSupport => true,
         }
     }
@@ -41,7 +51,7 @@ impl DeviceTier {
     /// If this returns false, we first have to create a copy of the depth buffer by rendering depth to a different texture.
     pub fn support_depth_readback(&self) -> bool {
         match self {
-            Self::Gles => false,
+            Self::Limited => false,
             Self::FullWebGpuSupport => true,
         }
     }
@@ -50,7 +60,7 @@ impl DeviceTier {
         match self {
             // TODO(wgpu#3583): Incorrectly reported by wgpu right now.
             // GLES2 does not support BGRA textures!
-            Self::Gles => false,
+            Self::Limited => false,
             Self::FullWebGpuSupport => true,
         }
     }
@@ -59,9 +69,27 @@ impl DeviceTier {
     pub fn required_downlevel_capabilities(&self) -> wgpu::DownlevelCapabilities {
         wgpu::DownlevelCapabilities {
             flags: match self {
-                Self::Gles => wgpu::DownlevelFlags::empty(),
+                Self::Limited => wgpu::DownlevelFlags::empty(),
                 // Require fully WebGPU compliance for the native tier.
-                Self::FullWebGpuSupport => wgpu::DownlevelFlags::all(),
+                Self::FullWebGpuSupport => {
+                    // Turn a blind eye on a few features that are missing as of writing in WSL even with latest Vulkan drivers.
+                    // Pretend we still have full WebGPU support anyways.
+                    wgpu::DownlevelFlags::compliant()
+                        // Lacking `SURFACE_VIEW_FORMATS` means we can't set the format of views on surface textures
+                        // (the result of `get_current_texture`).
+                        // And the surface won't tell us which formats are supported.
+                        // We avoid doing anything wonky with surfaces anyways, so we won't hit this.
+                        .intersection(wgpu::DownlevelFlags::SURFACE_VIEW_FORMATS.complement())
+                        // Lacking `FULL_DRAW_INDEX_UINT32` means that vertex indices above 2^24-1 are invalid.
+                        // I.e. we can only draw with about 16.8mio vertices per mesh.
+                        // Typically we don't reach this limit.
+                        //
+                        // This can happen if…
+                        // * OpenGL: `GL_MAX_ELEMENT_INDEX` reports a value lower than `std::u32::MAX`
+                        // * Vulkan: `VkPhysicalDeviceLimits::fullDrawIndexUint32` is false.
+                        // The consequence of exceeding this limit seems to be undefined.
+                        .intersection(wgpu::DownlevelFlags::FULL_DRAW_INDEX_UINT32.complement())
+                }
             },
             limits: Default::default(), // unused so far both here and in wgpu as of writing.
 
@@ -84,6 +112,7 @@ impl DeviceTier {
         downlevel_caps: &wgpu::DownlevelCapabilities,
     ) -> Result<(), InsufficientDeviceCapabilities> {
         let required_downlevel_caps_webgpu = self.required_downlevel_capabilities();
+
         if downlevel_caps.shader_model < required_downlevel_caps_webgpu.shader_model {
             Err(InsufficientDeviceCapabilities::TooLowShaderModel {
                 required: required_downlevel_caps_webgpu.shader_model,
@@ -182,7 +211,7 @@ impl DeviceCaps {
             // We pass the WebGPU min-spec!
             DeviceTier::FullWebGpuSupport
         } else {
-            DeviceTier::Gles
+            DeviceTier::Limited
         };
 
         let backend_type = match adapter.get_info().backend {
@@ -220,7 +249,7 @@ impl DeviceCaps {
         caps.tier
             .check_required_downlevel_capabilities(&adapter.get_downlevel_capabilities())?;
 
-        if caps.tier == DeviceTier::Gles {
+        if caps.tier == DeviceTier::Limited {
             // Check texture format support. If `WEBGPU_TEXTURE_FORMAT_SUPPORT` is enabled, we're generally fine.
             // This is an implicit requirement for the WebGPU tier and above.
             if !adapter
@@ -293,6 +322,47 @@ impl DeviceCaps {
             required_limits: self.limits(),
             memory_hints: Default::default(),
         }
+    }
+}
+
+pub fn instance_descriptor(force_backend: Option<&str>) -> wgpu::InstanceDescriptor {
+    let backends = if let Some(force_backend) = force_backend {
+        if let Some(backend) = parse_graphics_backend(force_backend) {
+            if let Err(err) = validate_graphics_backend_applicability(backend) {
+                re_log::error!("Failed to force rendering backend parsed from {force_backend:?}: {err}\nUsing default backend instead.");
+                supported_backends()
+            } else {
+                re_log::info!("Forcing graphics backend to {backend:?}.");
+                backend.into()
+            }
+        } else {
+            re_log::error!("Failed to parse rendering backend string {force_backend:?}. Using default backend instead.");
+            supported_backends()
+        }
+    } else {
+        supported_backends()
+    };
+
+    wgpu::InstanceDescriptor {
+        backends,
+
+        flags: wgpu::InstanceFlags::default()
+            // Allow adapters that aren't compliant with the backend they're implementing.
+            // A concrete example of this is the latest Vulkan drivers on WSL which (as of writing)
+            // advertise themselves as not being Vulkan compliant but work fine for the most part.
+            //
+            // In the future we might consider enabling this _only_ for WSL as this might otherwise
+            // cause us to run with arbitrary development versions of drivers.
+            // (then again, if a user has such a driver they likely *want* us to run with it anyways!)
+            .union(wgpu::InstanceFlags::ALLOW_UNDERLYING_NONCOMPLIANT_ADAPTER)
+            // Allow manipulation via environment variables.
+            .with_env(),
+
+        // FXC isn't great (slow & outdated), but DXC is painful to ship as it has to be provided separately.
+        // (Note though that we generally prefer running with Vulkan)
+        dx12_shader_compiler: wgpu::Dx12Compiler::Fxc,
+
+        gles_minor_version: wgpu::Gles3MinorVersion::Automatic,
     }
 }
 

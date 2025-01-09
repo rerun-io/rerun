@@ -9,7 +9,7 @@ use nohash_hasher::IntMap;
 use re_log_types::{EntityPath, TimeInt, TimePoint, Timeline};
 use re_types_core::{AsComponents, ComponentBatch, ComponentDescriptor};
 
-use crate::{chunk::ChunkComponents, Chunk, ChunkId, ChunkResult, RowId, TimeColumn};
+use crate::{arrow2_util, chunk::ChunkComponents, Chunk, ChunkId, ChunkResult, RowId, TimeColumn};
 
 // ---
 
@@ -117,23 +117,6 @@ impl ChunkBuilder {
         )
     }
 
-    /// Add a row's worth of data using the given component data.
-    #[inline]
-    pub fn with_row_arrow2(
-        self,
-        row_id: RowId,
-        timepoint: impl Into<TimePoint>,
-        components: impl IntoIterator<Item = (ComponentDescriptor, Box<dyn Arrow2Array>)>,
-    ) -> Self {
-        self.with_sparse_row(
-            row_id,
-            timepoint,
-            components
-                .into_iter()
-                .map(|(component_descr, array)| (component_descr, Some(array))),
-        )
-    }
-
     /// Add a row's worth of data by destructuring an archetype into component columns.
     #[inline]
     pub fn with_archetype(
@@ -160,11 +143,11 @@ impl ChunkBuilder {
         timepoint: impl Into<TimePoint>,
         component_batch: &dyn ComponentBatch,
     ) -> Self {
-        self.with_row_arrow2(
+        self.with_row(
             row_id,
             timepoint,
             component_batch
-                .to_arrow2()
+                .to_arrow()
                 .ok()
                 .map(|array| (component_batch.descriptor().into_owned(), array)),
         )
@@ -178,12 +161,12 @@ impl ChunkBuilder {
         timepoint: impl Into<TimePoint>,
         component_batches: impl IntoIterator<Item = &'a dyn ComponentBatch>,
     ) -> Self {
-        self.with_row_arrow2(
+        self.with_row(
             row_id,
             timepoint,
             component_batches.into_iter().filter_map(|component_batch| {
                 component_batch
-                    .to_arrow2()
+                    .to_arrow()
                     .ok()
                     .map(|array| (component_batch.descriptor().into_owned(), array))
             }),
@@ -253,11 +236,11 @@ impl ChunkBuilder {
                     .into_iter()
                     .filter_map(|(component_desc, arrays)| {
                         let arrays = arrays.iter().map(|array| array.as_deref()).collect_vec();
-                        crate::util::arrays_to_list_array_opt(&arrays)
+                        arrow2_util::arrays_to_list_array_opt(&arrays)
                             .map(|list_array| (component_desc, list_array))
                     })
             {
-                per_name.insert_descriptor(component_desc, list_array);
+                per_name.insert_descriptor(component_desc, list_array.into());
             }
             per_name
         };
@@ -312,15 +295,15 @@ impl ChunkBuilder {
                             // If we know the datatype in advance, we're able to keep even fully sparse
                             // columns around.
                             if let Some(datatype) = datatypes.get(&component_desc) {
-                                crate::util::arrays_to_list_array(datatype.clone(), &arrays)
+                                arrow2_util::arrays_to_list_array(datatype.clone(), &arrays)
                                     .map(|list_array| (component_desc, list_array))
                             } else {
-                                crate::util::arrays_to_list_array_opt(&arrays)
+                                arrow2_util::arrays_to_list_array_opt(&arrays)
                                     .map(|list_array| (component_desc, list_array))
                             }
                         })
                 {
-                    per_name.insert_descriptor(component_desc, list_array);
+                    per_name.insert_descriptor(component_desc, list_array.into());
                 }
                 per_name
             },

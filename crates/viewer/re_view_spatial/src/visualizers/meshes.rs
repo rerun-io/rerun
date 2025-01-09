@@ -212,7 +212,7 @@ impl VisualizerSystem for Mesh3DVisualizer {
                     all_vertex_normals.slice::<[f32; 3]>(),
                     all_vertex_colors.slice::<u32>(),
                     all_vertex_texcoords.slice::<[f32; 2]>(),
-                    all_triangle_indices.slice::<[f32; 3]>(),
+                    all_triangle_indices.slice::<[u32; 3]>(),
                     all_albedo_factors.slice::<u32>(),
                     all_albedo_buffers.slice::<&[u8]>(),
                     // Legit call to `component_slow`, `ImageFormat` is real complicated.

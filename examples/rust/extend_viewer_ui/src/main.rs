@@ -1,8 +1,7 @@
 //! This example shows how to wrap the Rerun Viewer in your own GUI.
 
 use re_viewer::external::{
-    arrow2, eframe, egui, re_byte_size, re_chunk_store, re_entity_db, re_log, re_log_types,
-    re_memory, re_types,
+    arrow, eframe, egui, re_chunk_store, re_entity_db, re_log, re_log_types, re_memory, re_types,
 };
 
 // By using `re_memory::AccountingAllocator` Rerun can keep track of exactly how much memory it is using,
@@ -30,10 +29,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Default::default(),
     )?;
 
-    let native_options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default().with_app_id("rerun_extend_viewer_ui_example"),
-        ..re_viewer::native::eframe_options(None)
-    };
+    let mut native_options = re_viewer::native::eframe_options(None);
+    native_options.viewport = native_options
+        .viewport
+        .with_app_id("rerun_extend_viewer_ui_example");
 
     let startup_options = re_viewer::StartupOptions::default();
 
@@ -52,8 +51,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 re_viewer::build_info(),
                 &app_env,
                 startup_options,
-                cc.egui_ctx.clone(),
-                cc.storage,
+                cc,
             );
             rerun_app.add_receiver(rx);
             Ok(Box::new(MyApp { rerun_app }))
@@ -164,7 +162,7 @@ fn component_ui(
             .cache()
             .latest_at(&query, entity_path, [component_name]);
 
-    if let Some(data) = results.component_batch_raw_arrow2(&component_name) {
+    if let Some(data) = results.component_batch_raw(&component_name) {
         egui::ScrollArea::vertical()
             .auto_shrink([false, true])
             .show(ui, |ui| {
@@ -172,25 +170,24 @@ fn component_ui(
 
                 let num_instances = data.len();
                 for i in 0..num_instances {
-                    ui.label(format_arrow2(&*data.sliced(i, 1)));
+                    ui.label(format_arrow(&*data.slice(i, 1)));
                 }
             });
     };
 }
 
-fn format_arrow2(value: &dyn arrow2::array::Array) -> String {
-    use re_byte_size::SizeBytes as _;
+fn format_arrow(array: &dyn arrow::array::Array) -> String {
+    use arrow::util::display::{ArrayFormatter, FormatOptions};
 
-    let bytes = value.total_size_bytes();
-    if bytes < 256 {
+    let num_bytes = array.get_array_memory_size();
+    if array.len() == 1 && num_bytes < 256 {
         // Print small items:
-        let mut string = String::new();
-        let display = arrow2::array::get_display(value, "null");
-        if display(&mut string, 0).is_ok() {
-            return string;
+        let options = FormatOptions::default();
+        if let Ok(formatter) = ArrayFormatter::try_new(array, &options) {
+            return formatter.value(0).to_string();
         }
     }
 
     // Fallback:
-    format!("{bytes} bytes")
+    format!("{num_bytes} bytes")
 }

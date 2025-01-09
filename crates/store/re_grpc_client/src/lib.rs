@@ -4,6 +4,7 @@ mod address;
 
 pub use address::{InvalidRedapAddress, RedapAddress};
 use re_chunk::external::arrow2;
+use re_log_encoding::codec::wire::decoder::Decode;
 use re_log_types::external::re_types_core::ComponentDescriptor;
 use re_protos::remote_store::v0::CatalogFilter;
 use re_types::blueprint::archetypes::{ContainerBlueprint, ViewportBlueprint};
@@ -24,7 +25,7 @@ use arrow2::datatypes::Field as Arrow2Field;
 use re_chunk::{
     Arrow2Array, Chunk, ChunkBuilder, ChunkId, EntityPath, RowId, Timeline, TransportChunk,
 };
-use re_log_encoding::codec::{wire::decode, CodecError};
+use re_log_encoding::codec::CodecError;
 use re_log_types::{
     ApplicationId, BlueprintActivationCommand, EntityPathFilter, LogMsg, SetStoreInfo, StoreId,
     StoreInfo, StoreKind, StoreSource, Time,
@@ -193,7 +194,7 @@ async fn stream_recording_async(
         .into_inner()
         .map(|resp| {
             resp.and_then(|r| {
-                decode(r.encoder_version(), &r.payload)
+                r.decode()
                     .map_err(|err| tonic::Status::internal(err.to_string()))
             })
         })
@@ -226,7 +227,7 @@ async fn stream_recording_async(
         .into_inner()
         .map(|resp| {
             resp.and_then(|r| {
-                decode(r.encoder_version(), &r.payload)
+                r.decode()
                     .map_err(|err| tonic::Status::internal(err.to_string()))
             })
         });
@@ -347,7 +348,7 @@ async fn stream_catalog_async(
         .into_inner()
         .map(|resp| {
             resp.and_then(|r| {
-                decode(r.encoder_version(), &r.payload)
+                r.decode()
                     .map_err(|err| tonic::Status::internal(err.to_string()))
             })
         });
@@ -438,7 +439,7 @@ async fn stream_catalog_async(
             let data_arrays = sliced.iter().map(|e| Some(e.as_ref())).collect::<Vec<_>>();
             #[allow(clippy::unwrap_used)] // we know we've given the right field type
             let data_field_array: arrow2::array::ListArray<i32> =
-                re_chunk::util::arrays_to_list_array(
+                re_chunk::arrow2_util::arrays_to_list_array(
                     data_field_inner.data_type().clone(),
                     &data_arrays,
                 )
@@ -501,7 +502,7 @@ async fn stream_catalog_async(
 
         let rec_id_field = Arrow2Field::new("item", arrow2::datatypes::DataType::Utf8, true);
         #[allow(clippy::unwrap_used)] // we know we've given the right field type
-        let uris = re_chunk::util::arrays_to_list_array(
+        let uris = re_chunk::arrow2_util::arrays_to_list_array(
             rec_id_field.data_type().clone(),
             &recording_id_arrays,
         )

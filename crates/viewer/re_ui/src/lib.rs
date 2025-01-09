@@ -38,7 +38,7 @@ pub use self::{
 mod arrow_ui;
 
 #[cfg(feature = "arrow")]
-pub use self::arrow_ui::{arrow2_ui, arrow_ui};
+pub use self::arrow_ui::arrow_ui;
 
 // ---------------------------------------------------------------------------
 

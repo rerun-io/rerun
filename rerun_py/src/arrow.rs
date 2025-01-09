@@ -89,7 +89,7 @@ pub fn build_row_from_components(
         let component_descr = descriptor_to_rust(&component_descr)?;
         let (list_array, _field) = array_to_rust(&array, &component_descr)?;
 
-        components.insert(component_descr, list_array);
+        components.insert(component_descr, list_array.into());
     }
 
     Ok(PendingRow {

@@ -72,7 +72,7 @@ impl WebHandle {
 
         let app_options = self.app_options.clone();
         let web_options = eframe::WebOptions {
-            wgpu_options: crate::wgpu_options(app_options.render_backend.clone()),
+            wgpu_options: crate::wgpu_options(app_options.render_backend.as_deref()),
             depth_buffer: 0,
             dithering: true,
             ..Default::default()
@@ -410,14 +410,7 @@ fn create_app(
     };
     crate::customize_eframe_and_setup_renderer(cc)?;
 
-    let mut app = crate::App::new(
-        main_thread_token,
-        build_info,
-        &app_env,
-        startup_options,
-        cc.egui_ctx.clone(),
-        cc.storage,
-    );
+    let mut app = crate::App::new(main_thread_token, build_info, &app_env, startup_options, cc);
 
     if enable_history {
         install_popstate_listener(&mut app).ok_or_log_js_error();

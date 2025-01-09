@@ -467,7 +467,7 @@ impl AppState {
                         let min_height_each = 90.0_f32.at_most(ui.available_height() / 2.0);
 
                         egui::TopBottomPanel::top("recording_panel")
-                            .frame(egui::Frame::none())
+                            .frame(egui::Frame::new())
                             .resizable(resizable)
                             .show_separator_line(false)
                             .min_height(min_height_each)

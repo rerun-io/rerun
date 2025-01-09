@@ -85,7 +85,7 @@ pub(crate) fn dataframe_ui(
         .take_while(|cd| matches!(cd, ColumnDescriptor::Time(_)))
         .count();
 
-    egui::Frame::none().inner_margin(5.0).show(ui, |ui| {
+    egui::Frame::new().inner_margin(5.0).show(ui, |ui| {
         egui_table::Table::new()
             .id_salt(table_id_salt)
             .columns(
@@ -232,7 +232,7 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
             ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
         }
 
-        egui::Frame::none()
+        egui::Frame::new()
             .inner_margin(egui::Margin::symmetric(4, 0))
             .show(ui, |ui| {
                 if cell.row_nr == 0 {
@@ -456,7 +456,7 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
                 };
 
                 // Draw the cell content with some margin.
-                egui::Frame::none()
+                egui::Frame::new()
                     .inner_margin(egui::Margin::symmetric(Self::LEFT_RIGHT_MARGIN, 0))
                     .show(ui, |ui| {
                         line_ui(

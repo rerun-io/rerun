@@ -11,7 +11,7 @@ pub fn run_native_app(
     // `eframe::run_native` may only be called on the main thread.
     _: crate::MainThreadToken,
     app_creator: AppCreator,
-    force_wgpu_backend: Option<String>,
+    force_wgpu_backend: Option<&str>,
 ) -> eframe::Result {
     let native_options = eframe_options(force_wgpu_backend);
 
@@ -26,7 +26,7 @@ pub fn run_native_app(
     )
 }
 
-pub fn eframe_options(force_wgpu_backend: Option<String>) -> eframe::NativeOptions {
+pub fn eframe_options(force_wgpu_backend: Option<&str>) -> eframe::NativeOptions {
     re_tracing::profile_function!();
     eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
@@ -100,17 +100,11 @@ pub fn run_native_viewer_with_messages(
     run_native_app(
         main_thread_token,
         Box::new(move |cc| {
-            let mut app = crate::App::new(
-                main_thread_token,
-                build_info,
-                &app_env,
-                startup_options,
-                cc.egui_ctx.clone(),
-                cc.storage,
-            );
+            let mut app =
+                crate::App::new(main_thread_token, build_info, &app_env, startup_options, cc);
             app.add_receiver(rx);
             Box::new(app)
         }),
-        force_wgpu_backend,
+        force_wgpu_backend.as_deref(),
     )
 }
