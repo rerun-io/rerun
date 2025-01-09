@@ -1,10 +1,10 @@
 pub use error::Error;
 pub use scope::Scope;
-
-pub mod service;
+pub use service::*;
 
 mod error;
 mod scope;
+mod service;
 
 use std::{collections::HashSet, time::Duration};
 
@@ -13,6 +13,7 @@ use jwt_simple::{
     claims::{Claims, JWTClaims},
     common::VerificationOptions,
     prelude::{HS256Key, MACLike as _},
+    token::Token,
 };
 
 /// A common secret that is shared between the client and the server.
@@ -31,9 +32,12 @@ pub struct SecretKey(HS256Key);
 #[repr(transparent)]
 pub struct Jwt(String);
 
-impl From<String> for Jwt {
-    fn from(token: String) -> Self {
-        Self(token)
+impl TryFrom<String> for Jwt {
+    type Error = Error;
+    fn try_from(token: String) -> Result<Self, Self::Error> {
+        // We first check if the general structure of the token is correct.
+        let _ = Token::decode_metadata(&token).map_err(|_err| Error::MalformedToken)?;
+        Ok(Self(token))
     }
 }
 

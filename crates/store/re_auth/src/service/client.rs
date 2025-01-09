@@ -6,22 +6,33 @@ use crate::Jwt;
 
 use super::{AUTHORIZATION_KEY, TOKEN_PREFIX};
 
+#[derive(Default)]
 pub struct AuthDecorator {
-    token: Jwt,
+    jwt: Option<Jwt>,
+}
+
+impl AuthDecorator {
+    pub fn new(jwt: Jwt) -> Self {
+        Self { jwt: Some(jwt) }
+    }
 }
 
 impl Interceptor for AuthDecorator {
     fn call(&mut self, req: Request<()>) -> Result<Request<()>, Status> {
-        let token = format!("{TOKEN_PREFIX}{}", self.token.as_ref())
-            .parse()
-            .map_err(|err: InvalidMetadataValue| {
-                error!("malformed token: {}", err.to_string());
-                Status::invalid_argument("malformed token")
-            })?;
+        if let Some(jwt) = self.jwt.as_ref() {
+            let token = format!("{TOKEN_PREFIX}{}", jwt.0).parse().map_err(
+                |err: InvalidMetadataValue| {
+                    error!("malformed token: {}", err.to_string());
+                    Status::invalid_argument("malformed token")
+                },
+            )?;
 
-        let mut req = req;
-        req.metadata_mut().insert(AUTHORIZATION_KEY, token);
+            let mut req = req;
+            req.metadata_mut().insert(AUTHORIZATION_KEY, token);
 
-        Ok(req)
+            Ok(req)
+        } else {
+            Ok(req)
+        }
     }
 }
