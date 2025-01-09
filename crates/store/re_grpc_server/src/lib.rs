@@ -36,10 +36,8 @@ struct QueueState {
     /// Messages stored in order of arrival, and garbage collected if the server hits the memory limit.
     temporal_message_queue: VecDeque<LogMsgProto>,
 
-    /// Total size of buffered messages in bytes.
-    ///
-    /// Excludes size of `commands`.
-    message_bytes: u64,
+    /// Total size of `temporal_message_queue` in bytes.
+    temporal_message_bytes: u64,
 
     /// Messages potentially out of order with the rest of the message stream. These are never garbage collected.
     static_message_queue: VecDeque<LogMsgProto>,
@@ -52,7 +50,7 @@ impl QueueState {
             broadcast_tx: broadcast::channel(1024).0,
             event_rx,
             temporal_message_queue: Default::default(),
-            message_bytes: 0,
+            temporal_message_bytes: 0,
             static_message_queue: Default::default(),
         }
     }
@@ -108,7 +106,7 @@ impl QueueState {
             // as it's the last message sent by the SDK when submitting a blueprint.
             Msg::ArrowMsg(..) | Msg::BlueprintActivationCommand(..) => {
                 let approx_size_bytes = message_size(&msg);
-                self.message_bytes += approx_size_bytes;
+                self.temporal_message_bytes += approx_size_bytes;
                 self.temporal_message_queue.push_back(msg);
             }
             Msg::SetStoreInfo(..) => {
@@ -122,14 +120,14 @@ impl QueueState {
 
         if let Some(max_bytes) = self.server_memory_limit.max_bytes {
             let max_bytes = max_bytes as u64;
-            if max_bytes < self.message_bytes {
+            if max_bytes < self.temporal_message_bytes {
                 re_tracing::profile_scope!("Drop messages");
                 re_log::info_once!(
                     "Memory limit ({}) exceeded. Dropping old log messages from the server. Clients connecting after this will not see the full history.",
                     re_format::format_bytes(max_bytes as _)
                 );
 
-                let bytes_to_free = self.message_bytes - max_bytes;
+                let bytes_to_free = self.temporal_message_bytes - max_bytes;
 
                 let mut bytes_dropped = 0;
                 let mut messages_dropped = 0;
