@@ -164,6 +164,14 @@ fn init_shared_renderer_setup() -> SharedWgpuResources {
     // * can be told to prefer software rendering
     // * can be told to match a specific device tier
 
+    // We rely a lot on logging in the viewer to identify issues.
+    // Make sure logging is set up if it hasn't been done yet.
+    //let _ = env_logger::builder().is_test(true).try_init();
+    let _ = env_logger::builder()
+        .filter_level(re_log::external::log::LevelFilter::Trace)
+        .is_test(false)
+        .try_init();
+
     // We don't test on GL & DX12 right now (and don't want to do so by mistake!).
     let backends = wgpu::Backends::VULKAN | wgpu::Backends::METAL;
     let flags = (wgpu::InstanceFlags::ALLOW_UNDERLYING_NONCOMPLIANT_ADAPTER

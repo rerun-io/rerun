@@ -60,10 +60,8 @@ const CRATES_AT_ERROR_LEVEL: &[&str] = &[
 const CRATES_AT_WARN_LEVEL: &[&str] = &[
     // wgpu crates spam a lot on info level, which is really annoying
     // TODO(emilk): remove once https://github.com/gfx-rs/wgpu/issues/3206 is fixed
-    "naga",
-    "tracing",
-    "wgpu_core",
-    "wgpu_hal",
+    "naga", "tracing", // "wgpu_core",
+    // "wgpu_hal",
     "zbus",
 ];
 
