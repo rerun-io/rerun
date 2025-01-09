@@ -73,29 +73,25 @@ jobs:
         with:
           pixi-version: v0.39.0
 
-      # - name: Install Vulkan SDK
-      #   uses: jakoch/install-vulkan-sdk-action@v1.0.0
-      #   with:
-      #     vulkan_version: 1.3.231.1 # TODO: set as variable
-      #     install_runtime: true
-      #     cache: true
-      #     stripdown: true
+      - name: Install Vulkan SDK
+        uses: jakoch/install-vulkan-sdk-action@v1.0.0
+        with:
+          vulkan_version: ${{ env.VULKAN_SDK_VERSION }}
+          install_runtime: true
+          cache: true
+          stripdown: true
 
       # TODO: why does this one work and the other one doesn't?
-      # This takes 4m 8s
-      - name: (linux) install vulkan sdk
-        run: |
-          set -e
-
-          sudo apt-get update -y -qq
-
-          # vulkan sdk
-          wget -qO - https://packages.lunarg.com/lunarg-signing-key-pub.asc | sudo apt-key add -
-          sudo wget -qO /etc/apt/sources.list.d/lunarg-vulkan-$VULKAN_SDK_VERSION-jammy.list https://packages.lunarg.com/vulkan/$VULKAN_SDK_VERSION/lunarg-vulkan-$VULKAN_SDK_VERSION-jammy.list
-
-          sudo apt-get update
-          sudo apt install -y vulkan-sdk
-
+      # This takes about 4m
+      # - name: (linux) install vulkan sdk
+      #   run: |
+      #     set -e
+      #     sudo apt-get update -y -qq
+      #     # vulkan sdk
+      #     wget -qO - https://packages.lunarg.com/lunarg-signing-key-pub.asc | sudo apt-key add -
+      #     sudo wget -qO /etc/apt/sources.list.d/lunarg-vulkan-$VULKAN_SDK_VERSION-jammy.list https://packages.lunarg.com/vulkan/$VULKAN_SDK_VERSION/lunarg-vulkan-$VULKAN_SDK_VERSION-jammy.list
+      #     sudo apt-get update
+      #     sudo apt install -y vulkan-sdk
       - name: Setup software rasterizer
         run: pixi run python ./scripts/ci/setup_software_rasterizer.py
 
@@ -108,7 +104,7 @@ jobs:
         if: ${{ inputs.CHANNEL == 'pr' }}
         # Need to use pixi due to NASM dependency.
         #run: pixi run cargo test --all-targets --all-features
-        run: RUST_LOG=trace cargo test -p re_component_ui --all-features
+        run: RUST_LOG=debug cargo test -p re_component_ui --all-features
 
       - name: Rust most checks & tests
         if: ${{ inputs.CHANNEL == 'main' }}
