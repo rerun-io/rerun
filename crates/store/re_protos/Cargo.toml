@@ -13,6 +13,8 @@ rust-version.workspace = true
 version.workspace = true
 
 [dependencies]
+re_byte_size.workspace = true
+
 # External
 prost.workspace = true
 thiserror.workspace = true
