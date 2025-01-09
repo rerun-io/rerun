@@ -1,3 +1,5 @@
+//! Server implementation of an in-memory Storage Node.
+
 use std::collections::VecDeque;
 use std::pin::Pin;
 
