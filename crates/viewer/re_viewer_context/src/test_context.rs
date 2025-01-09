@@ -176,14 +176,6 @@ fn init_shared_renderer_setup() -> SharedWgpuResources {
         ..Default::default()
     });
 
-    // TODO: temp
-    let vk_driver_files = std::env::var("VK_DRIVER_FILES").unwrap_or_default();
-    println!("VK_DRIVER_FILES: {vk_driver_files}");
-    println!(
-        "{}",
-        std::fs::read_to_string(vk_driver_files).expect("Failed to read VK_DRIVER_FILES")
-    );
-
     let mut adapters = instance.enumerate_adapters(backends);
     assert!(!adapters.is_empty(), "No graphics adapter found!");
     re_log::info!("Found the following adapters:");
