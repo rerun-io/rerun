@@ -144,7 +144,7 @@ def setup_lavapipe_for_windows() -> dict[str, str]:
         print(f.read())
 
     # Set environment variables, make sure to use windows path style.
-    vulkan_runtime_path = f"{os.environ['VULKAN_SDK']}/runtime"
+    vulkan_runtime_path = f"{os.environ['VULKAN_SDK']}/runtime/x64"
     env_vars = {
         "VK_DRIVER_FILES": mesa_json_path.as_posix().replace("/", "\\"),
         # Vulkan runtime install should do this, but the CI action we're using right now for instance doesn't,
