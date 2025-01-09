@@ -39,6 +39,8 @@ egui.workspace = true
 
 
 [dev-dependencies]
+re_viewer_context = { workspace = true, features = ["testing"] }
+
 egui_kittest.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true

@@ -1,8 +1,12 @@
 use std::sync::Arc;
 
 use ahash::HashMap;
+use once_cell::sync::Lazy;
+use parking_lot::Mutex;
+
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
+use re_log::ResultExt as _;
 use re_log_types::{StoreId, StoreKind};
 use re_types_core::reflection::Reflection;
 
@@ -40,10 +44,15 @@ pub struct TestContext {
 
     command_sender: CommandSender,
     command_receiver: CommandReceiver,
+    egui_render_state: Mutex<Option<egui_wgpu::RenderState>>,
 }
 
 impl Default for TestContext {
     fn default() -> Self {
+        // We rely a lot on logging in the viewer to identify issues.
+        // Make sure logging is set up if it hasn't been done yet.
+        let _ = env_logger::builder().is_test(true).try_init();
+
         let recording_store = EntityDb::new(StoreId::random(StoreKind::Recording));
         let blueprint_store = EntityDb::new(StoreId::random(StoreKind::Blueprint));
 
@@ -72,11 +81,131 @@ impl Default for TestContext {
             reflection,
             command_sender,
             command_receiver,
+
+            // Created lazily since each egui_kittest harness needs a new one.
+            egui_render_state: Mutex::new(None),
         }
     }
 }
 
+/// Create an `egui_wgpu::RenderState` for tests.
+///
+/// May be `None` if we failed to initialize the wgpu renderer setup.
+fn create_egui_renderstate() -> Option<egui_wgpu::RenderState> {
+    re_tracing::profile_function!();
+
+    let shared_wgpu_setup = (*SHARED_WGPU_RENDERER_SETUP).as_ref()?;
+
+    let config = egui_wgpu::WgpuConfiguration {
+        wgpu_setup: egui_wgpu::WgpuSetupExisting {
+            instance: shared_wgpu_setup.instance.clone(),
+            adapter: shared_wgpu_setup.adapter.clone(),
+            device: shared_wgpu_setup.device.clone(),
+            queue: shared_wgpu_setup.queue.clone(),
+        }
+        .into(),
+
+        // None of these matter for tests as we're not going to draw to a surfaces.
+        present_mode: wgpu::PresentMode::Immediate,
+        desired_maximum_frame_latency: None,
+        on_surface_error: Arc::new(|_| {
+            unreachable!("tests aren't expected to draw to surfaces");
+        }),
+    };
+
+    let compatible_surface = None;
+    // `re_renderer`'s individual views (managed each by a `ViewBuilder`) have MSAA,
+    // but egui's final target doesn't - re_renderer resolves and copies into egui in `ViewBuilder::composite`.
+    let msaa_samples = 1;
+    // Similarly, depth is handled by re_renderer.
+    let depth_format = None;
+    // Disable dithering in order to not unnecessarily add a source of noise & variance between renderers.
+    let dithering = false;
+
+    let render_state = pollster::block_on(egui_wgpu::RenderState::create(
+        &config,
+        &shared_wgpu_setup.instance,
+        compatible_surface,
+        depth_format,
+        msaa_samples,
+        dithering,
+    ))
+    .expect("Failed to set up egui_wgpu::RenderState");
+
+    // Put re_renderer::RenderContext into the callback resources so that render callbacks can access it.
+    render_state.renderer.write().callback_resources.insert(
+        re_renderer::RenderContext::new(
+            &shared_wgpu_setup.adapter,
+            shared_wgpu_setup.device.clone(),
+            shared_wgpu_setup.queue.clone(),
+            wgpu::TextureFormat::Rgba8Unorm,
+        )
+        .expect("Failed to initialize re_renderer"),
+    );
+    Some(render_state)
+}
+
+/// Instance & adapter
+struct SharedWgpuResources {
+    instance: Arc<wgpu::Instance>,
+    adapter: Arc<wgpu::Adapter>,
+    device: Arc<wgpu::Device>,
+
+    // Sharing the queue across parallel running tests should work fine in theory - it's obviously threadsafe.
+    // Note though that this becomes an odd sync point that is shared with all tests that put in work here.
+    queue: Arc<wgpu::Queue>,
+}
+
+static SHARED_WGPU_RENDERER_SETUP: Lazy<Option<SharedWgpuResources>> =
+    Lazy::new(try_init_shared_renderer_setup);
+
+fn try_init_shared_renderer_setup() -> Option<SharedWgpuResources> {
+    // TODO(andreas, emilk/egui#5506): Use centralized wgpu setup logic that…
+    // * lives mostly in re_renderer and is shared with viewer & renderer examples
+    // * can be told to prefer software rendering
+    // * can be told to match a specific device tier
+    // For the moment we just use wgpu defaults.
+
+    // TODO(#8245): Should we require this to succeed?
+
+    let instance = wgpu::Instance::default();
+    let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
+        power_preference: wgpu::PowerPreference::default(),
+        force_fallback_adapter: false,
+        compatible_surface: None,
+    }))?;
+
+    let device_caps = re_renderer::config::DeviceCaps::from_adapter(&adapter)
+        .warn_on_err_once("Failed to determine device capabilities")?;
+    let (device, queue) =
+        pollster::block_on(adapter.request_device(&device_caps.device_descriptor(), None))
+            .warn_on_err_once("Failed to request device.")?;
+
+    Some(SharedWgpuResources {
+        instance: Arc::new(instance),
+        adapter: Arc::new(adapter),
+        device: Arc::new(device),
+        queue: Arc::new(queue),
+    })
+}
+
 impl TestContext {
+    pub fn setup_kittest_for_rendering(&self) -> egui_kittest::HarnessBuilder<()> {
+        if let Some(new_render_state) = create_egui_renderstate() {
+            let builder = egui_kittest::Harness::builder().renderer(
+                // Note that render state clone is mostly cloning of inner `Arc`.
+                // This does _not_ duplicate re_renderer's context.
+                egui_kittest::wgpu::WgpuTestRenderer::from_render_state(new_render_state.clone()),
+            );
+
+            // Egui kittests insists on having a fresh render state for each test.
+            self.egui_render_state.lock().replace(new_render_state);
+            builder
+        } else {
+            egui_kittest::Harness::builder()
+        }
+    }
+
     /// Timeline the recording config is using by default.
     pub fn active_timeline(&self) -> re_chunk::Timeline {
         *self.recording_config.time_ctrl.read().timeline()
@@ -108,6 +237,20 @@ impl TestContext {
 
         let drag_and_drop_manager = crate::DragAndDropManager::new(ItemCollection::default());
 
+        let context_render_state = self.egui_render_state.lock();
+        let mut renderer;
+        let render_ctx = if let Some(render_state) = context_render_state.as_ref() {
+            renderer = render_state.renderer.write();
+            let render_ctx = renderer
+                .callback_resources
+                .get_mut::<re_renderer::RenderContext>()
+                .expect("No re_renderer::RenderContext in egui_render_state");
+            render_ctx.begin_frame();
+            Some(render_ctx)
+        } else {
+            None
+        };
+
         let ctx = ViewerContext {
             app_options: &Default::default(),
             cache: &Default::default(),
@@ -123,13 +266,17 @@ impl TestContext {
             selection_state: &self.selection_state,
             blueprint_query: &self.blueprint_query,
             egui_ctx,
-            render_ctx: None,
+            render_ctx: render_ctx.as_deref(),
             command_sender: &self.command_sender,
             focused_item: &None,
             drag_and_drop_manager: &drag_and_drop_manager,
         };
 
         func(&ctx);
+
+        if let Some(render_ctx) = render_ctx {
+            render_ctx.before_submit();
+        }
     }
 
     /// Run the given function with a [`ViewerContext`] produced by the [`Self`], in the context of
