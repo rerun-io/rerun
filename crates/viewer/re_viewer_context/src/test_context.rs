@@ -88,18 +88,22 @@ impl Default for TestContext {
     }
 }
 
+/// Create an egui_wgpu::RenderState for tests.
+///
+/// May be `None` if we failed to initialize the wgpu renderer setup.
 fn create_egui_renderstate() -> Option<egui_wgpu::RenderState> {
     re_tracing::profile_function!();
 
     let shared_wgpu_setup = (*SHARED_WGPU_RENDERER_SETUP).as_ref()?;
 
     let config = egui_wgpu::WgpuConfiguration {
-        wgpu_setup: egui_wgpu::WgpuSetup::Existing {
+        wgpu_setup: egui_wgpu::WgpuSetupExisting {
             instance: shared_wgpu_setup.instance.clone(),
             adapter: shared_wgpu_setup.adapter.clone(),
             device: shared_wgpu_setup.device.clone(),
             queue: shared_wgpu_setup.queue.clone(),
-        },
+        }
+        .into(),
 
         // None of these matter for tests as we're not going to draw to a surfaces.
         present_mode: wgpu::PresentMode::Immediate,
@@ -110,9 +114,14 @@ fn create_egui_renderstate() -> Option<egui_wgpu::RenderState> {
     };
 
     let compatible_surface = None;
-    let depth_format = None;
+    // `re_renderer`'s individual views (managed each by a `ViewBuilder`) have MSAA,
+    // but egui's final target doesn't - re_renderer resolves and copies into egui in `ViewBuilder::composite`.
     let msaa_samples = 1;
+    // Similarly, depth is handled by re_renderer.
+    let depth_format = None;
+    // Disable dithering in order to not unnecessarily add a source of noise & variance between renderers.
     let dithering = false;
+
     let render_state = pollster::block_on(egui_wgpu::RenderState::create(
         &config,
         &shared_wgpu_setup.instance,
