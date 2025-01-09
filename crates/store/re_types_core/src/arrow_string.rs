@@ -1,15 +1,22 @@
-use arrow2::buffer::Buffer;
+use arrow::buffer::Buffer;
 
 /// Convenience-wrapper around an arrow [`Buffer`] that is known to contain a
 /// UTF-8 encoded string.
 ///
-/// The arrow2 [`Buffer`] object is internally reference-counted and can be
+/// The arrow [`Buffer`] object is internally reference-counted and can be
 /// easily converted back to a `&str` referencing the underlying storage.
 /// This avoids some of the lifetime complexities that would otherwise
 /// arise from returning a `&str` directly, but is significantly more
 /// performant than doing the full allocation necessary to return a `String`.
-#[derive(Clone, Debug, Default)]
-pub struct ArrowString(Buffer<u8>);
+#[derive(Clone, Debug)]
+pub struct ArrowString(Buffer);
+
+impl Default for ArrowString {
+    #[inline]
+    fn default() -> Self {
+        Self(Buffer::from_vec::<u8>(vec![]))
+    }
+}
 
 impl re_byte_size::SizeBytes for ArrowString {
     #[inline]
@@ -57,26 +64,26 @@ impl ArrowString {
 
     #[inline]
     pub fn into_arrow_buffer(self) -> arrow::buffer::Buffer {
-        self.0.into()
+        self.0
     }
 
     #[inline]
     pub fn into_arrow2_buffer(self) -> arrow2::buffer::Buffer<u8> {
-        self.0
+        self.0.into()
     }
 }
 
 impl From<arrow::buffer::Buffer> for ArrowString {
     #[inline]
     fn from(buf: arrow::buffer::Buffer) -> Self {
-        Self(buf.into())
+        Self(buf)
     }
 }
 
 impl From<arrow2::buffer::Buffer<u8>> for ArrowString {
     #[inline]
     fn from(buf: arrow2::buffer::Buffer<u8>) -> Self {
-        Self(buf)
+        Self(buf.into())
     }
 }
 
