@@ -5569,7 +5569,7 @@ dependencies = [
 [[package]]
 name = "re_arrow2"
 version = "0.18.1"
-source = "git+https://github.com/rerun-io/re_arrow2.git?branch=main#c762f392ded92c5978fcdc2195988587a4976417"
+source = "git+https://github.com/rerun-io/re_arrow2.git?branch=main#82095762a42eed76e4043c82833e391893d5821c"
 dependencies = [
  "ahash",
  "arrow-array",
@@ -6556,6 +6556,7 @@ dependencies = [
  "bytemuck",
  "criterion",
  "document-features",
+ "half",
  "itertools 0.13.0",
  "nohash-hasher",
  "once_cell",
@@ -6563,6 +6564,7 @@ dependencies = [
  "re_byte_size",
  "re_case",
  "re_error",
+ "re_log",
  "re_string_interner",
  "re_tracing",
  "re_tuid",

@@ -289,8 +289,9 @@ fn check_for_unused_snapshots(test_cases: &[TestCase], snapshot_options: &Snapsh
         let file_name = path.file_name().unwrap().to_string_lossy().to_string();
 
         if file_name.ends_with(".png")
-            && !file_name.ends_with(".new.png")
             && !file_name.ends_with(".diff.png")
+            && !file_name.ends_with(".new.png")
+            && !file_name.ends_with(".old.png")
             && !ok_file_names.contains(file_name.strip_suffix(".png").unwrap())
         {
             panic!(
