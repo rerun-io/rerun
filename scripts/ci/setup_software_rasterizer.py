@@ -151,10 +151,10 @@ def vulkan_info() -> None:
         print("WARNING: VULKAN_SDK is not set")
     else:
         if os.name == "nt":
-            vulkaninfo_path = f"{vulkan_sdk_path}/runtime/x64/vulkaninfo.exe"
+            vulkaninfo_path = f"{vulkan_sdk_path}/bin/vulkaninfoSDK.exe"
         else:
             vulkaninfo_path = f"{vulkan_sdk_path}/x86_64/bin/vulkaninfo"
-        print(run([vulkaninfo_path, "--summary"]).stdout)
+        print(run([vulkaninfo_path]).stdout)  #  "--summary" ?
 
 
 def main() -> None:
