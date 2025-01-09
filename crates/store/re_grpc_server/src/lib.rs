@@ -34,13 +34,13 @@ struct QueueState {
     event_rx: mpsc::Receiver<Event>,
 
     /// Messages stored in order of arrival, and garbage collected if the server hits the memory limit.
-    temporal_message_queue: VecDeque<LogMsgProto>,
+    ordered_message_queue: VecDeque<LogMsgProto>,
 
     /// Total size of `temporal_message_queue` in bytes.
     temporal_message_bytes: u64,
 
     /// Messages potentially out of order with the rest of the message stream. These are never garbage collected.
-    static_message_queue: VecDeque<LogMsgProto>,
+    persistent_message_queue: VecDeque<LogMsgProto>,
 }
 
 impl QueueState {
@@ -51,9 +51,9 @@ impl QueueState {
             // We just want enough capacity to handle bursts of messages.
             broadcast_tx: broadcast::channel(1024).0,
             event_rx,
-            temporal_message_queue: Default::default(),
+            ordered_message_queue: Default::default(),
             temporal_message_bytes: 0,
-            static_message_queue: Default::default(),
+            persistent_message_queue: Default::default(),
         }
     }
 
@@ -77,10 +77,10 @@ impl QueueState {
         channel
             .send((
                 // static messages come first
-                self.static_message_queue
+                self.persistent_message_queue
                     .iter()
                     .cloned()
-                    .chain(self.temporal_message_queue.iter().cloned())
+                    .chain(self.ordered_message_queue.iter().cloned())
                     .collect(),
                 self.broadcast_tx.subscribe(),
             ))
@@ -109,10 +109,10 @@ impl QueueState {
             Msg::ArrowMsg(..) | Msg::BlueprintActivationCommand(..) => {
                 let approx_size_bytes = message_size(&msg);
                 self.temporal_message_bytes += approx_size_bytes;
-                self.temporal_message_queue.push_back(msg);
+                self.ordered_message_queue.push_back(msg);
             }
             Msg::SetStoreInfo(..) => {
-                self.static_message_queue.push_back(msg);
+                self.persistent_message_queue.push_back(msg);
             }
         }
     }
@@ -120,35 +120,43 @@ impl QueueState {
     fn gc_if_using_too_much_ram(&mut self) {
         re_tracing::profile_function!();
 
-        if let Some(max_bytes) = self.server_memory_limit.max_bytes {
-            let max_bytes = max_bytes as u64;
-            if max_bytes < self.temporal_message_bytes {
-                re_tracing::profile_scope!("Drop messages");
-                re_log::info_once!(
-                    "Memory limit ({}) exceeded. Dropping old log messages from the server. Clients connecting after this will not see the full history.",
-                    re_format::format_bytes(max_bytes as _)
-                );
+        let Some(max_bytes) = self.server_memory_limit.max_bytes else {
+            // Unlimited memory!
+            return;
+        };
 
-                let bytes_to_free = self.temporal_message_bytes - max_bytes;
+        let max_bytes = max_bytes as u64;
+        if max_bytes >= self.temporal_message_bytes {
+            // We're not using too much memory.
+            return;
+        };
 
-                let mut bytes_dropped = 0;
-                let mut messages_dropped = 0;
+        {
+            re_tracing::profile_scope!("Drop messages");
+            re_log::info_once!(
+                "Memory limit ({}) exceeded. Dropping old log messages from the server. Clients connecting after this will not see the full history.",
+                re_format::format_bytes(max_bytes as _)
+            );
 
-                while bytes_dropped < bytes_to_free {
-                    // only drop messages from temporal queue
-                    if let Some(msg) = self.temporal_message_queue.pop_front() {
-                        bytes_dropped += message_size(&msg);
-                        messages_dropped += 1;
-                    } else {
-                        break;
-                    }
+            let bytes_to_free = self.temporal_message_bytes - max_bytes;
+
+            let mut bytes_dropped = 0;
+            let mut messages_dropped = 0;
+
+            while bytes_dropped < bytes_to_free {
+                // only drop messages from temporal queue
+                if let Some(msg) = self.ordered_message_queue.pop_front() {
+                    bytes_dropped += message_size(&msg);
+                    messages_dropped += 1;
+                } else {
+                    break;
                 }
-
-                re_log::trace!(
-                    "Dropped {} bytes in {messages_dropped} message(s)",
-                    re_format::format_bytes(bytes_dropped as _)
-                );
             }
+
+            re_log::trace!(
+                "Dropped {} bytes in {messages_dropped} message(s)",
+                re_format::format_bytes(bytes_dropped as _)
+            );
         }
     }
 }
