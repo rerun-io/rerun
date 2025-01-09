@@ -140,17 +140,17 @@ def setup_lavapipe_for_windows() -> None:
     set_environment_variables({"VK_DRIVER_FILES": mesa_json_path})
 
 
-def vulkan_info_windows() -> None:
+def vulkan_info() -> None:
     vulkan_sdk_path = os.environ.get("VULKAN_SDK")
     print(f"VULKAN_SDK: {vulkan_sdk_path}")
     if vulkan_sdk_path is None:
         print("WARNING: VULKAN_SDK is not set")
     else:
-        print(run([f"{vulkan_sdk_path}/runtime/x64/vulkaninfo.exe", "--summary"]).stdout)
-
-
-def vulkan_info_linux() -> None:
-    print(run(["vulkaninfo", "--summary"]).stdout)
+        if os.name == "nt":
+            vulkaninfo_path = f"{vulkan_sdk_path}/runtime/x64/vulkaninfo.exe"
+        else:
+            vulkaninfo_path = f"{vulkan_sdk_path}/x86_64/bin/vulkaninfo"
+        print(run([vulkaninfo_path, "--summary"]).stdout)
 
 
 def main() -> None:
@@ -160,10 +160,10 @@ def main() -> None:
         # But practically speaking we prefer Vulkan anyways on Windows today and as such this is
         # both less variation and closer to what Rerun uses when running on a "real" machine.
         setup_lavapipe_for_windows()
-        vulkan_info_windows()
+        vulkan_info()
     elif os.name == "posix" and sys.platform != "darwin" and platform.machine() == "x86_64":
         setup_lavapipe_for_linux()
-        vulkan_info_linux()
+        vulkan_info()
     elif os.name == "posix" and sys.platform == "darwin":
         pass  # We don't have a software rasterizer for macOS.
     else:

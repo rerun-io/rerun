@@ -74,7 +74,7 @@ jobs:
           pixi-version: v0.39.0
 
       - name: Install Vulkan SDK
-        uses: jakoch/install-vulkan-sdk-action@v1.0.0
+        uses: jakoch/install-vulkan-sdk-action@v1.0.5
         with:
           vulkan_version: ${{ env.VULKAN_SDK_VERSION }}
           install_runtime: true
