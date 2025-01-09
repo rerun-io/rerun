@@ -85,7 +85,8 @@ jobs:
 
       - name: Run tests (`cargo test --all-targets --all-features`)
         if: ${{ inputs.CHANNEL == 'pr' }}
-        run: cargo test --all-targets --all-features
+        # Need to use pixi due to NASM dependency.
+        run: pixi run cargo test --all-targets --all-features
 
       - name: Rust most checks & tests
         if: ${{ inputs.CHANNEL == 'main' }}
@@ -148,7 +149,8 @@ jobs:
 
       - name: Run tests (`cargo test --all-targets --all-features`)
         if: ${{ inputs.CHANNEL != 'nightly' }}
-        run: cargo test --all-targets --all-features
+        # Need to use pixi due to NASM dependency.
+        run: pixi run cargo test --all-targets --all-features
 
       - name: Rust all checks & tests
         if: ${{ inputs.CHANNEL == 'nightly' }}
