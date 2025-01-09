@@ -2556,7 +2556,7 @@ mod tests {
                 components: [
                     (
                         MyPoint::descriptor(),
-                        <MyPoint as Loggable>::to_arrow2([
+                        <MyPoint as Loggable>::to_arrow([
                             MyPoint::new(10.0, 10.0),
                             MyPoint::new(20.0, 20.0),
                         ])
@@ -2564,11 +2564,11 @@ mod tests {
                     ), //
                     (
                         MyColor::descriptor(),
-                        <MyColor as Loggable>::to_arrow2([MyColor(0x8080_80FF)]).unwrap(),
+                        <MyColor as Loggable>::to_arrow([MyColor(0x8080_80FF)]).unwrap(),
                     ), //
                     (
                         MyLabel::descriptor(),
-                        <MyLabel as Loggable>::to_arrow2([] as [MyLabel; 0]).unwrap(),
+                        <MyLabel as Loggable>::to_arrow([] as [MyLabel; 0]).unwrap(),
                     ), //
                 ]
                 .into_iter()
@@ -2583,15 +2583,15 @@ mod tests {
                 components: [
                     (
                         MyPoint::descriptor(),
-                        <MyPoint as Loggable>::to_arrow2([] as [MyPoint; 0]).unwrap(),
+                        <MyPoint as Loggable>::to_arrow([] as [MyPoint; 0]).unwrap(),
                     ), //
                     (
                         MyColor::descriptor(),
-                        <MyColor as Loggable>::to_arrow2([] as [MyColor; 0]).unwrap(),
+                        <MyColor as Loggable>::to_arrow([] as [MyColor; 0]).unwrap(),
                     ), //
                     (
                         MyLabel::descriptor(),
-                        <MyLabel as Loggable>::to_arrow2([] as [MyLabel; 0]).unwrap(),
+                        <MyLabel as Loggable>::to_arrow([] as [MyLabel; 0]).unwrap(),
                     ), //
                 ]
                 .into_iter()
@@ -2606,15 +2606,15 @@ mod tests {
                 components: [
                     (
                         MyPoint::descriptor(),
-                        <MyPoint as Loggable>::to_arrow2([] as [MyPoint; 0]).unwrap(),
+                        <MyPoint as Loggable>::to_arrow([] as [MyPoint; 0]).unwrap(),
                     ), //
                     (
                         MyColor::descriptor(),
-                        <MyColor as Loggable>::to_arrow2([MyColor(0xFFFF_FFFF)]).unwrap(),
+                        <MyColor as Loggable>::to_arrow([MyColor(0xFFFF_FFFF)]).unwrap(),
                     ), //
                     (
                         MyLabel::descriptor(),
-                        <MyLabel as Loggable>::to_arrow2([MyLabel("hey".into())]).unwrap(),
+                        <MyLabel as Loggable>::to_arrow([MyLabel("hey".into())]).unwrap(),
                     ), //
                 ]
                 .into_iter()
