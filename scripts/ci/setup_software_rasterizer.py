@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import os
 import platform
+import shutil
 import subprocess
 import sys
 from distutils.dir_util import copy_tree
@@ -92,6 +93,17 @@ def setup_lavapipe_for_linux() -> Path:
         "VK_DRIVER_FILES": f"{os.getcwd()}/{icd_json_path}",
         "LD_LIBRARY_PATH": f"{os.getcwd()}/mesa/lib/x86_64-linux-gnu/:{os.environ.get('LD_LIBRARY_PATH', '')}",
     })
+
+    # On CI it seems that VK_DRIVER_FILES is ignored unless we install the Vulkan SDK via apt
+    # (which takes quite a while since it drags in a lot of other dependencies).
+    # According to https://github.com/KhronosGroup/Vulkan-Loader/blob/main/docs/LoaderInterfaceArchitecture.md#elevated-privilege-caveats
+    # this can happen when running with elevated privileges.
+    # Unclear if that's the case, but in any case we're on the safe side if we copy the icd file into one of the standard search paths.
+    target_path = Path("~/.config/vulkan/icd.d").expanduser()
+    print(f"Copying icd file to {target_path}")
+    target_path.mkdir(parents=True, exist_ok=True)
+    shutil.copy(icd_json_path, target_path)
+
     return icd_json_path
 
 
