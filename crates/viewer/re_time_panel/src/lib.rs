@@ -26,11 +26,11 @@ use re_data_ui::DataUi as _;
 use re_data_ui::{item_ui::guess_instance_path_icon, sorted_component_list_for_ui};
 use re_entity_db::{EntityDb, EntityTree, InstancePath};
 use re_log_types::{
-    external::re_types_core::ComponentName, ComponentPath, EntityPath, EntityPathPart,
-    ResolvedTimeRange, TimeInt, TimeReal, TimeType,
+    external::re_types_core::ComponentName, ComponentPath, EntityPath, ResolvedTimeRange, TimeInt,
+    TimeReal, TimeType,
 };
 use re_types::blueprint::components::PanelState;
-use re_ui::{list_item, ContextExt as _, DesignTokens, UiExt as _};
+use re_ui::{filter_widget, list_item, ContextExt as _, DesignTokens, UiExt as _};
 use re_viewer_context::{
     CollapseScope, HoverHighlight, Item, ItemContext, RecordingConfig, TimeControl, TimeView,
     UiLayout, ViewerContext,
@@ -139,7 +139,7 @@ pub struct TimePanel {
     source: TimePanelSource,
 
     /// The filter widget state
-    filter_state: re_ui::FilterState,
+    filter_state: filter_widget::FilterState,
 }
 
 impl Default for TimePanel {
@@ -604,6 +604,8 @@ impl TimePanel {
                 // stores, due to `Item::*` not tracking stores for entity paths.
                 let show_root = self.source == TimePanelSource::Recording;
 
+                let filter_matcher = self.filter_state.filter();
+
                 if show_root {
                     self.show_tree(
                         ctx,
@@ -612,10 +614,9 @@ impl TimePanel {
                         time_ctrl,
                         time_area_response,
                         time_area_painter,
-                        None,
                         entity_db.tree(),
+                        &filter_matcher,
                         ui,
-                        "/",
                     );
                 } else {
                     self.show_children(
@@ -626,6 +627,7 @@ impl TimePanel {
                         time_area_response,
                         time_area_painter,
                         entity_db.tree(),
+                        &filter_matcher,
                         ui,
                     );
                 }
@@ -641,26 +643,42 @@ impl TimePanel {
         time_ctrl: &mut TimeControl,
         time_area_response: &egui::Response,
         time_area_painter: &egui::Painter,
-        last_path_part: Option<&EntityPathPart>,
         tree: &EntityTree,
+        filter_matcher: &filter_widget::FilterMatcher,
         ui: &mut egui::Ui,
-        show_root_as: &str,
     ) {
+        // We traverse and display this tree only if it contains a matching entity part.
+        if !filter_matcher.matches_everything() // fast short-circuit
+            && tree
+                .find_first_child_recursive(|entity_path| {
+                    entity_path
+                        .last()
+                        .is_some_and(|entity_part| filter_matcher.matches(&entity_part.ui_string()))
+                })
+                .is_none()
+        {
+            return;
+        }
+
         let db = match self.source {
             TimePanelSource::Recording => ctx.recording(),
             TimePanelSource::Blueprint => ctx.store_context.blueprint,
         };
 
         // The last part of the path component
+        let last_path_part = tree.path.last();
         let text = if let Some(last_path_part) = last_path_part {
-            let stem = last_path_part.ui_string();
-            if tree.is_leaf() {
-                stem
+            let part_text = if tree.is_leaf() {
+                last_path_part.ui_string()
             } else {
-                format!("{stem}/") // show we have children with a /
-            }
+                format!("{}/", last_path_part.ui_string()) // show we have children with a /
+            };
+
+            filter_matcher
+                .matches_formatted(ui.ctx(), &part_text)
+                .unwrap_or_else(|| part_text.into())
         } else {
-            show_root_as.to_owned()
+            "/".into()
         };
 
         let default_open = tree.path.len() <= 1 && !tree.is_leaf();
@@ -721,6 +739,7 @@ impl TimePanel {
                         time_area_response,
                         time_area_painter,
                         tree,
+                        filter_matcher,
                         ui,
                     );
                 },
@@ -814,9 +833,10 @@ impl TimePanel {
         time_area_response: &egui::Response,
         time_area_painter: &egui::Painter,
         tree: &EntityTree,
+        filter_matcher: &filter_widget::FilterMatcher,
         ui: &mut egui::Ui,
     ) {
-        for (last_component, child) in &tree.children {
+        for child in tree.children.values() {
             self.show_tree(
                 ctx,
                 viewport_blueprint,
@@ -824,10 +844,9 @@ impl TimePanel {
                 time_ctrl,
                 time_area_response,
                 time_area_painter,
-                Some(last_component),
                 child,
+                filter_matcher,
                 ui,
-                "/",
             );
         }
 
