@@ -14,7 +14,6 @@ import platform
 import shutil
 import subprocess
 import sys
-import winreg
 from distutils.dir_util import copy_tree
 from pathlib import Path
 
@@ -32,9 +31,9 @@ def run(
     args: list[str], *, env: dict[str, str] | None = None, timeout: int | None = None, cwd: str | None = None
 ) -> subprocess.CompletedProcess[str]:
     result = subprocess.run(args, env=env, cwd=cwd, timeout=timeout, check=False, capture_output=True, text=True)
-    assert (
-        result.returncode == 0
-    ), f"{subprocess.list2cmdline(args)} failed with exit-code {result.returncode}. Output:\n{result.stdout}\n{result.stderr}"
+    assert result.returncode == 0, (
+        f"{subprocess.list2cmdline(args)} failed with exit-code {result.returncode}. Output:\n{result.stdout}\n{result.stderr}"
+    )
     return result
 
 
@@ -170,6 +169,8 @@ def setup_lavapipe_for_windows() -> dict[str, str]:
     # See https://vulkan.lunarg.com/doc/view/1.3.243.0/windows/LoaderDriverInterface.html#user-content-driver-discovery-on-windows
 
     # Write registry keys to configure Vulkan drivers
+    import winreg
+
     key_path = "SOFTWARE\\Khronos\\Vulkan\\Drivers"
     key = winreg.CreateKeyEx(winreg.HKEY_LOCAL_MACHINE, key_path)
     winreg.SetValueEx(key, icd_json_path, 0, winreg.REG_DWORD, 0)
