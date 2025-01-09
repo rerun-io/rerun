@@ -382,6 +382,58 @@ impl Points3D {
         }
     }
 
+    /// Update only some specific fields of a `Points3D`.
+    #[inline]
+    pub fn update_fields() -> Self {
+        Self::default()
+    }
+
+    /// Clear all the fields of a `Points3D`.
+    #[inline]
+    pub fn clear_fields() -> Self {
+        use ::re_types_core::Loggable as _;
+        Self {
+            positions: Some(SerializedComponentBatch::new(
+                crate::components::Position3D::arrow_empty(),
+                Self::descriptor_positions(),
+            )),
+            radii: Some(SerializedComponentBatch::new(
+                crate::components::Radius::arrow_empty(),
+                Self::descriptor_radii(),
+            )),
+            colors: Some(SerializedComponentBatch::new(
+                crate::components::Color::arrow_empty(),
+                Self::descriptor_colors(),
+            )),
+            labels: Some(SerializedComponentBatch::new(
+                crate::components::Text::arrow_empty(),
+                Self::descriptor_labels(),
+            )),
+            show_labels: Some(SerializedComponentBatch::new(
+                crate::components::ShowLabels::arrow_empty(),
+                Self::descriptor_show_labels(),
+            )),
+            class_ids: Some(SerializedComponentBatch::new(
+                crate::components::ClassId::arrow_empty(),
+                Self::descriptor_class_ids(),
+            )),
+            keypoint_ids: Some(SerializedComponentBatch::new(
+                crate::components::KeypointId::arrow_empty(),
+                Self::descriptor_keypoint_ids(),
+            )),
+        }
+    }
+
+    /// All the 3D positions at which the point cloud shows points.
+    #[inline]
+    pub fn with_positions(
+        mut self,
+        positions: impl IntoIterator<Item = impl Into<crate::components::Position3D>>,
+    ) -> Self {
+        self.positions = try_serialize_field(Self::descriptor_positions(), positions);
+        self
+    }
+
     /// Optional radii for the points, effectively turning them into circles.
     #[inline]
     pub fn with_radii(
