@@ -134,11 +134,14 @@ def setup_lavapipe_for_windows() -> None:
     copy_tree("mesa", TARGET_DIR)
     copy_tree("mesa", TARGET_DIR / "deps")
 
+    # Print icd file that should be used.
+    mesa_json_path = Path(os.path.join(os.getcwd(), "mesa", "lvp_icd.x86_64.json"))
+    print(f"Using ICD file at '{mesa_json_path}':")
+    with open(mesa_json_path, encoding="utf-8") as f:
+        print(f.read())
+
     # Set environment variables, make sure to use windows path style.
-    mesa_json_path = (
-        Path(os.path.join(os.getcwd(), "mesa", "lvp_icd.x86_64.json")).resolve().as_posix().replace("/", "\\")
-    )
-    set_environment_variables({"VK_DRIVER_FILES": mesa_json_path})
+    set_environment_variables({"VK_DRIVER_FILES": mesa_json_path.resolve().as_posix().replace("/", "\\")})
 
 
 def vulkan_info() -> None:
