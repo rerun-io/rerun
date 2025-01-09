@@ -36,15 +36,6 @@ pub fn setup_logging() {
         let log_file_line = false;
         if log_file_line {
             stderr_logger.format(|buf, record| {
-                // TODO: HACK
-                println!(
-                    "{} {}:{} {}",
-                    record.level(),
-                    record.file().unwrap_or_default(),
-                    record.line().unwrap_or_default(),
-                    record.args()
-                );
-
                 use std::io::Write as _;
                 writeln!(
                     buf,

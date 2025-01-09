@@ -50,8 +50,7 @@ impl Default for TestContext {
     fn default() -> Self {
         // We rely a lot on logging in the viewer to identify issues.
         // Make sure logging is set up if it hasn't been done yet.
-        //let _ = env_logger::builder().is_test(true).try_init();
-        let _ = env_logger::builder().is_test(false).try_init();
+        let _ = env_logger::builder().is_test(true).try_init();
 
         let recording_store = EntityDb::new(StoreId::random(StoreKind::Recording));
         let blueprint_store = EntityDb::new(StoreId::random(StoreKind::Blueprint));

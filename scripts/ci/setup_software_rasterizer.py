@@ -95,8 +95,8 @@ def setup_lavapipe_for_linux() -> dict[str, str]:
     }
     set_environment_variables(env_vars)
 
-    # On CI we run with elevated priviledges, therefore VK_DRIVER_FILES is ignored.
-    # According to https://github.com/KhronosGroup/Vulkan-Loader/blob/main/docs/LoaderInterfaceArchitecture.md#elevated-privilege-caveats
+    # On CI we run with elevated privileges, therefore VK_DRIVER_FILES is ignored.
+    # See: https://github.com/KhronosGroup/Vulkan-Loader/blob/sdk-1.3.261/docs/LoaderInterfaceArchitecture.md#elevated-privilege-caveats
     # (curiously, when installing the Vulkan SDK via apt, it seems to work fine).
     # Therefore, we copy the icd file into one of the standard search paths.
     target_path = Path("~/.config/vulkan/icd.d").expanduser()
@@ -163,10 +163,10 @@ def setup_lavapipe_for_windows() -> dict[str, str]:
         except Exception as e:
             print(f"Error listing Vulkan runtime directory: {e}")
 
-    # On CI we run with elevated priviledges, therefore VK_DRIVER_FILES is ignored.
-    # According to https://github.com/KhronosGroup/Vulkan-Loader/blob/main/docs/LoaderInterfaceArchitecture.md#elevated-privilege-caveats
+    # On CI we run with elevated privileges, therefore VK_DRIVER_FILES is ignored.
+    # See: https://github.com/KhronosGroup/Vulkan-Loader/blob/sdk-1.3.261/docs/LoaderInterfaceArchitecture.md#elevated-privilege-caveats
     # Therefore, we have to set one of the registry keys that is checked to find the driver.
-    # See https://vulkan.lunarg.com/doc/view/1.3.243.0/windows/LoaderDriverInterface.html#user-content-driver-discovery-on-windows
+    # See: https://vulkan.lunarg.com/doc/view/1.3.243.0/windows/LoaderDriverInterface.html#user-content-driver-discovery-on-windows
 
     # Write registry keys to configure Vulkan drivers
     import winreg
