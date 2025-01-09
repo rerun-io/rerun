@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use arrow::array::{Array, ArrayRef, Float32Array, Float32Builder};
+use arrow::array::{Array, ArrayRef};
 
 use crate::{ArchetypeName, ComponentName};
 
