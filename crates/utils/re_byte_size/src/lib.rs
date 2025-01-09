@@ -38,10 +38,3 @@ pub trait SizeBytes {
         false
     }
 }
-
-impl SizeBytes for re_tuid::Tuid {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-}

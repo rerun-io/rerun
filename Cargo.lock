@@ -5641,7 +5641,6 @@ dependencies = [
  "arrow",
  "half",
  "re_arrow2",
- "re_tuid",
  "smallvec",
 ]
 
@@ -6170,6 +6169,7 @@ name = "re_protos"
 version = "0.22.0-alpha.1+dev"
 dependencies = [
  "prost",
+ "re_byte_size",
  "thiserror 1.0.65",
  "tonic",
  "tonic-web-wasm-client",
@@ -6467,6 +6467,7 @@ dependencies = [
  "document-features",
  "getrandom",
  "once_cell",
+ "re_byte_size",
  "re_protos",
  "serde",
  "web-time",
