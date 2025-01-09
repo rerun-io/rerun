@@ -21,6 +21,10 @@ use actions::{
 };
 use sub_menu::SubMenu;
 
+pub mod exports {
+    pub use type_map;
+}
+
 /// Controls how [`context_menu_ui_for_item`] should handle the current selection state.
 #[derive(Debug, Clone, Copy)]
 pub enum SelectionUpdateBehavior {
@@ -42,6 +46,51 @@ pub fn context_menu_ui_for_item(
     item_response: &egui::Response,
     selection_update_behavior: SelectionUpdateBehavior,
 ) {
+    context_menu_ui_for_item_with_local_data_map(
+        ctx,
+        viewport_blueprint,
+        item,
+        item_response,
+        selection_update_behavior,
+        None,
+    );
+}
+
+/// Display a context menu for the provided [`Item`].
+///
+/// The provided `local_data` item will be passed to the context menu actions.
+pub fn context_menu_ui_for_item_with_local_data<T: 'static>(
+    ctx: &ViewerContext<'_>,
+    viewport_blueprint: &ViewportBlueprint,
+    item: &Item,
+    item_response: &egui::Response,
+    selection_update_behavior: SelectionUpdateBehavior,
+    local_data: T,
+) {
+    let mut local_data_map = type_map::TypeMap::new();
+    local_data_map.insert(local_data);
+
+    context_menu_ui_for_item_with_local_data_map(
+        ctx,
+        viewport_blueprint,
+        item,
+        item_response,
+        selection_update_behavior,
+        Some(&local_data_map),
+    );
+}
+
+/// Display a context menu for the provided [`Item`]
+///
+/// The provided `local_data` [`type_map::TypeMap`] will be passed to the context menu actions.
+pub fn context_menu_ui_for_item_with_local_data_map(
+    ctx: &ViewerContext<'_>,
+    viewport_blueprint: &ViewportBlueprint,
+    item: &Item,
+    item_response: &egui::Response,
+    selection_update_behavior: SelectionUpdateBehavior,
+    local_data: Option<&type_map::TypeMap>,
+) {
     item_response.context_menu(|ui| {
         if ui.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape)) {
             ui.close_menu();
@@ -55,6 +104,7 @@ pub fn context_menu_ui_for_item(
                 egui_context: ui.ctx().clone(),
                 selection,
                 clicked_item: item,
+                local_data,
             };
             show_context_menu_for_selection(&context_menu_ctx, ui);
         };
@@ -204,6 +254,12 @@ struct ContextMenuContext<'a> {
     egui_context: egui::Context,
     selection: &'a ItemCollection,
     clicked_item: &'a Item,
+
+    /// Custom data provided by the client code to context menu actions.
+    ///
+    /// Action may use this data (if any) to decide if they are locally supported and/or to affect
+    /// their behavior when triggered.
+    local_data: Option<&'a type_map::TypeMap>,
 }
 
 impl<'a> ContextMenuContext<'a> {
@@ -233,6 +289,11 @@ impl<'a> ContextMenuContext<'a> {
                     .container(&container_id)
                     .map(|container| (container, pos))
             })
+    }
+
+    /// Get the local data provided by the client code, if any.
+    pub fn local_date<T: 'static>(&self) -> Option<&T> {
+        self.local_data.and_then(|data| data.get::<T>())
     }
 }
 

@@ -5782,6 +5782,7 @@ dependencies = [
  "re_viewer_context",
  "re_viewport_blueprint",
  "static_assertions",
+ "type-map",
 ]
 
 [[package]]

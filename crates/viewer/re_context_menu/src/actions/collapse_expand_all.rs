@@ -49,9 +49,14 @@ impl ContextMenuAction for CollapseExpandAllAction {
     }
 
     fn process_container(&self, ctx: &ContextMenuContext<'_>, container_id: &ContainerId) {
+        let collapse_scope = ctx
+            .local_date()
+            .copied()
+            .unwrap_or(CollapseScope::BlueprintTree);
+
         ctx.viewport_blueprint
             .visit_contents_in_container(container_id, &mut |contents, _| match contents {
-                Contents::Container(container_id) => CollapseScope::BlueprintTree
+                Contents::Container(container_id) => collapse_scope
                     .container(*container_id)
                     .set_open(&ctx.egui_context, self.open()),
                 Contents::View(view_id) => self.process_view(ctx, view_id),
@@ -59,7 +64,9 @@ impl ContextMenuAction for CollapseExpandAllAction {
     }
 
     fn process_view(&self, ctx: &ContextMenuContext<'_>, view_id: &ViewId) {
-        CollapseScope::BlueprintTree
+        ctx.local_date()
+            .copied()
+            .unwrap_or(CollapseScope::BlueprintTree)
             .view(*view_id)
             .set_open(&ctx.egui_context, self.open());
 
@@ -82,34 +89,34 @@ impl ContextMenuAction for CollapseExpandAllAction {
     ) {
         //TODO(ab): here we should in principle walk the DataResult tree instead of the entity tree
         // but the current API isn't super ergonomic.
-        let Some(subtree) = ctx
-            .viewer_context
-            .recording()
-            .tree()
-            .subtree(&instance_path.entity_path)
-        else {
+        let Some(subtree) = get_entity_tree(ctx, instance_path) else {
             return;
         };
 
+        let collapse_scope = ctx
+            .local_date()
+            .copied()
+            .unwrap_or(CollapseScope::BlueprintTree);
+
         subtree.visit_children_recursively(|entity_path| {
-            CollapseScope::BlueprintTree
+            collapse_scope
                 .data_result(*view_id, entity_path.clone())
                 .set_open(&ctx.egui_context, self.open());
         });
     }
 
     fn process_instance_path(&self, ctx: &ContextMenuContext<'_>, instance_path: &InstancePath) {
-        let Some(subtree) = ctx
-            .viewer_context
-            .recording()
-            .tree()
-            .subtree(&instance_path.entity_path)
-        else {
+        let Some(subtree) = get_entity_tree(ctx, instance_path) else {
             return;
         };
 
+        let collapse_scope = ctx
+            .local_date()
+            .copied()
+            .unwrap_or(CollapseScope::StreamsTree);
+
         subtree.visit_children_recursively(|entity_path| {
-            CollapseScope::StreamsTree
+            collapse_scope
                 .entity(entity_path.clone())
                 .set_open(&ctx.egui_context, self.open());
         });
@@ -123,4 +130,25 @@ impl CollapseExpandAllAction {
             Self::ExpandAll => true,
         }
     }
+}
+
+/// Get an [`re_entity_db::EntityTree`] for the given instance path.
+///
+/// This function guesses which store to search the entity in based on the [`CollapseScope`], which
+/// may be overridden as local data by the user code.
+fn get_entity_tree<'a>(
+    ctx: &'_ ContextMenuContext<'a>,
+    instance_path: &InstancePath,
+) -> Option<&'a re_entity_db::EntityTree> {
+    let collapse_scope = ctx
+        .local_date()
+        .copied()
+        .unwrap_or(CollapseScope::StreamsTree);
+
+    match collapse_scope {
+        CollapseScope::StreamsTree | CollapseScope::BlueprintTree => ctx.viewer_context.recording(),
+        CollapseScope::BlueprintStreamsTree => ctx.viewer_context.blueprint_db(),
+    }
+    .tree()
+    .subtree(&instance_path.entity_path)
 }

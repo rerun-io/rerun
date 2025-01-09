@@ -19,7 +19,7 @@ use std::sync::Arc;
 use egui::emath::Rangef;
 use egui::{pos2, Color32, CursorIcon, NumExt, Painter, PointerButton, Rect, Shape, Ui, Vec2};
 
-use re_context_menu::{context_menu_ui_for_item, SelectionUpdateBehavior};
+use re_context_menu::{context_menu_ui_for_item_with_local_data, SelectionUpdateBehavior};
 use re_data_ui::DataUi as _;
 use re_data_ui::{item_ui::guess_instance_path_icon, sorted_component_list_for_ui};
 use re_entity_db::{EntityDb, EntityTree, InstancePath};
@@ -654,19 +654,14 @@ impl TimePanel {
             .and_then(|item| item.entity_path());
 
         if focused_entity_path.is_some_and(|entity_path| entity_path.is_descendant_of(&tree.path)) {
-            CollapseScope::StreamsTree
+            self.collapse_scope()
                 .entity(tree.path.clone())
                 .set_open(ui.ctx(), true);
         }
 
         // Globally unique id - should only be one of these in view at one time.
         // We do this so that we can support "collapse/expand all" command.
-        let id = egui::Id::new(match self.source {
-            TimePanelSource::Recording => CollapseScope::StreamsTree.entity(tree.path.clone()),
-            TimePanelSource::Blueprint => {
-                CollapseScope::BlueprintStreamsTree.entity(tree.path.clone())
-            }
-        });
+        let id = self.collapse_scope().entity(tree.path.clone()).egui_id();
 
         let list_item::ShowCollapsingResponse {
             item_response: response,
@@ -722,12 +717,13 @@ impl TimePanel {
             }
         }
 
-        context_menu_ui_for_item(
+        context_menu_ui_for_item_with_local_data(
             ctx,
             viewport_blueprint,
             &item.to_item(),
             &response,
             SelectionUpdateBehavior::UseSelection,
+            self.collapse_scope(),
         );
         ctx.handle_select_hover_drag_interactions(&response, item.to_item(), true);
 
@@ -850,12 +846,13 @@ impl TimePanel {
                             .truncate(false),
                     );
 
-                context_menu_ui_for_item(
+                context_menu_ui_for_item_with_local_data(
                     ctx,
                     viewport_blueprint,
                     &item.to_item(),
                     &response,
                     SelectionUpdateBehavior::UseSelection,
+                    self.collapse_scope(),
                 );
                 ctx.handle_select_hover_drag_interactions(&response, item.to_item(), false);
 
@@ -1000,6 +997,13 @@ impl TimePanel {
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 help_button(ui);
             });
+        }
+    }
+
+    fn collapse_scope(&self) -> CollapseScope {
+        match self.source {
+            TimePanelSource::Recording => CollapseScope::StreamsTree,
+            TimePanelSource::Blueprint => CollapseScope::BlueprintStreamsTree,
         }
     }
 }
