@@ -1,3 +1,4 @@
+use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 
 use ahash::HashMap;
@@ -43,7 +44,9 @@ pub struct TestContext {
 
     command_sender: CommandSender,
     command_receiver: CommandReceiver,
+
     egui_render_state: Mutex<Option<egui_wgpu::RenderState>>,
+    called_setup_kittest_for_rendering: AtomicBool,
 }
 
 impl Default for TestContext {
@@ -83,6 +86,7 @@ impl Default for TestContext {
 
             // Created lazily since each egui_kittest harness needs a new one.
             egui_render_state: Mutex::new(None),
+            called_setup_kittest_for_rendering: AtomicBool::new(false),
         }
     }
 }
@@ -228,14 +232,17 @@ fn init_shared_renderer_setup() -> SharedWgpuResources {
 
 impl TestContext {
     pub fn setup_kittest_for_rendering(&self) -> egui_kittest::HarnessBuilder<()> {
+        // Egui kittests insists on having a fresh render state for each test.
         let new_render_state = create_egui_renderstate();
         let builder = egui_kittest::Harness::builder().renderer(
             // Note that render state clone is mostly cloning of inner `Arc`.
-            // This does _not_ duplicate re_renderer's context.
+            // This does _not_ duplicate re_renderer's context contained within.
             egui_kittest::wgpu::WgpuTestRenderer::from_render_state(new_render_state.clone()),
         );
-        // Egui kittests insists on having a fresh render state for each test.
         self.egui_render_state.lock().replace(new_render_state);
+
+        self.called_setup_kittest_for_rendering
+            .store(true, std::sync::atomic::Ordering::Relaxed);
 
         builder
     }
@@ -302,6 +309,21 @@ impl TestContext {
         };
 
         func(&ctx);
+
+        // If re_renderer was used, `setup_kittest_for_rendering` should have been called.
+        // (if not, then we clearly didn't render anything since that requires writing to a texture!).
+        if render_ctx
+            .active_frame
+            .num_view_builders_created
+            .load(std::sync::atomic::Ordering::Acquire)
+            != 0
+            && !self
+                .called_setup_kittest_for_rendering
+                .load(std::sync::atomic::Ordering::Relaxed)
+        {
+            panic!("Rendering with `re_renderer` requires setting up kittest with `TestContext::setup_kittest_for_rendering`
+                    to ensure that kittest & re_renderer use the same graphics device.");
+        }
 
         render_ctx.before_submit();
     }

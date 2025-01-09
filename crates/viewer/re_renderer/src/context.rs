@@ -173,6 +173,7 @@ impl RenderContext {
             before_view_builder_encoder: Mutex::new(FrameGlobalCommandEncoder::new(&device)),
             frame_index: STARTUP_FRAME_IDX,
             top_level_error_scope,
+            num_view_builders_created: AtomicU64::new(0),
         };
 
         // Register shader workarounds for the current device.
@@ -316,6 +317,7 @@ This means, either a call to RenderContext::before_submit was omitted, or the pr
             before_view_builder_encoder: Mutex::new(FrameGlobalCommandEncoder::new(&self.device)),
             frame_index: self.active_frame.frame_index.wrapping_add(1),
             top_level_error_scope: Some(WgpuErrorScope::start(&self.device)),
+            num_view_builders_created: AtomicU64::new(0),
         };
         let frame_index = self.active_frame.frame_index;
 
@@ -485,6 +487,9 @@ pub struct ActiveFrameContext {
     ///
     /// The only time this is allowed to be `None` is during shutdown and when closing an old and opening a new scope.
     top_level_error_scope: Option<WgpuErrorScope>,
+
+    /// Number of view builders created in this frame so far.
+    pub num_view_builders_created: AtomicU64,
 }
 
 fn log_adapter_info(info: &wgpu::AdapterInfo) {

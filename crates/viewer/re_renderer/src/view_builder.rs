@@ -518,6 +518,10 @@ impl ViewBuilder {
             frame_uniform_buffer_content,
         };
 
+        ctx.active_frame
+            .num_view_builders_created
+            .fetch_add(1, std::sync::atomic::Ordering::Release);
+
         Self {
             setup,
             queued_draws: vec![composition_draw.into()],
