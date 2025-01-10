@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use re_chunk::{Chunk, RowId};
+use re_chunk::{Chunk, ChunkId, RowId};
 use re_chunk_store::ChunkStore;
 use re_log_types::{
     build_frame_nr, build_log_time,
@@ -25,10 +25,11 @@ fn format_chunk_store() -> anyhow::Result<()> {
 
     let (indices1, colors1) = (MyIndex::from_iter(0..3), MyColor::from_iter(0..3));
 
+    let chunk_id = ChunkId::from_u128(123_456_789_123_456_789_123_456_789);
     let row_id = RowId::from_u128(32_033_410_000_000_000_000_000_000_123);
 
     store.insert_chunk(&Arc::new(
-        Chunk::builder(entity_path.clone())
+        Chunk::builder_with_id(chunk_id, entity_path.clone())
             .with_component_batches(
                 row_id,
                 [
