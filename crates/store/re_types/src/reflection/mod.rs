@@ -918,6 +918,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
 /// Generates reflection about all known archetypes.
 ///
 /// Call only once and reuse the results.
+
 fn generate_archetype_reflection() -> ArchetypeReflectionMap {
     re_tracing::profile_function!();
     let array = [
