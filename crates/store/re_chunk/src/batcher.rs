@@ -988,7 +988,6 @@ impl PendingTimeColumn {
 
 #[cfg(test)]
 mod tests {
-    use arrow2::array::PrimitiveArray as Arrow2PrimitiveArray;
     use crossbeam::channel::TryRecvError;
 
     use re_log_types::example_components::{MyPoint, MyPoint64};

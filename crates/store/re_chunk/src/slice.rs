@@ -880,6 +880,7 @@ impl TimeColumn {
 
 #[cfg(test)]
 mod tests {
+    use arrow2::array::PrimitiveArray as Arrow2PrimitiveArray;
     use itertools::Itertools;
     use re_log_types::{
         example_components::{MyColor, MyLabel, MyPoint},
