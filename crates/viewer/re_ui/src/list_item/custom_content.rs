@@ -34,8 +34,8 @@ impl<'a> CustomContent<'a> {
     /// Create a content with a custom UI closure.
     ///
     /// The closure will be called from within a [`egui::Ui`] with its maximum width set as per the
-    /// list item geometry. Note that this may differ from [`crate::ContentContext::rect`] if a
-    /// button is set.
+    /// list item geometry. Note that this may differ from [`ContentContext::rect`] if a button is
+    /// set.
     pub fn new(ui: impl FnOnce(&mut egui::Ui, &ContentContext<'_>) + 'a) -> Self {
         Self {
             ui: Box::new(ui),
