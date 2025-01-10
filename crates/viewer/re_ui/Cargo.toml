@@ -45,10 +45,10 @@ egui_commonmark = { workspace = true, features = ["pulldown_cmark"] }
 egui_extras.workspace = true
 egui_tiles.workspace = true
 egui.workspace = true
+getrandom.workspace = true
 itertools.workspace = true
 once_cell.workspace = true
 parking_lot.workspace = true
-rand.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 smallvec.workspace = true
@@ -70,4 +70,5 @@ time = { workspace = true, features = [
 
 [dev-dependencies]
 egui_kittest.workspace = true
+rand.workspace = true
 re_types.workspace = true

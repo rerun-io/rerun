@@ -1,6 +1,5 @@
 use egui::{Color32, NumExt as _, Widget as _};
 use itertools::Either;
-use rand::random;
 
 use crate::{list_item, UiExt as _};
 
@@ -20,11 +19,14 @@ struct InnerState {
 
 impl Default for InnerState {
     fn default() -> Self {
+        let mut random_bytes = [0u8; 8];
+        getrandom::getrandom(&mut random_bytes).expect("Couldn't get random bytes");
+
         Self {
             filter_query: String::new(),
 
             // create a new session id each time the filter is toggled
-            session_id: egui::Id::new(random::<u64>()),
+            session_id: egui::Id::new(random_bytes),
         }
     }
 }
