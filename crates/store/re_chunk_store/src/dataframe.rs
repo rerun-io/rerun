@@ -708,7 +708,7 @@ impl ChunkStore {
         let timelines = self.all_timelines_sorted().into_iter().map(|timeline| {
             ColumnDescriptor::Time(TimeColumnDescriptor {
                 timeline,
-                datatype: timeline.datatype(),
+                datatype: timeline.datatype().into(),
             })
         });
 
@@ -782,7 +782,7 @@ impl ChunkStore {
 
         TimeColumnDescriptor {
             timeline,
-            datatype: timeline.datatype(),
+            datatype: timeline.datatype().into(),
         }
     }
 

@@ -1,4 +1,7 @@
-use std::collections::{btree_map, BTreeMap};
+use std::{
+    collections::{btree_map, BTreeMap},
+    sync::Arc,
+};
 
 mod non_min_i64;
 mod time_int;
@@ -181,6 +184,29 @@ impl TimeType {
     #[inline]
     pub fn format_range_utc(&self, time_range: ResolvedTimeRange) -> String {
         self.format_range(time_range, TimeZone::Utc)
+    }
+
+    /// Returns the appropriate arrow datatype to represent this timeline.
+    #[inline]
+    pub fn datatype(self) -> arrow::datatypes::DataType {
+        match self {
+            Self::Time => {
+                arrow::datatypes::DataType::Timestamp(arrow::datatypes::TimeUnit::Nanosecond, None)
+            }
+            Self::Sequence => arrow::datatypes::DataType::Int64,
+        }
+    }
+
+    /// Returns an array with the appropriate datatype.
+    pub fn make_arrow_array(
+        self,
+        times: impl Into<arrow::buffer::ScalarBuffer<i64>>,
+    ) -> arrow::array::ArrayRef {
+        let times = times.into();
+        match self {
+            Self::Time => Arc::new(arrow::array::TimestampNanosecondArray::new(times, None)),
+            Self::Sequence => Arc::new(arrow::array::Int64Array::new(times, None)),
+        }
     }
 }
 

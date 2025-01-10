@@ -5,7 +5,6 @@ use re_types::components::VideoTimestamp;
 use re_types::Archetype;
 use re_types::{components::MediaType, ComponentBatch};
 
-use arrow2::array::PrimitiveArray as Arrow2PrimitiveArray;
 use arrow2::Either;
 
 use crate::{DataLoader, DataLoaderError, LoadedData};
@@ -193,13 +192,14 @@ fn load_video(
         Ok(frame_timestamps_ns) => {
             // Time column.
             let is_sorted = Some(true);
-            let time_column_times = Arrow2PrimitiveArray::from_slice(&frame_timestamps_ns);
+            let frame_timestamps_ns: arrow::buffer::ScalarBuffer<i64> = frame_timestamps_ns.into();
             let time_column =
-                re_chunk::TimeColumn::new(is_sorted, video_timeline, time_column_times);
+                re_chunk::TimeColumn::new(is_sorted, video_timeline, frame_timestamps_ns.clone());
 
             // VideoTimestamp component column.
             let video_timestamps = frame_timestamps_ns
-                .into_iter()
+                .iter()
+                .copied()
                 .map(VideoTimestamp::from_nanoseconds)
                 .collect::<Vec<_>>();
             let video_timestamp_batch = &video_timestamps as &dyn ComponentBatch;

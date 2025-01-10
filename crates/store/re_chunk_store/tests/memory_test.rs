@@ -135,8 +135,8 @@ fn scalar_memory_overhead() {
         [
             format!("{NUM_SCALARS} scalars"),
             format!(
-                "{} in total",
-                re_format::format_bytes(total_mem_use_global as _)
+                "{} MiB in total",
+                (total_mem_use_global as f64 / 1024.0 / 1024.0).round() // Round to nearest megabyte - we get fluctuations on the kB depending on platform
             ),
             format!(
                 "{} per row",

@@ -1,6 +1,6 @@
+use arrow::buffer::ScalarBuffer as ArrowScalarBuffer;
 use arrow2::array::{
-    Array as Arrow2Array, ListArray as Arrow2ListArray, PrimitiveArray as Arrow2PrimitiveArray,
-    StructArray as Arrow2StructArray,
+    Array as Arrow2Array, ListArray as Arrow2ListArray, StructArray as Arrow2StructArray,
 };
 use itertools::{izip, Itertools};
 use nohash_hasher::IntMap;
@@ -281,17 +281,20 @@ impl TimeColumn {
         if self.timeline != rhs.timeline {
             return None;
         }
+        re_tracing::profile_function!();
 
         let is_sorted =
             self.is_sorted && rhs.is_sorted && self.time_range.max() <= rhs.time_range.min();
 
         let time_range = self.time_range.union(rhs.time_range);
 
-        let times = arrow2_util::concat_arrays(&[&self.times, &rhs.times]).ok()?;
-        let times = times
-            .as_any()
-            .downcast_ref::<Arrow2PrimitiveArray<i64>>()?
-            .clone();
+        let times = self
+            .times_raw()
+            .iter()
+            .chain(rhs.times_raw())
+            .copied()
+            .collect_vec();
+        let times = ArrowScalarBuffer::from(times);
 
         Some(Self {
             timeline: self.timeline,

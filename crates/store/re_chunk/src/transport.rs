@@ -1,8 +1,6 @@
+use arrow::array::ArrayRef as ArrowArrayRef;
 use arrow2::{
-    array::{
-        Array as Arrow2Array, ListArray, PrimitiveArray as Arrow2PrimitiveArray,
-        StructArray as Arrow2StructArray,
-    },
+    array::{Array as Arrow2Array, ListArray, StructArray as Arrow2StructArray},
     chunk::Chunk as Arrow2Chunk,
     datatypes::{
         DataType as Arrow2Datatype, Field as ArrowField, Metadata as Arrow2Metadata,
@@ -450,15 +448,16 @@ impl Chunk {
                 .map(|(timeline, info)| {
                     let TimeColumn {
                         timeline: _,
-                        times,
+                        times: _,
                         is_sorted,
                         time_range: _,
                     } = info;
 
+                    let nullable = false; // timelines within a single chunk are always dense
                     let field = ArrowField::new(
                         timeline.name().to_string(),
-                        times.data_type().clone(),
-                        false, // timelines within a single chunk are always dense
+                        timeline.datatype().into(),
+                        nullable,
                     )
                     .with_metadata({
                         let mut metadata = TransportChunk::field_metadata_time_column();
@@ -468,7 +467,7 @@ impl Chunk {
                         metadata
                     });
 
-                    let times = times.clone().boxed() /* cheap */;
+                    let times = info.times_array();
 
                     (field, times)
                 })
@@ -478,7 +477,7 @@ impl Chunk {
 
             for (field, times) in timelines {
                 schema.fields.push(field);
-                columns.push(times);
+                columns.push(times.into());
             }
         }
 
@@ -590,36 +589,17 @@ impl Chunk {
                     }
                 };
 
-                let times = column
-                    .as_any()
-                    .downcast_ref::<Arrow2PrimitiveArray<i64>>()
-                    .ok_or_else(|| ChunkError::Malformed {
-                        reason: format!(
-                            "time column '{}' is not deserializable ({:?})",
-                            field.name,
-                            column.data_type()
-                        ),
-                    })?;
-
-                if times.validity().is_some() {
-                    return Err(ChunkError::Malformed {
-                        reason: format!(
-                            "time column '{}' must be dense ({:?})",
-                            field.name,
-                            column.data_type()
-                        ),
-                    });
-                }
+                let times = TimeColumn::read_array(&ArrowArrayRef::from(column.clone())).map_err(
+                    |err| ChunkError::Malformed {
+                        reason: format!("Bad time column '{}': {err}", field.name),
+                    },
+                )?;
 
                 let is_sorted = field
                     .metadata
                     .contains_key(TransportChunk::FIELD_METADATA_MARKER_IS_SORTED_BY_TIME);
 
-                let time_column = TimeColumn::new(
-                    is_sorted.then_some(true),
-                    timeline,
-                    times.clone(), /* cheap */
-                );
+                let time_column = TimeColumn::new(is_sorted.then_some(true), timeline, times);
                 if timelines.insert(timeline, time_column).is_some() {
                     return Err(ChunkError::Malformed {
                         reason: format!(
@@ -735,11 +715,7 @@ mod tests {
         let timeline1 = Timeline::new_temporal("log_time");
         let timelines1 = std::iter::once((
             timeline1,
-            TimeColumn::new(
-                Some(true),
-                timeline1,
-                Arrow2PrimitiveArray::<i64>::from_vec(vec![42, 43, 44, 45]),
-            ),
+            TimeColumn::new(Some(true), timeline1, vec![42, 43, 44, 45].into()),
         ))
         .collect();
 

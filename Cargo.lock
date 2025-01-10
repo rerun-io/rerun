@@ -5569,7 +5569,7 @@ dependencies = [
 [[package]]
 name = "re_arrow2"
 version = "0.18.1"
-source = "git+https://github.com/rerun-io/re_arrow2.git?branch=main#82095762a42eed76e4043c82833e391893d5821c"
+source = "git+https://github.com/rerun-io/re_arrow2.git?branch=main#573b5bafd071d09698353d8f0de8d31f3fa59017"
 dependencies = [
  "ahash",
  "arrow-array",
@@ -5802,6 +5802,7 @@ version = "0.22.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "anyhow",
+ "arrow",
  "crossbeam",
  "image",
  "notify",
@@ -5879,6 +5880,7 @@ name = "re_dataframe"
 version = "0.22.0-alpha.1+dev"
 dependencies = [
  "anyhow",
+ "arrow",
  "itertools 0.13.0",
  "nohash-hasher",
  "rayon",
@@ -6330,7 +6332,6 @@ dependencies = [
  "once_cell",
  "parking_lot",
  "rand",
- "re_arrow2",
  "re_build_info",
  "re_build_tools",
  "re_byte_size",
@@ -7341,6 +7342,7 @@ name = "rerun_c"
 version = "0.22.0-alpha.1+dev"
 dependencies = [
  "ahash",
+ "arrow",
  "infer",
  "once_cell",
  "parking_lot",
