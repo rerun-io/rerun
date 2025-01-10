@@ -18,10 +18,10 @@ struct CustomPoints3D {
 }
 
 impl rerun::AsComponents for CustomPoints3D {
-    fn as_component_batches_v2(&self) -> Vec<SerializedComponentBatch> {
+    fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         let indicator = rerun::NamedIndicatorComponent("user.CustomPoints3DIndicator".into());
         self.points3d
-            .as_component_batches_v2()
+            .as_serialized_batches()
             .into_iter()
             .chain(
                 [

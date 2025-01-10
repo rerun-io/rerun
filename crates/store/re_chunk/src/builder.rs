@@ -121,8 +121,8 @@ impl ChunkBuilder {
         timepoint: impl Into<TimePoint>,
         as_components: &dyn AsComponents,
     ) -> Self {
-        let batches = as_components.as_component_batches_v2();
-        self.with_component_batches_v2(row_id, timepoint, batches)
+        let batches = as_components.as_serialized_batches();
+        self.with_serialized_batches(row_id, timepoint, batches)
     }
 
     /// Add a row's worth of data by serializing a single [`ComponentBatch`].
@@ -189,7 +189,7 @@ impl ChunkBuilder {
 
     /// Add a row's worth of data by serializing a single [`ComponentBatch`].
     #[inline]
-    pub fn with_component_batch_v2(
+    pub fn with_serialized_batch(
         self,
         row_id: RowId,
         timepoint: impl Into<TimePoint>,
@@ -204,7 +204,7 @@ impl ChunkBuilder {
 
     /// Add a row's worth of data by serializing many [`ComponentBatch`]es.
     #[inline]
-    pub fn with_component_batches_v2(
+    pub fn with_serialized_batches(
         self,
         row_id: RowId,
         timepoint: impl Into<TimePoint>,
@@ -221,7 +221,7 @@ impl ChunkBuilder {
 
     /// Add a row's worth of data by serializing many sparse [`ComponentBatch`]es.
     #[inline]
-    pub fn with_sparse_component_batches_v2(
+    pub fn with_sparse_serialized_batches(
         self,
         row_id: RowId,
         timepoint: impl Into<TimePoint>,

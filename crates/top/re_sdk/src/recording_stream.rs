@@ -1115,11 +1115,11 @@ impl RecordingStream {
         as_components: &AS,
     ) -> RecordingStreamResult<()> {
         let row_id = RowId::new(); // Create row-id as early as possible. It has a timestamp and is used to estimate e2e latency.
-        self.log_component_batches_impl_v2(
+        self.log_serialized_batches_impl(
             row_id,
             ent_path,
             static_,
-            as_components.as_component_batches_v2(),
+            as_components.as_serialized_batches(),
         )
     }
 
@@ -1146,7 +1146,7 @@ impl RecordingStream {
     /// See [SDK Micro Batching] for more information.
     ///
     /// [SDK Micro Batching]: https://www.rerun.io/docs/reference/sdk/micro-batching
-    #[deprecated(since = "0.22.0", note = "use log_component_batches_v2 instead")]
+    #[deprecated(since = "0.22.0", note = "use log_serialized_batches instead")]
     pub fn log_component_batches<'a>(
         &self,
         ent_path: impl Into<EntityPath>,
@@ -1221,20 +1221,20 @@ impl RecordingStream {
     /// [SDK Micro Batching]: https://www.rerun.io/docs/reference/sdk/micro-batching
     ///
     /// [`SerializedComponentBatch`]: [re_types_core::SerializedComponentBatch]
-    pub fn log_component_batches_v2(
+    pub fn log_serialized_batches(
         &self,
         ent_path: impl Into<EntityPath>,
         static_: bool,
         comp_batches: impl IntoIterator<Item = re_types_core::SerializedComponentBatch>,
     ) -> RecordingStreamResult<()> {
         let row_id = RowId::new(); // Create row-id as early as possible. It has a timestamp and is used to estimate e2e latency.
-        self.log_component_batches_impl_v2(row_id, ent_path, static_, comp_batches)
+        self.log_serialized_batches_impl(row_id, ent_path, static_, comp_batches)
     }
 
     // NOTE: For bw and fw compatibility reasons, we need our logging APIs to be fallible, even
     // though they really aren't at the moment.
     #[allow(clippy::unnecessary_wraps)]
-    fn log_component_batches_impl_v2(
+    fn log_serialized_batches_impl(
         &self,
         row_id: RowId,
         entity_path: impl Into<EntityPath>,
