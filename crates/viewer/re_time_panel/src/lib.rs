@@ -444,11 +444,13 @@ impl TimePanel {
         let timeline_rect = {
             let top = ui.min_rect().bottom();
 
+            ui.add_space(-4.0); // hack to vertically center the text
+
             let size = egui::vec2(self.prev_col_width, 28.0);
             ui.allocate_ui_with_layout(size, egui::Layout::top_down(egui::Align::LEFT), |ui| {
                 ui.set_min_size(size);
                 ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
-                ui.add_space(4.0); // hack to vertically center the text
+                ui.spacing_mut().item_spacing.y = 0.0;
 
                 ui.full_span_scope(0.0..=time_x_left, |ui| {
                     self.filter_state.ui(
@@ -461,6 +463,8 @@ impl TimePanel {
                         .strong(),
                     );
                 });
+
+                ui.add_space(2.0); // hack to vertically center the text
             })
             .response
             .on_hover_text(

@@ -41,9 +41,10 @@ serde.workspace = true
 vec1.workspace = true
 
 [dev-dependencies]
+re_viewer_context = { workspace = true, features = ["testing"] }
+
 anyhow.workspace = true
 criterion.workspace = true
-egui_kittest.workspace = true
 rand.workspace = true
 
 [lib]
