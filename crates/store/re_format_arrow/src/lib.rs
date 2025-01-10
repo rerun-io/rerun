@@ -233,21 +233,10 @@ where
 
     outer_table.add_row({
         let mut row = Row::new();
-        row.add_cell({
-            let cell = Cell::new(format!(
-                "CHUNK METADATA:\n{}",
-                DisplayMetadata(metadata, "* ")
-            ));
-
-            #[cfg(not(target_arch = "wasm32"))] // requires TTY
-            {
-                cell.add_attribute(comfy_table::Attribute::Italic)
-            }
-            #[cfg(target_arch = "wasm32")]
-            {
-                cell
-            }
-        });
+        row.add_cell(Cell::new(format!(
+            "CHUNK METADATA:\n{}",
+            DisplayMetadata(metadata, "* ")
+        )));
         row
     });
 
