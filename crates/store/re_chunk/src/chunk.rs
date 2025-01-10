@@ -430,7 +430,7 @@ impl Chunk {
         .collect_vec();
 
         #[allow(clippy::unwrap_used)]
-        let row_ids = <RowId as Loggable>::to_arrow2(&row_ids)
+        let row_ids = <RowId as Loggable>::to_arrow(&row_ids)
             // Unwrap: native RowIds cannot fail to serialize.
             .unwrap()
             .as_any()
@@ -486,7 +486,7 @@ impl Chunk {
             .collect_vec();
 
         #[allow(clippy::unwrap_used)]
-        let row_ids = <RowId as Loggable>::to_arrow2(&row_ids)
+        let row_ids = <RowId as Loggable>::to_arrow(&row_ids)
             // Unwrap: native RowIds cannot fail to serialize.
             .unwrap()
             .as_any()

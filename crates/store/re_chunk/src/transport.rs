@@ -556,13 +556,13 @@ impl Chunk {
                 });
             };
 
-            row_ids
+            ArrowArrayRef::from(row_ids.clone())
                 .as_any()
                 .downcast_ref::<ArrowStructArray>()
                 .ok_or_else(|| ChunkError::Malformed {
                     reason: format!(
                         "RowId data has the wrong datatype: expected {:?} but got {:?} instead",
-                        RowId::arrow2_datatype(),
+                        RowId::arrow_datatype(),
                         *row_ids.data_type(),
                     ),
                 })?
