@@ -2,9 +2,9 @@ use ahash::HashMap;
 use indexmap::IndexMap;
 use parking_lot::Mutex;
 
-use re_entity_db::EntityPath;
-
 use crate::{item::resolve_mono_instance_path_item, ViewerContext};
+use re_entity_db::EntityPath;
+use re_log_types::StoreKind;
 
 use super::Item;
 
@@ -34,6 +34,12 @@ pub enum ItemSpaceContext {
 
         /// Corresponding 2D spaces and pixel coordinates (with Z=depth)
         point_in_space_cameras: Vec<(EntityPath, Option<glam::Vec3>)>,
+    },
+
+    /// Hovering/selecting in one of the streams trees.
+    StreamsTree {
+        /// Which store does this streams tree correspond to?
+        store_kind: StoreKind,
     },
 }
 
@@ -156,6 +162,10 @@ impl ItemCollection {
         self.0
             .iter()
             .filter_map(|(_, space_context)| space_context.as_ref())
+    }
+
+    pub fn space_context_for_item(&self, item: &Item) -> Option<&ItemSpaceContext> {
+        self.0.get(item).and_then(Option::as_ref)
     }
 
     /// Returns true if the exact selection is part of the current selection.
