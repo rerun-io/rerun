@@ -122,17 +122,12 @@ pub fn build_chunk_from_components(
         .into_iter()
         .zip(fields)
         .map(|(array, field)| {
-            let Some((timeline_data, datatype)) =
-                TimeColumn::read_array(&ArrowArrayRef::from(array))
-            else {
-                return Err(ChunkError::Malformed {
-                    reason: format!("Invalid data_type for timeline: {}", field.name),
-                });
-            };
-            debug_assert_eq!(
-                &arrow2::datatypes::DataType::from(datatype),
-                field.data_type()
-            );
+            let timeline_data =
+                TimeColumn::read_array(&ArrowArrayRef::from(array)).map_err(|err| {
+                    ChunkError::Malformed {
+                        reason: format!("Invalid timeline {}: {err}", field.name),
+                    }
+                })?;
             let timeline = match field.data_type() {
                 arrow2::datatypes::DataType::Int64 => {
                     Ok(Timeline::new_sequence(field.name.clone()))

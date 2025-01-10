@@ -9,10 +9,10 @@ use arrow::{
     },
     datatypes::DataType as ArrowDataType,
 };
-use re_dataframe::external::re_chunk::TimeColumn;
 use thiserror::Error;
 
 use re_chunk_store::{ColumnDescriptor, ComponentColumnDescriptor, LatestAtQuery};
+use re_dataframe::external::re_chunk::{TimeColumn, TimeColumnError};
 use re_log_types::{EntityPath, TimeInt, Timeline};
 use re_types_core::ComponentName;
 use re_ui::UiExt;
@@ -20,8 +20,11 @@ use re_viewer_context::{UiLayout, ViewerContext};
 
 #[derive(Error, Debug)]
 pub(crate) enum DisplayRecordBatchError {
-    #[error("Unexpected column data type for timeline '{0}': {1:?}")]
-    UnexpectedTimeColumnDataType(String, ArrowDataType),
+    #[error("Bad column for timeline '{timeline}': {error}")]
+    BadTimeColumn {
+        timeline: String,
+        error: TimeColumnError,
+    },
 
     #[error("Unexpected column data type for component '{0}': {1:?}")]
     UnexpectedComponentColumnDataType(String, ArrowDataType),
@@ -184,12 +187,12 @@ impl DisplayColumn {
             ColumnDescriptor::Time(desc) => {
                 let timeline = desc.timeline;
 
-                let Some((time_data, _datatype)) = TimeColumn::read_array(column_data) else {
-                    return Err(DisplayRecordBatchError::UnexpectedTimeColumnDataType(
-                        timeline.name().as_str().to_owned(),
-                        column_data.data_type().to_owned(),
-                    ));
-                };
+                let time_data = TimeColumn::read_array(column_data).map_err(|err| {
+                    DisplayRecordBatchError::BadTimeColumn {
+                        timeline: timeline.name().as_str().to_owned(),
+                        error: err,
+                    }
+                })?;
 
                 Ok(Self::Timeline {
                     timeline,

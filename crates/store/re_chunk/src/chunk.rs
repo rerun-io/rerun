@@ -4,7 +4,6 @@ use ahash::HashMap;
 use arrow::{
     array::{Array as ArrowArray, ArrayRef as ArrowArrayRef, ListArray as ArrowListArray},
     buffer::ScalarBuffer as ArrowScalarBuffer,
-    datatypes::DataType as ArrowDataType,
 };
 use arrow2::{
     array::{
@@ -803,6 +802,16 @@ pub struct TimeColumn {
     pub(crate) time_range: ResolvedTimeRange,
 }
 
+/// Errors when deserializing/parsing/reading a column of time data.
+#[derive(Debug, thiserror::Error)]
+pub enum TimeColumnError {
+    #[error("Time columns had nulls, but should be dense")]
+    Nulls,
+
+    #[error("Unsupported data type : {0}")]
+    UnsupportedDataType(arrow::datatypes::DataType),
+}
+
 impl Chunk {
     /// Creates a new [`Chunk`].
     ///
@@ -1104,42 +1113,35 @@ impl TimeColumn {
 
     /// Parse the given [`ArrowArray`] as a time column,
     /// returning its contents and its datatype (e.g. [`ArrowDataType::Timestamp`]).
-    pub fn read_array(array: &dyn ArrowArray) -> Option<(ArrowScalarBuffer<i64>, ArrowDataType)> {
+    pub fn read_array(array: &dyn ArrowArray) -> Result<ArrowScalarBuffer<i64>, TimeColumnError> {
         #![allow(clippy::manual_map)]
 
-        use arrow::datatypes::TimeUnit;
-
-        // TODO: check for nulls
+        if array.null_count() > 0 {
+            return Err(TimeColumnError::Nulls);
+        }
 
         // Sequence timelines are i64, but time columns are nanoseconds (also as i64).
         if let Some(times) = array.as_any().downcast_ref::<arrow::array::Int64Array>() {
-            Some((times.values().clone(), ArrowDataType::Int64))
+            Ok(times.values().clone())
         } else if let Some(times) = array
             .as_any()
             .downcast_ref::<arrow::array::TimestampNanosecondArray>()
         {
-            Some((
-                times.values().clone(),
-                ArrowDataType::Timestamp(TimeUnit::Nanosecond, None),
-            ))
+            Ok(times.values().clone())
         } else if let Some(times) = array
             .as_any()
             .downcast_ref::<arrow::array::Time64NanosecondArray>()
         {
-            Some((
-                times.values().clone(),
-                ArrowDataType::Time64(TimeUnit::Nanosecond),
-            ))
+            Ok(times.values().clone())
         } else if let Some(times) = array
             .as_any()
             .downcast_ref::<arrow::array::DurationNanosecondArray>()
         {
-            Some((
-                times.values().clone(),
-                ArrowDataType::Duration(TimeUnit::Nanosecond),
-            ))
+            Ok(times.values().clone())
         } else {
-            None
+            Err(TimeColumnError::UnsupportedDataType(
+                array.data_type().clone(),
+            ))
         }
     }
 }

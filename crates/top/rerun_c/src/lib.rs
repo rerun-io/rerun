@@ -963,12 +963,12 @@ fn rr_recording_stream_send_columns_impl(
             let timeline: Timeline = time_column.timeline.clone().try_into()?;
             let datatype = arrow2::datatypes::DataType::Int64;
             let time_values_untyped = unsafe { arrow_array_from_c_ffi(&time_column.times, datatype) }?;
-            let Some((time_values, _datatype)) = TimeColumn::read_array(&ArrowArrayRef::from(time_values_untyped)) else {
-                    return Err(CError::new(
-                        CErrorCode::ArrowFfiArrayImportError,
-                        "Arrow C FFI import did not produce a Int64 time array - please file an issue at https://github.com/rerun-io/rerun/issues if you see this! This shouldn't be possible since conversion from C was successful with this datatype."
-                    ));
-                };
+            let time_values = TimeColumn::read_array(&ArrowArrayRef::from(time_values_untyped)).map_err(|err| {
+                CError::new(
+                    CErrorCode::ArrowFfiArrayImportError,
+                    &format!("Arrow C FFI import did not produce a Int64 time array - please file an issue at https://github.com/rerun-io/rerun/issues if you see this! This shouldn't be possible since conversion from C was successful with this datatype. Details: {err}")
+                )
+            })?;
 
             Ok((
                 timeline,

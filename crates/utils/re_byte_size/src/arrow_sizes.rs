@@ -30,6 +30,6 @@ impl<T: ArrowPrimitiveType> SizeBytes for PrimitiveArray<T> {
 impl<T: ArrowNativeType> SizeBytes for ScalarBuffer<T> {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.inner().capacity() as _ // TODO: len or capacity()
+        self.inner().capacity() as _
     }
 }

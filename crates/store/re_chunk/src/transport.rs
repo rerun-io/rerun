@@ -586,16 +586,11 @@ impl Chunk {
                     }
                 };
 
-                let Some((times, _)) = TimeColumn::read_array(&ArrowArrayRef::from(column.clone()))
-                else {
-                    return Err(ChunkError::Malformed {
-                        reason: format!(
-                            "time column '{}' had unexpected datatype ({:?})",
-                            field.name,
-                            column.data_type()
-                        ),
-                    });
-                };
+                let times = TimeColumn::read_array(&ArrowArrayRef::from(column.clone())).map_err(
+                    |err| ChunkError::Malformed {
+                        reason: format!("Bad time column '{}': {err}", field.name),
+                    },
+                )?;
 
                 let is_sorted = field
                     .metadata
