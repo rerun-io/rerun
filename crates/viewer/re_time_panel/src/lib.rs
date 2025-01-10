@@ -1,10 +1,10 @@
 //! Rerun Time Panel
 //!
-//! This crate provides a panel that shows allows to control time & timelines,
-//! as well as all necessary ui elements that make it up.
+//! This crate provides a panel that shows all entities in the store and allows control of time and
+//! timelines, as well as all necessary ui elements that make it up.
 
 // TODO(#6330): remove unwrap()
-#![allow(clippy::unwrap_used)]
+#![expect(clippy::unwrap_used)]
 
 mod data_density_graph;
 mod paint_ticks;
@@ -572,7 +572,7 @@ impl TimePanel {
     }
 
     // All the entity rows and their data density graphs:
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     fn tree_ui(
         &mut self,
         ctx: &ViewerContext<'_>,
@@ -634,7 +634,7 @@ impl TimePanel {
             });
     }
 
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     fn show_tree(
         &mut self,
         ctx: &ViewerContext<'_>,
@@ -648,13 +648,34 @@ impl TimePanel {
         ui: &mut egui::Ui,
     ) {
         // We traverse and display this tree only if it contains a matching entity part.
-        if !filter_matcher.matches_everything() // fast short-circuit
-            && tree
+        'early_exit: {
+            // Filter is inactive or otherwise whitelisting everything.
+            if filter_matcher.matches_everything() {
+                break 'early_exit;
+            }
+
+            // The current path is a match.
+            if tree
+                .path
+                .iter()
+                .any(|entity_part| filter_matcher.matches(&entity_part.ui_string()))
+            {
+                break 'early_exit;
+            }
+
+            // Our subtree contains a match.
+            if tree
                 .find_first_child_recursive(|entity_path| {
-                    entity_path.iter().any(|entity_part| filter_matcher.matches(&entity_part.ui_string()))
+                    entity_path
+                        .last()
+                        .is_some_and(|entity_part| filter_matcher.matches(&entity_part.ui_string()))
                 })
-                .is_none()
-        {
+                .is_some()
+            {
+                break 'early_exit;
+            }
+
+            // No match to be found, so nothing to display.
             return;
         }
 
@@ -822,7 +843,7 @@ impl TimePanel {
         }
     }
 
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     fn show_children(
         &mut self,
         ctx: &ViewerContext<'_>,
