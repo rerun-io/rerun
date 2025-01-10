@@ -1111,8 +1111,9 @@ impl TimeColumn {
         )
     }
 
-    /// Parse the given [`ArrowArray`] as a time column,
-    /// returning its contents and its datatype (e.g. [`ArrowDataType::Timestamp`]).
+    /// Parse the given [`ArrowArray`] as a time column.
+    ///
+    /// Results in an error if the array is of the wrong datatype, or if it contains nulls.
     pub fn read_array(array: &dyn ArrowArray) -> Result<ArrowScalarBuffer<i64>, TimeColumnError> {
         #![allow(clippy::manual_map)]
 

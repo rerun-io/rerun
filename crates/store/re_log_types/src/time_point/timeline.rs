@@ -1,5 +1,3 @@
-use arrow2::datatypes::DataType;
-
 use crate::{time::TimeZone, ResolvedTimeRange, TimeType};
 
 re_string_interner::declare_new_type!(
@@ -100,14 +98,7 @@ impl Timeline {
 
     /// Returns the appropriate arrow datatype to represent this timeline.
     #[inline]
-    pub fn datatype_arrow1(&self) -> arrow::datatypes::DataType {
-        self.typ.datatype_arrow1()
-    }
-
-    /// Returns the appropriate arrow datatype to represent this timeline.
-    #[inline]
-    pub fn datatype(&self) -> DataType {
-        // TODO: remove
+    pub fn datatype(&self) -> arrow::datatypes::DataType {
         self.typ.datatype()
     }
 }

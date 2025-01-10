@@ -188,25 +188,12 @@ impl TimeType {
 
     /// Returns the appropriate arrow datatype to represent this timeline.
     #[inline]
-    pub fn datatype_arrow1(self) -> arrow::datatypes::DataType {
+    pub fn datatype(self) -> arrow::datatypes::DataType {
         match self {
             Self::Time => {
                 arrow::datatypes::DataType::Timestamp(arrow::datatypes::TimeUnit::Nanosecond, None)
             }
             Self::Sequence => arrow::datatypes::DataType::Int64,
-        }
-    }
-
-    /// Returns the appropriate arrow datatype to represent this timeline.
-    #[inline]
-    pub fn datatype(self) -> arrow2::datatypes::DataType {
-        // TODO: remove
-        match self {
-            Self::Time => arrow2::datatypes::DataType::Timestamp(
-                arrow2::datatypes::TimeUnit::Nanosecond,
-                None,
-            ),
-            Self::Sequence => arrow2::datatypes::DataType::Int64,
         }
     }
 

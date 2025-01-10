@@ -454,15 +454,18 @@ impl Chunk {
                     } = info;
 
                     let nullable = false; // timelines within a single chunk are always dense
-                    let field =
-                        ArrowField::new(timeline.name().to_string(), timeline.datatype(), nullable)
-                            .with_metadata({
-                                let mut metadata = TransportChunk::field_metadata_time_column();
-                                if *is_sorted {
-                                    metadata.extend(TransportChunk::field_metadata_is_sorted());
-                                }
-                                metadata
-                            });
+                    let field = ArrowField::new(
+                        timeline.name().to_string(),
+                        timeline.datatype().into(),
+                        nullable,
+                    )
+                    .with_metadata({
+                        let mut metadata = TransportChunk::field_metadata_time_column();
+                        if *is_sorted {
+                            metadata.extend(TransportChunk::field_metadata_is_sorted());
+                        }
+                        metadata
+                    });
 
                     let times = info.times_array();
 
