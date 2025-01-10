@@ -806,7 +806,7 @@ pub struct TimeColumn {
 #[derive(Debug, thiserror::Error)]
 pub enum TimeColumnError {
     #[error("Time columns had nulls, but should be dense")]
-    Nulls,
+    ContainsNulls,
 
     #[error("Unsupported data type : {0}")]
     UnsupportedDataType(arrow::datatypes::DataType),
@@ -1118,7 +1118,7 @@ impl TimeColumn {
         #![allow(clippy::manual_map)]
 
         if array.null_count() > 0 {
-            return Err(TimeColumnError::Nulls);
+            return Err(TimeColumnError::ContainsNulls);
         }
 
         // Sequence timelines are i64, but time columns are nanoseconds (also as i64).
