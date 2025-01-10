@@ -269,6 +269,7 @@ strum_macros = "0.26"
 sublime_fuzzy = "0.7"
 syn = "2.0"
 sysinfo = { version = "0.30.1", default-features = false }
+tap = "1.0.1"
 tempfile = "3.0"
 thiserror = "1.0"
 time = { version = "0.3.36", default-features = false, features = [

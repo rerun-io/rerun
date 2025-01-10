@@ -21,24 +21,13 @@ use re_types_core::Loggable as _;
 type CustomFormatter<'a, F> = Box<dyn Fn(&mut F, usize) -> std::fmt::Result + 'a>;
 
 fn get_custom_display<'a, F: std::fmt::Write + 'a>(
+    field: &Field,
     array: &'a dyn Array,
     null: &'static str,
 ) -> CustomFormatter<'a, F> {
-    // NOTE: If the top-level array is a list, it's probably not the type we're looking for: we're
-    // interested in the type of the array that's underneath.
-    let datatype = (|| match array.data_type().to_logical_type() {
-        DataType::List(_) => array
-            .as_any()
-            .downcast_ref::<ListArray<i32>>()?
-            .iter()
-            .next()?
-            .map(|array| array.data_type().clone()),
-        _ => Some(array.data_type().clone()),
-    })();
-
-    if let Some(DataType::Extension(name, _, _)) = datatype {
+    if let Some(extension_name) = field.metadata.get("ARROW:extension:name") {
         // TODO(#1775): This should be registered dynamically.
-        if name.as_str() == Tuid::NAME {
+        if extension_name.as_str() == Tuid::ARROW_EXTENSION_NAME {
             return Box::new(|w, index| {
                 if let Some(tuid) = parse_tuid(array, index) {
                     w.write_fmt(format_args!("{tuid}"))
@@ -280,9 +269,8 @@ where
     });
     table.set_header(header);
 
-    let displays = columns
-        .iter()
-        .map(|array| get_custom_display(&**array, "-"))
+    let displays = itertools::izip!(fields.iter(), columns.iter())
+        .map(|(field, array)| get_custom_display(field, &**array, "-"))
         .collect::<Vec<_>>();
     let num_rows = columns.first().map_or(0, |list_array| list_array.len());
 
