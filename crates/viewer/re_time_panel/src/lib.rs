@@ -651,9 +651,7 @@ impl TimePanel {
         if !filter_matcher.matches_everything() // fast short-circuit
             && tree
                 .find_first_child_recursive(|entity_path| {
-                    entity_path
-                        .last()
-                        .is_some_and(|entity_part| filter_matcher.matches(&entity_part.ui_string()))
+                    entity_path.iter().any(|entity_part| filter_matcher.matches(&entity_part.ui_string()))
                 })
                 .is_none()
         {
@@ -681,14 +679,14 @@ impl TimePanel {
             "/".into()
         };
 
-        let default_open = tree.path.len() <= 1 && !tree.is_leaf();
-
         let item = TimePanelItem::entity_path(tree.path.clone());
         let is_selected = ctx.selection().contains_item(&item.to_item());
         let is_item_hovered = ctx
             .selection_state()
             .highlight_for_ui_element(&item.to_item())
             == HoverHighlight::Hovered;
+
+        let collapse_scope = self.collapse_scope();
 
         // expand if children is focused
         let focused_entity_path = ctx
@@ -697,19 +695,19 @@ impl TimePanel {
             .and_then(|item| item.entity_path());
 
         if focused_entity_path.is_some_and(|entity_path| entity_path.is_descendant_of(&tree.path)) {
-            CollapseScope::StreamsTree
+            collapse_scope
                 .entity(tree.path.clone())
                 .set_open(ui.ctx(), true);
         }
 
-        // Globally unique id - should only be one of these in view at one time.
-        // We do this so that we can support "collapse/expand all" command.
-        let id = egui::Id::new(match self.source {
-            TimePanelSource::Recording => CollapseScope::StreamsTree.entity(tree.path.clone()),
-            TimePanelSource::Blueprint => {
-                CollapseScope::BlueprintStreamsTree.entity(tree.path.clone())
-            }
-        });
+        // Globally unique id that is dependent on the "nature" of the tree (recording or blueprint,
+        // in a filter session or not)
+        let id = collapse_scope.entity(tree.path.clone()).into();
+
+        let is_short_path = tree.path.len() <= 1 && !tree.is_leaf();
+        let default_open = self.filter_state.session_id().is_some() || is_short_path;
+
+        //dbg!((collapse_scope, default_open));
 
         let list_item::ShowCollapsingResponse {
             item_response: response,
@@ -773,6 +771,7 @@ impl TimePanel {
             // expand/collapse context menu actions need this information
             ItemContext::StreamsTree {
                 store_kind: self.source.into(),
+                filter_session_id: self.filter_state.session_id(),
             },
             &response,
             SelectionUpdateBehavior::UseSelection,
@@ -1048,6 +1047,22 @@ impl TimePanel {
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 help_button(ui);
             });
+        }
+    }
+
+    fn collapse_scope(&self) -> CollapseScope {
+        match (self.source, self.filter_state.session_id()) {
+            (TimePanelSource::Recording, None) => CollapseScope::StreamsTree,
+
+            (TimePanelSource::Blueprint, None) => CollapseScope::BlueprintStreamsTree,
+
+            (TimePanelSource::Recording, Some(session_id)) => {
+                CollapseScope::StreamsTreeFiltered { session_id }
+            }
+
+            (TimePanelSource::Blueprint, Some(session_id)) => {
+                CollapseScope::BlueprintStreamsTreeFiltered { session_id }
+            }
         }
     }
 }
