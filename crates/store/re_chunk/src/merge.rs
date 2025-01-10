@@ -1,12 +1,12 @@
+use arrow::array::StructArray as ArrowStructArray;
 use arrow::buffer::ScalarBuffer as ArrowScalarBuffer;
-use arrow2::array::{
-    Array as Arrow2Array, ListArray as Arrow2ListArray, StructArray as Arrow2StructArray,
-};
+use arrow2::array::{Array as Arrow2Array, ListArray as Arrow2ListArray};
 use itertools::{izip, Itertools};
 use nohash_hasher::IntMap;
 
 use crate::{
-    arrow2_util, chunk::ChunkComponents, Chunk, ChunkError, ChunkId, ChunkResult, TimeColumn,
+    arrow2_util, arrow_util, chunk::ChunkComponents, Chunk, ChunkError, ChunkId, ChunkResult,
+    TimeColumn,
 };
 
 // ---
@@ -48,12 +48,12 @@ impl Chunk {
         let row_ids = {
             re_tracing::profile_scope!("row_ids");
 
-            let row_ids = arrow2_util::concat_arrays(&[&cl.row_ids, &cr.row_ids])?;
+            let row_ids = arrow_util::concat_arrays(&[&cl.row_ids, &cr.row_ids])?;
             #[allow(clippy::unwrap_used)]
             // concatenating 2 RowId arrays must yield another RowId array
             row_ids
                 .as_any()
-                .downcast_ref::<Arrow2StructArray>()
+                .downcast_ref::<ArrowStructArray>()
                 .unwrap()
                 .clone()
         };

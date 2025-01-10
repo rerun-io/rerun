@@ -2,13 +2,15 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use ahash::HashMap;
 use arrow::{
-    array::{Array as ArrowArray, ArrayRef as ArrowArrayRef, ListArray as ArrowListArray},
+    array::{
+        Array as ArrowArray, ArrayRef as ArrowArrayRef, ListArray as ArrowListArray,
+        StructArray as ArrowStructArray,
+    },
     buffer::ScalarBuffer as ArrowScalarBuffer,
 };
 use arrow2::{
     array::{
         Array as Arrow2Array, ListArray as Arrow2ListArray, PrimitiveArray as Arrow2PrimitiveArray,
-        StructArray as Arrow2StructArray,
     },
     Either,
 };
@@ -34,7 +36,10 @@ pub enum ChunkError {
     Malformed { reason: String },
 
     #[error(transparent)]
-    Arrow(#[from] arrow2::error::Error),
+    Arrow(#[from] arrow::error::ArrowError),
+
+    #[error(transparent)]
+    Arrow2(#[from] arrow2::error::Error),
 
     #[error("{kind} index out of bounds: {index} (len={len})")]
     IndexOutOfBounds {
@@ -224,7 +229,7 @@ pub struct Chunk {
     pub(crate) is_sorted: bool,
 
     /// The respective [`RowId`]s for each row of data.
-    pub(crate) row_ids: Arrow2StructArray,
+    pub(crate) row_ids: ArrowStructArray,
 
     /// The time columns.
     ///
@@ -351,12 +356,6 @@ impl Chunk {
             components,
         } = self;
 
-        let row_ids_no_extension = arrow2::array::StructArray::new(
-            row_ids.data_type().to_logical_type().clone(),
-            row_ids.values().to_vec(),
-            row_ids.validity().cloned(),
-        );
-
         let components_no_extension: IntMap<_, _> = components
             .values()
             .flat_map(|per_desc| {
@@ -388,16 +387,10 @@ impl Chunk {
             })
             .collect();
 
-        let other_row_ids_no_extension = arrow2::array::StructArray::new(
-            other.row_ids.data_type().to_logical_type().clone(),
-            other.row_ids.values().to_vec(),
-            other.row_ids.validity().cloned(),
-        );
-
         *id == other.id
             && *entity_path == other.entity_path
             && *is_sorted == other.is_sorted
-            && row_ids_no_extension == other_row_ids_no_extension
+            && row_ids == &other.row_ids
             && *timelines == other.timelines
             && components_no_extension == other_components_no_extension
     }
@@ -441,7 +434,7 @@ impl Chunk {
             // Unwrap: native RowIds cannot fail to serialize.
             .unwrap()
             .as_any()
-            .downcast_ref::<Arrow2StructArray>()
+            .downcast_ref::<ArrowStructArray>()
             // Unwrap: RowId schema is known in advance to be a struct array -- always.
             .unwrap()
             .clone();
@@ -497,7 +490,7 @@ impl Chunk {
             // Unwrap: native RowIds cannot fail to serialize.
             .unwrap()
             .as_any()
-            .downcast_ref::<Arrow2StructArray>()
+            .downcast_ref::<ArrowStructArray>()
             // Unwrap: RowId schema is known in advance to be a struct array -- always.
             .unwrap()
             .clone();
@@ -826,7 +819,7 @@ impl Chunk {
         id: ChunkId,
         entity_path: EntityPath,
         is_sorted: Option<bool>,
-        row_ids: Arrow2StructArray,
+        row_ids: ArrowStructArray,
         timelines: IntMap<Timeline, TimeColumn>,
         components: ChunkComponents,
     ) -> ChunkResult<Self> {
@@ -866,13 +859,13 @@ impl Chunk {
     ) -> ChunkResult<Self> {
         re_tracing::profile_function!();
         let row_ids = row_ids
-            .to_arrow2()
+            .to_arrow()
             // NOTE: impossible, but better safe than sorry.
             .map_err(|err| ChunkError::Malformed {
                 reason: format!("RowIds failed to serialize: {err}"),
             })?
             .as_any()
-            .downcast_ref::<Arrow2StructArray>()
+            .downcast_ref::<ArrowStructArray>()
             // NOTE: impossible, but better safe than sorry.
             .ok_or_else(|| ChunkError::Malformed {
                 reason: "RowIds failed to downcast".to_owned(),
@@ -923,7 +916,7 @@ impl Chunk {
         id: ChunkId,
         entity_path: EntityPath,
         is_sorted: Option<bool>,
-        row_ids: Arrow2StructArray,
+        row_ids: ArrowStructArray,
         components: ChunkComponents,
     ) -> ChunkResult<Self> {
         Self::new(
@@ -943,7 +936,11 @@ impl Chunk {
             entity_path,
             heap_size_bytes: Default::default(),
             is_sorted: true,
-            row_ids: Arrow2StructArray::new_empty(RowId::arrow2_datatype()),
+            row_ids: arrow::array::StructBuilder::from_fields(
+                re_types_core::tuid_arrow_fields(),
+                0,
+            )
+            .finish(),
             timelines: Default::default(),
             components: Default::default(),
         }
@@ -1203,14 +1200,14 @@ impl Chunk {
     }
 
     #[inline]
-    pub fn row_ids_array(&self) -> &Arrow2StructArray {
+    pub fn row_ids_array(&self) -> &ArrowStructArray {
         &self.row_ids
     }
 
     /// Returns the [`RowId`]s in their raw-est form: a tuple of (times, counters) arrays.
     #[inline]
     pub fn row_ids_raw(&self) -> (&Arrow2PrimitiveArray<u64>, &Arrow2PrimitiveArray<u64>) {
-        let [times, counters] = self.row_ids.values() else {
+        let [times, counters] = self.row_ids.columns() else {
             panic!("RowIds are corrupt -- this should be impossible (sanity checked)");
         };
 
@@ -1558,11 +1555,11 @@ impl Chunk {
 
         // Row IDs
         {
-            if *row_ids.data_type().to_logical_type() != RowId::arrow2_datatype() {
+            if *row_ids.data_type() != RowId::arrow_datatype() {
                 return Err(ChunkError::Malformed {
                     reason: format!(
                         "RowId data has the wrong datatype: expected {:?} but got {:?} instead",
-                        RowId::arrow2_datatype(),
+                        RowId::arrow_datatype(),
                         *row_ids.data_type(),
                     ),
                 });

@@ -1,6 +1,5 @@
 use arrow2::array::{
     Array as Arrow2Array, BooleanArray as Arrow2BooleanArray, ListArray as Arrow2ListArray,
-    StructArray as Arrow2StructArray,
 };
 
 use itertools::Itertools;
@@ -102,7 +101,7 @@ impl Chunk {
             entity_path: entity_path.clone(),
             heap_size_bytes: Default::default(),
             is_sorted,
-            row_ids: row_ids.clone().sliced(index, len),
+            row_ids: row_ids.clone().slice(index, len),
             timelines: timelines
                 .iter()
                 .map(|(timeline, time_column)| (*timeline, time_column.row_sliced(index, len)))
@@ -369,7 +368,7 @@ impl Chunk {
             entity_path: entity_path.clone(),
             heap_size_bytes: Default::default(),
             is_sorted,
-            row_ids: arrow2_util::filter_array(row_ids, &validity_filter),
+            row_ids: arrow_util::filter_array(row_ids, &validity_filter.clone().into()),
             timelines: timelines
                 .iter()
                 .map(|(&timeline, time_column)| (timeline, time_column.filtered(&validity_filter)))
@@ -450,7 +449,7 @@ impl Chunk {
             entity_path: entity_path.clone(),
             heap_size_bytes: Default::default(),
             is_sorted: true,
-            row_ids: Arrow2StructArray::new_empty(row_ids.data_type().clone()),
+            row_ids: arrow::array::StructBuilder::from_fields(row_ids.fields().clone(), 0).finish(),
             timelines: timelines
                 .iter()
                 .map(|(&timeline, time_column)| (timeline, time_column.emptied()))
@@ -546,7 +545,10 @@ impl Chunk {
             entity_path: self.entity_path.clone(),
             heap_size_bytes: Default::default(),
             is_sorted: self.is_sorted,
-            row_ids: arrow2_util::take_array(&self.row_ids, &indices),
+            row_ids: arrow_util::take_array(
+                &self.row_ids,
+                &arrow::array::Int32Array::from(indices.clone()),
+            ),
             timelines: self
                 .timelines
                 .iter()
@@ -619,7 +621,7 @@ impl Chunk {
             entity_path: entity_path.clone(),
             heap_size_bytes: Default::default(),
             is_sorted,
-            row_ids: arrow2_util::filter_array(row_ids, filter),
+            row_ids: arrow_util::filter_array(row_ids, &filter.clone().into()),
             timelines: timelines
                 .iter()
                 .map(|(&timeline, time_column)| (timeline, time_column.filtered(filter)))
@@ -699,7 +701,10 @@ impl Chunk {
             entity_path: entity_path.clone(),
             heap_size_bytes: Default::default(),
             is_sorted,
-            row_ids: arrow2_util::take_array(row_ids, indices),
+            row_ids: arrow_util::take_array(
+                row_ids,
+                &arrow::array::Int32Array::from(indices.clone()),
+            ),
             timelines: timelines
                 .iter()
                 .map(|(&timeline, time_column)| (timeline, time_column.taken(indices)))
