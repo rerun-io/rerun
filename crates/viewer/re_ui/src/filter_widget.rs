@@ -99,6 +99,14 @@ impl FilterState {
                 .show_flat(
                     ui,
                     list_item::CustomContent::new(|ui, _| {
+                        if self.inner_state.is_some()
+                            && ui.input_mut(|i| {
+                                i.consume_key(egui::Modifiers::NONE, egui::Key::Escape)
+                            })
+                        {
+                            self.inner_state = None;
+                        }
+
                         if let Some(inner_state) = self.inner_state.as_mut() {
                             // we add additional spacing for aesthetic reasons (active text edits have a
                             // fat border)
@@ -113,8 +121,6 @@ impl FilterState {
                             if self.request_focus {
                                 self.request_focus = false;
                                 response.request_focus();
-                            } else if response.lost_focus() {
-                                self.inner_state = None;
                             }
                         } else {
                             ui.label(galley);
