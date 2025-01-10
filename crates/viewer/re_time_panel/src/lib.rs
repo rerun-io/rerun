@@ -139,6 +139,7 @@ pub struct TimePanel {
     source: TimePanelSource,
 
     /// The filter widget state
+    #[serde(skip)]
     filter_state: filter_widget::FilterState,
 }
 
