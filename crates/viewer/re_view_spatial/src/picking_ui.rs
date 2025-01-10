@@ -8,7 +8,7 @@ use re_ui::{
 };
 use re_view::AnnotationSceneContext;
 use re_viewer_context::{
-    Item, ItemSpaceContext, UiLayout, ViewQuery, ViewSystemExecutionError, ViewerContext,
+    Item, ItemContext, UiLayout, ViewQuery, ViewSystemExecutionError, ViewerContext,
     VisualizerCollection,
 };
 
@@ -203,7 +203,7 @@ pub fn picking(
 
     if let Some((_, context)) = hovered_items.first_mut() {
         *context = Some(match spatial_kind {
-            SpatialViewKind::TwoD => ItemSpaceContext::TwoD {
+            SpatialViewKind::TwoD => ItemContext::TwoD {
                 space_2d: query.space_origin.clone(),
                 pos: picking_context
                     .pointer_in_camera_plane
@@ -214,7 +214,7 @@ pub fn picking(
                 let cameras_visualizer_output =
                     system_output.view_systems.get::<CamerasVisualizer>()?;
 
-                ItemSpaceContext::ThreeD {
+                ItemContext::ThreeD {
                     space_3d: query.space_origin.clone(),
                     pos: hovered_point,
                     tracked_entity: state.state_3d.tracked_entity.clone(),
