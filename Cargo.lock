@@ -6322,7 +6322,6 @@ name = "re_sdk"
 version = "0.22.0-alpha.1+dev"
 dependencies = [
  "ahash",
- "arrow",
  "crossbeam",
  "document-features",
  "itertools 0.13.0",
@@ -6333,7 +6332,6 @@ dependencies = [
  "once_cell",
  "parking_lot",
  "rand",
- "re_arrow2",
  "re_build_info",
  "re_build_tools",
  "re_byte_size",
