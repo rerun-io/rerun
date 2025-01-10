@@ -1,8 +1,35 @@
-use eframe::epaint::Color32;
-use egui::NumExt;
+use egui::{Color32, NumExt};
 use itertools::Either;
+use rand::random;
 
 use crate::{list_item, UiExt as _};
+
+/// State for the filter widget when it is toggled on.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+struct InnerState {
+    /// The filter query string.
+    ///
+    /// If this is `None`, the filter is disabled (aka the text field is not visible).
+    filter_query: String,
+
+    /// This ID is recreated every time the filter is toggled and tracks the current filtering
+    /// session.
+    ///
+    /// This can be useful for client code to store session-specific state (e.g., the state of tree
+    /// collapsed-ness).
+    session_id: egui::Id,
+}
+
+impl Default for InnerState {
+    fn default() -> Self {
+        Self {
+            filter_query: String::new(),
+
+            // create a new session id each time the filter is toggled
+            session_id: egui::Id::new(random::<u64>()),
+        }
+    }
+}
 
 /// State and UI for the filter widget.
 ///
@@ -11,14 +38,11 @@ use crate::{list_item, UiExt as _};
 /// user. [`FilterMatcher`] performs the actual filtering.
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct FilterState {
-    /// The filter query string.
-    ///
-    /// If this is `None`, the filter is disabled (aka the text field is not visible).
-    filter_query: Option<String>,
+    inner_state: Option<InnerState>,
 
     /// Should the text field be focused?
     ///
-    /// Set to `true` upon clicking on the search button.c
+    /// Set to `true` upon clicking on the search button.
     #[serde(skip)]
     request_focus: bool,
 }
@@ -28,7 +52,15 @@ impl FilterState {
     ///
     /// The widget must be enabled _and_ the filter string must not be empty.
     pub fn query(&self) -> Option<&str> {
-        self.filter_query.as_deref().filter(|s| !s.is_empty())
+        self.inner_state
+            .as_ref()
+            .map(|state| state.filter_query.as_str())
+            .filter(|s| !s.is_empty())
+    }
+
+    /// Return the current session ID of the filter widget, if active.
+    pub fn session_id(&self) -> Option<egui::Id> {
+        self.inner_state.as_ref().map(|state| state.session_id)
     }
 
     pub fn filter(&self) -> FilterMatcher {
@@ -38,11 +70,11 @@ impl FilterState {
     /// Display the filter widget.
     ///
     /// Note: this uses [`egui::Ui::available_width`] to determine the location of the right-aligned
-    /// search button, as per usual for [`list_item::ListItem`]-based widgets.
+    /// search button, as usual for [`list_item::ListItem`]-based widgets.
     pub fn ui(&mut self, ui: &mut egui::Ui, section_title: impl Into<egui::WidgetText>) {
         let mut button_clicked = false;
 
-        let icon = if self.filter_query.is_none() {
+        let icon = if self.inner_state.is_none() {
             &crate::icons::SEARCH
         } else {
             &crate::icons::CLOSE
@@ -65,13 +97,13 @@ impl FilterState {
                 .show_flat(
                     ui,
                     list_item::CustomContent::new(|ui, _| {
-                        if let Some(filter_query) = self.filter_query.as_mut() {
+                        if let Some(inner_state) = self.inner_state.as_mut() {
                             // we add additional spacing for aesthetic reasons (active text edits have a
                             // fat border)
                             ui.spacing_mut().text_edit_width =
                                 (ui.max_rect().width() - 10.0).at_least(0.0);
 
-                            let response = ui.text_edit_singleline(filter_query);
+                            let response = ui.text_edit_singleline(&mut inner_state.filter_query);
 
                             if self.request_focus {
                                 self.request_focus = false;
@@ -90,11 +122,11 @@ impl FilterState {
 
         // defer button handling because we can't mutably borrow `self` in both closures above
         if button_clicked {
-            if self.filter_query.is_none() {
-                self.filter_query = Some(String::new());
+            if self.inner_state.is_none() {
+                self.inner_state = Some(InnerState::default());
                 self.request_focus = true;
             } else {
-                self.filter_query = None;
+                self.inner_state = None;
             }
         }
     }
