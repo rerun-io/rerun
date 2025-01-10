@@ -671,9 +671,7 @@ impl ChunkStore {
         let is_static = self
             .static_chunk_ids_per_entity
             .get(entity_path)
-            .map_or(false, |per_component| {
-                per_component.get(component_name).is_some()
-            });
+            .is_some_and(|per_component| per_component.get(component_name).is_some());
 
         let is_indicator = component_name.is_indicator_component();
 

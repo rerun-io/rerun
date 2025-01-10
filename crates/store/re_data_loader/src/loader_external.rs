@@ -59,7 +59,7 @@ pub static EXTERNAL_LOADER_PATHS: Lazy<Vec<std::path::PathBuf>> = Lazy::new(|| {
                 return None;
             };
             let filepath = entry.path();
-            let is_rerun_loader = filepath.file_name().map_or(false, |filename| {
+            let is_rerun_loader = filepath.file_name().is_some_and(|filename| {
                 filename
                     .to_string_lossy()
                     .starts_with(EXTERNAL_DATA_LOADER_PREFIX)

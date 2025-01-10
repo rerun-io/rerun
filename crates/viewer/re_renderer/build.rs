@@ -153,7 +153,7 @@ fn main() {
         let is_wgsl = entry
             .file_name()
             .to_str()
-            .map_or(false, |s| s.ends_with(".wgsl"));
+            .is_some_and(|s| s.ends_with(".wgsl"));
         is_dir || is_wgsl
     }
 

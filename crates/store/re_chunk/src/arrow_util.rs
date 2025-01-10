@@ -86,7 +86,7 @@ pub fn sparse_list_array_to_dense_list_array(list_array: &ListArray) -> ListArra
         return list_array.clone();
     }
 
-    let is_empty = list_array.nulls().map_or(false, |nulls| nulls.is_empty());
+    let is_empty = list_array.nulls().is_some_and(|nulls| nulls.is_empty());
     if is_empty {
         return list_array.clone();
     }

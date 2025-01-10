@@ -206,7 +206,7 @@ fn new_recording(
 ) -> PyResult<PyRecordingStream> {
     // The sentinel file we use to identify the official examples directory.
     const SENTINEL_FILENAME: &str = ".rerun_examples";
-    let is_official_example = application_path.map_or(false, |mut path| {
+    let is_official_example = application_path.is_some_and(|mut path| {
         // more than 4 layers would be really pushing it
         for _ in 0..4 {
             path.pop(); // first iteration is always a file path in our examples
@@ -545,7 +545,7 @@ fn set_thread_local_blueprint_recording(
 #[pyfunction]
 #[pyo3(signature = (recording=None))]
 fn is_enabled(recording: Option<&PyRecordingStream>) -> bool {
-    get_data_recording(recording).map_or(false, |rec| rec.is_enabled())
+    get_data_recording(recording).is_some_and(|rec| rec.is_enabled())
 }
 
 /// Helper for forwarding the blueprint memory-sink representation to a given sink

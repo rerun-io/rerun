@@ -468,7 +468,7 @@ impl BlueprintTree {
         let is_item_hovered =
             ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
 
-        let visible = data_result_node.map_or(false, |n| n.data_result.is_visible(ctx));
+        let visible = data_result_node.is_some_and(|n| n.data_result.is_visible(ctx));
         let empty_origin = entity_path == &view.space_origin && data_result_node.is_none();
 
         let item_label = if entity_path.is_root() {
@@ -530,7 +530,7 @@ impl BlueprintTree {
         }
 
         // If there's any children on the data result nodes, show them, otherwise we're good with this list item as is.
-        let has_children = data_result_node.map_or(false, |n| !n.children.is_empty());
+        let has_children = data_result_node.is_some_and(|n| !n.children.is_empty());
         let response = if let (true, Some(node)) = (has_children, data_result_node) {
             // Don't default open projections.
             let default_open = entity_path.starts_with(&view.space_origin)

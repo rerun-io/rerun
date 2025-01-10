@@ -55,7 +55,7 @@ impl Chunk {
             || self
                 .timelines
                 .get(timeline)
-                .map_or(false, |time_column| time_column.is_sorted())
+                .is_some_and(|time_column| time_column.is_sorted())
     }
 
     /// For debugging purposes.
@@ -66,7 +66,7 @@ impl Chunk {
             || self
                 .timelines
                 .get(timeline)
-                .map_or(false, |time_column| time_column.is_sorted_uncached())
+                .is_some_and(|time_column| time_column.is_sorted_uncached())
     }
 
     /// Sort the chunk, if needed.

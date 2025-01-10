@@ -259,7 +259,7 @@ impl EntityDb {
     pub fn has_any_data_on_timeline(&self, timeline: &Timeline) -> bool {
         self.time_histogram_per_timeline
             .get(timeline)
-            .map_or(false, |hist| !hist.is_empty())
+            .is_some_and(|hist| !hist.is_empty())
     }
 
     /// Returns the time range of data on the given timeline, ignoring any static times.
@@ -586,13 +586,10 @@ impl EntityDb {
                     };
 
                     // TODO(cmc): chunk.slice_time_selection(time_selection)
-                    chunk
-                        .timelines()
-                        .get(&timeline)
-                        .map_or(false, |time_column| {
-                            time_range.contains(time_column.time_range().min())
-                                || time_range.contains(time_column.time_range().max())
-                        })
+                    chunk.timelines().get(&timeline).is_some_and(|time_column| {
+                        time_range.contains(time_column.time_range().min())
+                            || time_range.contains(time_column.time_range().max())
+                    })
                 })
                 .cloned() // refcount
                 .collect();

@@ -109,7 +109,7 @@ impl Query {
         Ok(self
             .query_property
             .component_or_empty::<components::ApplyLatestAt>()?
-            .map_or(false, |comp| *comp.0))
+            .is_some_and(|comp| *comp.0))
     }
 
     pub(crate) fn save_latest_at_enabled(&self, ctx: &ViewerContext<'_>, enabled: bool) {

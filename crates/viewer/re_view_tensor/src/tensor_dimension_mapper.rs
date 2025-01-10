@@ -226,7 +226,7 @@ pub fn dimension_mapping_ui(
                         );
 
                         let mut has_slider =
-                            slice_selection.slider.as_ref().map_or(false, |slider| {
+                            slice_selection.slider.as_ref().is_some_and(|slider| {
                                 slider
                                     .iter()
                                     .any(|slider| slider.dimension == selector.dimension)

@@ -607,9 +607,7 @@ where
         Err(err)
             if err
                 .downcast_ref::<std::io::Error>()
-                .map_or(false, |io_err| {
-                    io_err.kind() == std::io::ErrorKind::AddrInUse
-                }) =>
+                .is_some_and(|io_err| io_err.kind() == std::io::ErrorKind::AddrInUse) =>
         {
             re_log::warn!("{err}");
             Ok(1)

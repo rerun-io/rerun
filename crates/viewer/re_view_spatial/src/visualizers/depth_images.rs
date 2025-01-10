@@ -407,7 +407,7 @@ impl TypedComponentFallbackProvider<DepthMeter> for DepthImageVisualizer {
         let is_integer_tensor = ctx
             .recording()
             .latest_at_component::<components::TensorData>(ctx.target_entity_path, ctx.query)
-            .map_or(false, |(_index, tensor)| tensor.dtype().is_integer());
+            .is_some_and(|(_index, tensor)| tensor.dtype().is_integer());
 
         if is_integer_tensor { 1000.0 } else { 1.0 }.into()
     }

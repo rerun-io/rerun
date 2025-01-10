@@ -75,7 +75,7 @@ fn make_width_height_valid(
                     invert: shape[default_width]
                         .name
                         .as_ref()
-                        .map_or(false, |name| name.to_lowercase().eq("left")),
+                        .is_some_and(|name| name.to_lowercase().eq("left")),
                 }
                 .into(),
             );
@@ -87,7 +87,7 @@ fn make_width_height_valid(
                     invert: shape[default_height]
                         .name
                         .as_ref()
-                        .map_or(false, |name| name.to_lowercase().eq("up")),
+                        .is_some_and(|name| name.to_lowercase().eq("up")),
                 }
                 .into(),
             );

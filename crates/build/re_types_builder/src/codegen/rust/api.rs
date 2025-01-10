@@ -884,10 +884,10 @@ fn quote_trait_impls_for_datatype_or_component(
         let from_arrow_body = if let Some(forwarded_type) = forwarded_type.as_ref() {
             let is_pod = obj
                 .try_get_attr::<String>(ATTR_RUST_DERIVE)
-                .map_or(false, |d| d.contains("bytemuck::Pod"))
+                .is_some_and(|d| d.contains("bytemuck::Pod"))
                 || obj
                     .try_get_attr::<String>(ATTR_RUST_DERIVE_ONLY)
-                    .map_or(false, |d| d.contains("bytemuck::Pod"));
+                    .is_some_and(|d| d.contains("bytemuck::Pod"));
             if is_pod {
                 quote! {
                     #forwarded_type::from_arrow(arrow_data).map(bytemuck::cast_vec)

@@ -48,7 +48,7 @@ impl SceneBoundingBoxes {
             // bounding box, creating a feedback loop if we were to add it here.
             let data_is_only_2d = data
                 .preferred_view_kind
-                .map_or(false, |kind| kind == SpatialViewKind::TwoD);
+                .is_some_and(|kind| kind == SpatialViewKind::TwoD);
             if space_kind == SpatialViewKind::ThreeD && data_is_only_2d {
                 continue;
             }

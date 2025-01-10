@@ -144,7 +144,7 @@ impl ViewportBlueprint {
         // Only enable auto-views if this is the app-default blueprint
         let is_app_default_blueprint = blueprint_db
             .store_info()
-            .map_or(false, |ri| ri.is_app_default_blueprint());
+            .is_some_and(|ri| ri.is_app_default_blueprint());
         let auto_layout =
             AtomicBool::new(auto_layout.map_or(is_app_default_blueprint, |auto| *auto.0));
         let auto_views =
@@ -267,7 +267,7 @@ impl ViewportBlueprint {
             Item::View(view_id) => self.view(view_id).is_some(),
 
             Item::DataResult(view_id, instance_path) => {
-                self.view(view_id).map_or(false, |view| {
+                self.view(view_id).is_some_and(|view| {
                     let entity_path = &instance_path.entity_path;
 
                     // TODO(#5742): including any path that is—or descend from—the space origin is
