@@ -39,14 +39,18 @@ if __name__ == "__main__":
         print(f"Registered new recording with ID: {id}")
 
     elif args.subcommand == "update":
-        id = catalog.filter(catalog["id"].str.starts_with(args.id)).select(pl.first("id")).item()
+        id = (
+            catalog.filter(catalog["rerun_recording_id"].str.starts_with(args.id))
+            .select(pl.first("rerun_recording_id"))
+            .item()
+        )
 
         if id is None:
             print("ID not found")
             exit(1)
         print(f"Updating metadata for {id}")
 
-        new_metadata = pa.Table.from_pydict({"id": [id], args.key: [args.value]})
+        new_metadata = pa.Table.from_pydict({"rerun_recording_id": [id], args.key: [args.value]})
         print(new_metadata)
 
         conn.update_catalog(new_metadata)
