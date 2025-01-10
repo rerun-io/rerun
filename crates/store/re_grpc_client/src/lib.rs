@@ -91,7 +91,7 @@ const CATALOG_BP_STORE_ID: &str = "catalog_blueprint";
 const CATALOG_REC_STORE_ID: &str = "catalog";
 const CATALOG_APPLICATION_ID: &str = "redap_catalog";
 
-/// Stream an rrd file or metadsasta catalog over gRPC from a Rerun Data Platform server.
+/// Stream an rrd file or metadata catalog over gRPC from a Rerun Data Platform server.
 ///
 /// `on_msg` can be used to wake up the UI thread on Wasm.
 pub fn stream_from_redap(
@@ -439,7 +439,7 @@ async fn stream_catalog_async(
             let data_arrays = sliced.iter().map(|e| Some(e.as_ref())).collect::<Vec<_>>();
             #[allow(clippy::unwrap_used)] // we know we've given the right field type
             let data_field_array: arrow2::array::ListArray<i32> =
-                re_chunk::util::arrays_to_list_array(
+                re_chunk::arrow2_util::arrays_to_list_array(
                     data_field_inner.data_type().clone(),
                     &data_arrays,
                 )
@@ -502,7 +502,7 @@ async fn stream_catalog_async(
 
         let rec_id_field = Arrow2Field::new("item", arrow2::datatypes::DataType::Utf8, true);
         #[allow(clippy::unwrap_used)] // we know we've given the right field type
-        let uris = re_chunk::util::arrays_to_list_array(
+        let uris = re_chunk::arrow2_util::arrays_to_list_array(
             rec_id_field.data_type().clone(),
             &recording_id_arrays,
         )

@@ -8,7 +8,7 @@ pub mod encoder;
 
 pub mod codec;
 
-mod protobuf_conversions;
+pub mod protobuf_conversions;
 
 #[cfg(feature = "encoder")]
 #[cfg(not(target_arch = "wasm32"))]

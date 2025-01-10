@@ -76,7 +76,8 @@ fn run_time_panel_and_save_snapshot(mut test_context: TestContext, _snapshot_nam
     let mut panel = TimePanel::default();
 
     //TODO(ab): this contains a lot of boilerplate which should be provided by helpers
-    let mut harness = egui_kittest::Harness::builder()
+    let mut harness = test_context
+        .setup_kittest_for_rendering()
         .with_size(Vec2::new(700.0, 300.0))
         .build_ui(|ui| {
             test_context.run(&ui.ctx().clone(), |viewer_ctx| {

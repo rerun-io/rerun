@@ -29,6 +29,9 @@ mod v0 {
 
     #[path = "./rerun.remote_store.v0.rs"]
     pub mod rerun_remote_store_v0;
+
+    #[path = "./rerun.sdk_comms.v0.rs"]
+    pub mod rerun_sdk_comms_v0;
 }
 
 pub mod common {
@@ -47,6 +50,12 @@ pub mod log_msg {
 pub mod remote_store {
     pub mod v0 {
         pub use crate::v0::rerun_remote_store_v0::*;
+    }
+}
+
+pub mod sdk_comms {
+    pub mod v0 {
+        pub use crate::v0::rerun_sdk_comms_v0::*;
     }
 }
 
@@ -111,4 +120,160 @@ macro_rules! invalid_field {
     ($type:ty, $field:expr, $reason:expr $(,)?) => {
         $crate::TypeConversionError::invalid_field::<$type>($field, &$reason)
     };
+}
+
+mod sizes {
+    use re_byte_size::SizeBytes;
+
+    impl SizeBytes for crate::log_msg::v0::LogMsg {
+        #[inline]
+        fn heap_size_bytes(&self) -> u64 {
+            let Self { msg } = self;
+
+            match msg {
+                Some(msg) => msg.heap_size_bytes(),
+                None => 0,
+            }
+        }
+    }
+
+    impl SizeBytes for crate::log_msg::v0::log_msg::Msg {
+        #[inline]
+        fn heap_size_bytes(&self) -> u64 {
+            match self {
+                Self::SetStoreInfo(set_store_info) => set_store_info.heap_size_bytes(),
+                Self::ArrowMsg(arrow_msg) => arrow_msg.heap_size_bytes(),
+                Self::BlueprintActivationCommand(blueprint_activation_command) => {
+                    blueprint_activation_command.heap_size_bytes()
+                }
+            }
+        }
+    }
+
+    impl SizeBytes for crate::log_msg::v0::SetStoreInfo {
+        #[inline]
+        fn heap_size_bytes(&self) -> u64 {
+            let Self { row_id, info } = self;
+
+            row_id.heap_size_bytes() + info.heap_size_bytes()
+        }
+    }
+
+    impl SizeBytes for crate::common::v0::Tuid {
+        #[inline]
+        fn heap_size_bytes(&self) -> u64 {
+            let Self { inc, time_ns } = self;
+
+            inc.heap_size_bytes() + time_ns.heap_size_bytes()
+        }
+    }
+
+    impl SizeBytes for crate::log_msg::v0::StoreInfo {
+        #[inline]
+        fn heap_size_bytes(&self) -> u64 {
+            let Self {
+                application_id,
+                store_id,
+                is_official_example,
+                started,
+                store_source,
+                store_version,
+            } = self;
+
+            application_id.heap_size_bytes()
+                + store_id.heap_size_bytes()
+                + is_official_example.heap_size_bytes()
+                + started.heap_size_bytes()
+                + store_source.heap_size_bytes()
+                + store_version.heap_size_bytes()
+        }
+    }
+
+    impl SizeBytes for crate::common::v0::ApplicationId {
+        #[inline]
+        fn heap_size_bytes(&self) -> u64 {
+            let Self { id } = self;
+
+            id.heap_size_bytes()
+        }
+    }
+
+    impl SizeBytes for crate::common::v0::StoreId {
+        #[inline]
+        fn heap_size_bytes(&self) -> u64 {
+            let Self { kind, id } = self;
+
+            kind.heap_size_bytes() + id.heap_size_bytes()
+        }
+    }
+
+    impl SizeBytes for crate::common::v0::Time {
+        #[inline]
+        fn heap_size_bytes(&self) -> u64 {
+            let Self { nanos_since_epoch } = self;
+
+            nanos_since_epoch.heap_size_bytes()
+        }
+    }
+
+    impl SizeBytes for crate::log_msg::v0::StoreSource {
+        #[inline]
+        fn heap_size_bytes(&self) -> u64 {
+            let Self { kind, extra } = self;
+
+            kind.heap_size_bytes() + extra.heap_size_bytes()
+        }
+    }
+
+    impl SizeBytes for crate::log_msg::v0::StoreSourceExtra {
+        #[inline]
+        fn heap_size_bytes(&self) -> u64 {
+            let Self { payload } = self;
+
+            payload.heap_size_bytes()
+        }
+    }
+
+    impl SizeBytes for crate::log_msg::v0::StoreVersion {
+        #[inline]
+        fn heap_size_bytes(&self) -> u64 {
+            let Self { crate_version_bits } = self;
+
+            crate_version_bits.heap_size_bytes()
+        }
+    }
+
+    impl SizeBytes for crate::log_msg::v0::ArrowMsg {
+        #[inline]
+        fn heap_size_bytes(&self) -> u64 {
+            let Self {
+                store_id,
+                compression,
+                uncompressed_size,
+                encoding,
+                payload,
+            } = self;
+
+            store_id.heap_size_bytes()
+                + compression.heap_size_bytes()
+                + uncompressed_size.heap_size_bytes()
+                + encoding.heap_size_bytes()
+                + payload.heap_size_bytes()
+        }
+    }
+
+    impl SizeBytes for crate::log_msg::v0::BlueprintActivationCommand {
+        #[inline]
+        fn heap_size_bytes(&self) -> u64 {
+            let Self {
+                blueprint_id,
+                make_active,
+                make_default,
+            } = self;
+
+            blueprint_id.heap_size_bytes()
+                + make_active.heap_size_bytes()
+                + make_default.heap_size_bytes()
+        }
+    }
 }

@@ -5203,7 +5203,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c1318b19085f08681016926435853bbf7858f9c082d0999b80550ff5d9abe15"
 dependencies = [
  "bytes",
- "heck 0.5.0",
+ "heck 0.4.1",
  "itertools 0.13.0",
  "log",
  "multimap",
@@ -5568,9 +5568,8 @@ dependencies = [
 
 [[package]]
 name = "re_arrow2"
-version = "0.18.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2f046c5679b0f305d610f80d93fd51ad702cfc077bbe16d9553a1660a2505160"
+version = "0.18.1"
+source = "git+https://github.com/rerun-io/re_arrow2.git?branch=main#82095762a42eed76e4043c82833e391893d5821c"
 dependencies = [
  "ahash",
  "arrow-array",
@@ -5617,6 +5616,7 @@ dependencies = [
 name = "re_build_info"
 version = "0.22.0-alpha.1+dev"
 dependencies = [
+ "re_byte_size",
  "serde",
 ]
 
@@ -5640,7 +5640,6 @@ dependencies = [
  "arrow",
  "half",
  "re_arrow2",
- "re_tuid",
  "smallvec",
 ]
 
@@ -6006,6 +6005,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_grpc_server"
+version = "0.22.0-alpha.1+dev"
+dependencies = [
+ "re_build_info",
+ "re_byte_size",
+ "re_chunk",
+ "re_format",
+ "re_log",
+ "re_log_encoding",
+ "re_log_types",
+ "re_memory",
+ "re_protos",
+ "re_tracing",
+ "re_types",
+ "tokio",
+ "tokio-stream",
+ "tokio-util",
+ "tonic",
+]
+
+[[package]]
 name = "re_int_histogram"
 version = "0.22.0-alpha.1+dev"
 dependencies = [
@@ -6148,6 +6168,7 @@ name = "re_protos"
 version = "0.22.0-alpha.1+dev"
 dependencies = [
  "prost",
+ "re_byte_size",
  "thiserror 1.0.65",
  "tonic",
  "tonic-web-wasm-client",
@@ -6445,6 +6466,7 @@ dependencies = [
  "document-features",
  "getrandom",
  "once_cell",
+ "re_byte_size",
  "re_protos",
  "serde",
  "web-time",
@@ -6534,6 +6556,7 @@ dependencies = [
  "bytemuck",
  "criterion",
  "document-features",
+ "half",
  "itertools 0.13.0",
  "nohash-hasher",
  "once_cell",
@@ -6541,6 +6564,7 @@ dependencies = [
  "re_byte_size",
  "re_case",
  "re_error",
+ "re_log",
  "re_string_interner",
  "re_tracing",
  "re_tuid",
@@ -6942,8 +6966,10 @@ dependencies = [
  "directories",
  "egui",
  "egui-wgpu",
+ "egui_kittest",
  "egui_tiles",
  "emath",
+ "env_logger",
  "glam",
  "half",
  "home",
@@ -6955,6 +6981,7 @@ dependencies = [
  "nohash-hasher",
  "once_cell",
  "parking_lot",
+ "pollster 0.4.0",
  "re_capabilities",
  "re_chunk",
  "re_chunk_store",
@@ -8820,6 +8847,7 @@ dependencies = [
  "futures-core",
  "pin-project-lite",
  "tokio",
+ "tokio-util",
 ]
 
 [[package]]

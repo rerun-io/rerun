@@ -1,6 +1,7 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use ahash::HashMap;
+use arrow::array::ListArray as ArrowListArray;
 use arrow2::{
     array::{
         Array as Arrow2Array, ListArray as Arrow2ListArray, PrimitiveArray as Arrow2PrimitiveArray,
@@ -65,14 +66,15 @@ impl ChunkComponents {
     pub fn insert_descriptor(
         &mut self,
         component_desc: ComponentDescriptor,
-        list_array: Arrow2ListArray<i32>,
-    ) -> Option<Arrow2ListArray<i32>> {
+        list_array: ArrowListArray,
+    ) -> Option<ArrowListArray> {
         // TODO(cmc): revert me
         let component_desc = component_desc.untagged();
         self.0
             .entry(component_desc.component_name)
             .or_default()
-            .insert(component_desc, list_array)
+            .insert(component_desc, list_array.into())
+            .map(|la| la.into())
     }
 
     /// Returns all list arrays for the given component name.
@@ -138,6 +140,33 @@ impl std::ops::DerefMut for ChunkComponents {
     }
 }
 
+impl FromIterator<(ComponentDescriptor, ArrowListArray)> for ChunkComponents {
+    #[inline]
+    fn from_iter<T: IntoIterator<Item = (ComponentDescriptor, ArrowListArray)>>(iter: T) -> Self {
+        let mut this = Self::default();
+        {
+            for (component_desc, list_array) in iter {
+                this.insert_descriptor(component_desc, list_array);
+            }
+        }
+        this
+    }
+}
+
+// TODO(cmc): Kinda disgusting but it makes our lives easier during the interim, as long as we're
+// in this weird halfway in-between state where we still have a bunch of things indexed by name only.
+impl FromIterator<(ComponentName, ArrowListArray)> for ChunkComponents {
+    #[inline]
+    fn from_iter<T: IntoIterator<Item = (ComponentName, ArrowListArray)>>(iter: T) -> Self {
+        iter.into_iter()
+            .map(|(component_name, list_array)| {
+                let component_desc = ComponentDescriptor::new(component_name);
+                (component_desc, list_array)
+            })
+            .collect()
+    }
+}
+
 impl FromIterator<(ComponentDescriptor, Arrow2ListArray<i32>)> for ChunkComponents {
     #[inline]
     fn from_iter<T: IntoIterator<Item = (ComponentDescriptor, Arrow2ListArray<i32>)>>(
@@ -146,7 +175,7 @@ impl FromIterator<(ComponentDescriptor, Arrow2ListArray<i32>)> for ChunkComponen
         let mut this = Self::default();
         {
             for (component_desc, list_array) in iter {
-                this.insert_descriptor(component_desc, list_array);
+                this.insert_descriptor(component_desc, list_array.into());
             }
         }
         this
@@ -915,7 +944,7 @@ impl Chunk {
         list_array: Arrow2ListArray<i32>,
     ) -> ChunkResult<()> {
         self.components
-            .insert_descriptor(component_desc, list_array);
+            .insert_descriptor(component_desc, list_array.into());
         self.sanity_check()
     }
 

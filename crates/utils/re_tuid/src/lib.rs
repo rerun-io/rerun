@@ -214,6 +214,13 @@ fn random_u64() -> u64 {
     u64::from_le_bytes(bytes)
 }
 
+impl re_byte_size::SizeBytes for Tuid {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+}
+
 #[test]
 fn test_tuid() {
     use std::collections::{BTreeSet, HashSet};

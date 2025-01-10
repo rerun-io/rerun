@@ -45,16 +45,17 @@ deny = [
   { name = "openssl" },     # We prefer rustls
 ]
 skip = [
-  { name = "ahash" },          # Popular crate + fast release schedule = lots of crates still using old versions
-  { name = "base64" },         # Too popular
-  { name = "cargo_metadata" }, # Older version used by ply-rs. It's small, and it's build-time only!
-  { name = "cfg_aliases" },    # Tiny macro-only crate. wgpu/naga is using an old version
-  { name = "hashbrown" },      # Old version used by polar-rs
-  { name = "memoffset" },      # Small crate
-  { name = "prettyplease" },   # Old version being used by prost
-  { name = "pulldown-cmark" }, # Build-dependency via `ply-rs` (!). TODO(emilk): use a better crate for .ply parsing
-  { name = "redox_syscall" },  # Plenty of versions in the wild
-  { name = "pollster" },       # rfd is still on 0.3
+  { name = "accesskit_consumer" }, # Duplicate as when used as dev dependency - eframe & egui_kittest are on different versions.
+  { name = "ahash" },              # Popular crate + fast release schedule = lots of crates still using old versions
+  { name = "base64" },             # Too popular
+  { name = "cargo_metadata" },     # Older version used by ply-rs. It's small, and it's build-time only!
+  { name = "cfg_aliases" },        # Tiny macro-only crate. wgpu/naga is using an old version
+  { name = "hashbrown" },          # Old version used by polar-rs
+  { name = "memoffset" },          # Small crate
+  { name = "pollster" },           # rfd is still on 0.3
+  { name = "prettyplease" },       # Old version being used by prost
+  { name = "pulldown-cmark" },     # Build-dependency via `ply-rs` (!). TODO(emilk): use a better crate for .ply parsing
+  { name = "redox_syscall" },      # Plenty of versions in the wild
 ]
 skip-tree = [
   { name = "cargo-run-wasm" }, # Dev-tool

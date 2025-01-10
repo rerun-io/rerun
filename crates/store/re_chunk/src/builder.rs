@@ -1,15 +1,11 @@
-use arrow::array::ArrayRef;
-use arrow2::{
-    array::{Array as Arrow2Array, PrimitiveArray as Arrow2PrimitiveArray},
-    datatypes::DataType as Arrow2Datatype,
-};
+use arrow::{array::ArrayRef, datatypes::DataType as ArrowDatatype};
 use itertools::Itertools;
 use nohash_hasher::IntMap;
 
 use re_log_types::{EntityPath, TimeInt, TimePoint, Timeline};
 use re_types_core::{AsComponents, ComponentBatch, ComponentDescriptor};
 
-use crate::{chunk::ChunkComponents, Chunk, ChunkId, ChunkResult, RowId, TimeColumn};
+use crate::{arrow_util, chunk::ChunkComponents, Chunk, ChunkId, ChunkResult, RowId, TimeColumn};
 
 // ---
 
@@ -22,7 +18,7 @@ pub struct ChunkBuilder {
 
     row_ids: Vec<RowId>,
     timelines: IntMap<Timeline, TimeColumnBuilder>,
-    components: IntMap<ComponentDescriptor, Vec<Option<Box<dyn Arrow2Array>>>>,
+    components: IntMap<ComponentDescriptor, Vec<Option<ArrayRef>>>,
 }
 
 impl Chunk {
@@ -62,7 +58,7 @@ impl ChunkBuilder {
         mut self,
         row_id: RowId,
         timepoint: impl Into<TimePoint>,
-        components: impl IntoIterator<Item = (ComponentDescriptor, Option<Box<dyn Arrow2Array>>)>,
+        components: impl IntoIterator<Item = (ComponentDescriptor, Option<ArrayRef>)>,
     ) -> Self {
         let components = components.into_iter().collect_vec();
 
@@ -113,7 +109,7 @@ impl ChunkBuilder {
             timepoint,
             components
                 .into_iter()
-                .map(|(component_descr, array)| (component_descr, Some(array.into()))),
+                .map(|(component_descr, array)| (component_descr, Some(array))),
         )
     }
 
@@ -191,7 +187,7 @@ impl ChunkBuilder {
                 .map(|(component_desc, component_batch)| {
                     (
                         component_desc,
-                        component_batch.and_then(|batch| batch.to_arrow2().ok()),
+                        component_batch.and_then(|batch| batch.to_arrow().ok()),
                     )
                 }),
         )
@@ -236,7 +232,7 @@ impl ChunkBuilder {
                     .into_iter()
                     .filter_map(|(component_desc, arrays)| {
                         let arrays = arrays.iter().map(|array| array.as_deref()).collect_vec();
-                        crate::util::arrays_to_list_array_opt(&arrays)
+                        arrow_util::arrays_to_list_array_opt(&arrays)
                             .map(|list_array| (component_desc, list_array))
                     })
             {
@@ -266,7 +262,7 @@ impl ChunkBuilder {
     #[inline]
     pub fn build_with_datatypes(
         self,
-        datatypes: &IntMap<ComponentDescriptor, Arrow2Datatype>,
+        datatypes: &IntMap<ComponentDescriptor, ArrowDatatype>,
     ) -> ChunkResult<Chunk> {
         let Self {
             id,
@@ -295,10 +291,10 @@ impl ChunkBuilder {
                             // If we know the datatype in advance, we're able to keep even fully sparse
                             // columns around.
                             if let Some(datatype) = datatypes.get(&component_desc) {
-                                crate::util::arrays_to_list_array(datatype.clone(), &arrays)
+                                arrow_util::arrays_to_list_array(datatype.clone(), &arrays)
                                     .map(|list_array| (component_desc, list_array))
                             } else {
-                                crate::util::arrays_to_list_array_opt(&arrays)
+                                arrow_util::arrays_to_list_array_opt(&arrays)
                                     .map(|list_array| (component_desc, list_array))
                             }
                         })
@@ -357,7 +353,7 @@ impl TimeColumnBuilder {
     pub fn build(self) -> TimeColumn {
         let Self { timeline, times } = self;
 
-        let times = Arrow2PrimitiveArray::<i64>::from_vec(times).to(timeline.datatype());
+        let times = arrow2::array::PrimitiveArray::<i64>::from_vec(times).to(timeline.datatype());
         TimeColumn::new(None, timeline, times)
     }
 }

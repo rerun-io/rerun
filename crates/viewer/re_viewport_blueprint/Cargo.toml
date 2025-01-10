@@ -41,3 +41,6 @@ parking_lot.workspace = true
 slotmap.workspace = true
 smallvec.workspace = true
 thiserror.workspace = true
+
+[dev-dependencies]
+re_viewer_context = { workspace = true, features = ["testing"] }

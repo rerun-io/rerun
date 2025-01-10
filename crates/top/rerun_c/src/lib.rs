@@ -820,7 +820,7 @@ fn rr_recording_stream_log_impl(
             let component_type = component_type_registry.get(*component_type)?;
             let datatype = component_type.datatype.clone();
             let values = unsafe { arrow_array_from_c_ffi(array, datatype) }?;
-            components.insert(component_type.descriptor.clone(), values);
+            components.insert(component_type.descriptor.clone(), values.into());
         }
     }
 
