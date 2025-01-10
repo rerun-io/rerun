@@ -855,7 +855,7 @@ impl TimeColumn {
 
     /// Runs a [take] compute kernel on the time data with the specified `indices`.
     ///
-    /// [take]: arrow::compute::take::take
+    /// [take]: arrow::compute::take
     #[inline]
     pub(crate) fn taken(&self, indices: &arrow2::array::Int32Array) -> Self {
         let Self {
