@@ -32,7 +32,7 @@ use re_log_types::{
 use re_types::blueprint::components::PanelState;
 use re_ui::{list_item, ContextExt as _, DesignTokens, UiExt as _};
 use re_viewer_context::{
-    CollapseScope, HoverHighlight, Item, ItemSpaceContext, RecordingConfig, TimeControl, TimeView,
+    CollapseScope, HoverHighlight, Item, ItemContext, RecordingConfig, TimeControl, TimeView,
     UiLayout, ViewerContext,
 };
 use re_viewport_blueprint::ViewportBlueprint;
@@ -738,7 +738,7 @@ impl TimePanel {
             viewport_blueprint,
             &item.to_item(),
             // expand/collapse context menu actions need this information
-            ItemSpaceContext::StreamsTree {
+            ItemContext::StreamsTree {
                 store_kind: self.source.into(),
             },
             &response,

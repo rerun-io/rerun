@@ -4,7 +4,7 @@ use once_cell::sync::OnceCell;
 
 use re_entity_db::InstancePath;
 use re_viewer_context::{
-    ContainerId, Contents, Item, ItemCollection, ItemSpaceContext, ViewId, ViewerContext,
+    ContainerId, Contents, Item, ItemCollection, ItemContext, ViewId, ViewerContext,
 };
 use re_viewport_blueprint::{ContainerBlueprint, ViewportBlueprint};
 
@@ -59,7 +59,7 @@ pub fn context_menu_ui_for_item_with_context(
     ctx: &ViewerContext<'_>,
     viewport_blueprint: &ViewportBlueprint,
     item: &Item,
-    item_context: ItemSpaceContext,
+    item_context: ItemContext,
     item_response: &egui::Response,
     selection_update_behavior: SelectionUpdateBehavior,
 ) {
@@ -77,7 +77,7 @@ fn context_menu_ui_for_item_with_context_impl(
     ctx: &ViewerContext<'_>,
     viewport_blueprint: &ViewportBlueprint,
     item: &Item,
-    item_context: Option<ItemSpaceContext>,
+    item_context: Option<ItemContext>,
     item_response: &egui::Response,
     selection_update_behavior: SelectionUpdateBehavior,
 ) {

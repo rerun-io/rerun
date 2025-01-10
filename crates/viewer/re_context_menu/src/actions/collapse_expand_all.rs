@@ -1,6 +1,6 @@
 use re_entity_db::InstancePath;
 use re_log_types::StoreKind;
-use re_viewer_context::{CollapseScope, ContainerId, Contents, Item, ItemSpaceContext, ViewId};
+use re_viewer_context::{CollapseScope, ContainerId, Contents, Item, ItemContext, ViewId};
 
 use crate::{ContextMenuAction, ContextMenuContext};
 
@@ -103,16 +103,16 @@ impl ContextMenuAction for CollapseExpandAllAction {
         #[expect(clippy::match_same_arms)]
         let (db, scope) = match ctx
             .selection
-            .space_context_for_item(&Item::InstancePath(instance_path.clone()))
+            .context_for_item(&Item::InstancePath(instance_path.clone()))
         {
-            Some(&ItemSpaceContext::StreamsTree {
+            Some(&ItemContext::StreamsTree {
                 store_kind: StoreKind::Blueprint,
             }) => (
                 ctx.viewer_context.blueprint_db(),
                 CollapseScope::BlueprintStreamsTree,
             ),
 
-            Some(&ItemSpaceContext::StreamsTree {
+            Some(&ItemContext::StreamsTree {
                 store_kind: StoreKind::Recording,
             }) => (ctx.viewer_context.recording(), CollapseScope::StreamsTree),
 

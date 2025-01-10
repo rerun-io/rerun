@@ -22,7 +22,7 @@ use re_view::controls::{
     ROTATE3D_BUTTON, SPEED_UP_3D_MODIFIER, TRACKED_OBJECT_RESTORE_KEY,
 };
 use re_viewer_context::{
-    gpu_bridge, Item, ItemSpaceContext, ViewQuery, ViewSystemExecutionError, ViewerContext,
+    gpu_bridge, Item, ItemContext, ViewQuery, ViewSystemExecutionError, ViewerContext,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -614,7 +614,7 @@ impl SpatialView3D {
             }
         }
 
-        for selected_context in ctx.selection_state().selection_space_contexts() {
+        for selected_context in ctx.selection_state().selection_item_contexts() {
             show_projections_from_2d_space(
                 &mut line_builder,
                 space_cameras,
@@ -623,7 +623,7 @@ impl SpatialView3D {
                 ui.ctx().selection_stroke().color,
             );
         }
-        if let Some(hovered_context) = ctx.selection_state().hovered_space_context() {
+        if let Some(hovered_context) = ctx.selection_state().hovered_item_context() {
             show_projections_from_2d_space(
                 &mut line_builder,
                 space_cameras,
@@ -848,11 +848,11 @@ fn show_projections_from_2d_space(
     line_builder: &mut re_renderer::LineDrawableBuilder<'_>,
     space_cameras: &[SpaceCamera3D],
     state: &SpatialViewState,
-    space_context: &ItemSpaceContext,
+    item_context: &ItemContext,
     ray_color: egui::Color32,
 ) {
-    match space_context {
-        ItemSpaceContext::TwoD { space_2d, pos } => {
+    match item_context {
+        ItemContext::TwoD { space_2d, pos } => {
             if let Some(cam) = space_cameras.iter().find(|cam| &cam.ent_path == space_2d) {
                 if let Some(pinhole) = cam.pinhole.as_ref() {
                     // Render a thick line to the actual z value if any and a weaker one as an extension
@@ -888,7 +888,7 @@ fn show_projections_from_2d_space(
                 }
             }
         }
-        ItemSpaceContext::ThreeD {
+        ItemContext::ThreeD {
             pos: Some(pos),
             tracked_entity: Some(tracked_entity),
             ..
@@ -915,7 +915,7 @@ fn show_projections_from_2d_space(
                 }
             }
         }
-        ItemSpaceContext::ThreeD { .. } | ItemSpaceContext::StreamsTree { .. } => {}
+        ItemContext::ThreeD { .. } | ItemContext::StreamsTree { .. } => {}
     }
 }
 
