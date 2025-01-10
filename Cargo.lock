@@ -5590,6 +5590,8 @@ dependencies = [
  "hashbrown 0.14.5",
  "num-traits",
  "rustc_version",
+ "serde",
+ "serde_derive",
  "simdutf8",
 ]
 
@@ -5717,6 +5719,7 @@ dependencies = [
  "re_tracing",
  "re_types",
  "re_types_core",
+ "serde_json",
  "similar-asserts",
  "thiserror 1.0.65",
  "tinyvec",
