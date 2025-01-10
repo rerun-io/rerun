@@ -8,7 +8,9 @@ use re_types::{
     Archetype, Component as _, ComponentNameSet,
 };
 use re_view::DataResultQuery as _;
-use re_viewer_context::{DataResultTree, IdentifiedViewSystem, ViewContext, ViewContextSystem};
+use re_viewer_context::{
+    DataResultNode, DataResultTree, IdentifiedViewSystem, ViewContext, ViewContextSystem,
+};
 use vec1::smallvec_v1::SmallVec1;
 
 use crate::{
@@ -104,34 +106,32 @@ impl TransformInfo {
     }
 }
 
-#[derive(Clone, Copy)]
-enum UnreachableTransformReason {
-    /// More than one pinhole camera between this and the reference space.
-    NestedPinholeCameras,
-}
-
 /// Provides transforms from an entity to a chosen reference space for all elements in the scene
 /// for the currently selected time & timeline.
+///
+/// The resulting transforms are are dependent on:
+/// * tree, pose and pinhole transforms components as logged to the data store
+///    * TODO(#6743): blueprint overrides aren't respected yet
+/// * the view' spatial origin
+/// * the query time
+///    * TODO(#723): ranges aren't taken into account yet
+/// * TODO(andreas): the queried entities. Right now we determine transforms for ALL entities in the scene.
+///                  since 3D views tend to display almost everything that's mostly fine, but it's very very wasteful when they don't.
 ///
 /// The renderer then uses this reference space as its world space,
 /// making world and reference space equivalent for a given view.
 ///
-/// Should be recomputed every frame.
-///
-/// TODO(#7025): Alternative proposal to not have to deal with tree upwards walking & per-origin tree walking.
+/// TODO(#7025): Right now we also do full tree traversal in here to resolve transforms to the root.
+/// However, for views that share the same query, we can easily make all entities relative to the respective origin in a linear pass over all matrices.
+/// (Note that right now the query IS always the same accross all views for a given frame since it's just latest-at controlled by the timeline,
+/// but once we support range queries it may be not or only partially the case)
 #[derive(Clone)]
 pub struct TransformContext {
     /// All transforms provided are relative to this reference path.
     space_origin: EntityPath,
 
     /// All reachable entities.
-    transform_per_entity: IntMap<EntityPath, TransformInfo>,
-
-    /// All unreachable descendant paths of `reference_path`.
-    unreachable_descendants: Vec<(EntityPath, UnreachableTransformReason)>,
-
-    /// The first parent of `reference_path` that is no longer reachable.
-    first_unreachable_parent: Option<(EntityPath, UnreachableTransformReason)>,
+    transform_per_entity: IntMap<EntityPath, TransformInfo>, // TODO: make me a hash
 }
 
 impl IdentifiedViewSystem for TransformContext {
@@ -145,8 +145,6 @@ impl Default for TransformContext {
         Self {
             space_origin: EntityPath::root(),
             transform_per_entity: Default::default(),
-            unreachable_descendants: Default::default(),
-            first_unreachable_parent: None,
         }
     }
 }
@@ -200,7 +198,15 @@ impl ViewContextSystem for TransformContext {
         TransformCacheStoreSubscriber::access(&ctx.recording().store_id(), |cache| {
             let Some(transforms_per_timeline) = cache.transforms_per_timeline(query.timeline)
             else {
-                // No transforms on this timeline at all. Nothing to do here!
+                // No transforms on this timeline at all. In other words, everything is identity!
+                // TODO(andreas): why are query results a tree to begin with? We want a flat list not just here!
+                query_result.tree.visit(&mut |node: &DataResultNode| {
+                    self.transform_per_entity.insert(
+                        node.data_result.entity_path.clone(),
+                        TransformInfo::default(),
+                    );
+                    true
+                });
                 return;
             };
 
@@ -228,8 +234,7 @@ impl ViewContextSystem for TransformContext {
                 &time_query,
                 transforms_per_timeline,
             );
-        })
-        .expect("No transform cache found");
+        }); // Note that this can return None if no event has happend for this timeline yet.
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
@@ -251,7 +256,6 @@ impl TransformContext {
 
         let entity_tree = ctx.recording().tree();
 
-        let mut encountered_pinhole = None;
         let mut reference_from_ancestor = glam::Affine3A::IDENTITY;
         while let Some(parent_path) = current_tree.path.parent() {
             let Some(parent_tree) = entity_tree.subtree(&parent_path) else {
@@ -265,26 +269,20 @@ impl TransformContext {
 
             // Note that the transform at the reference is the first that needs to be inverted to "break out" of its hierarchy.
             // Generally, the transform _at_ a node isn't relevant to it's children, but only to get to its parent in turn!
-            let new_transform = match transforms_at(
+            let transforms_at_entity = transforms_at(
                 &current_tree.path,
                 ctx.recording(),
                 time_query,
                 // TODO(#1025): See comment in transform_at. This is a workaround for precision issues
                 // and the fact that there is no meaningful image plane distance for 3D->2D views.
                 |_| 500.0,
-                &mut encountered_pinhole,
+                &mut None, // Don't care about pinhole encounters.
                 transforms_per_timeline,
-            ) {
-                Err(unreachable_reason) => {
-                    self.first_unreachable_parent =
-                        Some((parent_tree.path.clone(), unreachable_reason));
-                    break;
-                }
-                Ok(transforms_at_entity) => transform_info_for_upward_propagation(
-                    reference_from_ancestor,
-                    transforms_at_entity,
-                ),
-            };
+            );
+            let new_transform = transform_info_for_upward_propagation(
+                reference_from_ancestor,
+                transforms_at_entity,
+            );
 
             reference_from_ancestor = new_transform.reference_from_entity;
 
@@ -334,27 +332,21 @@ impl TransformContext {
             let mut encountered_pinhole = twod_in_threed_info
                 .as_ref()
                 .map(|info| info.parent_pinhole.clone());
-            let new_transform = match transforms_at(
+
+            let transforms_at_entity = transforms_at(
                 child_path,
                 entity_db,
                 query,
                 lookup_image_plane,
                 &mut encountered_pinhole,
                 transforms_per_timeline,
-            ) {
-                Err(unreachable_reason) => {
-                    self.unreachable_descendants
-                        .push((child_path.clone(), unreachable_reason));
-                    continue;
-                }
-
-                Ok(transforms_at_entity) => transform_info_for_downward_propagation(
-                    child_path,
-                    reference_from_parent,
-                    twod_in_threed_info.clone(),
-                    transforms_at_entity,
-                ),
-            };
+            );
+            let new_transform = transform_info_for_downward_propagation(
+                child_path,
+                reference_from_parent,
+                twod_in_threed_info.clone(),
+                transforms_at_entity,
+            );
 
             self.gather_descendants_transforms(
                 ctx,
@@ -623,11 +615,11 @@ fn transforms_at(
     pinhole_image_plane_distance: impl Fn(&EntityPath) -> f32,
     encountered_pinhole: &mut Option<EntityPath>,
     transforms_per_timeline: &mut CachedTransformsPerTimeline,
-) -> Result<TransformsAtEntity, UnreachableTransformReason> {
+) -> TransformsAtEntity {
     // This is called very frequently, don't put a profile scope here.
 
     let Some(entity_transforms) = transforms_per_timeline.entity_transforms(entity_path) else {
-        return Ok(TransformsAtEntity::default());
+        return TransformsAtEntity::default();
     };
 
     let parent_from_entity_tree_transform =
@@ -654,12 +646,8 @@ fn transforms_at(
         .instance_from_pinhole_image_plane
         .is_some()
     {
-        if encountered_pinhole.is_some() {
-            return Err(UnreachableTransformReason::NestedPinholeCameras);
-        } else {
-            *encountered_pinhole = Some(entity_path.clone());
-        }
+        *encountered_pinhole = Some(entity_path.clone());
     }
 
-    Ok(transforms_at_entity)
+    transforms_at_entity
 }
