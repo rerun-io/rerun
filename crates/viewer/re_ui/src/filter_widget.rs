@@ -5,7 +5,7 @@ use rand::random;
 use crate::{list_item, UiExt as _};
 
 /// State for the filter widget when it is toggled on.
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone)]
 struct InnerState {
     /// The filter query string.
     ///
@@ -36,14 +36,13 @@ impl Default for InnerState {
 /// The filter widget is designed as a toggle between a title widget and the filter text field.
 /// [`Self`] is responsible for storing the widget state as well as the query text typed by the
 /// user. [`FilterMatcher`] performs the actual filtering.
-#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Default)]
 pub struct FilterState {
     inner_state: Option<InnerState>,
 
     /// Should the text field be focused?
     ///
     /// Set to `true` upon clicking on the search button.
-    #[serde(skip)]
     request_focus: bool,
 }
 
