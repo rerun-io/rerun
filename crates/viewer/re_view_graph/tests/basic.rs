@@ -247,9 +247,6 @@ fn run_graph_view_and_save_snapshot(
         });
 
     harness.run();
-
-    //TODO(#8245): enable this everywhere when we have a software renderer setup
-    #[cfg(target_os = "macos")]
     harness.snapshot(_name);
 
     Ok(())

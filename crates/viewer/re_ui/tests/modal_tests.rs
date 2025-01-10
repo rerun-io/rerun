@@ -61,8 +61,5 @@ fn run_modal_test(
         });
 
     harness.run();
-
-    //TODO(#8245): enable this everywhere when we have a software renderer setup
-    #[cfg(target_os = "macos")]
     harness.snapshot(_test_name);
 }

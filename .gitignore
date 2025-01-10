@@ -61,6 +61,12 @@ wheels
 **/tests/snapshots/**/*.diff.png
 **/tests/snapshots/**/*.new.png
 
+# Mesa install
+mesa
+mesa.7z
+mesa.tar.xz
+icd.json
+
 *.rrd
 
 /meilisearch
