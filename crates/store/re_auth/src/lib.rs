@@ -1,5 +1,5 @@
 pub use error::Error;
-pub use scope::Scope;
+pub use scope::Permission;
 pub use service::*;
 
 mod error;
@@ -23,9 +23,15 @@ use jwt_simple::{
 /// In the future, we will need to support asymmetric schemes too.
 ///
 /// The key is stored unencrypted in memory.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 #[repr(transparent)]
 pub struct SecretKey(HS256Key);
+
+impl std::fmt::Debug for SecretKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("SecretKey").field(&"********").finish()
+    }
+}
 
 /// A JWT token that is used to authenticate the client.
 #[derive(Debug, Clone)]
@@ -89,7 +95,7 @@ impl SecretKey {
     ///
     /// If `duration` is `None`, the token will be valid forever. `scope` can be
     /// used to restrict the token to a specific context.
-    pub fn token(&self, duration: Option<Duration>, scope: Scope) -> Result<Jwt, Error> {
+    pub fn token(&self, duration: Option<Duration>, scope: Permission) -> Result<Jwt, Error> {
         let duration = duration.unwrap_or_else(|| Duration::from_secs(u64::MAX));
         let claims = Claims::with_custom_claims(scope, duration.into()).with_audience("rerun");
         let token = self.0.authenticate(claims).map_err(Error::InvalidToken)?;
@@ -97,14 +103,14 @@ impl SecretKey {
     }
 
     /// Checks if a provided `token` is valid for a given `scope`.
-    pub fn verify(&self, token: &Jwt, scope: Scope) -> Result<(), Error> {
+    pub fn verify(&self, token: &Jwt, scope: Permission) -> Result<(), Error> {
         let mut options = VerificationOptions::default();
         options
             .allowed_audiences
             .get_or_insert(HashSet::new())
             .insert("rerun".to_owned());
 
-        let claims: JWTClaims<Scope> = self
+        let claims: JWTClaims<Permission> = self
             .0
             .verify_token(&token.0, Some(options))
             .map_err(Error::InvalidToken)?;

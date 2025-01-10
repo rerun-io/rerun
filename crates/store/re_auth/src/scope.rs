@@ -2,15 +2,15 @@ use std::fmt::Display;
 
 use crate::Error;
 
-/// Scopes define the context in which the token is valid.
+/// Permission define the context in which the token is valid.
 ///
 /// The default scope is read-only.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub struct Scope {
+pub struct Permission {
     write: bool,
 }
 
-impl Display for Scope {
+impl Display for Permission {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self { write: false } => write!(f, "read"),
@@ -19,12 +19,12 @@ impl Display for Scope {
     }
 }
 
-impl Scope {
-    pub fn read_only() -> Self {
+impl Permission {
+    pub fn read() -> Self {
         Self { write: false }
     }
 
-    pub fn read_write() -> Self {
+    pub fn write() -> Self {
         Self { write: true }
     }
 
@@ -47,8 +47,8 @@ mod test {
 
     #[test]
     fn test_scope_display() {
-        let read_only = Scope::read_only();
-        let read_write = Scope::read_write();
+        let read_only = Permission::read();
+        let read_write = Permission::write();
 
         assert_eq!(read_only.to_string(), "read");
         assert_eq!(read_write.to_string(), "read|write");
@@ -56,8 +56,8 @@ mod test {
 
     #[test]
     fn test_scope_allows() {
-        let read_only = Scope::read_only();
-        let read_write = Scope::read_write();
+        let read_only = Permission::read();
+        let read_write = Permission::write();
 
         assert!(read_only.allows(read_only).is_ok());
         assert!(read_only.allows(read_write).is_ok());

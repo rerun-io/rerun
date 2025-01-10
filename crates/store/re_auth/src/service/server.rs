@@ -1,10 +1,9 @@
 use tonic::{
     metadata::{Ascii, MetadataValue},
-    service::Interceptor,
     Request, Status,
 };
 
-use crate::{Error, Jwt, Scope, SecretKey};
+use crate::{Error, Jwt, Permission, SecretKey};
 
 use super::{AUTHORIZATION_KEY, TOKEN_PREFIX};
 
@@ -20,14 +19,22 @@ impl TryFrom<&MetadataValue<Ascii>> for Jwt {
     }
 }
 
-/// A basic [`tonic::Interceptor`] that checks for a valid auth token.
-pub struct AuthInterceptor {
+/// A basic authenticator that checks for a valid auth token.
+#[derive(Clone)]
+pub struct Authenticator {
     secret_key: SecretKey,
-    scope: Scope,
 }
 
-impl Interceptor for AuthInterceptor {
-    fn call(&mut self, req: Request<()>) -> Result<Request<()>, Status> {
+impl Authenticator {
+    /// Creates a new [`AuthInterceptor`] with the given secret key and scope.
+    pub fn new(secret_key: SecretKey) -> Self {
+        Self { secret_key }
+    }
+}
+
+impl Authenticator {
+    /// Checks if the request has a valid auth token that also contains the correct permission.
+    pub fn verify<T>(&self, permission: Permission, req: Request<T>) -> Result<Request<T>, Status> {
         let Some(token_metadata) = req.metadata().get(AUTHORIZATION_KEY) else {
             return Err(Status::unauthenticated("missing valid auth token"));
         };
@@ -36,7 +43,7 @@ impl Interceptor for AuthInterceptor {
             .map_err(|_err| Status::unauthenticated("malformed auth token"))?;
 
         self.secret_key
-            .verify(&token, self.scope)
+            .verify(&token, permission)
             .map_err(|err| match err {
                 Error::InvalidPermission { .. } => Status::permission_denied(err.to_string()),
                 _ => Status::unauthenticated("invalid token"),
