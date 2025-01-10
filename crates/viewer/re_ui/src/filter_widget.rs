@@ -1,4 +1,4 @@
-use egui::{Color32, NumExt};
+use egui::{Color32, NumExt as _, Widget as _};
 use itertools::Either;
 use rand::random;
 
@@ -8,8 +8,6 @@ use crate::{list_item, UiExt as _};
 #[derive(Debug, Clone)]
 struct InnerState {
     /// The filter query string.
-    ///
-    /// If this is `None`, the filter is disabled (aka the text field is not visible).
     filter_query: String,
 
     /// This ID is recreated every time the filter is toggled and tracks the current filtering
@@ -38,6 +36,9 @@ impl Default for InnerState {
 /// user. [`FilterMatcher`] performs the actual filtering.
 #[derive(Debug, Clone, Default)]
 pub struct FilterState {
+    /// The current state of the filter widget.
+    ///
+    /// This is `None` when the filter is not active.
     inner_state: Option<InnerState>,
 
     /// Should the text field be focused?
@@ -54,7 +55,6 @@ impl FilterState {
         self.inner_state
             .as_ref()
             .map(|state| state.filter_query.as_str())
-            .filter(|s| !s.is_empty())
     }
 
     /// Return the current session ID of the filter widget, if active.
@@ -62,6 +62,7 @@ impl FilterState {
         self.inner_state.as_ref().map(|state| state.session_id)
     }
 
+    /// Return a filter matcher for the current query.
     pub fn filter(&self) -> FilterMatcher {
         FilterMatcher::new(self.query())
     }
@@ -102,11 +103,16 @@ impl FilterState {
                             ui.spacing_mut().text_edit_width =
                                 (ui.max_rect().width() - 10.0).at_least(0.0);
 
-                            let response = ui.text_edit_singleline(&mut inner_state.filter_query);
+                            let response =
+                                egui::TextEdit::singleline(&mut inner_state.filter_query)
+                                    .lock_focus(true)
+                                    .ui(ui);
 
                             if self.request_focus {
                                 self.request_focus = false;
                                 response.request_focus();
+                            } else if response.lost_focus() {
+                                self.inner_state = None;
                             }
                         } else {
                             ui.label(galley);
@@ -142,27 +148,47 @@ pub struct FilterMatcher {
 }
 
 impl FilterMatcher {
-    pub fn new(query: Option<&str>) -> Self {
+    fn new(query: Option<&str>) -> Self {
         Self {
             lowercase_query: query.map(|s| s.to_lowercase()),
         }
     }
 
+    /// Is the filter set to match everything?
+    ///
+    /// Can be used by client code to short-circuit more expansive matching logic.
     pub fn matches_everything(&self) -> bool {
-        self.lowercase_query.is_none() || self.lowercase_query.as_deref() == Some("")
+        self.lowercase_query.is_none()
     }
 
+    /// Is the filter set to match nothing?
+    ///
+    /// Can be used by client code to short-circuit more expansive matching logic.
+    pub fn matches_nothing(&self) -> bool {
+        self.lowercase_query
+            .as_ref()
+            .is_some_and(|query| query.is_empty())
+    }
+
+    /// Does the given text match the filter?
     pub fn matches(&self, text: &str) -> bool {
         match self.lowercase_query.as_deref() {
-            None | Some("") => true,
+            None => true,
+            Some("") => false,
             Some(query) => text.to_lowercase().contains(query),
         }
     }
 
+    /// Find all matches in the given text.
+    ///
+    /// Can be used to format the text, e.g. with [`format_matching_text`].
     pub fn find_matches(&self, text: &str) -> Option<impl Iterator<Item = (usize, usize)> + '_> {
         let query = match self.lowercase_query.as_deref() {
-            None | Some("") => {
+            None => {
                 return Some(Either::Left(std::iter::empty()));
+            }
+            Some("") => {
+                return None;
             }
             Some(query) => query,
         };
