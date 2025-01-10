@@ -33,7 +33,7 @@ pub struct CustomContent<'a> {
 impl<'a> CustomContent<'a> {
     /// Create a content with a custom UI closure.
     ///
-    /// The closure will be called from withing a [`egui::Ui`] with its maximum width set as per the
+    /// The closure will be called from within a [`egui::Ui`] with its maximum width set as per the
     /// list item geometry. Note that this may differ from [`crate::ContentContext::rect`] if a
     /// button is set.
     pub fn new(ui: impl FnOnce(&mut egui::Ui, &ContentContext<'_>) + 'a) -> Self {
@@ -53,6 +53,7 @@ impl<'a> CustomContent<'a> {
 
     /// Set the desired width based on the provided content width. If a button is set, its width
     /// will be taken into account and added to the content width.
+    #[inline]
     pub fn with_content_width(mut self, desired_content_width: f32) -> Self {
         self.desired_width = CustomContentDesiredWidth::ContentWidth(desired_content_width);
         self
@@ -162,7 +163,6 @@ impl ListItemContent for CustomContent<'_> {
         }
     }
 
-    //TODO: add snapshot test for this logic
     fn desired_width(&self, ui: &Ui) -> DesiredWidth {
         match self.desired_width {
             CustomContentDesiredWidth::DesiredWidth(desired_width) => desired_width,
