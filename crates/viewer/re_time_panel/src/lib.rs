@@ -141,6 +141,13 @@ pub struct TimePanel {
     /// The filter widget state
     #[serde(skip)]
     filter_state: filter_widget::FilterState,
+
+    /// The store id the filter widget relates to.
+    ///
+    /// Used to invalidate the filter state (aka deactivate it) when the user switch the current
+    /// recording.
+    #[serde(skip)]
+    filter_state_store_id: Option<re_log_types::StoreId>,
 }
 
 impl Default for TimePanel {
@@ -155,6 +162,7 @@ impl Default for TimePanel {
             time_control_ui: TimeControlUi,
             source: TimePanelSource::Recording,
             filter_state: Default::default(),
+            filter_state_store_id: None,
         }
     }
 }
@@ -188,6 +196,12 @@ impl TimePanel {
     ) {
         if state.is_hidden() {
             return;
+        }
+
+        // Invalidate the filter widget if the store id has changed.
+        if self.filter_state_store_id != Some(entity_db.store_id()) {
+            self.filter_state = Default::default();
+            self.filter_state_store_id = Some(entity_db.store_id());
         }
 
         self.data_density_graph_painter.begin_frame(ui.ctx());
@@ -650,6 +664,10 @@ impl TimePanel {
     ) {
         // We traverse and display this tree only if it contains a matching entity part.
         'early_exit: {
+            if filter_matcher.matches_nothing() {
+                return;
+            }
+
             // Filter is inactive or otherwise whitelisting everything.
             if filter_matcher.matches_everything() {
                 break 'early_exit;
