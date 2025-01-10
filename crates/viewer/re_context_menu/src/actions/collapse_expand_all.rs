@@ -1,5 +1,6 @@
 use re_entity_db::InstancePath;
-use re_viewer_context::{CollapseScope, ContainerId, Contents, Item, ViewId};
+use re_log_types::StoreKind;
+use re_viewer_context::{CollapseScope, ContainerId, Contents, Item, ItemContext, ViewId};
 
 use crate::{ContextMenuAction, ContextMenuContext};
 
@@ -99,17 +100,32 @@ impl ContextMenuAction for CollapseExpandAllAction {
     }
 
     fn process_instance_path(&self, ctx: &ContextMenuContext<'_>, instance_path: &InstancePath) {
-        let Some(subtree) = ctx
-            .viewer_context
-            .recording()
-            .tree()
-            .subtree(&instance_path.entity_path)
-        else {
+        #[expect(clippy::match_same_arms)]
+        let (db, scope) = match ctx
+            .selection
+            .context_for_item(&Item::InstancePath(instance_path.clone()))
+        {
+            Some(&ItemContext::StreamsTree {
+                store_kind: StoreKind::Blueprint,
+            }) => (
+                ctx.viewer_context.blueprint_db(),
+                CollapseScope::BlueprintStreamsTree,
+            ),
+
+            Some(&ItemContext::StreamsTree {
+                store_kind: StoreKind::Recording,
+            }) => (ctx.viewer_context.recording(), CollapseScope::StreamsTree),
+
+            // default to recording if we don't have more specific information
+            _ => (ctx.viewer_context.recording(), CollapseScope::StreamsTree),
+        };
+
+        let Some(subtree) = db.tree().subtree(&instance_path.entity_path) else {
             return;
         };
 
         subtree.visit_children_recursively(|entity_path| {
-            CollapseScope::StreamsTree
+            scope
                 .entity(entity_path.clone())
                 .set_open(&ctx.egui_context, self.open());
         });

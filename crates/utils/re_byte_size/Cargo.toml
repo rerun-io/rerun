@@ -28,4 +28,3 @@ arrow.workspace = true
 arrow2.workspace = true
 half.workspace = true
 smallvec.workspace = true
-re_tuid.workspace = true  # TODO(emilk): maybe re_tuid should depend on re_byte_size instead?

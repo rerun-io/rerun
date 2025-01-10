@@ -72,10 +72,6 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
-        let Some(render_ctx) = ctx.viewer_ctx.render_ctx else {
-            return Err(ViewSystemExecutionError::NoRenderContextError);
-        };
-
         process_archetype::<Self, VideoFrameReference, _>(
             ctx,
             view_query,
@@ -126,7 +122,7 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
         )?;
 
         Ok(vec![PickableTexturedRect::to_draw_data(
-            render_ctx,
+            ctx.viewer_ctx.render_ctx,
             &self.data.pickable_rects,
         )?])
     }
@@ -155,10 +151,6 @@ impl VideoFrameReferenceVisualizer {
         view_id: ViewId,
     ) {
         re_tracing::profile_function!();
-
-        let Some(render_ctx) = ctx.viewer_ctx.render_ctx else {
-            return;
-        };
 
         let player_stream_id = re_renderer::video::VideoPlayerStreamId(
             Hash64::hash((entity_path.hash(), view_id)).hash64(),
@@ -197,7 +189,7 @@ impl VideoFrameReferenceVisualizer {
                     video_resolution = glam::vec2(video.width() as _, video.height() as _);
 
                     match video.frame_at(
-                        render_ctx,
+                        ctx.viewer_ctx.render_ctx,
                         player_stream_id,
                         video_timestamp.as_seconds(),
                         video_data.as_slice(),
@@ -295,10 +287,7 @@ impl VideoFrameReferenceVisualizer {
         video_size: glam::Vec2,
         entity_path: &EntityPath,
     ) {
-        let Some(render_ctx) = ctx.viewer_ctx.render_ctx else {
-            return;
-        };
-
+        let render_ctx = ctx.viewer_ctx.render_ctx;
         let video_error_texture_result = render_ctx
             .texture_manager_2d
             .get_or_try_create_with::<image::ImageError>(

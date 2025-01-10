@@ -18,6 +18,10 @@ workspace = true
 [package.metadata.docs.rs]
 all-features = true
 
+[features]
+## Enable for testing utilities.
+testing = ["dep:pollster", "dep:egui_kittest", "dep:env_logger"]
+
 [dependencies]
 re_capabilities.workspace = true
 re_chunk_store.workspace = true
@@ -68,6 +72,11 @@ strum_macros.workspace = true
 thiserror.workspace = true
 uuid = { workspace = true, features = ["serde", "v4", "js"] }
 wgpu.workspace = true
+
+# Optional dependencies:
+egui_kittest = { workspace = true, features = ["wgpu"], optional = true }
+env_logger = { workspace = true, optional = true }
+pollster = { workspace = true, optional = true }
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

@@ -21,13 +21,11 @@ pub fn textured_rect_from_image(
     visualizer_name: &'static str,
     visualizer_data: &mut SpatialViewVisualizerData,
 ) -> Option<renderer::TexturedRect> {
-    let render_ctx = ctx.render_ctx?;
-
     let debug_name = ent_path.to_string();
     let tensor_stats = ctx.cache.entry(|c: &mut ImageStatsCache| c.entry(image));
 
     match gpu_bridge::image_to_gpu(
-        render_ctx,
+        ctx.render_ctx,
         &debug_name,
         image,
         &tensor_stats,

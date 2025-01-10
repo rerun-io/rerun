@@ -12,7 +12,8 @@ use arrow2::{
         Utf8Array,
     },
     bitmap::Bitmap,
-    datatypes::{DataType, Field, PhysicalType},
+    chunk::Chunk,
+    datatypes::{DataType, Field, PhysicalType, Schema},
     types::{NativeType, Offset},
 };
 
@@ -550,5 +551,24 @@ impl SizeBytes for StructArray {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         estimated_bytes_size(self) as _
+    }
+}
+
+impl SizeBytes for Schema {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        let Self { fields, metadata } = self;
+
+        fields.heap_size_bytes() + metadata.heap_size_bytes()
+    }
+}
+
+impl SizeBytes for Chunk<Box<dyn Array>> {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.arrays()
+            .iter()
+            .map(SizeBytes::total_size_bytes)
+            .sum::<u64>()
     }
 }

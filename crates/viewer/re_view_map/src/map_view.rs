@@ -303,21 +303,17 @@ Displays geospatial primitives on a map.
         // Draw all objects using re_renderer
         //
 
-        let Some(render_ctx) = ctx.render_ctx else {
-            return Err(ViewSystemExecutionError::NoRenderContextError);
-        };
-
         let mut view_builder =
-            create_view_builder(render_ctx, ui.ctx(), map_rect, &query.highlights);
+            create_view_builder(ctx.render_ctx, ui.ctx(), map_rect, &query.highlights);
 
         geo_line_strings_visualizers.queue_draw_data(
-            render_ctx,
+            ctx.render_ctx,
             &mut view_builder,
             &projector,
             &query.highlights,
         )?;
         geo_points_visualizer.queue_draw_data(
-            render_ctx,
+            ctx.render_ctx,
             &mut view_builder,
             &projector,
             &query.highlights,
@@ -325,7 +321,7 @@ Displays geospatial primitives on a map.
 
         handle_picking_and_ui_interactions(
             ctx,
-            render_ctx,
+            ctx.render_ctx,
             ui.ctx(),
             &mut view_builder,
             query,

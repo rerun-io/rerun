@@ -24,7 +24,6 @@ mod selection_state;
 mod store_context;
 pub mod store_hub;
 mod tensor;
-pub mod test_context; //TODO(ab): this should be behind #[cfg(test)], but then ` cargo clippy --all-targets` fails
 mod time_control;
 mod time_drag_value;
 mod typed_entity_collections;
@@ -32,6 +31,9 @@ mod undo;
 mod utils;
 mod view;
 mod viewer_context;
+
+#[cfg(feature = "testing")]
+pub mod test_context;
 
 // TODO(andreas): Move to its own crate?
 pub mod gpu_bridge;
@@ -64,7 +66,7 @@ pub use self::{
     query_range::QueryRange,
     selection_state::{
         ApplicationSelectionState, HoverHighlight, InteractionHighlight, ItemCollection,
-        ItemSpaceContext, SelectionHighlight,
+        ItemContext, SelectionHighlight,
     },
     store_context::StoreContext,
     store_hub::StoreHub,

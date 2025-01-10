@@ -8,7 +8,7 @@ use re_ui::{
 };
 use re_view::AnnotationSceneContext;
 use re_viewer_context::{
-    Item, ItemSpaceContext, UiLayout, ViewQuery, ViewSystemExecutionError, ViewerContext,
+    Item, ItemContext, UiLayout, ViewQuery, ViewSystemExecutionError, ViewerContext,
     VisualizerCollection,
 };
 
@@ -41,10 +41,6 @@ pub fn picking(
         return Ok(response);
     }
 
-    let Some(render_ctx) = ctx.render_ctx else {
-        return Err(ViewSystemExecutionError::NoRenderContextError);
-    };
-
     let picking_rect_size = PickingContext::UI_INTERACTION_RADIUS * ui.ctx().pixels_per_point();
     // Make the picking rect bigger than necessary so we can use it to counter-act delays.
     // (by the time the picking rectangle is read back, the cursor may have moved on).
@@ -54,7 +50,7 @@ pub fn picking(
         .at_most(128.0) as u32;
 
     let _ = view_builder.schedule_picking_rect(
-        render_ctx,
+        ctx.render_ctx,
         re_renderer::RectInt::from_middle_and_extent(
             picking_context.pointer_in_pixel.as_ivec2(),
             glam::uvec2(picking_rect_size, picking_rect_size),
@@ -69,7 +65,7 @@ pub fn picking(
         .get::<AnnotationSceneContext>()?;
 
     let picking_result = picking_context.pick(
-        render_ctx,
+        ctx.render_ctx,
         query.view_id.gpu_readback_id(),
         &state.previous_picking_result,
         iter_pickable_rects(&system_output.view_systems),
@@ -203,7 +199,7 @@ pub fn picking(
 
     if let Some((_, context)) = hovered_items.first_mut() {
         *context = Some(match spatial_kind {
-            SpatialViewKind::TwoD => ItemSpaceContext::TwoD {
+            SpatialViewKind::TwoD => ItemContext::TwoD {
                 space_2d: query.space_origin.clone(),
                 pos: picking_context
                     .pointer_in_camera_plane
@@ -214,7 +210,7 @@ pub fn picking(
                 let cameras_visualizer_output =
                     system_output.view_systems.get::<CamerasVisualizer>()?;
 
-                ItemSpaceContext::ThreeD {
+                ItemContext::ThreeD {
                     space_3d: query.space_origin.clone(),
                     pos: hovered_point,
                     tracked_entity: state.state_3d.tracked_entity.clone(),

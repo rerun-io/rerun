@@ -1,7 +1,6 @@
 use re_chunk_store::RowId;
 use re_log_types::{hash::Hash64, Instance, TimeInt};
 use re_renderer::renderer::GpuMeshInstance;
-use re_renderer::RenderContext;
 use re_types::{
     archetypes::Asset3D,
     components::{AlbedoFactor, Blob, MediaType},
@@ -46,7 +45,6 @@ impl Asset3DVisualizer {
     fn process_data<'a>(
         &mut self,
         ctx: &QueryContext<'_>,
-        render_ctx: &RenderContext,
         instances: &mut Vec<GpuMeshInstance>,
         ent_context: &SpatialSceneEntityContext<'_>,
         data: impl Iterator<Item = Asset3DComponentData<'a>>,
@@ -77,7 +75,7 @@ impl Asset3DVisualizer {
                             albedo_factor: data.albedo_factor.copied(),
                         },
                     },
-                    render_ctx,
+                    ctx.viewer_ctx.render_ctx,
                 )
             });
 
@@ -136,10 +134,6 @@ impl VisualizerSystem for Asset3DVisualizer {
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
-        let Some(render_ctx) = ctx.viewer_ctx.render_ctx else {
-            return Err(ViewSystemExecutionError::NoRenderContextError);
-        };
-
         let mut instances = Vec::new();
 
         use super::entity_iterator::{iter_slices, process_archetype};
@@ -182,13 +176,13 @@ impl VisualizerSystem for Asset3DVisualizer {
                     })
                 });
 
-                self.process_data(ctx, render_ctx, &mut instances, spatial_ctx, data);
+                self.process_data(ctx, &mut instances, spatial_ctx, data);
 
                 Ok(())
             },
         )?;
 
-        match re_renderer::renderer::MeshDrawData::new(render_ctx, &instances) {
+        match re_renderer::renderer::MeshDrawData::new(ctx.viewer_ctx.render_ctx, &instances) {
             Ok(draw_data) => Ok(vec![draw_data.into()]),
             Err(err) => {
                 re_log::error_once!("Failed to create mesh draw data from mesh instances: {err}");

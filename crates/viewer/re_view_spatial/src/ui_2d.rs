@@ -15,7 +15,7 @@ use re_types::{
 use re_ui::{ContextExt as _, ModifiersMarkdown, MouseButtonMarkdown};
 use re_view::controls::{DRAG_PAN2D_BUTTON, ZOOM_SCROLL_MODIFIER};
 use re_viewer_context::{
-    gpu_bridge, ItemSpaceContext, ViewQuery, ViewSystemExecutionError, ViewerContext,
+    gpu_bridge, ItemContext, ViewQuery, ViewSystemExecutionError, ViewerContext,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -214,11 +214,7 @@ impl SpatialView2D {
             SpatialViewKind::TwoD,
         );
 
-        let Some(render_ctx) = ctx.render_ctx else {
-            return Err(ViewSystemExecutionError::NoRenderContextError);
-        };
-
-        let mut view_builder = ViewBuilder::new(render_ctx, target_config);
+        let mut view_builder = ViewBuilder::new(ctx.render_ctx, target_config);
 
         if let Some(pointer_pos_ui) = response.hover_pos() {
             let picking_context = crate::picking::PickingContext::new(
@@ -253,7 +249,7 @@ impl SpatialView2D {
             query.view_id,
         );
         let (background_drawable, clear_color) =
-            crate::configure_background(ctx, &background, render_ctx, self, state)?;
+            crate::configure_background(ctx, &background, ctx.render_ctx, self, state)?;
         if let Some(background_drawable) = background_drawable {
             view_builder.queue_draw(background_drawable);
         }
@@ -269,7 +265,7 @@ impl SpatialView2D {
         ));
 
         // Make sure to _first_ draw the selected, and *then* the hovered context on top!
-        for selected_context in ctx.selection_state().selection_space_contexts() {
+        for selected_context in ctx.selection_state().selection_item_contexts() {
             painter.extend(show_projections_from_3d_space(
                 ui,
                 query.space_origin,
@@ -278,7 +274,7 @@ impl SpatialView2D {
                 ui.ctx().selection_stroke().color,
             ));
         }
-        if let Some(hovered_context) = ctx.selection_state().hovered_space_context() {
+        if let Some(hovered_context) = ctx.selection_state().hovered_item_context() {
             painter.extend(show_projections_from_3d_space(
                 ui,
                 query.space_origin,
@@ -429,14 +425,14 @@ fn show_projections_from_3d_space(
     ui: &egui::Ui,
     space: &EntityPath,
     ui_from_scene: &RectTransform,
-    space_context: &ItemSpaceContext,
+    item_context: &ItemContext,
     circle_fill_color: egui::Color32,
 ) -> Vec<Shape> {
     let mut shapes = Vec::new();
-    if let ItemSpaceContext::ThreeD {
+    if let ItemContext::ThreeD {
         point_in_space_cameras: target_spaces,
         ..
-    } = space_context
+    } = item_context
     {
         for (space_2d, pos_2d) in target_spaces {
             if space_2d == space {

@@ -213,7 +213,8 @@ fn test_single_component_ui_as_list_item(
         );
     };
 
-    let mut harness = egui_kittest::Harness::builder()
+    let mut harness = test_context
+        .setup_kittest_for_rendering()
         .with_size(Vec2::new(ui_width, 40.0))
         .build_ui(|ui| {
             test_context.run(&ui.ctx().clone(), |ctx| {
@@ -226,13 +227,7 @@ fn test_single_component_ui_as_list_item(
         });
 
     harness.run();
-
-    //TODO(#8245): enable this everywhere when we have a software renderer setup
-    if cfg!(target_os = "macos") {
-        harness.try_snapshot_options(&format!("{test_case}"), _snapshot_options)
-    } else {
-        Ok(())
-    }
+    harness.try_snapshot_options(&format!("{test_case}"), _snapshot_options)
 }
 
 // ---

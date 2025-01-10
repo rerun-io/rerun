@@ -17,9 +17,6 @@ pub fn test_arrow_ui() {
     harness.fit_contents();
 
     harness.run();
-
-    //TODO(#8245): enable this everywhere when we have a software renderer setup
-    #[cfg(target_os = "macos")]
     harness.snapshot("arrow_ui");
 }
 

@@ -19,7 +19,9 @@ use std::sync::Arc;
 use egui::emath::Rangef;
 use egui::{pos2, Color32, CursorIcon, NumExt, Painter, PointerButton, Rect, Shape, Ui, Vec2};
 
-use re_context_menu::{context_menu_ui_for_item, SelectionUpdateBehavior};
+use re_context_menu::{
+    context_menu_ui_for_item, context_menu_ui_for_item_with_context, SelectionUpdateBehavior,
+};
 use re_data_ui::DataUi as _;
 use re_data_ui::{item_ui::guess_instance_path_icon, sorted_component_list_for_ui};
 use re_entity_db::{EntityDb, EntityTree, InstancePath};
@@ -30,8 +32,8 @@ use re_log_types::{
 use re_types::blueprint::components::PanelState;
 use re_ui::{list_item, ContextExt as _, DesignTokens, UiExt as _};
 use re_viewer_context::{
-    CollapseScope, HoverHighlight, Item, RecordingConfig, TimeControl, TimeView, UiLayout,
-    ViewerContext,
+    CollapseScope, HoverHighlight, Item, ItemContext, RecordingConfig, TimeControl, TimeView,
+    UiLayout, ViewerContext,
 };
 use re_viewport_blueprint::ViewportBlueprint;
 
@@ -98,6 +100,15 @@ impl From<TimePanelSource> for egui::Id {
         match source {
             TimePanelSource::Recording => "recording".into(),
             TimePanelSource::Blueprint => "blueprint".into(),
+        }
+    }
+}
+
+impl From<TimePanelSource> for re_log_types::StoreKind {
+    fn from(source: TimePanelSource) -> Self {
+        match source {
+            TimePanelSource::Recording => Self::Recording,
+            TimePanelSource::Blueprint => Self::Blueprint,
         }
     }
 }
@@ -722,10 +733,14 @@ impl TimePanel {
             }
         }
 
-        context_menu_ui_for_item(
+        context_menu_ui_for_item_with_context(
             ctx,
             viewport_blueprint,
             &item.to_item(),
+            // expand/collapse context menu actions need this information
+            ItemContext::StreamsTree {
+                store_kind: self.source.into(),
+            },
             &response,
             SelectionUpdateBehavior::UseSelection,
         );

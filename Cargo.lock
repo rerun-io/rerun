@@ -6061,6 +6061,7 @@ dependencies = [
 name = "re_build_info"
 version = "0.22.0-alpha.1+dev"
 dependencies = [
+ "re_byte_size",
  "serde",
 ]
 
@@ -6084,7 +6085,6 @@ dependencies = [
  "arrow",
  "half",
  "re_arrow2",
- "re_tuid",
  "smallvec",
 ]
 
@@ -6450,6 +6450,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_grpc_server"
+version = "0.22.0-alpha.1+dev"
+dependencies = [
+ "re_build_info",
+ "re_byte_size",
+ "re_chunk",
+ "re_format",
+ "re_log",
+ "re_log_encoding",
+ "re_log_types",
+ "re_memory",
+ "re_protos",
+ "re_tracing",
+ "re_types",
+ "tokio",
+ "tokio-stream",
+ "tokio-util",
+ "tonic",
+]
+
+[[package]]
 name = "re_int_histogram"
 version = "0.22.0-alpha.1+dev"
 dependencies = [
@@ -6592,6 +6613,7 @@ name = "re_protos"
 version = "0.22.0-alpha.1+dev"
 dependencies = [
  "prost",
+ "re_byte_size",
  "thiserror 1.0.65",
  "tonic",
  "tonic-web-wasm-client",
@@ -6889,6 +6911,7 @@ dependencies = [
  "document-features",
  "getrandom",
  "once_cell",
+ "re_byte_size",
  "re_protos",
  "serde",
  "web-time",
@@ -7388,8 +7411,10 @@ dependencies = [
  "directories",
  "egui",
  "egui-wgpu",
+ "egui_kittest",
  "egui_tiles",
  "emath",
+ "env_logger",
  "glam",
  "half",
  "home",
@@ -7401,6 +7426,7 @@ dependencies = [
  "nohash-hasher",
  "once_cell",
  "parking_lot",
+ "pollster 0.4.0",
  "re_capabilities",
  "re_chunk",
  "re_chunk_store",
@@ -9344,6 +9370,7 @@ dependencies = [
  "futures-core",
  "pin-project-lite",
  "tokio",
+ "tokio-util",
 ]
 
 [[package]]

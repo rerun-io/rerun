@@ -188,6 +188,7 @@ Update instructions:
 | re_data_loader       | Handles loading of Rerun data from file using data loader plugins                                      |
 | re_data_source       | Handles loading of Rerun data from different sources                                                   |
 | re_grpc_client       | Communicate with the Rerun Data Platform over gRPC                                                     |
+| re_grpc_server       | Host an in-memory Storage Node                                                                         |
 | re_sdk_comms         | TCP communication between Rerun SDK and Rerun Server                                                   |
 | re_web_viewer_server | Serves the Rerun web viewer (Wasm and HTML) over HTTP                                                  |
 | re_ws_comms          | WebSocket communication library (encoding, decoding, client, server) between a Rerun server and Viewer |

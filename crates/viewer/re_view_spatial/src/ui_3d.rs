@@ -22,7 +22,7 @@ use re_view::controls::{
     ROTATE3D_BUTTON, SPEED_UP_3D_MODIFIER, TRACKED_OBJECT_RESTORE_KEY,
 };
 use re_viewer_context::{
-    gpu_bridge, Item, ItemSpaceContext, ViewQuery, ViewSystemExecutionError, ViewerContext,
+    gpu_bridge, Item, ItemContext, ViewQuery, ViewSystemExecutionError, ViewerContext,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -485,12 +485,8 @@ impl SpatialView3D {
             blend_with_background: false,
         };
 
-        let Some(render_ctx) = ctx.render_ctx else {
-            return Err(ViewSystemExecutionError::NoRenderContextError);
-        };
-
         // Various ui interactions draw additional lines.
-        let mut line_builder = LineDrawableBuilder::new(render_ctx);
+        let mut line_builder = LineDrawableBuilder::new(ctx.render_ctx);
         line_builder.radius_boost_in_ui_points_for_outlines(
             re_view::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
         );
@@ -515,7 +511,7 @@ impl SpatialView3D {
             state.bounding_boxes.current.extend(glam::Vec3::ZERO);
         }
 
-        let mut view_builder = ViewBuilder::new(render_ctx, target_config);
+        let mut view_builder = ViewBuilder::new(ctx.render_ctx, target_config);
 
         // Create labels now since their shapes participate are added to scene.ui for picking.
         let (label_shapes, ui_rects) = create_labels(
@@ -614,7 +610,7 @@ impl SpatialView3D {
             }
         }
 
-        for selected_context in ctx.selection_state().selection_space_contexts() {
+        for selected_context in ctx.selection_state().selection_item_contexts() {
             show_projections_from_2d_space(
                 &mut line_builder,
                 space_cameras,
@@ -623,7 +619,7 @@ impl SpatialView3D {
                 ui.ctx().selection_stroke().color,
             );
         }
-        if let Some(hovered_context) = ctx.selection_state().hovered_space_context() {
+        if let Some(hovered_context) = ctx.selection_state().hovered_item_context() {
             show_projections_from_2d_space(
                 &mut line_builder,
                 space_cameras,
@@ -684,7 +680,7 @@ impl SpatialView3D {
             query.view_id,
         );
         let (background_drawable, clear_color) =
-            crate::configure_background(ctx, &background, render_ctx, self, state)?;
+            crate::configure_background(ctx, &background, ctx.render_ctx, self, state)?;
         if let Some(background_drawable) = background_drawable {
             view_builder.queue_draw(background_drawable);
         }
@@ -728,12 +724,8 @@ impl SpatialView3D {
         let plane =
             grid_config.component_or_fallback::<re_types::components::Plane3D>(ctx, self, state)?;
 
-        let Some(render_ctx) = ctx.render_ctx else {
-            return Ok(None);
-        };
-
         Ok(Some(re_renderer::renderer::WorldGridDrawData::new(
-            render_ctx,
+            ctx.render_ctx,
             &re_renderer::renderer::WorldGridConfiguration {
                 color: color.into(),
                 plane: plane.into(),
@@ -848,11 +840,11 @@ fn show_projections_from_2d_space(
     line_builder: &mut re_renderer::LineDrawableBuilder<'_>,
     space_cameras: &[SpaceCamera3D],
     state: &SpatialViewState,
-    space_context: &ItemSpaceContext,
+    item_context: &ItemContext,
     ray_color: egui::Color32,
 ) {
-    match space_context {
-        ItemSpaceContext::TwoD { space_2d, pos } => {
+    match item_context {
+        ItemContext::TwoD { space_2d, pos } => {
             if let Some(cam) = space_cameras.iter().find(|cam| &cam.ent_path == space_2d) {
                 if let Some(pinhole) = cam.pinhole.as_ref() {
                     // Render a thick line to the actual z value if any and a weaker one as an extension
@@ -888,7 +880,7 @@ fn show_projections_from_2d_space(
                 }
             }
         }
-        ItemSpaceContext::ThreeD {
+        ItemContext::ThreeD {
             pos: Some(pos),
             tracked_entity: Some(tracked_entity),
             ..
@@ -915,7 +907,7 @@ fn show_projections_from_2d_space(
                 }
             }
         }
-        ItemSpaceContext::ThreeD { .. } => {}
+        ItemContext::ThreeD { .. } | ItemContext::StreamsTree { .. } => {}
     }
 }
 
