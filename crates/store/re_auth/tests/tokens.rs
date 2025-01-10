@@ -15,7 +15,7 @@ fn generate_read_only_token_with_duration() {
     let key = SecretKey::from_base64("CKxq6b4Hy3xdjDOWwaShOJab+eu6jcsFso4rbLjJuZ8=").unwrap();
 
     let token = key
-        .token(Some(Duration::from_secs(2 * 60 * 60)), Permission::read())
+        .token(Duration::from_secs(2 * 60 * 60), Permission::read())
         .unwrap();
 
     assert!(
