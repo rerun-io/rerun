@@ -266,10 +266,7 @@ Displays geospatial primitives on a map.
         // Map UI
         //
 
-        let (tiles, map_memory) = match state.ensure_and_get_mut_refs(ctx, ui.ctx()) {
-            Ok(refs) => refs,
-            Err(err) => return Err(err),
-        };
+        let (tiles, map_memory) = state.ensure_and_get_mut_refs(ctx, ui.ctx())?;
         let attribution = tiles.attribution();
 
         let some_tiles_manager: Option<&mut dyn Tiles> = Some(tiles);

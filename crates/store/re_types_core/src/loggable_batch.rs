@@ -129,7 +129,7 @@ impl LoggableBatch for ComponentBatchCowWithDescriptor<'_> {
     }
 }
 
-impl<'a> ComponentBatch for ComponentBatchCowWithDescriptor<'a> {
+impl ComponentBatch for ComponentBatchCowWithDescriptor<'_> {
     #[inline]
     fn descriptor(&self) -> Cow<'_, ComponentDescriptor> {
         self.descriptor_override
@@ -179,14 +179,14 @@ impl<'a> std::ops::Deref for ComponentBatchCow<'a> {
     }
 }
 
-impl<'a> LoggableBatch for ComponentBatchCow<'a> {
+impl LoggableBatch for ComponentBatchCow<'_> {
     #[inline]
     fn to_arrow2(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>> {
         (**self).to_arrow2()
     }
 }
 
-impl<'a> ComponentBatch for ComponentBatchCow<'a> {
+impl ComponentBatch for ComponentBatchCow<'_> {
     #[inline]
     fn descriptor(&self) -> Cow<'_, ComponentDescriptor> {
         (**self).descriptor()
