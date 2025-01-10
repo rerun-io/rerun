@@ -181,11 +181,11 @@ fn generate_object_file(
 
     code.push_str("\n\n");
 
-    code.push_str("use ::re_types_core::external::arrow;\n");
+    code.push_str("use ::re_types_core::try_serialize_field;\n");
     code.push_str("use ::re_types_core::SerializationResult;\n");
     code.push_str("use ::re_types_core::{DeserializationResult, DeserializationError};\n");
     code.push_str("use ::re_types_core::{ComponentDescriptor, ComponentName};\n");
-    code.push_str("use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};\n");
+    code.push_str("use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor, SerializedComponentBatch};\n");
 
     // NOTE: `TokenStream`s discard whitespacing information by definition, so we need to
     // inject some of our own when writing to file… while making sure that don't inject
@@ -324,11 +324,18 @@ fn quote_struct(
             quote!(true)
         } else {
             let quoted_is_pods = obj.fields.iter().map(|obj_field| {
-                let quoted_field_type = quote_field_type_from_object_field(obj_field);
+                let quoted_field_type = quote_field_type_from_object_field(obj, obj_field);
                 quote!(<#quoted_field_type>::is_pod())
             });
             quote!(#(#quoted_is_pods)&&*)
         };
+
+        let quoted_is_pod = (!obj.is_eager_rust_archetype()).then_some(quote! {
+            #[inline]
+            fn is_pod() -> bool {
+                #is_pod_impl
+            }
+        });
 
         quote! {
             impl ::re_byte_size::SizeBytes for #name {
@@ -337,10 +344,7 @@ fn quote_struct(
                     #heap_size_bytes_impl
                 }
 
-                #[inline]
-                fn is_pod() -> bool {
-                    #is_pod_impl
-                }
+                #quoted_is_pod
             }
         }
     };
@@ -397,7 +401,7 @@ fn quote_union(
         let name = format_ident!("{}", re_case::to_pascal_case(&obj_field.name));
 
         let quoted_doc = quote_field_docs(reporter, objects, obj_field);
-        let quoted_type = quote_field_type_from_object_field(obj_field);
+        let quoted_type = quote_field_type_from_object_field(obj, obj_field);
 
         if obj_field.typ == Type::Unit {
             quote! {
@@ -431,7 +435,7 @@ fn quote_union(
                 .iter()
                 .filter(|obj_field| obj_field.typ != Type::Unit)
                 .map(|obj_field| {
-                    let quoted_field_type = quote_field_type_from_object_field(obj_field);
+                    let quoted_field_type = quote_field_type_from_object_field(obj, obj_field);
                     quote!(<#quoted_field_type>::is_pod())
                 })
                 .collect();
@@ -655,7 +659,7 @@ impl ObjectFieldTokenizer<'_> {
         let Self(reporter, obj, obj_field) = self;
         let quoted_docs = quote_field_docs(reporter, objects, obj_field);
         let name = format_ident!("{}", &obj_field.name);
-        let quoted_type = quote_field_type_from_object_field(obj_field);
+        let quoted_type = quote_field_type_from_object_field(obj, obj_field);
 
         if is_tuple_struct_from_obj(obj) {
             quote! {
@@ -722,13 +726,16 @@ fn quote_field_type_from_typ(typ: &Type, unwrap: bool) -> (TokenStream, bool) {
     (quote!(#obj_field_type), unwrapped)
 }
 
-fn quote_field_type_from_object_field(obj_field: &ObjectField) -> TokenStream {
-    let (quoted_type, _) = quote_field_type_from_typ(&obj_field.typ, false);
-
-    if obj_field.is_nullable {
-        quote!(Option<#quoted_type>)
+fn quote_field_type_from_object_field(obj: &Object, obj_field: &ObjectField) -> TokenStream {
+    if obj.is_eager_rust_archetype() {
+        quote!(Option<SerializedComponentBatch>)
     } else {
-        quoted_type
+        let (quoted_type, _) = quote_field_type_from_typ(&obj_field.typ, false);
+        if obj_field.is_nullable {
+            quote!(Option<#quoted_type>)
+        } else {
+            quoted_type
+        }
     }
 }
 
@@ -1153,7 +1160,8 @@ fn quote_trait_impls_for_archetype(obj: &Object) -> TokenStream {
         .map(|field| format_ident!("{}", field.name))
         .collect::<Vec<_>>();
 
-    let all_component_batches = {
+    // TODO(cmc): This goes away once all archetypes have been made eager.
+    let all_native_component_batches = {
         std::iter::once(quote! {
             Some(Self::indicator())
         }).chain(obj.fields.iter().map(|obj_field| {
@@ -1198,8 +1206,7 @@ fn quote_trait_impls_for_archetype(obj: &Object) -> TokenStream {
                 quote!{ Some(&self.#field_name as &dyn ComponentBatch) }
             };
 
-            let archetype_field_name = obj_field.snake_case_name();
-            let descr_fn_name = format_ident!("descriptor_{archetype_field_name}");
+            let descr_fn_name = format_ident!("descriptor_{field_name}");
 
             quote! {
                 (#batch).map(|batch| {
@@ -1213,7 +1220,37 @@ fn quote_trait_impls_for_archetype(obj: &Object) -> TokenStream {
         }))
     };
 
-    let all_deserializers = {
+    let all_eager_component_batches = {
+        std::iter::once(quote! {
+            Self::indicator().serialized()
+        })
+        .chain(obj.fields.iter().map(|obj_field| {
+            let field_name = format_ident!("{}", obj_field.name);
+            quote!(self.#field_name.clone())
+        }))
+    };
+
+    let as_components_impl = if obj.is_eager_rust_archetype() {
+        quote! {
+            #[inline]
+            fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
+                use ::re_types_core::Archetype as _;
+                [#(#all_eager_component_batches,)*].into_iter().flatten().collect()
+            }
+        }
+    } else {
+        quote! {
+            fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
+                re_tracing::profile_function!();
+
+                use ::re_types_core::Archetype as _;
+                [#(#all_native_component_batches,)*].into_iter().flatten().collect()
+            }
+        }
+    };
+
+    // TODO(cmc): This goes away once all archetypes have been made eager.
+    let all_native_deserializers = {
         obj.fields.iter().map(|obj_field| {
             let obj_field_fqname = obj_field.fqname.as_str();
             let field_name = format_ident!("{}", obj_field.name);
@@ -1289,6 +1326,27 @@ fn quote_trait_impls_for_archetype(obj: &Object) -> TokenStream {
 
             quote!(let #field_name = #quoted_deser;)
         })
+    };
+
+    let all_eager_deserializers = {
+        obj.fields.iter().map(|obj_field| {
+            let field_name = format_ident!("{}", obj_field.name);
+            let descr_fn_name = format_ident!("descriptor_{field_name}");
+
+            let quoted_deser = quote! {
+                arrays_by_descr
+                    .get(&Self::#descr_fn_name())
+                    .map(|array| SerializedComponentBatch::new(array.clone(), Self::#descr_fn_name()))
+            };
+
+            quote!(let #field_name = #quoted_deser;)
+        })
+    };
+
+    let all_deserializers = if obj.is_eager_rust_archetype() {
+        quote!(#(#all_eager_deserializers;)*)
+    } else {
+        quote!(#(#all_native_deserializers;)*)
     };
 
     quote! {
@@ -1369,7 +1427,7 @@ fn quote_trait_impls_for_archetype(obj: &Object) -> TokenStream {
 
                 let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
 
-                #(#all_deserializers;)*
+                #all_deserializers
 
                 Ok(Self {
                     #(#quoted_field_names,)*
@@ -1378,12 +1436,7 @@ fn quote_trait_impls_for_archetype(obj: &Object) -> TokenStream {
         }
 
         impl ::re_types_core::AsComponents for #name {
-            fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
-                re_tracing::profile_function!();
-
-                use ::re_types_core::Archetype as _;
-                [#(#all_component_batches,)*].into_iter().flatten().collect()
-            }
+            #as_components_impl
         }
 
         impl ::re_types_core::ArchetypeReflectionMarker for #name { }
@@ -1428,7 +1481,7 @@ fn quote_from_impl_from_obj(obj: &Object) -> TokenStream {
     let quoted_obj_name = format_ident!("{}", obj.name);
     let quoted_obj_field_name = format_ident!("{}", obj_field.name);
 
-    let quoted_type = quote_field_type_from_object_field(obj_field);
+    let quoted_type = quote_field_type_from_object_field(obj, obj_field);
 
     let self_field_access = if obj_is_tuple_struct {
         quote!(self.0)
@@ -1580,7 +1633,8 @@ fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) 
             }
         });
 
-        let quoted_required = required.iter().map(|field| {
+        // TODO(cmc): This goes away once all archetypes have been made eager.
+        let quoted_native_required = required.iter().map(|field| {
             let field_name = format_ident!("{}", field.name);
             let (_, unwrapped) = quote_field_type_from_typ(&field.typ, true);
             if unwrapped {
@@ -1590,6 +1644,25 @@ fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) 
                 quote!(#field_name: #field_name.into())
             }
         });
+
+        let quoted_eager_required = required.iter().map(|field| {
+            let field_name = format_ident!("{}", field.name);
+            let descr_fn_name = format_ident!("descriptor_{field_name}");
+
+            let (_, unwrapped) = quote_field_type_from_typ(&field.typ, true);
+            if unwrapped {
+                // This was originally a vec/array!
+                quote!(#field_name: try_serialize_field(Self::#descr_fn_name(), #field_name))
+            } else {
+                quote!(#field_name: try_serialize_field(Self::#descr_fn_name(), [#field_name]))
+            }
+        });
+
+        let quoted_required = if obj.is_eager_rust_archetype() {
+            quote!(#(#quoted_eager_required,)*)
+        } else {
+            quote!(#(#quoted_native_required,)*)
+        };
 
         let quoted_optional = optional.iter().map(|field| {
             let field_name = format_ident!("{}", field.name);
@@ -1624,7 +1697,7 @@ fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) 
                 #[inline]
                 #fn_new_pub fn new(#(#quoted_params,)*) -> Self {
                     Self {
-                        #(#quoted_required,)*
+                        #quoted_required
                         #(#quoted_optional,)*
                     }
                 }
@@ -1632,7 +1705,8 @@ fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) 
         }
     };
 
-    let with_methods = optional.iter().map(|field| {
+    // TODO(cmc): This goes away once all archetypes have been made eager.
+    let native_with_methods = optional.iter().map(|field| {
         // fn with_*()
         let field_name = format_ident!("{}", field.name);
         let method_name = format_ident!("with_{field_name}");
@@ -1661,11 +1735,47 @@ fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) 
         }
     });
 
+    let eager_with_methods = optional.iter().map(|field| {
+        // fn with_*()
+        let field_name = format_ident!("{}", field.name);
+        let descr_fn_name = format_ident!("descriptor_{field_name}");
+        let method_name = format_ident!("with_{field_name}");
+        let (typ, unwrapped) = quote_field_type_from_typ(&field.typ, true);
+        let docstring = quote_field_docs(reporter, objects, field);
+
+        if unwrapped {
+            // This was originally a vec/array!
+            quote! {
+                #docstring
+                #[inline]
+                pub fn #method_name(mut self, #field_name: impl IntoIterator<Item = impl Into<#typ>>) -> Self {
+                    self.#field_name = try_serialize_field(Self::#descr_fn_name(), #field_name);
+                    self
+                }
+            }
+        } else {
+            quote! {
+                #docstring
+                #[inline]
+                pub fn #method_name(mut self, #field_name: impl Into<#typ>) -> Self {
+                    self.#field_name = try_serialize_field(Self::#descr_fn_name(), [#field_name]);
+                    self
+                }
+            }
+        }
+    });
+
+    let with_methods = if obj.is_eager_rust_archetype() {
+        quote!(#(#eager_with_methods)*)
+    } else {
+        quote!(#(#native_with_methods)*)
+    };
+
     quote! {
         impl #name {
             #fn_new
 
-            #(#with_methods)*
+            #with_methods
         }
     }
 }
