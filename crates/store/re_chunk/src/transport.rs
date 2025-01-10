@@ -1,11 +1,6 @@
-use std::sync::Arc;
-
-use arrow::array::{Array as _, ArrayRef as ArrowArrayRef};
+use arrow::array::ArrayRef as ArrowArrayRef;
 use arrow2::{
-    array::{
-        Array as Arrow2Array, ListArray, PrimitiveArray as Arrow2PrimitiveArray,
-        StructArray as Arrow2StructArray,
-    },
+    array::{Array as Arrow2Array, ListArray, StructArray as Arrow2StructArray},
     chunk::Chunk as Arrow2Chunk,
     datatypes::{
         DataType as Arrow2Datatype, Field as ArrowField, Metadata as Arrow2Metadata,
@@ -453,25 +448,23 @@ impl Chunk {
                 .map(|(timeline, info)| {
                     let TimeColumn {
                         timeline: _,
-                        times,
+                        times: _,
                         is_sorted,
                         time_range: _,
                     } = info;
 
-                    let field = ArrowField::new(
-                        timeline.name().to_string(),
-                        times.data_type().clone().into(),
-                        false, // timelines within a single chunk are always dense
-                    )
-                    .with_metadata({
-                        let mut metadata = TransportChunk::field_metadata_time_column();
-                        if *is_sorted {
-                            metadata.extend(TransportChunk::field_metadata_is_sorted());
-                        }
-                        metadata
-                    });
+                    let nullable = false; // timelines within a single chunk are always dense
+                    let field =
+                        ArrowField::new(timeline.name().to_string(), timeline.datatype(), nullable)
+                            .with_metadata({
+                                let mut metadata = TransportChunk::field_metadata_time_column();
+                                if *is_sorted {
+                                    metadata.extend(TransportChunk::field_metadata_is_sorted());
+                                }
+                                metadata
+                            });
 
-                    let times: ArrowArrayRef = Arc::new(times.clone()) /* cheap */;
+                    let times = info.times_array();
 
                     (field, times)
                 })
@@ -593,36 +586,22 @@ impl Chunk {
                     }
                 };
 
-                let times = column
-                    .as_any()
-                    .downcast_ref::<Arrow2PrimitiveArray<i64>>()
-                    .ok_or_else(|| ChunkError::Malformed {
-                        reason: format!(
-                            "time column '{}' is not deserializable ({:?})",
-                            field.name,
-                            column.data_type()
-                        ),
-                    })?;
-
-                if times.validity().is_some() {
+                let Some((times, _)) = TimeColumn::read_array(&ArrowArrayRef::from(column.clone()))
+                else {
                     return Err(ChunkError::Malformed {
                         reason: format!(
-                            "time column '{}' must be dense ({:?})",
+                            "time column '{}' had unexpected datatype ({:?})",
                             field.name,
                             column.data_type()
                         ),
                     });
-                }
+                };
 
                 let is_sorted = field
                     .metadata
                     .contains_key(TransportChunk::FIELD_METADATA_MARKER_IS_SORTED_BY_TIME);
 
-                let time_column = TimeColumn::new(
-                    is_sorted.then_some(true),
-                    timeline,
-                    times.clone(), /* cheap */
-                );
+                let time_column = TimeColumn::new(is_sorted.then_some(true), timeline, times);
                 if timelines.insert(timeline, time_column).is_some() {
                     return Err(ChunkError::Malformed {
                         reason: format!(
@@ -738,11 +717,7 @@ mod tests {
         let timeline1 = Timeline::new_temporal("log_time");
         let timelines1 = std::iter::once((
             timeline1,
-            TimeColumn::new(
-                Some(true),
-                timeline1,
-                Arrow2PrimitiveArray::<i64>::from_vec(vec![42, 43, 44, 45]),
-            ),
+            TimeColumn::new(Some(true), timeline1, vec![42, 43, 44, 45].into()),
         ))
         .collect();
 

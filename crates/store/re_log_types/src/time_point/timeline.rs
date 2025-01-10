@@ -1,4 +1,4 @@
-use arrow2::datatypes::{DataType, TimeUnit};
+use arrow2::datatypes::DataType;
 
 use crate::{time::TimeZone, ResolvedTimeRange, TimeType};
 
@@ -101,21 +101,14 @@ impl Timeline {
     /// Returns the appropriate arrow datatype to represent this timeline.
     #[inline]
     pub fn datatype_arrow1(&self) -> arrow::datatypes::DataType {
-        match self.typ {
-            TimeType::Time => {
-                arrow::datatypes::DataType::Timestamp(arrow::datatypes::TimeUnit::Nanosecond, None)
-            }
-            TimeType::Sequence => arrow::datatypes::DataType::Int64,
-        }
+        self.typ.datatype_arrow1()
     }
 
     /// Returns the appropriate arrow datatype to represent this timeline.
     #[inline]
     pub fn datatype(&self) -> DataType {
-        match self.typ {
-            TimeType::Time => DataType::Timestamp(TimeUnit::Nanosecond, None),
-            TimeType::Sequence => DataType::Int64,
-        }
+        // TODO: remove
+        self.typ.datatype()
     }
 }
 

@@ -1,7 +1,6 @@
-use arrow::array::Array as _;
 use arrow2::array::{
     Array as Arrow2Array, BooleanArray as Arrow2BooleanArray, ListArray as Arrow2ListArray,
-    PrimitiveArray as Arrow2PrimitiveArray, StructArray as Arrow2StructArray,
+    StructArray as Arrow2StructArray,
 };
 
 use itertools::Itertools;
@@ -539,7 +538,7 @@ impl Chunk {
                     i.saturating_sub(1) as i32
                 })
                 .collect_vec();
-            Arrow2PrimitiveArray::<i32>::from_vec(indices)
+            arrow2::array::Int32Array::from_vec(indices)
         };
 
         let chunk = Self {
@@ -672,10 +671,7 @@ impl Chunk {
     /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
     #[must_use]
     #[inline]
-    pub fn taken<O: arrow2::types::Index + arrow::datatypes::ArrowNativeType>(
-        &self,
-        indices: &Arrow2PrimitiveArray<O>,
-    ) -> Self {
+    pub fn taken(&self, indices: &arrow2::array::Int32Array) -> Self {
         let Self {
             id,
             entity_path,
@@ -806,18 +802,12 @@ impl TimeColumn {
     pub fn emptied(&self) -> Self {
         let Self {
             timeline,
-            times,
+            times: _,
             is_sorted: _,
             time_range: _,
         } = self;
 
-        Self::new(
-            Some(true),
-            *timeline,
-            arrow::array::Int64Builder::new()
-                .finish()
-                .with_data_type(times.data_type().clone()),
-        )
+        Self::new(Some(true), *timeline, vec![].into())
     }
 
     /// Runs a [filter] compute kernel on the time data with the specified `mask`.
@@ -854,15 +844,20 @@ impl TimeColumn {
         Self::new(
             is_sorted_opt,
             *timeline,
-            arrow_util::filter_array(times, &filter.clone().into()),
+            arrow_util::filter_array(
+                &arrow::array::Int64Array::new(times.clone(), None),
+                &filter.clone().into(),
+            )
+            .into_parts()
+            .1,
         )
     }
 
     /// Runs a [take] compute kernel on the time data with the specified `indices`.
     ///
-    /// [take]: arrow2::compute::take::take
+    /// [take]: arrow::compute::take::take
     #[inline]
-    pub(crate) fn taken<O: arrow2::types::Index>(&self, indices: &Arrow2PrimitiveArray<O>) -> Self {
+    pub(crate) fn taken(&self, indices: &arrow2::array::Int32Array) -> Self {
         let Self {
             timeline,
             times,
@@ -870,8 +865,12 @@ impl TimeColumn {
             time_range: _,
         } = self;
 
-        let new_times =
-            arrow2_util::take_array(&Arrow2PrimitiveArray::from_arrow(times.clone()), indices);
+        let new_times = arrow_util::take_array(
+            &arrow::array::Int64Array::new(times.clone(), None),
+            &arrow::array::Int32Array::from(indices.clone()),
+        )
+        .into_parts()
+        .1;
 
         Self::new(Some(*is_sorted), *timeline, new_times)
     }

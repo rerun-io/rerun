@@ -5802,6 +5802,7 @@ version = "0.22.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "anyhow",
+ "arrow",
  "crossbeam",
  "image",
  "notify",
@@ -6321,6 +6322,7 @@ name = "re_sdk"
 version = "0.22.0-alpha.1+dev"
 dependencies = [
  "ahash",
+ "arrow",
  "crossbeam",
  "document-features",
  "itertools 0.13.0",
@@ -7342,6 +7344,7 @@ name = "rerun_c"
 version = "0.22.0-alpha.1+dev"
 dependencies = [
  "ahash",
+ "arrow",
  "infer",
  "once_cell",
  "parking_lot",

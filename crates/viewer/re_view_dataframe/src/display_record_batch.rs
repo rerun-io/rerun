@@ -1,14 +1,15 @@
 //! Intermediate data structures to make `re_datastore`'s row data more amenable to displaying in a
 //! table.
 
+use arrow::buffer::ScalarBuffer as ArrowScalarBuffer;
 use arrow::{
     array::{
         Array as ArrowArray, ArrayRef as ArrowArrayRef,
-        Int32DictionaryArray as ArrowInt32DictionaryArray, Int64Array as ArrowInt64Array,
-        ListArray as ArrowListArray, TimestampNanosecondArray as ArrowTimestampNanosecondArray,
+        Int32DictionaryArray as ArrowInt32DictionaryArray, ListArray as ArrowListArray,
     },
     datatypes::DataType as ArrowDataType,
 };
+use re_dataframe::external::re_chunk::TimeColumn;
 use thiserror::Error;
 
 use re_chunk_store::{ColumnDescriptor, ComponentColumnDescriptor, LatestAtQuery};
@@ -165,7 +166,7 @@ impl ComponentData {
 pub(crate) enum DisplayColumn {
     Timeline {
         timeline: Timeline,
-        time_data: ArrowInt64Array,
+        time_data: ArrowScalarBuffer<i64>,
     },
     Component {
         entity_path: EntityPath,
@@ -179,40 +180,16 @@ impl DisplayColumn {
         column_descriptor: &ColumnDescriptor,
         column_data: &ArrowArrayRef,
     ) -> Result<Self, DisplayRecordBatchError> {
-        fn int64_from_nanoseconds(
-            duration_array: &ArrowTimestampNanosecondArray,
-        ) -> Option<ArrowInt64Array> {
-            let data = duration_array.to_data();
-            let buffer = data.buffers().first()?.clone();
-            arrow::array::ArrayData::builder(arrow::datatypes::DataType::Int64)
-                .len(duration_array.len())
-                .add_buffer(buffer)
-                .build()
-                .ok()
-                .map(ArrowInt64Array::from)
-        }
-
         match column_descriptor {
             ColumnDescriptor::Time(desc) => {
                 let timeline = desc.timeline;
 
-                // Sequence timelines are i64, but time columns are nanoseconds (also as i64)
-                let time_data_result = column_data
-                    .as_any()
-                    .downcast_ref::<ArrowInt64Array>()
-                    .cloned()
-                    .or_else(|| {
-                        column_data
-                            .as_any()
-                            .downcast_ref::<ArrowTimestampNanosecondArray>()
-                            .and_then(int64_from_nanoseconds)
-                    });
-                let time_data = time_data_result.ok_or_else(|| {
-                    DisplayRecordBatchError::UnexpectedTimeColumnDataType(
+                let Some((time_data, _datatype)) = TimeColumn::read_array(column_data) else {
+                    return Err(DisplayRecordBatchError::UnexpectedTimeColumnDataType(
                         timeline.name().as_str().to_owned(),
                         column_data.data_type().to_owned(),
-                    )
-                })?;
+                    ));
+                };
 
                 Ok(Self::Timeline {
                     timeline,
@@ -266,9 +243,8 @@ impl DisplayColumn {
                     return;
                 }
 
-                if time_data.is_valid(row_index) {
-                    let timestamp = TimeInt::try_from(time_data.value(row_index));
-                    match timestamp {
+                if let Some(value) = time_data.get(row_index) {
+                    match TimeInt::try_from(*value) {
                         Ok(timestamp) => {
                             ui.label(timeline.typ().format(timestamp, ctx.app_options.time_zone));
                         }
@@ -304,8 +280,8 @@ impl DisplayColumn {
     pub(crate) fn try_decode_time(&self, row_index: usize) -> Option<TimeInt> {
         match self {
             Self::Timeline { time_data, .. } => {
-                let timestamp = time_data.value(row_index);
-                TimeInt::try_from(timestamp).ok()
+                let timestamp = time_data.get(row_index)?;
+                TimeInt::try_from(*timestamp).ok()
             }
             Self::Component { .. } => None,
         }

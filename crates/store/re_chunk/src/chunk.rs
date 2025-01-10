@@ -1,7 +1,11 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use ahash::HashMap;
-use arrow::array::{Array as _, Int64Array as ArrowInt64Array, ListArray as ArrowListArray};
+use arrow::{
+    array::{Array as ArrowArray, ArrayRef as ArrowArrayRef, ListArray as ArrowListArray},
+    buffer::ScalarBuffer as ArrowScalarBuffer,
+    datatypes::DataType as ArrowDataType,
+};
 use arrow2::{
     array::{
         Array as Arrow2Array, ListArray as Arrow2ListArray, PrimitiveArray as Arrow2PrimitiveArray,
@@ -781,7 +785,11 @@ pub struct TimeColumn {
     /// * This is guaranteed to always be dense, because chunks are split anytime a timeline is
     ///   added or removed.
     /// * This cannot ever contain `TimeInt::STATIC`, since static data doesn't even have timelines.
-    pub(crate) times: ArrowInt64Array,
+    ///
+    /// When this buffer is converted to an arrow array, it's datatype will depend
+    /// on the timeline type, so it will either become a
+    /// [`arrow::array::Int64Array`] or a [`arrow::array::TimestampNanosecondArray`].
+    pub(crate) times: ArrowScalarBuffer<i64>,
 
     /// Is [`Self::times`] sorted?
     ///
@@ -968,16 +976,10 @@ impl TimeColumn {
     /// When left unspecified (`None`), it will be computed in O(n) time.
     ///
     /// For a row-oriented constructor, see [`Self::builder`].
-    pub fn new(
-        is_sorted: Option<bool>,
-        timeline: Timeline,
-        times: impl Into<ArrowInt64Array>,
-    ) -> Self {
-        let times = times.into();
+    pub fn new(is_sorted: Option<bool>, timeline: Timeline, times: ArrowScalarBuffer<i64>) -> Self {
         re_tracing::profile_function_if!(1000 < times.len(), format!("{} times", times.len()));
 
-        let times = times.with_data_type(timeline.datatype().into());
-        let time_slice = times.values().as_ref();
+        let time_slice = times.as_ref();
 
         let is_sorted =
             is_sorted.unwrap_or_else(|| time_slice.windows(2).all(|times| times[0] <= times[1]));
@@ -1039,7 +1041,7 @@ impl TimeColumn {
         Self::new(
             None,
             Timeline::new_sequence(name.into()),
-            ArrowInt64Array::from(time_vec),
+            ArrowScalarBuffer::from(time_vec),
         )
     }
 
@@ -1066,7 +1068,7 @@ impl TimeColumn {
         Self::new(
             None,
             Timeline::new_temporal(name.into()),
-            ArrowInt64Array::from(time_vec),
+            ArrowScalarBuffer::from(time_vec),
         )
     }
 
@@ -1096,8 +1098,49 @@ impl TimeColumn {
         Self::new(
             None,
             Timeline::new_temporal(name.into()),
-            ArrowInt64Array::from(time_vec),
+            ArrowScalarBuffer::from(time_vec),
         )
+    }
+
+    /// Parse the given [`ArrowArray`] as a time column,
+    /// returning its contents and its datatype (e.g. [`ArrowDataType::Timestamp`]).
+    pub fn read_array(array: &dyn ArrowArray) -> Option<(ArrowScalarBuffer<i64>, ArrowDataType)> {
+        #![allow(clippy::manual_map)]
+
+        use arrow::datatypes::TimeUnit;
+
+        // TODO: check for nulls
+
+        // Sequence timelines are i64, but time columns are nanoseconds (also as i64).
+        if let Some(times) = array.as_any().downcast_ref::<arrow::array::Int64Array>() {
+            Some((times.values().clone(), ArrowDataType::Int64))
+        } else if let Some(times) = array
+            .as_any()
+            .downcast_ref::<arrow::array::TimestampNanosecondArray>()
+        {
+            Some((
+                times.values().clone(),
+                ArrowDataType::Timestamp(TimeUnit::Nanosecond, None),
+            ))
+        } else if let Some(times) = array
+            .as_any()
+            .downcast_ref::<arrow::array::Time64NanosecondArray>()
+        {
+            Some((
+                times.values().clone(),
+                ArrowDataType::Time64(TimeUnit::Nanosecond),
+            ))
+        } else if let Some(times) = array
+            .as_any()
+            .downcast_ref::<arrow::array::DurationNanosecondArray>()
+        {
+            Some((
+                times.values().clone(),
+                ArrowDataType::Duration(TimeUnit::Nanosecond),
+            ))
+        } else {
+            None
+        }
     }
 }
 
@@ -1334,23 +1377,24 @@ impl TimeColumn {
     }
 
     #[inline]
-    pub fn times_array(&self) -> &ArrowInt64Array {
+    pub fn times_buffer(&self) -> &ArrowScalarBuffer<i64> {
         &self.times
+    }
+
+    /// Returns an array with the appropriate datatype.
+    #[inline]
+    pub fn times_array(&self) -> ArrowArrayRef {
+        self.timeline.typ().make_arrow_array(self.times.clone())
     }
 
     #[inline]
     pub fn times_raw(&self) -> &[i64] {
-        self.times.values()
+        self.times.as_ref()
     }
 
     #[inline]
     pub fn times(&self) -> impl DoubleEndedIterator<Item = TimeInt> + '_ {
-        self.times
-            .values()
-            .as_ref()
-            .iter()
-            .copied()
-            .map(TimeInt::new_temporal)
+        self.times_raw().iter().copied().map(TimeInt::new_temporal)
     }
 
     #[inline]
@@ -1604,24 +1648,13 @@ impl TimeColumn {
     /// Costly checks are only run in debug builds.
     pub fn sanity_check(&self) -> ChunkResult<()> {
         let Self {
-            timeline,
+            timeline: _,
             times,
             is_sorted,
             time_range,
         } = self;
 
-        if *times.data_type() != timeline.datatype_arrow1() {
-            return Err(ChunkError::Malformed {
-                reason: format!(
-                    "Time data for timeline {} has the wrong datatype: expected {:?} but got {:?} instead",
-                    timeline.name(),
-                    timeline.datatype(),
-                    *times.data_type(),
-                ),
-            });
-        }
-
-        let times = times.values().as_ref();
+        let times = times.as_ref();
 
         #[allow(clippy::collapsible_if)] // readability
         if cfg!(debug_assertions) {

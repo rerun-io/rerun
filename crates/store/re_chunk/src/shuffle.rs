@@ -1,4 +1,4 @@
-use arrow::array::Int64Array as ArrowInt64Array;
+use arrow::buffer::ScalarBuffer as ArrowScalarBuffer;
 use arrow2::{
     array::{
         Array as Arrow2Array, ListArray as Arrow2ListArray, PrimitiveArray as Arrow2PrimitiveArray,
@@ -239,19 +239,19 @@ impl Chunk {
 
             for info in timelines.values_mut() {
                 let TimeColumn {
-                    timeline,
+                    timeline: _,
                     times,
                     is_sorted,
                     time_range: _,
                 } = info;
 
-                let mut sorted = times.values().to_vec();
+                let mut sorted = times.to_vec();
                 for (to, from) in swaps.iter().copied().enumerate() {
-                    sorted[to] = times.values()[from];
+                    sorted[to] = times[from];
                 }
 
                 *is_sorted = sorted.windows(2).all(|times| times[0] <= times[1]);
-                *times = ArrowInt64Array::from(sorted).with_data_type(timeline.datatype_arrow1());
+                *times = ArrowScalarBuffer::from(sorted);
             }
         }
 

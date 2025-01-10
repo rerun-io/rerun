@@ -9,12 +9,10 @@ use itertools::Either;
 use nohash_hasher::IntMap;
 use parking_lot::Mutex;
 
-use arrow2::array::PrimitiveArray as Arrow2PrimitiveArray;
 use re_chunk::{
-    Chunk, ChunkBatcher, ChunkBatcherConfig, ChunkBatcherError, ChunkComponents, PendingRow, RowId,
+    Chunk, ChunkBatcher, ChunkBatcherConfig, ChunkBatcherError, ChunkComponents, ChunkError,
+    ChunkId, PendingRow, RowId, TimeColumn,
 };
-
-use re_chunk::{ChunkError, ChunkId, TimeColumn};
 use re_log_types::{
     ApplicationId, ArrowChunkReleaseCallback, BlueprintActivationCommand, EntityPath, LogMsg,
     StoreId, StoreInfo, StoreKind, StoreSource, Time, TimeInt, TimePoint, TimeType, Timeline,
@@ -1547,10 +1545,9 @@ impl RecordingStream {
                 let time_timeline = Timeline::log_time();
                 let time = TimeInt::new_temporal(Time::now().nanos_since_epoch());
 
-                let repeated_time = Arrow2PrimitiveArray::<i64>::from_values(
-                    std::iter::repeat(time.as_i64()).take(chunk.num_rows()),
-                )
-                .to(time_timeline.datatype());
+                let repeated_time = std::iter::repeat(time.as_i64())
+                    .take(chunk.num_rows())
+                    .collect();
 
                 let time_column = TimeColumn::new(Some(true), time_timeline, repeated_time);
 
@@ -1571,10 +1568,7 @@ impl RecordingStream {
                     .tick
                     .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
 
-                let repeated_tick = Arrow2PrimitiveArray::<i64>::from_values(
-                    std::iter::repeat(tick).take(chunk.num_rows()),
-                )
-                .to(tick_timeline.datatype());
+                let repeated_tick = std::iter::repeat(tick).take(chunk.num_rows()).collect();
 
                 let tick_chunk = TimeColumn::new(Some(true), tick_timeline, repeated_tick);
 

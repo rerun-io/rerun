@@ -60,6 +60,7 @@ re_sdk_comms = { workspace = true, features = ["client"] }
 re_types_core.workspace = true
 
 ahash.workspace = true
+arrow.workspace = true
 arrow2.workspace = true
 crossbeam.workspace = true
 document-features.workspace = true

@@ -3,11 +3,11 @@
 use std::borrow::Cow;
 
 use arrow::{
-    array::{make_array, ArrayData},
+    array::{make_array, ArrayData, ArrayRef as ArrowArrayRef},
     pyarrow::PyArrowType,
 };
 use arrow2::{
-    array::{Array, ListArray, PrimitiveArray},
+    array::{Array, ListArray},
     datatypes::Field,
     offset::Offsets,
 };
@@ -121,7 +121,18 @@ pub fn build_chunk_from_components(
     let timelines: Result<Vec<_>, ChunkError> = arrays
         .into_iter()
         .zip(fields)
-        .map(|(value, field)| {
+        .map(|(array, field)| {
+            let Some((timeline_data, datatype)) =
+                TimeColumn::read_array(&ArrowArrayRef::from(array))
+            else {
+                return Err(ChunkError::Malformed {
+                    reason: format!("Invalid data_type for timeline: {}", field.name),
+                });
+            };
+            debug_assert_eq!(
+                &arrow2::datatypes::DataType::from(datatype),
+                field.data_type()
+            );
             let timeline = match field.data_type() {
                 arrow2::datatypes::DataType::Int64 => {
                     Ok(Timeline::new_sequence(field.name.clone()))
@@ -133,13 +144,6 @@ pub fn build_chunk_from_components(
                     reason: format!("Invalid data_type for timeline: {}", field.name),
                 }),
             }?;
-            let timeline_data = value
-                .as_any()
-                .downcast_ref::<PrimitiveArray<i64>>()
-                .ok_or_else(|| ChunkError::Malformed {
-                    reason: format!("Invalid primitive array for timeline: {}", field.name),
-                })?
-                .clone();
             Ok((timeline, timeline_data))
         })
         .collect();
