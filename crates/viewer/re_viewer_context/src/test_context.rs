@@ -322,10 +322,9 @@ impl TestContext {
         let called_setup_kittest_for_rendering = self
             .called_setup_kittest_for_rendering
             .load(std::sync::atomic::Ordering::Relaxed);
-        if num_view_builders_created != 0 && !called_setup_kittest_for_rendering {
-            panic!("Rendering with `re_renderer` requires setting up kittest with `TestContext::setup_kittest_for_rendering`
-                    to ensure that kittest & re_renderer use the same graphics device.");
-        }
+        assert!(num_view_builders_created == 0 || called_setup_kittest_for_rendering,
+                "Rendering with `re_renderer` requires setting up kittest with `TestContext::setup_kittest_for_rendering`
+                to ensure that kittest & re_renderer use the same graphics device.");
 
         render_ctx.before_submit();
     }
