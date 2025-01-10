@@ -41,10 +41,6 @@ pub fn picking(
         return Ok(response);
     }
 
-    let Some(render_ctx) = ctx.render_ctx else {
-        return Err(ViewSystemExecutionError::NoRenderContextError);
-    };
-
     let picking_rect_size = PickingContext::UI_INTERACTION_RADIUS * ui.ctx().pixels_per_point();
     // Make the picking rect bigger than necessary so we can use it to counter-act delays.
     // (by the time the picking rectangle is read back, the cursor may have moved on).
@@ -54,7 +50,7 @@ pub fn picking(
         .at_most(128.0) as u32;
 
     let _ = view_builder.schedule_picking_rect(
-        render_ctx,
+        ctx.render_ctx,
         re_renderer::RectInt::from_middle_and_extent(
             picking_context.pointer_in_pixel.as_ivec2(),
             glam::uvec2(picking_rect_size, picking_rect_size),
@@ -69,7 +65,7 @@ pub fn picking(
         .get::<AnnotationSceneContext>()?;
 
     let picking_result = picking_context.pick(
-        render_ctx,
+        ctx.render_ctx,
         query.view_id.gpu_readback_id(),
         &state.previous_picking_result,
         iter_pickable_rects(&system_output.view_systems),

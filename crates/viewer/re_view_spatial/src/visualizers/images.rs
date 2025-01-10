@@ -64,10 +64,6 @@ impl VisualizerSystem for ImageVisualizer {
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
-        let Some(render_ctx) = ctx.viewer_ctx.render_ctx else {
-            return Err(ViewSystemExecutionError::NoRenderContextError);
-        };
-
         process_archetype::<Self, Image, _>(
             ctx,
             view_query,
@@ -93,7 +89,7 @@ impl VisualizerSystem for ImageVisualizer {
         });
 
         Ok(vec![PickableTexturedRect::to_draw_data(
-            render_ctx,
+            ctx.viewer_ctx.render_ctx,
             &self.data.pickable_rects,
         )?])
     }

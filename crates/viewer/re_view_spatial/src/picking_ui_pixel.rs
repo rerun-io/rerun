@@ -25,10 +25,6 @@ pub fn textured_rect_hover_ui(
     picked_pixel_info: PickedPixelInfo,
     hover_overlay_index: u32,
 ) {
-    let Some(render_ctx) = ctx.render_ctx else {
-        return;
-    };
-
     let PickedPixelInfo {
         source_data,
         texture,
@@ -82,7 +78,7 @@ pub fn textured_rect_hover_ui(
         let annotations = annotations.0.find(&instance_path.entity_path);
 
         show_zoomed_image_region(
-            render_ctx,
+            ctx.render_ctx,
             ui,
             texture,
             image,

@@ -242,17 +242,13 @@ fn timestamp_ui(ui: &mut egui::Ui, video_data: &VideoData, timestamp: re_video::
 }
 
 pub fn show_decoded_frame_info(
-    render_ctx: Option<&re_renderer::RenderContext>,
+    render_ctx: &re_renderer::RenderContext,
     ui: &mut egui::Ui,
     ui_layout: UiLayout,
     video: &re_renderer::video::Video,
     video_timestamp: Option<VideoTimestamp>,
     blob: &re_types::datatypes::Blob,
 ) {
-    let Some(render_ctx) = render_ctx else {
-        return;
-    };
-
     let timestamp_in_seconds = if let Some(video_timestamp) = video_timestamp {
         video_timestamp.as_seconds()
     } else {
