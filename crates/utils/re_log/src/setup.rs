@@ -112,6 +112,7 @@ impl Drop for PanicOnWarnScope {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn env_var_bool(name: &str) -> Option<bool> {
     std::env::var(name).ok()
         .and_then(|s| match s.to_lowercase().as_str() {

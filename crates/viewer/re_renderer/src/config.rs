@@ -400,6 +400,7 @@ pub fn testing_instance_descriptor() -> wgpu::InstanceDescriptor {
 /// Selects an adapter for testing, preferring software rendering if available.
 ///
 /// Panics if no adapter was found.
+#[cfg(native)]
 pub fn select_testing_adapter(instance: &wgpu::Instance) -> wgpu::Adapter {
     let mut adapters = instance.enumerate_adapters(wgpu::Backends::all());
     assert!(!adapters.is_empty(), "No graphics adapter found!");
