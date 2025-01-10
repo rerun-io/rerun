@@ -1,9 +1,9 @@
 pub use error::Error;
-pub use scope::Permission;
+pub use permission::Permission;
 pub use service::*;
 
 mod error;
-mod scope;
+mod permission;
 mod service;
 
 use std::{collections::HashSet, time::Duration};
@@ -40,6 +40,7 @@ pub struct Jwt(String);
 
 impl TryFrom<String> for Jwt {
     type Error = Error;
+
     fn try_from(token: String) -> Result<Self, Self::Error> {
         // We first check if the general structure of the token is correct.
         let _ = Token::decode_metadata(&token).map_err(|_err| Error::MalformedToken)?;
@@ -48,6 +49,7 @@ impl TryFrom<String> for Jwt {
 }
 
 impl AsRef<str> for Jwt {
+    #[inline]
     fn as_ref(&self) -> &str {
         &self.0
     }
@@ -95,8 +97,7 @@ impl SecretKey {
     ///
     /// If `duration` is `None`, the token will be valid forever. `scope` can be
     /// used to restrict the token to a specific context.
-    pub fn token(&self, duration: Option<Duration>, scope: Permission) -> Result<Jwt, Error> {
-        let duration = duration.unwrap_or_else(|| Duration::from_secs(u64::MAX));
+    pub fn token(&self, duration: Duration, scope: Permission) -> Result<Jwt, Error> {
         let claims = Claims::with_custom_claims(scope, duration.into()).with_audience("rerun");
         let token = self.0.authenticate(claims).map_err(Error::InvalidToken)?;
         Ok(Jwt(token))
