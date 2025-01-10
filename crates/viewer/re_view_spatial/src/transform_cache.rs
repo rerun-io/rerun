@@ -50,11 +50,15 @@ pub struct PerTimelinePerEntityTransforms {
     timeline: Timeline,
     entity_path: EntityPath,
 
-    // TODO: some of these are exceedingly rare. do we need all that memory?
     tree_transforms: BTreeMap<TimeInt, CacheEntry<glam::Affine3A>>,
     pose_transforms: BTreeMap<TimeInt, CacheEntry<Vec<glam::Affine3A>>>,
+    // Note that pinhole projections are fairly rare - it's worth considering storing them separately so we don't have this around for every entity.
+    // The flipside of that is of course that we'd have to do more lookups (unless we come up with a way to linearly iterate them)
     pinhole_projections: BTreeMap<TimeInt, CacheEntry<ResolvedPinholeProjection>>,
 }
+
+// TODO: the cache update idea doesn't quite work out. Instead note down all necessary updates and then process them centrally. Can use a parallel for loop for that if we fancy it.
+// just need to find a simple data structure for telling it to update and a place where we do the processing call - maybe a "once per type & frame" call on the ViewClass?
 
 enum CacheEntry<T> {
     Cached(T),

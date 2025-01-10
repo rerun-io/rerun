@@ -111,7 +111,7 @@ impl TransformInfo {
 /// for the currently selected time & timeline.
 ///
 /// The resulting transforms are are dependent on:
-/// * tree, pose and pinhole transforms components as logged to the data store
+/// * tree, pose, pinhole and view-coordinates transforms components as logged to the data store
 ///    * TODO(#6743): blueprint overrides aren't respected yet
 /// * the view' spatial origin
 /// * the query time
