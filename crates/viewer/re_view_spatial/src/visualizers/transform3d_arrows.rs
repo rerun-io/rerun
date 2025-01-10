@@ -95,7 +95,7 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
         for data_result in query.iter_visible_data_results(ctx, Self::identifier()) {
             // Use transform without potential pinhole, since we don't want to visualize image-space coordinates.
             let Some(transform_info) =
-                transforms.transform_info_for_entity(&data_result.entity_path)
+                transforms.transform_info_for_entity(data_result.entity_path.hash())
             else {
                 continue;
             };

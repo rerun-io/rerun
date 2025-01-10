@@ -2,6 +2,7 @@ use nohash_hasher::IntMap;
 
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, EntityPath, EntityTree};
+use re_log_types::EntityPathHash;
 use re_types::{
     archetypes::{InstancePoses3D, Transform3D},
     components::{ImagePlaneDistance, PinholeProjection},
@@ -131,7 +132,7 @@ pub struct TransformContext {
     space_origin: EntityPath,
 
     /// All reachable entities.
-    transform_per_entity: IntMap<EntityPath, TransformInfo>, // TODO: make me a hash
+    transform_per_entity: IntMap<EntityPathHash, TransformInfo>,
 }
 
 impl IdentifiedViewSystem for TransformContext {
@@ -202,7 +203,7 @@ impl ViewContextSystem for TransformContext {
                 // TODO(andreas): why are query results a tree to begin with? We want a flat list not just here!
                 query_result.tree.visit(&mut |node: &DataResultNode| {
                     self.transform_per_entity.insert(
-                        node.data_result.entity_path.clone(),
+                        node.data_result.entity_path.hash(),
                         TransformInfo::default(),
                     );
                     true
@@ -314,7 +315,7 @@ impl TransformContext {
     ) {
         let twod_in_threed_info = transform.twod_in_threed_info.clone();
         let reference_from_parent = transform.reference_from_entity;
-        match self.transform_per_entity.entry(subtree.path.clone()) {
+        match self.transform_per_entity.entry(subtree.path.hash()) {
             std::collections::hash_map::Entry::Occupied(_) => {
                 return;
             }
@@ -367,8 +368,8 @@ impl TransformContext {
     /// Retrieves transform information for a given entity.
     ///
     /// Returns `None` if it's not reachable from the view's origin.
-    pub fn transform_info_for_entity(&self, ent_path: &EntityPath) -> Option<&TransformInfo> {
-        self.transform_per_entity.get(ent_path)
+    pub fn transform_info_for_entity(&self, ent_path: EntityPathHash) -> Option<&TransformInfo> {
+        self.transform_per_entity.get(&ent_path)
     }
 }
 

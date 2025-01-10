@@ -71,7 +71,7 @@ impl CamerasVisualizer {
         }
 
         // The camera transform does not include the pinhole transform.
-        let Some(transform_info) = transforms.transform_info_for_entity(ent_path) else {
+        let Some(transform_info) = transforms.transform_info_for_entity(ent_path.hash()) else {
             return;
         };
         let Some(twod_in_threed_info) = &transform_info.twod_in_threed_info else {
