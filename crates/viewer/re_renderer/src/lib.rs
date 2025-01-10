@@ -40,6 +40,9 @@ mod transform;
 mod wgpu_buffer_types;
 mod wgpu_resources;
 
+#[cfg(test)]
+mod context_test;
+
 #[cfg(not(load_shaders_from_disk))]
 #[rustfmt::skip] // it's auto-generated
 mod workspace_shaders;

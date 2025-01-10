@@ -325,6 +325,9 @@ impl DeviceCaps {
     }
 }
 
+/// Returns an instance descriptor with settings preferred by `re_renderer`.
+///
+/// `re_renderer` should work fine with any instance descriptor, but those are the settings we generally assume.
 pub fn instance_descriptor(force_backend: Option<&str>) -> wgpu::InstanceDescriptor {
     let backends = if let Some(force_backend) = force_backend {
         if let Some(backend) = parse_graphics_backend(force_backend) {
@@ -364,6 +367,71 @@ pub fn instance_descriptor(force_backend: Option<&str>) -> wgpu::InstanceDescrip
 
         gles_minor_version: wgpu::Gles3MinorVersion::Automatic,
     }
+}
+
+/// Returns an instance descriptor that is suitable for testing.
+pub fn testing_instance_descriptor() -> wgpu::InstanceDescriptor {
+    // We don't test on GL & DX12 right now (and don't want to do so by mistake!).
+    // Several reasons for this:
+    // * our CI is setup to draw with native Mac & lavapipe
+    // * we generally prefer Vulkan over DX12 on Windows since it reduces the
+    //   number of backends and wgpu's DX12 backend isn't as far along as of writing.
+    // * we don't want to use the GL backend here since we regard it as a fallback only
+    //   (TODO(andreas): Ideally we'd test that as well to check it is well-behaved,
+    //   but for now we only want to have a look at the happy path)
+    let backends = wgpu::Backends::VULKAN | wgpu::Backends::METAL;
+
+    let flags = (
+        wgpu::InstanceFlags::ALLOW_UNDERLYING_NONCOMPLIANT_ADAPTER | wgpu::InstanceFlags::VALIDATION
+        // TODO(andreas): GPU based validation layer sounds like a great idea,
+        // but as of writing this makes tests crash on my Windows machine!
+        // It looks like the crash is in the Vulkan/Nvidia driver, but further investigation is needed.
+        // | wgpu::InstanceFlags::GPU_BASED_VALIDATION
+    )
+        .with_env(); // Allow overwriting flags via env vars.
+
+    wgpu::InstanceDescriptor {
+        backends,
+        flags,
+        ..instance_descriptor(None)
+    }
+}
+
+/// Selects an adapter for testing, preferring software rendering if available.
+///
+/// Panics if no adapter was found.
+pub fn select_testing_adapter(instance: &wgpu::Instance) -> wgpu::Adapter {
+    let mut adapters = instance.enumerate_adapters(wgpu::Backends::all());
+    assert!(!adapters.is_empty(), "No graphics adapter found!");
+
+    re_log::debug!("Found the following adapters:");
+    for adapter in &adapters {
+        re_log::debug!("* {}", crate::adapter_info_summary(&adapter.get_info()));
+    }
+
+    // Adapters are already sorted by preferred backend by wgpu, but let's be explicit.
+    adapters.sort_by_key(|a| match a.get_info().backend {
+        wgpu::Backend::Metal => 0,
+        wgpu::Backend::Vulkan => 1,
+        wgpu::Backend::Dx12 => 2,
+        wgpu::Backend::Gl => 4,
+        wgpu::Backend::BrowserWebGpu => 6,
+        wgpu::Backend::Empty => 7,
+    });
+
+    // Prefer CPU adapters, otherwise if we can't, prefer discrete GPU over integrated GPU.
+    adapters.sort_by_key(|a| match a.get_info().device_type {
+        wgpu::DeviceType::Cpu => 0, // CPU is the best for our purposes!
+        wgpu::DeviceType::DiscreteGpu => 1,
+        wgpu::DeviceType::Other
+        | wgpu::DeviceType::IntegratedGpu
+        | wgpu::DeviceType::VirtualGpu => 2,
+    });
+
+    let adapter = adapters.remove(0);
+    re_log::info!("Picked adapter: {:?}", adapter.get_info());
+
+    adapter
 }
 
 /// Backends that are officially supported by `re_renderer`.
