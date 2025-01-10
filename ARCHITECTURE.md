@@ -98,11 +98,11 @@ Of course, this will only take us so far. In the future we plan on caching queri
 Here is an overview of the crates included in the project:
 
 <picture>
-  <img src="https://static.rerun.io/crates/8044a2d9cf4e26687eaaf43352c391cb7aac557b/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/8044a2d9cf4e26687eaaf43352c391cb7aac557b/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/8044a2d9cf4e26687eaaf43352c391cb7aac557b/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/8044a2d9cf4e26687eaaf43352c391cb7aac557b/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/8044a2d9cf4e26687eaaf43352c391cb7aac557b/1200w.png">
+  <img src="https://static.rerun.io/crates/161078ff2b88caf8065e4bf8fb631a318329f501/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/161078ff2b88caf8065e4bf8fb631a318329f501/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/161078ff2b88caf8065e4bf8fb631a318329f501/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/161078ff2b88caf8065e4bf8fb631a318329f501/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/161078ff2b88caf8065e4bf8fb631a318329f501/1200w.png">
 </picture>
 
 <!-- !!! IMPORTANT!!!
@@ -221,7 +221,6 @@ Update instructions:
 | re_format          | Miscellaneous tools to format and parse numbers, durations, etc.                     |
 | re_int_histogram   | A histogram with `i64` keys and `u32` counts, supporting both sparse and dense uses. |
 | re_log             | Helpers for setting up and doing text logging in the Rerun crates.                   |
-| re_math            | Helpers for common math operations.                                                  |
 | re_memory          | Run-time memory tracking and profiling.                                              |
 | re_smart_channel   | A channel that keeps track of latency and queue length.                              |
 | re_string_interner | Yet another string interning library                                                 |
