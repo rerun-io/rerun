@@ -88,7 +88,7 @@ impl ChunkStore {
             for (component_desc, list_array) in chunk.components().iter_flattened() {
                 let is_empty = list_array
                     .validity()
-                    .map_or(false, |validity| validity.is_empty());
+                    .is_some_and(|validity| validity.is_empty());
                 if is_empty {
                     continue;
                 }

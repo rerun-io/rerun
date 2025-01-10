@@ -86,7 +86,7 @@ Display a 1D tensor as a bar chart.
         // Keeping this implementation simple: We know there's only a single visualizer here.
         if visualizable_entities_per_visualizer
             .get(&BarChartVisualizerSystem::identifier())
-            .map_or(false, |entities| entities.contains(entity_path))
+            .is_some_and(|entities| entities.contains(entity_path))
         {
             std::iter::once(BarChartVisualizerSystem::identifier()).collect()
         } else {

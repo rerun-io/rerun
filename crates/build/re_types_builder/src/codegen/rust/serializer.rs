@@ -496,7 +496,7 @@ fn quote_arrow_field_serializer(
         }
     }
 
-    let inner_is_arrow_transparent = inner_obj.map_or(false, |obj| obj.datatype.is_none());
+    let inner_is_arrow_transparent = inner_obj.is_some_and(|obj| obj.datatype.is_none());
 
     match datatype.to_logical_type() {
         DataType::Boolean

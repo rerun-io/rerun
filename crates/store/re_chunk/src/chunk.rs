@@ -1581,7 +1581,7 @@ impl Chunk {
 
                 let validity_is_empty = list_array
                     .validity()
-                    .map_or(false, |validity| validity.is_empty());
+                    .is_some_and(|validity| validity.is_empty());
                 if !self.is_empty() && validity_is_empty {
                     return Err(ChunkError::Malformed {
                         reason: format!(

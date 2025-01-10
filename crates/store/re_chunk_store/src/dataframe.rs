@@ -900,7 +900,7 @@ impl ChunkStore {
                 view_contents.as_ref().map_or(true, |view_contents| {
                     view_contents
                         .get(&column.entity_path)
-                        .map_or(false, |components| {
+                        .is_some_and(|components| {
                             components.as_ref().map_or(true, |components| {
                                 components.contains(&column.component_name)
                             })

@@ -128,11 +128,11 @@ fn generate_component_reflection(
             || obj
                 .try_get_attr::<String>(ATTR_RUST_DERIVE_ONLY)
                 .or_else(|| obj.try_get_attr::<String>(ATTR_RUST_DERIVE))
-                .map_or(false, |derives| derives.contains("Default"));
+                .is_some_and(|derives| derives.contains("Default"));
         let has_custom_default_impl =
             extension_contents_for_fqname
                 .get(&obj.fqname)
-                .map_or(false, |contents| {
+                .is_some_and(|contents| {
                     contents.contains(&format!("impl Default for {}", &obj.name))
                         || contents.contains(&format!("impl Default for super::{}", &obj.name))
                 });

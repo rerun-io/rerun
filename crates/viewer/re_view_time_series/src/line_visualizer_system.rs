@@ -482,7 +482,7 @@ fn collect_recursive_clears(
                     chunk
                         .iter_component::<ClearIsRecursive>()
                         .map(|is_recursive| {
-                            is_recursive.as_slice().first().map_or(false, |v| *v.0)
+                            is_recursive.as_slice().first().is_some_and(|v| *v.0)
                         })
                 )
                 .filter_map(|(index, is_recursive)| {

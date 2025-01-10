@@ -316,7 +316,7 @@ impl TimePanel {
 
         let time_range = entity_db.time_range_for(time_ctrl.timeline());
         let has_more_than_one_time_point =
-            time_range.map_or(false, |time_range| time_range.min() != time_range.max());
+            time_range.is_some_and(|time_range| time_range.min() != time_range.max());
 
         if ui.max_rect().width() < 600.0 && has_more_than_one_time_point {
             // Responsive ui for narrow screens, e.g. mobile. Split the controls into two rows.
@@ -1398,8 +1398,7 @@ fn interact_with_streams_rect(
 
     // Check for zoom/pan inputs (via e.g. horizontal scrolling) on the entire
     // time area rectangle, including the timeline rect.
-    let full_rect_hovered =
-        pointer_pos.map_or(false, |pointer_pos| full_rect.contains(pointer_pos));
+    let full_rect_hovered = pointer_pos.is_some_and(|pointer_pos| full_rect.contains(pointer_pos));
     if full_rect_hovered {
         ui.input(|input| {
             delta_x += input.smooth_scroll_delta.x;

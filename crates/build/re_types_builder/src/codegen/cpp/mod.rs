@@ -575,7 +575,7 @@ impl QuotedObject {
                 .typ
                 .fqname()
                 .and_then(|fqname| objects.get(fqname))
-                .map_or(false, |obj| obj.deprecation_notice().is_some())
+                .is_some_and(|obj| obj.deprecation_notice().is_some())
         });
         let (deprecation_ignore_start, deprecation_ignore_end) =
             quote_deprecation_ignore_start_and_end(
