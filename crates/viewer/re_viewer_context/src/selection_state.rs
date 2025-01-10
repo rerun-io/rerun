@@ -2,16 +2,16 @@ use ahash::HashMap;
 use indexmap::IndexMap;
 use parking_lot::Mutex;
 
-use re_entity_db::EntityPath;
-
 use crate::{item::resolve_mono_instance_path_item, ViewerContext};
+use re_entity_db::EntityPath;
+use re_log_types::StoreKind;
 
 use super::Item;
 
 /// Context information that a view might attach to an item from [`ItemCollection`] and useful
 /// for how a selection might be displayed and interacted with.
 #[derive(Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
-pub enum ItemSpaceContext {
+pub enum ItemContext {
     /// Hovering/Selecting in a 2D space.
     TwoD {
         space_2d: EntityPath,
@@ -34,6 +34,12 @@ pub enum ItemSpaceContext {
 
         /// Corresponding 2D spaces and pixel coordinates (with Z=depth)
         point_in_space_cameras: Vec<(EntityPath, Option<glam::Vec3>)>,
+    },
+
+    /// Hovering/selecting in one of the streams trees.
+    StreamsTree {
+        /// Which store does this streams tree correspond to?
+        store_kind: StoreKind,
     },
 }
 
@@ -81,11 +87,11 @@ impl InteractionHighlight {
     }
 }
 
-/// An ordered collection of [`Item`] and optional associated space context objects.
+/// An ordered collection of [`Item`] and optional associated context objects.
 ///
 /// Used to store what is currently selected and/or hovered.
 #[derive(Debug, Default, Clone, PartialEq, serde::Deserialize, serde::Serialize)]
-pub struct ItemCollection(IndexMap<Item, Option<ItemSpaceContext>>);
+pub struct ItemCollection(IndexMap<Item, Option<ItemContext>>);
 
 impl From<Item> for ItemCollection {
     #[inline]
@@ -96,7 +102,7 @@ impl From<Item> for ItemCollection {
 
 impl<T> From<T> for ItemCollection
 where
-    T: Iterator<Item = (Item, Option<ItemSpaceContext>)>,
+    T: Iterator<Item = (Item, Option<ItemContext>)>,
 {
     #[inline]
     fn from(value: T) -> Self {
@@ -105,8 +111,8 @@ where
 }
 
 impl IntoIterator for ItemCollection {
-    type Item = (Item, Option<ItemSpaceContext>);
-    type IntoIter = indexmap::map::IntoIter<Item, Option<ItemSpaceContext>>;
+    type Item = (Item, Option<ItemContext>);
+    type IntoIter = indexmap::map::IntoIter<Item, Option<ItemContext>>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.0.into_iter()
@@ -120,14 +126,14 @@ impl ItemCollection {
         Self(
             self.0
                 .into_iter()
-                .map(|(item, space_ctx)| {
+                .map(|(item, item_context)| {
                     (
                         resolve_mono_instance_path_item(
                             ctx.recording(),
                             &ctx.current_query(),
                             &item,
                         ),
-                        space_ctx,
+                        item_context,
                     )
                 })
                 .collect(),
@@ -152,10 +158,14 @@ impl ItemCollection {
         self.0.keys()
     }
 
-    pub fn iter_space_context(&self) -> impl Iterator<Item = &ItemSpaceContext> {
+    pub fn iter_item_context(&self) -> impl Iterator<Item = &ItemContext> {
         self.0
             .iter()
-            .filter_map(|(_, space_context)| space_context.as_ref())
+            .filter_map(|(_, item_context)| item_context.as_ref())
+    }
+
+    pub fn context_for_item(&self, item: &Item) -> Option<&ItemContext> {
+        self.0.get(item).and_then(Option::as_ref)
     }
 
     /// Returns true if the exact selection is part of the current selection.
@@ -177,7 +187,7 @@ impl ItemCollection {
     }
 
     /// Retains elements that fulfill a certain condition.
-    pub fn retain(&mut self, f: impl FnMut(&Item, &mut Option<ItemSpaceContext>) -> bool) {
+    pub fn retain(&mut self, f: impl FnMut(&Item, &mut Option<ItemContext>) -> bool) {
         self.0.retain(f);
     }
 
@@ -191,18 +201,18 @@ impl ItemCollection {
         self.0.is_empty()
     }
 
-    /// Returns an iterator over the items and their selected space context.
-    pub fn iter(&self) -> impl Iterator<Item = (&Item, &Option<ItemSpaceContext>)> {
+    /// Returns an iterator over the items and their selected context.
+    pub fn iter(&self) -> impl Iterator<Item = (&Item, &Option<ItemContext>)> {
         self.0.iter()
     }
 
-    /// Returns a mutable iterator over the items and their selected space context.
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = (&Item, &mut Option<ItemSpaceContext>)> {
+    /// Returns a mutable iterator over the items and their selected context.
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = (&Item, &mut Option<ItemContext>)> {
         self.0.iter_mut()
     }
 
     /// Extend the selection with more items.
-    pub fn extend(&mut self, other: impl IntoIterator<Item = (Item, Option<ItemSpaceContext>)>) {
+    pub fn extend(&mut self, other: impl IntoIterator<Item = (Item, Option<ItemContext>)>) {
         self.0.extend(other);
     }
 }
@@ -265,7 +275,7 @@ impl ApplicationSelectionState {
 
     /// Sets several objects to be selected, updating history as needed.
     ///
-    /// Clears the selected space context if none was specified.
+    /// Clears the selected item context if none was specified.
     pub fn set_selection(&self, items: impl Into<ItemCollection>) {
         *self.selection_this_frame.lock() = items.into();
     }
@@ -291,12 +301,12 @@ impl ApplicationSelectionState {
     }
 
     /// Select passed objects unless already selected in which case they get unselected.
-    /// If however an object is already selected but now gets passed a *different* selected space context, it stays selected after all
-    /// but with an updated selected space context!
+    /// If however an object is already selected but now gets passed a *different* item context, it stays selected after all
+    /// but with an updated context!
     pub fn toggle_selection(&self, toggle_items: ItemCollection) {
         re_tracing::profile_function!();
 
-        let mut toggle_items_set: HashMap<Item, Option<ItemSpaceContext>> = toggle_items
+        let mut toggle_items_set: HashMap<Item, Option<ItemContext>> = toggle_items
             .iter()
             .map(|(item, ctx)| (item.clone(), ctx.clone()))
             .collect();
@@ -338,12 +348,12 @@ impl ApplicationSelectionState {
         *self.selection_this_frame.lock() = new_selection;
     }
 
-    pub fn selection_space_contexts(&self) -> impl Iterator<Item = &ItemSpaceContext> {
-        self.selection_previous_frame.iter_space_context()
+    pub fn selection_item_contexts(&self) -> impl Iterator<Item = &ItemContext> {
+        self.selection_previous_frame.iter_item_context()
     }
 
-    pub fn hovered_space_context(&self) -> Option<&ItemSpaceContext> {
-        self.hovered_previous_frame.iter_space_context().next()
+    pub fn hovered_item_context(&self) -> Option<&ItemContext> {
+        self.hovered_previous_frame.iter_item_context().next()
     }
 
     pub fn highlight_for_ui_element(&self, test: &Item) -> HoverHighlight {

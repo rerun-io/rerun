@@ -3,7 +3,9 @@
 use once_cell::sync::OnceCell;
 
 use re_entity_db::InstancePath;
-use re_viewer_context::{ContainerId, Contents, Item, ItemCollection, ViewId, ViewerContext};
+use re_viewer_context::{
+    ContainerId, Contents, Item, ItemCollection, ItemContext, ViewId, ViewerContext,
+};
 use re_viewport_blueprint::{ContainerBlueprint, ViewportBlueprint};
 
 mod actions;
@@ -42,6 +44,43 @@ pub fn context_menu_ui_for_item(
     item_response: &egui::Response,
     selection_update_behavior: SelectionUpdateBehavior,
 ) {
+    context_menu_ui_for_item_with_context_impl(
+        ctx,
+        viewport_blueprint,
+        item,
+        None,
+        item_response,
+        selection_update_behavior,
+    );
+}
+
+/// Display a context menu for the provided [`Item`]
+pub fn context_menu_ui_for_item_with_context(
+    ctx: &ViewerContext<'_>,
+    viewport_blueprint: &ViewportBlueprint,
+    item: &Item,
+    item_context: ItemContext,
+    item_response: &egui::Response,
+    selection_update_behavior: SelectionUpdateBehavior,
+) {
+    context_menu_ui_for_item_with_context_impl(
+        ctx,
+        viewport_blueprint,
+        item,
+        Some(item_context),
+        item_response,
+        selection_update_behavior,
+    );
+}
+
+fn context_menu_ui_for_item_with_context_impl(
+    ctx: &ViewerContext<'_>,
+    viewport_blueprint: &ViewportBlueprint,
+    item: &Item,
+    item_context: Option<ItemContext>,
+    item_response: &egui::Response,
+    selection_update_behavior: SelectionUpdateBehavior,
+) {
     item_response.context_menu(|ui| {
         if ui.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape)) {
             ui.close_menu();
@@ -59,6 +98,8 @@ pub fn context_menu_ui_for_item(
             show_context_menu_for_selection(&context_menu_ctx, ui);
         };
 
+        let item_collection = ItemCollection::from(std::iter::once((item.clone(), item_context)));
+
         // handle selection
         match selection_update_behavior {
             SelectionUpdateBehavior::UseSelection => {
@@ -66,9 +107,8 @@ pub fn context_menu_ui_for_item(
                     // When the context menu is triggered open, we check if we're part of the selection,
                     // and, if not, we update the selection to include only the item that was clicked.
                     if item_response.hovered() && item_response.secondary_clicked() {
-                        ctx.selection_state().set_selection(item.clone());
-
-                        show_context_menu(&ItemCollection::from(item.clone()));
+                        show_context_menu(&item_collection);
+                        ctx.selection_state().set_selection(item_collection);
                     } else {
                         show_context_menu(ctx.selection());
                     }
@@ -78,15 +118,15 @@ pub fn context_menu_ui_for_item(
             }
 
             SelectionUpdateBehavior::OverrideSelection => {
-                if item_response.secondary_clicked() {
-                    ctx.selection_state().set_selection(item.clone());
-                }
+                show_context_menu(&item_collection);
 
-                show_context_menu(&ItemCollection::from(item.clone()));
+                if item_response.secondary_clicked() {
+                    ctx.selection_state().set_selection(item_collection);
+                }
             }
 
             SelectionUpdateBehavior::Ignore => {
-                show_context_menu(&ItemCollection::from(item.clone()));
+                show_context_menu(&item_collection);
             }
         };
     });
