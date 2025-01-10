@@ -492,6 +492,14 @@ pub struct ActiveFrameContext {
     pub num_view_builders_created: AtomicU64,
 }
 
+impl ActiveFrameContext {
+    /// Returns the number of view builders created in this frame so far.
+    pub fn num_view_builders_created(&self) -> u64 {
+        // Uses acquire semenatics to be on the safe side (side effects from the ViewBuilder creation is visible to the caller).
+        self.num_view_builders_created.load(Ordering::Acquire)
+    }
+}
+
 fn log_adapter_info(info: &wgpu::AdapterInfo) {
     re_tracing::profile_function!();
 

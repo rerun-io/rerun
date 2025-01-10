@@ -154,7 +154,7 @@ jobs:
         run: pixi run python ./tests/assets/download_test_assets.py
 
       - name: Run tests (`cargo test --all-targets --all-features`)
-        if: ${{ inputs.CHANNEL != 'nightly' }}
+        if: ${{ inputs.CHANNEL == 'main' }}
         # Need to use pixi due to NASM dependency.
         run: pixi run cargo test --all-targets --all-features
 

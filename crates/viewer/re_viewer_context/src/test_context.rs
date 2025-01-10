@@ -176,6 +176,13 @@ fn init_shared_renderer_setup() -> SharedWgpuResources {
         .try_init();
 
     // We don't test on GL & DX12 right now (and don't want to do so by mistake!).
+    // Several reasons for this:
+    // * our CI is setup to draw with native Mac & lavapipe
+    // * we generally prefer Vulkan over DX12 on Windows since it reduces the
+    //   number of backends and wgpu's DX12 backend isn't as far along as of writing.
+    // * we don't want to use the GL backend here since we regard it as a fallback only
+    //   (TODO(andreas): Ideally we'd test that as well to check it is well-behaved,
+    //   but for now we only want to have a look at the happy path)
     let backends = wgpu::Backends::VULKAN | wgpu::Backends::METAL;
     let flags = (wgpu::InstanceFlags::ALLOW_UNDERLYING_NONCOMPLIANT_ADAPTER
         | wgpu::InstanceFlags::VALIDATION
@@ -311,16 +318,11 @@ impl TestContext {
         func(&ctx);
 
         // If re_renderer was used, `setup_kittest_for_rendering` should have been called.
-        // (if not, then we clearly didn't render anything since that requires writing to a texture!).
-        if render_ctx
-            .active_frame
-            .num_view_builders_created
-            .load(std::sync::atomic::Ordering::Acquire)
-            != 0
-            && !self
-                .called_setup_kittest_for_rendering
-                .load(std::sync::atomic::Ordering::Relaxed)
-        {
+        let num_view_builders_created = render_ctx.active_frame.num_view_builders_created();
+        let called_setup_kittest_for_rendering = self
+            .called_setup_kittest_for_rendering
+            .load(std::sync::atomic::Ordering::Relaxed);
+        if num_view_builders_created != 0 && !called_setup_kittest_for_rendering {
             panic!("Rendering with `re_renderer` requires setting up kittest with `TestContext::setup_kittest_for_rendering`
                     to ensure that kittest & re_renderer use the same graphics device.");
         }
