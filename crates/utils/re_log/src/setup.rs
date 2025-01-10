@@ -1,5 +1,7 @@
 //! Function to setup logging in binaries and web apps.
 
+use std::sync::atomic::AtomicIsize;
+
 /// Automatically does the right thing depending on target environment (native vs. web).
 ///
 /// Directs [`log`] calls to stderr on native.
@@ -50,11 +52,12 @@ pub fn setup_logging() {
 
         stderr_logger.parse_filters(&log_filter);
         crate::add_boxed_logger(Box::new(stderr_logger.build())).expect("Failed to install logger");
+        crate::add_logger(&PANIC_ON_WARN_LOGGER).expect("Failed to install panic-on-warn logger");
 
         if env_var_bool("RERUN_PANIC_ON_WARN") == Some(true) {
-            crate::add_boxed_logger(Box::new(PanicOnWarn {}))
-                .expect("Failed to enable RERUN_PANIC_ON_WARN");
-            crate::info!("RERUN_PANIC_ON_WARN: any warning or error will cause Rerun to panic.");
+            PANIC_ON_WARN_LOGGER
+                .enabled
+                .store(1, std::sync::atomic::Ordering::Relaxed);
         }
     }
 
@@ -75,7 +78,40 @@ pub fn setup_logging() {
 
 // ----------------------------------------------------------------------------
 
-#[cfg(not(target_arch = "wasm32"))]
+static PANIC_ON_WARN_LOGGER: PanicOnWarn = PanicOnWarn {
+    enabled: AtomicIsize::new(0),
+};
+
+/// Scope for enabling panic on warn/error log messages temporariliy.
+///
+/// Use this in tests to ensure that there's no errors & warnings.
+pub struct PanicOnWarnScope {
+    _need_to_use_new: (),
+}
+
+impl PanicOnWarnScope {
+    /// Enable panic on warn & error log messages for as long as this scope is alive.
+    ///
+    /// For multiple threads it's unspecified when other threads will see the change in setting.
+    #[expect(clippy::new_without_default)]
+    pub fn new() -> Self {
+        PANIC_ON_WARN_LOGGER
+            .enabled
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        Self {
+            _need_to_use_new: (),
+        }
+    }
+}
+
+impl Drop for PanicOnWarnScope {
+    fn drop(&mut self) {
+        PANIC_ON_WARN_LOGGER
+            .enabled
+            .fetch_sub(1, std::sync::atomic::Ordering::Relaxed);
+    }
+}
+
 fn env_var_bool(name: &str) -> Option<bool> {
     std::env::var(name).ok()
         .and_then(|s| match s.to_lowercase().as_str() {
@@ -90,14 +126,19 @@ fn env_var_bool(name: &str) -> Option<bool> {
         })
 }
 
-#[cfg(not(target_arch = "wasm32"))]
-struct PanicOnWarn {}
+struct PanicOnWarn {
+    /// The number of times `enabled` has been set to true.
+    ///
+    /// This is so to make `PanicOnWarnScope` trivial to implement.
+    enabled: AtomicIsize,
+}
 
-#[cfg(not(target_arch = "wasm32"))]
 impl log::Log for PanicOnWarn {
     fn enabled(&self, metadata: &log::Metadata<'_>) -> bool {
         match metadata.level() {
-            log::Level::Error | log::Level::Warn => true,
+            log::Level::Error | log::Level::Warn => {
+                self.enabled.load(std::sync::atomic::Ordering::Relaxed) > 0
+            }
             log::Level::Info | log::Level::Debug | log::Level::Trace => false,
         }
     }
