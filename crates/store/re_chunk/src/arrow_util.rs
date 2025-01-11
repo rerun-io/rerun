@@ -290,7 +290,7 @@ where
     );
 
     if indices.len() == array.len() {
-        let indices = indices.values().as_ref();
+        let indices = indices.values();
 
         let starts_at_zero = || indices[0] == O::Native::ZERO;
         let is_consecutive = || {

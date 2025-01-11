@@ -969,8 +969,8 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                 let cur_index_row_id_at = |at: usize| {
                     let (times, incs) = cur_index_row_ids;
 
-                    let times = times.values().as_slice();
-                    let incs = incs.values().as_slice();
+                    let times = times.values();
+                    let incs = incs.values();
 
                     let time = *times.get(at)?;
                     let inc = *incs.get(at)?;

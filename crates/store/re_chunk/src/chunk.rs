@@ -4,14 +4,12 @@ use ahash::HashMap;
 use arrow::{
     array::{
         Array as ArrowArray, ArrayRef as ArrowArrayRef, ListArray as ArrowListArray,
-        StructArray as ArrowStructArray,
+        StructArray as ArrowStructArray, UInt64Array as ArrowUInt64Array,
     },
     buffer::ScalarBuffer as ArrowScalarBuffer,
 };
 use arrow2::{
-    array::{
-        Array as Arrow2Array, ListArray as Arrow2ListArray, PrimitiveArray as Arrow2PrimitiveArray,
-    },
+    array::{Array as Arrow2Array, ListArray as Arrow2ListArray},
     Either,
 };
 use itertools::{izip, Itertools};
@@ -1206,21 +1204,18 @@ impl Chunk {
 
     /// Returns the [`RowId`]s in their raw-est form: a tuple of (times, counters) arrays.
     #[inline]
-    pub fn row_ids_raw(&self) -> (&Arrow2PrimitiveArray<u64>, &Arrow2PrimitiveArray<u64>) {
+    pub fn row_ids_raw(&self) -> (&ArrowUInt64Array, &ArrowUInt64Array) {
         let [times, counters] = self.row_ids.columns() else {
             panic!("RowIds are corrupt -- this should be impossible (sanity checked)");
         };
 
         #[allow(clippy::unwrap_used)]
-        let times = times
-            .as_any()
-            .downcast_ref::<Arrow2PrimitiveArray<u64>>()
-            .unwrap(); // sanity checked
+        let times = times.as_any().downcast_ref::<ArrowUInt64Array>().unwrap(); // sanity checked
 
         #[allow(clippy::unwrap_used)]
         let counters = counters
             .as_any()
-            .downcast_ref::<Arrow2PrimitiveArray<u64>>()
+            .downcast_ref::<ArrowUInt64Array>()
             .unwrap(); // sanity checked
 
         (times, counters)
@@ -1232,7 +1227,7 @@ impl Chunk {
     #[inline]
     pub fn row_ids(&self) -> impl Iterator<Item = RowId> + '_ {
         let (times, counters) = self.row_ids_raw();
-        izip!(times.values().as_ref(), counters.values().as_slice())
+        izip!(times.values(), counters.values())
             .map(|(&time, &counter)| RowId::from_u128((time as u128) << 64 | (counter as u128)))
     }
 
@@ -1274,7 +1269,7 @@ impl Chunk {
         }
 
         let (times, counters) = self.row_ids_raw();
-        let (times, counters) = (times.values().as_ref(), counters.values().as_slice());
+        let (times, counters) = (times.values(), counters.values());
 
         #[allow(clippy::unwrap_used)] // checked above
         let (index_min, index_max) = if self.is_sorted() {

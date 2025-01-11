@@ -37,8 +37,8 @@ impl Chunk {
             let row_id_inc = (row_id_128 & (!0 >> 64)) as u64;
 
             let (times, incs) = self.row_ids_raw();
-            let times = times.values().as_slice();
-            let incs = incs.values().as_slice();
+            let times = times.values();
+            let incs = incs.values();
 
             let mut index = times.partition_point(|&time| time < row_id_time_ns);
             while index < incs.len() && incs[index] < row_id_inc {
