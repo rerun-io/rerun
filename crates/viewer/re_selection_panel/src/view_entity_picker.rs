@@ -90,15 +90,10 @@ fn add_entities_tree_ui(
     entity_path_filter: &ResolvedEntityPathFilter,
     entities_add_info: &IntMap<EntityPath, EntityAddInfo>,
 ) {
-    let item_content = list_item::CustomContent::new(|ui, content_ctx| {
-        let mut child_ui = ui.new_child(
-            egui::UiBuilder::new()
-                .max_rect(content_ctx.rect)
-                .layout(egui::Layout::left_to_right(egui::Align::Center)),
-        );
+    let item_content = list_item::CustomContent::new(|ui, _| {
         add_entities_line_ui(
             ctx,
-            &mut child_ui,
+            ui,
             name,
             tree,
             view,
@@ -191,6 +186,7 @@ fn add_entities_line_ui(
         }
     });
 
+    //TODO(ab): use `CustomContent` support for action button to implement this.
     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
         if entity_path_filter.contains_rule_for_exactly(entity_path) {
             // Reset-button
