@@ -138,7 +138,7 @@ pub struct TimePanel {
     /// Which source is the time panel controlling?
     source: TimePanelSource,
 
-    /// The filter widget state
+    /// Filtering of entity paths shown in the panel (when expanded).
     #[serde(skip)]
     filter_state: filter_widget::FilterState,
 
