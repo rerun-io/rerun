@@ -12,9 +12,9 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 
-use ::re_types_core::external::arrow;
+use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
@@ -32,52 +32,58 @@ pub struct PlotLegend {
     pub visible: Option<crate::blueprint::components::Visible>,
 }
 
+impl PlotLegend {
+    /// Returns the [`ComponentDescriptor`] for [`Self::corner`].
+    #[inline]
+    pub fn descriptor_corner() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.PlotLegend".into()),
+            component_name: "rerun.blueprint.components.Corner2D".into(),
+            archetype_field_name: Some("corner".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::visible`].
+    #[inline]
+    pub fn descriptor_visible() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.PlotLegend".into()),
+            component_name: "rerun.blueprint.components.Visible".into(),
+            archetype_field_name: Some("visible".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
+    #[inline]
+    pub fn descriptor_indicator() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.PlotLegend".into()),
+            component_name: "rerun.blueprint.components.PlotLegendIndicator".into(),
+            archetype_field_name: None,
+        }
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.PlotLegend".into()),
-            component_name: "rerun.blueprint.components.PlotLegendIndicator".into(),
-            archetype_field_name: None,
-        }]
-    });
+    once_cell::sync::Lazy::new(|| [PlotLegend::descriptor_indicator()]);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.PlotLegend".into()),
-                component_name: "rerun.blueprint.components.Corner2D".into(),
-                archetype_field_name: Some("corner".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.PlotLegend".into()),
-                component_name: "rerun.blueprint.components.Visible".into(),
-                archetype_field_name: Some("visible".into()),
-            },
+            PlotLegend::descriptor_corner(),
+            PlotLegend::descriptor_visible(),
         ]
     });
 
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.PlotLegend".into()),
-                component_name: "rerun.blueprint.components.PlotLegendIndicator".into(),
-                archetype_field_name: None,
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.PlotLegend".into()),
-                component_name: "rerun.blueprint.components.Corner2D".into(),
-                archetype_field_name: Some("corner".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.PlotLegend".into()),
-                component_name: "rerun.blueprint.components.Visible".into(),
-                archetype_field_name: Some("visible".into()),
-            },
+            PlotLegend::descriptor_indicator(),
+            PlotLegend::descriptor_corner(),
+            PlotLegend::descriptor_visible(),
         ]
     });
 
@@ -130,16 +136,12 @@ impl ::re_types_core::Archetype for PlotLegend {
 
     #[inline]
     fn from_arrow_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, arrow::array::ArrayRef)>,
+        arrow_data: impl IntoIterator<Item = (ComponentDescriptor, arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(name, array)| (name.full_name(), array))
-            .collect();
-        let corner = if let Some(array) = arrays_by_name.get("rerun.blueprint.components.Corner2D")
-        {
+        let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
+        let corner = if let Some(array) = arrays_by_descr.get(&Self::descriptor_corner()) {
             <crate::blueprint::components::Corner2D>::from_arrow_opt(&**array)
                 .with_context("rerun.blueprint.archetypes.PlotLegend#corner")?
                 .into_iter()
@@ -148,8 +150,7 @@ impl ::re_types_core::Archetype for PlotLegend {
         } else {
             None
         };
-        let visible = if let Some(array) = arrays_by_name.get("rerun.blueprint.components.Visible")
-        {
+        let visible = if let Some(array) = arrays_by_descr.get(&Self::descriptor_visible()) {
             <crate::blueprint::components::Visible>::from_arrow_opt(&**array)
                 .with_context("rerun.blueprint.archetypes.PlotLegend#visible")?
                 .into_iter()
@@ -174,11 +175,7 @@ impl ::re_types_core::AsComponents for PlotLegend {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.blueprint.archetypes.PlotLegend".into()),
-                    archetype_field_name: Some(("corner").into()),
-                    component_name: ("rerun.blueprint.components.Corner2D").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_corner()),
             }),
             (self
                 .visible
@@ -186,11 +183,7 @@ impl ::re_types_core::AsComponents for PlotLegend {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.blueprint.archetypes.PlotLegend".into()),
-                    archetype_field_name: Some(("visible").into()),
-                    component_name: ("rerun.blueprint.components.Visible").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_visible()),
             }),
         ]
         .into_iter()

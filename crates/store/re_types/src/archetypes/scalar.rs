@@ -12,9 +12,9 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 
-use ::re_types_core::external::arrow;
+use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
@@ -59,42 +59,39 @@ pub struct Scalar {
     pub scalar: crate::components::Scalar,
 }
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
+impl Scalar {
+    /// Returns the [`ComponentDescriptor`] for [`Self::scalar`].
+    #[inline]
+    pub fn descriptor_scalar() -> ComponentDescriptor {
+        ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Scalar".into()),
             component_name: "rerun.components.Scalar".into(),
             archetype_field_name: Some("scalar".into()),
-        }]
-    });
+        }
+    }
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
+    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
+    #[inline]
+    pub fn descriptor_indicator() -> ComponentDescriptor {
+        ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Scalar".into()),
             component_name: "rerun.components.ScalarIndicator".into(),
             archetype_field_name: None,
-        }]
-    });
+        }
+    }
+}
+
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [Scalar::descriptor_scalar()]);
+
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [Scalar::descriptor_indicator()]);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Scalar".into()),
-                component_name: "rerun.components.Scalar".into(),
-                archetype_field_name: Some("scalar".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Scalar".into()),
-                component_name: "rerun.components.ScalarIndicator".into(),
-                archetype_field_name: None,
-            },
-        ]
-    });
+    once_cell::sync::Lazy::new(|| [Scalar::descriptor_scalar(), Scalar::descriptor_indicator()]);
 
 impl Scalar {
     /// The total number of components in the archetype: 1 required, 1 recommended, 0 optional
@@ -145,17 +142,14 @@ impl ::re_types_core::Archetype for Scalar {
 
     #[inline]
     fn from_arrow_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, arrow::array::ArrayRef)>,
+        arrow_data: impl IntoIterator<Item = (ComponentDescriptor, arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(name, array)| (name.full_name(), array))
-            .collect();
+        let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
         let scalar = {
-            let array = arrays_by_name
-                .get("rerun.components.Scalar")
+            let array = arrays_by_descr
+                .get(&Self::descriptor_scalar())
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.Scalar#scalar")?;
             <crate::components::Scalar>::from_arrow_opt(&**array)
@@ -179,11 +173,7 @@ impl ::re_types_core::AsComponents for Scalar {
             (Some(&self.scalar as &dyn ComponentBatch)).map(|batch| {
                 ::re_types_core::ComponentBatchCowWithDescriptor {
                     batch: batch.into(),
-                    descriptor_override: Some(ComponentDescriptor {
-                        archetype_name: Some("rerun.archetypes.Scalar".into()),
-                        archetype_field_name: Some(("scalar").into()),
-                        component_name: ("rerun.components.Scalar").into(),
-                    }),
+                    descriptor_override: Some(Self::descriptor_scalar()),
                 }
             }),
         ]
