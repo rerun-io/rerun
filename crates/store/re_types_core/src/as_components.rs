@@ -19,6 +19,8 @@ use crate::{
 /// [Custom Data Loader]: https://github.com/rerun-io/rerun/blob/latest/examples/rust/custom_data_loader
 /// [`Component`]: [crate::Component]
 pub trait AsComponents {
+    /// Deprecated. Do not use. See [`AsComponents::as_serialized_batches`] instead.
+    ///
     /// Exposes the object's contents as a set of [`ComponentBatch`]s.
     ///
     /// This is the main mechanism for easily extending builtin archetypes or even writing

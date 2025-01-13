@@ -80,6 +80,7 @@ pub trait ComponentBatch: LoggableBatch {
     ///
     /// There are very few ways in which serialization can fail, all of which are very rare to hit
     /// in practice.
+    /// One such example is trying to serialize data with more than 2^31 elements into a `ListArray`.
     ///
     /// For that reason, this method favors a nice user experience over error handling: errors will
     /// merely be logged, not returned (except in debug builds, where all errors panic).
