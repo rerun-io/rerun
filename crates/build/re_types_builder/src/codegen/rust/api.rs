@@ -1160,7 +1160,7 @@ fn quote_trait_impls_for_archetype(obj: &Object) -> TokenStream {
         .map(|field| format_ident!("{}", field.name))
         .collect::<Vec<_>>();
 
-    // TODO(cmc): This goes away once all archetypes have been made eager.
+    // TODO(#7245): This goes away once all archetypes have been made eager.
     let all_native_component_batches = {
         std::iter::once(quote! {
             Some(Self::indicator())
@@ -1249,7 +1249,7 @@ fn quote_trait_impls_for_archetype(obj: &Object) -> TokenStream {
         }
     };
 
-    // TODO(cmc): This goes away once all archetypes have been made eager.
+    // TODO(#7245): This goes away once all archetypes have been made eager.
     let all_native_deserializers = {
         obj.fields.iter().map(|obj_field| {
             let obj_field_fqname = obj_field.fqname.as_str();
@@ -1624,21 +1624,19 @@ fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) 
         // fn new()
         let quoted_params = required.iter().map(|field| {
             let field_name = format_ident!("{}", field.name);
-            let (typ, unwrapped) = quote_field_type_from_typ(&field.typ, true);
-            if unwrapped {
-                // This was originally a vec/array!
+            let (typ, is_many_component) = quote_field_type_from_typ(&field.typ, true);
+            if is_many_component {
                 quote!(#field_name: impl IntoIterator<Item = impl Into<#typ>>)
             } else {
                 quote!(#field_name: impl Into<#typ>)
             }
         });
 
-        // TODO(cmc): This goes away once all archetypes have been made eager.
+        // TODO(#7245): This goes away once all archetypes have been made eager.
         let quoted_native_required = required.iter().map(|field| {
             let field_name = format_ident!("{}", field.name);
-            let (_, unwrapped) = quote_field_type_from_typ(&field.typ, true);
-            if unwrapped {
-                // This was originally a vec/array!
+            let (_, is_many_component) = quote_field_type_from_typ(&field.typ, true);
+            if is_many_component {
                 quote!(#field_name: #field_name.into_iter().map(Into::into).collect())
             } else {
                 quote!(#field_name: #field_name.into())
@@ -1649,9 +1647,8 @@ fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) 
             let field_name = format_ident!("{}", field.name);
             let descr_fn_name = format_ident!("descriptor_{field_name}");
 
-            let (_, unwrapped) = quote_field_type_from_typ(&field.typ, true);
-            if unwrapped {
-                // This was originally a vec/array!
+            let (_, is_many_component) = quote_field_type_from_typ(&field.typ, true);
+            if is_many_component {
                 quote!(#field_name: try_serialize_field(Self::#descr_fn_name(), #field_name))
             } else {
                 quote!(#field_name: try_serialize_field(Self::#descr_fn_name(), [#field_name]))
@@ -1705,16 +1702,15 @@ fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) 
         }
     };
 
-    // TODO(cmc): This goes away once all archetypes have been made eager.
+    // TODO(#7245): This goes away once all archetypes have been made eager.
     let native_with_methods = optional.iter().map(|field| {
         // fn with_*()
         let field_name = format_ident!("{}", field.name);
         let method_name = format_ident!("with_{field_name}");
-        let (typ, unwrapped) = quote_field_type_from_typ(&field.typ, true);
+        let (typ, is_many_component) = quote_field_type_from_typ(&field.typ, true);
         let docstring = quote_field_docs(reporter, objects, field);
 
-        if unwrapped {
-            // This was originally a vec/array!
+        if is_many_component {
             quote! {
                 #docstring
                 #[inline]
@@ -1740,11 +1736,10 @@ fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) 
         let field_name = format_ident!("{}", field.name);
         let descr_fn_name = format_ident!("descriptor_{field_name}");
         let method_name = format_ident!("with_{field_name}");
-        let (typ, unwrapped) = quote_field_type_from_typ(&field.typ, true);
+        let (typ, is_many_component) = quote_field_type_from_typ(&field.typ, true);
         let docstring = quote_field_docs(reporter, objects, field);
 
-        if unwrapped {
-            // This was originally a vec/array!
+        if is_many_component {
             quote! {
                 #docstring
                 #[inline]
