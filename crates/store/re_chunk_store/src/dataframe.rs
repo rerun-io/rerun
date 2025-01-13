@@ -4,7 +4,6 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::ops::Deref;
 use std::ops::DerefMut;
 
-use arrow::datatypes::DataType as ArrowDatatype;
 use arrow2::{
     array::ListArray as ArrowListArray,
     datatypes::{DataType as Arrow2Datatype, Field as Arrow2Field},
@@ -46,7 +45,7 @@ impl ColumnDescriptor {
     #[inline]
     pub fn datatype(&self) -> Arrow2Datatype {
         match self {
-            Self::Time(descr) => descr.datatype().into(),
+            Self::Time(descr) => descr.datatype.clone(),
             Self::Component(descr) => descr.returned_datatype(),
         }
     }
@@ -77,15 +76,39 @@ impl ColumnDescriptor {
 }
 
 /// Describes a time column, such as `log_time`.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TimeColumnDescriptor {
     /// The timeline this column is associated with.
     pub timeline: Timeline,
+
+    /// The Arrow datatype of the column.
+    pub datatype: Arrow2Datatype,
+}
+
+impl PartialOrd for TimeColumnDescriptor {
+    #[inline]
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for TimeColumnDescriptor {
+    #[inline]
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        let Self {
+            timeline,
+            datatype: _,
+        } = self;
+        timeline.cmp(&other.timeline)
+    }
 }
 
 impl TimeColumnDescriptor {
     fn metadata(&self) -> arrow2::datatypes::Metadata {
-        let Self { timeline } = self;
+        let Self {
+            timeline,
+            datatype: _,
+        } = self;
 
         std::iter::once(Some((
             "sorbet.index_name".to_owned(),
@@ -96,17 +119,12 @@ impl TimeColumnDescriptor {
     }
 
     #[inline]
-    pub fn datatype(&self) -> ArrowDatatype {
-        self.timeline.datatype()
-    }
-
-    #[inline]
     // Time column must be nullable since static data doesn't have a time.
     pub fn to_arrow_field(&self) -> Arrow2Field {
-        let Self { timeline } = self;
+        let Self { timeline, datatype } = self;
         Arrow2Field::new(
             timeline.name().to_string(),
-            timeline.datatype().into(),
+            datatype.clone(),
             true, /* nullable */
         )
         .with_metadata(self.metadata())
@@ -687,10 +705,12 @@ impl ChunkStore {
     pub fn schema(&self) -> Vec<ColumnDescriptor> {
         re_tracing::profile_function!();
 
-        let timelines = self
-            .all_timelines_sorted()
-            .into_iter()
-            .map(|timeline| ColumnDescriptor::Time(TimeColumnDescriptor { timeline }));
+        let timelines = self.all_timelines_sorted().into_iter().map(|timeline| {
+            ColumnDescriptor::Time(TimeColumnDescriptor {
+                timeline,
+                datatype: timeline.datatype().into(),
+            })
+        });
 
         let mut components = self
             .per_column_metadata
@@ -760,7 +780,10 @@ impl ChunkStore {
             .copied()
             .unwrap_or_else(|| Timeline::new_temporal(selector.timeline));
 
-        TimeColumnDescriptor { timeline }
+        TimeColumnDescriptor {
+            timeline,
+            datatype: timeline.datatype().into(),
+        }
     }
 
     /// Given a [`ComponentColumnSelector`], returns the corresponding [`ComponentColumnDescriptor`].

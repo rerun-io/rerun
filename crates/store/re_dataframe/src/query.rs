@@ -398,6 +398,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                                             // TODO(cmc): I picked a sequence here because I have to pick something.
                                             // It doesn't matter, only the name will remain in the Arrow schema anyhow.
                                             timeline: Timeline::new_sequence(*selected_timeline),
+                                            datatype: arrow2::datatypes::DataType::Null,
                                         }),
                                     )
                                 },
@@ -2028,7 +2029,7 @@ mod tests {
                 [
                     Int64[10, 20, 30, 40, 50, 60, 70],
                     Int64[10, 20, 30, 40, 50, 60, 70],
-                    Int64[None, None, None, None, None, None, None],
+                    NullArray(7),
                 ]\
                 ",
             );
@@ -2240,7 +2241,7 @@ mod tests {
                 [
                     Int64[30, 40, 50, 70],
                     Timestamp(Nanosecond, None)[None, None, None, None],
-                    Int64[None, None, None, None],
+                    NullArray(4),
                     NullArray(4),
                     ListArray[[2], [3], [4], [6]],
                     ListArray[[c], [c], [c], [c]],
