@@ -283,7 +283,7 @@ pub fn store_info_from_catalog_chunk(
         .as_any()
         .downcast_ref::<Arrow2Utf8Array<i32>>()
         .ok_or(StreamError::ChunkError(re_chunk::ChunkError::Malformed {
-            reason: format!("application_id must be a utf8 array: {:?}", tc.schema),
+            reason: format!("application_id must be a utf8 array: {:?}", tc.schema_ref()),
         }))?
         .value(0);
 
@@ -297,7 +297,7 @@ pub fn store_info_from_catalog_chunk(
         .as_any()
         .downcast_ref::<arrow2::array::Int64Array>()
         .ok_or(StreamError::ChunkError(re_chunk::ChunkError::Malformed {
-            reason: format!("start_time must be an int64 array: {:?}", tc.schema),
+            reason: format!("start_time must be an int64 array: {:?}", tc.schema_ref()),
         }))?
         .value(0);
 

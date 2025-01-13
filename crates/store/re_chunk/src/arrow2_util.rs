@@ -449,7 +449,7 @@ pub fn concatenate_record_batches(
     schema: Arrow2Schema,
     batches: &[TransportChunk],
 ) -> anyhow::Result<TransportChunk> {
-    assert!(batches.iter().map(|batch| &batch.schema).all_equal());
+    assert!(batches.iter().map(|batch| batch.schema_ref()).all_equal());
 
     let mut arrays = Vec::new();
 

@@ -301,6 +301,11 @@ impl TransportChunk {
             .and_then(|s| s.parse::<u64>().ok())
     }
 
+    #[inline]
+    pub fn schema_ref(&self) -> &Arrow2Schema {
+        &self.schema
+    }
+
     /// Looks in the chunk metadata for the `IS_SORTED` marker.
     ///
     /// It is possible that a chunk is sorted but didn't set that marker.

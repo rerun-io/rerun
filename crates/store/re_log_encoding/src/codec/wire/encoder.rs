@@ -12,7 +12,7 @@ fn encode(
     match version {
         re_protos::common::v0::EncoderVersion::V0 => {
             let mut data: Vec<u8> = Vec::new();
-            write_arrow_to_bytes(&mut data, &chunk.schema, &chunk.data)?;
+            write_arrow_to_bytes(&mut data, chunk.schema_ref(), &chunk.data)?;
 
             Ok(data)
         }
