@@ -141,27 +141,29 @@ impl std::fmt::Display for DisplayDatatype<'_> {
                 let s = format!("interval({})", DisplayIntervalUnit(*unit));
                 return f.write_str(&s);
             }
-            DataType::Binary => "bin",
-            DataType::FixedSizeBinary(size) => return write!(f, "fixed-bin[{size}]"),
-            DataType::LargeBinary => "large-bin",
-            DataType::Utf8 => "str",
-            DataType::LargeUtf8 => "large-string",
+            DataType::Binary => "Binary",
+            DataType::FixedSizeBinary(size) => return write!(f, "FixedSizeBinary[{size}]"),
+            DataType::LargeBinary => "LargeBinary",
+            DataType::Utf8 => "Utf8",
+            DataType::LargeUtf8 => "LargeUtf8",
             DataType::List(ref field) => {
-                let s = format!("list[{}]", Self(field.data_type()));
+                let s = format!("List[{}]", Self(field.data_type()));
                 return f.write_str(&s);
             }
             DataType::FixedSizeList(field, len) => {
-                let s = format!("fixed-list[{}; {len}]", Self(field.data_type()));
+                let s = format!("FixedSizeList[{}; {len}]", Self(field.data_type()));
                 return f.write_str(&s);
             }
             DataType::LargeList(field) => {
-                let s = format!("large-list[{}]", Self(field.data_type()));
+                let s = format!("LargeList[{}]", Self(field.data_type()));
                 return f.write_str(&s);
             }
             DataType::Struct(fields) => return write!(f, "struct[{}]", fields.len()),
             DataType::Union(fields, _) => return write!(f, "union[{}]", fields.len()),
             DataType::Map(field, _) => return write!(f, "map[{}]", Self(field.data_type())),
-            DataType::Dictionary(_, _) => "dict",
+            DataType::Dictionary(key, value) => {
+                return write!(f, "dictionary{{{}: {}}}", Self(key), Self(value))
+            }
             DataType::Decimal128(_, _) => "decimal128",
             DataType::Decimal256(_, _) => "decimal256",
             DataType::BinaryView => "BinaryView",

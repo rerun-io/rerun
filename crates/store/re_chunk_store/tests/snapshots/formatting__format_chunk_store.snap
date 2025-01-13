@@ -24,7 +24,7 @@ ChunkStore {
         │ ┌──────────────────────────────────┬───────────────┬───────────────────────────────┬───────────────────┬───────────────────┐ │
         │ │ RowId                            ┆ frame_nr      ┆ log_time                      ┆ example.MyColor   ┆ example.MyIndex   │ │
         │ │ ---                              ┆ ---           ┆ ---                           ┆ ---               ┆ ---               │ │
-        │ │ type: "struct[2]"                ┆ type: "i64"   ┆ type: "timestamp(ns)"         ┆ type: "list[u32]" ┆ type: "list[u64]" │ │
+        │ │ type: "struct[2]"                ┆ type: "i64"   ┆ type: "timestamp(ns)"         ┆ type: "List[u32]" ┆ type: "List[u64]" │ │
         │ │ ARROW:extension:name: "TUID"     ┆ is_sorted: "" ┆ is_sorted: ""                 ┆ kind: "data"      ┆ kind: "data"      │ │
         │ │ kind: "control"                  ┆ kind: "time"  ┆ kind: "time"                  ┆                   ┆                   │ │
         │ ╞══════════════════════════════════╪═══════════════╪═══════════════════════════════╪═══════════════════╪═══════════════════╡ │
