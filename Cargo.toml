@@ -203,7 +203,7 @@ infer = "0.16" # infer MIME type by checking the magic number signaturefer MIME 
 insta = "1.23"
 itertools = "0.13"
 js-sys = "0.3"
-jwt-simple = "0.12"
+jwt-simple = { version = "0.12", default-features=false, features=["pure-rust"] }
 libc = "0.2"
 linked-hash-map = { version = "0.5", default-features = false }
 log = "0.4"

@@ -15,7 +15,6 @@ re_log.workspace = true
 thiserror.workspace = true
 base64.workspace = true
 jwt-simple.workspace = true
-serde.workspace = true
 tonic.workspace = true
 
 [lints]
