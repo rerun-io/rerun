@@ -9,6 +9,7 @@ use arrow::{
 };
 use comfy_table::{presets, Cell, Row, Table};
 
+use itertools::Itertools as _;
 use re_tuid::Tuid;
 use re_types_core::Loggable as _;
 
@@ -193,7 +194,7 @@ impl std::fmt::Display for DisplayMetadata {
             &metadata
                 .iter()
                 .map(|(key, value)| format!("{prefix}{}: {:?}", trim_name(key), trim_name(value)))
-                .collect::<Vec<_>>()
+                .collect_vec()
                 .join("\n"),
         )
     }
@@ -256,7 +257,7 @@ pub fn format_dataframe(metadata: &Metadata, fields: &Fields, columns: &[ArrayRe
 
     let formatters = itertools::izip!(fields.iter(), columns.iter())
         .map(|(field, array)| custom_array_formatter(field, &**array))
-        .collect::<Vec<_>>();
+        .collect_vec();
     let num_rows = columns.first().map_or(0, |list_array| list_array.len());
 
     if formatters.is_empty() || num_rows == 0 {
