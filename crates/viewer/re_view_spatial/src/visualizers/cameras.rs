@@ -14,7 +14,8 @@ use re_viewer_context::{
 
 use super::{filter_visualizable_3d_entities, SpatialViewVisualizerData};
 use crate::{
-    contexts::TransformContext, query_pinhole, space_camera_3d::SpaceCamera3D, ui::SpatialViewState,
+    contexts::TransformTreeContext, query_pinhole, space_camera_3d::SpaceCamera3D,
+    ui::SpatialViewState,
 };
 
 const CAMERA_COLOR: re_renderer::Color32 = re_renderer::Color32::from_rgb(150, 150, 150);
@@ -46,7 +47,7 @@ impl CamerasVisualizer {
     fn visit_instance(
         &mut self,
         line_builder: &mut re_renderer::LineDrawableBuilder<'_>,
-        transforms: &TransformContext,
+        transforms: &TransformTreeContext,
         data_result: &DataResult,
         pinhole: &Pinhole,
         pinhole_view_coordinates: ViewCoordinates,
@@ -214,7 +215,7 @@ impl VisualizerSystem for CamerasVisualizer {
         query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
-        let transforms = context_systems.get::<TransformContext>()?;
+        let transforms = context_systems.get::<TransformTreeContext>()?;
 
         // Counting all cameras ahead of time is a bit wasteful, but we also don't expect a huge amount,
         // so let re_renderer's allocator internally decide what buffer sizes to pick & grow them as we go.

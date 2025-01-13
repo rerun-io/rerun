@@ -127,7 +127,7 @@ impl TransformInfo {
 /// (Note that right now the query IS always the same accross all views for a given frame since it's just latest-at controlled by the timeline,
 /// but once we support range queries it may be not or only partially the case)
 #[derive(Clone)]
-pub struct TransformContext {
+pub struct TransformTreeContext {
     /// All transforms provided are relative to this reference path.
     space_origin: EntityPath,
 
@@ -135,13 +135,13 @@ pub struct TransformContext {
     transform_per_entity: IntMap<EntityPathHash, TransformInfo>,
 }
 
-impl IdentifiedViewSystem for TransformContext {
+impl IdentifiedViewSystem for TransformTreeContext {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
         "TransformContext".into()
     }
 }
 
-impl Default for TransformContext {
+impl Default for TransformTreeContext {
     fn default() -> Self {
         Self {
             space_origin: EntityPath::root(),
@@ -150,7 +150,7 @@ impl Default for TransformContext {
     }
 }
 
-impl ViewContextSystem for TransformContext {
+impl ViewContextSystem for TransformTreeContext {
     fn compatible_component_sets(&self) -> Vec<ComponentNameSet> {
         vec![
             Transform3D::all_components()
@@ -249,7 +249,7 @@ impl ViewContextSystem for TransformContext {
     }
 }
 
-impl TransformContext {
+impl TransformTreeContext {
     /// Gather transforms for everything _above_ the root.
     fn gather_parent_transforms<'a>(
         &mut self,
