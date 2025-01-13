@@ -101,14 +101,22 @@ export interface WebViewerOptions {
 export interface AppOptions extends WebViewerOptions {
   url?: string;
   manifest_url?: string;
-  video_decoder?: VideoDecoder,
+  video_decoder?: VideoDecoder;
   render_backend?: Backend;
   hide_welcome_screen?: boolean;
   panel_state_overrides?: Partial<{
     [K in Panel]: PanelState;
   }>;
+  timeline?: TimelineOptions;
   fullscreen?: FullscreenOptions;
   enable_history?: boolean;
+}
+
+interface TimelineOptions {
+  on_timelinechange: (timeline: string, time: number) => void;
+  on_timeupdate: (time: number) => void;
+  on_pause: () => void;
+  on_play: () => void;
 }
 
 interface FullscreenOptions {
@@ -119,6 +127,11 @@ interface FullscreenOptions {
 interface WebViewerEvents {
   fullscreen: boolean;
   ready: void;
+
+  timelinechange: [string, number];
+  timeupdate: number;
+  play: void;
+  pause: void;
 }
 
 // This abomination is a mapped type with key filtering, and is used to split the events
@@ -127,7 +140,9 @@ interface WebViewerEvents {
 type EventsWithValue = {
   [K in keyof WebViewerEvents as WebViewerEvents[K] extends void
     ? never
-    : K]: WebViewerEvents[K];
+    : K]: WebViewerEvents[K] extends any[]
+    ? WebViewerEvents[K]
+    : [WebViewerEvents[K]];
 };
 
 type EventsWithoutValue = {
@@ -197,7 +212,15 @@ export class WebViewer {
         }
       : undefined;
 
-    this.#handle = new WebHandle_class({ ...options, fullscreen });
+    const timeline = {
+      on_timelinechange: (timeline: string, time: number) =>
+        this.#dispatch_event("timelinechange", timeline, time),
+      on_timeupdate: (time: number) => this.#dispatch_event("timeupdate", time),
+      on_pause: () => this.#dispatch_event("pause"),
+      on_play: () => this.#dispatch_event("play"),
+    };
+
+    this.#handle = new WebHandle_class({ ...options, fullscreen, timeline });
     try {
       await this.#handle.start(this.#canvas);
     } catch (e) {
@@ -218,15 +241,15 @@ export class WebViewer {
 
   #event_map: Map<
     keyof WebViewerEvents,
-    Map<(value: any) => void, { once: boolean }>
+    Map<(...args: any[]) => void, { once: boolean }>
   > = new Map();
 
   #dispatch_event<E extends keyof EventsWithValue>(
     event: E,
-    value: EventsWithValue[E],
+    ...args: EventsWithValue[E]
   ): void;
   #dispatch_event<E extends keyof EventsWithoutValue>(event: E): void;
-  #dispatch_event(event: any, value?: any): void {
+  #dispatch_event(event: any, ...args: any[]): void {
     // Dispatch events on next tick.
     // This is necessary because we may have been called somewhere deep within the viewer's call stack,
     // which means that `app` may be locked. The event will not actually be dispatched until the
@@ -236,7 +259,7 @@ export class WebViewer {
       const callbacks = this.#event_map.get(event);
       if (callbacks) {
         for (const [callback, { once }] of [...callbacks.entries()]) {
-          callback(value);
+          callback(...args);
           if (once) callbacks.delete(callback);
         }
       }
@@ -250,7 +273,7 @@ export class WebViewer {
    */
   on<E extends keyof EventsWithValue>(
     event: E,
-    callback: (value: EventsWithValue[E]) => void,
+    callback: (...args: EventsWithValue[E]) => void,
   ): Cancel;
   on<E extends keyof EventsWithoutValue>(
     event: E,
@@ -494,6 +517,144 @@ export class WebViewer {
       this.stop();
       throw e;
     }
+  }
+
+  /**
+   * Get the active recording id.
+   */
+  get_active_recording_id(): string | null {
+    if (!this.#handle) {
+      throw new Error(
+        `attempted to get active recording id in a stopped web viewer`,
+      );
+    }
+
+    return this.#handle.get_active_recording_id() ?? null;
+  }
+
+  /**
+   * Set the active recording id.
+   */
+  set_active_recording_id(value: string) {
+    if (!this.#handle) {
+      throw new Error(
+        `attempted to set active recording id to ${value} in a stopped web viewer`,
+      );
+    }
+
+    this.#handle.set_active_recording_id(value);
+  }
+
+  /**
+   * Get the play state.
+   *
+   * This always returns `false` if the recording can't be found.
+   */
+  get_playing(recording_id: string): boolean {
+    if (!this.#handle) {
+      throw new Error(`attempted to get play state in a stopped web viewer`);
+    }
+
+    return this.#handle.get_playing(recording_id) || false;
+  }
+
+  /**
+   * Set the play state.
+   *
+   * This does nothing if the recording can't be found.
+   */
+  set_playing(recording_id: string, value: boolean) {
+    if (!this.#handle) {
+      throw new Error(
+        `attempted to set play state to ${
+          value ? "playing" : "paused"
+        } in a stopped web viewer`,
+      );
+    }
+
+    this.#handle.set_playing(recording_id, value);
+  }
+
+  /**
+   * Get the current time.
+   *
+   * This always returns `0` if the recording or timeline can't be found.
+   */
+  get_current_time(recording_id: string, timeline: string): number {
+    if (!this.#handle) {
+      throw new Error(`attempted to get current time in a stopped web viewer`);
+    }
+
+    return this.#handle.get_time_for_timeline(recording_id, timeline) || 0;
+  }
+
+  /**
+   * Set the current time.
+   *
+   * Equivalent to clicking on the timeline in the time panel at the specified `time`.
+   * The interpretation of `time` depends on what kind of timeline it is:
+   *
+   * - For time timelines, this is the time in seconds.
+   * - For sequence timelines, this is the frame number.
+   *
+   * This does nothing if the recording or timeline can't be found.
+   *
+   * @param value
+   */
+  set_current_time(recording_id: string, timeline: string, time: number) {
+    if (!this.#handle) {
+      throw new Error(
+        `attempted to set current time to ${time} in a stopped web viewer`,
+      );
+    }
+
+    this.#handle.set_time_for_timeline(recording_id, timeline, time);
+  }
+
+  /**
+   * Get the active timeline.
+   *
+   * This always returns `null` if the recording can't be found.
+   */
+  get_active_timeline(recording_id: string): string | null {
+    if (!this.#handle) {
+      throw new Error(
+        `attempted to get active timeline in a stopped web viewer`,
+      );
+    }
+
+    return this.#handle.get_active_timeline(recording_id) ?? null;
+  }
+
+  /**
+   * Set the active timeline.
+   *
+   * This does nothing if the recording or timeline can't be found.
+   */
+  set_active_timeline(recording_id: string, timeline: string) {
+    if (!this.#handle) {
+      throw new Error(
+        `attempted to set active timeline to ${timeline} in a stopped web viewer`,
+      );
+    }
+
+    this.#handle.set_active_timeline(recording_id, timeline);
+  }
+
+  /**
+   * Get the time range for a timeline.
+   *
+   * This always returns `null` if the recording or timeline can't be found.
+   */
+  get_time_range(
+    recording_id: string,
+    timeline: string,
+  ): { min: number; max: number } | null {
+    if (!this.#handle) {
+      throw new Error(`attempted to get time range in a stopped web viewer`);
+    }
+
+    return this.#handle.get_timeline_time_range(recording_id, timeline);
   }
 
   /**
