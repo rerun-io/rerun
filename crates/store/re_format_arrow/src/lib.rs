@@ -254,19 +254,19 @@ pub fn format_dataframe(metadata: &Metadata, fields: &Fields, columns: &[ArrayRe
     });
     table.set_header(header);
 
-    let displays = itertools::izip!(fields.iter(), columns.iter())
+    let formatters = itertools::izip!(fields.iter(), columns.iter())
         .map(|(field, array)| custom_array_formatter(field, &**array))
         .collect::<Vec<_>>();
     let num_rows = columns.first().map_or(0, |list_array| list_array.len());
 
-    if displays.is_empty() || num_rows == 0 {
+    if formatters.is_empty() || num_rows == 0 {
         return table;
     }
 
     for row in 0..num_rows {
-        let cells: Vec<_> = displays
+        let cells: Vec<_> = formatters
             .iter()
-            .map(|disp| match disp(row) {
+            .map(|formatter| match formatter(row) {
                 Ok(string) => {
                     let chars: Vec<_> = string.chars().collect();
                     if chars.len() > MAXIMUM_CELL_CONTENT_WIDTH as usize {
