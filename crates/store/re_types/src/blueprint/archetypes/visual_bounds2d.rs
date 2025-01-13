@@ -12,9 +12,9 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 
-use ::re_types_core::external::arrow;
+use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
@@ -33,23 +33,33 @@ pub struct VisualBounds2D {
     pub range: crate::blueprint::components::VisualBounds2D,
 }
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
+impl VisualBounds2D {
+    /// Returns the [`ComponentDescriptor`] for [`Self::range`].
+    #[inline]
+    pub fn descriptor_range() -> ComponentDescriptor {
+        ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.VisualBounds2D".into()),
             component_name: "rerun.blueprint.components.VisualBounds2D".into(),
             archetype_field_name: Some("range".into()),
-        }]
-    });
+        }
+    }
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
+    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
+    #[inline]
+    pub fn descriptor_indicator() -> ComponentDescriptor {
+        ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.VisualBounds2D".into()),
             component_name: "rerun.blueprint.components.VisualBounds2DIndicator".into(),
             archetype_field_name: None,
-        }]
-    });
+        }
+    }
+}
+
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [VisualBounds2D::descriptor_range()]);
+
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [VisualBounds2D::descriptor_indicator()]);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
@@ -57,16 +67,8 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]>
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.VisualBounds2D".into()),
-                component_name: "rerun.blueprint.components.VisualBounds2D".into(),
-                archetype_field_name: Some("range".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.VisualBounds2D".into()),
-                component_name: "rerun.blueprint.components.VisualBounds2DIndicator".into(),
-                archetype_field_name: None,
-            },
+            VisualBounds2D::descriptor_range(),
+            VisualBounds2D::descriptor_indicator(),
         ]
     });
 
@@ -119,17 +121,14 @@ impl ::re_types_core::Archetype for VisualBounds2D {
 
     #[inline]
     fn from_arrow_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, arrow::array::ArrayRef)>,
+        arrow_data: impl IntoIterator<Item = (ComponentDescriptor, arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(name, array)| (name.full_name(), array))
-            .collect();
+        let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
         let range = {
-            let array = arrays_by_name
-                .get("rerun.blueprint.components.VisualBounds2D")
+            let array = arrays_by_descr
+                .get(&Self::descriptor_range())
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.blueprint.archetypes.VisualBounds2D#range")?;
             <crate::blueprint::components::VisualBounds2D>::from_arrow_opt(&**array)
@@ -153,11 +152,7 @@ impl ::re_types_core::AsComponents for VisualBounds2D {
             (Some(&self.range as &dyn ComponentBatch)).map(|batch| {
                 ::re_types_core::ComponentBatchCowWithDescriptor {
                     batch: batch.into(),
-                    descriptor_override: Some(ComponentDescriptor {
-                        archetype_name: Some("rerun.blueprint.archetypes.VisualBounds2D".into()),
-                        archetype_field_name: Some(("range").into()),
-                        component_name: ("rerun.blueprint.components.VisualBounds2D").into(),
-                    }),
+                    descriptor_override: Some(Self::descriptor_range()),
                 }
             }),
         ]

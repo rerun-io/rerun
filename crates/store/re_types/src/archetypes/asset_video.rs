@@ -12,9 +12,9 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 
-use ::re_types_core::external::arrow;
+use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
@@ -139,28 +139,46 @@ pub struct AssetVideo {
     pub media_type: Option<crate::components::MediaType>,
 }
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
+impl AssetVideo {
+    /// Returns the [`ComponentDescriptor`] for [`Self::blob`].
+    #[inline]
+    pub fn descriptor_blob() -> ComponentDescriptor {
+        ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.AssetVideo".into()),
             component_name: "rerun.components.Blob".into(),
             archetype_field_name: Some("blob".into()),
-        }]
-    });
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::media_type`].
+    #[inline]
+    pub fn descriptor_media_type() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.AssetVideo".into()),
+            component_name: "rerun.components.MediaType".into(),
+            archetype_field_name: Some("media_type".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
+    #[inline]
+    pub fn descriptor_indicator() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.AssetVideo".into()),
+            component_name: "rerun.components.AssetVideoIndicator".into(),
+            archetype_field_name: None,
+        }
+    }
+}
+
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [AssetVideo::descriptor_blob()]);
 
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.AssetVideo".into()),
-                component_name: "rerun.components.MediaType".into(),
-                archetype_field_name: Some("media_type".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.AssetVideo".into()),
-                component_name: "rerun.components.AssetVideoIndicator".into(),
-                archetype_field_name: None,
-            },
+            AssetVideo::descriptor_media_type(),
+            AssetVideo::descriptor_indicator(),
         ]
     });
 
@@ -170,21 +188,9 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]>
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.AssetVideo".into()),
-                component_name: "rerun.components.Blob".into(),
-                archetype_field_name: Some("blob".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.AssetVideo".into()),
-                component_name: "rerun.components.MediaType".into(),
-                archetype_field_name: Some("media_type".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.AssetVideo".into()),
-                component_name: "rerun.components.AssetVideoIndicator".into(),
-                archetype_field_name: None,
-            },
+            AssetVideo::descriptor_blob(),
+            AssetVideo::descriptor_media_type(),
+            AssetVideo::descriptor_indicator(),
         ]
     });
 
@@ -237,17 +243,14 @@ impl ::re_types_core::Archetype for AssetVideo {
 
     #[inline]
     fn from_arrow_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, arrow::array::ArrayRef)>,
+        arrow_data: impl IntoIterator<Item = (ComponentDescriptor, arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(name, array)| (name.full_name(), array))
-            .collect();
+        let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
         let blob = {
-            let array = arrays_by_name
-                .get("rerun.components.Blob")
+            let array = arrays_by_descr
+                .get(&Self::descriptor_blob())
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.AssetVideo#blob")?;
             <crate::components::Blob>::from_arrow_opt(&**array)
@@ -258,7 +261,7 @@ impl ::re_types_core::Archetype for AssetVideo {
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.AssetVideo#blob")?
         };
-        let media_type = if let Some(array) = arrays_by_name.get("rerun.components.MediaType") {
+        let media_type = if let Some(array) = arrays_by_descr.get(&Self::descriptor_media_type()) {
             <crate::components::MediaType>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.AssetVideo#media_type")?
                 .into_iter()
@@ -280,11 +283,7 @@ impl ::re_types_core::AsComponents for AssetVideo {
             (Some(&self.blob as &dyn ComponentBatch)).map(|batch| {
                 ::re_types_core::ComponentBatchCowWithDescriptor {
                     batch: batch.into(),
-                    descriptor_override: Some(ComponentDescriptor {
-                        archetype_name: Some("rerun.archetypes.AssetVideo".into()),
-                        archetype_field_name: Some(("blob").into()),
-                        component_name: ("rerun.components.Blob").into(),
-                    }),
+                    descriptor_override: Some(Self::descriptor_blob()),
                 }
             }),
             (self
@@ -293,11 +292,7 @@ impl ::re_types_core::AsComponents for AssetVideo {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.AssetVideo".into()),
-                    archetype_field_name: Some(("media_type").into()),
-                    component_name: ("rerun.components.MediaType").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_media_type()),
             }),
         ]
         .into_iter()

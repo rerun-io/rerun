@@ -12,9 +12,9 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 
-use ::re_types_core::external::arrow;
+use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
@@ -112,127 +112,149 @@ pub struct Capsules3D {
     pub class_ids: Option<Vec<crate::components::ClassId>>,
 }
 
+impl Capsules3D {
+    /// Returns the [`ComponentDescriptor`] for [`Self::lengths`].
+    #[inline]
+    pub fn descriptor_lengths() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Capsules3D".into()),
+            component_name: "rerun.components.Length".into(),
+            archetype_field_name: Some("lengths".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::radii`].
+    #[inline]
+    pub fn descriptor_radii() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Capsules3D".into()),
+            component_name: "rerun.components.Radius".into(),
+            archetype_field_name: Some("radii".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::translations`].
+    #[inline]
+    pub fn descriptor_translations() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Capsules3D".into()),
+            component_name: "rerun.components.PoseTranslation3D".into(),
+            archetype_field_name: Some("translations".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::rotation_axis_angles`].
+    #[inline]
+    pub fn descriptor_rotation_axis_angles() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Capsules3D".into()),
+            component_name: "rerun.components.PoseRotationAxisAngle".into(),
+            archetype_field_name: Some("rotation_axis_angles".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::quaternions`].
+    #[inline]
+    pub fn descriptor_quaternions() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Capsules3D".into()),
+            component_name: "rerun.components.PoseRotationQuat".into(),
+            archetype_field_name: Some("quaternions".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::colors`].
+    #[inline]
+    pub fn descriptor_colors() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Capsules3D".into()),
+            component_name: "rerun.components.Color".into(),
+            archetype_field_name: Some("colors".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::labels`].
+    #[inline]
+    pub fn descriptor_labels() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Capsules3D".into()),
+            component_name: "rerun.components.Text".into(),
+            archetype_field_name: Some("labels".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::show_labels`].
+    #[inline]
+    pub fn descriptor_show_labels() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Capsules3D".into()),
+            component_name: "rerun.components.ShowLabels".into(),
+            archetype_field_name: Some("show_labels".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::class_ids`].
+    #[inline]
+    pub fn descriptor_class_ids() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Capsules3D".into()),
+            component_name: "rerun.components.ClassId".into(),
+            archetype_field_name: Some("class_ids".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
+    #[inline]
+    pub fn descriptor_indicator() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Capsules3D".into()),
+            component_name: "rerun.components.Capsules3DIndicator".into(),
+            archetype_field_name: None,
+        }
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Capsules3D".into()),
-                component_name: "rerun.components.Length".into(),
-                archetype_field_name: Some("lengths".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Capsules3D".into()),
-                component_name: "rerun.components.Radius".into(),
-                archetype_field_name: Some("radii".into()),
-            },
+            Capsules3D::descriptor_lengths(),
+            Capsules3D::descriptor_radii(),
         ]
     });
 
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Capsules3D".into()),
-                component_name: "rerun.components.PoseTranslation3D".into(),
-                archetype_field_name: Some("translations".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Capsules3D".into()),
-                component_name: "rerun.components.Color".into(),
-                archetype_field_name: Some("colors".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Capsules3D".into()),
-                component_name: "rerun.components.Capsules3DIndicator".into(),
-                archetype_field_name: None,
-            },
+            Capsules3D::descriptor_translations(),
+            Capsules3D::descriptor_colors(),
+            Capsules3D::descriptor_indicator(),
         ]
     });
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Capsules3D".into()),
-                component_name: "rerun.components.PoseRotationAxisAngle".into(),
-                archetype_field_name: Some("rotation_axis_angles".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Capsules3D".into()),
-                component_name: "rerun.components.PoseRotationQuat".into(),
-                archetype_field_name: Some("quaternions".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Capsules3D".into()),
-                component_name: "rerun.components.Text".into(),
-                archetype_field_name: Some("labels".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Capsules3D".into()),
-                component_name: "rerun.components.ShowLabels".into(),
-                archetype_field_name: Some("show_labels".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Capsules3D".into()),
-                component_name: "rerun.components.ClassId".into(),
-                archetype_field_name: Some("class_ids".into()),
-            },
+            Capsules3D::descriptor_rotation_axis_angles(),
+            Capsules3D::descriptor_quaternions(),
+            Capsules3D::descriptor_labels(),
+            Capsules3D::descriptor_show_labels(),
+            Capsules3D::descriptor_class_ids(),
         ]
     });
 
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 10usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Capsules3D".into()),
-                component_name: "rerun.components.Length".into(),
-                archetype_field_name: Some("lengths".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Capsules3D".into()),
-                component_name: "rerun.components.Radius".into(),
-                archetype_field_name: Some("radii".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Capsules3D".into()),
-                component_name: "rerun.components.PoseTranslation3D".into(),
-                archetype_field_name: Some("translations".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Capsules3D".into()),
-                component_name: "rerun.components.Color".into(),
-                archetype_field_name: Some("colors".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Capsules3D".into()),
-                component_name: "rerun.components.Capsules3DIndicator".into(),
-                archetype_field_name: None,
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Capsules3D".into()),
-                component_name: "rerun.components.PoseRotationAxisAngle".into(),
-                archetype_field_name: Some("rotation_axis_angles".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Capsules3D".into()),
-                component_name: "rerun.components.PoseRotationQuat".into(),
-                archetype_field_name: Some("quaternions".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Capsules3D".into()),
-                component_name: "rerun.components.Text".into(),
-                archetype_field_name: Some("labels".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Capsules3D".into()),
-                component_name: "rerun.components.ShowLabels".into(),
-                archetype_field_name: Some("show_labels".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Capsules3D".into()),
-                component_name: "rerun.components.ClassId".into(),
-                archetype_field_name: Some("class_ids".into()),
-            },
+            Capsules3D::descriptor_lengths(),
+            Capsules3D::descriptor_radii(),
+            Capsules3D::descriptor_translations(),
+            Capsules3D::descriptor_colors(),
+            Capsules3D::descriptor_indicator(),
+            Capsules3D::descriptor_rotation_axis_angles(),
+            Capsules3D::descriptor_quaternions(),
+            Capsules3D::descriptor_labels(),
+            Capsules3D::descriptor_show_labels(),
+            Capsules3D::descriptor_class_ids(),
         ]
     });
 
@@ -285,17 +307,14 @@ impl ::re_types_core::Archetype for Capsules3D {
 
     #[inline]
     fn from_arrow_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, arrow::array::ArrayRef)>,
+        arrow_data: impl IntoIterator<Item = (ComponentDescriptor, arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(name, array)| (name.full_name(), array))
-            .collect();
+        let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
         let lengths = {
-            let array = arrays_by_name
-                .get("rerun.components.Length")
+            let array = arrays_by_descr
+                .get(&Self::descriptor_lengths())
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.Capsules3D#lengths")?;
             <crate::components::Length>::from_arrow_opt(&**array)
@@ -306,8 +325,8 @@ impl ::re_types_core::Archetype for Capsules3D {
                 .with_context("rerun.archetypes.Capsules3D#lengths")?
         };
         let radii = {
-            let array = arrays_by_name
-                .get("rerun.components.Radius")
+            let array = arrays_by_descr
+                .get(&Self::descriptor_radii())
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.Capsules3D#radii")?;
             <crate::components::Radius>::from_arrow_opt(&**array)
@@ -318,7 +337,7 @@ impl ::re_types_core::Archetype for Capsules3D {
                 .with_context("rerun.archetypes.Capsules3D#radii")?
         };
         let translations =
-            if let Some(array) = arrays_by_name.get("rerun.components.PoseTranslation3D") {
+            if let Some(array) = arrays_by_descr.get(&Self::descriptor_translations()) {
                 Some({
                     <crate::components::PoseTranslation3D>::from_arrow_opt(&**array)
                         .with_context("rerun.archetypes.Capsules3D#translations")?
@@ -331,7 +350,7 @@ impl ::re_types_core::Archetype for Capsules3D {
                 None
             };
         let rotation_axis_angles =
-            if let Some(array) = arrays_by_name.get("rerun.components.PoseRotationAxisAngle") {
+            if let Some(array) = arrays_by_descr.get(&Self::descriptor_rotation_axis_angles()) {
                 Some({
                     <crate::components::PoseRotationAxisAngle>::from_arrow_opt(&**array)
                         .with_context("rerun.archetypes.Capsules3D#rotation_axis_angles")?
@@ -343,20 +362,20 @@ impl ::re_types_core::Archetype for Capsules3D {
             } else {
                 None
             };
-        let quaternions =
-            if let Some(array) = arrays_by_name.get("rerun.components.PoseRotationQuat") {
-                Some({
-                    <crate::components::PoseRotationQuat>::from_arrow_opt(&**array)
-                        .with_context("rerun.archetypes.Capsules3D#quaternions")?
-                        .into_iter()
-                        .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                        .collect::<DeserializationResult<Vec<_>>>()
-                        .with_context("rerun.archetypes.Capsules3D#quaternions")?
-                })
-            } else {
-                None
-            };
-        let colors = if let Some(array) = arrays_by_name.get("rerun.components.Color") {
+        let quaternions = if let Some(array) = arrays_by_descr.get(&Self::descriptor_quaternions())
+        {
+            Some({
+                <crate::components::PoseRotationQuat>::from_arrow_opt(&**array)
+                    .with_context("rerun.archetypes.Capsules3D#quaternions")?
+                    .into_iter()
+                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
+                    .collect::<DeserializationResult<Vec<_>>>()
+                    .with_context("rerun.archetypes.Capsules3D#quaternions")?
+            })
+        } else {
+            None
+        };
+        let colors = if let Some(array) = arrays_by_descr.get(&Self::descriptor_colors()) {
             Some({
                 <crate::components::Color>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Capsules3D#colors")?
@@ -368,7 +387,7 @@ impl ::re_types_core::Archetype for Capsules3D {
         } else {
             None
         };
-        let labels = if let Some(array) = arrays_by_name.get("rerun.components.Text") {
+        let labels = if let Some(array) = arrays_by_descr.get(&Self::descriptor_labels()) {
             Some({
                 <crate::components::Text>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Capsules3D#labels")?
@@ -380,7 +399,8 @@ impl ::re_types_core::Archetype for Capsules3D {
         } else {
             None
         };
-        let show_labels = if let Some(array) = arrays_by_name.get("rerun.components.ShowLabels") {
+        let show_labels = if let Some(array) = arrays_by_descr.get(&Self::descriptor_show_labels())
+        {
             <crate::components::ShowLabels>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.Capsules3D#show_labels")?
                 .into_iter()
@@ -389,7 +409,7 @@ impl ::re_types_core::Archetype for Capsules3D {
         } else {
             None
         };
-        let class_ids = if let Some(array) = arrays_by_name.get("rerun.components.ClassId") {
+        let class_ids = if let Some(array) = arrays_by_descr.get(&Self::descriptor_class_ids()) {
             Some({
                 <crate::components::ClassId>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Capsules3D#class_ids")?
@@ -424,21 +444,13 @@ impl ::re_types_core::AsComponents for Capsules3D {
             (Some(&self.lengths as &dyn ComponentBatch)).map(|batch| {
                 ::re_types_core::ComponentBatchCowWithDescriptor {
                     batch: batch.into(),
-                    descriptor_override: Some(ComponentDescriptor {
-                        archetype_name: Some("rerun.archetypes.Capsules3D".into()),
-                        archetype_field_name: Some(("lengths").into()),
-                        component_name: ("rerun.components.Length").into(),
-                    }),
+                    descriptor_override: Some(Self::descriptor_lengths()),
                 }
             }),
             (Some(&self.radii as &dyn ComponentBatch)).map(|batch| {
                 ::re_types_core::ComponentBatchCowWithDescriptor {
                     batch: batch.into(),
-                    descriptor_override: Some(ComponentDescriptor {
-                        archetype_name: Some("rerun.archetypes.Capsules3D".into()),
-                        archetype_field_name: Some(("radii").into()),
-                        component_name: ("rerun.components.Radius").into(),
-                    }),
+                    descriptor_override: Some(Self::descriptor_radii()),
                 }
             }),
             (self
@@ -447,11 +459,7 @@ impl ::re_types_core::AsComponents for Capsules3D {
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.Capsules3D".into()),
-                    archetype_field_name: Some(("translations").into()),
-                    component_name: ("rerun.components.PoseTranslation3D").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_translations()),
             }),
             (self
                 .rotation_axis_angles
@@ -459,11 +467,7 @@ impl ::re_types_core::AsComponents for Capsules3D {
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.Capsules3D".into()),
-                    archetype_field_name: Some(("rotation_axis_angles").into()),
-                    component_name: ("rerun.components.PoseRotationAxisAngle").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_rotation_axis_angles()),
             }),
             (self
                 .quaternions
@@ -471,11 +475,7 @@ impl ::re_types_core::AsComponents for Capsules3D {
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.Capsules3D".into()),
-                    archetype_field_name: Some(("quaternions").into()),
-                    component_name: ("rerun.components.PoseRotationQuat").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_quaternions()),
             }),
             (self
                 .colors
@@ -483,11 +483,7 @@ impl ::re_types_core::AsComponents for Capsules3D {
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.Capsules3D".into()),
-                    archetype_field_name: Some(("colors").into()),
-                    component_name: ("rerun.components.Color").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_colors()),
             }),
             (self
                 .labels
@@ -495,11 +491,7 @@ impl ::re_types_core::AsComponents for Capsules3D {
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.Capsules3D".into()),
-                    archetype_field_name: Some(("labels").into()),
-                    component_name: ("rerun.components.Text").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_labels()),
             }),
             (self
                 .show_labels
@@ -507,11 +499,7 @@ impl ::re_types_core::AsComponents for Capsules3D {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.Capsules3D".into()),
-                    archetype_field_name: Some(("show_labels").into()),
-                    component_name: ("rerun.components.ShowLabels").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_show_labels()),
             }),
             (self
                 .class_ids
@@ -519,11 +507,7 @@ impl ::re_types_core::AsComponents for Capsules3D {
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.Capsules3D".into()),
-                    archetype_field_name: Some(("class_ids").into()),
-                    component_name: ("rerun.components.ClassId").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_class_ids()),
             }),
         ]
         .into_iter()

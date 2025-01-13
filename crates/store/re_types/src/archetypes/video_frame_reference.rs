@@ -12,9 +12,9 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 
-use ::re_types_core::external::arrow;
+use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
@@ -146,51 +146,53 @@ pub struct VideoFrameReference {
     pub video_reference: Option<crate::components::EntityPath>,
 }
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
+impl VideoFrameReference {
+    /// Returns the [`ComponentDescriptor`] for [`Self::timestamp`].
+    #[inline]
+    pub fn descriptor_timestamp() -> ComponentDescriptor {
+        ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.VideoFrameReference".into()),
             component_name: "rerun.components.VideoTimestamp".into(),
             archetype_field_name: Some("timestamp".into()),
-        }]
-    });
+        }
+    }
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.VideoFrameReference".into()),
-            component_name: "rerun.components.VideoFrameReferenceIndicator".into(),
-            archetype_field_name: None,
-        }]
-    });
-
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
+    /// Returns the [`ComponentDescriptor`] for [`Self::video_reference`].
+    #[inline]
+    pub fn descriptor_video_reference() -> ComponentDescriptor {
+        ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.VideoFrameReference".into()),
             component_name: "rerun.components.EntityPath".into(),
             archetype_field_name: Some("video_reference".into()),
-        }]
-    });
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
+    #[inline]
+    pub fn descriptor_indicator() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.VideoFrameReference".into()),
+            component_name: "rerun.components.VideoFrameReferenceIndicator".into(),
+            archetype_field_name: None,
+        }
+    }
+}
+
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [VideoFrameReference::descriptor_timestamp()]);
+
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [VideoFrameReference::descriptor_indicator()]);
+
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [VideoFrameReference::descriptor_video_reference()]);
 
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.VideoFrameReference".into()),
-                component_name: "rerun.components.VideoTimestamp".into(),
-                archetype_field_name: Some("timestamp".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.VideoFrameReference".into()),
-                component_name: "rerun.components.VideoFrameReferenceIndicator".into(),
-                archetype_field_name: None,
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.VideoFrameReference".into()),
-                component_name: "rerun.components.EntityPath".into(),
-                archetype_field_name: Some("video_reference".into()),
-            },
+            VideoFrameReference::descriptor_timestamp(),
+            VideoFrameReference::descriptor_indicator(),
+            VideoFrameReference::descriptor_video_reference(),
         ]
     });
 
@@ -244,17 +246,14 @@ impl ::re_types_core::Archetype for VideoFrameReference {
 
     #[inline]
     fn from_arrow_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, arrow::array::ArrayRef)>,
+        arrow_data: impl IntoIterator<Item = (ComponentDescriptor, arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(name, array)| (name.full_name(), array))
-            .collect();
+        let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
         let timestamp = {
-            let array = arrays_by_name
-                .get("rerun.components.VideoTimestamp")
+            let array = arrays_by_descr
+                .get(&Self::descriptor_timestamp())
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.VideoFrameReference#timestamp")?;
             <crate::components::VideoTimestamp>::from_arrow_opt(&**array)
@@ -265,16 +264,16 @@ impl ::re_types_core::Archetype for VideoFrameReference {
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.VideoFrameReference#timestamp")?
         };
-        let video_reference = if let Some(array) = arrays_by_name.get("rerun.components.EntityPath")
-        {
-            <crate::components::EntityPath>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.VideoFrameReference#video_reference")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
+        let video_reference =
+            if let Some(array) = arrays_by_descr.get(&Self::descriptor_video_reference()) {
+                <crate::components::EntityPath>::from_arrow_opt(&**array)
+                    .with_context("rerun.archetypes.VideoFrameReference#video_reference")?
+                    .into_iter()
+                    .next()
+                    .flatten()
+            } else {
+                None
+            };
         Ok(Self {
             timestamp,
             video_reference,
@@ -291,11 +290,7 @@ impl ::re_types_core::AsComponents for VideoFrameReference {
             (Some(&self.timestamp as &dyn ComponentBatch)).map(|batch| {
                 ::re_types_core::ComponentBatchCowWithDescriptor {
                     batch: batch.into(),
-                    descriptor_override: Some(ComponentDescriptor {
-                        archetype_name: Some("rerun.archetypes.VideoFrameReference".into()),
-                        archetype_field_name: Some(("timestamp").into()),
-                        component_name: ("rerun.components.VideoTimestamp").into(),
-                    }),
+                    descriptor_override: Some(Self::descriptor_timestamp()),
                 }
             }),
             (self
@@ -304,11 +299,7 @@ impl ::re_types_core::AsComponents for VideoFrameReference {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.VideoFrameReference".into()),
-                    archetype_field_name: Some(("video_reference").into()),
-                    component_name: ("rerun.components.EntityPath").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_video_reference()),
             }),
         ]
         .into_iter()

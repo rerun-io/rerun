@@ -7,9 +7,7 @@ impl Clear {
     /// Children will be left untouched.
     #[inline]
     pub fn flat() -> Self {
-        Self {
-            is_recursive: false.into(),
-        }
+        Self::new(false)
     }
 
     /// Returns a recursive clear.
@@ -17,8 +15,6 @@ impl Clear {
     /// This will empty all components of the associated entity at the logged timepoint, as well as
     /// all components of all its recursive children.
     pub fn recursive() -> Self {
-        Self {
-            is_recursive: true.into(),
-        }
+        Self::new(true)
     }
 }

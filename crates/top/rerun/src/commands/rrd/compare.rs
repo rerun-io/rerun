@@ -103,7 +103,14 @@ fn compute_uber_table(
         let msg = msg.context("decode rrd message")?;
         stores
             .entry(msg.store_id().clone())
-            .or_insert_with(|| re_entity_db::EntityDb::new(msg.store_id().clone()))
+            .or_insert_with(|| {
+                re_entity_db::EntityDb::with_store_config(
+                    msg.store_id().clone(),
+                    // We must make sure not to do any store-side compaction during comparisons, or
+                    // this will result in flaky roundtrips in some instances.
+                    re_chunk_store::ChunkStoreConfig::ALL_DISABLED,
+                )
+            })
             .add(&msg)
             .context("decode rrd file contents")?;
     }

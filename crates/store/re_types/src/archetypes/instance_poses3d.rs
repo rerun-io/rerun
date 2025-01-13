@@ -12,9 +12,9 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 
-use ::re_types_core::external::arrow;
+use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
@@ -108,82 +108,94 @@ pub struct InstancePoses3D {
     pub mat3x3: Option<Vec<crate::components::PoseTransformMat3x3>>,
 }
 
+impl InstancePoses3D {
+    /// Returns the [`ComponentDescriptor`] for [`Self::translations`].
+    #[inline]
+    pub fn descriptor_translations() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
+            component_name: "rerun.components.PoseTranslation3D".into(),
+            archetype_field_name: Some("translations".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::rotation_axis_angles`].
+    #[inline]
+    pub fn descriptor_rotation_axis_angles() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
+            component_name: "rerun.components.PoseRotationAxisAngle".into(),
+            archetype_field_name: Some("rotation_axis_angles".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::quaternions`].
+    #[inline]
+    pub fn descriptor_quaternions() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
+            component_name: "rerun.components.PoseRotationQuat".into(),
+            archetype_field_name: Some("quaternions".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::scales`].
+    #[inline]
+    pub fn descriptor_scales() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
+            component_name: "rerun.components.PoseScale3D".into(),
+            archetype_field_name: Some("scales".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::mat3x3`].
+    #[inline]
+    pub fn descriptor_mat3x3() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
+            component_name: "rerun.components.PoseTransformMat3x3".into(),
+            archetype_field_name: Some("mat3x3".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
+    #[inline]
+    pub fn descriptor_indicator() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
+            component_name: "rerun.components.InstancePoses3DIndicator".into(),
+            archetype_field_name: None,
+        }
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
-            component_name: "rerun.components.InstancePoses3DIndicator".into(),
-            archetype_field_name: None,
-        }]
-    });
+    once_cell::sync::Lazy::new(|| [InstancePoses3D::descriptor_indicator()]);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
-                component_name: "rerun.components.PoseTranslation3D".into(),
-                archetype_field_name: Some("translations".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
-                component_name: "rerun.components.PoseRotationAxisAngle".into(),
-                archetype_field_name: Some("rotation_axis_angles".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
-                component_name: "rerun.components.PoseRotationQuat".into(),
-                archetype_field_name: Some("quaternions".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
-                component_name: "rerun.components.PoseScale3D".into(),
-                archetype_field_name: Some("scales".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
-                component_name: "rerun.components.PoseTransformMat3x3".into(),
-                archetype_field_name: Some("mat3x3".into()),
-            },
+            InstancePoses3D::descriptor_translations(),
+            InstancePoses3D::descriptor_rotation_axis_angles(),
+            InstancePoses3D::descriptor_quaternions(),
+            InstancePoses3D::descriptor_scales(),
+            InstancePoses3D::descriptor_mat3x3(),
         ]
     });
 
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 6usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
-                component_name: "rerun.components.InstancePoses3DIndicator".into(),
-                archetype_field_name: None,
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
-                component_name: "rerun.components.PoseTranslation3D".into(),
-                archetype_field_name: Some("translations".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
-                component_name: "rerun.components.PoseRotationAxisAngle".into(),
-                archetype_field_name: Some("rotation_axis_angles".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
-                component_name: "rerun.components.PoseRotationQuat".into(),
-                archetype_field_name: Some("quaternions".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
-                component_name: "rerun.components.PoseScale3D".into(),
-                archetype_field_name: Some("scales".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
-                component_name: "rerun.components.PoseTransformMat3x3".into(),
-                archetype_field_name: Some("mat3x3".into()),
-            },
+            InstancePoses3D::descriptor_indicator(),
+            InstancePoses3D::descriptor_translations(),
+            InstancePoses3D::descriptor_rotation_axis_angles(),
+            InstancePoses3D::descriptor_quaternions(),
+            InstancePoses3D::descriptor_scales(),
+            InstancePoses3D::descriptor_mat3x3(),
         ]
     });
 
@@ -236,16 +248,13 @@ impl ::re_types_core::Archetype for InstancePoses3D {
 
     #[inline]
     fn from_arrow_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, arrow::array::ArrayRef)>,
+        arrow_data: impl IntoIterator<Item = (ComponentDescriptor, arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(name, array)| (name.full_name(), array))
-            .collect();
+        let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
         let translations =
-            if let Some(array) = arrays_by_name.get("rerun.components.PoseTranslation3D") {
+            if let Some(array) = arrays_by_descr.get(&Self::descriptor_translations()) {
                 Some({
                     <crate::components::PoseTranslation3D>::from_arrow_opt(&**array)
                         .with_context("rerun.archetypes.InstancePoses3D#translations")?
@@ -258,7 +267,7 @@ impl ::re_types_core::Archetype for InstancePoses3D {
                 None
             };
         let rotation_axis_angles =
-            if let Some(array) = arrays_by_name.get("rerun.components.PoseRotationAxisAngle") {
+            if let Some(array) = arrays_by_descr.get(&Self::descriptor_rotation_axis_angles()) {
                 Some({
                     <crate::components::PoseRotationAxisAngle>::from_arrow_opt(&**array)
                         .with_context("rerun.archetypes.InstancePoses3D#rotation_axis_angles")?
@@ -270,20 +279,20 @@ impl ::re_types_core::Archetype for InstancePoses3D {
             } else {
                 None
             };
-        let quaternions =
-            if let Some(array) = arrays_by_name.get("rerun.components.PoseRotationQuat") {
-                Some({
-                    <crate::components::PoseRotationQuat>::from_arrow_opt(&**array)
-                        .with_context("rerun.archetypes.InstancePoses3D#quaternions")?
-                        .into_iter()
-                        .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                        .collect::<DeserializationResult<Vec<_>>>()
-                        .with_context("rerun.archetypes.InstancePoses3D#quaternions")?
-                })
-            } else {
-                None
-            };
-        let scales = if let Some(array) = arrays_by_name.get("rerun.components.PoseScale3D") {
+        let quaternions = if let Some(array) = arrays_by_descr.get(&Self::descriptor_quaternions())
+        {
+            Some({
+                <crate::components::PoseRotationQuat>::from_arrow_opt(&**array)
+                    .with_context("rerun.archetypes.InstancePoses3D#quaternions")?
+                    .into_iter()
+                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
+                    .collect::<DeserializationResult<Vec<_>>>()
+                    .with_context("rerun.archetypes.InstancePoses3D#quaternions")?
+            })
+        } else {
+            None
+        };
+        let scales = if let Some(array) = arrays_by_descr.get(&Self::descriptor_scales()) {
             Some({
                 <crate::components::PoseScale3D>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.InstancePoses3D#scales")?
@@ -295,8 +304,7 @@ impl ::re_types_core::Archetype for InstancePoses3D {
         } else {
             None
         };
-        let mat3x3 = if let Some(array) = arrays_by_name.get("rerun.components.PoseTransformMat3x3")
-        {
+        let mat3x3 = if let Some(array) = arrays_by_descr.get(&Self::descriptor_mat3x3()) {
             Some({
                 <crate::components::PoseTransformMat3x3>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.InstancePoses3D#mat3x3")?
@@ -330,11 +338,7 @@ impl ::re_types_core::AsComponents for InstancePoses3D {
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
-                    archetype_field_name: Some(("translations").into()),
-                    component_name: ("rerun.components.PoseTranslation3D").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_translations()),
             }),
             (self
                 .rotation_axis_angles
@@ -342,11 +346,7 @@ impl ::re_types_core::AsComponents for InstancePoses3D {
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
-                    archetype_field_name: Some(("rotation_axis_angles").into()),
-                    component_name: ("rerun.components.PoseRotationAxisAngle").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_rotation_axis_angles()),
             }),
             (self
                 .quaternions
@@ -354,11 +354,7 @@ impl ::re_types_core::AsComponents for InstancePoses3D {
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
-                    archetype_field_name: Some(("quaternions").into()),
-                    component_name: ("rerun.components.PoseRotationQuat").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_quaternions()),
             }),
             (self
                 .scales
@@ -366,11 +362,7 @@ impl ::re_types_core::AsComponents for InstancePoses3D {
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
-                    archetype_field_name: Some(("scales").into()),
-                    component_name: ("rerun.components.PoseScale3D").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_scales()),
             }),
             (self
                 .mat3x3
@@ -378,11 +370,7 @@ impl ::re_types_core::AsComponents for InstancePoses3D {
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
-                    archetype_field_name: Some(("mat3x3").into()),
-                    component_name: ("rerun.components.PoseTransformMat3x3").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_mat3x3()),
             }),
         ]
         .into_iter()

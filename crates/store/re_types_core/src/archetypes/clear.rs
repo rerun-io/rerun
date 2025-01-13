@@ -12,9 +12,9 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 
-use crate::external::arrow;
+use crate::try_serialize_field;
 use crate::SerializationResult;
-use crate::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use crate::{ComponentBatch, ComponentBatchCowWithDescriptor, SerializedComponentBatch};
 use crate::{ComponentDescriptor, ComponentName};
 use crate::{DeserializationError, DeserializationResult};
 
@@ -78,23 +78,33 @@ pub struct Clear {
     pub is_recursive: crate::components::ClearIsRecursive,
 }
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
+impl Clear {
+    /// Returns the [`ComponentDescriptor`] for [`Self::is_recursive`].
+    #[inline]
+    pub fn descriptor_is_recursive() -> ComponentDescriptor {
+        ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Clear".into()),
             component_name: "rerun.components.ClearIsRecursive".into(),
             archetype_field_name: Some("is_recursive".into()),
-        }]
-    });
+        }
+    }
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
+    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
+    #[inline]
+    pub fn descriptor_indicator() -> ComponentDescriptor {
+        ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Clear".into()),
             component_name: "rerun.components.ClearIndicator".into(),
             archetype_field_name: None,
-        }]
-    });
+        }
+    }
+}
+
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [Clear::descriptor_is_recursive()]);
+
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [Clear::descriptor_indicator()]);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
@@ -102,16 +112,8 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]>
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Clear".into()),
-                component_name: "rerun.components.ClearIsRecursive".into(),
-                archetype_field_name: Some("is_recursive".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Clear".into()),
-                component_name: "rerun.components.ClearIndicator".into(),
-                archetype_field_name: None,
-            },
+            Clear::descriptor_is_recursive(),
+            Clear::descriptor_indicator(),
         ]
     });
 
@@ -164,17 +166,14 @@ impl crate::Archetype for Clear {
 
     #[inline]
     fn from_arrow_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, arrow::array::ArrayRef)>,
+        arrow_data: impl IntoIterator<Item = (ComponentDescriptor, arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(name, array)| (name.full_name(), array))
-            .collect();
+        let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
         let is_recursive = {
-            let array = arrays_by_name
-                .get("rerun.components.ClearIsRecursive")
+            let array = arrays_by_descr
+                .get(&Self::descriptor_is_recursive())
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.Clear#is_recursive")?;
             <crate::components::ClearIsRecursive>::from_arrow_opt(&**array)
@@ -198,11 +197,7 @@ impl crate::AsComponents for Clear {
             (Some(&self.is_recursive as &dyn ComponentBatch)).map(|batch| {
                 crate::ComponentBatchCowWithDescriptor {
                     batch: batch.into(),
-                    descriptor_override: Some(ComponentDescriptor {
-                        archetype_name: Some("rerun.archetypes.Clear".into()),
-                        archetype_field_name: Some(("is_recursive").into()),
-                        component_name: ("rerun.components.ClearIsRecursive").into(),
-                    }),
+                    descriptor_override: Some(Self::descriptor_is_recursive()),
                 }
             }),
         ]
