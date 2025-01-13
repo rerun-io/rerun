@@ -32,7 +32,5 @@ pub fn test_filter_widget() {
 
     harness.run();
 
-    //TODO(#8245): enable this everywhere when we have a software renderer setup
-    #[cfg(target_os = "macos")]
     harness.snapshot("filter_widget");
 }

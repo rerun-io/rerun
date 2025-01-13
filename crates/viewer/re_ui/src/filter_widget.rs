@@ -1,3 +1,5 @@
+use std::ops::Range;
+
 use egui::{Color32, NumExt as _, Widget as _};
 use itertools::Either;
 
@@ -52,7 +54,8 @@ pub struct FilterState {
 impl FilterState {
     /// Return the filter if any.
     ///
-    /// The widget must be enabled _and_ the filter string must not be empty.
+    /// Returns `None` if the filter is disabled. Returns `Some(query)` if the filter is enabled
+    /// (even if the query string is empty, in which case it should match nothing).
     pub fn query(&self) -> Option<&str> {
         self.inner_state
             .as_ref()
@@ -151,7 +154,8 @@ impl FilterState {
 pub struct FilterMatcher {
     /// The lowercase version of the query string.
     ///
-    /// If this is `None` or `Some("")`, the matcher will accept any input.
+    /// If this is `None`, the filter is inactive and the matcher will accept everything. If this
+    /// is `Somme("")`, the matcher will reject any input.
     lowercase_query: Option<String>,
 }
 
@@ -190,7 +194,11 @@ impl FilterMatcher {
     /// Find all matches in the given text.
     ///
     /// Can be used to format the text, e.g. with [`format_matching_text`].
-    pub fn find_matches(&self, text: &str) -> Option<impl Iterator<Item = (usize, usize)> + '_> {
+    ///
+    /// Returns `None` when there is no match.
+    /// Returns `Some` when the filter is inactive (and thus matches everything), or if there is an
+    /// actual match.
+    fn find_matches(&self, text: &str) -> Option<impl Iterator<Item = Range<usize>> + '_> {
         let query = match self.lowercase_query.as_deref() {
             None => {
                 return Some(Either::Left(std::iter::empty()));
@@ -213,10 +221,15 @@ impl FilterMatcher {
             let index = lower_case_text[start..].find(query)?;
             let start_index = start + index;
             start = start_index + query_len;
-            Some((start_index, start_index + query_len))
+            Some(start_index..(start_index + query_len))
         })))
     }
 
+    /// Returns a formatted version of the text with the matching sections highlighted.
+    ///
+    /// Returns `None` when there is no match (so nothing should be displayed).
+    /// Returns `Some` when the filter is inactive (and thus matches everything), or if there is an
+    /// actual match.
     pub fn matches_formatted(&self, ctx: &egui::Context, text: &str) -> Option<egui::WidgetText> {
         self.find_matches(text)
             .map(|match_iter| format_matching_text(ctx, text, match_iter))
@@ -228,15 +241,15 @@ impl FilterMatcher {
 pub fn format_matching_text(
     ctx: &egui::Context,
     text: &str,
-    match_iter: impl Iterator<Item = (usize, usize)>,
+    match_iter: impl Iterator<Item = Range<usize>>,
 ) -> egui::WidgetText {
     let mut current = 0;
     let mut job = egui::text::LayoutJob::default();
 
-    for (start_idx, end_idx) in match_iter {
-        if current < start_idx {
+    for Range { start, end } in match_iter {
+        if current < start {
             job.append(
-                &text[current..start_idx],
+                &text[current..start],
                 0.0,
                 egui::TextFormat {
                     font_id: egui::TextStyle::Body.resolve(&ctx.style()),
@@ -247,7 +260,7 @@ pub fn format_matching_text(
         }
 
         job.append(
-            &text[start_idx..end_idx],
+            &text[start..end],
             0.0,
             egui::TextFormat {
                 font_id: egui::TextStyle::Body.resolve(&ctx.style()),
@@ -257,7 +270,7 @@ pub fn format_matching_text(
             },
         );
 
-        current = end_idx;
+        current = end;
     }
 
     if current < text.len() {

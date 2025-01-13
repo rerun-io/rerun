@@ -389,10 +389,7 @@ impl ExampleApp {
                     // (last added widget has priority for input).
                     let title_bar_response = ui.interact(
                         ui.max_rect(),
-                        ui.id().with(
-                            "bac\
-                        kground",
-                        ),
+                        ui.id().with("background"),
                         egui::Sense::click(),
                     );
                     if title_bar_response.double_clicked() {
