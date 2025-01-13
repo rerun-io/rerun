@@ -79,10 +79,12 @@ impl ColumnDescriptor {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TimeColumnDescriptor {
     /// The timeline this column is associated with.
-    pub timeline: Timeline,
+    timeline: Timeline,
 
     /// The Arrow datatype of the column.
-    pub datatype: Arrow2Datatype,
+    ///
+    /// This is needed in order to be able to set the datatype to null.
+    datatype: Arrow2Datatype,
 }
 
 impl PartialOrd for TimeColumnDescriptor {
@@ -104,6 +106,27 @@ impl Ord for TimeColumnDescriptor {
 }
 
 impl TimeColumnDescriptor {
+    pub fn new_null(name: TimelineName) -> Self {
+        Self {
+            // TODO(cmc): I picked a sequence here because I have to pick something.
+            // It doesn't matter, only the name will remain in the Arrow schema anyhow.
+            timeline: Timeline::new_sequence(name),
+            datatype: arrow2::datatypes::DataType::Null,
+        }
+    }
+
+    pub fn timeline(&self) -> Timeline {
+        self.timeline
+    }
+
+    pub fn name(&self) -> &TimelineName {
+        self.timeline.name()
+    }
+
+    pub fn typ(&self) -> re_log_types::TimeType {
+        self.timeline.typ()
+    }
+
     fn metadata(&self) -> arrow2::datatypes::Metadata {
         let Self {
             timeline,
