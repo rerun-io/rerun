@@ -12,9 +12,9 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 
-use crate::external::arrow;
+use crate::try_serialize_field;
 use crate::SerializationResult;
-use crate::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use crate::{ComponentBatch, ComponentBatchCowWithDescriptor, SerializedComponentBatch};
 use crate::{ComponentDescriptor, ComponentName};
 use crate::{DeserializationError, DeserializationResult};
 

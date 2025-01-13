@@ -12,7 +12,7 @@ use itertools::Itertools;
 use crate::{
     root_as_schema, Docs, FbsBaseType, FbsEnum, FbsEnumVal, FbsField, FbsKeyValue, FbsObject,
     FbsSchema, FbsType, Reporter, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
-    ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RERUN_OVERRIDE_TYPE,
+    ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RERUN_OVERRIDE_TYPE, ATTR_RUST_ARCHETYPE_EAGER,
 };
 
 // ---
@@ -685,6 +685,14 @@ impl Object {
         } else {
             self.kind.plural_snake_case().to_owned()
         }
+    }
+
+    pub fn is_archetype(&self) -> bool {
+        self.kind == ObjectKind::Archetype
+    }
+
+    pub fn is_eager_rust_archetype(&self) -> bool {
+        self.is_archetype() && self.is_attr_set(ATTR_RUST_ARCHETYPE_EAGER)
     }
 }
 
