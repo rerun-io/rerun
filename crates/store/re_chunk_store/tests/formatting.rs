@@ -7,6 +7,7 @@ use re_log_types::{
     example_components::{MyColor, MyIndex},
     EntityPath, Time,
 };
+use re_types_core::ComponentBatch as _;
 
 /// Ensure that `ChunkStore::to_string()` is nice and readable.
 #[test]
@@ -30,13 +31,13 @@ fn format_chunk_store() -> anyhow::Result<()> {
 
     store.insert_chunk(&Arc::new(
         Chunk::builder_with_id(chunk_id, entity_path.clone())
-            .with_component_batches(
+            .with_serialized_batches(
                 row_id,
                 [
                     build_frame_nr(1),
                     build_log_time(Time::from_ns_since_epoch(1_736_534_622_123_456_789)),
                 ],
-                [&indices1 as _, &colors1 as _],
+                [indices1.try_serialized()?, colors1.try_serialized()?],
             )
             .build()?,
     ))?;
