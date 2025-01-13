@@ -114,12 +114,13 @@ impl VisualizerSystem for Boxes3DVisualizer {
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
-        let Some(render_ctx) = ctx.viewer_ctx.render_ctx else {
-            return Err(ViewSystemExecutionError::NoRenderContextError);
-        };
-
-        let mut builder =
-            ProcMeshDrawableBuilder::new(&mut self.0, render_ctx, view_query, "boxes3d", &Fallback);
+        let mut builder = ProcMeshDrawableBuilder::new(
+            &mut self.0,
+            ctx.viewer_ctx.render_ctx,
+            view_query,
+            "boxes3d",
+            &Fallback,
+        );
 
         use super::entity_iterator::{iter_slices, process_archetype};
         process_archetype::<Self, Boxes3D, _>(

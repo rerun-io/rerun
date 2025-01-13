@@ -12,9 +12,9 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 
-use ::re_types_core::external::arrow;
+use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
@@ -62,28 +62,46 @@ pub struct GraphEdges {
     pub graph_type: Option<crate::components::GraphType>,
 }
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
+impl GraphEdges {
+    /// Returns the [`ComponentDescriptor`] for [`Self::edges`].
+    #[inline]
+    pub fn descriptor_edges() -> ComponentDescriptor {
+        ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.GraphEdges".into()),
             component_name: "rerun.components.GraphEdge".into(),
             archetype_field_name: Some("edges".into()),
-        }]
-    });
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::graph_type`].
+    #[inline]
+    pub fn descriptor_graph_type() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.GraphEdges".into()),
+            component_name: "rerun.components.GraphType".into(),
+            archetype_field_name: Some("graph_type".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
+    #[inline]
+    pub fn descriptor_indicator() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.GraphEdges".into()),
+            component_name: "rerun.components.GraphEdgesIndicator".into(),
+            archetype_field_name: None,
+        }
+    }
+}
+
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [GraphEdges::descriptor_edges()]);
 
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.GraphEdges".into()),
-                component_name: "rerun.components.GraphType".into(),
-                archetype_field_name: Some("graph_type".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.GraphEdges".into()),
-                component_name: "rerun.components.GraphEdgesIndicator".into(),
-                archetype_field_name: None,
-            },
+            GraphEdges::descriptor_graph_type(),
+            GraphEdges::descriptor_indicator(),
         ]
     });
 
@@ -93,21 +111,9 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]>
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.GraphEdges".into()),
-                component_name: "rerun.components.GraphEdge".into(),
-                archetype_field_name: Some("edges".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.GraphEdges".into()),
-                component_name: "rerun.components.GraphType".into(),
-                archetype_field_name: Some("graph_type".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.GraphEdges".into()),
-                component_name: "rerun.components.GraphEdgesIndicator".into(),
-                archetype_field_name: None,
-            },
+            GraphEdges::descriptor_edges(),
+            GraphEdges::descriptor_graph_type(),
+            GraphEdges::descriptor_indicator(),
         ]
     });
 
@@ -160,17 +166,14 @@ impl ::re_types_core::Archetype for GraphEdges {
 
     #[inline]
     fn from_arrow_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, arrow::array::ArrayRef)>,
+        arrow_data: impl IntoIterator<Item = (ComponentDescriptor, arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(name, array)| (name.full_name(), array))
-            .collect();
+        let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
         let edges = {
-            let array = arrays_by_name
-                .get("rerun.components.GraphEdge")
+            let array = arrays_by_descr
+                .get(&Self::descriptor_edges())
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.GraphEdges#edges")?;
             <crate::components::GraphEdge>::from_arrow_opt(&**array)
@@ -180,7 +183,7 @@ impl ::re_types_core::Archetype for GraphEdges {
                 .collect::<DeserializationResult<Vec<_>>>()
                 .with_context("rerun.archetypes.GraphEdges#edges")?
         };
-        let graph_type = if let Some(array) = arrays_by_name.get("rerun.components.GraphType") {
+        let graph_type = if let Some(array) = arrays_by_descr.get(&Self::descriptor_graph_type()) {
             <crate::components::GraphType>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.GraphEdges#graph_type")?
                 .into_iter()
@@ -202,11 +205,7 @@ impl ::re_types_core::AsComponents for GraphEdges {
             (Some(&self.edges as &dyn ComponentBatch)).map(|batch| {
                 ::re_types_core::ComponentBatchCowWithDescriptor {
                     batch: batch.into(),
-                    descriptor_override: Some(ComponentDescriptor {
-                        archetype_name: Some("rerun.archetypes.GraphEdges".into()),
-                        archetype_field_name: Some(("edges").into()),
-                        component_name: ("rerun.components.GraphEdge").into(),
-                    }),
+                    descriptor_override: Some(Self::descriptor_edges()),
                 }
             }),
             (self
@@ -215,11 +214,7 @@ impl ::re_types_core::AsComponents for GraphEdges {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.GraphEdges".into()),
-                    archetype_field_name: Some(("graph_type").into()),
-                    component_name: ("rerun.components.GraphType").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_graph_type()),
             }),
         ]
         .into_iter()

@@ -208,10 +208,10 @@ impl ViewProperty {
 
     /// Returns whether any property is non-empty.
     pub fn any_non_empty(&self) -> bool {
-        self.query_results.components.keys().any(|name| {
-            self.component_raw(*name)
-                .map_or(false, |raw| !raw.is_empty())
-        })
+        self.query_results
+            .components
+            .keys()
+            .any(|name| self.component_raw(*name).is_some_and(|raw| !raw.is_empty()))
     }
 
     /// Create a query context for this view property.

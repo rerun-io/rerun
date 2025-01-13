@@ -41,3 +41,8 @@ attribute "attr.rust.new_pub_crate";
 /// an object of kind `Blueprint` with `attr.rust.override_crate=re_viewport`, the final
 /// object will be generated in `re_viewport/src/blueprint`.
 attribute "attr.rust.override_crate";
+
+/// The generated Rust object should be eagerly serialized, i.e. only comprised of Arrow arrays.
+///
+/// Applies only to archetypes. No-op otherwise.
+attribute "attr.rust.archetype_eager";

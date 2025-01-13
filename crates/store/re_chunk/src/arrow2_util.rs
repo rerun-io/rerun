@@ -25,7 +25,7 @@ pub fn is_list_array_semantically_empty(list_array: &ArrowListArray<i32>) -> boo
     let is_all_nulls = || {
         list_array
             .validity()
-            .map_or(false, |bitmap| bitmap.unset_bits() == list_array.len())
+            .is_some_and(|bitmap| bitmap.unset_bits() == list_array.len())
     };
 
     let is_all_empties = || list_array.offsets().lengths().all(|len| len == 0);
@@ -192,7 +192,7 @@ pub fn sparse_list_array_to_dense_list_array(
 
     let is_empty = list_array
         .validity()
-        .map_or(false, |validity| validity.is_empty());
+        .is_some_and(|validity| validity.is_empty());
     if is_empty {
         return list_array.clone();
     }

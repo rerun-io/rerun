@@ -1021,11 +1021,11 @@ impl TabWidget {
         let hovered = tab_desc
             .item
             .as_ref()
-            .map_or(false, |item| tab_viewer.ctx.hovered().contains_item(item));
+            .is_some_and(|item| tab_viewer.ctx.hovered().contains_item(item));
         let selected = tab_desc
             .item
             .as_ref()
-            .map_or(false, |item| tab_viewer.ctx.selection().contains_item(item));
+            .is_some_and(|item| tab_viewer.ctx.selection().contains_item(item));
 
         // tab icon
         let icon_size = DesignTokens::small_icon_size();

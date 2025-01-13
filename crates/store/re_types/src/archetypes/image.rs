@@ -12,9 +12,9 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 
-use ::re_types_core::external::arrow;
+use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
@@ -145,75 +145,75 @@ pub struct Image {
     pub draw_order: Option<crate::components::DrawOrder>,
 }
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Image".into()),
-                component_name: "rerun.components.ImageBuffer".into(),
-                archetype_field_name: Some("buffer".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Image".into()),
-                component_name: "rerun.components.ImageFormat".into(),
-                archetype_field_name: Some("format".into()),
-            },
-        ]
-    });
+impl Image {
+    /// Returns the [`ComponentDescriptor`] for [`Self::buffer`].
+    #[inline]
+    pub fn descriptor_buffer() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Image".into()),
+            component_name: "rerun.components.ImageBuffer".into(),
+            archetype_field_name: Some("buffer".into()),
+        }
+    }
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
+    /// Returns the [`ComponentDescriptor`] for [`Self::format`].
+    #[inline]
+    pub fn descriptor_format() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Image".into()),
+            component_name: "rerun.components.ImageFormat".into(),
+            archetype_field_name: Some("format".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::opacity`].
+    #[inline]
+    pub fn descriptor_opacity() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Image".into()),
+            component_name: "rerun.components.Opacity".into(),
+            archetype_field_name: Some("opacity".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::draw_order`].
+    #[inline]
+    pub fn descriptor_draw_order() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Image".into()),
+            component_name: "rerun.components.DrawOrder".into(),
+            archetype_field_name: Some("draw_order".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
+    #[inline]
+    pub fn descriptor_indicator() -> ComponentDescriptor {
+        ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Image".into()),
             component_name: "rerun.components.ImageIndicator".into(),
             archetype_field_name: None,
-        }]
-    });
+        }
+    }
+}
+
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
+    once_cell::sync::Lazy::new(|| [Image::descriptor_buffer(), Image::descriptor_format()]);
+
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [Image::descriptor_indicator()]);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Image".into()),
-                component_name: "rerun.components.Opacity".into(),
-                archetype_field_name: Some("opacity".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Image".into()),
-                component_name: "rerun.components.DrawOrder".into(),
-                archetype_field_name: Some("draw_order".into()),
-            },
-        ]
-    });
+    once_cell::sync::Lazy::new(|| [Image::descriptor_opacity(), Image::descriptor_draw_order()]);
 
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Image".into()),
-                component_name: "rerun.components.ImageBuffer".into(),
-                archetype_field_name: Some("buffer".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Image".into()),
-                component_name: "rerun.components.ImageFormat".into(),
-                archetype_field_name: Some("format".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Image".into()),
-                component_name: "rerun.components.ImageIndicator".into(),
-                archetype_field_name: None,
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Image".into()),
-                component_name: "rerun.components.Opacity".into(),
-                archetype_field_name: Some("opacity".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Image".into()),
-                component_name: "rerun.components.DrawOrder".into(),
-                archetype_field_name: Some("draw_order".into()),
-            },
+            Image::descriptor_buffer(),
+            Image::descriptor_format(),
+            Image::descriptor_indicator(),
+            Image::descriptor_opacity(),
+            Image::descriptor_draw_order(),
         ]
     });
 
@@ -266,17 +266,14 @@ impl ::re_types_core::Archetype for Image {
 
     #[inline]
     fn from_arrow_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, arrow::array::ArrayRef)>,
+        arrow_data: impl IntoIterator<Item = (ComponentDescriptor, arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(name, array)| (name.full_name(), array))
-            .collect();
+        let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
         let buffer = {
-            let array = arrays_by_name
-                .get("rerun.components.ImageBuffer")
+            let array = arrays_by_descr
+                .get(&Self::descriptor_buffer())
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.Image#buffer")?;
             <crate::components::ImageBuffer>::from_arrow_opt(&**array)
@@ -288,8 +285,8 @@ impl ::re_types_core::Archetype for Image {
                 .with_context("rerun.archetypes.Image#buffer")?
         };
         let format = {
-            let array = arrays_by_name
-                .get("rerun.components.ImageFormat")
+            let array = arrays_by_descr
+                .get(&Self::descriptor_format())
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.Image#format")?;
             <crate::components::ImageFormat>::from_arrow_opt(&**array)
@@ -300,7 +297,7 @@ impl ::re_types_core::Archetype for Image {
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.Image#format")?
         };
-        let opacity = if let Some(array) = arrays_by_name.get("rerun.components.Opacity") {
+        let opacity = if let Some(array) = arrays_by_descr.get(&Self::descriptor_opacity()) {
             <crate::components::Opacity>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.Image#opacity")?
                 .into_iter()
@@ -309,7 +306,7 @@ impl ::re_types_core::Archetype for Image {
         } else {
             None
         };
-        let draw_order = if let Some(array) = arrays_by_name.get("rerun.components.DrawOrder") {
+        let draw_order = if let Some(array) = arrays_by_descr.get(&Self::descriptor_draw_order()) {
             <crate::components::DrawOrder>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.Image#draw_order")?
                 .into_iter()
@@ -336,21 +333,13 @@ impl ::re_types_core::AsComponents for Image {
             (Some(&self.buffer as &dyn ComponentBatch)).map(|batch| {
                 ::re_types_core::ComponentBatchCowWithDescriptor {
                     batch: batch.into(),
-                    descriptor_override: Some(ComponentDescriptor {
-                        archetype_name: Some("rerun.archetypes.Image".into()),
-                        archetype_field_name: Some(("buffer").into()),
-                        component_name: ("rerun.components.ImageBuffer").into(),
-                    }),
+                    descriptor_override: Some(Self::descriptor_buffer()),
                 }
             }),
             (Some(&self.format as &dyn ComponentBatch)).map(|batch| {
                 ::re_types_core::ComponentBatchCowWithDescriptor {
                     batch: batch.into(),
-                    descriptor_override: Some(ComponentDescriptor {
-                        archetype_name: Some("rerun.archetypes.Image".into()),
-                        archetype_field_name: Some(("format").into()),
-                        component_name: ("rerun.components.ImageFormat").into(),
-                    }),
+                    descriptor_override: Some(Self::descriptor_format()),
                 }
             }),
             (self
@@ -359,11 +348,7 @@ impl ::re_types_core::AsComponents for Image {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.Image".into()),
-                    archetype_field_name: Some(("opacity").into()),
-                    component_name: ("rerun.components.Opacity").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_opacity()),
             }),
             (self
                 .draw_order
@@ -371,11 +356,7 @@ impl ::re_types_core::AsComponents for Image {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.Image".into()),
-                    archetype_field_name: Some(("draw_order").into()),
-                    component_name: ("rerun.components.DrawOrder").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_draw_order()),
             }),
         ]
         .into_iter()

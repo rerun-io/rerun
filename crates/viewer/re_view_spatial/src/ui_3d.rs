@@ -485,12 +485,8 @@ impl SpatialView3D {
             blend_with_background: false,
         };
 
-        let Some(render_ctx) = ctx.render_ctx else {
-            return Err(ViewSystemExecutionError::NoRenderContextError);
-        };
-
         // Various ui interactions draw additional lines.
-        let mut line_builder = LineDrawableBuilder::new(render_ctx);
+        let mut line_builder = LineDrawableBuilder::new(ctx.render_ctx);
         line_builder.radius_boost_in_ui_points_for_outlines(
             re_view::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
         );
@@ -515,7 +511,7 @@ impl SpatialView3D {
             state.bounding_boxes.current.extend(glam::Vec3::ZERO);
         }
 
-        let mut view_builder = ViewBuilder::new(render_ctx, target_config);
+        let mut view_builder = ViewBuilder::new(ctx.render_ctx, target_config);
 
         // Create labels now since their shapes participate are added to scene.ui for picking.
         let (label_shapes, ui_rects) = create_labels(
@@ -684,7 +680,7 @@ impl SpatialView3D {
             query.view_id,
         );
         let (background_drawable, clear_color) =
-            crate::configure_background(ctx, &background, render_ctx, self, state)?;
+            crate::configure_background(ctx, &background, ctx.render_ctx, self, state)?;
         if let Some(background_drawable) = background_drawable {
             view_builder.queue_draw(background_drawable);
         }
@@ -728,12 +724,8 @@ impl SpatialView3D {
         let plane =
             grid_config.component_or_fallback::<re_types::components::Plane3D>(ctx, self, state)?;
 
-        let Some(render_ctx) = ctx.render_ctx else {
-            return Ok(None);
-        };
-
         Ok(Some(re_renderer::renderer::WorldGridDrawData::new(
-            render_ctx,
+            ctx.render_ctx,
             &re_renderer::renderer::WorldGridConfiguration {
                 color: color.into(),
                 plane: plane.into(),
@@ -766,7 +758,7 @@ fn show_orbit_eye_center(
 
     let should_show_center_of_orbit_camera = state_3d
         .last_eye_interaction
-        .map_or(false, |d| d.elapsed().as_secs_f32() < 0.35);
+        .is_some_and(|d| d.elapsed().as_secs_f32() < 0.35);
 
     if !state_3d.eye_interact_fade_in && should_show_center_of_orbit_camera {
         // Any interaction immediately causes fade in to start if it's not already on.
@@ -894,7 +886,7 @@ fn show_projections_from_2d_space(
             ..
         } => {
             let current_tracked_entity = state.state_3d.tracked_entity.as_ref();
-            if current_tracked_entity.map_or(true, |tracked| tracked != tracked_entity) {
+            if current_tracked_entity != Some(tracked_entity) {
                 if let Some(tracked_camera) = space_cameras
                     .iter()
                     .find(|cam| &cam.ent_path == tracked_entity)

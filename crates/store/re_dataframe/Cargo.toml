@@ -37,6 +37,7 @@ re_types_core.workspace = true
 
 # External dependencies:
 anyhow.workspace = true
+arrow.workspace = true
 arrow2.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true

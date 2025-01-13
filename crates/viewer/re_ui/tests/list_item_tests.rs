@@ -143,9 +143,7 @@ pub fn test_list_items_should_match_snapshot() {
                         ui,
                         list_item::PropertyContent::new("Color")
                             .with_icon(&re_ui::icons::VIEW_TEXT)
-                            .action_button(&re_ui::icons::ADD, || {
-                                re_log::warn!("Add button clicked");
-                            })
+                            .action_button(&re_ui::icons::ADD, || {})
                             .value_color(&color),
                     );
 
@@ -153,9 +151,7 @@ pub fn test_list_items_should_match_snapshot() {
                         ui,
                         list_item::PropertyContent::new("Color (editable)")
                             .with_icon(&re_ui::icons::VIEW_TEXT)
-                            .action_button(&re_ui::icons::ADD, || {
-                                re_log::warn!("Add button clicked");
-                            })
+                            .action_button(&re_ui::icons::ADD, || {})
                             .value_color_mut(&mut color),
                     );
                 });
@@ -176,14 +172,26 @@ pub fn test_list_items_should_match_snapshot() {
 
                 ui.list_item().show_hierarchical(
                     ui,
-                    list_item::CustomContent::new(|ui, context| {
+                    list_item::CustomContent::new(|ui, _| {
                         ui.ctx().debug_painter().debug_rect(
-                            context.rect,
+                            ui.max_rect(),
                             egui::Color32::LIGHT_RED,
                             "CustomContent delegates to a closure",
                         );
                     }),
-                )
+                );
+
+                ui.list_item().show_hierarchical(
+                    ui,
+                    list_item::CustomContent::new(|ui, _| {
+                        ui.ctx().debug_painter().debug_rect(
+                            ui.max_rect(),
+                            egui::Color32::LIGHT_RED,
+                            "CustomContent with an action button",
+                        );
+                    })
+                    .action_button(&re_ui::icons::ADD, || {}),
+                );
             },
         );
     };
@@ -200,8 +208,5 @@ pub fn test_list_items_should_match_snapshot() {
         });
 
     harness.run();
-
-    //TODO(#8245): enable this everywhere when we have a software renderer setup
-    #[cfg(target_os = "macos")]
     harness.snapshot("list_items");
 }

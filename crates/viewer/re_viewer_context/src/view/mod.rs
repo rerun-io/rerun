@@ -67,9 +67,6 @@ pub enum ViewSystemExecutionError {
     #[error("Failed to downcast view's to the {0}.")]
     StateCastError(&'static str),
 
-    #[error("No render context error.")]
-    NoRenderContextError,
-
     #[error(transparent)]
     ComponentFallbackError(#[from] crate::ComponentFallbackError),
 

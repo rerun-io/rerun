@@ -1,12 +1,15 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use ahash::HashMap;
-use arrow::array::ListArray as ArrowListArray;
-use arrow2::{
+use arrow::{
     array::{
-        Array as Arrow2Array, ListArray as Arrow2ListArray, PrimitiveArray as Arrow2PrimitiveArray,
-        StructArray as Arrow2StructArray,
+        Array as ArrowArray, ArrayRef as ArrowArrayRef, ListArray as ArrowListArray,
+        StructArray as ArrowStructArray, UInt64Array as ArrowUInt64Array,
     },
+    buffer::ScalarBuffer as ArrowScalarBuffer,
+};
+use arrow2::{
+    array::{Array as Arrow2Array, ListArray as Arrow2ListArray},
     Either,
 };
 use itertools::{izip, Itertools};
@@ -31,7 +34,10 @@ pub enum ChunkError {
     Malformed { reason: String },
 
     #[error(transparent)]
-    Arrow(#[from] arrow2::error::Error),
+    Arrow(#[from] arrow::error::ArrowError),
+
+    #[error(transparent)]
+    Arrow2(#[from] arrow2::error::Error),
 
     #[error("{kind} index out of bounds: {index} (len={len})")]
     IndexOutOfBounds {
@@ -221,7 +227,7 @@ pub struct Chunk {
     pub(crate) is_sorted: bool,
 
     /// The respective [`RowId`]s for each row of data.
-    pub(crate) row_ids: Arrow2StructArray,
+    pub(crate) row_ids: ArrowStructArray,
 
     /// The time columns.
     ///
@@ -348,12 +354,6 @@ impl Chunk {
             components,
         } = self;
 
-        let row_ids_no_extension = arrow2::array::StructArray::new(
-            row_ids.data_type().to_logical_type().clone(),
-            row_ids.values().to_vec(),
-            row_ids.validity().cloned(),
-        );
-
         let components_no_extension: IntMap<_, _> = components
             .values()
             .flat_map(|per_desc| {
@@ -385,16 +385,10 @@ impl Chunk {
             })
             .collect();
 
-        let other_row_ids_no_extension = arrow2::array::StructArray::new(
-            other.row_ids.data_type().to_logical_type().clone(),
-            other.row_ids.values().to_vec(),
-            other.row_ids.validity().cloned(),
-        );
-
         *id == other.id
             && *entity_path == other.entity_path
             && *is_sorted == other.is_sorted
-            && row_ids_no_extension == other_row_ids_no_extension
+            && row_ids == &other.row_ids
             && *timelines == other.timelines
             && components_no_extension == other_components_no_extension
     }
@@ -434,11 +428,11 @@ impl Chunk {
         .collect_vec();
 
         #[allow(clippy::unwrap_used)]
-        let row_ids = <RowId as Loggable>::to_arrow2(&row_ids)
+        let row_ids = <RowId as Loggable>::to_arrow(&row_ids)
             // Unwrap: native RowIds cannot fail to serialize.
             .unwrap()
             .as_any()
-            .downcast_ref::<Arrow2StructArray>()
+            .downcast_ref::<ArrowStructArray>()
             // Unwrap: RowId schema is known in advance to be a struct array -- always.
             .unwrap()
             .clone();
@@ -490,11 +484,11 @@ impl Chunk {
             .collect_vec();
 
         #[allow(clippy::unwrap_used)]
-        let row_ids = <RowId as Loggable>::to_arrow2(&row_ids)
+        let row_ids = <RowId as Loggable>::to_arrow(&row_ids)
             // Unwrap: native RowIds cannot fail to serialize.
             .unwrap()
             .as_any()
-            .downcast_ref::<Arrow2StructArray>()
+            .downcast_ref::<ArrowStructArray>()
             // Unwrap: RowId schema is known in advance to be a struct array -- always.
             .unwrap()
             .clone();
@@ -781,7 +775,11 @@ pub struct TimeColumn {
     /// * This is guaranteed to always be dense, because chunks are split anytime a timeline is
     ///   added or removed.
     /// * This cannot ever contain `TimeInt::STATIC`, since static data doesn't even have timelines.
-    pub(crate) times: Arrow2PrimitiveArray<i64>,
+    ///
+    /// When this buffer is converted to an arrow array, it's datatype will depend
+    /// on the timeline type, so it will either become a
+    /// [`arrow::array::Int64Array`] or a [`arrow::array::TimestampNanosecondArray`].
+    pub(crate) times: ArrowScalarBuffer<i64>,
 
     /// Is [`Self::times`] sorted?
     ///
@@ -793,6 +791,16 @@ pub struct TimeColumn {
     ///
     /// Not necessarily contiguous! Just the min and max value found in [`Self::times`].
     pub(crate) time_range: ResolvedTimeRange,
+}
+
+/// Errors when deserializing/parsing/reading a column of time data.
+#[derive(Debug, thiserror::Error)]
+pub enum TimeColumnError {
+    #[error("Time columns had nulls, but should be dense")]
+    ContainsNulls,
+
+    #[error("Unsupported data type : {0}")]
+    UnsupportedDataType(arrow::datatypes::DataType),
 }
 
 impl Chunk {
@@ -809,7 +817,7 @@ impl Chunk {
         id: ChunkId,
         entity_path: EntityPath,
         is_sorted: Option<bool>,
-        row_ids: Arrow2StructArray,
+        row_ids: ArrowStructArray,
         timelines: IntMap<Timeline, TimeColumn>,
         components: ChunkComponents,
     ) -> ChunkResult<Self> {
@@ -849,13 +857,13 @@ impl Chunk {
     ) -> ChunkResult<Self> {
         re_tracing::profile_function!();
         let row_ids = row_ids
-            .to_arrow2()
+            .to_arrow()
             // NOTE: impossible, but better safe than sorry.
             .map_err(|err| ChunkError::Malformed {
                 reason: format!("RowIds failed to serialize: {err}"),
             })?
             .as_any()
-            .downcast_ref::<Arrow2StructArray>()
+            .downcast_ref::<ArrowStructArray>()
             // NOTE: impossible, but better safe than sorry.
             .ok_or_else(|| ChunkError::Malformed {
                 reason: "RowIds failed to downcast".to_owned(),
@@ -906,7 +914,7 @@ impl Chunk {
         id: ChunkId,
         entity_path: EntityPath,
         is_sorted: Option<bool>,
-        row_ids: Arrow2StructArray,
+        row_ids: ArrowStructArray,
         components: ChunkComponents,
     ) -> ChunkResult<Self> {
         Self::new(
@@ -926,7 +934,11 @@ impl Chunk {
             entity_path,
             heap_size_bytes: Default::default(),
             is_sorted: true,
-            row_ids: Arrow2StructArray::new_empty(RowId::arrow2_datatype()),
+            row_ids: arrow::array::StructBuilder::from_fields(
+                re_types_core::tuid_arrow_fields(),
+                0,
+            )
+            .finish(),
             timelines: Default::default(),
             components: Default::default(),
         }
@@ -968,15 +980,10 @@ impl TimeColumn {
     /// When left unspecified (`None`), it will be computed in O(n) time.
     ///
     /// For a row-oriented constructor, see [`Self::builder`].
-    pub fn new(
-        is_sorted: Option<bool>,
-        timeline: Timeline,
-        times: Arrow2PrimitiveArray<i64>,
-    ) -> Self {
+    pub fn new(is_sorted: Option<bool>, timeline: Timeline, times: ArrowScalarBuffer<i64>) -> Self {
         re_tracing::profile_function_if!(1000 < times.len(), format!("{} times", times.len()));
 
-        let times = times.to(timeline.datatype());
-        let time_slice = times.values().as_slice();
+        let time_slice = times.as_ref();
 
         let is_sorted =
             is_sorted.unwrap_or_else(|| time_slice.windows(2).all(|times| times[0] <= times[1]));
@@ -1021,7 +1028,7 @@ impl TimeColumn {
         name: impl Into<re_log_types::TimelineName>,
         times: impl IntoIterator<Item = impl Into<i64>>,
     ) -> Self {
-        let time_vec = times.into_iter().map(|t| {
+        let time_vec: Vec<_> = times.into_iter().map(|t| {
             let t = t.into();
             TimeInt::try_from(t)
                 .unwrap_or_else(|_| {
@@ -1038,7 +1045,7 @@ impl TimeColumn {
         Self::new(
             None,
             Timeline::new_sequence(name.into()),
-            Arrow2PrimitiveArray::<i64>::from_vec(time_vec),
+            ArrowScalarBuffer::from(time_vec),
         )
     }
 
@@ -1060,12 +1067,12 @@ impl TimeColumn {
                     TimeInt::MIN
                 })
                 .as_i64()
-        }).collect();
+        }).collect_vec();
 
         Self::new(
             None,
             Timeline::new_temporal(name.into()),
-            Arrow2PrimitiveArray::<i64>::from_vec(time_vec),
+            ArrowScalarBuffer::from(time_vec),
         )
     }
 
@@ -1090,13 +1097,48 @@ impl TimeColumn {
                     })
                     .as_i64()
             })
-            .collect();
+            .collect_vec();
 
         Self::new(
             None,
             Timeline::new_temporal(name.into()),
-            Arrow2PrimitiveArray::<i64>::from_vec(time_vec),
+            ArrowScalarBuffer::from(time_vec),
         )
+    }
+
+    /// Parse the given [`ArrowArray`] as a time column.
+    ///
+    /// Results in an error if the array is of the wrong datatype, or if it contains nulls.
+    pub fn read_array(array: &dyn ArrowArray) -> Result<ArrowScalarBuffer<i64>, TimeColumnError> {
+        #![allow(clippy::manual_map)]
+
+        if array.null_count() > 0 {
+            return Err(TimeColumnError::ContainsNulls);
+        }
+
+        // Sequence timelines are i64, but time columns are nanoseconds (also as i64).
+        if let Some(times) = array.as_any().downcast_ref::<arrow::array::Int64Array>() {
+            Ok(times.values().clone())
+        } else if let Some(times) = array
+            .as_any()
+            .downcast_ref::<arrow::array::TimestampNanosecondArray>()
+        {
+            Ok(times.values().clone())
+        } else if let Some(times) = array
+            .as_any()
+            .downcast_ref::<arrow::array::Time64NanosecondArray>()
+        {
+            Ok(times.values().clone())
+        } else if let Some(times) = array
+            .as_any()
+            .downcast_ref::<arrow::array::DurationNanosecondArray>()
+        {
+            Ok(times.values().clone())
+        } else {
+            Err(TimeColumnError::UnsupportedDataType(
+                array.data_type().clone(),
+            ))
+        }
     }
 }
 
@@ -1156,27 +1198,24 @@ impl Chunk {
     }
 
     #[inline]
-    pub fn row_ids_array(&self) -> &Arrow2StructArray {
+    pub fn row_ids_array(&self) -> &ArrowStructArray {
         &self.row_ids
     }
 
     /// Returns the [`RowId`]s in their raw-est form: a tuple of (times, counters) arrays.
     #[inline]
-    pub fn row_ids_raw(&self) -> (&Arrow2PrimitiveArray<u64>, &Arrow2PrimitiveArray<u64>) {
-        let [times, counters] = self.row_ids.values() else {
+    pub fn row_ids_raw(&self) -> (&ArrowUInt64Array, &ArrowUInt64Array) {
+        let [times, counters] = self.row_ids.columns() else {
             panic!("RowIds are corrupt -- this should be impossible (sanity checked)");
         };
 
         #[allow(clippy::unwrap_used)]
-        let times = times
-            .as_any()
-            .downcast_ref::<Arrow2PrimitiveArray<u64>>()
-            .unwrap(); // sanity checked
+        let times = times.as_any().downcast_ref::<ArrowUInt64Array>().unwrap(); // sanity checked
 
         #[allow(clippy::unwrap_used)]
         let counters = counters
             .as_any()
-            .downcast_ref::<Arrow2PrimitiveArray<u64>>()
+            .downcast_ref::<ArrowUInt64Array>()
             .unwrap(); // sanity checked
 
         (times, counters)
@@ -1188,7 +1227,7 @@ impl Chunk {
     #[inline]
     pub fn row_ids(&self) -> impl Iterator<Item = RowId> + '_ {
         let (times, counters) = self.row_ids_raw();
-        izip!(times.values().as_slice(), counters.values().as_slice())
+        izip!(times.values(), counters.values())
             .map(|(&time, &counter)| RowId::from_u128((time as u128) << 64 | (counter as u128)))
     }
 
@@ -1230,7 +1269,7 @@ impl Chunk {
         }
 
         let (times, counters) = self.row_ids_raw();
-        let (times, counters) = (times.values().as_slice(), counters.values().as_slice());
+        let (times, counters) = (times.values(), counters.values());
 
         #[allow(clippy::unwrap_used)] // checked above
         let (index_min, index_max) = if self.is_sorted() {
@@ -1308,11 +1347,11 @@ impl Chunk {
 impl std::fmt::Display for Chunk {
     #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let chunk = self.to_transport().map_err(|err| {
+        let transport_chunk = self.to_transport().map_err(|err| {
             re_log::error_once!("couldn't display Chunk: {err}");
             std::fmt::Error
         })?;
-        chunk.fmt(f)
+        transport_chunk.fmt(f)
     }
 }
 
@@ -1333,23 +1372,24 @@ impl TimeColumn {
     }
 
     #[inline]
-    pub fn times_array(&self) -> &Arrow2PrimitiveArray<i64> {
+    pub fn times_buffer(&self) -> &ArrowScalarBuffer<i64> {
         &self.times
+    }
+
+    /// Returns an array with the appropriate datatype.
+    #[inline]
+    pub fn times_array(&self) -> ArrowArrayRef {
+        self.timeline.typ().make_arrow_array(self.times.clone())
     }
 
     #[inline]
     pub fn times_raw(&self) -> &[i64] {
-        self.times.values().as_slice()
+        self.times.as_ref()
     }
 
     #[inline]
     pub fn times(&self) -> impl DoubleEndedIterator<Item = TimeInt> + '_ {
-        self.times
-            .values()
-            .as_slice()
-            .iter()
-            .copied()
-            .map(TimeInt::new_temporal)
+        self.times_raw().iter().copied().map(TimeInt::new_temporal)
     }
 
     #[inline]
@@ -1510,11 +1550,11 @@ impl Chunk {
 
         // Row IDs
         {
-            if *row_ids.data_type().to_logical_type() != RowId::arrow2_datatype() {
+            if *row_ids.data_type() != RowId::arrow_datatype() {
                 return Err(ChunkError::Malformed {
                     reason: format!(
                         "RowId data has the wrong datatype: expected {:?} but got {:?} instead",
-                        RowId::arrow2_datatype(),
+                        RowId::arrow_datatype(),
                         *row_ids.data_type(),
                     ),
                 });
@@ -1581,7 +1621,7 @@ impl Chunk {
 
                 let validity_is_empty = list_array
                     .validity()
-                    .map_or(false, |validity| validity.is_empty());
+                    .is_some_and(|validity| validity.is_empty());
                 if !self.is_empty() && validity_is_empty {
                     return Err(ChunkError::Malformed {
                         reason: format!(
@@ -1603,24 +1643,13 @@ impl TimeColumn {
     /// Costly checks are only run in debug builds.
     pub fn sanity_check(&self) -> ChunkResult<()> {
         let Self {
-            timeline,
+            timeline: _,
             times,
             is_sorted,
             time_range,
         } = self;
 
-        if *times.data_type() != timeline.datatype() {
-            return Err(ChunkError::Malformed {
-                reason: format!(
-                    "Time data for timeline {} has the wrong datatype: expected {:?} but got {:?} instead",
-                    timeline.name(),
-                    timeline.datatype(),
-                    *times.data_type(),
-                ),
-            });
-        }
-
-        let times = times.values().as_slice();
+        let times = times.as_ref();
 
         #[allow(clippy::collapsible_if)] // readability
         if cfg!(debug_assertions) {

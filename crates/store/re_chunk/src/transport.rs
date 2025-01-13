@@ -1,8 +1,6 @@
+use arrow::array::{ArrayRef as ArrowArrayRef, StructArray as ArrowStructArray};
 use arrow2::{
-    array::{
-        Array as Arrow2Array, ListArray, PrimitiveArray as Arrow2PrimitiveArray,
-        StructArray as Arrow2StructArray,
-    },
+    array::{Array as Arrow2Array, ListArray},
     chunk::Chunk as Arrow2Chunk,
     datatypes::{
         DataType as Arrow2Datatype, Field as ArrowField, Metadata as Arrow2Metadata,
@@ -15,8 +13,12 @@ use nohash_hasher::IntMap;
 use re_byte_size::SizeBytes as _;
 use re_log_types::{EntityPath, Timeline};
 use re_types_core::{Component as _, ComponentDescriptor, Loggable as _};
+use tap::Tap as _;
 
-use crate::{chunk::ChunkComponents, Chunk, ChunkError, ChunkId, ChunkResult, RowId, TimeColumn};
+use crate::{
+    arrow_util::into_arrow_ref, chunk::ChunkComponents, Chunk, ChunkError, ChunkId, ChunkResult,
+    RowId, TimeColumn,
+};
 
 // ---
 
@@ -399,7 +401,8 @@ impl Chunk {
         } = self;
 
         let mut schema = Arrow2Schema::default();
-        let mut columns = Vec::with_capacity(1 /* row_ids */ + timelines.len() + components.len());
+        let mut columns: Vec<Box<dyn Arrow2Array>> =
+            Vec::with_capacity(1 /* row_ids */ + timelines.len() + components.len());
 
         // Chunk-level metadata
         {
@@ -433,12 +436,20 @@ impl Chunk {
             schema.fields.push(
                 ArrowField::new(
                     RowId::descriptor().to_string(),
-                    row_ids.data_type().clone(),
+                    RowId::arrow_datatype().clone().into(),
                     false,
                 )
-                .with_metadata(TransportChunk::field_metadata_control_column()),
+                .with_metadata(
+                    TransportChunk::field_metadata_control_column().tap_mut(|metadata| {
+                        // This ensures the RowId/Tuid is formatted correctly
+                        metadata.insert(
+                            "ARROW:extension:name".to_owned(),
+                            re_tuid::Tuid::ARROW_EXTENSION_NAME.to_owned(),
+                        );
+                    }),
+                ),
             );
-            columns.push(row_ids.clone().boxed());
+            columns.push(into_arrow_ref(row_ids.clone()).into());
         }
 
         // Timelines
@@ -450,15 +461,16 @@ impl Chunk {
                 .map(|(timeline, info)| {
                     let TimeColumn {
                         timeline: _,
-                        times,
+                        times: _,
                         is_sorted,
                         time_range: _,
                     } = info;
 
+                    let nullable = false; // timelines within a single chunk are always dense
                     let field = ArrowField::new(
                         timeline.name().to_string(),
-                        times.data_type().clone(),
-                        false, // timelines within a single chunk are always dense
+                        timeline.datatype().into(),
+                        nullable,
                     )
                     .with_metadata({
                         let mut metadata = TransportChunk::field_metadata_time_column();
@@ -468,7 +480,7 @@ impl Chunk {
                         metadata
                     });
 
-                    let times = times.clone().boxed() /* cheap */;
+                    let times = info.times_array();
 
                     (field, times)
                 })
@@ -478,7 +490,7 @@ impl Chunk {
 
             for (field, times) in timelines {
                 schema.fields.push(field);
-                columns.push(times);
+                columns.push(times.into());
             }
         }
 
@@ -553,13 +565,13 @@ impl Chunk {
                 });
             };
 
-            row_ids
+            ArrowArrayRef::from(row_ids.clone())
                 .as_any()
-                .downcast_ref::<Arrow2StructArray>()
+                .downcast_ref::<ArrowStructArray>()
                 .ok_or_else(|| ChunkError::Malformed {
                     reason: format!(
                         "RowId data has the wrong datatype: expected {:?} but got {:?} instead",
-                        RowId::arrow2_datatype(),
+                        RowId::arrow_datatype(),
                         *row_ids.data_type(),
                     ),
                 })?
@@ -590,36 +602,17 @@ impl Chunk {
                     }
                 };
 
-                let times = column
-                    .as_any()
-                    .downcast_ref::<Arrow2PrimitiveArray<i64>>()
-                    .ok_or_else(|| ChunkError::Malformed {
-                        reason: format!(
-                            "time column '{}' is not deserializable ({:?})",
-                            field.name,
-                            column.data_type()
-                        ),
-                    })?;
-
-                if times.validity().is_some() {
-                    return Err(ChunkError::Malformed {
-                        reason: format!(
-                            "time column '{}' must be dense ({:?})",
-                            field.name,
-                            column.data_type()
-                        ),
-                    });
-                }
+                let times = TimeColumn::read_array(&ArrowArrayRef::from(column.clone())).map_err(
+                    |err| ChunkError::Malformed {
+                        reason: format!("Bad time column '{}': {err}", field.name),
+                    },
+                )?;
 
                 let is_sorted = field
                     .metadata
                     .contains_key(TransportChunk::FIELD_METADATA_MARKER_IS_SORTED_BY_TIME);
 
-                let time_column = TimeColumn::new(
-                    is_sorted.then_some(true),
-                    timeline,
-                    times.clone(), /* cheap */
-                );
+                let time_column = TimeColumn::new(is_sorted.then_some(true), timeline, times);
                 if timelines.insert(timeline, time_column).is_some() {
                     return Err(ChunkError::Malformed {
                         reason: format!(
@@ -735,11 +728,7 @@ mod tests {
         let timeline1 = Timeline::new_temporal("log_time");
         let timelines1 = std::iter::once((
             timeline1,
-            TimeColumn::new(
-                Some(true),
-                timeline1,
-                Arrow2PrimitiveArray::<i64>::from_vec(vec![42, 43, 44, 45]),
-            ),
+            TimeColumn::new(Some(true), timeline1, vec![42, 43, 44, 45].into()),
         ))
         .collect();
 

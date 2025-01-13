@@ -1,10 +1,11 @@
 use rerun::{ChunkStore, ChunkStoreConfig, Component as _, ComponentDescriptor, VersionPolicy};
 
 fn example(rec: &rerun::RecordingStream) -> Result<(), Box<dyn std::error::Error>> {
-    rec.log_component_batches(
+    use rerun::ComponentBatch as _;
+    rec.log_serialized_batches(
         "data",
         true,
-        [&rerun::components::Position3D::new(1.0, 2.0, 3.0) as &dyn rerun::ComponentBatch],
+        [rerun::components::Position3D::new(1.0, 2.0, 3.0).try_serialized()?],
     )?;
 
     Ok(())

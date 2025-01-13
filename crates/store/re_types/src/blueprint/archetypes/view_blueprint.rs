@@ -12,9 +12,9 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 
-use ::re_types_core::external::arrow;
+use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
@@ -42,73 +42,81 @@ pub struct ViewBlueprint {
     pub visible: Option<crate::blueprint::components::Visible>,
 }
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
+impl ViewBlueprint {
+    /// Returns the [`ComponentDescriptor`] for [`Self::class_identifier`].
+    #[inline]
+    pub fn descriptor_class_identifier() -> ComponentDescriptor {
+        ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.ViewBlueprint".into()),
             component_name: "rerun.blueprint.components.ViewClass".into(),
             archetype_field_name: Some("class_identifier".into()),
-        }]
-    });
+        }
+    }
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
+    /// Returns the [`ComponentDescriptor`] for [`Self::display_name`].
+    #[inline]
+    pub fn descriptor_display_name() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ViewBlueprint".into()),
+            component_name: "rerun.components.Name".into(),
+            archetype_field_name: Some("display_name".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::space_origin`].
+    #[inline]
+    pub fn descriptor_space_origin() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ViewBlueprint".into()),
+            component_name: "rerun.blueprint.components.ViewOrigin".into(),
+            archetype_field_name: Some("space_origin".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::visible`].
+    #[inline]
+    pub fn descriptor_visible() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ViewBlueprint".into()),
+            component_name: "rerun.blueprint.components.Visible".into(),
+            archetype_field_name: Some("visible".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
+    #[inline]
+    pub fn descriptor_indicator() -> ComponentDescriptor {
+        ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.ViewBlueprint".into()),
             component_name: "rerun.blueprint.components.ViewBlueprintIndicator".into(),
             archetype_field_name: None,
-        }]
-    });
+        }
+    }
+}
+
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [ViewBlueprint::descriptor_class_identifier()]);
+
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [ViewBlueprint::descriptor_indicator()]);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ViewBlueprint".into()),
-                component_name: "rerun.components.Name".into(),
-                archetype_field_name: Some("display_name".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ViewBlueprint".into()),
-                component_name: "rerun.blueprint.components.ViewOrigin".into(),
-                archetype_field_name: Some("space_origin".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ViewBlueprint".into()),
-                component_name: "rerun.blueprint.components.Visible".into(),
-                archetype_field_name: Some("visible".into()),
-            },
+            ViewBlueprint::descriptor_display_name(),
+            ViewBlueprint::descriptor_space_origin(),
+            ViewBlueprint::descriptor_visible(),
         ]
     });
 
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ViewBlueprint".into()),
-                component_name: "rerun.blueprint.components.ViewClass".into(),
-                archetype_field_name: Some("class_identifier".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ViewBlueprint".into()),
-                component_name: "rerun.blueprint.components.ViewBlueprintIndicator".into(),
-                archetype_field_name: None,
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ViewBlueprint".into()),
-                component_name: "rerun.components.Name".into(),
-                archetype_field_name: Some("display_name".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ViewBlueprint".into()),
-                component_name: "rerun.blueprint.components.ViewOrigin".into(),
-                archetype_field_name: Some("space_origin".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ViewBlueprint".into()),
-                component_name: "rerun.blueprint.components.Visible".into(),
-                archetype_field_name: Some("visible".into()),
-            },
+            ViewBlueprint::descriptor_class_identifier(),
+            ViewBlueprint::descriptor_indicator(),
+            ViewBlueprint::descriptor_display_name(),
+            ViewBlueprint::descriptor_space_origin(),
+            ViewBlueprint::descriptor_visible(),
         ]
     });
 
@@ -161,17 +169,14 @@ impl ::re_types_core::Archetype for ViewBlueprint {
 
     #[inline]
     fn from_arrow_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, arrow::array::ArrayRef)>,
+        arrow_data: impl IntoIterator<Item = (ComponentDescriptor, arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(name, array)| (name.full_name(), array))
-            .collect();
+        let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
         let class_identifier = {
-            let array = arrays_by_name
-                .get("rerun.blueprint.components.ViewClass")
+            let array = arrays_by_descr
+                .get(&Self::descriptor_class_identifier())
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.blueprint.archetypes.ViewBlueprint#class_identifier")?;
             <crate::blueprint::components::ViewClass>::from_arrow_opt(&**array)
@@ -182,17 +187,18 @@ impl ::re_types_core::Archetype for ViewBlueprint {
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.blueprint.archetypes.ViewBlueprint#class_identifier")?
         };
-        let display_name = if let Some(array) = arrays_by_name.get("rerun.components.Name") {
-            <crate::components::Name>::from_arrow_opt(&**array)
-                .with_context("rerun.blueprint.archetypes.ViewBlueprint#display_name")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
+        let display_name =
+            if let Some(array) = arrays_by_descr.get(&Self::descriptor_display_name()) {
+                <crate::components::Name>::from_arrow_opt(&**array)
+                    .with_context("rerun.blueprint.archetypes.ViewBlueprint#display_name")?
+                    .into_iter()
+                    .next()
+                    .flatten()
+            } else {
+                None
+            };
         let space_origin =
-            if let Some(array) = arrays_by_name.get("rerun.blueprint.components.ViewOrigin") {
+            if let Some(array) = arrays_by_descr.get(&Self::descriptor_space_origin()) {
                 <crate::blueprint::components::ViewOrigin>::from_arrow_opt(&**array)
                     .with_context("rerun.blueprint.archetypes.ViewBlueprint#space_origin")?
                     .into_iter()
@@ -201,8 +207,7 @@ impl ::re_types_core::Archetype for ViewBlueprint {
             } else {
                 None
             };
-        let visible = if let Some(array) = arrays_by_name.get("rerun.blueprint.components.Visible")
-        {
+        let visible = if let Some(array) = arrays_by_descr.get(&Self::descriptor_visible()) {
             <crate::blueprint::components::Visible>::from_arrow_opt(&**array)
                 .with_context("rerun.blueprint.archetypes.ViewBlueprint#visible")?
                 .into_iter()
@@ -229,11 +234,7 @@ impl ::re_types_core::AsComponents for ViewBlueprint {
             (Some(&self.class_identifier as &dyn ComponentBatch)).map(|batch| {
                 ::re_types_core::ComponentBatchCowWithDescriptor {
                     batch: batch.into(),
-                    descriptor_override: Some(ComponentDescriptor {
-                        archetype_name: Some("rerun.blueprint.archetypes.ViewBlueprint".into()),
-                        archetype_field_name: Some(("class_identifier").into()),
-                        component_name: ("rerun.blueprint.components.ViewClass").into(),
-                    }),
+                    descriptor_override: Some(Self::descriptor_class_identifier()),
                 }
             }),
             (self
@@ -242,11 +243,7 @@ impl ::re_types_core::AsComponents for ViewBlueprint {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.blueprint.archetypes.ViewBlueprint".into()),
-                    archetype_field_name: Some(("display_name").into()),
-                    component_name: ("rerun.components.Name").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_display_name()),
             }),
             (self
                 .space_origin
@@ -254,11 +251,7 @@ impl ::re_types_core::AsComponents for ViewBlueprint {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.blueprint.archetypes.ViewBlueprint".into()),
-                    archetype_field_name: Some(("space_origin").into()),
-                    component_name: ("rerun.blueprint.components.ViewOrigin").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_space_origin()),
             }),
             (self
                 .visible
@@ -266,11 +259,7 @@ impl ::re_types_core::AsComponents for ViewBlueprint {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.blueprint.archetypes.ViewBlueprint".into()),
-                    archetype_field_name: Some(("visible").into()),
-                    component_name: ("rerun.blueprint.components.Visible").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_visible()),
             }),
         ]
         .into_iter()

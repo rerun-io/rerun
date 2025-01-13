@@ -214,11 +214,7 @@ impl SpatialView2D {
             SpatialViewKind::TwoD,
         );
 
-        let Some(render_ctx) = ctx.render_ctx else {
-            return Err(ViewSystemExecutionError::NoRenderContextError);
-        };
-
-        let mut view_builder = ViewBuilder::new(render_ctx, target_config);
+        let mut view_builder = ViewBuilder::new(ctx.render_ctx, target_config);
 
         if let Some(pointer_pos_ui) = response.hover_pos() {
             let picking_context = crate::picking::PickingContext::new(
@@ -253,7 +249,7 @@ impl SpatialView2D {
             query.view_id,
         );
         let (background_drawable, clear_color) =
-            crate::configure_background(ctx, &background, render_ctx, self, state)?;
+            crate::configure_background(ctx, &background, ctx.render_ctx, self, state)?;
         if let Some(background_drawable) = background_drawable {
             view_builder.queue_draw(background_drawable);
         }

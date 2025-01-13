@@ -283,7 +283,7 @@ impl RangeResultsExt for RangeResults {
     }
 }
 
-impl<'a> RangeResultsExt for HybridRangeResults<'a> {
+impl RangeResultsExt for HybridRangeResults<'_> {
     #[inline]
     fn get_required_chunks(&self, component_name: &ComponentName) -> Option<Cow<'_, [Chunk]>> {
         if let Some(unit) = self.overrides.get(component_name) {

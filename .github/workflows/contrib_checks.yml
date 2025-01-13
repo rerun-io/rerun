@@ -31,6 +31,9 @@ env:
   # these incremental artifacts when running on CI.
   CARGO_INCREMENTAL: "0"
 
+  # Sourced from https://vulkan.lunarg.com/sdk/home#linux
+  VULKAN_SDK_VERSION: "1.3.296.0"
+
 defaults:
   run:
     shell: bash
@@ -92,10 +95,25 @@ jobs:
     runs-on: ubuntu-latest-16-cores
     steps:
       - uses: actions/checkout@v4
+        with:
+          lfs: true
 
       - uses: prefix-dev/setup-pixi@v0.8.1
         with:
           pixi-version: v0.39.0
+
+      # Install the Vulkan SDK, so we can use the software rasterizer.
+      # TODO(andreas): It would be nice if `setup_software_rasterizer.py` could do that for us as well (note though that this action here is very fast when cached!)
+      - name: Install Vulkan SDK
+        uses: jakoch/install-vulkan-sdk-action@v1.0.5
+        with:
+          vulkan_version: ${{ env.VULKAN_SDK_VERSION }}
+          install_runtime: true
+          cache: false
+          stripdown: true
+
+      - name: Setup software rasterizer
+        run: pixi run python ./scripts/ci/setup_software_rasterizer.py
 
       - name: Rust checks & tests
         run: pixi run rs-check --skip individual_crates docs_slow

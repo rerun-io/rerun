@@ -63,10 +63,6 @@ impl VisualizerSystem for SegmentationImageVisualizer {
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
-        let Some(render_ctx) = ctx.viewer_ctx.render_ctx else {
-            return Err(ViewSystemExecutionError::NoRenderContextError);
-        };
-
         use super::entity_iterator::{iter_component, iter_slices, process_archetype};
         process_archetype::<Self, SegmentationImage, _>(
             ctx,
@@ -162,7 +158,7 @@ impl VisualizerSystem for SegmentationImageVisualizer {
         });
 
         Ok(vec![PickableTexturedRect::to_draw_data(
-            render_ctx,
+            ctx.viewer_ctx.render_ctx,
             &self.data.pickable_rects,
         )?])
     }

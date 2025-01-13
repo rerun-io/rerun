@@ -30,7 +30,7 @@ pub fn iter_dir<'a>(
             extensions.iter().any(|ext| {
                 entry
                     .extension()
-                    .map_or(false, |ext2| *ext == ext2.to_string_lossy())
+                    .is_some_and(|ext2| *ext == ext2.to_string_lossy())
             })
         })
     })

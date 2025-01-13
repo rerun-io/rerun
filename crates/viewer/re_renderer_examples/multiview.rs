@@ -224,7 +224,7 @@ impl Multiview {
 
         if self
             .take_screenshot_next_frame_for_view
-            .map_or(false, |i| i == index)
+            .is_some_and(|i| i == index)
         {
             view_builder.schedule_screenshot(re_ctx, READBACK_IDENTIFIER, index)?;
             re_log::info!("Scheduled screenshot for view {}", index);

@@ -266,10 +266,7 @@ Displays geospatial primitives on a map.
         // Map UI
         //
 
-        let (tiles, map_memory) = match state.ensure_and_get_mut_refs(ctx, ui.ctx()) {
-            Ok(refs) => refs,
-            Err(err) => return Err(err),
-        };
+        let (tiles, map_memory) = state.ensure_and_get_mut_refs(ctx, ui.ctx())?;
         let attribution = tiles.attribution();
 
         let some_tiles_manager: Option<&mut dyn Tiles> = Some(tiles);
@@ -303,21 +300,17 @@ Displays geospatial primitives on a map.
         // Draw all objects using re_renderer
         //
 
-        let Some(render_ctx) = ctx.render_ctx else {
-            return Err(ViewSystemExecutionError::NoRenderContextError);
-        };
-
         let mut view_builder =
-            create_view_builder(render_ctx, ui.ctx(), map_rect, &query.highlights);
+            create_view_builder(ctx.render_ctx, ui.ctx(), map_rect, &query.highlights);
 
         geo_line_strings_visualizers.queue_draw_data(
-            render_ctx,
+            ctx.render_ctx,
             &mut view_builder,
             &projector,
             &query.highlights,
         )?;
         geo_points_visualizer.queue_draw_data(
-            render_ctx,
+            ctx.render_ctx,
             &mut view_builder,
             &projector,
             &query.highlights,
@@ -325,7 +318,7 @@ Displays geospatial primitives on a map.
 
         handle_picking_and_ui_interactions(
             ctx,
-            render_ctx,
+            ctx.render_ctx,
             ui.ctx(),
             &mut view_builder,
             query,

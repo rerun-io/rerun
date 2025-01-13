@@ -106,7 +106,7 @@ Note: select the view to configure which dimensions are shown."
         // Keeping this implementation simple: We know there's only a single visualizer here.
         if visualizable_entities_per_visualizer
             .get(&TensorSystem::identifier())
-            .map_or(false, |entities| entities.contains(entity_path))
+            .is_some_and(|entities| entities.contains(entity_path))
         {
             std::iter::once(TensorSystem::identifier()).collect()
         } else {
@@ -355,15 +355,12 @@ impl TensorView {
         let mag_filter: MagnificationFilter =
             scalar_mapping.component_or_fallback(ctx, self, state)?;
 
-        let Some(render_ctx) = ctx.render_ctx else {
-            return Err(anyhow::Error::msg("No render context available."));
-        };
         let colormap = ColormapWithRange {
             colormap,
             value_range: [data_range.start() as f32, data_range.end() as f32],
         };
         let colormapped_texture = super::tensor_slice_to_gpu::colormapped_texture(
-            render_ctx,
+            ctx.render_ctx,
             *tensor_row_id,
             tensor,
             slice_selection,
@@ -404,7 +401,7 @@ impl TensorView {
         };
 
         gpu_bridge::render_image(
-            render_ctx,
+            ctx.render_ctx,
             &painter,
             image_rect,
             colormapped_texture,

@@ -202,7 +202,7 @@ fn active_defaults(
                 .cache()
                 .latest_at(query, &view.defaults_path, [*c])
                 .component_batch_raw(c)
-                .map_or(false, |data| !data.is_empty())
+                .is_some_and(|data| !data.is_empty())
         })
         .collect::<BTreeSet<_>>()
 }

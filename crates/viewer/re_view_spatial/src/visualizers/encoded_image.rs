@@ -48,7 +48,7 @@ impl VisualizerAdditionalApplicabilityFilter for ImageMediaTypeFilter {
         diff_component_filter(event, |media_type: &re_types::components::MediaType| {
             media_type.is_image()
         }) || diff_component_filter(event, |image: &re_types::components::Blob| {
-            MediaType::guess_from_data(&image.0).map_or(false, |media| media.is_image())
+            MediaType::guess_from_data(&image.0).is_some_and(|media| media.is_image())
         })
     }
 }
@@ -79,10 +79,6 @@ impl VisualizerSystem for EncodedImageVisualizer {
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
-        let Some(render_ctx) = ctx.viewer_ctx.render_ctx else {
-            return Err(ViewSystemExecutionError::NoRenderContextError);
-        };
-
         process_archetype::<Self, EncodedImage, _>(
             ctx,
             view_query,
@@ -108,7 +104,7 @@ impl VisualizerSystem for EncodedImageVisualizer {
         });
 
         Ok(vec![PickableTexturedRect::to_draw_data(
-            render_ctx,
+            ctx.viewer_ctx.render_ctx,
             &self.data.pickable_rects,
         )?])
     }

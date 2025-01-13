@@ -11,13 +11,18 @@ use crate::{DeserializationError, Loggable};
 
 // ---
 
+// TODO(emilk): This is a bit ugly… but good enough for now?
+pub fn tuid_arrow_fields() -> Fields {
+    Fields::from(vec![
+        Field::new("time_ns", DataType::UInt64, false),
+        Field::new("inc", DataType::UInt64, false),
+    ])
+}
+
 impl Loggable for Tuid {
     #[inline]
     fn arrow_datatype() -> arrow::datatypes::DataType {
-        DataType::Struct(Fields::from(vec![
-            Field::new("time_ns", DataType::UInt64, false),
-            Field::new("inc", DataType::UInt64, false),
-        ]))
+        DataType::Struct(tuid_arrow_fields())
     }
 
     fn to_arrow_opt<'a>(
@@ -27,7 +32,7 @@ impl Loggable for Tuid {
         Self: 'a,
     {
         Err(crate::SerializationError::not_implemented(
-            Self::NAME,
+            Self::ARROW_EXTENSION_NAME,
             "TUIDs are never nullable, use `to_arrow()` instead",
         ))
     }

@@ -63,12 +63,7 @@ impl Image {
             color_model: Some(color_model),
         };
 
-        Ok(Self {
-            buffer: blob.into(),
-            format: image_format.into(),
-            opacity: None,
-            draw_order: None,
-        })
+        Ok(Self::new(blob, image_format))
     }
 
     /// Construct an image from a byte buffer given its resolution and pixel format.
@@ -90,12 +85,7 @@ impl Image {
             );
         }
 
-        Self {
-            buffer,
-            format: image_format.into(),
-            opacity: None,
-            draw_order: None,
-        }
+        Self::new(buffer, image_format)
     }
 
     /// Construct an image from a byte buffer given its resolution, color model, and data type.
@@ -124,12 +114,7 @@ impl Image {
             );
         }
 
-        Self {
-            buffer,
-            format: image_format.into(),
-            opacity: None,
-            draw_order: None,
-        }
+        Self::new(buffer, image_format)
     }
 
     /// Construct an image from a byte buffer given its resolution, color model,
