@@ -276,12 +276,40 @@ impl PerStoreChunkSubscriber for TransformCacheStoreSubscriber {
                 // are fairly expensive, and may depend on other components that may come in at the same time.
                 // (we could inject that here, but it's not entirely straight forward).
                 // So instead, we note down that the caches is invalidated for the given entity & times.
+
+                // Any time _after_ the first event in this chunk is no longer valid now.
+                // (e.g. if a rotation is added prior to translations later on,
+                // then the resulting transforms at those translations changes as well for latest-at queries)
+                let mut invalidated_times = Vec::new();
+                let Some(min_time) = time_column.times().min() else {
+                    continue;
+                };
+                if let Some(entity_entry) = per_timeline.per_entity.get_mut(&entity_path.hash()) {
+                    if aspects.contains(TransformAspect::Tree) {
+                        let invalidated_tree_transforms =
+                            entity_entry.tree_transforms.split_off(&min_time);
+                        invalidated_times.extend(invalidated_tree_transforms.into_keys());
+                    }
+                    if aspects.contains(TransformAspect::Pose) {
+                        let invalidated_pose_transforms =
+                            entity_entry.pose_transforms.split_off(&min_time);
+                        invalidated_times.extend(invalidated_pose_transforms.into_keys());
+                    }
+                    if aspects.contains(TransformAspect::PinholeOrViewCoordinates) {
+                        let invalidated_pinhole_projections =
+                            entity_entry.pinhole_projections.split_off(&min_time);
+                        invalidated_times.extend(invalidated_pinhole_projections.into_keys());
+                    }
+                }
+
                 per_timeline.queued_updates.push(QueuedTransformUpdates {
                     entity_path: entity_path.clone(),
-                    times: time_column.times().collect(),
+                    times: time_column
+                        .times()
+                        .chain(invalidated_times.into_iter())
+                        .collect(),
                     aspects,
                 });
-                // TODO: invalidate existing cache entries caches forward in time.
             }
         }
     }
