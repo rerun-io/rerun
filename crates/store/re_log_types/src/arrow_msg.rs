@@ -160,7 +160,7 @@ impl<'de> serde::Deserialize<'de> for ArrowMsg {
                         .map_err(|err| serde::de::Error::custom(format!("Arrow error: {err}")))?;
 
                     if batches.is_empty() {
-                        return Err(serde::de::Error::custom("No Arrow2Chunk found in stream"));
+                        return Err(serde::de::Error::custom("No RecordBatch in stream"));
                     }
                     if batches.len() > 1 {
                         return Err(serde::de::Error::custom(format!(

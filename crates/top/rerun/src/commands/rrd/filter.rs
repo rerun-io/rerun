@@ -125,16 +125,19 @@ impl FilterCommand {
                                 .map(|(field, col)| (field.clone(), col.clone()))
                                 .unzip();
 
-                                msg.batch = ArrowRecordBatch::try_new(
+                                if let Ok(new_batch) = ArrowRecordBatch::try_new(
                                     ArrowSchema::new_with_metadata(
                                         fields,
                                         msg.batch.schema().metadata().clone(),
                                     )
                                     .into(),
                                     columns,
-                                )
-                                .unwrap();
-                                Some(re_log_types::LogMsg::ArrowMsg(store_id, msg))
+                                ) {
+                                    msg.batch = new_batch;
+                                    Some(re_log_types::LogMsg::ArrowMsg(store_id, msg))
+                                } else {
+                                    None // Probably failed because we filtered out everything
+                                }
                             }
                         }
 
