@@ -1347,11 +1347,11 @@ impl Chunk {
 impl std::fmt::Display for Chunk {
     #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let chunk = self.to_transport().map_err(|err| {
+        let transport_chunk = self.to_transport().map_err(|err| {
             re_log::error_once!("couldn't display Chunk: {err}");
             std::fmt::Error
         })?;
-        chunk.fmt(f)
+        transport_chunk.fmt(f)
     }
 }
 

@@ -324,14 +324,28 @@ impl RightPanel {
 
                 ui.list_item().show_hierarchical(
                     ui,
-                    list_item::CustomContent::new(|ui, context| {
+                    list_item::CustomContent::new(|ui, _| {
                         ui.ctx().debug_painter().debug_rect(
-                            context.rect,
+                            ui.max_rect(),
                             egui::Color32::LIGHT_RED,
                             "CustomContent delegates to a closure",
                         );
                     }),
-                )
+                );
+
+                ui.list_item().show_hierarchical(
+                    ui,
+                    list_item::CustomContent::new(|ui, _| {
+                        ui.ctx().debug_painter().debug_rect(
+                            ui.max_rect(),
+                            egui::Color32::LIGHT_RED,
+                            "CustomContent with an action button",
+                        );
+                    })
+                    .action_button(&re_ui::icons::ADD, || {
+                        re_log::warn!("Add button clicked");
+                    }),
+                );
             },
         );
     }

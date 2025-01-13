@@ -12,9 +12,9 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 
-use ::re_types_core::external::arrow;
+use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
@@ -78,63 +78,69 @@ pub struct Asset3D {
     pub albedo_factor: Option<crate::components::AlbedoFactor>,
 }
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
+impl Asset3D {
+    /// Returns the [`ComponentDescriptor`] for [`Self::blob`].
+    #[inline]
+    pub fn descriptor_blob() -> ComponentDescriptor {
+        ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Asset3D".into()),
             component_name: "rerun.components.Blob".into(),
             archetype_field_name: Some("blob".into()),
-        }]
-    });
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::media_type`].
+    #[inline]
+    pub fn descriptor_media_type() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Asset3D".into()),
+            component_name: "rerun.components.MediaType".into(),
+            archetype_field_name: Some("media_type".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::albedo_factor`].
+    #[inline]
+    pub fn descriptor_albedo_factor() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Asset3D".into()),
+            component_name: "rerun.components.AlbedoFactor".into(),
+            archetype_field_name: Some("albedo_factor".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
+    #[inline]
+    pub fn descriptor_indicator() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Asset3D".into()),
+            component_name: "rerun.components.Asset3DIndicator".into(),
+            archetype_field_name: None,
+        }
+    }
+}
+
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [Asset3D::descriptor_blob()]);
 
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Asset3D".into()),
-                component_name: "rerun.components.MediaType".into(),
-                archetype_field_name: Some("media_type".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Asset3D".into()),
-                component_name: "rerun.components.Asset3DIndicator".into(),
-                archetype_field_name: None,
-            },
+            Asset3D::descriptor_media_type(),
+            Asset3D::descriptor_indicator(),
         ]
     });
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Asset3D".into()),
-            component_name: "rerun.components.AlbedoFactor".into(),
-            archetype_field_name: Some("albedo_factor".into()),
-        }]
-    });
+    once_cell::sync::Lazy::new(|| [Asset3D::descriptor_albedo_factor()]);
 
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Asset3D".into()),
-                component_name: "rerun.components.Blob".into(),
-                archetype_field_name: Some("blob".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Asset3D".into()),
-                component_name: "rerun.components.MediaType".into(),
-                archetype_field_name: Some("media_type".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Asset3D".into()),
-                component_name: "rerun.components.Asset3DIndicator".into(),
-                archetype_field_name: None,
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Asset3D".into()),
-                component_name: "rerun.components.AlbedoFactor".into(),
-                archetype_field_name: Some("albedo_factor".into()),
-            },
+            Asset3D::descriptor_blob(),
+            Asset3D::descriptor_media_type(),
+            Asset3D::descriptor_indicator(),
+            Asset3D::descriptor_albedo_factor(),
         ]
     });
 
@@ -187,17 +193,14 @@ impl ::re_types_core::Archetype for Asset3D {
 
     #[inline]
     fn from_arrow_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, arrow::array::ArrayRef)>,
+        arrow_data: impl IntoIterator<Item = (ComponentDescriptor, arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(name, array)| (name.full_name(), array))
-            .collect();
+        let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
         let blob = {
-            let array = arrays_by_name
-                .get("rerun.components.Blob")
+            let array = arrays_by_descr
+                .get(&Self::descriptor_blob())
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.Asset3D#blob")?;
             <crate::components::Blob>::from_arrow_opt(&**array)
@@ -208,7 +211,7 @@ impl ::re_types_core::Archetype for Asset3D {
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.Asset3D#blob")?
         };
-        let media_type = if let Some(array) = arrays_by_name.get("rerun.components.MediaType") {
+        let media_type = if let Some(array) = arrays_by_descr.get(&Self::descriptor_media_type()) {
             <crate::components::MediaType>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.Asset3D#media_type")?
                 .into_iter()
@@ -217,16 +220,16 @@ impl ::re_types_core::Archetype for Asset3D {
         } else {
             None
         };
-        let albedo_factor = if let Some(array) = arrays_by_name.get("rerun.components.AlbedoFactor")
-        {
-            <crate::components::AlbedoFactor>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Asset3D#albedo_factor")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
+        let albedo_factor =
+            if let Some(array) = arrays_by_descr.get(&Self::descriptor_albedo_factor()) {
+                <crate::components::AlbedoFactor>::from_arrow_opt(&**array)
+                    .with_context("rerun.archetypes.Asset3D#albedo_factor")?
+                    .into_iter()
+                    .next()
+                    .flatten()
+            } else {
+                None
+            };
         Ok(Self {
             blob,
             media_type,
@@ -244,11 +247,7 @@ impl ::re_types_core::AsComponents for Asset3D {
             (Some(&self.blob as &dyn ComponentBatch)).map(|batch| {
                 ::re_types_core::ComponentBatchCowWithDescriptor {
                     batch: batch.into(),
-                    descriptor_override: Some(ComponentDescriptor {
-                        archetype_name: Some("rerun.archetypes.Asset3D".into()),
-                        archetype_field_name: Some(("blob").into()),
-                        component_name: ("rerun.components.Blob").into(),
-                    }),
+                    descriptor_override: Some(Self::descriptor_blob()),
                 }
             }),
             (self
@@ -257,11 +256,7 @@ impl ::re_types_core::AsComponents for Asset3D {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.Asset3D".into()),
-                    archetype_field_name: Some(("media_type").into()),
-                    component_name: ("rerun.components.MediaType").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_media_type()),
             }),
             (self
                 .albedo_factor
@@ -269,11 +264,7 @@ impl ::re_types_core::AsComponents for Asset3D {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.Asset3D".into()),
-                    archetype_field_name: Some(("albedo_factor").into()),
-                    component_name: ("rerun.components.AlbedoFactor").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_albedo_factor()),
             }),
         ]
         .into_iter()

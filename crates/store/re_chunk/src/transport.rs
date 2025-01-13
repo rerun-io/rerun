@@ -13,6 +13,7 @@ use nohash_hasher::IntMap;
 use re_byte_size::SizeBytes as _;
 use re_log_types::{EntityPath, Timeline};
 use re_types_core::{Component as _, ComponentDescriptor, Loggable as _};
+use tap::Tap as _;
 
 use crate::{
     arrow_util::into_arrow_ref, chunk::ChunkComponents, Chunk, ChunkError, ChunkId, ChunkResult,
@@ -438,7 +439,15 @@ impl Chunk {
                     RowId::arrow_datatype().clone().into(),
                     false,
                 )
-                .with_metadata(TransportChunk::field_metadata_control_column()),
+                .with_metadata(
+                    TransportChunk::field_metadata_control_column().tap_mut(|metadata| {
+                        // This ensures the RowId/Tuid is formatted correctly
+                        metadata.insert(
+                            "ARROW:extension:name".to_owned(),
+                            re_tuid::Tuid::ARROW_EXTENSION_NAME.to_owned(),
+                        );
+                    }),
+                ),
             );
             columns.push(into_arrow_ref(row_ids.clone()).into());
         }

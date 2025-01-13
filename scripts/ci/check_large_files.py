@@ -11,6 +11,7 @@ FILES_ALLOWED_TO_BE_LARGE = {
     "crates/store/re_dataframe/src/query.rs",
     "crates/store/re_types/src/datatypes/tensor_buffer.rs",
     "crates/store/re_types/src/reflection/mod.rs",
+    "crates/top/re_sdk/src/recording_stream.rs",
     "crates/viewer/re_ui/data/Inter-Medium.otf",
     "docs/snippets/INDEX.md",
     "pixi.lock",

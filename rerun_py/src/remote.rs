@@ -24,9 +24,9 @@ use re_log_types::{EntityPathFilter, StoreInfo, StoreSource};
 use re_protos::{
     common::v0::RecordingId,
     remote_store::v0::{
-        storage_node_client::StorageNodeClient, CatalogFilter, FetchRecordingRequest,
-        QueryCatalogRequest, QueryRequest, RecordingType, RegisterRecordingRequest,
-        UpdateCatalogRequest,
+        storage_node_client::StorageNodeClient, CatalogFilter, ColumnProjection,
+        FetchRecordingRequest, QueryCatalogRequest, QueryRequest, RecordingType,
+        RegisterRecordingRequest, UpdateCatalogRequest,
     },
 };
 use re_sdk::{ApplicationId, ComponentName, StoreId, StoreKind, Time, Timeline};
@@ -190,13 +190,34 @@ impl PyStorageNodeClient {
 
 #[pymethods]
 impl PyStorageNodeClient {
-    /// Get the metadata for all recordings in the storage node.
-    fn query_catalog(&mut self) -> PyResult<PyArrowType<Box<dyn RecordBatchReader + Send>>> {
+    /// Get the metadata for recordings in the storage node.
+    ///
+    /// Parameters
+    /// ----------
+    /// columns : Optional[list[str]]
+    ///    The columns to fetch. If `None`, fetch all columns.
+    /// recording_ids : Optional[list[str]]
+    ///   Fetch metadata of only specific recordings. If `None`, fetch for all.
+    #[pyo3(signature = (
+        columns = None,
+        recording_ids = None,
+    ))]
+    fn query_catalog(
+        &mut self,
+        columns: Option<Vec<String>>,
+        recording_ids: Option<Vec<String>>,
+    ) -> PyResult<PyArrowType<Box<dyn RecordBatchReader + Send>>> {
         let reader = self.runtime.block_on(async {
-            // TODO(jleibs): Support column projection and filtering
+            let column_projection = columns.map(|columns| ColumnProjection { columns });
+            let filter = recording_ids.map(|recording_ids| CatalogFilter {
+                recording_ids: recording_ids
+                    .into_iter()
+                    .map(|id| RecordingId { id })
+                    .collect(),
+            });
             let request = QueryCatalogRequest {
-                column_projection: None,
-                filter: None,
+                column_projection,
+                filter,
             };
 
             let transport_chunks = self
