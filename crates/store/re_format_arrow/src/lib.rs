@@ -1,10 +1,11 @@
 //! Formatting for tables of Arrow arrays
 
-use std::{borrow::Borrow, fmt::Formatter};
+use std::fmt::Formatter;
 
-use arrow2::{
-    array::{get_display, Array, ListArray},
-    datatypes::{DataType, Field, IntervalUnit, Metadata, TimeUnit},
+use arrow::{
+    array::{Array, ArrayRef, ListArray},
+    datatypes::{DataType, Field, Fields, IntervalUnit, TimeUnit},
+    util::display::{ArrayFormatter, FormatOptions},
 };
 use comfy_table::{presets, Cell, Row, Table};
 
@@ -18,52 +19,51 @@ use re_types_core::Loggable as _;
 // B) Because how to deserialize and inspect some type is a private implementation detail of that
 //    type, re_format shouldn't know how to deserialize a TUID…
 
-type CustomFormatter<'a, F> = Box<dyn Fn(&mut F, usize) -> std::fmt::Result + 'a>;
+/// Format the given row as a string
+type CustomArrayFormatter<'a> = Box<dyn Fn(usize) -> Result<String, String> + 'a>;
 
-fn get_custom_display<'a, F: std::fmt::Write + 'a>(
-    field: &Field,
-    array: &'a dyn Array,
-    null: &'static str,
-) -> CustomFormatter<'a, F> {
-    if let Some(extension_name) = field.metadata.get("ARROW:extension:name") {
+type Metadata = std::collections::HashMap<String, String>;
+
+fn custom_array_formatter<'a>(field: &Field, array: &'a dyn Array) -> CustomArrayFormatter<'a> {
+    if let Some(extension_name) = field.metadata().get("ARROW:extension:name") {
         // TODO(#1775): This should be registered dynamically.
         if extension_name.as_str() == Tuid::ARROW_EXTENSION_NAME {
-            return Box::new(|w, index| {
+            return Box::new(|index| {
                 if let Some(tuid) = parse_tuid(array, index) {
-                    w.write_fmt(format_args!("{tuid}"))
+                    Ok(format!("{tuid}"))
                 } else {
-                    w.write_str("<ERR>")
+                    Err("Invalid RowId".to_owned())
                 }
             });
         }
     }
 
-    get_display(array, null)
+    match ArrayFormatter::try_new(array, &FormatOptions::default()) {
+        Ok(formatter) => Box::new(move |index| Ok(format!("{}", formatter.value(index)))),
+        Err(err) => Box::new(move |_| Err(format!("Failed to format array: {err}"))),
+    }
 }
 
 // TODO(#1775): This should be defined and registered by the `re_tuid` crate.
 fn parse_tuid(array: &dyn Array, index: usize) -> Option<Tuid> {
-    let (array, index) = match array.data_type().to_logical_type() {
-        // Legacy MsgId lists: just grab the first value, they're all identical
-        DataType::List(_) => (
-            array
-                .as_any()
-                .downcast_ref::<ListArray<i32>>()?
-                .value(index),
-            0,
-        ),
-        // New control columns: it's not a list to begin with!
-        _ => (array.to_boxed(), index),
-    };
+    fn parse_inner(array: &dyn Array, index: usize) -> Option<Tuid> {
+        let tuids = Tuid::from_arrow(array).ok()?;
+        tuids.get(index).copied()
+    }
 
-    let array = re_types_core::external::arrow::array::ArrayRef::from(array);
-    let tuids = Tuid::from_arrow(&array).ok()?;
-    tuids.get(index).copied()
+    match array.data_type() {
+        // Legacy MsgId lists: just grab the first value, they're all identical
+        DataType::List(_) => {
+            parse_inner(&array.as_any().downcast_ref::<ListArray>()?.value(index), 0)
+        }
+        // New control columns: it's not a list to begin with!
+        _ => parse_inner(array, index),
+    }
 }
 
 // ---
 
-//TODO(john) move this and the Display impl upstream into arrow2
+//TODO(john) move this and the Display impl upstream into arrow
 #[repr(transparent)]
 struct DisplayTimeUnit(TimeUnit);
 
@@ -79,7 +79,7 @@ impl std::fmt::Display for DisplayTimeUnit {
     }
 }
 
-//TODO(john) move this and the Display impl upstream into arrow2
+//TODO(john) move this and the Display impl upstream into arrow
 #[repr(transparent)]
 struct DisplayIntervalUnit(IntervalUnit);
 
@@ -94,7 +94,7 @@ impl std::fmt::Display for DisplayIntervalUnit {
     }
 }
 
-//TODO(john) move this and the Display impl upstream into arrow2
+//TODO(john) move this and the Display impl upstream into arrow
 #[repr(transparent)]
 struct DisplayDatatype<'a>(&'a DataType);
 
@@ -158,14 +158,16 @@ impl std::fmt::Display for DisplayDatatype<'_> {
                 return f.write_str(&s);
             }
             DataType::Struct(fields) => return write!(f, "struct[{}]", fields.len()),
-            DataType::Union(fields, _, _) => return write!(f, "union[{}]", fields.len()),
+            DataType::Union(fields, _) => return write!(f, "union[{}]", fields.len()),
             DataType::Map(field, _) => return write!(f, "map[{}]", Self(field.data_type())),
-            DataType::Dictionary(_, _, _) => "dict",
-            DataType::Decimal(_, _) => "decimal",
+            DataType::Dictionary(_, _) => "dict",
+            DataType::Decimal128(_, _) => "decimal128",
             DataType::Decimal256(_, _) => "decimal256",
-            DataType::Extension(name, _, _) => {
-                return f.write_str(trim_name(name));
-            }
+            DataType::BinaryView => todo!(),
+            DataType::Utf8View => todo!(),
+            DataType::ListView(field) => todo!(),
+            DataType::LargeListView(field) => todo!(),
+            DataType::RunEndEncoded(field, field1) => todo!(),
         };
         f.write_str(s)
     }
@@ -200,29 +202,7 @@ fn trim_name(name: &str) -> &str {
         .trim_start_matches("rerun.")
 }
 
-pub fn format_dataframe<F, C>(
-    metadata: impl Borrow<Metadata>,
-    fields: impl IntoIterator<Item = F>,
-    columns: impl IntoIterator<Item = C>,
-) -> Table
-where
-    F: Borrow<Field>,
-    C: Borrow<dyn Array>,
-{
-    let metadata = metadata.borrow();
-
-    let fields = fields.into_iter().collect::<Vec<_>>();
-    let fields = fields
-        .iter()
-        .map(|field| field.borrow())
-        .collect::<Vec<_>>();
-
-    let columns = columns.into_iter().collect::<Vec<_>>();
-    let columns = columns
-        .iter()
-        .map(|column| column.borrow())
-        .collect::<Vec<_>>();
-
+pub fn format_dataframe(metadata: &Metadata, fields: &Fields, columns: &[ArrayRef]) -> Table {
     const MAXIMUM_CELL_CONTENT_WIDTH: u16 = 100;
 
     let mut outer_table = Table::new();
@@ -241,25 +221,25 @@ where
     });
 
     let header = fields.iter().map(|field| {
-        if field.metadata.is_empty() {
+        if field.metadata().is_empty() {
             Cell::new(format!(
                 "{}\n---\ntype: \"{}\"", // NOLINT
-                trim_name(&field.name),
+                trim_name(&field.name()),
                 DisplayDatatype(field.data_type()),
             ))
         } else {
             Cell::new(format!(
                 "{}\n---\ntype: \"{}\"\n{}", // NOLINT
-                trim_name(&field.name),
+                trim_name(&field.name()),
                 DisplayDatatype(field.data_type()),
-                DisplayMetadata(&field.metadata, ""),
+                DisplayMetadata(&field.metadata(), ""),
             ))
         }
     });
     table.set_header(header);
 
     let displays = itertools::izip!(fields.iter(), columns.iter())
-        .map(|(field, array)| get_custom_display(field, &**array, "-"))
+        .map(|(field, array)| custom_array_formatter(field, &**array))
         .collect::<Vec<_>>();
     let num_rows = columns.first().map_or(0, |list_array| list_array.len());
 
@@ -270,24 +250,22 @@ where
     for row in 0..num_rows {
         let cells: Vec<_> = displays
             .iter()
-            .map(|disp| {
-                let mut string = String::new();
-                if (disp)(&mut string, row).is_err() {
-                    // Seems to be okay to silently ignore errors here, but reset the string just in case
-                    string.clear();
+            .map(|disp| match disp(row) {
+                Ok(string) => {
+                    let chars: Vec<_> = string.chars().collect();
+                    if chars.len() > MAXIMUM_CELL_CONTENT_WIDTH as usize {
+                        Cell::new(
+                            chars
+                                .into_iter()
+                                .take(MAXIMUM_CELL_CONTENT_WIDTH.saturating_sub(1).into())
+                                .chain(['…'])
+                                .collect::<String>(),
+                        )
+                    } else {
+                        Cell::new(string)
+                    }
                 }
-                let chars: Vec<_> = string.chars().collect();
-                if chars.len() > MAXIMUM_CELL_CONTENT_WIDTH as usize {
-                    Cell::new(
-                        chars
-                            .into_iter()
-                            .take(MAXIMUM_CELL_CONTENT_WIDTH.saturating_sub(1).into())
-                            .chain(['…'])
-                            .collect::<String>(),
-                    )
-                } else {
-                    Cell::new(string)
-                }
+                Err(err) => Cell::new(err),
             })
             .collect();
         table.add_row(cells);
