@@ -42,7 +42,10 @@ pub use channel_logger::*;
 pub use multi_logger::{add_boxed_logger, add_logger, MultiLoggerNotSetupError};
 
 #[cfg(feature = "setup")]
-pub use setup::{setup_logging, PanicOnWarnScope};
+pub use setup::setup_logging;
+
+#[cfg(all(feature = "setup", not(target_arch = "wasm32")))]
+pub use setup::PanicOnWarnScope;
 
 /// Re-exports of other crates.
 pub mod external {

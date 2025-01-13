@@ -83,11 +83,13 @@ thread_local! {
 ///
 /// Use this in tests to ensure that there's no errors & warnings.
 /// Note that we can't enable this for all threads since threads run in parallel and may not want to set this.
+#[cfg(not(target_arch = "wasm32"))]
 pub struct PanicOnWarnScope {
     // The panic scope should decrease the same thread-local value, so it musn't be Send or Sync.
     not_send_sync: std::marker::PhantomData<std::cell::Cell<()>>,
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl PanicOnWarnScope {
     /// Enable panic on warn & error log messages for as long as this scope is alive.
     #[expect(clippy::new_without_default)]
@@ -101,6 +103,7 @@ impl PanicOnWarnScope {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl Drop for PanicOnWarnScope {
     fn drop(&mut self) {
         PANIC_ON_WARN_SCOPE_DEPTH.with(|enabled| {
@@ -124,10 +127,12 @@ fn env_var_bool(name: &str) -> Option<bool> {
         })
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 struct PanicOnWarn {
     always_enabled: bool,
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl log::Log for PanicOnWarn {
     fn enabled(&self, metadata: &log::Metadata<'_>) -> bool {
         match metadata.level() {
