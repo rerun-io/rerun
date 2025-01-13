@@ -150,12 +150,12 @@ rerun-build-release = "cargo build --package rerun-cli --release --no-default-fe
 rerun-release = "cargo run --package rerun-cli --no-default-features --features grpc,map_view,nasm,native_viewer --release --"
 
 # Compile `rerun-cli` with the same feature set as we build for releases.
-rerun-build-native-and-web = { cmd = "cargo build --package rerun-cli --no-default-features --features release --", depends_on = [
+rerun-build-native-and-web = { cmd = "cargo build --package rerun-cli --no-default-features --features release --", depends-on = [
   "rerun-build-web",
 ] }
 
 # Compile `rerun-cli` with the same feature set as we build for releases.
-rerun-build-native-and-web-release = { cmd = "cargo build --package rerun-cli --no-default-features --features release --release --", depends_on = [
+rerun-build-native-and-web-release = { cmd = "cargo build --package rerun-cli --no-default-features --features release --release --", depends-on = [
   "rerun-build-web-release",
 ] }
 
@@ -165,7 +165,7 @@ rerun-build-native-and-web-release = { cmd = "cargo build --package rerun-cli --
 #
 # This installs the `wasm32-unknown-unknown` rust target if it's not already installed.
 # (this looks heavy but takes typically below 0.1s!)
-rerun-web = { cmd = "cargo run --package rerun-cli --no-default-features --features web_viewer -- --web-viewer", depends_on = [
+rerun-web = { cmd = "cargo run --package rerun-cli --no-default-features --features web_viewer -- --web-viewer", depends-on = [
   "rerun-build-web",
 ] }
 
@@ -187,7 +187,7 @@ rerun-build-web-cli = "rustup target add wasm32-unknown-unknown && cargo run -p 
 #
 # This installs the `wasm32-unknown-unknown` rust target if it's not already installed.
 # (this looks heavy but takes typically below 0.1s!)
-rerun-web-release = { cmd = "cargo run --package rerun-cli --no-default-features --features web_viewer,map_view,grpc --release -- --web-viewer", depends_on = [
+rerun-web-release = { cmd = "cargo run --package rerun-cli --no-default-features --features web_viewer,map_view,grpc --release -- --web-viewer", depends-on = [
   "rerun-build-web-release",
 ] }
 
@@ -197,21 +197,21 @@ rerun-web-release = { cmd = "cargo run --package rerun-cli --no-default-features
 # (this looks heavy but takes typically below 0.1s!)
 rerun-build-web-release = "rustup target add wasm32-unknown-unknown && cargo run -p re_dev_tools -- build-web-viewer --no-default-features --features analytics,grpc,map_view --release -g"
 
-rs-check = { cmd = "rustup target add wasm32-unknown-unknown && python scripts/ci/rust_checks.py", depends_on = [
+rs-check = { cmd = "rustup target add wasm32-unknown-unknown && python scripts/ci/rust_checks.py", depends-on = [
   "rerun-build-web", # The checks require the web viewer wasm to be around.
 ] }
 
 rs-fmt = "cargo fmt --all"
 
 # Code formatting for all languages.
-format = { depends_on = [
+format = { depends-on = [
   "py-fmt",
   "cpp-fmt",
   "rs-fmt",
   "toml-fmt",
   "misc-fmt",
 ] }
-fmt = { depends_on = ["format"] }
+fmt = { depends-on = ["format"] }
 
 # Assorted linting tasks
 fast-lint = "python scripts/fast_lint.py"
@@ -277,13 +277,13 @@ mdlint = "python scripts/ci/mdlint.py"
 js-setup = "npm i -g yarn"
 
 # Install JS package dependencies
-js-install = { cmd = "yarn install --cwd rerun_js", depends_on = ["js-setup"] }
+js-install = { cmd = "yarn install --cwd rerun_js", depends-on = ["js-setup"] }
 
 # Build JS packages
-js-build-base = { cmd = "yarn --cwd rerun_js/web-viewer run build", depends_on = [
+js-build-base = { cmd = "yarn --cwd rerun_js/web-viewer run build", depends-on = [
   "js-install",
 ] }
-js-build-all = { cmd = "yarn --cwd rerun_js workspaces run build", depends_on = [
+js-build-all = { cmd = "yarn --cwd rerun_js workspaces run build", depends-on = [
   "js-install",
 ] }
 
@@ -298,27 +298,27 @@ js-build-all = { cmd = "yarn --cwd rerun_js workspaces run build", depends_on = 
 #   configured to not install outside venv (which is a good practice). PIP_REQUIRE_VIRTUALENV=0 disables this check.
 # - RERUN_ALLOW_MISSING_BIN is needed to allow maturin to run without the `rerun` binary being part of the rerun-sdk
 #   package.
-py-build-common = { cmd = "PIP_REQUIRE_VIRTUALENV=0 RERUN_ALLOW_MISSING_BIN=1 maturin develop --manifest-path rerun_py/Cargo.toml --extras=tests", depends_on = [
+py-build-common = { cmd = "PIP_REQUIRE_VIRTUALENV=0 RERUN_ALLOW_MISSING_BIN=1 maturin develop --manifest-path rerun_py/Cargo.toml --extras=tests", depends-on = [
   "rerun-build", # We need to build rerun-cli since it is bundled in the python package.
 ] }
 
-py-build-common-release = { cmd = "PIP_REQUIRE_VIRTUALENV=0 RERUN_ALLOW_MISSING_BIN=1 maturin develop --release --manifest-path rerun_py/Cargo.toml --extras=tests", depends_on = [
+py-build-common-release = { cmd = "PIP_REQUIRE_VIRTUALENV=0 RERUN_ALLOW_MISSING_BIN=1 maturin develop --release --manifest-path rerun_py/Cargo.toml --extras=tests", depends-on = [
   "rerun-build-release", # We need to build rerun-cli since it is bundled in the python package.
 ] }
 
 # Build and install the `rerun-sdk` package with the `web_viewer` feature.
-py-build-common-web-viewer = { cmd = "PIP_REQUIRE_VIRTUALENV=0 RERUN_ALLOW_MISSING_BIN=1 maturin develop --manifest-path rerun_py/Cargo.toml --features web_viewer,nasm --extras=tests", depends_on = [
+py-build-common-web-viewer = { cmd = "PIP_REQUIRE_VIRTUALENV=0 RERUN_ALLOW_MISSING_BIN=1 maturin develop --manifest-path rerun_py/Cargo.toml --features web_viewer,nasm --extras=tests", depends-on = [
   "rerun-build-native-and-web", # We need to build rerun-cli since it is bundled in the python package.
 ] }
 
 # Build and install the `rerun-sdk` package with the `web_viewer` feature.
-py-build-common-web-viewer-release = { cmd = "PIP_REQUIRE_VIRTUALENV=0 RERUN_ALLOW_MISSING_BIN=1 maturin develop --release --manifest-path rerun_py/Cargo.toml --features web_viewer,nasm --extras=tests", depends_on = [
+py-build-common-web-viewer-release = { cmd = "PIP_REQUIRE_VIRTUALENV=0 RERUN_ALLOW_MISSING_BIN=1 maturin develop --release --manifest-path rerun_py/Cargo.toml --features web_viewer,nasm --extras=tests", depends-on = [
   "rerun-build-native-and-web-release", # We need to build rerun-cli since it is bundled in the python package.
 ] }
 
 
 # Build the `rerun-notebook` package.
-py-build-notebook = { cmd = "pip install -e rerun_notebook", depends_on = [
+py-build-notebook = { cmd = "pip install -e rerun_notebook", depends-on = [
   "js-build-base",
 ] }
 
@@ -340,17 +340,17 @@ py-check-signatures = "python scripts/ci/python_check_signatures.py"
 # Helper alias to run the python interpreter in the context of the python environment
 rrpy = "python"
 
-py-bench = { cmd = "python -m pytest -c rerun_py/pyproject.toml --benchmark-only", depends_on = [
+py-bench = { cmd = "python -m pytest -c rerun_py/pyproject.toml --benchmark-only", depends-on = [
   "py-build-release",
 ] }
 
-py-plot-dashboard = { cmd = "python tests/python/plot_dashboard_stress/main.py", depends_on = [
+py-plot-dashboard = { cmd = "python tests/python/plot_dashboard_stress/main.py", depends-on = [
   "py-build",
 ] }
 
 
 # Run the Python tests.
-py-test = { cmd = "python -m pytest -vv rerun_py/tests/unit", depends_on = [
+py-test = { cmd = "python -m pytest -vv rerun_py/tests/unit", depends-on = [
   "py-build",
 ] }
 
@@ -374,10 +374,10 @@ rerun-from-path = "rerun"
 py-build-examples = "pixi run -e examples py-build-common"
 
 # Python example utilities
-py-run-all-examples = { cmd = "python scripts/run_all.py --skip-build", depends_on = [
+py-run-all-examples = { cmd = "python scripts/run_all.py --skip-build", depends-on = [
   "py-build-examples",
 ] }
-py-run-all-examples-web = { cmd = "python scripts/run_all.py --web --skip-build", depends_on = [
+py-run-all-examples-web = { cmd = "python scripts/run_all.py --web --skip-build", depends-on = [
   "rerun-build-web-cli",
   "py-build-examples",
 ] }
@@ -386,42 +386,42 @@ py-run-all-examples-web = { cmd = "python scripts/run_all.py --web --skip-build"
 # All the cpp-* tasks can be configured with environment variables, e.g.: RERUN_WERROR=ON CXX=clang++
 cpp-prepare-release = "cmake -G 'Ninja' -B build/release -S . -DCMAKE_BUILD_TYPE=Release"
 cpp-prepare = "cmake -G 'Ninja' -B build/debug -S . -DCMAKE_BUILD_TYPE=Debug"
-cpp-build-all = { cmd = "cmake --build build/debug --config Debug --target ALL", depends_on = [
+cpp-build-all = { cmd = "cmake --build build/debug --config Debug --target ALL", depends-on = [
   "cpp-prepare",
 ] }
 cpp-prepare-shared-libs = "cmake -G 'Ninja' -B build/debug -S . -DCMAKE_BUILD_TYPE=Debug -DBUILD_SHARED_LIBS=ON"
-cpp-build-all-shared-libs = { cmd = "cmake --build build/debug --config Debug --target ALL", depends_on = [
+cpp-build-all-shared-libs = { cmd = "cmake --build build/debug --config Debug --target ALL", depends-on = [
   "cpp-prepare-shared-libs",
 ] }
 cpp-clean = "rm -rf build CMakeCache.txt CMakeFiles"
-cpp-build-tests = { cmd = "cmake --build build/debug --config Debug --target rerun_sdk_tests", depends_on = [
+cpp-build-tests = { cmd = "cmake --build build/debug --config Debug --target rerun_sdk_tests", depends-on = [
   "cpp-prepare",
 ] }
-cpp-build-roundtrips = { cmd = "cmake --build build/debug --config Debug --target roundtrips", depends_on = [
+cpp-build-roundtrips = { cmd = "cmake --build build/debug --config Debug --target roundtrips", depends-on = [
   "cpp-prepare",
 ] }
-cpp-build-examples = { cmd = "cmake --build build/debug --config Debug --target examples", depends_on = [
+cpp-build-examples = { cmd = "cmake --build build/debug --config Debug --target examples", depends-on = [
   "cpp-prepare",
 ] }
-cpp-build-snippets = { cmd = "cmake --build build/debug --config Debug --target snippets", depends_on = [
+cpp-build-snippets = { cmd = "cmake --build build/debug --config Debug --target snippets", depends-on = [
   "cpp-prepare",
 ] }
-cpp-build-log-benchmark = { cmd = "cmake --build build/release --config Release --target log_benchmark", depends_on = [
+cpp-build-log-benchmark = { cmd = "cmake --build build/release --config Release --target log_benchmark", depends-on = [
   "cpp-prepare-release",
 ] }
-cpp-build-plot-dashboard-stress = { cmd = "cmake --build build/release --config Release --target plot_dashboard_stress", depends_on = [
+cpp-build-plot-dashboard-stress = { cmd = "cmake --build build/release --config Release --target plot_dashboard_stress", depends-on = [
   "cpp-prepare-release",
 ] }
-cpp-test = { cmd = "export RERUN_STRICT=1 && ./build/debug/rerun_cpp/tests/rerun_sdk_tests", depends_on = [
+cpp-test = { cmd = "export RERUN_STRICT=1 && ./build/debug/rerun_cpp/tests/rerun_sdk_tests", depends-on = [
   "cpp-build-tests",
 ] }
-cpp-log-benchmark = { cmd = "export RERUN_STRICT=1 && ./build/release/tests/cpp/log_benchmark/log_benchmark", depends_on = [
+cpp-log-benchmark = { cmd = "export RERUN_STRICT=1 && ./build/release/tests/cpp/log_benchmark/log_benchmark", depends-on = [
   "cpp-build-log-benchmark",
 ] }
-cpp-plot-dashboard = { cmd = "export RERUN_STRICT=1 && ./build/release/tests/cpp/plot_dashboard_stress/plot_dashboard_stress", depends_on = [
+cpp-plot-dashboard = { cmd = "export RERUN_STRICT=1 && ./build/release/tests/cpp/plot_dashboard_stress/plot_dashboard_stress", depends-on = [
   "cpp-build-plot-dashboard-stress",
 ] }
-cpp-build-and-test-all = { depends_on = ["cpp-build-all", "cpp-test"] }
+cpp-build-and-test-all = { depends-on = ["cpp-build-all", "cpp-test"] }
 cpp-docs = { cmd = "doxygen docs/Doxyfile && echo '***************\nSuccess!\nOpen ./rerun_cpp/docs/html/index.html in your browser.'", cwd = "rerun_cpp" }
 cpp-fmt = "fd --extension h --extension hpp --extension c  --extension cpp --exec clang-format -i"
 
