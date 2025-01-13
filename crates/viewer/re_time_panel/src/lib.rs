@@ -26,8 +26,8 @@ use re_data_ui::DataUi as _;
 use re_data_ui::{item_ui::guess_instance_path_icon, sorted_component_list_for_ui};
 use re_entity_db::{EntityDb, EntityTree, InstancePath};
 use re_log_types::{
-    external::re_types_core::ComponentName, ComponentPath, EntityPath, ResolvedTimeRange, TimeInt,
-    TimeReal, TimeType,
+    external::re_types_core::ComponentName, ApplicationId, ComponentPath, EntityPath,
+    ResolvedTimeRange, TimeInt, TimeReal, TimeType,
 };
 use re_types::blueprint::components::PanelState;
 use re_ui::{filter_widget, list_item, ContextExt as _, DesignTokens, UiExt as _};
@@ -144,10 +144,10 @@ pub struct TimePanel {
 
     /// The store id the filter widget relates to.
     ///
-    /// Used to invalidate the filter state (aka deactivate it) when the user switch the current
-    /// recording.
+    /// Used to invalidate the filter state (aka deactivate it) when the user switches to a
+    /// recording with a different application id.
     #[serde(skip)]
-    filter_state_store_id: Option<re_log_types::StoreId>,
+    filter_state_app_id: Option<ApplicationId>,
 }
 
 impl Default for TimePanel {
@@ -162,7 +162,7 @@ impl Default for TimePanel {
             time_control_ui: TimeControlUi,
             source: TimePanelSource::Recording,
             filter_state: Default::default(),
-            filter_state_store_id: None,
+            filter_state_app_id: None,
         }
     }
 }
@@ -199,9 +199,9 @@ impl TimePanel {
         }
 
         // Invalidate the filter widget if the store id has changed.
-        if self.filter_state_store_id != Some(entity_db.store_id()) {
+        if self.filter_state_app_id.as_ref() != Some(&ctx.store_context.app_id) {
             self.filter_state = Default::default();
-            self.filter_state_store_id = Some(entity_db.store_id());
+            self.filter_state_app_id = Some(ctx.store_context.app_id.clone());
         }
 
         self.data_density_graph_painter.begin_frame(ui.ctx());
