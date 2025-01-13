@@ -25,40 +25,42 @@ pub struct TensorViewFit {
     pub scaling: Option<crate::blueprint::components::ViewFit>,
 }
 
+impl TensorViewFit {
+    /// Returns the [`ComponentDescriptor`] for [`Self::scaling`].
+    #[inline]
+    pub fn descriptor_scaling() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.TensorViewFit".into()),
+            component_name: "rerun.blueprint.components.ViewFit".into(),
+            archetype_field_name: Some("scaling".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
+    #[inline]
+    pub fn descriptor_indicator() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.TensorViewFit".into()),
+            component_name: "rerun.blueprint.components.TensorViewFitIndicator".into(),
+            archetype_field_name: None,
+        }
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.TensorViewFit".into()),
-            component_name: "rerun.blueprint.components.TensorViewFitIndicator".into(),
-            archetype_field_name: None,
-        }]
-    });
+    once_cell::sync::Lazy::new(|| [TensorViewFit::descriptor_indicator()]);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.TensorViewFit".into()),
-            component_name: "rerun.blueprint.components.ViewFit".into(),
-            archetype_field_name: Some("scaling".into()),
-        }]
-    });
+    once_cell::sync::Lazy::new(|| [TensorViewFit::descriptor_scaling()]);
 
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.TensorViewFit".into()),
-                component_name: "rerun.blueprint.components.TensorViewFitIndicator".into(),
-                archetype_field_name: None,
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.TensorViewFit".into()),
-                component_name: "rerun.blueprint.components.ViewFit".into(),
-                archetype_field_name: Some("scaling".into()),
-            },
+            TensorViewFit::descriptor_indicator(),
+            TensorViewFit::descriptor_scaling(),
         ]
     });
 
@@ -145,11 +147,7 @@ impl ::re_types_core::AsComponents for TensorViewFit {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.blueprint.archetypes.TensorViewFit".into()),
-                    archetype_field_name: Some(("scaling").into()),
-                    component_name: ("rerun.blueprint.components.ViewFit").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_scaling()),
             }),
         ]
         .into_iter()

@@ -114,105 +114,121 @@ pub struct DepthImage {
     pub draw_order: Option<crate::components::DrawOrder>,
 }
 
+impl DepthImage {
+    /// Returns the [`ComponentDescriptor`] for [`Self::buffer`].
+    #[inline]
+    pub fn descriptor_buffer() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.DepthImage".into()),
+            component_name: "rerun.components.ImageBuffer".into(),
+            archetype_field_name: Some("buffer".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::format`].
+    #[inline]
+    pub fn descriptor_format() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.DepthImage".into()),
+            component_name: "rerun.components.ImageFormat".into(),
+            archetype_field_name: Some("format".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::meter`].
+    #[inline]
+    pub fn descriptor_meter() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.DepthImage".into()),
+            component_name: "rerun.components.DepthMeter".into(),
+            archetype_field_name: Some("meter".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::colormap`].
+    #[inline]
+    pub fn descriptor_colormap() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.DepthImage".into()),
+            component_name: "rerun.components.Colormap".into(),
+            archetype_field_name: Some("colormap".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::depth_range`].
+    #[inline]
+    pub fn descriptor_depth_range() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.DepthImage".into()),
+            component_name: "rerun.components.ValueRange".into(),
+            archetype_field_name: Some("depth_range".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::point_fill_ratio`].
+    #[inline]
+    pub fn descriptor_point_fill_ratio() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.DepthImage".into()),
+            component_name: "rerun.components.FillRatio".into(),
+            archetype_field_name: Some("point_fill_ratio".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::draw_order`].
+    #[inline]
+    pub fn descriptor_draw_order() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.DepthImage".into()),
+            component_name: "rerun.components.DrawOrder".into(),
+            archetype_field_name: Some("draw_order".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
+    #[inline]
+    pub fn descriptor_indicator() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.DepthImage".into()),
+            component_name: "rerun.components.DepthImageIndicator".into(),
+            archetype_field_name: None,
+        }
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.DepthImage".into()),
-                component_name: "rerun.components.ImageBuffer".into(),
-                archetype_field_name: Some("buffer".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.DepthImage".into()),
-                component_name: "rerun.components.ImageFormat".into(),
-                archetype_field_name: Some("format".into()),
-            },
+            DepthImage::descriptor_buffer(),
+            DepthImage::descriptor_format(),
         ]
     });
 
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.DepthImage".into()),
-            component_name: "rerun.components.DepthImageIndicator".into(),
-            archetype_field_name: None,
-        }]
-    });
+    once_cell::sync::Lazy::new(|| [DepthImage::descriptor_indicator()]);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.DepthImage".into()),
-                component_name: "rerun.components.DepthMeter".into(),
-                archetype_field_name: Some("meter".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.DepthImage".into()),
-                component_name: "rerun.components.Colormap".into(),
-                archetype_field_name: Some("colormap".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.DepthImage".into()),
-                component_name: "rerun.components.ValueRange".into(),
-                archetype_field_name: Some("depth_range".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.DepthImage".into()),
-                component_name: "rerun.components.FillRatio".into(),
-                archetype_field_name: Some("point_fill_ratio".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.DepthImage".into()),
-                component_name: "rerun.components.DrawOrder".into(),
-                archetype_field_name: Some("draw_order".into()),
-            },
+            DepthImage::descriptor_meter(),
+            DepthImage::descriptor_colormap(),
+            DepthImage::descriptor_depth_range(),
+            DepthImage::descriptor_point_fill_ratio(),
+            DepthImage::descriptor_draw_order(),
         ]
     });
 
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 8usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.DepthImage".into()),
-                component_name: "rerun.components.ImageBuffer".into(),
-                archetype_field_name: Some("buffer".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.DepthImage".into()),
-                component_name: "rerun.components.ImageFormat".into(),
-                archetype_field_name: Some("format".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.DepthImage".into()),
-                component_name: "rerun.components.DepthImageIndicator".into(),
-                archetype_field_name: None,
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.DepthImage".into()),
-                component_name: "rerun.components.DepthMeter".into(),
-                archetype_field_name: Some("meter".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.DepthImage".into()),
-                component_name: "rerun.components.Colormap".into(),
-                archetype_field_name: Some("colormap".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.DepthImage".into()),
-                component_name: "rerun.components.ValueRange".into(),
-                archetype_field_name: Some("depth_range".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.DepthImage".into()),
-                component_name: "rerun.components.FillRatio".into(),
-                archetype_field_name: Some("point_fill_ratio".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.DepthImage".into()),
-                component_name: "rerun.components.DrawOrder".into(),
-                archetype_field_name: Some("draw_order".into()),
-            },
+            DepthImage::descriptor_buffer(),
+            DepthImage::descriptor_format(),
+            DepthImage::descriptor_indicator(),
+            DepthImage::descriptor_meter(),
+            DepthImage::descriptor_colormap(),
+            DepthImage::descriptor_depth_range(),
+            DepthImage::descriptor_point_fill_ratio(),
+            DepthImage::descriptor_draw_order(),
         ]
     });
 
@@ -366,21 +382,13 @@ impl ::re_types_core::AsComponents for DepthImage {
             (Some(&self.buffer as &dyn ComponentBatch)).map(|batch| {
                 ::re_types_core::ComponentBatchCowWithDescriptor {
                     batch: batch.into(),
-                    descriptor_override: Some(ComponentDescriptor {
-                        archetype_name: Some("rerun.archetypes.DepthImage".into()),
-                        archetype_field_name: Some(("buffer").into()),
-                        component_name: ("rerun.components.ImageBuffer").into(),
-                    }),
+                    descriptor_override: Some(Self::descriptor_buffer()),
                 }
             }),
             (Some(&self.format as &dyn ComponentBatch)).map(|batch| {
                 ::re_types_core::ComponentBatchCowWithDescriptor {
                     batch: batch.into(),
-                    descriptor_override: Some(ComponentDescriptor {
-                        archetype_name: Some("rerun.archetypes.DepthImage".into()),
-                        archetype_field_name: Some(("format").into()),
-                        component_name: ("rerun.components.ImageFormat").into(),
-                    }),
+                    descriptor_override: Some(Self::descriptor_format()),
                 }
             }),
             (self
@@ -389,11 +397,7 @@ impl ::re_types_core::AsComponents for DepthImage {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.DepthImage".into()),
-                    archetype_field_name: Some(("meter").into()),
-                    component_name: ("rerun.components.DepthMeter").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_meter()),
             }),
             (self
                 .colormap
@@ -401,11 +405,7 @@ impl ::re_types_core::AsComponents for DepthImage {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.DepthImage".into()),
-                    archetype_field_name: Some(("colormap").into()),
-                    component_name: ("rerun.components.Colormap").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_colormap()),
             }),
             (self
                 .depth_range
@@ -413,11 +413,7 @@ impl ::re_types_core::AsComponents for DepthImage {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.DepthImage".into()),
-                    archetype_field_name: Some(("depth_range").into()),
-                    component_name: ("rerun.components.ValueRange").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_depth_range()),
             }),
             (self
                 .point_fill_ratio
@@ -425,11 +421,7 @@ impl ::re_types_core::AsComponents for DepthImage {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.DepthImage".into()),
-                    archetype_field_name: Some(("point_fill_ratio").into()),
-                    component_name: ("rerun.components.FillRatio").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_point_fill_ratio()),
             }),
             (self
                 .draw_order
@@ -437,11 +429,7 @@ impl ::re_types_core::AsComponents for DepthImage {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.DepthImage".into()),
-                    archetype_field_name: Some(("draw_order").into()),
-                    component_name: ("rerun.components.DrawOrder").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_draw_order()),
             }),
         ]
         .into_iter()

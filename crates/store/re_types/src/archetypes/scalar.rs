@@ -59,42 +59,39 @@ pub struct Scalar {
     pub scalar: crate::components::Scalar,
 }
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
+impl Scalar {
+    /// Returns the [`ComponentDescriptor`] for [`Self::scalar`].
+    #[inline]
+    pub fn descriptor_scalar() -> ComponentDescriptor {
+        ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Scalar".into()),
             component_name: "rerun.components.Scalar".into(),
             archetype_field_name: Some("scalar".into()),
-        }]
-    });
+        }
+    }
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
+    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
+    #[inline]
+    pub fn descriptor_indicator() -> ComponentDescriptor {
+        ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Scalar".into()),
             component_name: "rerun.components.ScalarIndicator".into(),
             archetype_field_name: None,
-        }]
-    });
+        }
+    }
+}
+
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [Scalar::descriptor_scalar()]);
+
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [Scalar::descriptor_indicator()]);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Scalar".into()),
-                component_name: "rerun.components.Scalar".into(),
-                archetype_field_name: Some("scalar".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Scalar".into()),
-                component_name: "rerun.components.ScalarIndicator".into(),
-                archetype_field_name: None,
-            },
-        ]
-    });
+    once_cell::sync::Lazy::new(|| [Scalar::descriptor_scalar(), Scalar::descriptor_indicator()]);
 
 impl Scalar {
     /// The total number of components in the archetype: 1 required, 1 recommended, 0 optional
@@ -179,11 +176,7 @@ impl ::re_types_core::AsComponents for Scalar {
             (Some(&self.scalar as &dyn ComponentBatch)).map(|batch| {
                 ::re_types_core::ComponentBatchCowWithDescriptor {
                     batch: batch.into(),
-                    descriptor_override: Some(ComponentDescriptor {
-                        archetype_name: Some("rerun.archetypes.Scalar".into()),
-                        archetype_field_name: Some(("scalar").into()),
-                        component_name: ("rerun.components.Scalar").into(),
-                    }),
+                    descriptor_override: Some(Self::descriptor_scalar()),
                 }
             }),
         ]

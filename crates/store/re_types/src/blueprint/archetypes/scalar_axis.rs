@@ -30,52 +30,58 @@ pub struct ScalarAxis {
     pub zoom_lock: Option<crate::blueprint::components::LockRangeDuringZoom>,
 }
 
+impl ScalarAxis {
+    /// Returns the [`ComponentDescriptor`] for [`Self::range`].
+    #[inline]
+    pub fn descriptor_range() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ScalarAxis".into()),
+            component_name: "rerun.components.Range1D".into(),
+            archetype_field_name: Some("range".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::zoom_lock`].
+    #[inline]
+    pub fn descriptor_zoom_lock() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ScalarAxis".into()),
+            component_name: "rerun.blueprint.components.LockRangeDuringZoom".into(),
+            archetype_field_name: Some("zoom_lock".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
+    #[inline]
+    pub fn descriptor_indicator() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ScalarAxis".into()),
+            component_name: "rerun.blueprint.components.ScalarAxisIndicator".into(),
+            archetype_field_name: None,
+        }
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ScalarAxis".into()),
-            component_name: "rerun.blueprint.components.ScalarAxisIndicator".into(),
-            archetype_field_name: None,
-        }]
-    });
+    once_cell::sync::Lazy::new(|| [ScalarAxis::descriptor_indicator()]);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ScalarAxis".into()),
-                component_name: "rerun.components.Range1D".into(),
-                archetype_field_name: Some("range".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ScalarAxis".into()),
-                component_name: "rerun.blueprint.components.LockRangeDuringZoom".into(),
-                archetype_field_name: Some("zoom_lock".into()),
-            },
+            ScalarAxis::descriptor_range(),
+            ScalarAxis::descriptor_zoom_lock(),
         ]
     });
 
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ScalarAxis".into()),
-                component_name: "rerun.blueprint.components.ScalarAxisIndicator".into(),
-                archetype_field_name: None,
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ScalarAxis".into()),
-                component_name: "rerun.components.Range1D".into(),
-                archetype_field_name: Some("range".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ScalarAxis".into()),
-                component_name: "rerun.blueprint.components.LockRangeDuringZoom".into(),
-                archetype_field_name: Some("zoom_lock".into()),
-            },
+            ScalarAxis::descriptor_indicator(),
+            ScalarAxis::descriptor_range(),
+            ScalarAxis::descriptor_zoom_lock(),
         ]
     });
 
@@ -172,11 +178,7 @@ impl ::re_types_core::AsComponents for ScalarAxis {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.blueprint.archetypes.ScalarAxis".into()),
-                    archetype_field_name: Some(("range").into()),
-                    component_name: ("rerun.components.Range1D").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_range()),
             }),
             (self
                 .zoom_lock
@@ -184,11 +186,7 @@ impl ::re_types_core::AsComponents for ScalarAxis {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.blueprint.archetypes.ScalarAxis".into()),
-                    archetype_field_name: Some(("zoom_lock").into()),
-                    component_name: ("rerun.blueprint.components.LockRangeDuringZoom").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_zoom_lock()),
             }),
         ]
         .into_iter()

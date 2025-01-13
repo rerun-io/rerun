@@ -72,63 +72,64 @@ pub struct TextLog {
     pub color: Option<crate::components::Color>,
 }
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
+impl TextLog {
+    /// Returns the [`ComponentDescriptor`] for [`Self::text`].
+    #[inline]
+    pub fn descriptor_text() -> ComponentDescriptor {
+        ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.TextLog".into()),
             component_name: "rerun.components.Text".into(),
             archetype_field_name: Some("text".into()),
-        }]
-    });
+        }
+    }
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.TextLog".into()),
-                component_name: "rerun.components.TextLogLevel".into(),
-                archetype_field_name: Some("level".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.TextLog".into()),
-                component_name: "rerun.components.TextLogIndicator".into(),
-                archetype_field_name: None,
-            },
-        ]
-    });
+    /// Returns the [`ComponentDescriptor`] for [`Self::level`].
+    #[inline]
+    pub fn descriptor_level() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.TextLog".into()),
+            component_name: "rerun.components.TextLogLevel".into(),
+            archetype_field_name: Some("level".into()),
+        }
+    }
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
+    /// Returns the [`ComponentDescriptor`] for [`Self::color`].
+    #[inline]
+    pub fn descriptor_color() -> ComponentDescriptor {
+        ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.TextLog".into()),
             component_name: "rerun.components.Color".into(),
             archetype_field_name: Some("color".into()),
-        }]
-    });
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
+    #[inline]
+    pub fn descriptor_indicator() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.TextLog".into()),
+            component_name: "rerun.components.TextLogIndicator".into(),
+            archetype_field_name: None,
+        }
+    }
+}
+
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [TextLog::descriptor_text()]);
+
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
+    once_cell::sync::Lazy::new(|| [TextLog::descriptor_level(), TextLog::descriptor_indicator()]);
+
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [TextLog::descriptor_color()]);
 
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.TextLog".into()),
-                component_name: "rerun.components.Text".into(),
-                archetype_field_name: Some("text".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.TextLog".into()),
-                component_name: "rerun.components.TextLogLevel".into(),
-                archetype_field_name: Some("level".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.TextLog".into()),
-                component_name: "rerun.components.TextLogIndicator".into(),
-                archetype_field_name: None,
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.TextLog".into()),
-                component_name: "rerun.components.Color".into(),
-                archetype_field_name: Some("color".into()),
-            },
+            TextLog::descriptor_text(),
+            TextLog::descriptor_level(),
+            TextLog::descriptor_indicator(),
+            TextLog::descriptor_color(),
         ]
     });
 
@@ -233,11 +234,7 @@ impl ::re_types_core::AsComponents for TextLog {
             (Some(&self.text as &dyn ComponentBatch)).map(|batch| {
                 ::re_types_core::ComponentBatchCowWithDescriptor {
                     batch: batch.into(),
-                    descriptor_override: Some(ComponentDescriptor {
-                        archetype_name: Some("rerun.archetypes.TextLog".into()),
-                        archetype_field_name: Some(("text").into()),
-                        component_name: ("rerun.components.Text").into(),
-                    }),
+                    descriptor_override: Some(Self::descriptor_text()),
                 }
             }),
             (self
@@ -246,11 +243,7 @@ impl ::re_types_core::AsComponents for TextLog {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.TextLog".into()),
-                    archetype_field_name: Some(("level").into()),
-                    component_name: ("rerun.components.TextLogLevel").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_level()),
             }),
             (self
                 .color
@@ -258,11 +251,7 @@ impl ::re_types_core::AsComponents for TextLog {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.TextLog".into()),
-                    archetype_field_name: Some(("color").into()),
-                    component_name: ("rerun.components.Color").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_color()),
             }),
         ]
         .into_iter()

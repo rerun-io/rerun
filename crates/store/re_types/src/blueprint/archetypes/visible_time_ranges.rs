@@ -35,23 +35,33 @@ pub struct VisibleTimeRanges {
     pub ranges: Vec<crate::blueprint::components::VisibleTimeRange>,
 }
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
+impl VisibleTimeRanges {
+    /// Returns the [`ComponentDescriptor`] for [`Self::ranges`].
+    #[inline]
+    pub fn descriptor_ranges() -> ComponentDescriptor {
+        ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.VisibleTimeRanges".into()),
             component_name: "rerun.blueprint.components.VisibleTimeRange".into(),
             archetype_field_name: Some("ranges".into()),
-        }]
-    });
+        }
+    }
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
+    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
+    #[inline]
+    pub fn descriptor_indicator() -> ComponentDescriptor {
+        ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.VisibleTimeRanges".into()),
             component_name: "rerun.blueprint.components.VisibleTimeRangesIndicator".into(),
             archetype_field_name: None,
-        }]
-    });
+        }
+    }
+}
+
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [VisibleTimeRanges::descriptor_ranges()]);
+
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [VisibleTimeRanges::descriptor_indicator()]);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
@@ -59,16 +69,8 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]>
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.VisibleTimeRanges".into()),
-                component_name: "rerun.blueprint.components.VisibleTimeRange".into(),
-                archetype_field_name: Some("ranges".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.VisibleTimeRanges".into()),
-                component_name: "rerun.blueprint.components.VisibleTimeRangesIndicator".into(),
-                archetype_field_name: None,
-            },
+            VisibleTimeRanges::descriptor_ranges(),
+            VisibleTimeRanges::descriptor_indicator(),
         ]
     });
 
@@ -154,11 +156,7 @@ impl ::re_types_core::AsComponents for VisibleTimeRanges {
             (Some(&self.ranges as &dyn ComponentBatch)).map(|batch| {
                 ::re_types_core::ComponentBatchCowWithDescriptor {
                     batch: batch.into(),
-                    descriptor_override: Some(ComponentDescriptor {
-                        archetype_name: Some("rerun.blueprint.archetypes.VisibleTimeRanges".into()),
-                        archetype_field_name: Some(("ranges").into()),
-                        component_name: ("rerun.blueprint.components.VisibleTimeRange").into(),
-                    }),
+                    descriptor_override: Some(Self::descriptor_ranges()),
                 }
             }),
         ]

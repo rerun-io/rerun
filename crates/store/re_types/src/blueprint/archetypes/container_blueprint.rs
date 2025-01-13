@@ -62,113 +62,129 @@ pub struct ContainerBlueprint {
     pub grid_columns: Option<crate::blueprint::components::GridColumns>,
 }
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
+impl ContainerBlueprint {
+    /// Returns the [`ComponentDescriptor`] for [`Self::container_kind`].
+    #[inline]
+    pub fn descriptor_container_kind() -> ComponentDescriptor {
+        ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
             component_name: "rerun.blueprint.components.ContainerKind".into(),
             archetype_field_name: Some("container_kind".into()),
-        }]
-    });
+        }
+    }
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
+    /// Returns the [`ComponentDescriptor`] for [`Self::display_name`].
+    #[inline]
+    pub fn descriptor_display_name() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+            component_name: "rerun.components.Name".into(),
+            archetype_field_name: Some("display_name".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::contents`].
+    #[inline]
+    pub fn descriptor_contents() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+            component_name: "rerun.blueprint.components.IncludedContent".into(),
+            archetype_field_name: Some("contents".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::col_shares`].
+    #[inline]
+    pub fn descriptor_col_shares() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+            component_name: "rerun.blueprint.components.ColumnShare".into(),
+            archetype_field_name: Some("col_shares".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::row_shares`].
+    #[inline]
+    pub fn descriptor_row_shares() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+            component_name: "rerun.blueprint.components.RowShare".into(),
+            archetype_field_name: Some("row_shares".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::active_tab`].
+    #[inline]
+    pub fn descriptor_active_tab() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+            component_name: "rerun.blueprint.components.ActiveTab".into(),
+            archetype_field_name: Some("active_tab".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::visible`].
+    #[inline]
+    pub fn descriptor_visible() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+            component_name: "rerun.blueprint.components.Visible".into(),
+            archetype_field_name: Some("visible".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::grid_columns`].
+    #[inline]
+    pub fn descriptor_grid_columns() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+            component_name: "rerun.blueprint.components.GridColumns".into(),
+            archetype_field_name: Some("grid_columns".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
+    #[inline]
+    pub fn descriptor_indicator() -> ComponentDescriptor {
+        ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
             component_name: "rerun.blueprint.components.ContainerBlueprintIndicator".into(),
             archetype_field_name: None,
-        }]
-    });
+        }
+    }
+}
+
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [ContainerBlueprint::descriptor_container_kind()]);
+
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [ContainerBlueprint::descriptor_indicator()]);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 7usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
-                component_name: "rerun.components.Name".into(),
-                archetype_field_name: Some("display_name".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
-                component_name: "rerun.blueprint.components.IncludedContent".into(),
-                archetype_field_name: Some("contents".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
-                component_name: "rerun.blueprint.components.ColumnShare".into(),
-                archetype_field_name: Some("col_shares".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
-                component_name: "rerun.blueprint.components.RowShare".into(),
-                archetype_field_name: Some("row_shares".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
-                component_name: "rerun.blueprint.components.ActiveTab".into(),
-                archetype_field_name: Some("active_tab".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
-                component_name: "rerun.blueprint.components.Visible".into(),
-                archetype_field_name: Some("visible".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
-                component_name: "rerun.blueprint.components.GridColumns".into(),
-                archetype_field_name: Some("grid_columns".into()),
-            },
+            ContainerBlueprint::descriptor_display_name(),
+            ContainerBlueprint::descriptor_contents(),
+            ContainerBlueprint::descriptor_col_shares(),
+            ContainerBlueprint::descriptor_row_shares(),
+            ContainerBlueprint::descriptor_active_tab(),
+            ContainerBlueprint::descriptor_visible(),
+            ContainerBlueprint::descriptor_grid_columns(),
         ]
     });
 
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 9usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
-                component_name: "rerun.blueprint.components.ContainerKind".into(),
-                archetype_field_name: Some("container_kind".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
-                component_name: "rerun.blueprint.components.ContainerBlueprintIndicator".into(),
-                archetype_field_name: None,
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
-                component_name: "rerun.components.Name".into(),
-                archetype_field_name: Some("display_name".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
-                component_name: "rerun.blueprint.components.IncludedContent".into(),
-                archetype_field_name: Some("contents".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
-                component_name: "rerun.blueprint.components.ColumnShare".into(),
-                archetype_field_name: Some("col_shares".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
-                component_name: "rerun.blueprint.components.RowShare".into(),
-                archetype_field_name: Some("row_shares".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
-                component_name: "rerun.blueprint.components.ActiveTab".into(),
-                archetype_field_name: Some("active_tab".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
-                component_name: "rerun.blueprint.components.Visible".into(),
-                archetype_field_name: Some("visible".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
-                component_name: "rerun.blueprint.components.GridColumns".into(),
-                archetype_field_name: Some("grid_columns".into()),
-            },
+            ContainerBlueprint::descriptor_container_kind(),
+            ContainerBlueprint::descriptor_indicator(),
+            ContainerBlueprint::descriptor_display_name(),
+            ContainerBlueprint::descriptor_contents(),
+            ContainerBlueprint::descriptor_col_shares(),
+            ContainerBlueprint::descriptor_row_shares(),
+            ContainerBlueprint::descriptor_active_tab(),
+            ContainerBlueprint::descriptor_visible(),
+            ContainerBlueprint::descriptor_grid_columns(),
         ]
     });
 
@@ -343,13 +359,7 @@ impl ::re_types_core::AsComponents for ContainerBlueprint {
             (Some(&self.container_kind as &dyn ComponentBatch)).map(|batch| {
                 ::re_types_core::ComponentBatchCowWithDescriptor {
                     batch: batch.into(),
-                    descriptor_override: Some(ComponentDescriptor {
-                        archetype_name: Some(
-                            "rerun.blueprint.archetypes.ContainerBlueprint".into(),
-                        ),
-                        archetype_field_name: Some(("container_kind").into()),
-                        component_name: ("rerun.blueprint.components.ContainerKind").into(),
-                    }),
+                    descriptor_override: Some(Self::descriptor_container_kind()),
                 }
             }),
             (self
@@ -358,11 +368,7 @@ impl ::re_types_core::AsComponents for ContainerBlueprint {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
-                    archetype_field_name: Some(("display_name").into()),
-                    component_name: ("rerun.components.Name").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_display_name()),
             }),
             (self
                 .contents
@@ -370,11 +376,7 @@ impl ::re_types_core::AsComponents for ContainerBlueprint {
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
-                    archetype_field_name: Some(("contents").into()),
-                    component_name: ("rerun.blueprint.components.IncludedContent").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_contents()),
             }),
             (self
                 .col_shares
@@ -382,11 +384,7 @@ impl ::re_types_core::AsComponents for ContainerBlueprint {
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
-                    archetype_field_name: Some(("col_shares").into()),
-                    component_name: ("rerun.blueprint.components.ColumnShare").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_col_shares()),
             }),
             (self
                 .row_shares
@@ -394,11 +392,7 @@ impl ::re_types_core::AsComponents for ContainerBlueprint {
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
-                    archetype_field_name: Some(("row_shares").into()),
-                    component_name: ("rerun.blueprint.components.RowShare").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_row_shares()),
             }),
             (self
                 .active_tab
@@ -406,11 +400,7 @@ impl ::re_types_core::AsComponents for ContainerBlueprint {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
-                    archetype_field_name: Some(("active_tab").into()),
-                    component_name: ("rerun.blueprint.components.ActiveTab").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_active_tab()),
             }),
             (self
                 .visible
@@ -418,11 +408,7 @@ impl ::re_types_core::AsComponents for ContainerBlueprint {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
-                    archetype_field_name: Some(("visible").into()),
-                    component_name: ("rerun.blueprint.components.Visible").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_visible()),
             }),
             (self
                 .grid_columns
@@ -430,11 +416,7 @@ impl ::re_types_core::AsComponents for ContainerBlueprint {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
-                    archetype_field_name: Some(("grid_columns").into()),
-                    component_name: ("rerun.blueprint.components.GridColumns").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_grid_columns()),
             }),
         ]
         .into_iter()

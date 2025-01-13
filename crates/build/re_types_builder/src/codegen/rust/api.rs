@@ -1042,7 +1042,6 @@ fn quote_trait_impls_for_archetype(obj: &Object) -> TokenStream {
     assert_eq!(kind, &ObjectKind::Archetype);
 
     let display_name = re_case::to_human_case(name);
-    let archetype_name = &obj.fqname;
     let name = format_ident!("{name}");
 
     fn compute_component_descriptors(
@@ -1056,18 +1055,11 @@ fn quote_trait_impls_for_archetype(obj: &Object) -> TokenStream {
                 field
                     .try_get_attr::<String>(requirement_attr_value)
                     .map(|_| {
-                        let Some(component_name) = field.typ.fqname() else {
-                            panic!("Archetype field must be an object/union or an array/vector of such")
-                        };
-
-                        let archetype_name = &obj.fqname;
+                        let archetype_name = format_ident!("{}", obj.name);
                         let archetype_field_name = field.snake_case_name();
+                        let fn_name = format_ident!("descriptor_{archetype_field_name}");
 
-                        quote!(ComponentDescriptor {
-                            archetype_name: Some(#archetype_name.into()),
-                            component_name: #component_name.into(),
-                            archetype_field_name: Some(#archetype_field_name.into()),
-                        })
+                        quote!(#archetype_name::#fn_name())
                     })
             })
             .collect_vec();
@@ -1078,13 +1070,63 @@ fn quote_trait_impls_for_archetype(obj: &Object) -> TokenStream {
         (num_descriptors, quoted_descriptors)
     }
 
+    let all_descriptor_methods = obj
+        .fields
+        .iter()
+        .map(|field| {
+            let Some(component_name) = field.typ.fqname() else {
+                panic!("Archetype field must be an object/union or an array/vector of such")
+            };
+
+            let archetype_name = &obj.fqname;
+            let archetype_field_name = field.snake_case_name();
+
+            let doc = format!(
+                "Returns the [`ComponentDescriptor`] for [`Self::{archetype_field_name}`]."
+            );
+            let fn_name = format_ident!("descriptor_{archetype_field_name}");
+
+            quote! {
+                #[doc = #doc]
+                #[inline]
+                pub fn #fn_name() -> ComponentDescriptor {
+                    ComponentDescriptor {
+                        archetype_name: Some(#archetype_name.into()),
+                        component_name: #component_name.into(),
+                        archetype_field_name: Some(#archetype_field_name.into()),
+                    }
+                }
+            }
+        })
+        .chain(std::iter::once({
+            let archetype_name = &obj.fqname;
+            let indicator_component_name = format!(
+                "{}Indicator",
+                obj.fqname.replace("archetypes", "components")
+            );
+
+            let doc = "Returns the [`ComponentDescriptor`] for the associated indicator component.";
+
+            quote! {
+                #[doc = #doc]
+                #[inline]
+                pub fn descriptor_indicator() -> ComponentDescriptor {
+                    ComponentDescriptor {
+                        archetype_name: Some(#archetype_name.into()),
+                        component_name: #indicator_component_name.into(),
+                        archetype_field_name: None,
+                    }
+                }
+            }
+        }))
+        .collect_vec();
+
+    let archetype_name = format_ident!("{}", obj.name);
     let indicator_name = format!("{}Indicator", obj.name);
 
     let quoted_indicator_name = format_ident!("{indicator_name}");
     let quoted_indicator_doc =
         format!("Indicator component for the [`{name}`] [`::re_types_core::Archetype`]");
-    let indicator_component_name =
-        format!("{}Indicator", fqname.replace("archetypes", "components"));
 
     let (num_required_descriptors, required_descriptors) =
         compute_component_descriptors(obj, ATTR_RERUN_COMPONENT_REQUIRED);
@@ -1096,11 +1138,7 @@ fn quote_trait_impls_for_archetype(obj: &Object) -> TokenStream {
     num_recommended_descriptors += 1;
     recommended_descriptors = quote! {
         #recommended_descriptors
-        ComponentDescriptor {
-            archetype_name: Some(#archetype_name.into()),
-            component_name: #indicator_component_name.into(),
-            archetype_field_name: None,
-        },
+        #archetype_name::descriptor_indicator(),
     };
 
     let num_components_docstring = quote_doc_line(&format!(
@@ -1160,21 +1198,14 @@ fn quote_trait_impls_for_archetype(obj: &Object) -> TokenStream {
                 quote!{ Some(&self.#field_name as &dyn ComponentBatch) }
             };
 
-            let Some(component_name) = obj_field.typ.fqname() else {
-                panic!("Archetype field must be an object/union or an array/vector of such")
-            };
-            let archetype_name = &obj.fqname;
             let archetype_field_name = obj_field.snake_case_name();
+            let descr_fn_name = format_ident!("descriptor_{archetype_field_name}");
 
             quote! {
                 (#batch).map(|batch| {
                     ::re_types_core::ComponentBatchCowWithDescriptor {
                         batch: batch.into(),
-                        descriptor_override: Some(ComponentDescriptor {
-                            archetype_name: Some(#archetype_name.into()),
-                            archetype_field_name: Some((#archetype_field_name).into()),
-                            component_name: (#component_name).into(),
-                        }),
+                        descriptor_override: Some(Self::#descr_fn_name()),
                     }
                 })
 
@@ -1261,6 +1292,10 @@ fn quote_trait_impls_for_archetype(obj: &Object) -> TokenStream {
     };
 
     quote! {
+        impl #name {
+            #(#all_descriptor_methods)*
+        }
+
         static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; #num_required_descriptors]> =
             once_cell::sync::Lazy::new(|| {[#required_descriptors]});
 

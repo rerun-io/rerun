@@ -102,51 +102,53 @@ pub struct TextDocument {
     pub media_type: Option<crate::components::MediaType>,
 }
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
+impl TextDocument {
+    /// Returns the [`ComponentDescriptor`] for [`Self::text`].
+    #[inline]
+    pub fn descriptor_text() -> ComponentDescriptor {
+        ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.TextDocument".into()),
             component_name: "rerun.components.Text".into(),
             archetype_field_name: Some("text".into()),
-        }]
-    });
+        }
+    }
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.TextDocument".into()),
-            component_name: "rerun.components.TextDocumentIndicator".into(),
-            archetype_field_name: None,
-        }]
-    });
-
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
+    /// Returns the [`ComponentDescriptor`] for [`Self::media_type`].
+    #[inline]
+    pub fn descriptor_media_type() -> ComponentDescriptor {
+        ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.TextDocument".into()),
             component_name: "rerun.components.MediaType".into(),
             archetype_field_name: Some("media_type".into()),
-        }]
-    });
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
+    #[inline]
+    pub fn descriptor_indicator() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.TextDocument".into()),
+            component_name: "rerun.components.TextDocumentIndicator".into(),
+            archetype_field_name: None,
+        }
+    }
+}
+
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [TextDocument::descriptor_text()]);
+
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [TextDocument::descriptor_indicator()]);
+
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [TextDocument::descriptor_media_type()]);
 
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.TextDocument".into()),
-                component_name: "rerun.components.Text".into(),
-                archetype_field_name: Some("text".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.TextDocument".into()),
-                component_name: "rerun.components.TextDocumentIndicator".into(),
-                archetype_field_name: None,
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.TextDocument".into()),
-                component_name: "rerun.components.MediaType".into(),
-                archetype_field_name: Some("media_type".into()),
-            },
+            TextDocument::descriptor_text(),
+            TextDocument::descriptor_indicator(),
+            TextDocument::descriptor_media_type(),
         ]
     });
 
@@ -242,11 +244,7 @@ impl ::re_types_core::AsComponents for TextDocument {
             (Some(&self.text as &dyn ComponentBatch)).map(|batch| {
                 ::re_types_core::ComponentBatchCowWithDescriptor {
                     batch: batch.into(),
-                    descriptor_override: Some(ComponentDescriptor {
-                        archetype_name: Some("rerun.archetypes.TextDocument".into()),
-                        archetype_field_name: Some(("text").into()),
-                        component_name: ("rerun.components.Text").into(),
-                    }),
+                    descriptor_override: Some(Self::descriptor_text()),
                 }
             }),
             (self
@@ -255,11 +253,7 @@ impl ::re_types_core::AsComponents for TextDocument {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.TextDocument".into()),
-                    archetype_field_name: Some(("media_type").into()),
-                    component_name: ("rerun.components.MediaType").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_media_type()),
             }),
         ]
         .into_iter()

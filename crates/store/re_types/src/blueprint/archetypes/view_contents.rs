@@ -64,40 +64,42 @@ pub struct ViewContents {
     pub query: Vec<crate::blueprint::components::QueryExpression>,
 }
 
+impl ViewContents {
+    /// Returns the [`ComponentDescriptor`] for [`Self::query`].
+    #[inline]
+    pub fn descriptor_query() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ViewContents".into()),
+            component_name: "rerun.blueprint.components.QueryExpression".into(),
+            archetype_field_name: Some("query".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
+    #[inline]
+    pub fn descriptor_indicator() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ViewContents".into()),
+            component_name: "rerun.blueprint.components.ViewContentsIndicator".into(),
+            archetype_field_name: None,
+        }
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ViewContents".into()),
-            component_name: "rerun.blueprint.components.ViewContentsIndicator".into(),
-            archetype_field_name: None,
-        }]
-    });
+    once_cell::sync::Lazy::new(|| [ViewContents::descriptor_indicator()]);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ViewContents".into()),
-            component_name: "rerun.blueprint.components.QueryExpression".into(),
-            archetype_field_name: Some("query".into()),
-        }]
-    });
+    once_cell::sync::Lazy::new(|| [ViewContents::descriptor_query()]);
 
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ViewContents".into()),
-                component_name: "rerun.blueprint.components.ViewContentsIndicator".into(),
-                archetype_field_name: None,
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ViewContents".into()),
-                component_name: "rerun.blueprint.components.QueryExpression".into(),
-                archetype_field_name: Some("query".into()),
-            },
+            ViewContents::descriptor_indicator(),
+            ViewContents::descriptor_query(),
         ]
     });
 
@@ -183,11 +185,7 @@ impl ::re_types_core::AsComponents for ViewContents {
             (Some(&self.query as &dyn ComponentBatch)).map(|batch| {
                 ::re_types_core::ComponentBatchCowWithDescriptor {
                     batch: batch.into(),
-                    descriptor_override: Some(ComponentDescriptor {
-                        archetype_name: Some("rerun.blueprint.archetypes.ViewContents".into()),
-                        archetype_field_name: Some(("query").into()),
-                        component_name: ("rerun.blueprint.components.QueryExpression").into(),
-                    }),
+                    descriptor_override: Some(Self::descriptor_query()),
                 }
             }),
         ]

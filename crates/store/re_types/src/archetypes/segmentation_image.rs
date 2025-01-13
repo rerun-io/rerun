@@ -83,75 +83,85 @@ pub struct SegmentationImage {
     pub draw_order: Option<crate::components::DrawOrder>,
 }
 
+impl SegmentationImage {
+    /// Returns the [`ComponentDescriptor`] for [`Self::buffer`].
+    #[inline]
+    pub fn descriptor_buffer() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.SegmentationImage".into()),
+            component_name: "rerun.components.ImageBuffer".into(),
+            archetype_field_name: Some("buffer".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::format`].
+    #[inline]
+    pub fn descriptor_format() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.SegmentationImage".into()),
+            component_name: "rerun.components.ImageFormat".into(),
+            archetype_field_name: Some("format".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::opacity`].
+    #[inline]
+    pub fn descriptor_opacity() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.SegmentationImage".into()),
+            component_name: "rerun.components.Opacity".into(),
+            archetype_field_name: Some("opacity".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::draw_order`].
+    #[inline]
+    pub fn descriptor_draw_order() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.SegmentationImage".into()),
+            component_name: "rerun.components.DrawOrder".into(),
+            archetype_field_name: Some("draw_order".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
+    #[inline]
+    pub fn descriptor_indicator() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.SegmentationImage".into()),
+            component_name: "rerun.components.SegmentationImageIndicator".into(),
+            archetype_field_name: None,
+        }
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.SegmentationImage".into()),
-                component_name: "rerun.components.ImageBuffer".into(),
-                archetype_field_name: Some("buffer".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.SegmentationImage".into()),
-                component_name: "rerun.components.ImageFormat".into(),
-                archetype_field_name: Some("format".into()),
-            },
+            SegmentationImage::descriptor_buffer(),
+            SegmentationImage::descriptor_format(),
         ]
     });
 
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.SegmentationImage".into()),
-            component_name: "rerun.components.SegmentationImageIndicator".into(),
-            archetype_field_name: None,
-        }]
-    });
+    once_cell::sync::Lazy::new(|| [SegmentationImage::descriptor_indicator()]);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.SegmentationImage".into()),
-                component_name: "rerun.components.Opacity".into(),
-                archetype_field_name: Some("opacity".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.SegmentationImage".into()),
-                component_name: "rerun.components.DrawOrder".into(),
-                archetype_field_name: Some("draw_order".into()),
-            },
+            SegmentationImage::descriptor_opacity(),
+            SegmentationImage::descriptor_draw_order(),
         ]
     });
 
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.SegmentationImage".into()),
-                component_name: "rerun.components.ImageBuffer".into(),
-                archetype_field_name: Some("buffer".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.SegmentationImage".into()),
-                component_name: "rerun.components.ImageFormat".into(),
-                archetype_field_name: Some("format".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.SegmentationImage".into()),
-                component_name: "rerun.components.SegmentationImageIndicator".into(),
-                archetype_field_name: None,
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.SegmentationImage".into()),
-                component_name: "rerun.components.Opacity".into(),
-                archetype_field_name: Some("opacity".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.SegmentationImage".into()),
-                component_name: "rerun.components.DrawOrder".into(),
-                archetype_field_name: Some("draw_order".into()),
-            },
+            SegmentationImage::descriptor_buffer(),
+            SegmentationImage::descriptor_format(),
+            SegmentationImage::descriptor_indicator(),
+            SegmentationImage::descriptor_opacity(),
+            SegmentationImage::descriptor_draw_order(),
         ]
     });
 
@@ -274,21 +284,13 @@ impl ::re_types_core::AsComponents for SegmentationImage {
             (Some(&self.buffer as &dyn ComponentBatch)).map(|batch| {
                 ::re_types_core::ComponentBatchCowWithDescriptor {
                     batch: batch.into(),
-                    descriptor_override: Some(ComponentDescriptor {
-                        archetype_name: Some("rerun.archetypes.SegmentationImage".into()),
-                        archetype_field_name: Some(("buffer").into()),
-                        component_name: ("rerun.components.ImageBuffer").into(),
-                    }),
+                    descriptor_override: Some(Self::descriptor_buffer()),
                 }
             }),
             (Some(&self.format as &dyn ComponentBatch)).map(|batch| {
                 ::re_types_core::ComponentBatchCowWithDescriptor {
                     batch: batch.into(),
-                    descriptor_override: Some(ComponentDescriptor {
-                        archetype_name: Some("rerun.archetypes.SegmentationImage".into()),
-                        archetype_field_name: Some(("format").into()),
-                        component_name: ("rerun.components.ImageFormat").into(),
-                    }),
+                    descriptor_override: Some(Self::descriptor_format()),
                 }
             }),
             (self
@@ -297,11 +299,7 @@ impl ::re_types_core::AsComponents for SegmentationImage {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.SegmentationImage".into()),
-                    archetype_field_name: Some(("opacity").into()),
-                    component_name: ("rerun.components.Opacity").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_opacity()),
             }),
             (self
                 .draw_order
@@ -309,11 +307,7 @@ impl ::re_types_core::AsComponents for SegmentationImage {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.SegmentationImage".into()),
-                    archetype_field_name: Some(("draw_order").into()),
-                    component_name: ("rerun.components.DrawOrder").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_draw_order()),
             }),
         ]
         .into_iter()

@@ -75,23 +75,33 @@ pub struct AnnotationContext {
     pub context: crate::components::AnnotationContext,
 }
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
+impl AnnotationContext {
+    /// Returns the [`ComponentDescriptor`] for [`Self::context`].
+    #[inline]
+    pub fn descriptor_context() -> ComponentDescriptor {
+        ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.AnnotationContext".into()),
             component_name: "rerun.components.AnnotationContext".into(),
             archetype_field_name: Some("context".into()),
-        }]
-    });
+        }
+    }
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
+    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
+    #[inline]
+    pub fn descriptor_indicator() -> ComponentDescriptor {
+        ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.AnnotationContext".into()),
             component_name: "rerun.components.AnnotationContextIndicator".into(),
             archetype_field_name: None,
-        }]
-    });
+        }
+    }
+}
+
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [AnnotationContext::descriptor_context()]);
+
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [AnnotationContext::descriptor_indicator()]);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
@@ -99,16 +109,8 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]>
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.AnnotationContext".into()),
-                component_name: "rerun.components.AnnotationContext".into(),
-                archetype_field_name: Some("context".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.AnnotationContext".into()),
-                component_name: "rerun.components.AnnotationContextIndicator".into(),
-                archetype_field_name: None,
-            },
+            AnnotationContext::descriptor_context(),
+            AnnotationContext::descriptor_indicator(),
         ]
     });
 
@@ -195,11 +197,7 @@ impl ::re_types_core::AsComponents for AnnotationContext {
             (Some(&self.context as &dyn ComponentBatch)).map(|batch| {
                 ::re_types_core::ComponentBatchCowWithDescriptor {
                     batch: batch.into(),
-                    descriptor_override: Some(ComponentDescriptor {
-                        archetype_name: Some("rerun.archetypes.AnnotationContext".into()),
-                        archetype_field_name: Some(("context").into()),
-                        component_name: ("rerun.components.AnnotationContext").into(),
-                    }),
+                    descriptor_override: Some(Self::descriptor_context()),
                 }
             }),
         ]

@@ -40,212 +40,250 @@ pub struct AffixFuzzer3 {
     pub fuzz2018: Option<crate::testing::components::AffixFuzzer18>,
 }
 
+impl AffixFuzzer3 {
+    /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2001`].
+    #[inline]
+    pub fn descriptor_fuzz2001() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
+            component_name: "rerun.testing.components.AffixFuzzer1".into(),
+            archetype_field_name: Some("fuzz2001".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2002`].
+    #[inline]
+    pub fn descriptor_fuzz2002() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
+            component_name: "rerun.testing.components.AffixFuzzer2".into(),
+            archetype_field_name: Some("fuzz2002".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2003`].
+    #[inline]
+    pub fn descriptor_fuzz2003() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
+            component_name: "rerun.testing.components.AffixFuzzer3".into(),
+            archetype_field_name: Some("fuzz2003".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2004`].
+    #[inline]
+    pub fn descriptor_fuzz2004() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
+            component_name: "rerun.testing.components.AffixFuzzer4".into(),
+            archetype_field_name: Some("fuzz2004".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2005`].
+    #[inline]
+    pub fn descriptor_fuzz2005() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
+            component_name: "rerun.testing.components.AffixFuzzer5".into(),
+            archetype_field_name: Some("fuzz2005".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2006`].
+    #[inline]
+    pub fn descriptor_fuzz2006() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
+            component_name: "rerun.testing.components.AffixFuzzer6".into(),
+            archetype_field_name: Some("fuzz2006".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2007`].
+    #[inline]
+    pub fn descriptor_fuzz2007() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
+            component_name: "rerun.testing.components.AffixFuzzer7".into(),
+            archetype_field_name: Some("fuzz2007".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2008`].
+    #[inline]
+    pub fn descriptor_fuzz2008() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
+            component_name: "rerun.testing.components.AffixFuzzer8".into(),
+            archetype_field_name: Some("fuzz2008".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2009`].
+    #[inline]
+    pub fn descriptor_fuzz2009() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
+            component_name: "rerun.testing.components.AffixFuzzer9".into(),
+            archetype_field_name: Some("fuzz2009".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2010`].
+    #[inline]
+    pub fn descriptor_fuzz2010() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
+            component_name: "rerun.testing.components.AffixFuzzer10".into(),
+            archetype_field_name: Some("fuzz2010".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2011`].
+    #[inline]
+    pub fn descriptor_fuzz2011() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
+            component_name: "rerun.testing.components.AffixFuzzer11".into(),
+            archetype_field_name: Some("fuzz2011".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2012`].
+    #[inline]
+    pub fn descriptor_fuzz2012() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
+            component_name: "rerun.testing.components.AffixFuzzer12".into(),
+            archetype_field_name: Some("fuzz2012".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2013`].
+    #[inline]
+    pub fn descriptor_fuzz2013() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
+            component_name: "rerun.testing.components.AffixFuzzer13".into(),
+            archetype_field_name: Some("fuzz2013".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2014`].
+    #[inline]
+    pub fn descriptor_fuzz2014() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
+            component_name: "rerun.testing.components.AffixFuzzer14".into(),
+            archetype_field_name: Some("fuzz2014".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2015`].
+    #[inline]
+    pub fn descriptor_fuzz2015() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
+            component_name: "rerun.testing.components.AffixFuzzer15".into(),
+            archetype_field_name: Some("fuzz2015".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2016`].
+    #[inline]
+    pub fn descriptor_fuzz2016() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
+            component_name: "rerun.testing.components.AffixFuzzer16".into(),
+            archetype_field_name: Some("fuzz2016".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2017`].
+    #[inline]
+    pub fn descriptor_fuzz2017() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
+            component_name: "rerun.testing.components.AffixFuzzer17".into(),
+            archetype_field_name: Some("fuzz2017".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2018`].
+    #[inline]
+    pub fn descriptor_fuzz2018() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
+            component_name: "rerun.testing.components.AffixFuzzer18".into(),
+            archetype_field_name: Some("fuzz2018".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
+    #[inline]
+    pub fn descriptor_indicator() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
+            component_name: "rerun.testing.components.AffixFuzzer3Indicator".into(),
+            archetype_field_name: None,
+        }
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
-            archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-            component_name: "rerun.testing.components.AffixFuzzer3Indicator".into(),
-            archetype_field_name: None,
-        }]
-    });
+    once_cell::sync::Lazy::new(|| [AffixFuzzer3::descriptor_indicator()]);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 18usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-                component_name: "rerun.testing.components.AffixFuzzer1".into(),
-                archetype_field_name: Some("fuzz2001".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-                component_name: "rerun.testing.components.AffixFuzzer2".into(),
-                archetype_field_name: Some("fuzz2002".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-                component_name: "rerun.testing.components.AffixFuzzer3".into(),
-                archetype_field_name: Some("fuzz2003".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-                component_name: "rerun.testing.components.AffixFuzzer4".into(),
-                archetype_field_name: Some("fuzz2004".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-                component_name: "rerun.testing.components.AffixFuzzer5".into(),
-                archetype_field_name: Some("fuzz2005".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-                component_name: "rerun.testing.components.AffixFuzzer6".into(),
-                archetype_field_name: Some("fuzz2006".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-                component_name: "rerun.testing.components.AffixFuzzer7".into(),
-                archetype_field_name: Some("fuzz2007".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-                component_name: "rerun.testing.components.AffixFuzzer8".into(),
-                archetype_field_name: Some("fuzz2008".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-                component_name: "rerun.testing.components.AffixFuzzer9".into(),
-                archetype_field_name: Some("fuzz2009".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-                component_name: "rerun.testing.components.AffixFuzzer10".into(),
-                archetype_field_name: Some("fuzz2010".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-                component_name: "rerun.testing.components.AffixFuzzer11".into(),
-                archetype_field_name: Some("fuzz2011".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-                component_name: "rerun.testing.components.AffixFuzzer12".into(),
-                archetype_field_name: Some("fuzz2012".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-                component_name: "rerun.testing.components.AffixFuzzer13".into(),
-                archetype_field_name: Some("fuzz2013".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-                component_name: "rerun.testing.components.AffixFuzzer14".into(),
-                archetype_field_name: Some("fuzz2014".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-                component_name: "rerun.testing.components.AffixFuzzer15".into(),
-                archetype_field_name: Some("fuzz2015".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-                component_name: "rerun.testing.components.AffixFuzzer16".into(),
-                archetype_field_name: Some("fuzz2016".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-                component_name: "rerun.testing.components.AffixFuzzer17".into(),
-                archetype_field_name: Some("fuzz2017".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-                component_name: "rerun.testing.components.AffixFuzzer18".into(),
-                archetype_field_name: Some("fuzz2018".into()),
-            },
+            AffixFuzzer3::descriptor_fuzz2001(),
+            AffixFuzzer3::descriptor_fuzz2002(),
+            AffixFuzzer3::descriptor_fuzz2003(),
+            AffixFuzzer3::descriptor_fuzz2004(),
+            AffixFuzzer3::descriptor_fuzz2005(),
+            AffixFuzzer3::descriptor_fuzz2006(),
+            AffixFuzzer3::descriptor_fuzz2007(),
+            AffixFuzzer3::descriptor_fuzz2008(),
+            AffixFuzzer3::descriptor_fuzz2009(),
+            AffixFuzzer3::descriptor_fuzz2010(),
+            AffixFuzzer3::descriptor_fuzz2011(),
+            AffixFuzzer3::descriptor_fuzz2012(),
+            AffixFuzzer3::descriptor_fuzz2013(),
+            AffixFuzzer3::descriptor_fuzz2014(),
+            AffixFuzzer3::descriptor_fuzz2015(),
+            AffixFuzzer3::descriptor_fuzz2016(),
+            AffixFuzzer3::descriptor_fuzz2017(),
+            AffixFuzzer3::descriptor_fuzz2018(),
         ]
     });
 
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 19usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-                component_name: "rerun.testing.components.AffixFuzzer3Indicator".into(),
-                archetype_field_name: None,
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-                component_name: "rerun.testing.components.AffixFuzzer1".into(),
-                archetype_field_name: Some("fuzz2001".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-                component_name: "rerun.testing.components.AffixFuzzer2".into(),
-                archetype_field_name: Some("fuzz2002".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-                component_name: "rerun.testing.components.AffixFuzzer3".into(),
-                archetype_field_name: Some("fuzz2003".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-                component_name: "rerun.testing.components.AffixFuzzer4".into(),
-                archetype_field_name: Some("fuzz2004".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-                component_name: "rerun.testing.components.AffixFuzzer5".into(),
-                archetype_field_name: Some("fuzz2005".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-                component_name: "rerun.testing.components.AffixFuzzer6".into(),
-                archetype_field_name: Some("fuzz2006".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-                component_name: "rerun.testing.components.AffixFuzzer7".into(),
-                archetype_field_name: Some("fuzz2007".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-                component_name: "rerun.testing.components.AffixFuzzer8".into(),
-                archetype_field_name: Some("fuzz2008".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-                component_name: "rerun.testing.components.AffixFuzzer9".into(),
-                archetype_field_name: Some("fuzz2009".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-                component_name: "rerun.testing.components.AffixFuzzer10".into(),
-                archetype_field_name: Some("fuzz2010".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-                component_name: "rerun.testing.components.AffixFuzzer11".into(),
-                archetype_field_name: Some("fuzz2011".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-                component_name: "rerun.testing.components.AffixFuzzer12".into(),
-                archetype_field_name: Some("fuzz2012".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-                component_name: "rerun.testing.components.AffixFuzzer13".into(),
-                archetype_field_name: Some("fuzz2013".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-                component_name: "rerun.testing.components.AffixFuzzer14".into(),
-                archetype_field_name: Some("fuzz2014".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-                component_name: "rerun.testing.components.AffixFuzzer15".into(),
-                archetype_field_name: Some("fuzz2015".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-                component_name: "rerun.testing.components.AffixFuzzer16".into(),
-                archetype_field_name: Some("fuzz2016".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-                component_name: "rerun.testing.components.AffixFuzzer17".into(),
-                archetype_field_name: Some("fuzz2017".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-                component_name: "rerun.testing.components.AffixFuzzer18".into(),
-                archetype_field_name: Some("fuzz2018".into()),
-            },
+            AffixFuzzer3::descriptor_indicator(),
+            AffixFuzzer3::descriptor_fuzz2001(),
+            AffixFuzzer3::descriptor_fuzz2002(),
+            AffixFuzzer3::descriptor_fuzz2003(),
+            AffixFuzzer3::descriptor_fuzz2004(),
+            AffixFuzzer3::descriptor_fuzz2005(),
+            AffixFuzzer3::descriptor_fuzz2006(),
+            AffixFuzzer3::descriptor_fuzz2007(),
+            AffixFuzzer3::descriptor_fuzz2008(),
+            AffixFuzzer3::descriptor_fuzz2009(),
+            AffixFuzzer3::descriptor_fuzz2010(),
+            AffixFuzzer3::descriptor_fuzz2011(),
+            AffixFuzzer3::descriptor_fuzz2012(),
+            AffixFuzzer3::descriptor_fuzz2013(),
+            AffixFuzzer3::descriptor_fuzz2014(),
+            AffixFuzzer3::descriptor_fuzz2015(),
+            AffixFuzzer3::descriptor_fuzz2016(),
+            AffixFuzzer3::descriptor_fuzz2017(),
+            AffixFuzzer3::descriptor_fuzz2018(),
         ]
     });
 
@@ -521,11 +559,7 @@ impl ::re_types_core::AsComponents for AffixFuzzer3 {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-                    archetype_field_name: Some(("fuzz2001").into()),
-                    component_name: ("rerun.testing.components.AffixFuzzer1").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_fuzz2001()),
             }),
             (self
                 .fuzz2002
@@ -533,11 +567,7 @@ impl ::re_types_core::AsComponents for AffixFuzzer3 {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-                    archetype_field_name: Some(("fuzz2002").into()),
-                    component_name: ("rerun.testing.components.AffixFuzzer2").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_fuzz2002()),
             }),
             (self
                 .fuzz2003
@@ -545,11 +575,7 @@ impl ::re_types_core::AsComponents for AffixFuzzer3 {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-                    archetype_field_name: Some(("fuzz2003").into()),
-                    component_name: ("rerun.testing.components.AffixFuzzer3").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_fuzz2003()),
             }),
             (self
                 .fuzz2004
@@ -557,11 +583,7 @@ impl ::re_types_core::AsComponents for AffixFuzzer3 {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-                    archetype_field_name: Some(("fuzz2004").into()),
-                    component_name: ("rerun.testing.components.AffixFuzzer4").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_fuzz2004()),
             }),
             (self
                 .fuzz2005
@@ -569,11 +591,7 @@ impl ::re_types_core::AsComponents for AffixFuzzer3 {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-                    archetype_field_name: Some(("fuzz2005").into()),
-                    component_name: ("rerun.testing.components.AffixFuzzer5").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_fuzz2005()),
             }),
             (self
                 .fuzz2006
@@ -581,11 +599,7 @@ impl ::re_types_core::AsComponents for AffixFuzzer3 {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-                    archetype_field_name: Some(("fuzz2006").into()),
-                    component_name: ("rerun.testing.components.AffixFuzzer6").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_fuzz2006()),
             }),
             (self
                 .fuzz2007
@@ -593,11 +607,7 @@ impl ::re_types_core::AsComponents for AffixFuzzer3 {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-                    archetype_field_name: Some(("fuzz2007").into()),
-                    component_name: ("rerun.testing.components.AffixFuzzer7").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_fuzz2007()),
             }),
             (self
                 .fuzz2008
@@ -605,11 +615,7 @@ impl ::re_types_core::AsComponents for AffixFuzzer3 {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-                    archetype_field_name: Some(("fuzz2008").into()),
-                    component_name: ("rerun.testing.components.AffixFuzzer8").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_fuzz2008()),
             }),
             (self
                 .fuzz2009
@@ -617,11 +623,7 @@ impl ::re_types_core::AsComponents for AffixFuzzer3 {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-                    archetype_field_name: Some(("fuzz2009").into()),
-                    component_name: ("rerun.testing.components.AffixFuzzer9").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_fuzz2009()),
             }),
             (self
                 .fuzz2010
@@ -629,11 +631,7 @@ impl ::re_types_core::AsComponents for AffixFuzzer3 {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-                    archetype_field_name: Some(("fuzz2010").into()),
-                    component_name: ("rerun.testing.components.AffixFuzzer10").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_fuzz2010()),
             }),
             (self
                 .fuzz2011
@@ -641,11 +639,7 @@ impl ::re_types_core::AsComponents for AffixFuzzer3 {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-                    archetype_field_name: Some(("fuzz2011").into()),
-                    component_name: ("rerun.testing.components.AffixFuzzer11").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_fuzz2011()),
             }),
             (self
                 .fuzz2012
@@ -653,11 +647,7 @@ impl ::re_types_core::AsComponents for AffixFuzzer3 {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-                    archetype_field_name: Some(("fuzz2012").into()),
-                    component_name: ("rerun.testing.components.AffixFuzzer12").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_fuzz2012()),
             }),
             (self
                 .fuzz2013
@@ -665,11 +655,7 @@ impl ::re_types_core::AsComponents for AffixFuzzer3 {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-                    archetype_field_name: Some(("fuzz2013").into()),
-                    component_name: ("rerun.testing.components.AffixFuzzer13").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_fuzz2013()),
             }),
             (self
                 .fuzz2014
@@ -677,11 +663,7 @@ impl ::re_types_core::AsComponents for AffixFuzzer3 {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-                    archetype_field_name: Some(("fuzz2014").into()),
-                    component_name: ("rerun.testing.components.AffixFuzzer14").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_fuzz2014()),
             }),
             (self
                 .fuzz2015
@@ -689,11 +671,7 @@ impl ::re_types_core::AsComponents for AffixFuzzer3 {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-                    archetype_field_name: Some(("fuzz2015").into()),
-                    component_name: ("rerun.testing.components.AffixFuzzer15").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_fuzz2015()),
             }),
             (self
                 .fuzz2016
@@ -701,11 +679,7 @@ impl ::re_types_core::AsComponents for AffixFuzzer3 {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-                    archetype_field_name: Some(("fuzz2016").into()),
-                    component_name: ("rerun.testing.components.AffixFuzzer16").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_fuzz2016()),
             }),
             (self
                 .fuzz2017
@@ -713,11 +687,7 @@ impl ::re_types_core::AsComponents for AffixFuzzer3 {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-                    archetype_field_name: Some(("fuzz2017").into()),
-                    component_name: ("rerun.testing.components.AffixFuzzer17").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_fuzz2017()),
             }),
             (self
                 .fuzz2018
@@ -725,11 +695,7 @@ impl ::re_types_core::AsComponents for AffixFuzzer3 {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.testing.archetypes.AffixFuzzer3".into()),
-                    archetype_field_name: Some(("fuzz2018").into()),
-                    component_name: ("rerun.testing.components.AffixFuzzer18").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_fuzz2018()),
             }),
         ]
         .into_iter()

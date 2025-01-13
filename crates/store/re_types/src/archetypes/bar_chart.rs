@@ -55,51 +55,53 @@ pub struct BarChart {
     pub color: Option<crate::components::Color>,
 }
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
+impl BarChart {
+    /// Returns the [`ComponentDescriptor`] for [`Self::values`].
+    #[inline]
+    pub fn descriptor_values() -> ComponentDescriptor {
+        ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.BarChart".into()),
             component_name: "rerun.components.TensorData".into(),
             archetype_field_name: Some("values".into()),
-        }]
-    });
+        }
+    }
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.BarChart".into()),
-            component_name: "rerun.components.BarChartIndicator".into(),
-            archetype_field_name: None,
-        }]
-    });
-
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
+    /// Returns the [`ComponentDescriptor`] for [`Self::color`].
+    #[inline]
+    pub fn descriptor_color() -> ComponentDescriptor {
+        ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.BarChart".into()),
             component_name: "rerun.components.Color".into(),
             archetype_field_name: Some("color".into()),
-        }]
-    });
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
+    #[inline]
+    pub fn descriptor_indicator() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.BarChart".into()),
+            component_name: "rerun.components.BarChartIndicator".into(),
+            archetype_field_name: None,
+        }
+    }
+}
+
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [BarChart::descriptor_values()]);
+
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [BarChart::descriptor_indicator()]);
+
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [BarChart::descriptor_color()]);
 
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.BarChart".into()),
-                component_name: "rerun.components.TensorData".into(),
-                archetype_field_name: Some("values".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.BarChart".into()),
-                component_name: "rerun.components.BarChartIndicator".into(),
-                archetype_field_name: None,
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.BarChart".into()),
-                component_name: "rerun.components.Color".into(),
-                archetype_field_name: Some("color".into()),
-            },
+            BarChart::descriptor_values(),
+            BarChart::descriptor_indicator(),
+            BarChart::descriptor_color(),
         ]
     });
 
@@ -195,11 +197,7 @@ impl ::re_types_core::AsComponents for BarChart {
             (Some(&self.values as &dyn ComponentBatch)).map(|batch| {
                 ::re_types_core::ComponentBatchCowWithDescriptor {
                     batch: batch.into(),
-                    descriptor_override: Some(ComponentDescriptor {
-                        archetype_name: Some("rerun.archetypes.BarChart".into()),
-                        archetype_field_name: Some(("values").into()),
-                        component_name: ("rerun.components.TensorData").into(),
-                    }),
+                    descriptor_override: Some(Self::descriptor_values()),
                 }
             }),
             (self
@@ -208,11 +206,7 @@ impl ::re_types_core::AsComponents for BarChart {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.BarChart".into()),
-                    archetype_field_name: Some(("color").into()),
-                    component_name: ("rerun.components.Color").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_color()),
             }),
         ]
         .into_iter()

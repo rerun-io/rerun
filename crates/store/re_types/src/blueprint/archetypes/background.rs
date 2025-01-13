@@ -28,51 +28,53 @@ pub struct Background {
     pub color: Option<crate::components::Color>,
 }
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
+impl Background {
+    /// Returns the [`ComponentDescriptor`] for [`Self::kind`].
+    #[inline]
+    pub fn descriptor_kind() -> ComponentDescriptor {
+        ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.Background".into()),
             component_name: "rerun.blueprint.components.BackgroundKind".into(),
             archetype_field_name: Some("kind".into()),
-        }]
-    });
+        }
+    }
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.Background".into()),
-            component_name: "rerun.blueprint.components.BackgroundIndicator".into(),
-            archetype_field_name: None,
-        }]
-    });
-
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
+    /// Returns the [`ComponentDescriptor`] for [`Self::color`].
+    #[inline]
+    pub fn descriptor_color() -> ComponentDescriptor {
+        ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.Background".into()),
             component_name: "rerun.components.Color".into(),
             archetype_field_name: Some("color".into()),
-        }]
-    });
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
+    #[inline]
+    pub fn descriptor_indicator() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.Background".into()),
+            component_name: "rerun.blueprint.components.BackgroundIndicator".into(),
+            archetype_field_name: None,
+        }
+    }
+}
+
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [Background::descriptor_kind()]);
+
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [Background::descriptor_indicator()]);
+
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [Background::descriptor_color()]);
 
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.Background".into()),
-                component_name: "rerun.blueprint.components.BackgroundKind".into(),
-                archetype_field_name: Some("kind".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.Background".into()),
-                component_name: "rerun.blueprint.components.BackgroundIndicator".into(),
-                archetype_field_name: None,
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.Background".into()),
-                component_name: "rerun.components.Color".into(),
-                archetype_field_name: Some("color".into()),
-            },
+            Background::descriptor_kind(),
+            Background::descriptor_indicator(),
+            Background::descriptor_color(),
         ]
     });
 
@@ -168,11 +170,7 @@ impl ::re_types_core::AsComponents for Background {
             (Some(&self.kind as &dyn ComponentBatch)).map(|batch| {
                 ::re_types_core::ComponentBatchCowWithDescriptor {
                     batch: batch.into(),
-                    descriptor_override: Some(ComponentDescriptor {
-                        archetype_name: Some("rerun.blueprint.archetypes.Background".into()),
-                        archetype_field_name: Some(("kind").into()),
-                        component_name: ("rerun.blueprint.components.BackgroundKind").into(),
-                    }),
+                    descriptor_override: Some(Self::descriptor_kind()),
                 }
             }),
             (self
@@ -181,11 +179,7 @@ impl ::re_types_core::AsComponents for Background {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.blueprint.archetypes.Background".into()),
-                    archetype_field_name: Some(("color").into()),
-                    component_name: ("rerun.components.Color").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_color()),
             }),
         ]
         .into_iter()

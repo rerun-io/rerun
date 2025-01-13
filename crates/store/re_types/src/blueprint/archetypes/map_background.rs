@@ -27,40 +27,42 @@ pub struct MapBackground {
     pub provider: crate::blueprint::components::MapProvider,
 }
 
+impl MapBackground {
+    /// Returns the [`ComponentDescriptor`] for [`Self::provider`].
+    #[inline]
+    pub fn descriptor_provider() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.MapBackground".into()),
+            component_name: "rerun.blueprint.components.MapProvider".into(),
+            archetype_field_name: Some("provider".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
+    #[inline]
+    pub fn descriptor_indicator() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.MapBackground".into()),
+            component_name: "rerun.blueprint.components.MapBackgroundIndicator".into(),
+            archetype_field_name: None,
+        }
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.MapBackground".into()),
-            component_name: "rerun.blueprint.components.MapBackgroundIndicator".into(),
-            archetype_field_name: None,
-        }]
-    });
+    once_cell::sync::Lazy::new(|| [MapBackground::descriptor_indicator()]);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.MapBackground".into()),
-            component_name: "rerun.blueprint.components.MapProvider".into(),
-            archetype_field_name: Some("provider".into()),
-        }]
-    });
+    once_cell::sync::Lazy::new(|| [MapBackground::descriptor_provider()]);
 
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.MapBackground".into()),
-                component_name: "rerun.blueprint.components.MapBackgroundIndicator".into(),
-                archetype_field_name: None,
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.MapBackground".into()),
-                component_name: "rerun.blueprint.components.MapProvider".into(),
-                archetype_field_name: Some("provider".into()),
-            },
+            MapBackground::descriptor_indicator(),
+            MapBackground::descriptor_provider(),
         ]
     });
 
@@ -147,11 +149,7 @@ impl ::re_types_core::AsComponents for MapBackground {
             (Some(&self.provider as &dyn ComponentBatch)).map(|batch| {
                 ::re_types_core::ComponentBatchCowWithDescriptor {
                     batch: batch.into(),
-                    descriptor_override: Some(ComponentDescriptor {
-                        archetype_name: Some("rerun.blueprint.archetypes.MapBackground".into()),
-                        archetype_field_name: Some(("provider").into()),
-                        component_name: ("rerun.blueprint.components.MapProvider").into(),
-                    }),
+                    descriptor_override: Some(Self::descriptor_provider()),
                 }
             }),
         ]

@@ -41,82 +41,94 @@ pub struct DataframeQuery {
     pub select: Option<crate::blueprint::components::SelectedColumns>,
 }
 
+impl DataframeQuery {
+    /// Returns the [`ComponentDescriptor`] for [`Self::timeline`].
+    #[inline]
+    pub fn descriptor_timeline() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
+            component_name: "rerun.blueprint.components.TimelineName".into(),
+            archetype_field_name: Some("timeline".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::filter_by_range`].
+    #[inline]
+    pub fn descriptor_filter_by_range() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
+            component_name: "rerun.blueprint.components.FilterByRange".into(),
+            archetype_field_name: Some("filter_by_range".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::filter_is_not_null`].
+    #[inline]
+    pub fn descriptor_filter_is_not_null() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
+            component_name: "rerun.blueprint.components.FilterIsNotNull".into(),
+            archetype_field_name: Some("filter_is_not_null".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::apply_latest_at`].
+    #[inline]
+    pub fn descriptor_apply_latest_at() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
+            component_name: "rerun.blueprint.components.ApplyLatestAt".into(),
+            archetype_field_name: Some("apply_latest_at".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::select`].
+    #[inline]
+    pub fn descriptor_select() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
+            component_name: "rerun.blueprint.components.SelectedColumns".into(),
+            archetype_field_name: Some("select".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
+    #[inline]
+    pub fn descriptor_indicator() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
+            component_name: "rerun.blueprint.components.DataframeQueryIndicator".into(),
+            archetype_field_name: None,
+        }
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
-            component_name: "rerun.blueprint.components.DataframeQueryIndicator".into(),
-            archetype_field_name: None,
-        }]
-    });
+    once_cell::sync::Lazy::new(|| [DataframeQuery::descriptor_indicator()]);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
-                component_name: "rerun.blueprint.components.TimelineName".into(),
-                archetype_field_name: Some("timeline".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
-                component_name: "rerun.blueprint.components.FilterByRange".into(),
-                archetype_field_name: Some("filter_by_range".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
-                component_name: "rerun.blueprint.components.FilterIsNotNull".into(),
-                archetype_field_name: Some("filter_is_not_null".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
-                component_name: "rerun.blueprint.components.ApplyLatestAt".into(),
-                archetype_field_name: Some("apply_latest_at".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
-                component_name: "rerun.blueprint.components.SelectedColumns".into(),
-                archetype_field_name: Some("select".into()),
-            },
+            DataframeQuery::descriptor_timeline(),
+            DataframeQuery::descriptor_filter_by_range(),
+            DataframeQuery::descriptor_filter_is_not_null(),
+            DataframeQuery::descriptor_apply_latest_at(),
+            DataframeQuery::descriptor_select(),
         ]
     });
 
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 6usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
-                component_name: "rerun.blueprint.components.DataframeQueryIndicator".into(),
-                archetype_field_name: None,
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
-                component_name: "rerun.blueprint.components.TimelineName".into(),
-                archetype_field_name: Some("timeline".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
-                component_name: "rerun.blueprint.components.FilterByRange".into(),
-                archetype_field_name: Some("filter_by_range".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
-                component_name: "rerun.blueprint.components.FilterIsNotNull".into(),
-                archetype_field_name: Some("filter_is_not_null".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
-                component_name: "rerun.blueprint.components.ApplyLatestAt".into(),
-                archetype_field_name: Some("apply_latest_at".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
-                component_name: "rerun.blueprint.components.SelectedColumns".into(),
-                archetype_field_name: Some("select".into()),
-            },
+            DataframeQuery::descriptor_indicator(),
+            DataframeQuery::descriptor_timeline(),
+            DataframeQuery::descriptor_filter_by_range(),
+            DataframeQuery::descriptor_filter_is_not_null(),
+            DataframeQuery::descriptor_apply_latest_at(),
+            DataframeQuery::descriptor_select(),
         ]
     });
 
@@ -249,11 +261,7 @@ impl ::re_types_core::AsComponents for DataframeQuery {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
-                    archetype_field_name: Some(("timeline").into()),
-                    component_name: ("rerun.blueprint.components.TimelineName").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_timeline()),
             }),
             (self
                 .filter_by_range
@@ -261,11 +269,7 @@ impl ::re_types_core::AsComponents for DataframeQuery {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
-                    archetype_field_name: Some(("filter_by_range").into()),
-                    component_name: ("rerun.blueprint.components.FilterByRange").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_filter_by_range()),
             }),
             (self
                 .filter_is_not_null
@@ -273,11 +277,7 @@ impl ::re_types_core::AsComponents for DataframeQuery {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
-                    archetype_field_name: Some(("filter_is_not_null").into()),
-                    component_name: ("rerun.blueprint.components.FilterIsNotNull").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_filter_is_not_null()),
             }),
             (self
                 .apply_latest_at
@@ -285,11 +285,7 @@ impl ::re_types_core::AsComponents for DataframeQuery {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
-                    archetype_field_name: Some(("apply_latest_at").into()),
-                    component_name: ("rerun.blueprint.components.ApplyLatestAt").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_apply_latest_at()),
             }),
             (self
                 .select
@@ -297,11 +293,7 @@ impl ::re_types_core::AsComponents for DataframeQuery {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
-                    archetype_field_name: Some(("select").into()),
-                    component_name: ("rerun.blueprint.components.SelectedColumns").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_select()),
             }),
         ]
         .into_iter()

@@ -35,52 +35,58 @@ pub struct ForceManyBody {
     pub strength: Option<crate::blueprint::components::ForceStrength>,
 }
 
+impl ForceManyBody {
+    /// Returns the [`ComponentDescriptor`] for [`Self::enabled`].
+    #[inline]
+    pub fn descriptor_enabled() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ForceManyBody".into()),
+            component_name: "rerun.blueprint.components.Enabled".into(),
+            archetype_field_name: Some("enabled".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::strength`].
+    #[inline]
+    pub fn descriptor_strength() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ForceManyBody".into()),
+            component_name: "rerun.blueprint.components.ForceStrength".into(),
+            archetype_field_name: Some("strength".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
+    #[inline]
+    pub fn descriptor_indicator() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ForceManyBody".into()),
+            component_name: "rerun.blueprint.components.ForceManyBodyIndicator".into(),
+            archetype_field_name: None,
+        }
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ForceManyBody".into()),
-            component_name: "rerun.blueprint.components.ForceManyBodyIndicator".into(),
-            archetype_field_name: None,
-        }]
-    });
+    once_cell::sync::Lazy::new(|| [ForceManyBody::descriptor_indicator()]);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ForceManyBody".into()),
-                component_name: "rerun.blueprint.components.Enabled".into(),
-                archetype_field_name: Some("enabled".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ForceManyBody".into()),
-                component_name: "rerun.blueprint.components.ForceStrength".into(),
-                archetype_field_name: Some("strength".into()),
-            },
+            ForceManyBody::descriptor_enabled(),
+            ForceManyBody::descriptor_strength(),
         ]
     });
 
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ForceManyBody".into()),
-                component_name: "rerun.blueprint.components.ForceManyBodyIndicator".into(),
-                archetype_field_name: None,
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ForceManyBody".into()),
-                component_name: "rerun.blueprint.components.Enabled".into(),
-                archetype_field_name: Some("enabled".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ForceManyBody".into()),
-                component_name: "rerun.blueprint.components.ForceStrength".into(),
-                archetype_field_name: Some("strength".into()),
-            },
+            ForceManyBody::descriptor_indicator(),
+            ForceManyBody::descriptor_enabled(),
+            ForceManyBody::descriptor_strength(),
         ]
     });
 
@@ -177,11 +183,7 @@ impl ::re_types_core::AsComponents for ForceManyBody {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.blueprint.archetypes.ForceManyBody".into()),
-                    archetype_field_name: Some(("enabled").into()),
-                    component_name: ("rerun.blueprint.components.Enabled").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_enabled()),
             }),
             (self
                 .strength
@@ -189,11 +191,7 @@ impl ::re_types_core::AsComponents for ForceManyBody {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.blueprint.archetypes.ForceManyBody".into()),
-                    archetype_field_name: Some(("strength").into()),
-                    component_name: ("rerun.blueprint.components.ForceStrength").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_strength()),
             }),
         ]
         .into_iter()
