@@ -22,7 +22,8 @@ use re_types_core::Loggable as _;
 /// Format the given row as a string
 type CustomArrayFormatter<'a> = Box<dyn Fn(usize) -> Result<String, String> + 'a>;
 
-type Metadata = std::collections::HashMap<String, String>;
+/// This is a `BTreeMap`, and not a `HashMap`, because we want a predictable order.
+type Metadata = std::collections::BTreeMap<String, String>;
 
 fn custom_array_formatter<'a>(field: &Field, array: &'a dyn Array) -> CustomArrayFormatter<'a> {
     if let Some(extension_name) = field.metadata().get("ARROW:extension:name") {
@@ -173,12 +174,15 @@ impl std::fmt::Display for DisplayDatatype<'_> {
     }
 }
 
-struct DisplayMetadata<'a>(&'a Metadata, &'a str);
+struct DisplayMetadata {
+    prefix: &'static str,
+    metadata: Metadata,
+}
 
-impl std::fmt::Display for DisplayMetadata<'_> {
+impl std::fmt::Display for DisplayMetadata {
     #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let Self(metadata, prefix) = self;
+        let Self { prefix, metadata } = self;
         f.write_str(
             &metadata
                 .iter()
@@ -215,7 +219,10 @@ pub fn format_dataframe(metadata: &Metadata, fields: &Fields, columns: &[ArrayRe
         let mut row = Row::new();
         row.add_cell(Cell::new(format!(
             "CHUNK METADATA:\n{}",
-            DisplayMetadata(metadata, "* ")
+            DisplayMetadata {
+                prefix: "* ",
+                metadata: metadata.clone()
+            }
         )));
         row
     });
@@ -224,15 +231,18 @@ pub fn format_dataframe(metadata: &Metadata, fields: &Fields, columns: &[ArrayRe
         if field.metadata().is_empty() {
             Cell::new(format!(
                 "{}\n---\ntype: \"{}\"", // NOLINT
-                trim_name(&field.name()),
+                trim_name(field.name()),
                 DisplayDatatype(field.data_type()),
             ))
         } else {
             Cell::new(format!(
                 "{}\n---\ntype: \"{}\"\n{}", // NOLINT
-                trim_name(&field.name()),
+                trim_name(field.name()),
                 DisplayDatatype(field.data_type()),
-                DisplayMetadata(&field.metadata(), ""),
+                DisplayMetadata {
+                    prefix: "",
+                    metadata: field.metadata().clone().into_iter().collect()
+                },
             ))
         }
     });
