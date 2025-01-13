@@ -155,7 +155,7 @@ pub struct FilterMatcher {
     /// The lowercase version of the query string.
     ///
     /// If this is `None`, the filter is inactive and the matcher will accept everything. If this
-    /// is `Somme("")`, the matcher will reject any input.
+    /// is `Some("")`, the matcher will reject any input.
     lowercase_query: Option<String>,
 }
 
