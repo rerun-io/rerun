@@ -12,7 +12,7 @@ pub type JwtClaims = JWTClaims<NoCustomClaims>;
 use crate::{Error, Jwt};
 
 /// Identifies who should be the consumer of a token. In our case, this is the Rerun storage node.
-const AUDIANCE: &str = "redap";
+const AUDIENCE: &str = "redap";
 
 /// A secret key that is used to generate and verify tokens.
 ///
@@ -86,7 +86,7 @@ impl RedapProvider {
         let claims = Claims::create(duration.into())
             .with_issuer(issuer)
             .with_subject(subject)
-            .with_audience(AUDIANCE);
+            .with_audience(AUDIENCE);
 
         let token = self
             .secret_key
@@ -101,7 +101,7 @@ impl RedapProvider {
         options
             .allowed_audiences
             .get_or_insert(HashSet::new())
-            .insert(AUDIANCE.to_owned());
+            .insert(AUDIENCE.to_owned());
 
         let claims = self
             .secret_key
