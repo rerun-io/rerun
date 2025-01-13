@@ -593,6 +593,23 @@ class StorageNodeClient:
         """
         ...
 
+    def get_recording_schema(self, id: str) -> Schema:
+        """
+        Get the schema for a recording in the storage node.
+
+        Parameters
+        ----------
+        id : str
+            The id of the recording to get the schema for.
+
+        Returns
+        -------
+        Schema
+            The schema of the recording.
+
+        """
+        ...
+
     def register(self, storage_url: str, metadata: Optional[TableLike] = None) -> str:
         """
         Register a recording along with some metadata.
