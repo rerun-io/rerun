@@ -12,8 +12,8 @@ pub struct AuthDecorator {
 }
 
 impl AuthDecorator {
-    pub fn new(jwt: Jwt) -> Self {
-        Self { jwt: Some(jwt) }
+    pub fn new(jwt: Option<Jwt>) -> Self {
+        Self { jwt }
     }
 }
 

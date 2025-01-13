@@ -1,11 +1,17 @@
 use tonic::{
     metadata::{Ascii, MetadataValue},
+    service::Interceptor,
     Request, Status,
 };
 
-use crate::{Error, Jwt, Permission, SecretKey};
+use crate::{Error, Jwt, RedapProvider};
 
 use super::{AUTHORIZATION_KEY, TOKEN_PREFIX};
+
+#[derive(Debug, Clone)]
+pub struct UserContext {
+    pub user_id: String,
+}
 
 impl TryFrom<&MetadataValue<Ascii>> for Jwt {
     type Error = Error;
@@ -22,32 +28,36 @@ impl TryFrom<&MetadataValue<Ascii>> for Jwt {
 /// A basic authenticator that checks for a valid auth token.
 #[derive(Clone)]
 pub struct Authenticator {
-    secret_key: SecretKey,
+    secret_key: RedapProvider,
 }
 
 impl Authenticator {
     /// Creates a new [`AuthInterceptor`] with the given secret key and scope.
-    pub fn new(secret_key: SecretKey) -> Self {
+    pub fn new(secret_key: RedapProvider) -> Self {
         Self { secret_key }
     }
 }
 
-impl Authenticator {
-    /// Checks if the request has a valid auth token that also contains the correct permission.
-    pub fn verify<T>(&self, permission: Permission, req: Request<T>) -> Result<Request<T>, Status> {
-        let Some(token_metadata) = req.metadata().get(AUTHORIZATION_KEY) else {
-            return Err(Status::unauthenticated("missing valid auth token"));
-        };
+impl Interceptor for Authenticator {
+    fn call(&mut self, req: Request<()>) -> Result<Request<()>, Status> {
+        let mut req = req;
+
+        let token_metadata = req
+            .metadata()
+            .get(AUTHORIZATION_KEY)
+            .ok_or_else(|| Status::unauthenticated("missing valid auth token"))?;
 
         let token = Jwt::try_from(token_metadata)
             .map_err(|_err| Status::unauthenticated("malformed auth token"))?;
 
-        self.secret_key
-            .verify(&token, permission)
-            .map_err(|err| match err {
-                Error::InvalidPermission { .. } => Status::permission_denied(err.to_string()),
-                _ => Status::unauthenticated("invalid token"),
-            })?;
+        let claims = self.secret_key.verify(&token).map_err(|err| match err {
+            Error::InvalidPermission { .. } => Status::permission_denied(err.to_string()),
+            _ => Status::unauthenticated("invalid credentials"),
+        })?;
+
+        if let Some(user_id) = claims.subject {
+            req.extensions_mut().insert(UserContext { user_id });
+        }
 
         Ok(req)
     }
