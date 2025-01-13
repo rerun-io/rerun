@@ -212,6 +212,7 @@ impl TestContext {
     /// IMPORTANT: call [`Self::handle_system_commands`] after calling this function if your test
     /// relies on system commands.
     pub fn run(&self, egui_ctx: &egui::Context, func: impl FnOnce(&ViewerContext<'_>)) {
+        re_log::PanicOnWarnScope::new(); // TODO(andreas): There should be a way to opt-out of this.
         re_ui::apply_style_and_install_loaders(egui_ctx);
 
         let store_context = StoreContext {
