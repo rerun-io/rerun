@@ -73,11 +73,7 @@ fn decode_chunks(messages: &[LogMsg]) -> Vec<Chunk> {
         .iter()
         .map(|log_msg| {
             if let LogMsg::ArrowMsg(_, arrow_msg) = log_msg {
-                Chunk::from_transport(&TransportChunk::new(
-                    arrow_msg.schema.clone(),
-                    arrow_msg.chunk.clone(),
-                ))
-                .unwrap()
+                Chunk::from_transport(&TransportChunk::from(arrow_msg.batch.clone())).unwrap()
             } else {
                 unreachable!()
             }

@@ -152,7 +152,8 @@ impl<'de> serde::Deserialize<'de> for ArrowMsg {
                     (table_id, timepoint_max, buf)
                 {
                     let cursor = std::io::Cursor::new(buf);
-                    let stream = StreamReader::try_new(cursor, None).unwrap(); // TODO
+                    let stream = StreamReader::try_new(cursor, None)
+                        .map_err(|err| serde::de::Error::custom(format!("Arrow error: {err}")))?;
                     let batches: Result<Vec<_>, _> = stream.collect();
 
                     let batches = batches

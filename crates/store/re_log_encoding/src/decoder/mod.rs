@@ -404,7 +404,10 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
 mod tests {
     #![allow(clippy::unwrap_used)] // acceptable for tests
 
+    use std::sync::Arc;
+
     use super::*;
+    use arrow::datatypes::Schema;
     use re_build_info::CrateVersion;
     use re_chunk::RowId;
     use re_log_types::{
@@ -460,11 +463,21 @@ mod tests {
     fn clear_arrow_extension_metadata(messages: &mut Vec<LogMsg>) {
         for msg in messages {
             if let LogMsg::ArrowMsg(_, arrow_msg) = msg {
-                for field in &mut arrow_msg.schema.fields {
-                    field
-                        .metadata
-                        .retain(|k, _| !k.starts_with("ARROW:extension"));
-                }
+                let mut old_schema = arrow_msg.batch.schema();
+                let mut new_fields: Vec<_> = old_schema
+                    .fields
+                    .iter()
+                    .cloned()
+                    .map(|field| {
+                        let mut metadata = field.metadata().clone();
+                        metadata.retain(|k, _| !k.starts_with("ARROW:extension"));
+                        field.set_metadata(metadata);
+                        field
+                    })
+                    .collect();
+                let new_schema =
+                    Arc::new(Schema::new_with_metadata(new_fields, old_schema.metadata));
+                arrow_msg.batch = arrow_msg.batch.with_schema(new_schema);
             }
         }
     }
