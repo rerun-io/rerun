@@ -357,15 +357,12 @@ impl ::re_types_core::Archetype for Transform3D {
 
     #[inline]
     fn from_arrow_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, arrow::array::ArrayRef)>,
+        arrow_data: impl IntoIterator<Item = (ComponentDescriptor, arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(name, array)| (name.full_name(), array))
-            .collect();
-        let translation = if let Some(array) = arrays_by_name.get("rerun.components.Translation3D")
+        let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
+        let translation = if let Some(array) = arrays_by_descr.get(&Self::descriptor_translation())
         {
             <crate::components::Translation3D>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.Transform3D#translation")?
@@ -376,7 +373,7 @@ impl ::re_types_core::Archetype for Transform3D {
             None
         };
         let rotation_axis_angle =
-            if let Some(array) = arrays_by_name.get("rerun.components.RotationAxisAngle") {
+            if let Some(array) = arrays_by_descr.get(&Self::descriptor_rotation_axis_angle()) {
                 <crate::components::RotationAxisAngle>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Transform3D#rotation_axis_angle")?
                     .into_iter()
@@ -385,7 +382,7 @@ impl ::re_types_core::Archetype for Transform3D {
             } else {
                 None
             };
-        let quaternion = if let Some(array) = arrays_by_name.get("rerun.components.RotationQuat") {
+        let quaternion = if let Some(array) = arrays_by_descr.get(&Self::descriptor_quaternion()) {
             <crate::components::RotationQuat>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.Transform3D#quaternion")?
                 .into_iter()
@@ -394,7 +391,7 @@ impl ::re_types_core::Archetype for Transform3D {
         } else {
             None
         };
-        let scale = if let Some(array) = arrays_by_name.get("rerun.components.Scale3D") {
+        let scale = if let Some(array) = arrays_by_descr.get(&Self::descriptor_scale()) {
             <crate::components::Scale3D>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.Transform3D#scale")?
                 .into_iter()
@@ -403,7 +400,7 @@ impl ::re_types_core::Archetype for Transform3D {
         } else {
             None
         };
-        let mat3x3 = if let Some(array) = arrays_by_name.get("rerun.components.TransformMat3x3") {
+        let mat3x3 = if let Some(array) = arrays_by_descr.get(&Self::descriptor_mat3x3()) {
             <crate::components::TransformMat3x3>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.Transform3D#mat3x3")?
                 .into_iter()
@@ -412,8 +409,7 @@ impl ::re_types_core::Archetype for Transform3D {
         } else {
             None
         };
-        let relation = if let Some(array) = arrays_by_name.get("rerun.components.TransformRelation")
-        {
+        let relation = if let Some(array) = arrays_by_descr.get(&Self::descriptor_relation()) {
             <crate::components::TransformRelation>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.Transform3D#relation")?
                 .into_iter()
@@ -422,7 +418,8 @@ impl ::re_types_core::Archetype for Transform3D {
         } else {
             None
         };
-        let axis_length = if let Some(array) = arrays_by_name.get("rerun.components.AxisLength") {
+        let axis_length = if let Some(array) = arrays_by_descr.get(&Self::descriptor_axis_length())
+        {
             <crate::components::AxisLength>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.Transform3D#axis_length")?
                 .into_iter()

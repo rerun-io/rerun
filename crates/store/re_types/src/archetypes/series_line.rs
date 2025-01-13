@@ -218,15 +218,12 @@ impl ::re_types_core::Archetype for SeriesLine {
 
     #[inline]
     fn from_arrow_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, arrow::array::ArrayRef)>,
+        arrow_data: impl IntoIterator<Item = (ComponentDescriptor, arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(name, array)| (name.full_name(), array))
-            .collect();
-        let color = if let Some(array) = arrays_by_name.get("rerun.components.Color") {
+        let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
+        let color = if let Some(array) = arrays_by_descr.get(&Self::descriptor_color()) {
             <crate::components::Color>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.SeriesLine#color")?
                 .into_iter()
@@ -235,7 +232,7 @@ impl ::re_types_core::Archetype for SeriesLine {
         } else {
             None
         };
-        let width = if let Some(array) = arrays_by_name.get("rerun.components.StrokeWidth") {
+        let width = if let Some(array) = arrays_by_descr.get(&Self::descriptor_width()) {
             <crate::components::StrokeWidth>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.SeriesLine#width")?
                 .into_iter()
@@ -244,7 +241,7 @@ impl ::re_types_core::Archetype for SeriesLine {
         } else {
             None
         };
-        let name = if let Some(array) = arrays_by_name.get("rerun.components.Name") {
+        let name = if let Some(array) = arrays_by_descr.get(&Self::descriptor_name()) {
             <crate::components::Name>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.SeriesLine#name")?
                 .into_iter()
@@ -254,7 +251,7 @@ impl ::re_types_core::Archetype for SeriesLine {
             None
         };
         let aggregation_policy =
-            if let Some(array) = arrays_by_name.get("rerun.components.AggregationPolicy") {
+            if let Some(array) = arrays_by_descr.get(&Self::descriptor_aggregation_policy()) {
                 <crate::components::AggregationPolicy>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.SeriesLine#aggregation_policy")?
                     .into_iter()

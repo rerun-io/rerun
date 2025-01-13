@@ -234,6 +234,82 @@ impl SerializedComponentBatch {
     }
 }
 
+// ---
+
+// TODO(cmc): This is far from ideal and feels very hackish, but for now the priority is getting
+// all things related to tags up and running so we can gather learnings.
+// This is only used on the archetype deserialization path, which isn't ever used outside of tests anyway.
+
+// TODO(cmc): we really shouldn't be duplicating these.
+
+/// The key used to identify the [`crate::ArchetypeName`] in field-level metadata.
+const FIELD_METADATA_KEY_ARCHETYPE_NAME: &str = "rerun.archetype_name";
+
+/// The key used to identify the [`crate::ArchetypeFieldName`] in field-level metadata.
+const FIELD_METADATA_KEY_ARCHETYPE_FIELD_NAME: &str = "rerun.archetype_field_name";
+
+impl From<&SerializedComponentBatch> for arrow::datatypes::Field {
+    #[inline]
+    fn from(batch: &SerializedComponentBatch) -> Self {
+        Self::new(
+            batch.descriptor.component_name.to_string(),
+            batch.array.data_type().clone(),
+            false,
+        )
+        .with_metadata(
+            [
+                batch.descriptor.archetype_name.map(|name| {
+                    (
+                        FIELD_METADATA_KEY_ARCHETYPE_NAME.to_owned(),
+                        name.to_string(),
+                    )
+                }),
+                batch.descriptor.archetype_field_name.map(|name| {
+                    (
+                        FIELD_METADATA_KEY_ARCHETYPE_FIELD_NAME.to_owned(),
+                        name.to_string(),
+                    )
+                }),
+            ]
+            .into_iter()
+            .flatten()
+            .collect(),
+        )
+    }
+}
+
+impl From<&SerializedComponentBatch> for arrow2::datatypes::Field {
+    #[inline]
+    fn from(batch: &SerializedComponentBatch) -> Self {
+        Self::new(
+            batch.descriptor.component_name.to_string(),
+            batch.array.data_type().clone().into(),
+            false,
+        )
+        .with_metadata(
+            [
+                batch.descriptor.archetype_name.map(|name| {
+                    (
+                        FIELD_METADATA_KEY_ARCHETYPE_NAME.to_owned(),
+                        name.to_string(),
+                    )
+                }),
+                batch.descriptor.archetype_field_name.map(|name| {
+                    (
+                        FIELD_METADATA_KEY_ARCHETYPE_FIELD_NAME.to_owned(),
+                        name.to_string(),
+                    )
+                }),
+            ]
+            .into_iter()
+            .flatten()
+            .collect(),
+        )
+    }
+}
+
+// ---
+
 // TODO(cmc): All these crazy types are about to disappear. ComponentBatch should only live at the
 // edge, and therefore not require all these crazy kinds of derivatives (require eager serialization).
 

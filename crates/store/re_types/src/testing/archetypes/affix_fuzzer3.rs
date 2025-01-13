@@ -336,194 +336,173 @@ impl ::re_types_core::Archetype for AffixFuzzer3 {
 
     #[inline]
     fn from_arrow_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, arrow::array::ArrayRef)>,
+        arrow_data: impl IntoIterator<Item = (ComponentDescriptor, arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(name, array)| (name.full_name(), array))
-            .collect();
-        let fuzz2001 =
-            if let Some(array) = arrays_by_name.get("rerun.testing.components.AffixFuzzer1") {
-                <crate::testing::components::AffixFuzzer1>::from_arrow_opt(&**array)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2001")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-            } else {
-                None
-            };
-        let fuzz2002 =
-            if let Some(array) = arrays_by_name.get("rerun.testing.components.AffixFuzzer2") {
-                <crate::testing::components::AffixFuzzer2>::from_arrow_opt(&**array)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2002")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-            } else {
-                None
-            };
-        let fuzz2003 =
-            if let Some(array) = arrays_by_name.get("rerun.testing.components.AffixFuzzer3") {
-                <crate::testing::components::AffixFuzzer3>::from_arrow_opt(&**array)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2003")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-            } else {
-                None
-            };
-        let fuzz2004 =
-            if let Some(array) = arrays_by_name.get("rerun.testing.components.AffixFuzzer4") {
-                <crate::testing::components::AffixFuzzer4>::from_arrow_opt(&**array)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2004")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-            } else {
-                None
-            };
-        let fuzz2005 =
-            if let Some(array) = arrays_by_name.get("rerun.testing.components.AffixFuzzer5") {
-                <crate::testing::components::AffixFuzzer5>::from_arrow_opt(&**array)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2005")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-            } else {
-                None
-            };
-        let fuzz2006 =
-            if let Some(array) = arrays_by_name.get("rerun.testing.components.AffixFuzzer6") {
-                <crate::testing::components::AffixFuzzer6>::from_arrow_opt(&**array)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2006")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-            } else {
-                None
-            };
-        let fuzz2007 =
-            if let Some(array) = arrays_by_name.get("rerun.testing.components.AffixFuzzer7") {
-                <crate::testing::components::AffixFuzzer7>::from_arrow_opt(&**array)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2007")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-            } else {
-                None
-            };
-        let fuzz2008 =
-            if let Some(array) = arrays_by_name.get("rerun.testing.components.AffixFuzzer8") {
-                <crate::testing::components::AffixFuzzer8>::from_arrow_opt(&**array)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2008")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-            } else {
-                None
-            };
-        let fuzz2009 =
-            if let Some(array) = arrays_by_name.get("rerun.testing.components.AffixFuzzer9") {
-                <crate::testing::components::AffixFuzzer9>::from_arrow_opt(&**array)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2009")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-            } else {
-                None
-            };
-        let fuzz2010 =
-            if let Some(array) = arrays_by_name.get("rerun.testing.components.AffixFuzzer10") {
-                <crate::testing::components::AffixFuzzer10>::from_arrow_opt(&**array)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2010")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-            } else {
-                None
-            };
-        let fuzz2011 =
-            if let Some(array) = arrays_by_name.get("rerun.testing.components.AffixFuzzer11") {
-                <crate::testing::components::AffixFuzzer11>::from_arrow_opt(&**array)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2011")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-            } else {
-                None
-            };
-        let fuzz2012 =
-            if let Some(array) = arrays_by_name.get("rerun.testing.components.AffixFuzzer12") {
-                <crate::testing::components::AffixFuzzer12>::from_arrow_opt(&**array)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2012")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-            } else {
-                None
-            };
-        let fuzz2013 =
-            if let Some(array) = arrays_by_name.get("rerun.testing.components.AffixFuzzer13") {
-                <crate::testing::components::AffixFuzzer13>::from_arrow_opt(&**array)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2013")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-            } else {
-                None
-            };
-        let fuzz2014 =
-            if let Some(array) = arrays_by_name.get("rerun.testing.components.AffixFuzzer14") {
-                <crate::testing::components::AffixFuzzer14>::from_arrow_opt(&**array)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2014")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-            } else {
-                None
-            };
-        let fuzz2015 =
-            if let Some(array) = arrays_by_name.get("rerun.testing.components.AffixFuzzer15") {
-                <crate::testing::components::AffixFuzzer15>::from_arrow_opt(&**array)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2015")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-            } else {
-                None
-            };
-        let fuzz2016 =
-            if let Some(array) = arrays_by_name.get("rerun.testing.components.AffixFuzzer16") {
-                <crate::testing::components::AffixFuzzer16>::from_arrow_opt(&**array)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2016")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-            } else {
-                None
-            };
-        let fuzz2017 =
-            if let Some(array) = arrays_by_name.get("rerun.testing.components.AffixFuzzer17") {
-                <crate::testing::components::AffixFuzzer17>::from_arrow_opt(&**array)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2017")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-            } else {
-                None
-            };
-        let fuzz2018 =
-            if let Some(array) = arrays_by_name.get("rerun.testing.components.AffixFuzzer18") {
-                <crate::testing::components::AffixFuzzer18>::from_arrow_opt(&**array)
-                    .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2018")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-            } else {
-                None
-            };
+        let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
+        let fuzz2001 = if let Some(array) = arrays_by_descr.get(&Self::descriptor_fuzz2001()) {
+            <crate::testing::components::AffixFuzzer1>::from_arrow_opt(&**array)
+                .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2001")?
+                .into_iter()
+                .next()
+                .flatten()
+        } else {
+            None
+        };
+        let fuzz2002 = if let Some(array) = arrays_by_descr.get(&Self::descriptor_fuzz2002()) {
+            <crate::testing::components::AffixFuzzer2>::from_arrow_opt(&**array)
+                .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2002")?
+                .into_iter()
+                .next()
+                .flatten()
+        } else {
+            None
+        };
+        let fuzz2003 = if let Some(array) = arrays_by_descr.get(&Self::descriptor_fuzz2003()) {
+            <crate::testing::components::AffixFuzzer3>::from_arrow_opt(&**array)
+                .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2003")?
+                .into_iter()
+                .next()
+                .flatten()
+        } else {
+            None
+        };
+        let fuzz2004 = if let Some(array) = arrays_by_descr.get(&Self::descriptor_fuzz2004()) {
+            <crate::testing::components::AffixFuzzer4>::from_arrow_opt(&**array)
+                .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2004")?
+                .into_iter()
+                .next()
+                .flatten()
+        } else {
+            None
+        };
+        let fuzz2005 = if let Some(array) = arrays_by_descr.get(&Self::descriptor_fuzz2005()) {
+            <crate::testing::components::AffixFuzzer5>::from_arrow_opt(&**array)
+                .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2005")?
+                .into_iter()
+                .next()
+                .flatten()
+        } else {
+            None
+        };
+        let fuzz2006 = if let Some(array) = arrays_by_descr.get(&Self::descriptor_fuzz2006()) {
+            <crate::testing::components::AffixFuzzer6>::from_arrow_opt(&**array)
+                .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2006")?
+                .into_iter()
+                .next()
+                .flatten()
+        } else {
+            None
+        };
+        let fuzz2007 = if let Some(array) = arrays_by_descr.get(&Self::descriptor_fuzz2007()) {
+            <crate::testing::components::AffixFuzzer7>::from_arrow_opt(&**array)
+                .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2007")?
+                .into_iter()
+                .next()
+                .flatten()
+        } else {
+            None
+        };
+        let fuzz2008 = if let Some(array) = arrays_by_descr.get(&Self::descriptor_fuzz2008()) {
+            <crate::testing::components::AffixFuzzer8>::from_arrow_opt(&**array)
+                .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2008")?
+                .into_iter()
+                .next()
+                .flatten()
+        } else {
+            None
+        };
+        let fuzz2009 = if let Some(array) = arrays_by_descr.get(&Self::descriptor_fuzz2009()) {
+            <crate::testing::components::AffixFuzzer9>::from_arrow_opt(&**array)
+                .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2009")?
+                .into_iter()
+                .next()
+                .flatten()
+        } else {
+            None
+        };
+        let fuzz2010 = if let Some(array) = arrays_by_descr.get(&Self::descriptor_fuzz2010()) {
+            <crate::testing::components::AffixFuzzer10>::from_arrow_opt(&**array)
+                .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2010")?
+                .into_iter()
+                .next()
+                .flatten()
+        } else {
+            None
+        };
+        let fuzz2011 = if let Some(array) = arrays_by_descr.get(&Self::descriptor_fuzz2011()) {
+            <crate::testing::components::AffixFuzzer11>::from_arrow_opt(&**array)
+                .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2011")?
+                .into_iter()
+                .next()
+                .flatten()
+        } else {
+            None
+        };
+        let fuzz2012 = if let Some(array) = arrays_by_descr.get(&Self::descriptor_fuzz2012()) {
+            <crate::testing::components::AffixFuzzer12>::from_arrow_opt(&**array)
+                .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2012")?
+                .into_iter()
+                .next()
+                .flatten()
+        } else {
+            None
+        };
+        let fuzz2013 = if let Some(array) = arrays_by_descr.get(&Self::descriptor_fuzz2013()) {
+            <crate::testing::components::AffixFuzzer13>::from_arrow_opt(&**array)
+                .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2013")?
+                .into_iter()
+                .next()
+                .flatten()
+        } else {
+            None
+        };
+        let fuzz2014 = if let Some(array) = arrays_by_descr.get(&Self::descriptor_fuzz2014()) {
+            <crate::testing::components::AffixFuzzer14>::from_arrow_opt(&**array)
+                .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2014")?
+                .into_iter()
+                .next()
+                .flatten()
+        } else {
+            None
+        };
+        let fuzz2015 = if let Some(array) = arrays_by_descr.get(&Self::descriptor_fuzz2015()) {
+            <crate::testing::components::AffixFuzzer15>::from_arrow_opt(&**array)
+                .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2015")?
+                .into_iter()
+                .next()
+                .flatten()
+        } else {
+            None
+        };
+        let fuzz2016 = if let Some(array) = arrays_by_descr.get(&Self::descriptor_fuzz2016()) {
+            <crate::testing::components::AffixFuzzer16>::from_arrow_opt(&**array)
+                .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2016")?
+                .into_iter()
+                .next()
+                .flatten()
+        } else {
+            None
+        };
+        let fuzz2017 = if let Some(array) = arrays_by_descr.get(&Self::descriptor_fuzz2017()) {
+            <crate::testing::components::AffixFuzzer17>::from_arrow_opt(&**array)
+                .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2017")?
+                .into_iter()
+                .next()
+                .flatten()
+        } else {
+            None
+        };
+        let fuzz2018 = if let Some(array) = arrays_by_descr.get(&Self::descriptor_fuzz2018()) {
+            <crate::testing::components::AffixFuzzer18>::from_arrow_opt(&**array)
+                .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2018")?
+                .into_iter()
+                .next()
+                .flatten()
+        } else {
+            None
+        };
         Ok(Self {
             fuzz2001,
             fuzz2002,

@@ -134,15 +134,12 @@ impl ::re_types_core::Archetype for ScalarAxis {
 
     #[inline]
     fn from_arrow_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, arrow::array::ArrayRef)>,
+        arrow_data: impl IntoIterator<Item = (ComponentDescriptor, arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(name, array)| (name.full_name(), array))
-            .collect();
-        let range = if let Some(array) = arrays_by_name.get("rerun.components.Range1D") {
+        let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
+        let range = if let Some(array) = arrays_by_descr.get(&Self::descriptor_range()) {
             <crate::components::Range1D>::from_arrow_opt(&**array)
                 .with_context("rerun.blueprint.archetypes.ScalarAxis#range")?
                 .into_iter()
@@ -151,9 +148,7 @@ impl ::re_types_core::Archetype for ScalarAxis {
         } else {
             None
         };
-        let zoom_lock = if let Some(array) =
-            arrays_by_name.get("rerun.blueprint.components.LockRangeDuringZoom")
-        {
+        let zoom_lock = if let Some(array) = arrays_by_descr.get(&Self::descriptor_zoom_lock()) {
             <crate::blueprint::components::LockRangeDuringZoom>::from_arrow_opt(&**array)
                 .with_context("rerun.blueprint.archetypes.ScalarAxis#zoom_lock")?
                 .into_iter()

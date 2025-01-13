@@ -181,26 +181,22 @@ impl ::re_types_core::Archetype for DataframeQuery {
 
     #[inline]
     fn from_arrow_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, arrow::array::ArrayRef)>,
+        arrow_data: impl IntoIterator<Item = (ComponentDescriptor, arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(name, array)| (name.full_name(), array))
-            .collect();
-        let timeline =
-            if let Some(array) = arrays_by_name.get("rerun.blueprint.components.TimelineName") {
-                <crate::blueprint::components::TimelineName>::from_arrow_opt(&**array)
-                    .with_context("rerun.blueprint.archetypes.DataframeQuery#timeline")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-            } else {
-                None
-            };
+        let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
+        let timeline = if let Some(array) = arrays_by_descr.get(&Self::descriptor_timeline()) {
+            <crate::blueprint::components::TimelineName>::from_arrow_opt(&**array)
+                .with_context("rerun.blueprint.archetypes.DataframeQuery#timeline")?
+                .into_iter()
+                .next()
+                .flatten()
+        } else {
+            None
+        };
         let filter_by_range =
-            if let Some(array) = arrays_by_name.get("rerun.blueprint.components.FilterByRange") {
+            if let Some(array) = arrays_by_descr.get(&Self::descriptor_filter_by_range()) {
                 <crate::blueprint::components::FilterByRange>::from_arrow_opt(&**array)
                     .with_context("rerun.blueprint.archetypes.DataframeQuery#filter_by_range")?
                     .into_iter()
@@ -210,7 +206,7 @@ impl ::re_types_core::Archetype for DataframeQuery {
                 None
             };
         let filter_is_not_null =
-            if let Some(array) = arrays_by_name.get("rerun.blueprint.components.FilterIsNotNull") {
+            if let Some(array) = arrays_by_descr.get(&Self::descriptor_filter_is_not_null()) {
                 <crate::blueprint::components::FilterIsNotNull>::from_arrow_opt(&**array)
                     .with_context("rerun.blueprint.archetypes.DataframeQuery#filter_is_not_null")?
                     .into_iter()
@@ -220,7 +216,7 @@ impl ::re_types_core::Archetype for DataframeQuery {
                 None
             };
         let apply_latest_at =
-            if let Some(array) = arrays_by_name.get("rerun.blueprint.components.ApplyLatestAt") {
+            if let Some(array) = arrays_by_descr.get(&Self::descriptor_apply_latest_at()) {
                 <crate::blueprint::components::ApplyLatestAt>::from_arrow_opt(&**array)
                     .with_context("rerun.blueprint.archetypes.DataframeQuery#apply_latest_at")?
                     .into_iter()
@@ -229,16 +225,15 @@ impl ::re_types_core::Archetype for DataframeQuery {
             } else {
                 None
             };
-        let select =
-            if let Some(array) = arrays_by_name.get("rerun.blueprint.components.SelectedColumns") {
-                <crate::blueprint::components::SelectedColumns>::from_arrow_opt(&**array)
-                    .with_context("rerun.blueprint.archetypes.DataframeQuery#select")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-            } else {
-                None
-            };
+        let select = if let Some(array) = arrays_by_descr.get(&Self::descriptor_select()) {
+            <crate::blueprint::components::SelectedColumns>::from_arrow_opt(&**array)
+                .with_context("rerun.blueprint.archetypes.DataframeQuery#select")?
+                .into_iter()
+                .next()
+                .flatten()
+        } else {
+            None
+        };
         Ok(Self {
             timeline,
             filter_by_range,

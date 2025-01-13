@@ -267,17 +267,14 @@ impl ::re_types_core::Archetype for Pinhole {
 
     #[inline]
     fn from_arrow_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, arrow::array::ArrayRef)>,
+        arrow_data: impl IntoIterator<Item = (ComponentDescriptor, arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(name, array)| (name.full_name(), array))
-            .collect();
+        let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
         let image_from_camera = {
-            let array = arrays_by_name
-                .get("rerun.components.PinholeProjection")
+            let array = arrays_by_descr
+                .get(&Self::descriptor_image_from_camera())
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.Pinhole#image_from_camera")?;
             <crate::components::PinholeProjection>::from_arrow_opt(&**array)
@@ -288,7 +285,7 @@ impl ::re_types_core::Archetype for Pinhole {
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.Pinhole#image_from_camera")?
         };
-        let resolution = if let Some(array) = arrays_by_name.get("rerun.components.Resolution") {
+        let resolution = if let Some(array) = arrays_by_descr.get(&Self::descriptor_resolution()) {
             <crate::components::Resolution>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.Pinhole#resolution")?
                 .into_iter()
@@ -297,8 +294,7 @@ impl ::re_types_core::Archetype for Pinhole {
         } else {
             None
         };
-        let camera_xyz = if let Some(array) = arrays_by_name.get("rerun.components.ViewCoordinates")
-        {
+        let camera_xyz = if let Some(array) = arrays_by_descr.get(&Self::descriptor_camera_xyz()) {
             <crate::components::ViewCoordinates>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.Pinhole#camera_xyz")?
                 .into_iter()
@@ -308,7 +304,7 @@ impl ::re_types_core::Archetype for Pinhole {
             None
         };
         let image_plane_distance =
-            if let Some(array) = arrays_by_name.get("rerun.components.ImagePlaneDistance") {
+            if let Some(array) = arrays_by_descr.get(&Self::descriptor_image_plane_distance()) {
                 <crate::components::ImagePlaneDistance>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Pinhole#image_plane_distance")?
                     .into_iter()

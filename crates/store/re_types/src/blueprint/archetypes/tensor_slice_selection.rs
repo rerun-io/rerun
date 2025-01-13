@@ -173,16 +173,12 @@ impl ::re_types_core::Archetype for TensorSliceSelection {
 
     #[inline]
     fn from_arrow_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, arrow::array::ArrayRef)>,
+        arrow_data: impl IntoIterator<Item = (ComponentDescriptor, arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(name, array)| (name.full_name(), array))
-            .collect();
-        let width = if let Some(array) = arrays_by_name.get("rerun.components.TensorWidthDimension")
-        {
+        let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
+        let width = if let Some(array) = arrays_by_descr.get(&Self::descriptor_width()) {
             <crate::components::TensorWidthDimension>::from_arrow_opt(&**array)
                 .with_context("rerun.blueprint.archetypes.TensorSliceSelection#width")?
                 .into_iter()
@@ -191,19 +187,16 @@ impl ::re_types_core::Archetype for TensorSliceSelection {
         } else {
             None
         };
-        let height =
-            if let Some(array) = arrays_by_name.get("rerun.components.TensorHeightDimension") {
-                <crate::components::TensorHeightDimension>::from_arrow_opt(&**array)
-                    .with_context("rerun.blueprint.archetypes.TensorSliceSelection#height")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-            } else {
-                None
-            };
-        let indices = if let Some(array) =
-            arrays_by_name.get("rerun.components.TensorDimensionIndexSelection")
-        {
+        let height = if let Some(array) = arrays_by_descr.get(&Self::descriptor_height()) {
+            <crate::components::TensorHeightDimension>::from_arrow_opt(&**array)
+                .with_context("rerun.blueprint.archetypes.TensorSliceSelection#height")?
+                .into_iter()
+                .next()
+                .flatten()
+        } else {
+            None
+        };
+        let indices = if let Some(array) = arrays_by_descr.get(&Self::descriptor_indices()) {
             Some({
                 <crate::components::TensorDimensionIndexSelection>::from_arrow_opt(&**array)
                     .with_context("rerun.blueprint.archetypes.TensorSliceSelection#indices")?
@@ -215,9 +208,7 @@ impl ::re_types_core::Archetype for TensorSliceSelection {
         } else {
             None
         };
-        let slider = if let Some(array) =
-            arrays_by_name.get("rerun.blueprint.components.TensorDimensionIndexSlider")
-        {
+        let slider = if let Some(array) = arrays_by_descr.get(&Self::descriptor_slider()) {
             Some({
                 <crate::blueprint::components::TensorDimensionIndexSlider>::from_arrow_opt(&**array)
                     .with_context("rerun.blueprint.archetypes.TensorSliceSelection#slider")?

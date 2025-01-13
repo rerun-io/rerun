@@ -81,14 +81,7 @@ pub trait AsComponents {
     ) -> SerializationResult<Vec<(::arrow::datatypes::Field, ::arrow::array::ArrayRef)>> {
         self.as_serialized_batches()
             .into_iter()
-            .map(|comp_batch| {
-                let field = arrow::datatypes::Field::new(
-                    comp_batch.descriptor.component_name.to_string(),
-                    comp_batch.array.data_type().clone(),
-                    false,
-                );
-                Ok((field, comp_batch.array))
-            })
+            .map(|comp_batch| Ok((arrow::datatypes::Field::from(&comp_batch), comp_batch.array)))
             .collect()
     }
 
@@ -106,12 +99,10 @@ pub trait AsComponents {
         self.as_serialized_batches()
             .into_iter()
             .map(|comp_batch| {
-                let field = arrow2::datatypes::Field::new(
-                    comp_batch.descriptor.component_name.to_string(),
-                    comp_batch.array.data_type().clone().into(),
-                    false,
-                );
-                Ok((field, comp_batch.array.into()))
+                Ok((
+                    arrow2::datatypes::Field::from(&comp_batch),
+                    comp_batch.array.into(),
+                ))
             })
             .collect()
     }

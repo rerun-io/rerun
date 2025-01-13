@@ -281,17 +281,14 @@ impl ::re_types_core::Archetype for DepthImage {
 
     #[inline]
     fn from_arrow_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, arrow::array::ArrayRef)>,
+        arrow_data: impl IntoIterator<Item = (ComponentDescriptor, arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(name, array)| (name.full_name(), array))
-            .collect();
+        let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
         let buffer = {
-            let array = arrays_by_name
-                .get("rerun.components.ImageBuffer")
+            let array = arrays_by_descr
+                .get(&Self::descriptor_buffer())
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.DepthImage#buffer")?;
             <crate::components::ImageBuffer>::from_arrow_opt(&**array)
@@ -303,8 +300,8 @@ impl ::re_types_core::Archetype for DepthImage {
                 .with_context("rerun.archetypes.DepthImage#buffer")?
         };
         let format = {
-            let array = arrays_by_name
-                .get("rerun.components.ImageFormat")
+            let array = arrays_by_descr
+                .get(&Self::descriptor_format())
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.DepthImage#format")?;
             <crate::components::ImageFormat>::from_arrow_opt(&**array)
@@ -315,7 +312,7 @@ impl ::re_types_core::Archetype for DepthImage {
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.DepthImage#format")?
         };
-        let meter = if let Some(array) = arrays_by_name.get("rerun.components.DepthMeter") {
+        let meter = if let Some(array) = arrays_by_descr.get(&Self::descriptor_meter()) {
             <crate::components::DepthMeter>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.DepthImage#meter")?
                 .into_iter()
@@ -324,7 +321,7 @@ impl ::re_types_core::Archetype for DepthImage {
         } else {
             None
         };
-        let colormap = if let Some(array) = arrays_by_name.get("rerun.components.Colormap") {
+        let colormap = if let Some(array) = arrays_by_descr.get(&Self::descriptor_colormap()) {
             <crate::components::Colormap>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.DepthImage#colormap")?
                 .into_iter()
@@ -333,7 +330,8 @@ impl ::re_types_core::Archetype for DepthImage {
         } else {
             None
         };
-        let depth_range = if let Some(array) = arrays_by_name.get("rerun.components.ValueRange") {
+        let depth_range = if let Some(array) = arrays_by_descr.get(&Self::descriptor_depth_range())
+        {
             <crate::components::ValueRange>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.DepthImage#depth_range")?
                 .into_iter()
@@ -342,17 +340,17 @@ impl ::re_types_core::Archetype for DepthImage {
         } else {
             None
         };
-        let point_fill_ratio = if let Some(array) = arrays_by_name.get("rerun.components.FillRatio")
-        {
-            <crate::components::FillRatio>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.DepthImage#point_fill_ratio")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
-        let draw_order = if let Some(array) = arrays_by_name.get("rerun.components.DrawOrder") {
+        let point_fill_ratio =
+            if let Some(array) = arrays_by_descr.get(&Self::descriptor_point_fill_ratio()) {
+                <crate::components::FillRatio>::from_arrow_opt(&**array)
+                    .with_context("rerun.archetypes.DepthImage#point_fill_ratio")?
+                    .into_iter()
+                    .next()
+                    .flatten()
+            } else {
+                None
+            };
+        let draw_order = if let Some(array) = arrays_by_descr.get(&Self::descriptor_draw_order()) {
             <crate::components::DrawOrder>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.DepthImage#draw_order")?
                 .into_iter()

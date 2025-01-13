@@ -1216,8 +1216,8 @@ fn quote_trait_impls_for_archetype(obj: &Object) -> TokenStream {
     let all_deserializers = {
         obj.fields.iter().map(|obj_field| {
             let obj_field_fqname = obj_field.fqname.as_str();
-            let field_typ_fqname_str = obj_field.typ.fqname().unwrap();
             let field_name = format_ident!("{}", obj_field.name);
+            let descr_fn_name = format_ident!("descriptor_{field_name}");
 
             let is_plural = obj_field.typ.is_plural();
             let is_nullable = obj_field.is_nullable;
@@ -1256,7 +1256,7 @@ fn quote_trait_impls_for_archetype(obj: &Object) -> TokenStream {
                     };
 
                 quote! {
-                    if let Some(array) = arrays_by_name.get(#field_typ_fqname_str) {
+                    if let Some(array) = arrays_by_descr.get(&Self::#descr_fn_name()) {
                         <#component>::from_arrow_opt(&**array)
                             .with_context(#obj_field_fqname)?
                             #quoted_collection
@@ -1266,7 +1266,7 @@ fn quote_trait_impls_for_archetype(obj: &Object) -> TokenStream {
                 }
             } else if is_nullable {
                 quote! {
-                    if let Some(array) = arrays_by_name.get(#field_typ_fqname_str) {
+                    if let Some(array) = arrays_by_descr.get(&Self::#descr_fn_name()) {
                         Some({
                             <#component>::from_arrow_opt(&**array)
                                 .with_context(#obj_field_fqname)?
@@ -1278,8 +1278,8 @@ fn quote_trait_impls_for_archetype(obj: &Object) -> TokenStream {
                 }
             } else {
                 quote! {{
-                    let array = arrays_by_name
-                        .get(#field_typ_fqname_str)
+                    let array = arrays_by_descr
+                        .get(&Self::#descr_fn_name())
                         .ok_or_else(DeserializationError::missing_data)
                         .with_context(#obj_field_fqname)?;
 
@@ -1359,7 +1359,7 @@ fn quote_trait_impls_for_archetype(obj: &Object) -> TokenStream {
             #[inline]
             fn from_arrow_components(
                 arrow_data: impl IntoIterator<Item = (
-                    ComponentName,
+                    ComponentDescriptor,
                     arrow::array::ArrayRef,
                 )>,
             ) -> DeserializationResult<Self> {
@@ -1367,12 +1367,7 @@ fn quote_trait_impls_for_archetype(obj: &Object) -> TokenStream {
 
                 use ::re_types_core::{Loggable as _, ResultExt as _};
 
-                // NOTE: Even though ComponentName is an InternedString, we must
-                // convert to &str here because the .get("component.name") accessors
-                // will fail otherwise.
-                let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-                    .into_iter()
-                    .map(|(name, array)| (name.full_name(), array)).collect();
+                let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
 
                 #(#all_deserializers;)*
 
