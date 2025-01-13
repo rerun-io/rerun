@@ -128,7 +128,7 @@ interface WebViewerEvents {
   fullscreen: boolean;
   ready: void;
 
-  timelinechange: [string, number];
+  timelinechange: [timeline_name: string, time: number];
   timeupdate: number;
   play: void;
   pause: void;
