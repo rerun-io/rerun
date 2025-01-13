@@ -1,6 +1,6 @@
-use arrow::array::ArrayRef as ArrowArrayRef;
+use arrow::array::{ArrayRef as ArrowArrayRef, StructArray as ArrowStructArray};
 use arrow2::{
-    array::{Array as Arrow2Array, ListArray, StructArray as Arrow2StructArray},
+    array::{Array as Arrow2Array, ListArray},
     chunk::Chunk as Arrow2Chunk,
     datatypes::{
         DataType as Arrow2Datatype, Field as ArrowField, Metadata as Arrow2Metadata,
@@ -15,7 +15,10 @@ use re_log_types::{EntityPath, Timeline};
 use re_types_core::{Component as _, ComponentDescriptor, Loggable as _};
 use tap::Tap as _;
 
-use crate::{chunk::ChunkComponents, Chunk, ChunkError, ChunkId, ChunkResult, RowId, TimeColumn};
+use crate::{
+    arrow_util::into_arrow_ref, chunk::ChunkComponents, Chunk, ChunkError, ChunkId, ChunkResult,
+    RowId, TimeColumn,
+};
 
 // ---
 
@@ -398,7 +401,8 @@ impl Chunk {
         } = self;
 
         let mut schema = Arrow2Schema::default();
-        let mut columns = Vec::with_capacity(1 /* row_ids */ + timelines.len() + components.len());
+        let mut columns: Vec<Box<dyn Arrow2Array>> =
+            Vec::with_capacity(1 /* row_ids */ + timelines.len() + components.len());
 
         // Chunk-level metadata
         {
@@ -432,7 +436,7 @@ impl Chunk {
             schema.fields.push(
                 ArrowField::new(
                     RowId::descriptor().to_string(),
-                    row_ids.data_type().clone(),
+                    RowId::arrow_datatype().clone().into(),
                     false,
                 )
                 .with_metadata(
@@ -445,7 +449,7 @@ impl Chunk {
                     }),
                 ),
             );
-            columns.push(row_ids.clone().boxed());
+            columns.push(into_arrow_ref(row_ids.clone()).into());
         }
 
         // Timelines
@@ -561,13 +565,13 @@ impl Chunk {
                 });
             };
 
-            row_ids
+            ArrowArrayRef::from(row_ids.clone())
                 .as_any()
-                .downcast_ref::<Arrow2StructArray>()
+                .downcast_ref::<ArrowStructArray>()
                 .ok_or_else(|| ChunkError::Malformed {
                     reason: format!(
                         "RowId data has the wrong datatype: expected {:?} but got {:?} instead",
-                        RowId::arrow2_datatype(),
+                        RowId::arrow_datatype(),
                         *row_ids.data_type(),
                     ),
                 })?

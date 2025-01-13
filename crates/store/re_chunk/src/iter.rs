@@ -683,8 +683,8 @@ impl Iterator for ChunkIndicesIter {
 
         let row_id = {
             let (times, incs) = self.chunk.row_ids_raw();
-            let times = times.values().as_slice();
-            let incs = incs.values().as_slice();
+            let times = times.values();
+            let incs = incs.values();
 
             let time = *times.get(i)?;
             let inc = *incs.get(i)?;

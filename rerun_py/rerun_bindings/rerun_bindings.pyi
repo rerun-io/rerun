@@ -581,14 +581,14 @@ class StorageNodeClient:
         self, columns: Optional[list[str]] = None, recording_ids: Optional[list[str]] = None
     ) -> pa.RecordBatchReader:
         """
-        Get the metadata recordings in the storage node.
+        Get the metadata for recordings in the storage node.
 
         Parameters
         ----------
-        columns : Optional[list[str]], optional
-            The columns to include in the output, by default None.
+        columns : Optional[list[str]]
+            The columns to fetch. If `None`, fetch all columns.
         recording_ids : Optional[list[str]]
-            Filter specific recordings by Recording Id
+            Fetch metadata of only specific recordings. If `None`, fetch for all.
 
         """
         ...

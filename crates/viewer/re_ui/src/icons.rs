@@ -136,3 +136,5 @@ pub const DND_MOVE: Icon = icon_from_path!("../data/icons/dnd_move.png");
 
 /// `>`
 pub const BREADCRUMBS_SEPARATOR: Icon = icon_from_path!("../data/icons/breadcrumbs_separator.png");
+
+pub const SEARCH: Icon = icon_from_path!("../data/icons/search.png");

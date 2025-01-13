@@ -40,6 +40,8 @@ pub enum ItemContext {
     StreamsTree {
         /// Which store does this streams tree correspond to?
         store_kind: StoreKind,
+
+        filter_session_id: Option<egui::Id>,
     },
 }
 
