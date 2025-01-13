@@ -23,13 +23,13 @@ pub(crate) fn write_arrow_to_bytes<W: std::io::Write>(
 pub(crate) fn read_arrow_from_bytes<R: std::io::Read>(
     reader: &mut R,
 ) -> Result<ArrowRecordBatch, CodecError> {
-    let mut stream =
-        ipc::reader::StreamReader::try_new(reader, None).map_err(CodecError::ArrowSerialization)?;
+    let mut stream = ipc::reader::StreamReader::try_new(reader, None)
+        .map_err(CodecError::ArrowDeserialization)?;
 
     stream
         .next()
         .ok_or(CodecError::MissingRecordBatch)?
-        .map_err(CodecError::ArrowSerialization)
+        .map_err(CodecError::ArrowDeserialization)
 }
 
 #[cfg(feature = "encoder")]

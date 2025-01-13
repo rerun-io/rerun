@@ -87,8 +87,10 @@ impl From<ArrowRecordBatch> for TransportChunk {
     }
 }
 
-impl From<TransportChunk> for ArrowRecordBatch {
-    fn from(chunk: TransportChunk) -> Self {
+impl TryFrom<TransportChunk> for ArrowRecordBatch {
+    type Error = arrow::error::ArrowError;
+
+    fn try_from(chunk: TransportChunk) -> Result<Self, Self::Error> {
         let TransportChunk { schema, data } = chunk;
         Self::try_new(
             schema.into(),
@@ -97,7 +99,6 @@ impl From<TransportChunk> for ArrowRecordBatch {
                 .map(|column| column.clone().into())
                 .collect(),
         )
-        .unwrap()
     }
 }
 
@@ -748,7 +749,7 @@ impl Chunk {
         Ok(re_log_types::ArrowMsg {
             chunk_id: re_tuid::Tuid::from_u128(self.id().as_u128()),
             timepoint_max: self.timepoint_max(),
-            batch: transport.into(),
+            batch: transport.try_into()?,
             on_release: None,
         })
     }

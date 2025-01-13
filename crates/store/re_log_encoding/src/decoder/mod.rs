@@ -405,7 +405,6 @@ mod tests {
     #![allow(clippy::unwrap_used)] // acceptable for tests
 
     use super::*;
-    use arrow::datatypes::Schema;
     use re_build_info::CrateVersion;
     use re_chunk::RowId;
     use re_log_types::{

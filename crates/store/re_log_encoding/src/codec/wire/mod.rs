@@ -45,7 +45,7 @@ mod tests {
 
         assert!(matches!(
             decoded.err().unwrap(),
-            CodecError::ArrowSerialization(_)
+            CodecError::ArrowDeserialization(_)
         ));
     }
 
