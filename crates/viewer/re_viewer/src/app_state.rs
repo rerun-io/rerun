@@ -282,6 +282,12 @@ impl AppState {
             drag_and_drop_manager: &drag_and_drop_manager,
         };
 
+        // enable the heuristics if we must this frame
+        if store_context.should_enable_heuristics {
+            viewport_ui.blueprint.set_auto_layout(true, &ctx);
+            viewport_ui.blueprint.set_auto_views(true, &ctx);
+        }
+
         // We move the time at the very start of the frame,
         // so that we always show the latest data when we're in "follow" mode.
         move_time(&ctx, recording, rx);

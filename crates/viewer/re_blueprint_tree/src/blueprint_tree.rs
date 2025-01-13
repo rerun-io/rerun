@@ -4,7 +4,7 @@ use re_data_ui::item_ui::guess_instance_path_icon;
 use smallvec::SmallVec;
 
 use re_context_menu::{context_menu_ui_for_item, SelectionUpdateBehavior};
-use re_entity_db::{EntityDb, InstancePath};
+use re_entity_db::InstancePath;
 use re_log_types::EntityPath;
 use re_types::blueprint::components::Visible;
 use re_ui::{drag_and_drop::DropTarget, list_item, ContextExt as _, DesignTokens, UiExt as _};

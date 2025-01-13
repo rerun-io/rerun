@@ -30,7 +30,10 @@ pub enum SystemCommand {
     /// Reset the `Blueprint` to the default state
     ClearActiveBlueprint,
 
-    /// Clear the blueprint and generate a new one
+    /// Clear the blueprint and enable heuristics.
+    ///
+    /// Note: this engages the heuristics even if a default blueprint exists, so the default
+    /// blueprint may be restored.
     ClearAndGenerateBlueprint,
 
     /// If this is a recording, switch to it.

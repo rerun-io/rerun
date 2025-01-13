@@ -526,10 +526,8 @@ impl App {
             SystemCommand::ResetViewer => self.reset_viewer(store_hub, egui_ctx),
             SystemCommand::ClearAndGenerateBlueprint => {
                 re_log::debug!("Clear and generate new blueprint");
-                // By clearing the default blueprint and the active blueprint
-                // it will be re-generated based on the default auto behavior.
-                store_hub.clear_default_blueprint();
-                store_hub.clear_active_blueprint();
+                store_hub.clear_active_blueprint_and_generate();
+                egui_ctx.request_repaint(); // Many changes take a frame delay to show up.
             }
             SystemCommand::ClearActiveBlueprint => {
                 // By clearing the blueprint the default blueprint will be restored

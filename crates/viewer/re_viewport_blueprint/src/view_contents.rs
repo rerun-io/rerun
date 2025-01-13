@@ -668,6 +668,7 @@ mod tests {
             bundle: &Default::default(),
             caches: &Default::default(),
             hub: &StoreHub::test_hub(),
+            should_enable_heuristics: false,
         };
 
         struct Scenario {
