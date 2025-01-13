@@ -6428,7 +6428,6 @@ dependencies = [
  "anyhow",
  "criterion",
  "egui",
- "egui_kittest",
  "itertools 0.13.0",
  "nohash-hasher",
  "once_cell",

@@ -14,8 +14,14 @@ pub enum CollapseScope {
     /// Stream tree from the time panel
     StreamsTree,
 
+    /// Stream tree from the time panel, when the filter is active
+    StreamsTreeFiltered { session_id: egui::Id },
+
     /// The stream tree from the blueprint debug time panel
     BlueprintStreamsTree,
+
+    /// The stream tree from the blueprint debug time panel, when the filter is active
+    BlueprintStreamsTreeFiltered { session_id: egui::Id },
 
     /// Blueprint tree from the blueprint panel (left panel)
     BlueprintTree,
