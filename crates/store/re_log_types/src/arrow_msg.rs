@@ -103,7 +103,7 @@ impl serde::Serialize for ArrowMsg {
 
         let mut ipc_bytes = Vec::<u8>::new();
 
-        // TODO(emilk): switch to arrow1 once https://github.com/apache/arrow-rs/issues/6803 is released
+        // TODO(#3741): switch to arrow1 once https://github.com/apache/arrow-rs/issues/6803 is released
         // use arrow::ipc::writer::StreamWriter;
         // let mut writer = StreamWriter::try_new(&mut ipc_bytes, self.batch.schema_ref())
         //     .map_err(|err| serde::ser::Error::custom(err.to_string()))?;
