@@ -42,6 +42,14 @@ attribute "attr.rust.new_pub_crate";
 /// object will be generated in `re_viewport/src/blueprint`.
 attribute "attr.rust.override_crate";
 
+/// Whether we should generate an extra Rust object comprised of native Rust types.
+///
+/// The generated object will have the name of the archetype, prefixed by `Native`,
+/// e.g. `NativePoints3D`.
+///
+/// Applies only to archetypes. No-op otherwise.
+attribute "attr.rust.archetype_native";
+
 /// The generated Rust object should be eagerly serialized, i.e. only comprised of Arrow arrays.
 ///
 /// Applies only to archetypes. No-op otherwise.
