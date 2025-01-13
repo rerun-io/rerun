@@ -64,7 +64,7 @@ fn parse_tuid(array: &dyn Array, index: usize) -> Option<Tuid> {
 
 // ---
 
-//TODO(john) move this and the Display impl upstream into arrow
+// arrow has `ToString` implemented, but it is way too verbose.
 #[repr(transparent)]
 struct DisplayTimeUnit(TimeUnit);
 
@@ -80,7 +80,7 @@ impl std::fmt::Display for DisplayTimeUnit {
     }
 }
 
-//TODO(john) move this and the Display impl upstream into arrow
+// arrow has `ToString` implemented, but it is way too verbose.
 #[repr(transparent)]
 struct DisplayIntervalUnit(IntervalUnit);
 
@@ -95,7 +95,7 @@ impl std::fmt::Display for DisplayIntervalUnit {
     }
 }
 
-//TODO(john) move this and the Display impl upstream into arrow
+// arrow has `ToString` implemented, but it is way too verbose.
 #[repr(transparent)]
 struct DisplayDatatype<'a>(&'a DataType);
 
@@ -164,11 +164,15 @@ impl std::fmt::Display for DisplayDatatype<'_> {
             DataType::Dictionary(_, _) => "dict",
             DataType::Decimal128(_, _) => "decimal128",
             DataType::Decimal256(_, _) => "decimal256",
-            DataType::BinaryView => todo!(),
-            DataType::Utf8View => todo!(),
-            DataType::ListView(field) => todo!(),
-            DataType::LargeListView(field) => todo!(),
-            DataType::RunEndEncoded(field, field1) => todo!(),
+            DataType::BinaryView => "BinaryView",
+            DataType::Utf8View => "Utf8View",
+            DataType::ListView(field) => return write!(f, "ListView[{}]", Self(field.data_type())),
+            DataType::LargeListView(field) => {
+                return write!(f, "LargeListView[{}]", Self(field.data_type()))
+            }
+            DataType::RunEndEncoded(_run_ends, values) => {
+                return write!(f, "RunEndEncoded[{}]", Self(values.data_type()))
+            }
         };
         f.write_str(s)
     }
