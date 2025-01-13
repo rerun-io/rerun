@@ -1,7 +1,7 @@
 use nohash_hasher::IntMap;
 
 use re_chunk_store::LatestAtQuery;
-use re_entity_db::{EntityDb, EntityPath, EntityTree};
+use re_entity_db::{EntityPath, EntityTree};
 use re_log_types::EntityPathHash;
 use re_types::{
     archetypes::{InstancePoses3D, Transform3D},
@@ -179,6 +179,14 @@ impl ViewContextSystem for TransformContext {
 
         debug_assert_transform_field_order(ctx.viewer_ctx.reflection);
 
+        // Make sure transform cache is up to date.
+        // TODO(andreas): This is a rather annoying sync point between different views.
+        // We could alleviate this by introducing a per view class (not instance) method that is called
+        // before system execution.
+        TransformCacheStoreSubscriber::access_mut(&ctx.recording().store_id(), |cache| {
+            cache.apply_all_updates(ctx.recording());
+        });
+
         let entity_tree = ctx.recording().tree();
         let query_result = ctx.viewer_ctx.lookup_query_result(query.view_id);
         let data_result_tree = &query_result.tree;
@@ -195,7 +203,6 @@ impl ViewContextSystem for TransformContext {
 
         let time_query = ctx.current_query();
 
-        // TODO: this holds a write lock for way too long!
         TransformCacheStoreSubscriber::access(&ctx.recording().store_id(), |cache| {
             let Some(transforms_per_timeline) = cache.transforms_per_timeline(query.timeline)
             else {
@@ -219,7 +226,6 @@ impl ViewContextSystem for TransformContext {
                     ctx,
                     data_result_tree,
                     current_tree,
-                    ctx.recording(),
                     &time_query,
                     // Ignore potential pinhole camera at the root of the view, since it regarded as being "above" this root.
                     TransformInfo::default(),
@@ -251,7 +257,7 @@ impl TransformContext {
         data_result_tree: &DataResultTree,
         mut current_tree: &'a EntityTree,
         time_query: &LatestAtQuery,
-        transforms_per_timeline: &mut CachedTransformsPerTimeline,
+        transforms_per_timeline: &CachedTransformsPerTimeline,
     ) {
         re_tracing::profile_function!();
 
@@ -272,7 +278,6 @@ impl TransformContext {
             // Generally, the transform _at_ a node isn't relevant to it's children, but only to get to its parent in turn!
             let transforms_at_entity = transforms_at(
                 &current_tree.path,
-                ctx.recording(),
                 time_query,
                 // TODO(#1025): See comment in transform_at. This is a workaround for precision issues
                 // and the fact that there is no meaningful image plane distance for 3D->2D views.
@@ -292,7 +297,6 @@ impl TransformContext {
                 ctx,
                 data_result_tree,
                 parent_tree,
-                ctx.recording(),
                 time_query,
                 new_transform,
                 transforms_per_timeline,
@@ -308,10 +312,9 @@ impl TransformContext {
         ctx: &ViewContext<'_>,
         data_result_tree: &DataResultTree,
         subtree: &EntityTree,
-        entity_db: &EntityDb,
         query: &LatestAtQuery,
         transform: TransformInfo,
-        transforms_per_timeline: &mut CachedTransformsPerTimeline,
+        transforms_per_timeline: &CachedTransformsPerTimeline,
     ) {
         let twod_in_threed_info = transform.twod_in_threed_info.clone();
         let reference_from_parent = transform.reference_from_entity;
@@ -336,7 +339,6 @@ impl TransformContext {
 
             let transforms_at_entity = transforms_at(
                 child_path,
-                entity_db,
                 query,
                 lookup_image_plane,
                 &mut encountered_pinhole,
@@ -353,7 +355,6 @@ impl TransformContext {
                 ctx,
                 data_result_tree,
                 child_tree,
-                entity_db,
                 query,
                 new_transform,
                 transforms_per_timeline,
@@ -611,34 +612,34 @@ struct TransformsAtEntity {
 
 fn transforms_at(
     entity_path: &EntityPath,
-    entity_db: &EntityDb,
     query: &LatestAtQuery,
     pinhole_image_plane_distance: impl Fn(&EntityPath) -> f32,
     encountered_pinhole: &mut Option<EntityPath>,
-    transforms_per_timeline: &mut CachedTransformsPerTimeline,
+    transforms_per_timeline: &CachedTransformsPerTimeline,
 ) -> TransformsAtEntity {
     // This is called very frequently, don't put a profile scope here.
 
-    let Some(entity_transforms) = transforms_per_timeline.entity_transforms(entity_path) else {
+    let Some(entity_transforms) = transforms_per_timeline.entity_transforms(entity_path.hash())
+    else {
         return TransformsAtEntity::default();
     };
 
-    let parent_from_entity_tree_transform =
-        entity_transforms.latest_at_tree_transform(entity_db, query);
-    let entity_from_instance_poses = entity_transforms.latest_at_instance_poses(entity_db, query);
-    let instance_from_pinhole_image_plane = entity_transforms
-        .latest_at_pinhole(entity_db, query)
-        .map(|resolved_pinhole_projection| {
-            pinhole_with_image_plane_to_transform(
-                entity_path,
-                &resolved_pinhole_projection,
-                pinhole_image_plane_distance,
-            )
-        });
+    let parent_from_entity_tree_transform = entity_transforms.latest_at_tree_transform(query);
+    let entity_from_instance_poses = entity_transforms.latest_at_instance_poses(query);
+    let instance_from_pinhole_image_plane =
+        entity_transforms
+            .latest_at_pinhole(query)
+            .map(|resolved_pinhole_projection| {
+                pinhole_with_image_plane_to_transform(
+                    entity_path,
+                    resolved_pinhole_projection,
+                    pinhole_image_plane_distance,
+                )
+            });
 
     let transforms_at_entity = TransformsAtEntity {
-        parent_from_entity_tree_transform,
-        entity_from_instance_poses,
+        parent_from_entity_tree_transform: parent_from_entity_tree_transform.copied(),
+        entity_from_instance_poses: entity_from_instance_poses.map_or(Vec::new(), |v| v.clone()),
         instance_from_pinhole_image_plane,
     };
 

@@ -17,9 +17,12 @@ use re_types::{
 
 /// Store subscriber that resolves all transform components at a given entity to an affine transform.
 pub struct TransformCacheStoreSubscriber {
-    /// The components of interest.
     transform_components: IntSet<ComponentName>,
     pose_components: IntSet<ComponentName>,
+    pinhole_components: IntSet<ComponentName>,
+    /// All components of interest, a combination of the above.
+    all_interesting_components: IntSet<ComponentName>,
+
     per_timeline: HashMap<Timeline, CachedTransformsPerTimeline>,
 }
 
@@ -28,43 +31,72 @@ impl Default for TransformCacheStoreSubscriber {
     fn default() -> Self {
         use re_types::Archetype as _;
 
+        let transform_components: IntSet<ComponentName> =
+            re_types::archetypes::Transform3D::all_components()
+                .iter()
+                .map(|descr| descr.component_name)
+                .collect();
+        let pose_components = re_types::archetypes::InstancePoses3D::all_components()
+            .iter()
+            .map(|descr| descr.component_name)
+            .collect();
+        let pinhole_components = [
+            components::PinholeProjection::name(),
+            components::ViewCoordinates::name(),
+        ]
+        .into_iter()
+        .collect();
+
+        let all_interesting_components = transform_components
+            .union(&pose_components)
+            .union(&pinhole_components)
+            .collect();
+
         Self {
-            transform_components: re_types::archetypes::Transform3D::all_components()
-                .iter()
-                .map(|descr| descr.component_name)
-                .collect(),
-            pose_components: re_types::archetypes::InstancePoses3D::all_components()
-                .iter()
-                .map(|descr| descr.component_name)
-                .collect(),
+            transform_components,
+            pose_components,
+            pinhole_components,
+            all_interesting_components,
+
             per_timeline: Default::default(),
         }
     }
 }
 
+bitflags::bitflags! {
+    /// Flags for the different kinds of independent transforms that the transform cache handles.
+    #[derive(Debug, Clone, Copy)]
+    pub struct TransformAspect: u8 {
+        const TREE = 1 << 0;
+        const POSE = 1 << 1;
+        const PINHOLE = 1 << 2;
+    }
+}
+
+/// Points in time that have changed for a given entity,
+/// i.e. the cache is invalid for these times.
+struct QueuedTransformUpdates {
+    entity_path: EntityPath,
+    times: Vec<TimeInt>,
+    aspects: TransformAspect,
+}
+
 pub struct CachedTransformsPerTimeline {
+    /// Updates that should be applied to the cache.
+    /// I.e. times & entities at which the cache is invalid right now.
+    queued_updates: Vec<QueuedTransformUpdates>,
+
     per_entity: IntMap<EntityPathHash, PerTimelinePerEntityTransforms>,
 }
 
 pub struct PerTimelinePerEntityTransforms {
     timeline: Timeline,
-    entity_path: EntityPath,
 
-    tree_transforms: BTreeMap<TimeInt, CacheEntry<glam::Affine3A>>,
-    pose_transforms: BTreeMap<TimeInt, CacheEntry<Vec<glam::Affine3A>>>,
+    tree_transforms: BTreeMap<TimeInt, glam::Affine3A>,
+    pose_transforms: BTreeMap<TimeInt, Vec<glam::Affine3A>>,
     // Note that pinhole projections are fairly rare - it's worth considering storing them separately so we don't have this around for every entity.
     // The flipside of that is of course that we'd have to do more lookups (unless we come up with a way to linearly iterate them)
-    pinhole_projections: BTreeMap<TimeInt, CacheEntry<ResolvedPinholeProjection>>,
-}
-
-// TODO: the cache update idea doesn't quite work out. Instead note down all necessary updates and then process them centrally. Can use a parallel for loop for that if we fancy it.
-// just need to find a simple data structure for telling it to update and a place where we do the processing call - maybe a "once per type & frame" call on the ViewClass?
-
-enum CacheEntry<T> {
-    Cached(T),
-    Uncached,
-    // TODO: explain why we can't avoid this.
-    None,
+    pinhole_projections: BTreeMap<TimeInt, ResolvedPinholeProjection>,
 }
 
 #[derive(Clone)]
@@ -76,116 +108,39 @@ pub struct ResolvedPinholeProjection {
 impl CachedTransformsPerTimeline {
     #[inline]
     pub fn entity_transforms(
-        &mut self,
-        entity_path: &EntityPath,
-    ) -> Option<&mut PerTimelinePerEntityTransforms> {
-        self.per_entity.get_mut(&entity_path.hash())
+        &self,
+        entity_path: EntityPathHash,
+    ) -> Option<&PerTimelinePerEntityTransforms> {
+        self.per_entity.get(&entity_path)
     }
 }
 
 impl PerTimelinePerEntityTransforms {
-    pub fn latest_at_tree_transform(
-        &mut self, // TODO: make this immutable
-        entity_db: &EntityDb,
-        query: &LatestAtQuery,
-    ) -> Option<glam::Affine3A> {
+    #[inline]
+    pub fn latest_at_tree_transform(&self, query: &LatestAtQuery) -> Option<&glam::Affine3A> {
         debug_assert!(query.timeline() == self.timeline);
-
-        let tree_transform = self
-            .tree_transforms
-            .range_mut(..query.at())
-            .next_back()
-            .map(|(_time, transform)| transform)?;
-
-        match tree_transform {
-            CacheEntry::Cached(transform) => Some(*transform),
-            CacheEntry::Uncached => {
-                let transform =
-                    query_and_resolve_tree_transform_at_entity(&self.entity_path, entity_db, query);
-                if let Some(transform) = transform {
-                    *tree_transform = CacheEntry::Cached(transform);
-                    Some(transform)
-                } else {
-                    *tree_transform = CacheEntry::None;
-                    None
-                }
-            }
-            CacheEntry::None => None,
-        }
-    }
-
-    pub fn latest_at_instance_poses(
-        &mut self, // TODO: make this immutable
-        entity_db: &EntityDb,
-        query: &LatestAtQuery,
-        // TODO(andreas): A Cow or reference would be nice here instead of cloning a Vec. At least this is somewhat rare right now?
-    ) -> Vec<glam::Affine3A> {
-        debug_assert!(query.timeline() == self.timeline);
-
-        let Some(pose_transforms) = self
-            .pose_transforms
-            .range_mut(..query.at())
+        self.tree_transforms
+            .range(..query.at())
             .next_back()
             .map(|(_time, transform)| transform)
-        else {
-            return Vec::new();
-        };
-
-        match pose_transforms {
-            CacheEntry::Cached(poses) => poses.clone(),
-            CacheEntry::Uncached => {
-                let poses =
-                    query_and_resolve_instance_poses_at_entity(&self.entity_path, entity_db, query);
-                if !poses.is_empty() {
-                    *pose_transforms = CacheEntry::Cached(poses.clone());
-                    poses
-                } else {
-                    *pose_transforms = CacheEntry::None;
-                    Vec::new()
-                }
-            }
-            CacheEntry::None => Vec::new(),
-        }
     }
 
-    pub fn latest_at_pinhole(
-        &mut self, // TODO: make this immutable
-        entity_db: &EntityDb,
-        query: &LatestAtQuery,
-    ) -> Option<ResolvedPinholeProjection> {
+    #[inline]
+    pub fn latest_at_instance_poses(&self, query: &LatestAtQuery) -> Option<&Vec<glam::Affine3A>> {
         debug_assert!(query.timeline() == self.timeline);
-
-        let pinhole_projections = self
-            .pinhole_projections
-            .range_mut(..query.at())
+        self.pose_transforms
+            .range(..query.at())
             .next_back()
-            .map(|(_time, transform)| transform)?;
+            .map(|(_time, transform)| transform)
+    }
 
-        match pinhole_projections {
-            CacheEntry::Cached(pinhole) => Some(pinhole.clone()),
-            CacheEntry::Uncached => {
-                // TODO: can we do more resolving than this?
-                if let Some(resolved_pinhole_projection) = entity_db
-                    .latest_at_component::<components::PinholeProjection>(&self.entity_path, query)
-                    .map(|(_index, image_from_camera)| ResolvedPinholeProjection {
-                        image_from_camera,
-                        view_coordinates: entity_db
-                            .latest_at_component::<components::ViewCoordinates>(
-                                &self.entity_path,
-                                query,
-                            )
-                            .map_or(components::ViewCoordinates::RDF, |(_index, res)| res),
-                    })
-                {
-                    *pinhole_projections = CacheEntry::Cached(resolved_pinhole_projection.clone());
-                    Some(resolved_pinhole_projection)
-                } else {
-                    *pinhole_projections = CacheEntry::None;
-                    None
-                }
-            }
-            CacheEntry::None => None,
-        }
+    #[inline]
+    pub fn latest_at_pinhole(&self, query: &LatestAtQuery) -> Option<&ResolvedPinholeProjection> {
+        debug_assert!(query.timeline() == self.timeline);
+        self.pinhole_projections
+            .range(..query.at())
+            .next_back()
+            .map(|(_time, transform)| transform)
     }
 }
 
@@ -199,9 +154,14 @@ impl TransformCacheStoreSubscriber {
     }
 
     /// Accesses the transform component tracking data for a given store.
-    // TODO: no mut plz
     #[inline]
-    pub fn access<T>(store_id: &StoreId, f: impl FnMut(&mut Self) -> T) -> Option<T> {
+    pub fn access<T>(store_id: &StoreId, f: impl FnMut(&Self) -> T) -> Option<T> {
+        ChunkStore::with_per_store_subscriber(Self::subscription_handle(), store_id, f)
+    }
+
+    /// Accesses the transform component tracking data for a given store exclusively.
+    #[inline]
+    pub fn access_mut<T>(store_id: &StoreId, f: impl FnMut(&mut Self) -> T) -> Option<T> {
         ChunkStore::with_per_store_subscriber_mut(Self::subscription_handle(), store_id, f)
     }
 
@@ -210,10 +170,69 @@ impl TransformCacheStoreSubscriber {
     /// Returns `None` if the timeline doesn't have any transforms at all.
     #[inline]
     pub fn transforms_per_timeline(
-        &mut self,
+        &self,
         timeline: Timeline,
-    ) -> Option<&mut CachedTransformsPerTimeline> {
-        self.per_timeline.get_mut(&timeline)
+    ) -> Option<&CachedTransformsPerTimeline> {
+        self.per_timeline.get(&timeline)
+    }
+
+    /// Makes sure the transform cache is up to date with the latest data.
+    ///
+    /// This needs to be called once per frame.
+    pub fn apply_all_updates(&mut self, entity_db: &EntityDb) {
+        re_tracing::profile_function!();
+
+        for (timeline, per_timeline) in &mut self.per_timeline {
+            for queued_update in per_timeline.queued_updates.drain(..) {
+                let entity_path = &queued_update.entity_path;
+                let entity_entry = per_timeline
+                    .per_entity
+                    .entry(entity_path.hash())
+                    .or_insert_with(|| PerTimelinePerEntityTransforms {
+                        timeline: *timeline,
+                        tree_transforms: Default::default(),
+                        pose_transforms: Default::default(),
+                        pinhole_projections: Default::default(),
+                    });
+
+                for time in queued_update.times {
+                    let query = LatestAtQuery::new(*timeline, time);
+
+                    if queued_update.aspects.contains(TransformAspect::TREE) {
+                        if let Some(transform) = query_and_resolve_tree_transform_at_entity(
+                            entity_path,
+                            entity_db,
+                            &query,
+                        ) {
+                            entity_entry.tree_transforms.insert(time, transform);
+                        }
+                    }
+                    if queued_update.aspects.contains(TransformAspect::POSE) {
+                        let transforms = query_and_resolve_instance_poses_at_entity(
+                            entity_path,
+                            entity_db,
+                            &query,
+                        );
+                        if !transforms.is_empty() {
+                            entity_entry.pose_transforms.insert(time, transforms);
+                        }
+                    }
+                    if queued_update.aspects.contains(TransformAspect::PINHOLE) {
+                        if let Some(resolved_pinhole_projection) =
+                            query_and_resolve_pinhole_projection_at_entity(
+                                entity_path,
+                                entity_db,
+                                &query,
+                            )
+                        {
+                            entity_entry
+                                .pinhole_projections
+                                .insert(time, resolved_pinhole_projection);
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -251,59 +270,36 @@ impl PerStoreChunkSubscriber for TransformCacheStoreSubscriber {
                         || component_name == components::ViewCoordinates::name()
                 });
 
-            if !has_instance_poses && !has_tree_transforms && !has_pinhole_or_view_coordinates {
+            let mut aspects = TransformAspect::empty();
+            aspects.set(TransformAspect::TREE, has_tree_transforms);
+            aspects.set(TransformAspect::POSE, has_instance_poses);
+            aspects.set(TransformAspect::PINHOLE, has_pinhole_or_view_coordinates);
+            if aspects.is_empty() {
                 continue;
             }
 
             let entity_path = event.chunk.entity_path();
-            let entity_path_hash = entity_path.hash();
 
             for (timeline, time_column) in event.diff.chunk.timelines() {
-                // Components may only show up on some of the timelines.
-                // But being overly conservative here is doesn't hurt us much and makes this a lot easier.
+                // The components we are interested in may only show up on some of the timelines.
+                // But that's fairly rare, so a few false positive entries here are fine.
                 let per_timeline = self.per_timeline.entry(*timeline).or_insert_with(|| {
                     CachedTransformsPerTimeline {
+                        queued_updates: Default::default(),
                         per_entity: Default::default(),
                     }
                 });
 
-                let per_entity = per_timeline
-                    .per_entity
-                    .entry(entity_path_hash)
-                    .or_insert_with(|| PerTimelinePerEntityTransforms {
-                        entity_path: entity_path.clone(),
-                        timeline: *timeline,
-                        tree_transforms: Default::default(),
-                        pose_transforms: Default::default(),
-                        pinhole_projections: Default::default(),
-                    });
-
-                // Cache lazily since all of these require complex latest-at queries that...
-                // - we don't want to do more often than needed
-                // - would require a lot more context (we could inject that here, but it's not entirely straight forward)
-                if has_tree_transforms {
-                    // TODO: invalidate things forward in time.
-                    for time in time_column.times() {
-                        per_entity
-                            .tree_transforms
-                            .insert(time, CacheEntry::Uncached);
-                    }
-                }
-                if has_instance_poses {
-                    // TODO: invalidate things forward in time.
-                    for time in time_column.times() {
-                        per_entity
-                            .pose_transforms
-                            .insert(time, CacheEntry::Uncached);
-                    }
-                }
-                if has_pinhole_or_view_coordinates {
-                    for time in time_column.times() {
-                        per_entity
-                            .pinhole_projections
-                            .insert(time, CacheEntry::Uncached);
-                    }
-                }
+                // All of these require complex latest-at queries that would require a lot more context,
+                // are fairly expensive, and may depend on other components that may come in at the same time.
+                // (we could inject that here, but it's not entirely straight forward).
+                // So instead, we note down that the caches is invalidated for the given entity & times.
+                per_timeline.queued_updates.push(QueuedTransformUpdates {
+                    entity_path: entity_path.clone(),
+                    times: time_column.times().collect(),
+                    aspects,
+                });
+                // TODO: invalidate existing cache entries caches forward in time.
             }
         }
     }
@@ -471,4 +467,19 @@ fn query_and_resolve_instance_poses_at_entity(
     }
 
     transforms
+}
+
+fn query_and_resolve_pinhole_projection_at_entity(
+    entity_path: &EntityPath,
+    entity_db: &EntityDb,
+    query: &LatestAtQuery,
+) -> Option<ResolvedPinholeProjection> {
+    entity_db
+        .latest_at_component::<components::PinholeProjection>(entity_path, query)
+        .map(|(_index, image_from_camera)| ResolvedPinholeProjection {
+            image_from_camera,
+            view_coordinates: entity_db
+                .latest_at_component::<components::ViewCoordinates>(entity_path, query)
+                .map_or(components::ViewCoordinates::RDF, |(_index, res)| res),
+        })
 }
