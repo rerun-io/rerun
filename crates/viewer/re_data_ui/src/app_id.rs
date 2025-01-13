@@ -92,6 +92,8 @@ impl crate::DataUi for ApplicationId {
                 }
             }
 
+            // TODO(ab): this should ideally be disabled if the blueprint is already on auto mode,
+            // but that would require access to the `ViewportBlueprint`
             if ui.add(egui::Button::image_and_text(
                 &re_ui::icons::RESET,
                 "Reset to heuristic blueprint",

@@ -55,13 +55,14 @@ impl BlueprintTree {
             ui.list_item_scope("blueprint section title", |ui| {
                 ui.list_item_flat_noninteractive(
                     list_item::CustomContent::new(|ui, _| {
-                        //TODO: tooltip
-                        ui.strong("Blueprint");
+                        ui.strong("Blueprint").on_hover_text(
+                            "The blueprint is where you can configure the Rerun Viewer",
+                        );
                     })
                     .menu_button(&re_ui::icons::MORE, |ui| {
                         add_new_view_or_container_menu_button(ctx, viewport, ui);
                         set_blueprint_to_default_menu_buttons(ctx, ui);
-                        set_blueprint_to_auto_menu_button(ctx, ui);
+                        set_blueprint_to_auto_menu_button(ctx, viewport, ui);
                     }),
                 );
             });
@@ -858,7 +859,15 @@ fn add_new_view_or_container_menu_button(
     viewport: &ViewportBlueprint,
     ui: &mut egui::Ui,
 ) {
-    if ui.button("Add view or container…").clicked() {
+    if ui
+        .add(egui::Button::image_and_text(
+            &re_ui::icons::ADD,
+            "Add view or container…",
+        ))
+        .clicked()
+    {
+        ui.close_menu();
+
         // If a single container is selected, we use it as target. Otherwise, we target the
         // root container.
         let target_container_id =
@@ -897,8 +906,10 @@ fn set_blueprint_to_default_menu_buttons(ctx: &ViewerContext<'_>, ui: &mut egui:
 
     let enabled = disabled_reason.is_none();
     let mut response = ui
-        .add_enabled_ui(enabled, |ui| ui.button("Reset to default blueprint"))
-        .inner
+        .add_enabled(
+            enabled,
+            egui::Button::image_and_text(&re_ui::icons::RESET, "Reset to default blueprint"),
+        )
         .on_hover_text("Reset to the default blueprint for this app");
 
     if let Some(disabled_reason) = disabled_reason {
@@ -906,17 +917,28 @@ fn set_blueprint_to_default_menu_buttons(ctx: &ViewerContext<'_>, ui: &mut egui:
     };
 
     if response.clicked() {
+        ui.close_menu();
         ctx.command_sender
             .send_system(re_viewer_context::SystemCommand::ClearActiveBlueprint);
     }
 }
 
-fn set_blueprint_to_auto_menu_button(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
+fn set_blueprint_to_auto_menu_button(
+    ctx: &ViewerContext<'_>,
+    viewport: &ViewportBlueprint,
+    ui: &mut egui::Ui,
+) {
+    let enabled = !viewport.auto_layout() || !viewport.auto_views();
+
     if ui
-        .button("Reset to heuristic blueprint")
+        .add_enabled(
+            enabled,
+            egui::Button::image_and_text(&re_ui::icons::RESET, "Reset to heuristic blueprint"),
+        )
         .on_hover_text("Re-populate viewport with automatically chosen views")
         .clicked()
     {
+        ui.close_menu();
         ctx.command_sender
             .send_system(re_viewer_context::SystemCommand::ClearAndGenerateBlueprint);
     }
