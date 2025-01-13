@@ -351,7 +351,7 @@ impl App {
                 re_viewer_context::TimelineCallbacks {
                     on_timelinechange: Rc::new(move |timeline, time| {
                         if let Err(err) = opts.on_timelinechange.call2(
-                            &JsValue::from_str(&timeline.name().as_str()),
+                            &JsValue::from_str(timeline.name().as_str()),
                             &JsValue::from_f64(time.as_f64()),
                         ) {
                             re_log::error!("{}", string_from_js_value(err));

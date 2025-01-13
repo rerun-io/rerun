@@ -282,22 +282,15 @@ impl WebHandle {
 
     #[wasm_bindgen]
     pub fn get_active_recording_id(&self) -> Option<String> {
-        let Some(app) = self.runner.app_mut::<crate::App>() else {
-            return None;
-        };
-
-        let Some(hub) = app.store_hub.as_ref() else {
-            return None;
-        };
-        let Some(recording) = hub.active_recording() else {
-            return None;
-        };
+        let app = self.runner.app_mut::<crate::App>()?;
+        let hub = app.store_hub.as_ref()?;
+        let recording = hub.active_recording()?;
 
         Some(recording.store_id().to_string())
     }
 
     #[wasm_bindgen]
-    pub fn set_active_recording_id(&self, store_id: String) {
+    pub fn set_active_recording_id(&self, store_id: &str) {
         let Some(mut app) = self.runner.app_mut::<crate::App>() else {
             return;
         };
@@ -320,9 +313,7 @@ impl WebHandle {
 
     #[wasm_bindgen]
     pub fn get_active_timeline(&self, store_id: &str) -> Option<String> {
-        let Some(mut app) = self.runner.app_mut::<crate::App>() else {
-            return None;
-        };
+        let mut app = self.runner.app_mut::<crate::App>()?;
         let crate::App {
             store_hub: Some(ref hub),
             state,
@@ -339,10 +330,8 @@ impl WebHandle {
         if !hub.store_bundle().contains(&store_id) {
             return None;
         };
-        let Some(rec_cfg) = state.recording_config_mut(&store_id) else {
-            return None;
-        };
 
+        let rec_cfg = state.recording_config_mut(&store_id)?;
         let time_ctrl = rec_cfg.time_ctrl.read();
         Some(time_ctrl.timeline().name().as_str().to_owned())
     }
@@ -388,10 +377,8 @@ impl WebHandle {
     }
 
     #[wasm_bindgen]
-    pub fn get_time_for_timeline(&self, store_id: String, timeline: String) -> Option<f64> {
-        let Some(app) = self.runner.app_mut::<crate::App>() else {
-            return None;
-        };
+    pub fn get_time_for_timeline(&self, store_id: &str, timeline: &str) -> Option<f64> {
+        let app = self.runner.app_mut::<crate::App>()?;
         let crate::App {
             store_hub: Some(ref hub),
             state,
@@ -405,18 +392,11 @@ impl WebHandle {
             re_log_types::StoreKind::Recording,
             store_id.to_owned(),
         );
-        let Some(recording) = hub.store_bundle().get(&store_id) else {
-            return None;
-        };
-        let Some(rec_cfg) = state.recording_config(&store_id) else {
-            return None;
-        };
-        let Some(timeline) = recording
+        let recording = hub.store_bundle().get(&store_id)?;
+        let rec_cfg = state.recording_config(&store_id)?;
+        let timeline = recording
             .timelines()
-            .find(|t| t.name().as_str() == timeline)
-        else {
-            return None;
-        };
+            .find(|t| t.name().as_str() == timeline)?;
 
         let time_ctrl = rec_cfg.time_ctrl.read();
         time_ctrl
@@ -425,7 +405,7 @@ impl WebHandle {
     }
 
     #[wasm_bindgen]
-    pub fn set_time_for_timeline(&self, store_id: String, timeline: String, time: f64) {
+    pub fn set_time_for_timeline(&self, store_id: &str, timeline: &str, time: f64) {
         let Some(mut app) = self.runner.app_mut::<crate::App>() else {
             return;
         };
@@ -464,7 +444,7 @@ impl WebHandle {
     }
 
     #[wasm_bindgen]
-    pub fn get_timeline_time_range(&self, store_id: String, timeline: String) -> JsValue {
+    pub fn get_timeline_time_range(&self, store_id: &str, timeline: &str) -> JsValue {
         let Some(app) = self.runner.app_mut::<crate::App>() else {
             return JsValue::null();
         };
@@ -490,7 +470,7 @@ impl WebHandle {
             return JsValue::null();
         };
 
-        let Some(time_range) = recording.time_range_for(&timeline) else {
+        let Some(time_range) = recording.time_range_for(timeline) else {
             return JsValue::null();
         };
 
@@ -505,10 +485,8 @@ impl WebHandle {
     }
 
     #[wasm_bindgen]
-    pub fn get_playing(&self, store_id: String) -> Option<bool> {
-        let Some(app) = self.runner.app_mut::<crate::App>() else {
-            return None;
-        };
+    pub fn get_playing(&self, store_id: &str) -> Option<bool> {
+        let app = self.runner.app_mut::<crate::App>()?;
         let crate::App {
             store_hub: Some(ref hub),
             state,
@@ -525,16 +503,14 @@ impl WebHandle {
         if !hub.store_bundle().contains(&store_id) {
             return None;
         };
-        let Some(rec_cfg) = state.recording_config(&store_id) else {
-            return None;
-        };
+        let rec_cfg = state.recording_config(&store_id)?;
 
         let time_ctrl = rec_cfg.time_ctrl.read();
         Some(time_ctrl.play_state() == re_viewer_context::PlayState::Playing)
     }
 
     #[wasm_bindgen]
-    pub fn set_playing(&self, store_id: String, value: bool) {
+    pub fn set_playing(&self, store_id: &str, value: bool) {
         let Some(mut app) = self.runner.app_mut::<crate::App>() else {
             return;
         };
