@@ -195,9 +195,9 @@ impl PyStorageNodeClient {
     /// Parameters
     /// ----------
     /// columns : Optional[list[str]]
-    ///    The columns to fetch. If `None`, fetch all columns.
+    ///     The columns to fetch. If `None`, fetch all columns.
     /// recording_ids : Optional[list[str]]
-    ///   Fetch metadata of only specific recordings. If `None`, fetch for all.
+    ///     Fetch metadata of only specific recordings. If `None`, fetch for all.
     #[pyo3(signature = (
         columns = None,
         recording_ids = None,
