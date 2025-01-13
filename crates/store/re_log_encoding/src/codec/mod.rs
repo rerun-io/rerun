@@ -5,7 +5,7 @@ pub mod wire;
 #[derive(Debug, thiserror::Error)]
 pub enum CodecError {
     #[error("Arrow serialization error: {0}")]
-    ArrowSerialization(arrow2::error::Error),
+    ArrowSerialization(::arrow::error::ArrowError),
 
     #[error("Failed to decode message header {0}")]
     HeaderDecoding(std::io::Error),

@@ -1,52 +1,35 @@
 use super::CodecError;
 
-use arrow2::array::Array as Arrow2Array;
-use arrow2::datatypes::Schema as Arrow2Schema;
-use arrow2::io::ipc;
-
-type Arrow2Chunk = arrow2::chunk::Chunk<Box<dyn Arrow2Array>>;
+use arrow::array::RecordBatch as ArrowRecordBatch;
+use arrow::ipc;
 
 /// Helper function that serializes given arrow schema and record batch into bytes
 /// using Arrow IPC format.
 pub(crate) fn write_arrow_to_bytes<W: std::io::Write>(
     writer: &mut W,
-    schema: &Arrow2Schema,
-    data: &Arrow2Chunk,
+    batch: &ArrowRecordBatch,
 ) -> Result<(), CodecError> {
-    let options = ipc::write::WriteOptions { compression: None };
-    let mut sw = ipc::write::StreamWriter::new(writer, options);
-
-    sw.start(schema, None)
+    let mut sw = ipc::writer::StreamWriter::try_new(writer, batch.schema_ref())
         .map_err(CodecError::ArrowSerialization)?;
-    sw.write(data, None)
-        .map_err(CodecError::ArrowSerialization)?;
+    sw.write(batch).map_err(CodecError::ArrowSerialization)?;
     sw.finish().map_err(CodecError::ArrowSerialization)?;
-
     Ok(())
 }
 
 /// Helper function that deserializes raw bytes into arrow schema and record batch
 /// using Arrow IPC format.
+///
+/// Returns only the first record batch in the stream.
 pub(crate) fn read_arrow_from_bytes<R: std::io::Read>(
     reader: &mut R,
-) -> Result<(Arrow2Schema, Arrow2Chunk), CodecError> {
-    use arrow2::io::ipc;
+) -> Result<ArrowRecordBatch, CodecError> {
+    let mut stream =
+        ipc::reader::StreamReader::try_new(reader, None).map_err(CodecError::ArrowSerialization)?;
 
-    let metadata =
-        ipc::read::read_stream_metadata(reader).map_err(CodecError::ArrowSerialization)?;
-    let mut stream = ipc::read::StreamReader::new(reader, metadata, None);
-
-    let schema = stream.schema().clone();
-    // there should be at least one record batch in the stream
-    let stream_state = stream
+    stream
         .next()
         .ok_or(CodecError::MissingRecordBatch)?
-        .map_err(CodecError::ArrowSerialization)?;
-
-    match stream_state {
-        ipc::read::StreamState::Waiting => Err(CodecError::UnexpectedStreamState),
-        ipc::read::StreamState::Some(chunk) => Ok((schema, chunk)),
-    }
+        .map_err(CodecError::ArrowSerialization)
 }
 
 #[cfg(feature = "encoder")]
@@ -57,12 +40,11 @@ pub(crate) struct Payload {
 
 #[cfg(feature = "encoder")]
 pub(crate) fn encode_arrow(
-    schema: &Arrow2Schema,
-    chunk: &Arrow2Chunk,
+    batch: &ArrowRecordBatch,
     compression: crate::Compression,
 ) -> Result<Payload, crate::encoder::EncodeError> {
     let mut uncompressed = Vec::new();
-    write_arrow_to_bytes(&mut uncompressed, schema, chunk)?;
+    write_arrow_to_bytes(&mut uncompressed, batch)?;
     let uncompressed_size = uncompressed.len();
 
     let data = match compression {
@@ -81,7 +63,7 @@ pub(crate) fn decode_arrow(
     data: &[u8],
     uncompressed_size: usize,
     compression: crate::Compression,
-) -> Result<(Arrow2Schema, Arrow2Chunk), crate::decoder::DecodeError> {
+) -> Result<ArrowRecordBatch, crate::decoder::DecodeError> {
     let mut uncompressed = Vec::new();
     let data = match compression {
         crate::Compression::Off => data,

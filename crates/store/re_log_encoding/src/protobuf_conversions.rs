@@ -37,7 +37,7 @@ pub fn log_msg_from_proto(
                 return Err(DecodeError::Codec(CodecError::UnsupportedEncoding));
             }
 
-            let (schema, chunk) = decode_arrow(
+            let batch = decode_arrow(
                 &arrow_msg.payload,
                 arrow_msg.uncompressed_size as usize,
                 arrow_msg.compression().into(),
@@ -48,8 +48,7 @@ pub fn log_msg_from_proto(
                 .ok_or_else(|| missing_field!(re_protos::log_msg::v0::ArrowMsg, "store_id"))?
                 .into();
 
-            let chunk =
-                re_chunk::Chunk::from_transport(&re_chunk::TransportChunk::new(schema, chunk))?;
+            let chunk = re_chunk::Chunk::from_transport(&re_chunk::TransportChunk::from(batch))?;
 
             Ok(re_log_types::LogMsg::ArrowMsg(
                 store_id,
@@ -85,7 +84,7 @@ pub fn log_msg_to_proto(
             }
         }
         re_log_types::LogMsg::ArrowMsg(store_id, arrow_msg) => {
-            let payload = encode_arrow(&arrow_msg.schema, &arrow_msg.chunk, compression)?;
+            let payload = encode_arrow(&arrow_msg.batch, compression)?;
             let arrow_msg = ArrowMsg {
                 store_id: Some(store_id.into()),
                 compression: match compression {

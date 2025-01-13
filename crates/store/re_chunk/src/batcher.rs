@@ -55,7 +55,7 @@ pub struct BatcherHooks {
     /// See [`re_log_types::ArrowChunkReleaseCallback`] for more information.
     //
     // TODO(#6412): probably don't need this anymore.
-    pub on_release: Option<re_log_types::ArrowChunkReleaseCallback>,
+    pub on_release: Option<re_log_types::ArrowRecordBatchReleaseCallback>,
 }
 
 impl BatcherHooks {

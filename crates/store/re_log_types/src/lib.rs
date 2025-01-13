@@ -39,7 +39,7 @@ use std::sync::Arc;
 use re_build_info::CrateVersion;
 use re_byte_size::SizeBytes;
 
-pub use self::arrow_msg::{ArrowChunkReleaseCallback, ArrowMsg};
+pub use self::arrow_msg::{ArrowMsg, ArrowRecordBatchReleaseCallback};
 pub use self::instance::Instance;
 pub use self::path::*;
 pub use self::resolved_time_range::{ResolvedTimeRange, ResolvedTimeRangeF};
@@ -746,15 +746,11 @@ impl SizeBytes for ArrowMsg {
         let Self {
             chunk_id,
             timepoint_max,
-            schema,
-            chunk,
+            batch,
             on_release: _,
         } = self;
 
-        chunk_id.heap_size_bytes()
-            + timepoint_max.heap_size_bytes()
-            + schema.heap_size_bytes()
-            + chunk.heap_size_bytes()
+        chunk_id.heap_size_bytes() + timepoint_max.heap_size_bytes() + batch.heap_size_bytes()
     }
 }
 

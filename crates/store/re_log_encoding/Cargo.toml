@@ -51,7 +51,7 @@ re_smart_channel.workspace = true
 re_tracing.workspace = true
 
 # External:
-arrow2.workspace = true
+arrow = { workspace = true, features = ["ipc"] }
 parking_lot.workspace = true
 thiserror.workspace = true
 

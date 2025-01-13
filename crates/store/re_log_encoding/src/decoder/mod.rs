@@ -86,7 +86,7 @@ pub enum DecodeError {
     Chunk(#[from] re_chunk::ChunkError),
 
     #[error("Arrow error: {0}")]
-    Arrow(#[from] arrow2::error::Error),
+    Arrow(#[from] arrow::error::ArrowError),
 
     #[error("MsgPack error: {0}")]
     MsgPack(#[from] rmp_serde::decode::Error),

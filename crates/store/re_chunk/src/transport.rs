@@ -728,12 +728,11 @@ impl Chunk {
         let re_log_types::ArrowMsg {
             chunk_id: _,
             timepoint_max: _,
-            schema,
-            chunk,
+            batch,
             on_release: _,
         } = msg;
 
-        Self::from_transport(&TransportChunk::new(schema.clone(), chunk.clone()))
+        Self::from_transport(&TransportChunk::from(batch.clone()))
     }
 
     #[inline]
@@ -745,8 +744,7 @@ impl Chunk {
         Ok(re_log_types::ArrowMsg {
             chunk_id: re_tuid::Tuid::from_u128(self.id().as_u128()),
             timepoint_max: self.timepoint_max(),
-            schema: transport.schema,
-            chunk: transport.data,
+            batch: transport.into(),
             on_release: None,
         })
     }

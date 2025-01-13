@@ -14,7 +14,7 @@ use re_chunk::{
     ChunkId, PendingRow, RowId, TimeColumn,
 };
 use re_log_types::{
-    ApplicationId, ArrowChunkReleaseCallback, BlueprintActivationCommand, EntityPath, LogMsg,
+    ApplicationId, ArrowRecordBatchReleaseCallback, BlueprintActivationCommand, EntityPath, LogMsg,
     StoreId, StoreInfo, StoreKind, StoreSource, Time, TimeInt, TimePoint, TimeType, Timeline,
     TimelineName,
 };
@@ -1411,7 +1411,7 @@ fn forwarding_thread(
     mut sink: Box<dyn LogSink>,
     cmds_rx: Receiver<Command>,
     chunks: Receiver<Chunk>,
-    on_release: Option<ArrowChunkReleaseCallback>,
+    on_release: Option<ArrowRecordBatchReleaseCallback>,
 ) {
     /// Returns `true` to indicate that processing can continue; i.e. `false` means immediate
     /// shutdown.

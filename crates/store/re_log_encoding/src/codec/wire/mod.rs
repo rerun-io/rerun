@@ -43,10 +43,7 @@ mod tests {
         };
         let decoded = dataframe_part.decode();
 
-        assert!(matches!(
-            decoded.err().unwrap(),
-            CodecError::ArrowSerialization(_)
-        ));
+        assert!(matches!(decoded.err().unwrap(), CodecError::ArrowSerialization(_)));
     }
 
     #[test]
