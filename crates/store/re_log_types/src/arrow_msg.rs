@@ -99,24 +99,48 @@ impl serde::Serialize for ArrowMsg {
         S: serde::Serializer,
     {
         re_tracing::profile_scope!("ArrowMsg::serialize");
-
-        use arrow::ipc::writer::StreamWriter;
         use serde::ser::SerializeTuple;
 
-        let mut buf = Vec::<u8>::new();
-        let mut writer = StreamWriter::try_new(&mut buf, self.batch.schema_ref())
-            .map_err(|err| serde::ser::Error::custom(err.to_string()))?;
-        writer
-            .write(&self.batch)
-            .map_err(|err| serde::ser::Error::custom(err.to_string()))?;
-        writer
-            .finish()
-            .map_err(|err| serde::ser::Error::custom(err.to_string()))?;
+        let mut ipc_bytes = Vec::<u8>::new();
+
+        // TODO(emilk): switch to arrow1 once https://github.com/apache/arrow-rs/issues/6803 is released
+        // use arrow::ipc::writer::StreamWriter;
+        // let mut writer = StreamWriter::try_new(&mut ipc_bytes, self.batch.schema_ref())
+        //     .map_err(|err| serde::ser::Error::custom(err.to_string()))?;
+        // writer
+        //     .write(&self.batch)
+        //     .map_err(|err| serde::ser::Error::custom(err.to_string()))?;
+        // writer
+        //     .finish()
+        //     .map_err(|err| serde::ser::Error::custom(err.to_string()))?;
+
+        {
+            let schema = arrow2::datatypes::Schema::from(self.batch.schema());
+            let chunk = arrow2::chunk::Chunk::new(
+                self.batch
+                    .columns()
+                    .iter()
+                    .map(|c| -> Box<dyn arrow2::array::Array> { c.clone().into() })
+                    .collect(),
+            );
+
+            let mut writer =
+                arrow2::io::ipc::write::StreamWriter::new(&mut ipc_bytes, Default::default());
+            writer
+                .start(&schema, None)
+                .map_err(|err| serde::ser::Error::custom(err.to_string()))?;
+            writer
+                .write(&chunk, None)
+                .map_err(|err| serde::ser::Error::custom(err.to_string()))?;
+            writer
+                .finish()
+                .map_err(|err| serde::ser::Error::custom(err.to_string()))?;
+        }
 
         let mut inner = serializer.serialize_tuple(3)?;
         inner.serialize_element(&self.chunk_id)?;
         inner.serialize_element(&self.timepoint_max)?;
-        inner.serialize_element(&serde_bytes::ByteBuf::from(buf))?;
+        inner.serialize_element(&serde_bytes::ByteBuf::from(ipc_bytes))?;
         inner.end()
     }
 }

@@ -5,7 +5,7 @@ pub mod wire;
 #[derive(Debug, thiserror::Error)]
 pub enum CodecError {
     #[error("Arrow IPC serialization error: {0}")]
-    ArrowSerialization(::arrow::error::ArrowError),
+    ArrowSerialization(::arrow2::error::Error),
 
     #[error("Invalid Chunk: {0}")]
     InvalidChunk(::arrow::error::ArrowError),

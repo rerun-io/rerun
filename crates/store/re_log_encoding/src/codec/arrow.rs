@@ -9,10 +9,30 @@ pub(crate) fn write_arrow_to_bytes<W: std::io::Write>(
     writer: &mut W,
     batch: &ArrowRecordBatch,
 ) -> Result<(), CodecError> {
-    let mut sw = ipc::writer::StreamWriter::try_new(writer, batch.schema_ref())
+    // TODO(#3741): switch to arrow1 once https://github.com/apache/arrow-rs/issues/6803 is released
+    // let mut sw = ipc::writer::StreamWriter::try_new(writer, batch.schema_ref())
+    //     .map_err(CodecError::ArrowSerialization)?;
+    // sw.write(batch).map_err(CodecError::ArrowSerialization)?;
+    // sw.finish().map_err(CodecError::ArrowSerialization)?;
+
+    let schema = arrow2::datatypes::Schema::from(batch.schema());
+    let chunk = arrow2::chunk::Chunk::new(
+        batch
+            .columns()
+            .iter()
+            .map(|c| -> Box<dyn arrow2::array::Array> { c.clone().into() })
+            .collect(),
+    );
+
+    let mut writer = arrow2::io::ipc::write::StreamWriter::new(writer, Default::default());
+    writer
+        .start(&schema, None)
         .map_err(CodecError::ArrowSerialization)?;
-    sw.write(batch).map_err(CodecError::ArrowSerialization)?;
-    sw.finish().map_err(CodecError::ArrowSerialization)?;
+    writer
+        .write(&chunk, None)
+        .map_err(CodecError::ArrowSerialization)?;
+    writer.finish().map_err(CodecError::ArrowSerialization)?;
+
     Ok(())
 }
 

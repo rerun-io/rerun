@@ -6089,6 +6089,7 @@ dependencies = [
  "lz4_flex",
  "mimalloc",
  "parking_lot",
+ "re_arrow2",
  "re_build_info",
  "re_chunk",
  "re_log",
