@@ -22,7 +22,7 @@ impl TransportChunk {
 
         let metadata = self.schema.metadata.clone().into_iter().collect();
 
-        let schema = Schema::new(fields).with_metadata(metadata);
+        let schema = Schema::new_with_metadata(fields, metadata);
 
         let columns: Vec<_> = self
             .data

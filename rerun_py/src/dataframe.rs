@@ -756,7 +756,7 @@ impl PyRecordingView {
                 let fields: Vec<arrow::datatypes::Field> =
                     schema.fields.iter().map(|f| f.clone().into()).collect();
                 let metadata = schema.metadata.clone().into_iter().collect();
-                let schema = arrow::datatypes::Schema::new(fields).with_metadata(metadata);
+                let schema = arrow::datatypes::Schema::new_with_metadata(fields, metadata);
 
                 let reader = RecordBatchIterator::new(
                     query_handle
@@ -853,7 +853,7 @@ impl PyRecordingView {
                 let fields: Vec<arrow::datatypes::Field> =
                     schema.fields.iter().map(|f| f.clone().into()).collect();
                 let metadata = schema.metadata.clone().into_iter().collect();
-                let schema = arrow::datatypes::Schema::new(fields).with_metadata(metadata);
+                let schema = arrow::datatypes::Schema::new_with_metadata(fields, metadata);
 
                 let reader = RecordBatchIterator::new(
                     query_handle

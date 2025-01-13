@@ -54,6 +54,8 @@ disallowed-methods = [
   { path = "arrow::compute::filter", reason = "Use `re_chunk::arrow_util::filter_array` instead" },
   { path = "arrow::compute::take", reason = "Use `re_chunk::arrow_util::take_array` instead" },
 
+  { path = "arrow::datatypes::Schema::new", reason = "Use `arrow::datatypes::Schema::new_with_metadata` instead. There is usually some metadata you want to preserve." },
+
   # Specify both `arrow2` and `re_arrow2` -- clippy gets lost in all the package renaming happening.
   { path = "arrow2::compute::concatenate::concatenate", reason = "Use `re_chunk::arrow2_util::concat_arrays` instead, which has proper early outs" },
   { path = "arrow2::compute::filter::filter", reason = "Use `re_chunk::arrow2_util::filter_array` instead, which has proper early outs" },
