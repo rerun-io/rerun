@@ -166,7 +166,7 @@ impl FilterCommand {
         let rrd_out_size = encoding_handle
             .context("couldn't spawn IO thread")?
             .join()
-            .unwrap()?;
+            .map_err(|err| anyhow::anyhow!("Unknown error: {err:?}"))??;
 
         let rrds_in_size = rx_size_bytes.recv().ok();
         let size_reduction =
