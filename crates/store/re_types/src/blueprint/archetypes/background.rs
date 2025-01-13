@@ -19,13 +19,13 @@ use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: Configuration for the background of a view.
-#[derive(Clone, Debug, Copy)]
+#[derive(Clone, Debug, Default)]
 pub struct Background {
     /// The type of the background.
-    pub kind: crate::blueprint::components::BackgroundKind,
+    pub kind: Option<SerializedComponentBatch>,
 
     /// Color used for the solid background type.
-    pub color: Option<crate::components::Color>,
+    pub color: Option<SerializedComponentBatch>,
 }
 
 impl Background {
@@ -132,52 +132,24 @@ impl ::re_types_core::Archetype for Background {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
         let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
-        let kind = {
-            let array = arrays_by_descr
-                .get(&Self::descriptor_kind())
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.blueprint.archetypes.Background#kind")?;
-            <crate::blueprint::components::BackgroundKind>::from_arrow_opt(&**array)
-                .with_context("rerun.blueprint.archetypes.Background#kind")?
-                .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.blueprint.archetypes.Background#kind")?
-        };
-        let color = if let Some(array) = arrays_by_descr.get(&Self::descriptor_color()) {
-            <crate::components::Color>::from_arrow_opt(&**array)
-                .with_context("rerun.blueprint.archetypes.Background#color")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
+        let kind = arrays_by_descr
+            .get(&Self::descriptor_kind())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_kind()));
+        let color = arrays_by_descr
+            .get(&Self::descriptor_color())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_color()));
         Ok(Self { kind, color })
     }
 }
 
 impl ::re_types_core::AsComponents for Background {
-    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
-        re_tracing::profile_function!();
+    #[inline]
+    fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
-            (Some(&self.kind as &dyn ComponentBatch)).map(|batch| {
-                ::re_types_core::ComponentBatchCowWithDescriptor {
-                    batch: batch.into(),
-                    descriptor_override: Some(Self::descriptor_kind()),
-                }
-            }),
-            (self
-                .color
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_color()),
-            }),
+            Self::indicator().serialized(),
+            self.kind.clone(),
+            self.color.clone(),
         ]
         .into_iter()
         .flatten()
@@ -192,15 +164,47 @@ impl Background {
     #[inline]
     pub fn new(kind: impl Into<crate::blueprint::components::BackgroundKind>) -> Self {
         Self {
-            kind: kind.into(),
+            kind: try_serialize_field(Self::descriptor_kind(), [kind]),
             color: None,
         }
+    }
+
+    /// Update only some specific fields of a `Background`.
+    #[inline]
+    pub fn update_fields() -> Self {
+        Self::default()
+    }
+
+    /// Clear all the fields of a `Background`.
+    #[inline]
+    pub fn clear_fields() -> Self {
+        use ::re_types_core::Loggable as _;
+        Self {
+            kind: Some(SerializedComponentBatch::new(
+                crate::blueprint::components::BackgroundKind::arrow_empty(),
+                Self::descriptor_kind(),
+            )),
+            color: Some(SerializedComponentBatch::new(
+                crate::components::Color::arrow_empty(),
+                Self::descriptor_color(),
+            )),
+        }
+    }
+
+    /// The type of the background.
+    #[inline]
+    pub fn with_kind(
+        mut self,
+        kind: impl Into<crate::blueprint::components::BackgroundKind>,
+    ) -> Self {
+        self.kind = try_serialize_field(Self::descriptor_kind(), [kind]);
+        self
     }
 
     /// Color used for the solid background type.
     #[inline]
     pub fn with_color(mut self, color: impl Into<crate::components::Color>) -> Self {
-        self.color = Some(color.into());
+        self.color = try_serialize_field(Self::descriptor_color(), [color]);
         self
     }
 }
@@ -209,11 +213,5 @@ impl ::re_byte_size::SizeBytes for Background {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.kind.heap_size_bytes() + self.color.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::blueprint::components::BackgroundKind>::is_pod()
-            && <Option<crate::components::Color>>::is_pod()
     }
 }
