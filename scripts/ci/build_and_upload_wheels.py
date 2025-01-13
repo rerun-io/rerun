@@ -70,7 +70,8 @@ def build_and_upload(bucket: Bucket | None, mode: BuildMode, gcs_dir: str, targe
     if mode is BuildMode.PYPI:
         maturin_feature_flags = "--no-default-features --features pypi"
     elif mode is BuildMode.PR:
-        maturin_feature_flags = "--no-default-features --features extension-module"
+        # Remote is necessary to fully validate the signature match on the wheels
+        maturin_feature_flags = "--no-default-features --features extension-module,remote"
     elif mode is BuildMode.EXTRA:
         maturin_feature_flags = "--no-default-features --features pypi,extra"
 
