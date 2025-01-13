@@ -167,7 +167,7 @@ impl PyStorageNodeClient {
 
             let schema = batches
                 .first()
-                .map(|batch| batch.schema.clone())
+                .map(|batch| batch.schema())
                 .unwrap_or_else(|| arrow2::datatypes::Schema::from(vec![]));
 
             let fields: Vec<arrow::datatypes::Field> =

@@ -57,6 +57,18 @@ impl std::fmt::Display for TransportChunk {
     }
 }
 
+impl TransportChunk {
+    pub fn new(
+        schema: impl Into<Arrow2Schema>,
+        columns: impl Into<Arrow2Chunk<Box<dyn Arrow2Array>>>,
+    ) -> Self {
+        Self {
+            schema: schema.into(),
+            data: columns.into(),
+        }
+    }
+}
+
 // TODO(#6572): Relying on Arrow's native schema metadata feature is bound to fail, we need to
 // switch to something more powerful asap.
 impl TransportChunk {
@@ -529,10 +541,7 @@ impl Chunk {
             }
         }
 
-        Ok(TransportChunk {
-            schema,
-            data: Arrow2Chunk::new(columns),
-        })
+        Ok(TransportChunk::new(schema, Arrow2Chunk::new(columns)))
     }
 
     pub fn from_transport(transport: &TransportChunk) -> ChunkResult<Self> {
@@ -687,10 +696,7 @@ impl Chunk {
             on_release: _,
         } = msg;
 
-        Self::from_transport(&TransportChunk {
-            schema: schema.clone(),
-            data: chunk.clone(),
-        })
+        Self::from_transport(&TransportChunk::new(schema.clone(), chunk.clone()))
     }
 
     #[inline]

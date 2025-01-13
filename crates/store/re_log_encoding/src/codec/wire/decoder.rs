@@ -13,13 +13,7 @@ fn decode(
         re_protos::common::v0::EncoderVersion::V0 => {
             let mut reader = std::io::Cursor::new(data);
             let (schema, data) = read_arrow_from_bytes(&mut reader)?;
-
-            let tc = TransportChunk {
-                schema: schema.clone(),
-                data,
-            };
-
-            Ok(tc)
+            Ok(TransportChunk::new(schema.clone(), data))
         }
     }
 }

@@ -734,10 +734,7 @@ impl ChunkStore {
                         anyhow::bail!("unknown store ID: {store_id}");
                     };
 
-                    let transport = TransportChunk {
-                        schema: msg.schema.clone(),
-                        data: msg.chunk.clone(),
-                    };
+                    let transport = TransportChunk::new(msg.schema.clone(), msg.chunk.clone());
 
                     let chunk = Chunk::from_transport(&transport)
                         .with_context(|| format!("couldn't decode chunk {path_to_rrd:?}"))?;
@@ -787,10 +784,7 @@ impl ChunkStore {
                         anyhow::bail!("unknown store ID: {store_id}");
                     };
 
-                    let transport = TransportChunk {
-                        schema: msg.schema.clone(),
-                        data: msg.chunk.clone(),
-                    };
+                    let transport = TransportChunk::new(msg.schema.clone(), msg.chunk.clone());
 
                     let chunk = Chunk::from_transport(&transport)
                         .with_context(|| "couldn't decode chunk".to_owned())?;
