@@ -1,4 +1,7 @@
-use arrow::array::{ArrayRef as ArrowArrayRef, StructArray as ArrowStructArray};
+use arrow::array::{
+    Array as ArrowArray, ArrayRef as ArrowArrayRef, RecordBatch as ArrowRecordBatch,
+    StructArray as ArrowStructArray,
+};
 use arrow2::{
     array::{Array as Arrow2Array, ListArray},
     chunk::Chunk as Arrow2Chunk,
@@ -66,6 +69,35 @@ impl TransportChunk {
             schema: schema.into(),
             data: columns.into(),
         }
+    }
+}
+
+impl From<ArrowRecordBatch> for TransportChunk {
+    fn from(batch: ArrowRecordBatch) -> Self {
+        Self::new(
+            batch.schema(),
+            Arrow2Chunk::new(
+                batch
+                    .columns()
+                    .iter()
+                    .map(|column| column.clone().into())
+                    .collect(),
+            ),
+        )
+    }
+}
+
+impl From<TransportChunk> for ArrowRecordBatch {
+    fn from(chunk: TransportChunk) -> Self {
+        let TransportChunk { schema, data } = chunk;
+        Self::try_new(
+            schema.into(),
+            data.columns()
+                .iter()
+                .map(|column| column.clone().into())
+                .collect(),
+        )
+        .unwrap()
     }
 }
 
