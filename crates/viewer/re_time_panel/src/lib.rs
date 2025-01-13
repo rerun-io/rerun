@@ -751,8 +751,6 @@ impl TimePanel {
         let is_short_path = tree.path.len() <= 1 && !tree.is_leaf();
         let default_open = self.filter_state.session_id().is_some() || is_short_path;
 
-        //dbg!((collapse_scope, default_open));
-
         let list_item::ShowCollapsingResponse {
             item_response: response,
             body_response,
