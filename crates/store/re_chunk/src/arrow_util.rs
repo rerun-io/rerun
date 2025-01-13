@@ -7,6 +7,11 @@ use itertools::Itertools;
 
 // ---
 
+#[inline]
+pub fn into_arrow_ref(array: impl Array + 'static) -> ArrayRef {
+    std::sync::Arc::new(array)
+}
+
 /// Returns true if the given `list_array` is semantically empty.
 ///
 /// Semantic emptiness is defined as either one of these:
@@ -285,7 +290,7 @@ where
     );
 
     if indices.len() == array.len() {
-        let indices = indices.values().as_ref();
+        let indices = indices.values();
 
         let starts_at_zero = || indices[0] == O::Native::ZERO;
         let is_consecutive = || {

@@ -1,9 +1,11 @@
-use arrow::buffer::ScalarBuffer as ArrowScalarBuffer;
+use std::sync::Arc;
+
+use arrow::{
+    array::{Array as _, StructArray as ArrowStructArray, UInt64Array as ArrowUInt64Array},
+    buffer::ScalarBuffer as ArrowScalarBuffer,
+};
 use arrow2::{
-    array::{
-        Array as Arrow2Array, ListArray as Arrow2ListArray, PrimitiveArray as Arrow2PrimitiveArray,
-        StructArray,
-    },
+    array::{Array as Arrow2Array, ListArray as Arrow2ListArray},
     offset::Offsets as ArrowOffsets,
 };
 use itertools::Itertools as _;
@@ -213,14 +215,11 @@ impl Chunk {
                 sorted_counters[to] = counters[from];
             }
 
-            let times = Arrow2PrimitiveArray::<u64>::from_vec(sorted_times).boxed();
-            let counters = Arrow2PrimitiveArray::<u64>::from_vec(sorted_counters).boxed();
+            let times = Arc::new(ArrowUInt64Array::from(sorted_times));
+            let counters = Arc::new(ArrowUInt64Array::from(sorted_counters));
 
-            self.row_ids = StructArray::new(
-                self.row_ids.data_type().clone(),
-                vec![times, counters],
-                None,
-            );
+            self.row_ids =
+                ArrowStructArray::new(self.row_ids.fields().clone(), vec![times, counters], None);
         }
 
         let Self {
