@@ -176,7 +176,6 @@ impl ViewContextSystem for TransformTreeContext {
         query: &re_viewer_context::ViewQuery<'_>,
     ) {
         re_tracing::profile_function!();
-
         debug_assert_transform_field_order(ctx.viewer_ctx.reflection);
 
         // Make sure transform cache is up to date.

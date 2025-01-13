@@ -62,6 +62,7 @@ bitflags::bitflags! {
 
 /// Points in time that have changed for a given entity,
 /// i.e. the cache is invalid for these times.
+#[derive(Debug)]
 struct QueuedTransformUpdates {
     entity_path: EntityPath,
     times: Vec<TimeInt>,
@@ -107,7 +108,7 @@ impl PerTimelinePerEntityTransforms {
     pub fn latest_at_tree_transform(&self, query: &LatestAtQuery) -> Option<&glam::Affine3A> {
         debug_assert!(query.timeline() == self.timeline);
         self.tree_transforms
-            .range(..query.at())
+            .range(..query.at().inc())
             .next_back()
             .map(|(_time, transform)| transform)
     }
@@ -116,7 +117,7 @@ impl PerTimelinePerEntityTransforms {
     pub fn latest_at_instance_poses(&self, query: &LatestAtQuery) -> Option<&Vec<glam::Affine3A>> {
         debug_assert!(query.timeline() == self.timeline);
         self.pose_transforms
-            .range(..query.at())
+            .range(..query.at().inc())
             .next_back()
             .map(|(_time, transform)| transform)
     }
@@ -125,7 +126,7 @@ impl PerTimelinePerEntityTransforms {
     pub fn latest_at_pinhole(&self, query: &LatestAtQuery) -> Option<&ResolvedPinholeProjection> {
         debug_assert!(query.timeline() == self.timeline);
         self.pinhole_projections
-            .range(..query.at())
+            .range(..query.at().inc())
             .next_back()
             .map(|(_time, transform)| transform)
     }
@@ -492,4 +493,112 @@ fn query_and_resolve_pinhole_projection_at_entity(
                 .latest_at_component::<components::ViewCoordinates>(entity_path, query)
                 .map_or(components::ViewCoordinates::RDF, |(_index, res)| res),
         })
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use re_chunk_store::{external::re_chunk::ChunkBuilder, ChunkId, RowId};
+    use re_types::archetypes;
+
+    use super::*;
+
+    #[test]
+    fn test_tree_transforms() {
+        let mut entity_db = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
+        TransformCacheStoreSubscriber::access(&entity_db.store_id(), |_| {
+            // Make sure the subscriber is registered.
+        });
+
+        // Log a few tree transforms at different times.
+        let timeline = Timeline::new_sequence("t");
+        entity_db
+            .add_chunk(&Arc::new(
+                ChunkBuilder::new(ChunkId::new(), EntityPath::from("my_entity"))
+                    .with_archetype(
+                        RowId::new(),
+                        [(timeline, 1)],
+                        &archetypes::Transform3D::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
+                    )
+                    .with_component_batch(
+                        RowId::new(),
+                        [(timeline, 3)],
+                        // Don't clear out existing translation.
+                        &[components::Scale3D(glam::Vec3::new(1.0, 2.0, 3.0).into())],
+                    )
+                    .with_archetype(
+                        RowId::new(),
+                        [(timeline, 4)],
+                        // Clears out previous translation & scale.
+                        //&archetypes::Transform3D::from_rotation(glam::Quat::from_rotation_x(1.0)),
+                        &archetypes::Transform3D::from_translation(glam::Vec3::new(
+                            123.0, 2.0, 3.0,
+                        )),
+                    )
+                    .build()
+                    .unwrap(),
+            ))
+            .unwrap();
+
+        // Check that the transform cache has the expected transforms.
+        TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+            cache.apply_all_updates(&entity_db);
+            let transforms_per_timeline = cache.transforms_per_timeline(timeline).unwrap();
+            assert!(transforms_per_timeline
+                .entity_transforms(EntityPath::from("not_my_entity").hash())
+                .is_none());
+
+            let transforms = transforms_per_timeline
+                .entity_transforms(EntityPath::from("my_entity").hash())
+                .unwrap();
+
+            assert_eq!(
+                transforms.latest_at_tree_transform(&LatestAtQuery::new(timeline, 0)),
+                None
+            );
+            assert_eq!(
+                transforms.latest_at_tree_transform(&LatestAtQuery::new(timeline, 1)),
+                Some(&glam::Affine3A::from_translation(glam::Vec3::new(
+                    1.0, 2.0, 3.0
+                )))
+            );
+            assert_eq!(
+                transforms.latest_at_tree_transform(&LatestAtQuery::new(timeline, 2)),
+                Some(&glam::Affine3A::from_translation(glam::Vec3::new(
+                    1.0, 2.0, 3.0
+                )))
+            );
+            assert_eq!(
+                transforms.latest_at_tree_transform(&LatestAtQuery::new(timeline, 3)),
+                Some(&glam::Affine3A::from_scale_rotation_translation(
+                    glam::Vec3::new(1.0, 2.0, 3.0),
+                    glam::Quat::IDENTITY,
+                    glam::Vec3::new(1.0, 2.0, 3.0),
+                ))
+            );
+            assert_eq!(
+                transforms.latest_at_tree_transform(&LatestAtQuery::new(timeline, 4)),
+                //       Some(&glam::Affine3A::from_quat(glam::Quat::from_rotation_x(1.0)))
+                Some(&glam::Affine3A::from_translation(glam::Vec3::new(
+                    123.0, 2.0, 3.0
+                )))
+            );
+        });
+    }
+
+    #[test]
+    fn test_pose_transforms() {
+        // TODO:
+    }
+
+    #[test]
+    fn test_pinhole_projections() {
+        // TODO:
+    }
+
+    #[test]
+    fn test_invalidation() {
+        // TODO:
+    }
 }
