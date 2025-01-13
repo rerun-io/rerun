@@ -284,6 +284,15 @@ fn quote_struct(
     let quoted_repr_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_REPR, "repr");
     let quoted_custom_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_CUSTOM_CLAUSE, "");
 
+    // Eager archetypes must always derive Default.
+    let quoted_eager_derive_default_clause = (obj.is_eager_rust_archetype()
+        && !quoted_derive_clause.to_string().contains("Default"))
+    .then(|| {
+        quote! {
+            #[derive(Default)]
+        }
+    });
+
     let quoted_fields = fields
         .iter()
         .map(|obj_field| ObjectFieldTokenizer(reporter, obj, obj_field).quoted(objects));
@@ -353,6 +362,7 @@ fn quote_struct(
         #quoted_doc
         #quoted_derive_clone_debug
         #quoted_derive_clause
+        #quoted_eager_derive_default_clause
         #quoted_repr_clause
         #quoted_custom_clause
         #quoted_deprecation_notice
@@ -1731,7 +1741,7 @@ fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) 
         }
     });
 
-    let eager_with_methods = optional.iter().map(|field| {
+    let eager_with_methods = required.iter().chain(optional.iter()).map(|field| {
         // fn with_*()
         let field_name = format_ident!("{}", field.name);
         let descr_fn_name = format_ident!("descriptor_{field_name}");
@@ -1760,8 +1770,47 @@ fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) 
         }
     });
 
+    let partial_update_methods = obj.is_eager_rust_archetype().then(|| {
+        let update_fields_doc =
+            quote_doc_line(&format!("Update only some specific fields of a `{name}`."));
+        let clear_fields_doc = quote_doc_line(&format!("Clear all the fields of a `{name}`."));
+
+        let fields = required.iter().chain(optional.iter()).map(|field| {
+            let field_name = format_ident!("{}", field.name);
+            let descr_fn_name = format_ident!("descriptor_{field_name}");
+            let (typ, _) = quote_field_type_from_typ(&field.typ, true);
+            quote! {
+                #field_name: Some(SerializedComponentBatch::new(
+                    #typ::arrow_empty(),
+                    Self::#descr_fn_name(),
+                ))
+            }
+        });
+
+        quote! {
+            #update_fields_doc
+            #[inline]
+            pub fn update_fields() -> Self {
+                Self::default()
+            }
+
+            #clear_fields_doc
+            #[inline]
+            pub fn clear_fields() -> Self {
+                use ::re_types_core::Loggable as _;
+                Self {
+                    #(#fields),*
+                }
+            }
+        }
+    });
+
     let with_methods = if obj.is_eager_rust_archetype() {
-        quote!(#(#eager_with_methods)*)
+        quote! {
+            #partial_update_methods
+
+            #(#eager_with_methods)*
+        }
     } else {
         quote!(#(#native_with_methods)*)
     };

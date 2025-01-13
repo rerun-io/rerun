@@ -94,7 +94,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/point3d_ui_radius/e051a65b4317438bcaea8d0eee016ac9460b5336/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub struct Points3D {
     /// All the 3D positions at which the point cloud shows points.
     pub positions: Option<SerializedComponentBatch>,
@@ -380,6 +380,58 @@ impl Points3D {
             class_ids: None,
             keypoint_ids: None,
         }
+    }
+
+    /// Update only some specific fields of a `Points3D`.
+    #[inline]
+    pub fn update_fields() -> Self {
+        Self::default()
+    }
+
+    /// Clear all the fields of a `Points3D`.
+    #[inline]
+    pub fn clear_fields() -> Self {
+        use ::re_types_core::Loggable as _;
+        Self {
+            positions: Some(SerializedComponentBatch::new(
+                crate::components::Position3D::arrow_empty(),
+                Self::descriptor_positions(),
+            )),
+            radii: Some(SerializedComponentBatch::new(
+                crate::components::Radius::arrow_empty(),
+                Self::descriptor_radii(),
+            )),
+            colors: Some(SerializedComponentBatch::new(
+                crate::components::Color::arrow_empty(),
+                Self::descriptor_colors(),
+            )),
+            labels: Some(SerializedComponentBatch::new(
+                crate::components::Text::arrow_empty(),
+                Self::descriptor_labels(),
+            )),
+            show_labels: Some(SerializedComponentBatch::new(
+                crate::components::ShowLabels::arrow_empty(),
+                Self::descriptor_show_labels(),
+            )),
+            class_ids: Some(SerializedComponentBatch::new(
+                crate::components::ClassId::arrow_empty(),
+                Self::descriptor_class_ids(),
+            )),
+            keypoint_ids: Some(SerializedComponentBatch::new(
+                crate::components::KeypointId::arrow_empty(),
+                Self::descriptor_keypoint_ids(),
+            )),
+        }
+    }
+
+    /// All the 3D positions at which the point cloud shows points.
+    #[inline]
+    pub fn with_positions(
+        mut self,
+        positions: impl IntoIterator<Item = impl Into<crate::components::Position3D>>,
+    ) -> Self {
+        self.positions = try_serialize_field(Self::descriptor_positions(), positions);
+        self
     }
 
     /// Optional radii for the points, effectively turning them into circles.
