@@ -1,5 +1,5 @@
 pub use error::Error;
-pub use provider::RedapProvider;
+pub use provider::{JwtClaims, RedapProvider};
 pub use service::*;
 pub use token::{Jwt, TokenError};
 

@@ -42,21 +42,18 @@ impl Interceptor for Authenticator {
     fn call(&mut self, req: Request<()>) -> Result<Request<()>, Status> {
         let mut req = req;
 
-        let token_metadata = req
-            .metadata()
-            .get(AUTHORIZATION_KEY)
-            .ok_or_else(|| Status::unauthenticated("missing valid auth token"))?;
+        if let Some(token_metadata) = req.metadata().get(AUTHORIZATION_KEY) {
+            let token = Jwt::try_from(token_metadata)
+                .map_err(|_err| Status::unauthenticated("malformed auth token"))?;
 
-        let token = Jwt::try_from(token_metadata)
-            .map_err(|_err| Status::unauthenticated("malformed auth token"))?;
+            let claims = self.secret_key.verify(&token).map_err(|err| match err {
+                Error::InvalidPermission { .. } => Status::permission_denied(err.to_string()),
+                _ => Status::unauthenticated("invalid credentials"),
+            })?;
 
-        let claims = self.secret_key.verify(&token).map_err(|err| match err {
-            Error::InvalidPermission { .. } => Status::permission_denied(err.to_string()),
-            _ => Status::unauthenticated("invalid credentials"),
-        })?;
-
-        if let Some(user_id) = claims.subject {
-            req.extensions_mut().insert(UserContext { user_id });
+            if let Some(user_id) = claims.subject {
+                req.extensions_mut().insert(UserContext { user_id });
+            }
         }
 
         Ok(req)
