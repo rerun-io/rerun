@@ -38,7 +38,7 @@ pub(crate) fn decode(data: &mut impl std::io::Read) -> Result<(u64, Option<LogMs
                 .ok_or_else(|| missing_field!(re_protos::log_msg::v0::ArrowMsg, "store_id"))?
                 .into();
 
-            let chunk = re_chunk::Chunk::from_transport(&batch.into())?;
+            let chunk = re_chunk::Chunk::from_record_batch(batch)?;
 
             Some(LogMsg::ArrowMsg(store_id, chunk.to_arrow_msg()?))
         }

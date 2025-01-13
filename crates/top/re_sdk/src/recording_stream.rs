@@ -2350,7 +2350,6 @@ impl RecordingStream {
 
 #[cfg(test)]
 mod tests {
-    use re_chunk::TransportChunk;
     use re_log_types::example_components::MyLabel;
 
     use super::*;
@@ -2410,11 +2409,7 @@ mod tests {
             LogMsg::ArrowMsg(rid, msg) => {
                 assert_eq!(store_info.store_id, rid);
 
-                let chunk = Chunk::from_transport(&TransportChunk::new(
-                    msg.schema.clone(),
-                    msg.chunk.clone(),
-                ))
-                .unwrap();
+                let chunk = Chunk::from_arrow_msg(&msg).unwrap();
 
                 chunk.sanity_check().unwrap();
             }
@@ -2472,11 +2467,7 @@ mod tests {
             LogMsg::ArrowMsg(rid, msg) => {
                 assert_eq!(store_info.store_id, rid);
 
-                let chunk = Chunk::from_transport(&TransportChunk::new(
-                    msg.schema.clone(),
-                    msg.chunk.clone(),
-                ))
-                .unwrap();
+                let chunk = Chunk::from_arrow_msg(&msg).unwrap();
 
                 chunk.sanity_check().unwrap();
             }
@@ -2543,11 +2534,7 @@ mod tests {
                 LogMsg::ArrowMsg(rid, msg) => {
                     assert_eq!(store_info.store_id, rid);
 
-                    let chunk = Chunk::from_transport(&TransportChunk::new(
-                        msg.schema.clone(),
-                        msg.chunk.clone(),
-                    ))
-                    .unwrap();
+                    let chunk = Chunk::from_arrow_msg(&msg).unwrap();
 
                     chunk.sanity_check().unwrap();
                 }

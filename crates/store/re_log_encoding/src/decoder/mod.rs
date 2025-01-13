@@ -404,8 +404,6 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
 mod tests {
     #![allow(clippy::unwrap_used)] // acceptable for tests
 
-    use std::sync::Arc;
-
     use super::*;
     use arrow::datatypes::Schema;
     use re_build_info::CrateVersion;
@@ -459,34 +457,11 @@ mod tests {
         ]
     }
 
-    // TODO(#3741): should not be needed once the migration from arrow2 is complete
-    fn clear_arrow_extension_metadata(messages: &mut Vec<LogMsg>) {
-        for msg in messages {
-            if let LogMsg::ArrowMsg(_, arrow_msg) = msg {
-                let mut old_schema = arrow_msg.batch.schema();
-                let mut new_fields: Vec<_> = old_schema
-                    .fields
-                    .iter()
-                    .cloned()
-                    .map(|field| {
-                        let mut metadata = field.metadata().clone();
-                        metadata.retain(|k, _| !k.starts_with("ARROW:extension"));
-                        field.set_metadata(metadata);
-                        field
-                    })
-                    .collect();
-                let new_schema =
-                    Arc::new(Schema::new_with_metadata(new_fields, old_schema.metadata));
-                arrow_msg.batch = arrow_msg.batch.with_schema(new_schema);
-            }
-        }
-    }
-
     #[test]
     fn test_encode_decode() {
         let rrd_version = CrateVersion::LOCAL;
 
-        let mut messages = fake_log_messages();
+        let messages = fake_log_messages();
 
         let options = [
             EncodingOptions {
@@ -512,14 +487,10 @@ mod tests {
             crate::encoder::encode_ref(rrd_version, options, messages.iter().map(Ok), &mut file)
                 .unwrap();
 
-            let mut decoded_messages = Decoder::new(VersionPolicy::Error, &mut file.as_slice())
+            let decoded_messages = Decoder::new(VersionPolicy::Error, &mut file.as_slice())
                 .unwrap()
                 .collect::<Result<Vec<LogMsg>, DecodeError>>()
                 .unwrap();
-
-            // TODO(#3741): should not be needed once the migration from arrow2 is complete
-            clear_arrow_extension_metadata(&mut messages);
-            clear_arrow_extension_metadata(&mut decoded_messages);
 
             assert!(
                 messages == decoded_messages,
@@ -555,7 +526,7 @@ mod tests {
             let mut data = vec![];
 
             // write "2 files" i.e. 2 streams that end with end-of-stream marker
-            let mut messages = fake_log_messages();
+            let messages = fake_log_messages();
 
             // (2 encoders as each encoder writes a file header)
             let writer = std::io::Cursor::new(&mut data);
@@ -582,11 +553,7 @@ mod tests {
             )
             .unwrap();
 
-            let mut decoded_messages = decoder.into_iter().collect::<Result<Vec<_>, _>>().unwrap();
-
-            // TODO(#3741): should not be needed once the migration from arrow2 is complete
-            clear_arrow_extension_metadata(&mut messages);
-            clear_arrow_extension_metadata(&mut decoded_messages);
+            let decoded_messages = decoder.into_iter().collect::<Result<Vec<_>, _>>().unwrap();
 
             assert_eq!([messages.clone(), messages].concat(), decoded_messages);
         }

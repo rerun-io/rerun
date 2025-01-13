@@ -167,13 +167,13 @@ impl PyStorageNodeClient {
 
             let schema = batches
                 .first()
-                .map(|batch| batch.schema_ref())
-                .unwrap_or_else(|| arrow2::datatypes::Schema::from(vec![]));
+                .map(|batch| batch.schema.clone())
+                .unwrap_or_default();
 
             let fields: Vec<arrow::datatypes::Field> =
                 schema.fields.iter().map(|f| f.clone().into()).collect();
             let metadata = schema.metadata.clone().into_iter().collect();
-            let schema = arrow::datatypes::Schema::new(fields).with_metadata(metadata);
+            let schema = arrow::datatypes::Schema::new_with_metadata(fields, metadata);
 
             Ok(RecordBatchIterator::new(
                 batches.into_iter().map(|tc| tc.try_to_arrow_record_batch()),
