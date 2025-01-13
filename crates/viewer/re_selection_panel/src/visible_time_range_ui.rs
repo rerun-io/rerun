@@ -233,7 +233,7 @@ Notes:
         || collapsing_response.header_response.hovered()
         || collapsing_response
             .body_response
-            .map_or(false, |r| r.hovered());
+            .is_some_and(|r| r.hovered());
 
     if should_display_visible_time_range {
         if let Some(current_time) = time_ctrl.time_int() {
@@ -587,5 +587,5 @@ fn visible_history_boundary_ui(
         TimeRangeBoundary::Infinite => None,
     };
 
-    response.map_or(false, |r| r.dragged() || r.has_focus())
+    response.is_some_and(|r| r.dragged() || r.has_focus())
 }

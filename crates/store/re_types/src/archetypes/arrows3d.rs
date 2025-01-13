@@ -12,9 +12,9 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 
-use ::re_types_core::external::arrow;
+use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
@@ -95,105 +95,121 @@ pub struct Arrows3D {
     pub class_ids: Option<Vec<crate::components::ClassId>>,
 }
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
+impl Arrows3D {
+    /// Returns the [`ComponentDescriptor`] for [`Self::vectors`].
+    #[inline]
+    pub fn descriptor_vectors() -> ComponentDescriptor {
+        ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Arrows3D".into()),
             component_name: "rerun.components.Vector3D".into(),
             archetype_field_name: Some("vectors".into()),
-        }]
-    });
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::origins`].
+    #[inline]
+    pub fn descriptor_origins() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Arrows3D".into()),
+            component_name: "rerun.components.Position3D".into(),
+            archetype_field_name: Some("origins".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::radii`].
+    #[inline]
+    pub fn descriptor_radii() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Arrows3D".into()),
+            component_name: "rerun.components.Radius".into(),
+            archetype_field_name: Some("radii".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::colors`].
+    #[inline]
+    pub fn descriptor_colors() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Arrows3D".into()),
+            component_name: "rerun.components.Color".into(),
+            archetype_field_name: Some("colors".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::labels`].
+    #[inline]
+    pub fn descriptor_labels() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Arrows3D".into()),
+            component_name: "rerun.components.Text".into(),
+            archetype_field_name: Some("labels".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::show_labels`].
+    #[inline]
+    pub fn descriptor_show_labels() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Arrows3D".into()),
+            component_name: "rerun.components.ShowLabels".into(),
+            archetype_field_name: Some("show_labels".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::class_ids`].
+    #[inline]
+    pub fn descriptor_class_ids() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Arrows3D".into()),
+            component_name: "rerun.components.ClassId".into(),
+            archetype_field_name: Some("class_ids".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
+    #[inline]
+    pub fn descriptor_indicator() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Arrows3D".into()),
+            component_name: "rerun.components.Arrows3DIndicator".into(),
+            archetype_field_name: None,
+        }
+    }
+}
+
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [Arrows3D::descriptor_vectors()]);
 
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Arrows3D".into()),
-                component_name: "rerun.components.Position3D".into(),
-                archetype_field_name: Some("origins".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Arrows3D".into()),
-                component_name: "rerun.components.Arrows3DIndicator".into(),
-                archetype_field_name: None,
-            },
+            Arrows3D::descriptor_origins(),
+            Arrows3D::descriptor_indicator(),
         ]
     });
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Arrows3D".into()),
-                component_name: "rerun.components.Radius".into(),
-                archetype_field_name: Some("radii".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Arrows3D".into()),
-                component_name: "rerun.components.Color".into(),
-                archetype_field_name: Some("colors".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Arrows3D".into()),
-                component_name: "rerun.components.Text".into(),
-                archetype_field_name: Some("labels".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Arrows3D".into()),
-                component_name: "rerun.components.ShowLabels".into(),
-                archetype_field_name: Some("show_labels".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Arrows3D".into()),
-                component_name: "rerun.components.ClassId".into(),
-                archetype_field_name: Some("class_ids".into()),
-            },
+            Arrows3D::descriptor_radii(),
+            Arrows3D::descriptor_colors(),
+            Arrows3D::descriptor_labels(),
+            Arrows3D::descriptor_show_labels(),
+            Arrows3D::descriptor_class_ids(),
         ]
     });
 
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 8usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Arrows3D".into()),
-                component_name: "rerun.components.Vector3D".into(),
-                archetype_field_name: Some("vectors".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Arrows3D".into()),
-                component_name: "rerun.components.Position3D".into(),
-                archetype_field_name: Some("origins".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Arrows3D".into()),
-                component_name: "rerun.components.Arrows3DIndicator".into(),
-                archetype_field_name: None,
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Arrows3D".into()),
-                component_name: "rerun.components.Radius".into(),
-                archetype_field_name: Some("radii".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Arrows3D".into()),
-                component_name: "rerun.components.Color".into(),
-                archetype_field_name: Some("colors".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Arrows3D".into()),
-                component_name: "rerun.components.Text".into(),
-                archetype_field_name: Some("labels".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Arrows3D".into()),
-                component_name: "rerun.components.ShowLabels".into(),
-                archetype_field_name: Some("show_labels".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Arrows3D".into()),
-                component_name: "rerun.components.ClassId".into(),
-                archetype_field_name: Some("class_ids".into()),
-            },
+            Arrows3D::descriptor_vectors(),
+            Arrows3D::descriptor_origins(),
+            Arrows3D::descriptor_indicator(),
+            Arrows3D::descriptor_radii(),
+            Arrows3D::descriptor_colors(),
+            Arrows3D::descriptor_labels(),
+            Arrows3D::descriptor_show_labels(),
+            Arrows3D::descriptor_class_ids(),
         ]
     });
 
@@ -246,17 +262,14 @@ impl ::re_types_core::Archetype for Arrows3D {
 
     #[inline]
     fn from_arrow_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, arrow::array::ArrayRef)>,
+        arrow_data: impl IntoIterator<Item = (ComponentDescriptor, arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(name, array)| (name.full_name(), array))
-            .collect();
+        let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
         let vectors = {
-            let array = arrays_by_name
-                .get("rerun.components.Vector3D")
+            let array = arrays_by_descr
+                .get(&Self::descriptor_vectors())
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.Arrows3D#vectors")?;
             <crate::components::Vector3D>::from_arrow_opt(&**array)
@@ -266,7 +279,7 @@ impl ::re_types_core::Archetype for Arrows3D {
                 .collect::<DeserializationResult<Vec<_>>>()
                 .with_context("rerun.archetypes.Arrows3D#vectors")?
         };
-        let origins = if let Some(array) = arrays_by_name.get("rerun.components.Position3D") {
+        let origins = if let Some(array) = arrays_by_descr.get(&Self::descriptor_origins()) {
             Some({
                 <crate::components::Position3D>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Arrows3D#origins")?
@@ -278,7 +291,7 @@ impl ::re_types_core::Archetype for Arrows3D {
         } else {
             None
         };
-        let radii = if let Some(array) = arrays_by_name.get("rerun.components.Radius") {
+        let radii = if let Some(array) = arrays_by_descr.get(&Self::descriptor_radii()) {
             Some({
                 <crate::components::Radius>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Arrows3D#radii")?
@@ -290,7 +303,7 @@ impl ::re_types_core::Archetype for Arrows3D {
         } else {
             None
         };
-        let colors = if let Some(array) = arrays_by_name.get("rerun.components.Color") {
+        let colors = if let Some(array) = arrays_by_descr.get(&Self::descriptor_colors()) {
             Some({
                 <crate::components::Color>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Arrows3D#colors")?
@@ -302,7 +315,7 @@ impl ::re_types_core::Archetype for Arrows3D {
         } else {
             None
         };
-        let labels = if let Some(array) = arrays_by_name.get("rerun.components.Text") {
+        let labels = if let Some(array) = arrays_by_descr.get(&Self::descriptor_labels()) {
             Some({
                 <crate::components::Text>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Arrows3D#labels")?
@@ -314,7 +327,8 @@ impl ::re_types_core::Archetype for Arrows3D {
         } else {
             None
         };
-        let show_labels = if let Some(array) = arrays_by_name.get("rerun.components.ShowLabels") {
+        let show_labels = if let Some(array) = arrays_by_descr.get(&Self::descriptor_show_labels())
+        {
             <crate::components::ShowLabels>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.Arrows3D#show_labels")?
                 .into_iter()
@@ -323,7 +337,7 @@ impl ::re_types_core::Archetype for Arrows3D {
         } else {
             None
         };
-        let class_ids = if let Some(array) = arrays_by_name.get("rerun.components.ClassId") {
+        let class_ids = if let Some(array) = arrays_by_descr.get(&Self::descriptor_class_ids()) {
             Some({
                 <crate::components::ClassId>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Arrows3D#class_ids")?
@@ -356,11 +370,7 @@ impl ::re_types_core::AsComponents for Arrows3D {
             (Some(&self.vectors as &dyn ComponentBatch)).map(|batch| {
                 ::re_types_core::ComponentBatchCowWithDescriptor {
                     batch: batch.into(),
-                    descriptor_override: Some(ComponentDescriptor {
-                        archetype_name: Some("rerun.archetypes.Arrows3D".into()),
-                        archetype_field_name: Some(("vectors").into()),
-                        component_name: ("rerun.components.Vector3D").into(),
-                    }),
+                    descriptor_override: Some(Self::descriptor_vectors()),
                 }
             }),
             (self
@@ -369,11 +379,7 @@ impl ::re_types_core::AsComponents for Arrows3D {
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.Arrows3D".into()),
-                    archetype_field_name: Some(("origins").into()),
-                    component_name: ("rerun.components.Position3D").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_origins()),
             }),
             (self
                 .radii
@@ -381,11 +387,7 @@ impl ::re_types_core::AsComponents for Arrows3D {
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.Arrows3D".into()),
-                    archetype_field_name: Some(("radii").into()),
-                    component_name: ("rerun.components.Radius").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_radii()),
             }),
             (self
                 .colors
@@ -393,11 +395,7 @@ impl ::re_types_core::AsComponents for Arrows3D {
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.Arrows3D".into()),
-                    archetype_field_name: Some(("colors").into()),
-                    component_name: ("rerun.components.Color").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_colors()),
             }),
             (self
                 .labels
@@ -405,11 +403,7 @@ impl ::re_types_core::AsComponents for Arrows3D {
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.Arrows3D".into()),
-                    archetype_field_name: Some(("labels").into()),
-                    component_name: ("rerun.components.Text").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_labels()),
             }),
             (self
                 .show_labels
@@ -417,11 +411,7 @@ impl ::re_types_core::AsComponents for Arrows3D {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.Arrows3D".into()),
-                    archetype_field_name: Some(("show_labels").into()),
-                    component_name: ("rerun.components.ShowLabels").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_show_labels()),
             }),
             (self
                 .class_ids
@@ -429,11 +419,7 @@ impl ::re_types_core::AsComponents for Arrows3D {
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.Arrows3D".into()),
-                    archetype_field_name: Some(("class_ids").into()),
-                    component_name: ("rerun.components.ClassId").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_class_ids()),
             }),
         ]
         .into_iter()

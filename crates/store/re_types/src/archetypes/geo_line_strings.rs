@@ -12,9 +12,9 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 
-use ::re_types_core::external::arrow;
+use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
@@ -69,33 +69,57 @@ pub struct GeoLineStrings {
     pub colors: Option<Vec<crate::components::Color>>,
 }
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
+impl GeoLineStrings {
+    /// Returns the [`ComponentDescriptor`] for [`Self::line_strings`].
+    #[inline]
+    pub fn descriptor_line_strings() -> ComponentDescriptor {
+        ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.GeoLineStrings".into()),
             component_name: "rerun.components.GeoLineString".into(),
             archetype_field_name: Some("line_strings".into()),
-        }]
-    });
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::radii`].
+    #[inline]
+    pub fn descriptor_radii() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.GeoLineStrings".into()),
+            component_name: "rerun.components.Radius".into(),
+            archetype_field_name: Some("radii".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::colors`].
+    #[inline]
+    pub fn descriptor_colors() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.GeoLineStrings".into()),
+            component_name: "rerun.components.Color".into(),
+            archetype_field_name: Some("colors".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
+    #[inline]
+    pub fn descriptor_indicator() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.GeoLineStrings".into()),
+            component_name: "rerun.components.GeoLineStringsIndicator".into(),
+            archetype_field_name: None,
+        }
+    }
+}
+
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [GeoLineStrings::descriptor_line_strings()]);
 
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.GeoLineStrings".into()),
-                component_name: "rerun.components.Radius".into(),
-                archetype_field_name: Some("radii".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.GeoLineStrings".into()),
-                component_name: "rerun.components.Color".into(),
-                archetype_field_name: Some("colors".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.GeoLineStrings".into()),
-                component_name: "rerun.components.GeoLineStringsIndicator".into(),
-                archetype_field_name: None,
-            },
+            GeoLineStrings::descriptor_radii(),
+            GeoLineStrings::descriptor_colors(),
+            GeoLineStrings::descriptor_indicator(),
         ]
     });
 
@@ -105,26 +129,10 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]>
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.GeoLineStrings".into()),
-                component_name: "rerun.components.GeoLineString".into(),
-                archetype_field_name: Some("line_strings".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.GeoLineStrings".into()),
-                component_name: "rerun.components.Radius".into(),
-                archetype_field_name: Some("radii".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.GeoLineStrings".into()),
-                component_name: "rerun.components.Color".into(),
-                archetype_field_name: Some("colors".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.GeoLineStrings".into()),
-                component_name: "rerun.components.GeoLineStringsIndicator".into(),
-                archetype_field_name: None,
-            },
+            GeoLineStrings::descriptor_line_strings(),
+            GeoLineStrings::descriptor_radii(),
+            GeoLineStrings::descriptor_colors(),
+            GeoLineStrings::descriptor_indicator(),
         ]
     });
 
@@ -177,17 +185,14 @@ impl ::re_types_core::Archetype for GeoLineStrings {
 
     #[inline]
     fn from_arrow_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, arrow::array::ArrayRef)>,
+        arrow_data: impl IntoIterator<Item = (ComponentDescriptor, arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(name, array)| (name.full_name(), array))
-            .collect();
+        let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
         let line_strings = {
-            let array = arrays_by_name
-                .get("rerun.components.GeoLineString")
+            let array = arrays_by_descr
+                .get(&Self::descriptor_line_strings())
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.GeoLineStrings#line_strings")?;
             <crate::components::GeoLineString>::from_arrow_opt(&**array)
@@ -197,7 +202,7 @@ impl ::re_types_core::Archetype for GeoLineStrings {
                 .collect::<DeserializationResult<Vec<_>>>()
                 .with_context("rerun.archetypes.GeoLineStrings#line_strings")?
         };
-        let radii = if let Some(array) = arrays_by_name.get("rerun.components.Radius") {
+        let radii = if let Some(array) = arrays_by_descr.get(&Self::descriptor_radii()) {
             Some({
                 <crate::components::Radius>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.GeoLineStrings#radii")?
@@ -209,7 +214,7 @@ impl ::re_types_core::Archetype for GeoLineStrings {
         } else {
             None
         };
-        let colors = if let Some(array) = arrays_by_name.get("rerun.components.Color") {
+        let colors = if let Some(array) = arrays_by_descr.get(&Self::descriptor_colors()) {
             Some({
                 <crate::components::Color>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.GeoLineStrings#colors")?
@@ -238,11 +243,7 @@ impl ::re_types_core::AsComponents for GeoLineStrings {
             (Some(&self.line_strings as &dyn ComponentBatch)).map(|batch| {
                 ::re_types_core::ComponentBatchCowWithDescriptor {
                     batch: batch.into(),
-                    descriptor_override: Some(ComponentDescriptor {
-                        archetype_name: Some("rerun.archetypes.GeoLineStrings".into()),
-                        archetype_field_name: Some(("line_strings").into()),
-                        component_name: ("rerun.components.GeoLineString").into(),
-                    }),
+                    descriptor_override: Some(Self::descriptor_line_strings()),
                 }
             }),
             (self
@@ -251,11 +252,7 @@ impl ::re_types_core::AsComponents for GeoLineStrings {
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.GeoLineStrings".into()),
-                    archetype_field_name: Some(("radii").into()),
-                    component_name: ("rerun.components.Radius").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_radii()),
             }),
             (self
                 .colors
@@ -263,11 +260,7 @@ impl ::re_types_core::AsComponents for GeoLineStrings {
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.GeoLineStrings".into()),
-                    archetype_field_name: Some(("colors").into()),
-                    component_name: ("rerun.components.Color").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_colors()),
             }),
         ]
         .into_iter()

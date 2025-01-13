@@ -63,6 +63,7 @@ itertools.workspace = true
 nohash-hasher.workspace = true
 rand = { workspace = true, features = ["std_rng"] }
 similar-asserts.workspace = true
+tap.workspace = true
 thiserror.workspace = true
 
 # Optional dependencies:

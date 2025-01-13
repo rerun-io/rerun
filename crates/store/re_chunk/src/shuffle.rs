@@ -1,3 +1,4 @@
+use arrow::buffer::ScalarBuffer as ArrowScalarBuffer;
 use arrow2::{
     array::{
         Array as Arrow2Array, ListArray as Arrow2ListArray, PrimitiveArray as Arrow2PrimitiveArray,
@@ -55,7 +56,7 @@ impl Chunk {
             || self
                 .timelines
                 .get(timeline)
-                .map_or(false, |time_column| time_column.is_sorted())
+                .is_some_and(|time_column| time_column.is_sorted())
     }
 
     /// For debugging purposes.
@@ -66,7 +67,7 @@ impl Chunk {
             || self
                 .timelines
                 .get(timeline)
-                .map_or(false, |time_column| time_column.is_sorted_uncached())
+                .is_some_and(|time_column| time_column.is_sorted_uncached())
     }
 
     /// Sort the chunk, if needed.
@@ -238,19 +239,19 @@ impl Chunk {
 
             for info in timelines.values_mut() {
                 let TimeColumn {
-                    timeline,
+                    timeline: _,
                     times,
                     is_sorted,
                     time_range: _,
                 } = info;
 
-                let mut sorted = times.values().to_vec();
+                let mut sorted = times.to_vec();
                 for (to, from) in swaps.iter().copied().enumerate() {
-                    sorted[to] = times.values()[from];
+                    sorted[to] = times[from];
                 }
 
                 *is_sorted = sorted.windows(2).all(|times| times[0] <= times[1]);
-                *times = Arrow2PrimitiveArray::<i64>::from_vec(sorted).to(timeline.datatype());
+                *times = ArrowScalarBuffer::from(sorted);
             }
         }
 

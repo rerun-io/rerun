@@ -194,7 +194,7 @@ impl App {
                 });
             });
         } else {
-            let entity_db_is_nonempty = store_ctx.map_or(false, |ctx| !ctx.recording.is_empty());
+            let entity_db_is_nonempty = store_ctx.is_some_and(|ctx| !ctx.recording.is_empty());
             ui.add_enabled_ui(entity_db_is_nonempty, |ui| {
                 if ui
                     .add(save_recording_button)

@@ -23,7 +23,7 @@ impl Tuid {
     /// We give an actual name to [`Tuid`], and inject that name into the Arrow datatype extensions,
     /// as a hack so that we can compactly format them when printing Arrow data to the terminal.
     /// Check out `re_format_arrow` for context.
-    pub const NAME: &'static str = "rerun.datatypes.TUID";
+    pub const ARROW_EXTENSION_NAME: &'static str = "rerun.datatypes.TUID";
 }
 
 impl std::fmt::Display for Tuid {

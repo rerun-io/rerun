@@ -1,6 +1,6 @@
 use arrow2::array::{
     Array as Arrow2Array, BooleanArray as Arrow2BooleanArray, ListArray as Arrow2ListArray,
-    PrimitiveArray as Arrow2PrimitiveArray, StructArray as Arrow2StructArray,
+    StructArray as Arrow2StructArray,
 };
 
 use itertools::Itertools;
@@ -9,7 +9,7 @@ use nohash_hasher::IntSet;
 use re_log_types::Timeline;
 use re_types_core::{ComponentDescriptor, ComponentName};
 
-use crate::{arrow2_util, Chunk, RowId, TimeColumn};
+use crate::{arrow2_util, arrow_util, Chunk, RowId, TimeColumn};
 
 // ---
 
@@ -538,7 +538,7 @@ impl Chunk {
                     i.saturating_sub(1) as i32
                 })
                 .collect_vec();
-            Arrow2PrimitiveArray::<i32>::from_vec(indices)
+            arrow2::array::Int32Array::from_vec(indices)
         };
 
         let chunk = Self {
@@ -671,7 +671,7 @@ impl Chunk {
     /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
     #[must_use]
     #[inline]
-    pub fn taken<O: arrow2::types::Index>(&self, indices: &Arrow2PrimitiveArray<O>) -> Self {
+    pub fn taken(&self, indices: &arrow2::array::Int32Array) -> Self {
         let Self {
             id,
             entity_path,
@@ -792,11 +792,7 @@ impl TimeColumn {
         // The original chunk is unsorted, but the new sliced one actually ends up being sorted.
         let is_sorted_opt = is_sorted.then_some(is_sorted);
 
-        Self::new(
-            is_sorted_opt,
-            *timeline,
-            Arrow2PrimitiveArray::sliced(times.clone(), index, len),
-        )
+        Self::new(is_sorted_opt, *timeline, times.clone().slice(index, len))
     }
 
     /// Empties the [`TimeColumn`] vertically.
@@ -806,16 +802,12 @@ impl TimeColumn {
     pub fn emptied(&self) -> Self {
         let Self {
             timeline,
-            times,
+            times: _,
             is_sorted: _,
             time_range: _,
         } = self;
 
-        Self::new(
-            Some(true),
-            *timeline,
-            Arrow2PrimitiveArray::new_empty(times.data_type().clone()),
-        )
+        Self::new(Some(true), *timeline, vec![].into())
     }
 
     /// Runs a [filter] compute kernel on the time data with the specified `mask`.
@@ -852,15 +844,20 @@ impl TimeColumn {
         Self::new(
             is_sorted_opt,
             *timeline,
-            arrow2_util::filter_array(times, filter),
+            arrow_util::filter_array(
+                &arrow::array::Int64Array::new(times.clone(), None),
+                &filter.clone().into(),
+            )
+            .into_parts()
+            .1,
         )
     }
 
     /// Runs a [take] compute kernel on the time data with the specified `indices`.
     ///
-    /// [take]: arrow2::compute::take::take
+    /// [take]: arrow::compute::take
     #[inline]
-    pub(crate) fn taken<O: arrow2::types::Index>(&self, indices: &Arrow2PrimitiveArray<O>) -> Self {
+    pub(crate) fn taken(&self, indices: &arrow2::array::Int32Array) -> Self {
         let Self {
             timeline,
             times,
@@ -868,11 +865,14 @@ impl TimeColumn {
             time_range: _,
         } = self;
 
-        Self::new(
-            Some(*is_sorted),
-            *timeline,
-            arrow2_util::take_array(times, indices),
+        let new_times = arrow_util::take_array(
+            &arrow::array::Int64Array::new(times.clone(), None),
+            &arrow::array::Int32Array::from(indices.clone()),
         )
+        .into_parts()
+        .1;
+
+        Self::new(Some(*is_sorted), *timeline, new_times)
     }
 }
 
@@ -880,6 +880,7 @@ impl TimeColumn {
 
 #[cfg(test)]
 mod tests {
+    use arrow2::array::PrimitiveArray as Arrow2PrimitiveArray;
     use itertools::Itertools;
     use re_log_types::{
         example_components::{MyColor, MyLabel, MyPoint},

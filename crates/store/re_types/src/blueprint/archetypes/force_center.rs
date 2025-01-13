@@ -12,9 +12,9 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 
-use ::re_types_core::external::arrow;
+use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
@@ -30,52 +30,58 @@ pub struct ForceCenter {
     pub strength: Option<crate::blueprint::components::ForceStrength>,
 }
 
+impl ForceCenter {
+    /// Returns the [`ComponentDescriptor`] for [`Self::enabled`].
+    #[inline]
+    pub fn descriptor_enabled() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ForceCenter".into()),
+            component_name: "rerun.blueprint.components.Enabled".into(),
+            archetype_field_name: Some("enabled".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::strength`].
+    #[inline]
+    pub fn descriptor_strength() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ForceCenter".into()),
+            component_name: "rerun.blueprint.components.ForceStrength".into(),
+            archetype_field_name: Some("strength".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
+    #[inline]
+    pub fn descriptor_indicator() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ForceCenter".into()),
+            component_name: "rerun.blueprint.components.ForceCenterIndicator".into(),
+            archetype_field_name: None,
+        }
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ForceCenter".into()),
-            component_name: "rerun.blueprint.components.ForceCenterIndicator".into(),
-            archetype_field_name: None,
-        }]
-    });
+    once_cell::sync::Lazy::new(|| [ForceCenter::descriptor_indicator()]);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ForceCenter".into()),
-                component_name: "rerun.blueprint.components.Enabled".into(),
-                archetype_field_name: Some("enabled".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ForceCenter".into()),
-                component_name: "rerun.blueprint.components.ForceStrength".into(),
-                archetype_field_name: Some("strength".into()),
-            },
+            ForceCenter::descriptor_enabled(),
+            ForceCenter::descriptor_strength(),
         ]
     });
 
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ForceCenter".into()),
-                component_name: "rerun.blueprint.components.ForceCenterIndicator".into(),
-                archetype_field_name: None,
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ForceCenter".into()),
-                component_name: "rerun.blueprint.components.Enabled".into(),
-                archetype_field_name: Some("enabled".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ForceCenter".into()),
-                component_name: "rerun.blueprint.components.ForceStrength".into(),
-                archetype_field_name: Some("strength".into()),
-            },
+            ForceCenter::descriptor_indicator(),
+            ForceCenter::descriptor_enabled(),
+            ForceCenter::descriptor_strength(),
         ]
     });
 
@@ -128,16 +134,12 @@ impl ::re_types_core::Archetype for ForceCenter {
 
     #[inline]
     fn from_arrow_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, arrow::array::ArrayRef)>,
+        arrow_data: impl IntoIterator<Item = (ComponentDescriptor, arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(name, array)| (name.full_name(), array))
-            .collect();
-        let enabled = if let Some(array) = arrays_by_name.get("rerun.blueprint.components.Enabled")
-        {
+        let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
+        let enabled = if let Some(array) = arrays_by_descr.get(&Self::descriptor_enabled()) {
             <crate::blueprint::components::Enabled>::from_arrow_opt(&**array)
                 .with_context("rerun.blueprint.archetypes.ForceCenter#enabled")?
                 .into_iter()
@@ -146,16 +148,15 @@ impl ::re_types_core::Archetype for ForceCenter {
         } else {
             None
         };
-        let strength =
-            if let Some(array) = arrays_by_name.get("rerun.blueprint.components.ForceStrength") {
-                <crate::blueprint::components::ForceStrength>::from_arrow_opt(&**array)
-                    .with_context("rerun.blueprint.archetypes.ForceCenter#strength")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-            } else {
-                None
-            };
+        let strength = if let Some(array) = arrays_by_descr.get(&Self::descriptor_strength()) {
+            <crate::blueprint::components::ForceStrength>::from_arrow_opt(&**array)
+                .with_context("rerun.blueprint.archetypes.ForceCenter#strength")?
+                .into_iter()
+                .next()
+                .flatten()
+        } else {
+            None
+        };
         Ok(Self { enabled, strength })
     }
 }
@@ -172,11 +173,7 @@ impl ::re_types_core::AsComponents for ForceCenter {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.blueprint.archetypes.ForceCenter".into()),
-                    archetype_field_name: Some(("enabled").into()),
-                    component_name: ("rerun.blueprint.components.Enabled").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_enabled()),
             }),
             (self
                 .strength
@@ -184,11 +181,7 @@ impl ::re_types_core::AsComponents for ForceCenter {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.blueprint.archetypes.ForceCenter".into()),
-                    archetype_field_name: Some(("strength").into()),
-                    component_name: ("rerun.blueprint.components.ForceStrength").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_strength()),
             }),
         ]
         .into_iter()

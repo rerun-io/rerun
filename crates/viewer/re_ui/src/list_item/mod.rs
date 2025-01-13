@@ -3,19 +3,21 @@
 //! TODO(ab): provide some top-level documentation here.
 
 mod button_content;
+mod custom_content;
+mod debug_content;
 mod item_button;
 mod label_content;
 #[allow(clippy::module_inception)]
 mod list_item;
-mod other_contents;
 mod property_content;
 mod scope;
 
 pub use button_content::*;
+pub use custom_content::*;
+pub use debug_content::*;
 pub use item_button::*;
 pub use label_content::*;
 pub use list_item::*;
-pub use other_contents::*;
 pub use property_content::*;
 pub use scope::*;
 

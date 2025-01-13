@@ -70,7 +70,7 @@ impl crate::DataUi for ApplicationId {
             let button =
                 egui::Button::image_and_text(&re_ui::icons::RESET, "Reset to default blueprint");
 
-            let is_same_as_default = default_blueprint.map_or(false, |default_blueprint| {
+            let is_same_as_default = default_blueprint.is_some_and(|default_blueprint| {
                 default_blueprint.latest_row_id() == active_blueprint.latest_row_id()
             });
 

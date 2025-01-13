@@ -12,9 +12,9 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 
-use ::re_types_core::external::arrow;
+use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
@@ -39,62 +39,70 @@ pub struct TensorScalarMapping {
     pub gamma: Option<crate::components::GammaCorrection>,
 }
 
+impl TensorScalarMapping {
+    /// Returns the [`ComponentDescriptor`] for [`Self::mag_filter`].
+    #[inline]
+    pub fn descriptor_mag_filter() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.TensorScalarMapping".into()),
+            component_name: "rerun.components.MagnificationFilter".into(),
+            archetype_field_name: Some("mag_filter".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::colormap`].
+    #[inline]
+    pub fn descriptor_colormap() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.TensorScalarMapping".into()),
+            component_name: "rerun.components.Colormap".into(),
+            archetype_field_name: Some("colormap".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::gamma`].
+    #[inline]
+    pub fn descriptor_gamma() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.TensorScalarMapping".into()),
+            component_name: "rerun.components.GammaCorrection".into(),
+            archetype_field_name: Some("gamma".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
+    #[inline]
+    pub fn descriptor_indicator() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.TensorScalarMapping".into()),
+            component_name: "rerun.blueprint.components.TensorScalarMappingIndicator".into(),
+            archetype_field_name: None,
+        }
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.TensorScalarMapping".into()),
-            component_name: "rerun.blueprint.components.TensorScalarMappingIndicator".into(),
-            archetype_field_name: None,
-        }]
-    });
+    once_cell::sync::Lazy::new(|| [TensorScalarMapping::descriptor_indicator()]);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.TensorScalarMapping".into()),
-                component_name: "rerun.components.MagnificationFilter".into(),
-                archetype_field_name: Some("mag_filter".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.TensorScalarMapping".into()),
-                component_name: "rerun.components.Colormap".into(),
-                archetype_field_name: Some("colormap".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.TensorScalarMapping".into()),
-                component_name: "rerun.components.GammaCorrection".into(),
-                archetype_field_name: Some("gamma".into()),
-            },
+            TensorScalarMapping::descriptor_mag_filter(),
+            TensorScalarMapping::descriptor_colormap(),
+            TensorScalarMapping::descriptor_gamma(),
         ]
     });
 
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.TensorScalarMapping".into()),
-                component_name: "rerun.blueprint.components.TensorScalarMappingIndicator".into(),
-                archetype_field_name: None,
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.TensorScalarMapping".into()),
-                component_name: "rerun.components.MagnificationFilter".into(),
-                archetype_field_name: Some("mag_filter".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.TensorScalarMapping".into()),
-                component_name: "rerun.components.Colormap".into(),
-                archetype_field_name: Some("colormap".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.TensorScalarMapping".into()),
-                component_name: "rerun.components.GammaCorrection".into(),
-                archetype_field_name: Some("gamma".into()),
-            },
+            TensorScalarMapping::descriptor_indicator(),
+            TensorScalarMapping::descriptor_mag_filter(),
+            TensorScalarMapping::descriptor_colormap(),
+            TensorScalarMapping::descriptor_gamma(),
         ]
     });
 
@@ -148,25 +156,21 @@ impl ::re_types_core::Archetype for TensorScalarMapping {
 
     #[inline]
     fn from_arrow_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, arrow::array::ArrayRef)>,
+        arrow_data: impl IntoIterator<Item = (ComponentDescriptor, arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(name, array)| (name.full_name(), array))
-            .collect();
-        let mag_filter =
-            if let Some(array) = arrays_by_name.get("rerun.components.MagnificationFilter") {
-                <crate::components::MagnificationFilter>::from_arrow_opt(&**array)
-                    .with_context("rerun.blueprint.archetypes.TensorScalarMapping#mag_filter")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-            } else {
-                None
-            };
-        let colormap = if let Some(array) = arrays_by_name.get("rerun.components.Colormap") {
+        let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
+        let mag_filter = if let Some(array) = arrays_by_descr.get(&Self::descriptor_mag_filter()) {
+            <crate::components::MagnificationFilter>::from_arrow_opt(&**array)
+                .with_context("rerun.blueprint.archetypes.TensorScalarMapping#mag_filter")?
+                .into_iter()
+                .next()
+                .flatten()
+        } else {
+            None
+        };
+        let colormap = if let Some(array) = arrays_by_descr.get(&Self::descriptor_colormap()) {
             <crate::components::Colormap>::from_arrow_opt(&**array)
                 .with_context("rerun.blueprint.archetypes.TensorScalarMapping#colormap")?
                 .into_iter()
@@ -175,7 +179,7 @@ impl ::re_types_core::Archetype for TensorScalarMapping {
         } else {
             None
         };
-        let gamma = if let Some(array) = arrays_by_name.get("rerun.components.GammaCorrection") {
+        let gamma = if let Some(array) = arrays_by_descr.get(&Self::descriptor_gamma()) {
             <crate::components::GammaCorrection>::from_arrow_opt(&**array)
                 .with_context("rerun.blueprint.archetypes.TensorScalarMapping#gamma")?
                 .into_iter()
@@ -204,11 +208,7 @@ impl ::re_types_core::AsComponents for TensorScalarMapping {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.blueprint.archetypes.TensorScalarMapping".into()),
-                    archetype_field_name: Some(("mag_filter").into()),
-                    component_name: ("rerun.components.MagnificationFilter").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_mag_filter()),
             }),
             (self
                 .colormap
@@ -216,11 +216,7 @@ impl ::re_types_core::AsComponents for TensorScalarMapping {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.blueprint.archetypes.TensorScalarMapping".into()),
-                    archetype_field_name: Some(("colormap").into()),
-                    component_name: ("rerun.components.Colormap").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_colormap()),
             }),
             (self
                 .gamma
@@ -228,11 +224,7 @@ impl ::re_types_core::AsComponents for TensorScalarMapping {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.blueprint.archetypes.TensorScalarMapping".into()),
-                    archetype_field_name: Some(("gamma").into()),
-                    component_name: ("rerun.components.GammaCorrection").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_gamma()),
             }),
         ]
         .into_iter()

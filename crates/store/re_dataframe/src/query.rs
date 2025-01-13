@@ -6,6 +6,7 @@ use std::{
     },
 };
 
+use arrow::buffer::ScalarBuffer as ArrowScalarBuffer;
 use arrow2::{
     array::{
         Array as Arrow2Array, BooleanArray as Arrow2BooleanArray,
@@ -1133,7 +1134,8 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         // * return the minimum value instead of the max
         // * return the exact value for each component (that would be a _lot_ of columns!)
         // * etc
-        let mut max_value_per_index = IntMap::default();
+        let mut max_value_per_index: IntMap<Timeline, (TimeInt, ArrowScalarBuffer<i64>)> =
+            IntMap::default();
         {
             view_streaming_state
                 .iter()
@@ -1158,7 +1160,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                             .map(|time| {
                                 (
                                     *time_column.timeline(),
-                                    (time, time_column.times_array().sliced(cursor, 1)),
+                                    (time, time_column.times_buffer().slice(cursor, 1)),
                                 )
                             })
                     })
@@ -1182,9 +1184,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                     state.filtered_index,
                     (
                         *cur_index_value,
-                        Arrow2PrimitiveArray::<i64>::from_vec(vec![cur_index_value.as_i64()])
-                            .to(state.filtered_index.datatype())
-                            .to_boxed(),
+                        ArrowScalarBuffer::from(vec![cur_index_value.as_i64()]),
                     ),
                 );
             }
@@ -1250,7 +1250,13 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                 ColumnDescriptor::Time(descr) => {
                     max_value_per_index.get(&descr.timeline).map_or_else(
                         || arrow2::array::new_null_array(column.datatype(), 1),
-                        |(_time, time_sliced)| time_sliced.clone(),
+                        |(_time, time_sliced)| {
+                            descr
+                                .timeline
+                                .typ()
+                                .make_arrow_array(time_sliced.clone())
+                                .into()
+                        },
                     )
                 }
 

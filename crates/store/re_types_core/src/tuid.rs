@@ -27,7 +27,7 @@ impl Loggable for Tuid {
         Self: 'a,
     {
         Err(crate::SerializationError::not_implemented(
-            Self::NAME,
+            Self::ARROW_EXTENSION_NAME,
             "TUIDs are never nullable, use `to_arrow()` instead",
         ))
     }

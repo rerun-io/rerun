@@ -745,12 +745,12 @@ impl ChunkStore {
                 chunk
                     .timelines()
                     .get(&query.timeline())
-                    .map_or(false, |time_column| {
+                    .is_some_and(|time_column| {
                         time_column
                             .time_range_per_component(chunk.components())
                             .get(&component_name)
                             .and_then(|per_desc| per_desc.values().next())
-                            .map_or(false, |time_range| time_range.intersects(query.range()))
+                            .is_some_and(|time_range| time_range.intersects(query.range()))
                     })
             })
             .collect_vec();
@@ -798,9 +798,7 @@ impl ChunkStore {
                 chunk
                     .timelines()
                     .get(&query.timeline())
-                    .map_or(false, |time_column| {
-                        time_column.time_range().intersects(query.range())
-                    })
+                    .is_some_and(|time_column| time_column.time_range().intersects(query.range()))
             })
             .collect_vec();
 

@@ -37,37 +37,30 @@ pub fn item_heading_with_breadcrumbs(
         .selected(true)
         .show_flat(
             ui,
-            list_item::CustomContent::new(|ui, context| {
-                ui.allocate_new_ui(
-                    egui::UiBuilder::new()
-                        .max_rect(context.rect)
-                        .layout(egui::Layout::left_to_right(egui::Align::Center)),
-                    |ui| {
-                        ui.spacing_mut().item_spacing.x = 4.0;
+            list_item::CustomContent::new(|ui, _| {
+                ui.spacing_mut().item_spacing.x = 4.0;
 
-                        {
-                            // No background rectangles, even for hovered items
-                            let visuals = ui.visuals_mut();
-                            visuals.widgets.active.bg_fill = egui::Color32::TRANSPARENT;
-                            visuals.widgets.active.weak_bg_fill = egui::Color32::TRANSPARENT;
-                            visuals.widgets.hovered.bg_fill = egui::Color32::TRANSPARENT;
-                            visuals.widgets.hovered.weak_bg_fill = egui::Color32::TRANSPARENT;
-                        }
+                {
+                    // No background rectangles, even for hovered items
+                    let visuals = ui.visuals_mut();
+                    visuals.widgets.active.bg_fill = egui::Color32::TRANSPARENT;
+                    visuals.widgets.active.weak_bg_fill = egui::Color32::TRANSPARENT;
+                    visuals.widgets.hovered.bg_fill = egui::Color32::TRANSPARENT;
+                    visuals.widgets.hovered.weak_bg_fill = egui::Color32::TRANSPARENT;
+                }
 
-                        // First the C>R>U>M>B>S>
-                        {
-                            let previous_style = ui.style().clone();
-                            // Dimmer colors for breadcrumbs
-                            let visuals = ui.visuals_mut();
-                            visuals.widgets.inactive.fg_stroke.color = egui::hex_color!("#6A8CD0"); // TODO(#3133): use design tokens
-                            item_bread_crumbs_ui(ctx, viewport, ui, item);
-                            ui.set_style(previous_style);
-                        }
+                // First the C>R>U>M>B>S>
+                {
+                    let previous_style = ui.style().clone();
+                    // Dimmer colors for breadcrumbs
+                    let visuals = ui.visuals_mut();
+                    visuals.widgets.inactive.fg_stroke.color = egui::hex_color!("#6A8CD0"); // TODO(#3133): use design tokens
+                    item_bread_crumbs_ui(ctx, viewport, ui, item);
+                    ui.set_style(previous_style);
+                }
 
-                        // Then the full name of the main item:
-                        last_part_of_item_heading(ctx, viewport, ui, item);
-                    },
-                );
+                // Then the full name of the main item:
+                last_part_of_item_heading(ctx, viewport, ui, item);
             }),
         );
 }

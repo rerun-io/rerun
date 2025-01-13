@@ -12,9 +12,9 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 
-use ::re_types_core::external::arrow;
+use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
@@ -50,82 +50,94 @@ pub struct ViewportBlueprint {
         Option<Vec<crate::blueprint::components::ViewerRecommendationHash>>,
 }
 
+impl ViewportBlueprint {
+    /// Returns the [`ComponentDescriptor`] for [`Self::root_container`].
+    #[inline]
+    pub fn descriptor_root_container() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
+            component_name: "rerun.blueprint.components.RootContainer".into(),
+            archetype_field_name: Some("root_container".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::maximized`].
+    #[inline]
+    pub fn descriptor_maximized() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
+            component_name: "rerun.blueprint.components.ViewMaximized".into(),
+            archetype_field_name: Some("maximized".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::auto_layout`].
+    #[inline]
+    pub fn descriptor_auto_layout() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
+            component_name: "rerun.blueprint.components.AutoLayout".into(),
+            archetype_field_name: Some("auto_layout".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::auto_views`].
+    #[inline]
+    pub fn descriptor_auto_views() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
+            component_name: "rerun.blueprint.components.AutoViews".into(),
+            archetype_field_name: Some("auto_views".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::past_viewer_recommendations`].
+    #[inline]
+    pub fn descriptor_past_viewer_recommendations() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
+            component_name: "rerun.blueprint.components.ViewerRecommendationHash".into(),
+            archetype_field_name: Some("past_viewer_recommendations".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
+    #[inline]
+    pub fn descriptor_indicator() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
+            component_name: "rerun.blueprint.components.ViewportBlueprintIndicator".into(),
+            archetype_field_name: None,
+        }
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
-            component_name: "rerun.blueprint.components.ViewportBlueprintIndicator".into(),
-            archetype_field_name: None,
-        }]
-    });
+    once_cell::sync::Lazy::new(|| [ViewportBlueprint::descriptor_indicator()]);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
-                component_name: "rerun.blueprint.components.RootContainer".into(),
-                archetype_field_name: Some("root_container".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
-                component_name: "rerun.blueprint.components.ViewMaximized".into(),
-                archetype_field_name: Some("maximized".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
-                component_name: "rerun.blueprint.components.AutoLayout".into(),
-                archetype_field_name: Some("auto_layout".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
-                component_name: "rerun.blueprint.components.AutoViews".into(),
-                archetype_field_name: Some("auto_views".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
-                component_name: "rerun.blueprint.components.ViewerRecommendationHash".into(),
-                archetype_field_name: Some("past_viewer_recommendations".into()),
-            },
+            ViewportBlueprint::descriptor_root_container(),
+            ViewportBlueprint::descriptor_maximized(),
+            ViewportBlueprint::descriptor_auto_layout(),
+            ViewportBlueprint::descriptor_auto_views(),
+            ViewportBlueprint::descriptor_past_viewer_recommendations(),
         ]
     });
 
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 6usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
-                component_name: "rerun.blueprint.components.ViewportBlueprintIndicator".into(),
-                archetype_field_name: None,
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
-                component_name: "rerun.blueprint.components.RootContainer".into(),
-                archetype_field_name: Some("root_container".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
-                component_name: "rerun.blueprint.components.ViewMaximized".into(),
-                archetype_field_name: Some("maximized".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
-                component_name: "rerun.blueprint.components.AutoLayout".into(),
-                archetype_field_name: Some("auto_layout".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
-                component_name: "rerun.blueprint.components.AutoViews".into(),
-                archetype_field_name: Some("auto_views".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
-                component_name: "rerun.blueprint.components.ViewerRecommendationHash".into(),
-                archetype_field_name: Some("past_viewer_recommendations".into()),
-            },
+            ViewportBlueprint::descriptor_indicator(),
+            ViewportBlueprint::descriptor_root_container(),
+            ViewportBlueprint::descriptor_maximized(),
+            ViewportBlueprint::descriptor_auto_layout(),
+            ViewportBlueprint::descriptor_auto_views(),
+            ViewportBlueprint::descriptor_past_viewer_recommendations(),
         ]
     });
 
@@ -178,16 +190,13 @@ impl ::re_types_core::Archetype for ViewportBlueprint {
 
     #[inline]
     fn from_arrow_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, arrow::array::ArrayRef)>,
+        arrow_data: impl IntoIterator<Item = (ComponentDescriptor, arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(name, array)| (name.full_name(), array))
-            .collect();
+        let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
         let root_container =
-            if let Some(array) = arrays_by_name.get("rerun.blueprint.components.RootContainer") {
+            if let Some(array) = arrays_by_descr.get(&Self::descriptor_root_container()) {
                 <crate::blueprint::components::RootContainer>::from_arrow_opt(&**array)
                     .with_context("rerun.blueprint.archetypes.ViewportBlueprint#root_container")?
                     .into_iter()
@@ -196,38 +205,36 @@ impl ::re_types_core::Archetype for ViewportBlueprint {
             } else {
                 None
             };
-        let maximized =
-            if let Some(array) = arrays_by_name.get("rerun.blueprint.components.ViewMaximized") {
-                <crate::blueprint::components::ViewMaximized>::from_arrow_opt(&**array)
-                    .with_context("rerun.blueprint.archetypes.ViewportBlueprint#maximized")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-            } else {
-                None
-            };
-        let auto_layout =
-            if let Some(array) = arrays_by_name.get("rerun.blueprint.components.AutoLayout") {
-                <crate::blueprint::components::AutoLayout>::from_arrow_opt(&**array)
-                    .with_context("rerun.blueprint.archetypes.ViewportBlueprint#auto_layout")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-            } else {
-                None
-            };
-        let auto_views =
-            if let Some(array) = arrays_by_name.get("rerun.blueprint.components.AutoViews") {
-                <crate::blueprint::components::AutoViews>::from_arrow_opt(&**array)
-                    .with_context("rerun.blueprint.archetypes.ViewportBlueprint#auto_views")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-            } else {
-                None
-            };
+        let maximized = if let Some(array) = arrays_by_descr.get(&Self::descriptor_maximized()) {
+            <crate::blueprint::components::ViewMaximized>::from_arrow_opt(&**array)
+                .with_context("rerun.blueprint.archetypes.ViewportBlueprint#maximized")?
+                .into_iter()
+                .next()
+                .flatten()
+        } else {
+            None
+        };
+        let auto_layout = if let Some(array) = arrays_by_descr.get(&Self::descriptor_auto_layout())
+        {
+            <crate::blueprint::components::AutoLayout>::from_arrow_opt(&**array)
+                .with_context("rerun.blueprint.archetypes.ViewportBlueprint#auto_layout")?
+                .into_iter()
+                .next()
+                .flatten()
+        } else {
+            None
+        };
+        let auto_views = if let Some(array) = arrays_by_descr.get(&Self::descriptor_auto_views()) {
+            <crate::blueprint::components::AutoViews>::from_arrow_opt(&**array)
+                .with_context("rerun.blueprint.archetypes.ViewportBlueprint#auto_views")?
+                .into_iter()
+                .next()
+                .flatten()
+        } else {
+            None
+        };
         let past_viewer_recommendations = if let Some(array) =
-            arrays_by_name.get("rerun.blueprint.components.ViewerRecommendationHash")
+            arrays_by_descr.get(&Self::descriptor_past_viewer_recommendations())
         {
             Some({
                 <crate::blueprint::components::ViewerRecommendationHash>::from_arrow_opt(&**array)
@@ -266,11 +273,7 @@ impl ::re_types_core::AsComponents for ViewportBlueprint {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
-                    archetype_field_name: Some(("root_container").into()),
-                    component_name: ("rerun.blueprint.components.RootContainer").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_root_container()),
             }),
             (self
                 .maximized
@@ -278,11 +281,7 @@ impl ::re_types_core::AsComponents for ViewportBlueprint {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
-                    archetype_field_name: Some(("maximized").into()),
-                    component_name: ("rerun.blueprint.components.ViewMaximized").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_maximized()),
             }),
             (self
                 .auto_layout
@@ -290,11 +289,7 @@ impl ::re_types_core::AsComponents for ViewportBlueprint {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
-                    archetype_field_name: Some(("auto_layout").into()),
-                    component_name: ("rerun.blueprint.components.AutoLayout").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_auto_layout()),
             }),
             (self
                 .auto_views
@@ -302,11 +297,7 @@ impl ::re_types_core::AsComponents for ViewportBlueprint {
                 .map(|comp| (comp as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
-                    archetype_field_name: Some(("auto_views").into()),
-                    component_name: ("rerun.blueprint.components.AutoViews").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_auto_views()),
             }),
             (self
                 .past_viewer_recommendations
@@ -314,11 +305,7 @@ impl ::re_types_core::AsComponents for ViewportBlueprint {
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
             .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
                 batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
-                    archetype_field_name: Some(("past_viewer_recommendations").into()),
-                    component_name: ("rerun.blueprint.components.ViewerRecommendationHash").into(),
-                }),
+                descriptor_override: Some(Self::descriptor_past_viewer_recommendations()),
             }),
         ]
         .into_iter()

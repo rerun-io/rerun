@@ -758,7 +758,7 @@ fn show_orbit_eye_center(
 
     let should_show_center_of_orbit_camera = state_3d
         .last_eye_interaction
-        .map_or(false, |d| d.elapsed().as_secs_f32() < 0.35);
+        .is_some_and(|d| d.elapsed().as_secs_f32() < 0.35);
 
     if !state_3d.eye_interact_fade_in && should_show_center_of_orbit_camera {
         // Any interaction immediately causes fade in to start if it's not already on.
@@ -886,7 +886,7 @@ fn show_projections_from_2d_space(
             ..
         } => {
             let current_tracked_entity = state.state_3d.tracked_entity.as_ref();
-            if current_tracked_entity.map_or(true, |tracked| tracked != tracked_entity) {
+            if current_tracked_entity != Some(tracked_entity) {
                 if let Some(tracked_camera) = space_cameras
                     .iter()
                     .find(|cam| &cam.ent_path == tracked_entity)

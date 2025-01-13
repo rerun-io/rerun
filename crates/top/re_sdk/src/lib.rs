@@ -95,6 +95,7 @@ pub use re_types_core::{
     ComponentBatchCowWithDescriptor, ComponentDescriptor, ComponentName, DatatypeName,
     DeserializationError, DeserializationResult, GenericIndicatorComponent, Loggable,
     LoggableBatch, NamedIndicatorComponent, SerializationError, SerializationResult,
+    SerializedComponentBatch,
 };
 
 pub use re_byte_size::SizeBytes;

@@ -42,7 +42,7 @@ impl<'a> PropertyContent<'a> {
 
     /// Set the minimum desired width for the entire content.
     ///
-    /// Since there is no possibly way to meaningfully collapse two to three columns worth of
+    /// Since there is no possible way to meaningfully collapse two to three columns worth of
     /// content, this is set to 200.0 by default.
     #[inline]
     pub fn min_desired_width(mut self, min_desired_width: f32) -> Self {
@@ -78,7 +78,7 @@ impl<'a> PropertyContent<'a> {
         // TODO(#6191): support multiple action buttons
         assert!(
             self.button.is_none(),
-            "Only one action button supported right now"
+            "Only one action button is supported right now"
         );
 
         self.button = Some(Box::new(button));

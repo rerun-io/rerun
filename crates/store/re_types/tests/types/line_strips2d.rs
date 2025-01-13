@@ -1,7 +1,5 @@
 use re_types::{
-    archetypes::LineStrips2D,
-    components::{ClassId, Color, DrawOrder, LineStrip2D, Radius},
-    Archetype as _, AsComponents as _,
+    archetypes::LineStrips2D, components, Archetype as _, AsComponents as _, ComponentBatch,
 };
 
 #[test]
@@ -9,27 +7,38 @@ fn roundtrip() {
     let expected = LineStrips2D {
         #[rustfmt::skip]
         strips: vec![
-            LineStrip2D::from_iter([[0., 0.], [2., 1.], [4., -1.], [6., 0.]]), //
-            LineStrip2D::from_iter([[0., 3.], [1., 4.], [2., 2.], [3., 4.], [4., 2.], [5., 4.], [6., 3.]]), //
-        ],
-        radii: Some(vec![
-            Radius::from(42.0), //
-            Radius::from(43.0),
-        ]),
-        colors: Some(vec![
-            Color::from_unmultiplied_rgba(0xAA, 0x00, 0x00, 0xCC), //
-            Color::from_unmultiplied_rgba(0x00, 0xBB, 0x00, 0xDD),
-        ]),
-        labels: Some(vec![
-            "hello".into(),  //
-            "friend".into(), //
-        ]),
-        draw_order: Some(DrawOrder(300.0.into())),
-        class_ids: Some(vec![
-            ClassId::from(126), //
-            ClassId::from(127), //
-        ]),
-        show_labels: Some(false.into()),
+            components::LineStrip2D::from_iter([[0., 0.], [2., 1.], [4., -1.], [6., 0.]]), //
+            components::LineStrip2D::from_iter([[0., 3.], [1., 4.], [2., 2.], [3., 4.], [4., 2.], [5., 4.], [6., 3.]]), //
+        ]
+        .serialized()
+        .map(|batch| batch.with_descriptor_override(LineStrips2D::descriptor_strips())),
+        radii: vec![
+            components::Radius::from(42.0), //
+            components::Radius::from(43.0),
+        ]
+        .serialized()
+        .map(|batch| batch.with_descriptor_override(LineStrips2D::descriptor_radii())),
+        colors: vec![
+            components::Color::from_unmultiplied_rgba(0xAA, 0x00, 0x00, 0xCC), //
+            components::Color::from_unmultiplied_rgba(0x00, 0xBB, 0x00, 0xDD),
+        ]
+        .serialized()
+        .map(|batch| batch.with_descriptor_override(LineStrips2D::descriptor_colors())),
+        labels: (vec!["hello".into(), "friend".into()] as Vec<components::Text>)
+            .serialized()
+            .map(|batch| batch.with_descriptor_override(LineStrips2D::descriptor_labels())),
+        draw_order: vec![components::DrawOrder(300.0.into())]
+            .serialized()
+            .map(|batch| batch.with_descriptor_override(LineStrips2D::descriptor_draw_order())),
+        class_ids: vec![
+            components::ClassId::from(126), //
+            components::ClassId::from(127), //
+        ]
+        .serialized()
+        .map(|batch| batch.with_descriptor_override(LineStrips2D::descriptor_class_ids())),
+        show_labels: components::ShowLabels(false.into())
+            .serialized()
+            .map(|batch| batch.with_descriptor_override(LineStrips2D::descriptor_show_labels())),
     };
 
     #[rustfmt::skip]

@@ -5,7 +5,7 @@ use std::{
 };
 
 use arrow::array::{Array as ArrowArray, ArrayRef};
-use arrow2::array::PrimitiveArray as Arrow2PrimitiveArray;
+use arrow::buffer::ScalarBuffer as ArrowScalarBuffer;
 use crossbeam::channel::{Receiver, Sender};
 use nohash_hasher::IntMap;
 
@@ -724,7 +724,7 @@ impl PendingRow {
         let timelines = timepoint
             .into_iter()
             .map(|(timeline, time)| {
-                let times = Arrow2PrimitiveArray::<i64>::from_vec(vec![time.as_i64()]);
+                let times = ArrowScalarBuffer::from(vec![time.as_i64()]);
                 let time_column = TimeColumn::new(Some(true), timeline, times);
                 (timeline, time_column)
             })
@@ -973,7 +973,7 @@ impl PendingTimeColumn {
 
         TimeColumn {
             timeline,
-            times: Arrow2PrimitiveArray::<i64>::from_vec(times).to(timeline.datatype()),
+            times: ArrowScalarBuffer::from(times),
             is_sorted,
             time_range,
         }
@@ -1050,11 +1050,7 @@ mod tests {
             let expected_row_ids = vec![row1.row_id, row2.row_id, row3.row_id];
             let expected_timelines = [(
                 timeline1,
-                TimeColumn::new(
-                    Some(true),
-                    timeline1,
-                    Arrow2PrimitiveArray::from_vec(vec![42, 43, 44]),
-                ),
+                TimeColumn::new(Some(true), timeline1, vec![42, 43, 44].into()),
             )];
             let expected_components = [(
                 MyPoint::descriptor(),
@@ -1206,11 +1202,7 @@ mod tests {
             let expected_row_ids = vec![row1.row_id, row3.row_id];
             let expected_timelines = [(
                 timeline1,
-                TimeColumn::new(
-                    Some(true),
-                    timeline1,
-                    Arrow2PrimitiveArray::from_vec(vec![42, 44]),
-                ),
+                TimeColumn::new(Some(true), timeline1, vec![42, 44].into()),
             )];
             let expected_components = [(
                 MyPoint::descriptor(),
@@ -1234,11 +1226,7 @@ mod tests {
             let expected_row_ids = vec![row2.row_id];
             let expected_timelines = [(
                 timeline1,
-                TimeColumn::new(
-                    Some(true),
-                    timeline1,
-                    Arrow2PrimitiveArray::from_vec(vec![43]),
-                ),
+                TimeColumn::new(Some(true), timeline1, vec![43].into()),
             )];
             let expected_components = [(
                 MyPoint::descriptor(),
@@ -1321,11 +1309,7 @@ mod tests {
             let expected_row_ids = vec![row1.row_id];
             let expected_timelines = [(
                 timeline1,
-                TimeColumn::new(
-                    Some(true),
-                    timeline1,
-                    Arrow2PrimitiveArray::from_vec(vec![42]),
-                ),
+                TimeColumn::new(Some(true), timeline1, vec![42].into()),
             )];
             let expected_components = [(
                 MyPoint::descriptor(),
@@ -1350,19 +1334,11 @@ mod tests {
             let expected_timelines = [
                 (
                     timeline1,
-                    TimeColumn::new(
-                        Some(true),
-                        timeline1,
-                        Arrow2PrimitiveArray::from_vec(vec![43, 44]),
-                    ),
+                    TimeColumn::new(Some(true), timeline1, vec![43, 44].into()),
                 ),
                 (
                     timeline2,
-                    TimeColumn::new(
-                        Some(true),
-                        timeline2,
-                        Arrow2PrimitiveArray::from_vec(vec![1000, 1001]),
-                    ),
+                    TimeColumn::new(Some(true), timeline2, vec![1000, 1001].into()),
                 ),
             ];
             let expected_components = [(
@@ -1442,11 +1418,7 @@ mod tests {
             let expected_row_ids = vec![row1.row_id, row3.row_id];
             let expected_timelines = [(
                 timeline1,
-                TimeColumn::new(
-                    Some(true),
-                    timeline1,
-                    Arrow2PrimitiveArray::from_vec(vec![42, 44]),
-                ),
+                TimeColumn::new(Some(true), timeline1, vec![42, 44].into()),
             )];
             let expected_components = [(
                 MyPoint::descriptor(),
@@ -1470,11 +1442,7 @@ mod tests {
             let expected_row_ids = vec![row2.row_id];
             let expected_timelines = [(
                 timeline1,
-                TimeColumn::new(
-                    Some(true),
-                    timeline1,
-                    Arrow2PrimitiveArray::from_vec(vec![43]),
-                ),
+                TimeColumn::new(Some(true), timeline1, vec![43].into()),
             )];
             let expected_components = [(
                 MyPoint::descriptor(),
@@ -1572,19 +1540,11 @@ mod tests {
             let expected_timelines = [
                 (
                     timeline1,
-                    TimeColumn::new(
-                        Some(false),
-                        timeline1,
-                        Arrow2PrimitiveArray::from_vec(vec![45, 42, 43, 44]),
-                    ),
+                    TimeColumn::new(Some(false), timeline1, vec![45, 42, 43, 44].into()),
                 ),
                 (
                     timeline2,
-                    TimeColumn::new(
-                        Some(false),
-                        timeline2,
-                        Arrow2PrimitiveArray::from_vec(vec![1003, 1000, 1001, 1002]),
-                    ),
+                    TimeColumn::new(Some(false), timeline2, vec![1003, 1000, 1001, 1002].into()),
                 ),
             ];
             let expected_components = [(
@@ -1686,19 +1646,11 @@ mod tests {
             let expected_timelines = [
                 (
                     timeline1,
-                    TimeColumn::new(
-                        Some(false),
-                        timeline1,
-                        Arrow2PrimitiveArray::from_vec(vec![45, 42, 43]),
-                    ),
+                    TimeColumn::new(Some(false), timeline1, vec![45, 42, 43].into()),
                 ),
                 (
                     timeline2,
-                    TimeColumn::new(
-                        Some(false),
-                        timeline2,
-                        Arrow2PrimitiveArray::from_vec(vec![1003, 1000, 1001]),
-                    ),
+                    TimeColumn::new(Some(false), timeline2, vec![1003, 1000, 1001].into()),
                 ),
             ];
             let expected_components = [(
@@ -1725,19 +1677,11 @@ mod tests {
             let expected_timelines = [
                 (
                     timeline1,
-                    TimeColumn::new(
-                        Some(true),
-                        timeline1,
-                        Arrow2PrimitiveArray::from_vec(vec![44]),
-                    ),
+                    TimeColumn::new(Some(true), timeline1, vec![44].into()),
                 ),
                 (
                     timeline2,
-                    TimeColumn::new(
-                        Some(true),
-                        timeline2,
-                        Arrow2PrimitiveArray::from_vec(vec![1002]),
-                    ),
+                    TimeColumn::new(Some(true), timeline2, vec![1002].into()),
                 ),
             ];
             let expected_components = [(

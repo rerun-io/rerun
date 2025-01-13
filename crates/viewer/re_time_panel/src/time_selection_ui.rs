@@ -33,7 +33,7 @@ pub fn loop_selection_ui(
 
     let pointer_pos = ui.input(|i| i.pointer.hover_pos());
     let is_pointer_in_timeline =
-        pointer_pos.map_or(false, |pointer_pos| timeline_rect.contains(pointer_pos));
+        pointer_pos.is_some_and(|pointer_pos| timeline_rect.contains(pointer_pos));
 
     let left_edge_id = ui.id().with("selection_left_edge");
     let right_edge_id = ui.id().with("selection_right_edge");

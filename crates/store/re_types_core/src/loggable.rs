@@ -25,6 +25,12 @@ pub trait Loggable: 'static + Send + Sync + Clone + Sized + SizeBytes {
     /// The underlying [`arrow::datatypes::DataType`], excluding datatype extensions.
     fn arrow_datatype() -> arrow::datatypes::DataType;
 
+    // Returns an empty Arrow array that matches this `Loggable`'s underlying datatype.
+    #[inline]
+    fn arrow_empty() -> arrow::array::ArrayRef {
+        arrow::array::new_empty_array(&Self::arrow_datatype())
+    }
+
     /// Given an iterator of owned or reference values to the current [`Loggable`], serializes
     /// them into an Arrow array.
     ///

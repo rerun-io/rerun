@@ -160,7 +160,7 @@ pub trait ViewClass: Send + Sync {
             .filter_map(|visualizer| {
                 if indicated_entities_per_visualizer
                     .get(visualizer)
-                    .map_or(false, |matching_list| matching_list.contains(entity_path))
+                    .is_some_and(|matching_list| matching_list.contains(entity_path))
                 {
                     Some(*visualizer)
                 } else {
