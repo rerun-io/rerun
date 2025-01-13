@@ -20,8 +20,6 @@ pub struct TransformCacheStoreSubscriber {
     transform_components: IntSet<ComponentName>,
     pose_components: IntSet<ComponentName>,
     pinhole_components: IntSet<ComponentName>,
-    /// All components of interest, a combination of the above.
-    all_interesting_components: IntSet<ComponentName>,
 
     per_timeline: HashMap<Timeline, CachedTransformsPerTimeline>,
 }
@@ -31,32 +29,21 @@ impl Default for TransformCacheStoreSubscriber {
     fn default() -> Self {
         use re_types::Archetype as _;
 
-        let transform_components: IntSet<ComponentName> =
-            re_types::archetypes::Transform3D::all_components()
+        Self {
+            transform_components: re_types::archetypes::Transform3D::all_components()
                 .iter()
                 .map(|descr| descr.component_name)
-                .collect();
-        let pose_components = re_types::archetypes::InstancePoses3D::all_components()
-            .iter()
-            .map(|descr| descr.component_name)
-            .collect();
-        let pinhole_components = [
-            components::PinholeProjection::name(),
-            components::ViewCoordinates::name(),
-        ]
-        .into_iter()
-        .collect();
-
-        let all_interesting_components = transform_components
-            .union(&pose_components)
-            .union(&pinhole_components)
-            .collect();
-
-        Self {
-            transform_components,
-            pose_components,
-            pinhole_components,
-            all_interesting_components,
+                .collect(),
+            pose_components: re_types::archetypes::InstancePoses3D::all_components()
+                .iter()
+                .map(|descr| descr.component_name)
+                .collect(),
+            pinhole_components: [
+                components::PinholeProjection::name(),
+                components::ViewCoordinates::name(),
+            ]
+            .into_iter()
+            .collect(),
 
             per_timeline: Default::default(),
         }
@@ -67,9 +54,9 @@ bitflags::bitflags! {
     /// Flags for the different kinds of independent transforms that the transform cache handles.
     #[derive(Debug, Clone, Copy)]
     pub struct TransformAspect: u8 {
-        const TREE = 1 << 0;
-        const POSE = 1 << 1;
-        const PINHOLE = 1 << 2;
+        const Tree = 1 << 0;
+        const Pose = 1 << 1;
+        const PinholeOrViewCoordinates = 1 << 2;
     }
 }
 
@@ -198,7 +185,7 @@ impl TransformCacheStoreSubscriber {
                 for time in queued_update.times {
                     let query = LatestAtQuery::new(*timeline, time);
 
-                    if queued_update.aspects.contains(TransformAspect::TREE) {
+                    if queued_update.aspects.contains(TransformAspect::Tree) {
                         if let Some(transform) = query_and_resolve_tree_transform_at_entity(
                             entity_path,
                             entity_db,
@@ -207,7 +194,7 @@ impl TransformCacheStoreSubscriber {
                             entity_entry.tree_transforms.insert(time, transform);
                         }
                     }
-                    if queued_update.aspects.contains(TransformAspect::POSE) {
+                    if queued_update.aspects.contains(TransformAspect::Pose) {
                         let transforms = query_and_resolve_instance_poses_at_entity(
                             entity_path,
                             entity_db,
@@ -217,7 +204,10 @@ impl TransformCacheStoreSubscriber {
                             entity_entry.pose_transforms.insert(time, transforms);
                         }
                     }
-                    if queued_update.aspects.contains(TransformAspect::PINHOLE) {
+                    if queued_update
+                        .aspects
+                        .contains(TransformAspect::PinholeOrViewCoordinates)
+                    {
                         if let Some(resolved_pinhole_projection) =
                             query_and_resolve_pinhole_projection_at_entity(
                                 entity_path,
@@ -254,26 +244,18 @@ impl PerStoreChunkSubscriber for TransformCacheStoreSubscriber {
                 continue;
             }
 
-            // TODO: do a quicker check for nothing happening.
-
-            let has_tree_transforms = event
-                .chunk
-                .component_names()
-                .any(|component_name| self.transform_components.contains(&component_name));
-            let has_instance_poses = event
-                .chunk
-                .component_names()
-                .any(|component_name| self.pose_components.contains(&component_name));
-            let has_pinhole_or_view_coordinates =
-                event.chunk.component_names().any(|component_name| {
-                    component_name == components::PinholeProjection::name()
-                        || component_name == components::ViewCoordinates::name()
-                });
-
             let mut aspects = TransformAspect::empty();
-            aspects.set(TransformAspect::TREE, has_tree_transforms);
-            aspects.set(TransformAspect::POSE, has_instance_poses);
-            aspects.set(TransformAspect::PINHOLE, has_pinhole_or_view_coordinates);
+            for component_name in event.chunk.component_names() {
+                if self.transform_components.contains(&component_name) {
+                    aspects.set(TransformAspect::Tree, true);
+                }
+                if self.pose_components.contains(&component_name) {
+                    aspects.set(TransformAspect::Pose, true);
+                }
+                if self.pinhole_components.contains(&component_name) {
+                    aspects.set(TransformAspect::PinholeOrViewCoordinates, true);
+                }
+            }
             if aspects.is_empty() {
                 continue;
             }
