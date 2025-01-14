@@ -52,7 +52,7 @@ impl BlueprintTree {
             ui.full_span_separator();
             ui.add_space(-1.);
 
-            ui.list_item_scope("blueprint section title", |ui| {
+            ui.list_item_scope("blueprint_section_title", |ui| {
                 ui.list_item_flat_noninteractive(
                     list_item::CustomContent::new(|ui, _| {
                         ui.strong("Blueprint").on_hover_text(
