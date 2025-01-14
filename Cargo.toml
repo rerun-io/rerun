@@ -194,6 +194,7 @@ glob = "0.3"
 gltf = "1.1"
 half = "2.3.1"
 hexasphere = "14.1.0"
+hmac = "0.12"
 home = "=0.5.9"
 image = { version = "0.25", default-features = false }
 indent = "0.1"
@@ -203,7 +204,7 @@ infer = "0.16" # infer MIME type by checking the magic number signaturefer MIME 
 insta = "1.23"
 itertools = "0.13"
 js-sys = "0.3"
-jwt-simple = { version = "0.12", default-features=false, features=["pure-rust"] }
+jsonwebtoken = { version = "9", default-features = false }
 libc = "0.2"
 linked-hash-map = { version = "0.5", default-features = false }
 log = "0.4"

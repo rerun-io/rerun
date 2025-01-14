@@ -1,9 +1,9 @@
-use jwt_simple::token::Token;
+use jsonwebtoken::decode_header;
 
 #[derive(Debug, thiserror::Error)]
 pub enum TokenError {
-    #[error("token does not seem to be a valid JWT token")]
-    MalformedToken,
+    #[error("token does not seem to be a valid JWT token: {0}")]
+    MalformedToken(#[source] jsonwebtoken::errors::Error),
 }
 
 /// A JWT token that is used to authenticate the client.
@@ -16,7 +16,7 @@ impl TryFrom<String> for Jwt {
 
     fn try_from(token: String) -> Result<Self, Self::Error> {
         // We first check if the general structure of the token is correct.
-        let _ = Token::decode_metadata(&token).map_err(|_err| Self::Error::MalformedToken)?;
+        let _ = decode_header(&token).map_err(Self::Error::MalformedToken)?;
         Ok(Self(token))
     }
 }

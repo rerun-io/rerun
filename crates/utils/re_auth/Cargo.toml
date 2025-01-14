@@ -1,5 +1,6 @@
 [package]
 name = "re_auth"
+description = "Authentication helpers for Rerun"
 authors.workspace = true
 edition.workspace = true
 homepage.workspace = true
@@ -9,13 +10,19 @@ repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
+[lints]
+workspace = true
+
 [dependencies]
 re_log.workspace = true
 
-thiserror.workspace = true
 base64.workspace = true
-jwt-simple.workspace = true
+hmac.workspace = true
+jsonwebtoken.workspace = true
+rand.workspace = true
+serde.workspace = true
+thiserror.workspace = true
 tonic.workspace = true
 
-[lints]
-workspace = true
+[dev-dependencies]
+rand = { workspace = true, features = ["std", "std_rng"] }
