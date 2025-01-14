@@ -110,7 +110,7 @@ impl BlueprintTree {
                         .and_then(|item| handle_focused_item(ctx, viewport, ui, item));
 
                     list_item::list_item_scope(ui, "blueprint tree", |ui| {
-                        self.root_container_tree_ui(ctx, viewport, ui);
+                        self.root_container_ui(ctx, viewport, ui);
                     });
 
                     let empty_space_response =
@@ -160,10 +160,10 @@ impl BlueprintTree {
     ) {
         match contents {
             Contents::Container(container_id) => {
-                self.container_tree_ui(ctx, viewport, ui, container_id, parent_visible);
+                self.container_ui(ctx, viewport, ui, container_id, parent_visible);
             }
             Contents::View(view_id) => {
-                self.view_entry_ui(ctx, viewport, ui, view_id, parent_visible);
+                self.view_ui(ctx, viewport, ui, view_id, parent_visible);
             }
         };
     }
@@ -172,7 +172,7 @@ impl BlueprintTree {
     ///
     /// The root container is different from other containers in that it cannot be removed or dragged, and it cannot be
     /// collapsed, so it's drawn without a collapsing triangle.
-    fn root_container_tree_ui(
+    fn root_container_ui(
         &mut self,
         ctx: &ViewerContext<'_>,
         viewport: &ViewportBlueprint,
@@ -223,7 +223,7 @@ impl BlueprintTree {
         );
     }
 
-    fn container_tree_ui(
+    fn container_ui(
         &mut self,
         ctx: &ViewerContext<'_>,
         viewport: &ViewportBlueprint,
@@ -308,7 +308,7 @@ impl BlueprintTree {
         );
     }
 
-    fn view_entry_ui(
+    fn view_ui(
         &mut self,
         ctx: &ViewerContext<'_>,
         viewport: &ViewportBlueprint,
@@ -371,7 +371,7 @@ impl BlueprintTree {
             .force_hovered(is_item_hovered)
             .show_hierarchical_with_children(ui, id, default_open, item_content, |ui| {
                 // Always show the origin hierarchy first.
-                self.view_entity_hierarchy_ui(
+                self.data_result_ui(
                     ctx,
                     viewport,
                     ui,
@@ -402,7 +402,7 @@ impl BlueprintTree {
                     );
 
                     for projection in projections {
-                        self.view_entity_hierarchy_ui(
+                        self.data_result_ui(
                             ctx,
                             viewport,
                             ui,
@@ -446,7 +446,7 @@ impl BlueprintTree {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn view_entity_hierarchy_ui(
+    fn data_result_ui(
         &self,
         ctx: &ViewerContext<'_>,
         viewport: &ViewportBlueprint,
@@ -577,7 +577,7 @@ impl BlueprintTree {
                             continue;
                         };
 
-                        self.view_entity_hierarchy_ui(
+                        self.data_result_ui(
                             ctx,
                             viewport,
                             ui,
