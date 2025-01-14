@@ -4,7 +4,7 @@ use std::collections::BTreeSet;
 
 use arrow::{
     array::{RecordBatch, RecordBatchIterator, RecordBatchReader},
-    datatypes::Schema,
+    datatypes::Schema as ArrowSchema,
     ffi_stream::ArrowArrayStreamReader,
     pyarrow::PyArrowType,
 };
@@ -169,16 +169,11 @@ impl PyStorageNodeClient {
             let schema = batches
                 .first()
                 .map(|batch| batch.schema())
-                .unwrap_or_default();
-
-            let fields: Vec<arrow::datatypes::Field> =
-                schema.fields.iter().map(|f| f.clone().into()).collect();
-            let metadata = schema.metadata.clone().into_iter().collect();
-            let schema = arrow::datatypes::Schema::new_with_metadata(fields, metadata);
+                .unwrap_or_else(|| ArrowSchema::empty().into());
 
             Ok(RecordBatchIterator::new(
                 batches.into_iter().map(|tc| tc.try_to_arrow_record_batch()),
-                std::sync::Arc::new(schema),
+                schema,
             ))
         });
 
@@ -248,7 +243,7 @@ impl PyStorageNodeClient {
             let schema = record_batches
                 .first()
                 .and_then(|batch| batch.as_ref().ok().map(|batch| batch.schema()))
-                .unwrap_or(std::sync::Arc::new(Schema::empty()));
+                .unwrap_or(std::sync::Arc::new(ArrowSchema::empty()));
 
             let reader = RecordBatchIterator::new(record_batches, schema);
 
@@ -352,7 +347,7 @@ impl PyStorageNodeClient {
 
             let recording_id = metadata
                 .all_columns()
-                .find(|(field, _data)| field.name == "rerun_recording_id")
+                .find(|(field, _data)| field.name() == "rerun_recording_id")
                 .map(|(_field, data)| data)
                 .ok_or(PyRuntimeError::new_err("No rerun_recording_id"))?
                 .as_any()

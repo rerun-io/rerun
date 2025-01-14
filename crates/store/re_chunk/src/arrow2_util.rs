@@ -1,3 +1,4 @@
+use arrow::datatypes::Schema as ArrowSchema;
 use arrow2::{
     array::{
         Array as Arrow2Array, BooleanArray as Arrow2BooleanArray,
@@ -438,7 +439,7 @@ pub fn take_array<A: Arrow2Array + Clone, O: arrow2::types::Index>(
 
 // ---
 
-use arrow2::{chunk::Chunk as Arrow2Chunk, datatypes::Schema as Arrow2Schema};
+use arrow2::chunk::Chunk as Arrow2Chunk;
 
 /// Concatenate multiple [`TransportChunk`]s into one.
 ///
@@ -446,11 +447,14 @@ use arrow2::{chunk::Chunk as Arrow2Chunk, datatypes::Schema as Arrow2Schema};
 /// * `arrow2` doesn't have a `RecordBatch` type, therefore we emulate that using our `TransportChunk`s.
 /// * `arrow-rs` does have one, and it natively supports concatenation.
 pub fn concatenate_record_batches(
-    schema: Arrow2Schema,
+    schema: impl Into<ArrowSchema>,
     batches: &[TransportChunk],
 ) -> anyhow::Result<TransportChunk> {
+    let schema: ArrowSchema = schema.into();
     anyhow::ensure!(
-        batches.iter().all(|batch| batch.schema_ref() == &schema),
+        batches
+            .iter()
+            .all(|batch| batch.schema_ref().as_ref() == &schema),
         "concatenate_record_batches: all batches must have the same schema"
     );
 

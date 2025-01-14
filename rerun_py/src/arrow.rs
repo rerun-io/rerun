@@ -70,7 +70,7 @@ pub fn array_to_rust(
         datatype.clone(),
         true,
     )
-    .with_metadata(metadata);
+    .with_metadata(metadata.into_iter().collect()); // TODO(#3741)
 
     Ok((arr2_array, field))
 }

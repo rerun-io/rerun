@@ -1,6 +1,5 @@
 use arrow::{
     array::{make_array, RecordBatch},
-    datatypes::{Field, Schema},
     error::ArrowError,
 };
 
@@ -13,17 +12,6 @@ impl TransportChunk {
     /// but does incur overhead of generating an alternative representation of the arrow-
     /// related rust structures that refer to those data buffers.
     pub fn try_to_arrow_record_batch(&self) -> Result<RecordBatch, ArrowError> {
-        let fields: Vec<Field> = self
-            .schema_ref()
-            .fields
-            .iter()
-            .map(|f| f.clone().into())
-            .collect();
-
-        let metadata = self.schema().metadata.into_iter().collect();
-
-        let schema = Schema::new_with_metadata(fields, metadata);
-
         let columns: Vec<_> = self
             .all_columns()
             .map(|(_field, arr2_array)| {
@@ -32,7 +20,7 @@ impl TransportChunk {
             })
             .collect();
 
-        RecordBatch::try_new(std::sync::Arc::new(schema), columns)
+        RecordBatch::try_new(self.schema(), columns)
     }
 
     /// Create a [`TransportChunk`] from an arrow-rs [`RecordBatch`].
@@ -41,17 +29,6 @@ impl TransportChunk {
     /// but does incur overhead of generating an alternative representation of the arrow-
     /// related rust structures that refer to those data buffers.
     pub fn from_arrow_record_batch(batch: &RecordBatch) -> Self {
-        let fields: Vec<arrow2::datatypes::Field> = batch
-            .schema()
-            .fields
-            .iter()
-            .map(|f| f.clone().into())
-            .collect();
-
-        let metadata = batch.schema().metadata.clone().into_iter().collect();
-
-        let schema = arrow2::datatypes::Schema::from(fields).with_metadata(metadata);
-
         let columns: Vec<_> = batch
             .columns()
             .iter()
@@ -60,6 +37,6 @@ impl TransportChunk {
 
         let data = arrow2::chunk::Chunk::new(columns);
 
-        Self::new(schema, data)
+        Self::new(batch.schema(), data)
     }
 }

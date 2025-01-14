@@ -6009,6 +6009,7 @@ dependencies = [
 name = "re_grpc_client"
 version = "0.22.0-alpha.1+dev"
 dependencies = [
+ "arrow",
  "re_chunk",
  "re_error",
  "re_log",

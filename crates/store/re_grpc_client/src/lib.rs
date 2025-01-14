@@ -17,11 +17,11 @@ use url::Url;
 
 // ----------------------------------------------------------------------------
 
-use std::error::Error;
 use std::sync::Arc;
+use std::{collections::HashMap, error::Error};
 
+use arrow::datatypes::{DataType as ArrowDataType, Field as ArrowField};
 use arrow2::array::Utf8Array as Arrow2Utf8Array;
-use arrow2::datatypes::Field as Arrow2Field;
 use re_chunk::{
     Arrow2Array, Chunk, ChunkBuilder, ChunkId, EntityPath, RowId, Timeline, TransportChunk,
 };
@@ -275,7 +275,7 @@ pub fn store_info_from_catalog_chunk(
 
     let (_field, data) = tc
         .components()
-        .find(|(f, _)| f.name == "application_id")
+        .find(|(f, _)| f.name() == "application_id")
         .ok_or(StreamError::ChunkError(re_chunk::ChunkError::Malformed {
             reason: "no application_id field found".to_owned(),
         }))?;
@@ -289,7 +289,7 @@ pub fn store_info_from_catalog_chunk(
 
     let (_field, data) = tc
         .components()
-        .find(|(f, _)| f.name == "start_time")
+        .find(|(f, _)| f.name() == "start_time")
         .ok_or(StreamError::ChunkError(re_chunk::ChunkError::Malformed {
             reason: "no start_time field found".to_owned(),
         }))?;
@@ -402,7 +402,7 @@ async fn stream_catalog_async(
         )?;
 
         fields.push(
-            Arrow2Field::new(
+            ArrowField::new(
                 RowId::name().to_string(), // need to rename to Rerun Chunk expected control field
                 row_id_field.data_type().clone(),
                 false, /* not nullable */
@@ -420,11 +420,11 @@ async fn stream_catalog_async(
         // now add all the 'data' fields - we slice each column array into individual arrays and then convert the whole lot into a ListArray
         for (field, data) in input.components() {
             let data_field_inner =
-                Arrow2Field::new("item", field.data_type().clone(), true /* nullable */);
+                ArrowField::new("item", field.data_type().clone(), true /* nullable */);
 
-            let data_field = Arrow2Field::new(
-                field.name.clone(),
-                arrow2::datatypes::DataType::List(Arc::new(data_field_inner.clone())),
+            let data_field = ArrowField::new(
+                field.name().clone(),
+                ArrowDataType::List(Arc::new(data_field_inner.clone())),
                 false, /* not nullable */
             )
             .with_metadata(TransportChunk::field_metadata_data_column());
@@ -440,7 +440,7 @@ async fn stream_catalog_async(
             #[allow(clippy::unwrap_used)] // we know we've given the right field type
             let data_field_array: arrow2::array::ListArray<i32> =
                 re_chunk::arrow2_util::arrays_to_list_array(
-                    data_field_inner.data_type().clone(),
+                    data_field_inner.data_type().clone().into(),
                     &data_arrays,
                 )
                 .unwrap();
@@ -449,11 +449,13 @@ async fn stream_catalog_async(
             arrays.push(Box::new(data_field_array));
         }
 
-        let mut schema = arrow2::datatypes::Schema::from(fields);
-        schema.metadata.insert(
-            TransportChunk::CHUNK_METADATA_KEY_ENTITY_PATH.to_owned(),
-            "catalog".to_owned(),
-        );
+        let schema = {
+            let metadata = HashMap::from_iter([(
+                TransportChunk::CHUNK_METADATA_KEY_ENTITY_PATH.to_owned(),
+                "catalog".to_owned(),
+            )]);
+            arrow::datatypes::Schema::new_with_metadata(fields, metadata)
+        };
 
         // modified and enriched TransportChunk
         let mut tc = TransportChunk::new(schema, arrow2::chunk::Chunk::new(arrays));
@@ -496,10 +498,10 @@ async fn stream_catalog_async(
             .map(|e| Some(e.as_ref()))
             .collect::<Vec<_>>();
 
-        let rec_id_field = Arrow2Field::new("item", arrow2::datatypes::DataType::Utf8, true);
+        let rec_id_field = ArrowField::new("item", ArrowDataType::Utf8, true);
         #[allow(clippy::unwrap_used)] // we know we've given the right field type
         let uris = re_chunk::arrow2_util::arrays_to_list_array(
-            rec_id_field.data_type().clone(),
+            rec_id_field.data_type().clone().into(),
             &recording_id_arrays,
         )
         .unwrap();
