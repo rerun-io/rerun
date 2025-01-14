@@ -1182,34 +1182,12 @@ fn quote_trait_impls_for_archetype(obj: &Object) -> TokenStream {
             // NOTE: The nullability we're dealing with here is the nullability of an entire array of components,
             // not the nullability of individual elements (i.e. instances)!
             let batch = if is_nullable {
-                if obj.attrs.has(ATTR_RERUN_LOG_MISSING_AS_EMPTY) {
-                    if is_plural {
-                        // Always log Option<Vec<C>> as Vec<V>, mapping None to empty batch
-                        let component_type = quote_field_type_from_typ(&obj_field.typ, false).0;
-                        quote! {
-                            Some(
-                                if let Some(comp_batch) = &self.#field_name {
-                                    (comp_batch as &dyn ComponentBatch)
-                                } else {
-                                    // We need a reference to something that outives the function call
-                                    static EMPTY_BATCH: once_cell::sync::OnceCell<#component_type> = once_cell::sync::OnceCell::new();
-                                    let empty_batch: &#component_type = EMPTY_BATCH.get_or_init(|| Vec::new());
-                                    (empty_batch as &dyn ComponentBatch)
-                                }
-                            )
-                        }
-                    } else {
-                        // Always log Option<C>, mapping None to empty batch
-                        quote!{ Some(&self.#field_name as &dyn ComponentBatch) }
-                    }
+                if is_plural {
+                    // Maybe logging an Option<Vec<C>>
+                    quote!{ self.#field_name.as_ref().map(|comp_batch| (comp_batch as &dyn ComponentBatch)) }
                 } else {
-                    if is_plural {
-                        // Maybe logging an Option<Vec<C>>
-                        quote!{ self.#field_name.as_ref().map(|comp_batch| (comp_batch as &dyn ComponentBatch)) }
-                    } else {
-                        // Maybe logging an Option<C>
-                        quote!{ self.#field_name.as_ref().map(|comp| (comp as &dyn ComponentBatch)) }
-                    }
+                    // Maybe logging an Option<C>
+                    quote!{ self.#field_name.as_ref().map(|comp| (comp as &dyn ComponentBatch)) }
                 }
             } else {
                 // Always logging a Vec<C> or C
@@ -1683,19 +1661,8 @@ fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) 
         };
 
         if required.is_empty() && obj.attrs.has(ATTR_RERUN_LOG_MISSING_AS_EMPTY) {
-            let docstring = quote_doc_line(&format!(
-                "Create a new `{name}` which when logged will clear the values of all components."
-            ));
-
-            quote! {
-                #docstring
-                #[inline]
-                #fn_new_pub fn clear() -> Self {
-                    Self {
-                        #(#quoted_optional,)*
-                    }
-                }
-            }
+            // Skip the `new` method.
+            quote!()
         } else {
             let docstring = quote_doc_line(&format!("Create a new `{name}`."));
 
