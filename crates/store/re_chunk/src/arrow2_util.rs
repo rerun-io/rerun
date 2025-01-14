@@ -13,6 +13,24 @@ use itertools::Itertools;
 
 use crate::TransportChunk;
 
+/// Downcast an arrow array to another array, without having to go via `Any`.
+///
+/// This is shorter, but also better: it means we don't accidentally downcast
+/// an arrow2 array to an arrow1 array, or vice versa.
+pub trait Arrow2ArrayDowncastRef {
+    /// Downcast an arrow array to another array, without having to go via `Any`.
+    ///
+    /// This is shorter, but also better: it means we don't accidentally downcast
+    /// an arrow2 array to an arrow1 array, or vice versa.
+    fn downcast_array_ref<T: Arrow2Array + 'static>(&self) -> Option<&T>;
+}
+
+impl Arrow2ArrayDowncastRef for dyn Arrow2Array {
+    fn downcast_array_ref<T: Arrow2Array + 'static>(&self) -> Option<&T> {
+        self.as_any().downcast_ref()
+    }
+}
+
 // ---
 
 /// Returns true if the given `list_array` is semantically empty.
