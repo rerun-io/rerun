@@ -16,6 +16,7 @@ from rerun.datatypes import (
 from ..error_utils import catch_and_log_exceptions
 
 
+# TODO: whatever
 class Transform3DExt:
     """Extension for [Transform3D][rerun.archetypes.Transform3D]."""
 

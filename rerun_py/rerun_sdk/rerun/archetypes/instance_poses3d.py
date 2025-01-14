@@ -128,6 +128,63 @@ class InstancePoses3D(Archetype):
         inst.__attrs_clear__()
         return inst
 
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        translations: datatypes.Vec3DArrayLike | None = None,
+        rotation_axis_angles: datatypes.RotationAxisAngleArrayLike | None = None,
+        quaternions: datatypes.QuaternionArrayLike | None = None,
+        scales: datatypes.Vec3DArrayLike | None = None,
+        mat3x3: datatypes.Mat3x3ArrayLike | None = None,
+    ) -> InstancePoses3D:
+        """
+        Update only some specific fields of a `InstancePoses3D`.
+
+        Parameters
+        ----------
+        clear:
+             If true, all unspecified fields will be explicitly cleared.
+        translations:
+            Translation vectors.
+        rotation_axis_angles:
+            Rotations via axis + angle.
+        quaternions:
+            Rotations via quaternion.
+        scales:
+            Scaling factors.
+        mat3x3:
+            3x3 transformation matrices.
+
+        """
+
+        kwargs = {
+            "translations": translations,
+            "rotation_axis_angles": rotation_axis_angles,
+            "quaternions": quaternions,
+            "scales": scales,
+            "mat3x3": mat3x3,
+        }
+
+        if clear:
+            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+        return InstancePoses3D(**kwargs)  # type: ignore[arg-type]
+
+    @classmethod
+    def clear_fields(cls) -> InstancePoses3D:
+        """Clear all the fields of a `InstancePoses3D`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            translations=[],  # type: ignore[arg-type]
+            rotation_axis_angles=[],  # type: ignore[arg-type]
+            quaternions=[],  # type: ignore[arg-type]
+            scales=[],  # type: ignore[arg-type]
+            mat3x3=[],  # type: ignore[arg-type]
+        )
+        return inst
+
     translations: components.PoseTranslation3DBatch | None = field(
         metadata={"component": "optional"},
         default=None,

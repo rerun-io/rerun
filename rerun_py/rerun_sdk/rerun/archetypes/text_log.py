@@ -97,9 +97,58 @@ class TextLog(Archetype):
         inst.__attrs_clear__()
         return inst
 
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        text: datatypes.Utf8Like | None = None,
+        level: datatypes.Utf8Like | None = None,
+        color: datatypes.Rgba32Like | None = None,
+    ) -> TextLog:
+        """
+        Update only some specific fields of a `TextLog`.
+
+        Parameters
+        ----------
+        clear:
+             If true, all unspecified fields will be explicitly cleared.
+        text:
+            The body of the message.
+        level:
+            The verbosity level of the message.
+
+            This can be used to filter the log messages in the Rerun Viewer.
+        color:
+            Optional color to use for the log line in the Rerun Viewer.
+
+        """
+
+        kwargs = {
+            "text": text,
+            "level": level,
+            "color": color,
+        }
+
+        if clear:
+            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+        return TextLog(**kwargs)  # type: ignore[arg-type]
+
+    @classmethod
+    def clear_fields(cls) -> TextLog:
+        """Clear all the fields of a `TextLog`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            text=[],  # type: ignore[arg-type]
+            level=[],  # type: ignore[arg-type]
+            color=[],  # type: ignore[arg-type]
+        )
+        return inst
+
     text: components.TextBatch = field(
-        metadata={"component": "required"},
-        converter=components.TextBatch._required,  # type: ignore[misc]
+        metadata={"component": "optional"},
+        converter=components.TextBatch._optional,  # type: ignore[misc]
     )
     # The body of the message.
     #

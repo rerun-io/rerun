@@ -112,9 +112,71 @@ class GraphNodes(Archetype):
         inst.__attrs_clear__()
         return inst
 
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        node_ids: datatypes.Utf8ArrayLike | None = None,
+        positions: datatypes.Vec2DArrayLike | None = None,
+        colors: datatypes.Rgba32ArrayLike | None = None,
+        labels: datatypes.Utf8ArrayLike | None = None,
+        show_labels: datatypes.BoolLike | None = None,
+        radii: datatypes.Float32ArrayLike | None = None,
+    ) -> GraphNodes:
+        """
+        Update only some specific fields of a `GraphNodes`.
+
+        Parameters
+        ----------
+        clear:
+             If true, all unspecified fields will be explicitly cleared.
+        node_ids:
+            A list of node IDs.
+        positions:
+            Optional center positions of the nodes.
+        colors:
+            Optional colors for the boxes.
+        labels:
+            Optional text labels for the node.
+        show_labels:
+            Optional choice of whether the text labels should be shown by default.
+        radii:
+            Optional radii for nodes.
+
+        """
+
+        kwargs = {
+            "node_ids": node_ids,
+            "positions": positions,
+            "colors": colors,
+            "labels": labels,
+            "show_labels": show_labels,
+            "radii": radii,
+        }
+
+        if clear:
+            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+        return GraphNodes(**kwargs)  # type: ignore[arg-type]
+
+    @classmethod
+    def clear_fields(cls) -> GraphNodes:
+        """Clear all the fields of a `GraphNodes`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            node_ids=[],  # type: ignore[arg-type]
+            positions=[],  # type: ignore[arg-type]
+            colors=[],  # type: ignore[arg-type]
+            labels=[],  # type: ignore[arg-type]
+            show_labels=[],  # type: ignore[arg-type]
+            radii=[],  # type: ignore[arg-type]
+        )
+        return inst
+
     node_ids: components.GraphNodeBatch = field(
-        metadata={"component": "required"},
-        converter=components.GraphNodeBatch._required,  # type: ignore[misc]
+        metadata={"component": "optional"},
+        converter=components.GraphNodeBatch._optional,  # type: ignore[misc]
     )
     # A list of node IDs.
     #

@@ -67,6 +67,53 @@ class ForceManyBody(Archetype):
         inst.__attrs_clear__()
         return inst
 
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        enabled: datatypes.BoolLike | None = None,
+        strength: datatypes.Float64Like | None = None,
+    ) -> ForceManyBody:
+        """
+        Update only some specific fields of a `ForceManyBody`.
+
+        Parameters
+        ----------
+        clear:
+             If true, all unspecified fields will be explicitly cleared.
+        enabled:
+            Whether the many body force is enabled.
+
+            The many body force is applied on each pair of nodes in a way that ressembles an electrical charge. If the
+            strength is smaller than 0, it pushes nodes apart; if it is larger than 0, it pulls them together.
+        strength:
+            The strength of the force.
+
+            If `strength` is smaller than 0, it pushes nodes apart, if it is larger than 0 it pulls them together.
+
+        """
+
+        kwargs = {
+            "enabled": enabled,
+            "strength": strength,
+        }
+
+        if clear:
+            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+        return ForceManyBody(**kwargs)  # type: ignore[arg-type]
+
+    @classmethod
+    def clear_fields(cls) -> ForceManyBody:
+        """Clear all the fields of a `ForceManyBody`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            enabled=[],  # type: ignore[arg-type]
+            strength=[],  # type: ignore[arg-type]
+        )
+        return inst
+
     enabled: blueprint_components.EnabledBatch | None = field(
         metadata={"component": "optional"},
         default=None,

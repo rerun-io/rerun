@@ -114,6 +114,64 @@ class SeriesLine(Archetype):
         inst.__attrs_clear__()
         return inst
 
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        color: datatypes.Rgba32Like | None = None,
+        width: datatypes.Float32Like | None = None,
+        name: datatypes.Utf8Like | None = None,
+        aggregation_policy: components.AggregationPolicyLike | None = None,
+    ) -> SeriesLine:
+        """
+        Update only some specific fields of a `SeriesLine`.
+
+        Parameters
+        ----------
+        clear:
+             If true, all unspecified fields will be explicitly cleared.
+        color:
+            Color for the corresponding series.
+        width:
+            Stroke width for the corresponding series.
+        name:
+            Display name of the series.
+
+            Used in the legend.
+        aggregation_policy:
+            Configures the zoom-dependent scalar aggregation.
+
+            This is done only if steps on the X axis go below a single pixel,
+            i.e. a single pixel covers more than one tick worth of data. It can greatly improve performance
+            (and readability) in such situations as it prevents overdraw.
+
+        """
+
+        kwargs = {
+            "color": color,
+            "width": width,
+            "name": name,
+            "aggregation_policy": aggregation_policy,
+        }
+
+        if clear:
+            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+        return SeriesLine(**kwargs)  # type: ignore[arg-type]
+
+    @classmethod
+    def clear_fields(cls) -> SeriesLine:
+        """Clear all the fields of a `SeriesLine`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            color=[],  # type: ignore[arg-type]
+            width=[],  # type: ignore[arg-type]
+            name=[],  # type: ignore[arg-type]
+            aggregation_policy=[],  # type: ignore[arg-type]
+        )
+        return inst
+
     color: components.ColorBatch | None = field(
         metadata={"component": "optional"},
         default=None,

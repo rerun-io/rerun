@@ -128,9 +128,57 @@ class TextDocument(Archetype):
         inst.__attrs_clear__()
         return inst
 
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        text: datatypes.Utf8Like | None = None,
+        media_type: datatypes.Utf8Like | None = None,
+    ) -> TextDocument:
+        """
+        Update only some specific fields of a `TextDocument`.
+
+        Parameters
+        ----------
+        clear:
+             If true, all unspecified fields will be explicitly cleared.
+        text:
+            Contents of the text document.
+        media_type:
+            The Media Type of the text.
+
+            For instance:
+            * `text/plain`
+            * `text/markdown`
+
+            If omitted, `text/plain` is assumed.
+
+        """
+
+        kwargs = {
+            "text": text,
+            "media_type": media_type,
+        }
+
+        if clear:
+            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+        return TextDocument(**kwargs)  # type: ignore[arg-type]
+
+    @classmethod
+    def clear_fields(cls) -> TextDocument:
+        """Clear all the fields of a `TextDocument`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            text=[],  # type: ignore[arg-type]
+            media_type=[],  # type: ignore[arg-type]
+        )
+        return inst
+
     text: components.TextBatch = field(
-        metadata={"component": "required"},
-        converter=components.TextBatch._required,  # type: ignore[misc]
+        metadata={"component": "optional"},
+        converter=components.TextBatch._optional,  # type: ignore[misc]
     )
     # Contents of the text document.
     #

@@ -35,6 +35,43 @@ class TensorViewFit(TensorViewFitExt, Archetype):
         inst.__attrs_clear__()
         return inst
 
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        scaling: blueprint_components.ViewFitLike | None = None,
+    ) -> TensorViewFit:
+        """
+        Update only some specific fields of a `TensorViewFit`.
+
+        Parameters
+        ----------
+        clear:
+             If true, all unspecified fields will be explicitly cleared.
+        scaling:
+            How the image is scaled to fit the view.
+
+        """
+
+        kwargs = {
+            "scaling": scaling,
+        }
+
+        if clear:
+            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+        return TensorViewFit(**kwargs)  # type: ignore[arg-type]
+
+    @classmethod
+    def clear_fields(cls) -> TensorViewFit:
+        """Clear all the fields of a `TensorViewFit`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            scaling=[],  # type: ignore[arg-type]
+        )
+        return inst
+
     scaling: blueprint_components.ViewFitBatch | None = field(
         metadata={"component": "optional"},
         default=None,

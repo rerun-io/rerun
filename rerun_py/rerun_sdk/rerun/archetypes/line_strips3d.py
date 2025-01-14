@@ -173,9 +173,76 @@ class LineStrips3D(Archetype):
         inst.__attrs_clear__()
         return inst
 
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        strips: components.LineStrip3DArrayLike | None = None,
+        radii: datatypes.Float32ArrayLike | None = None,
+        colors: datatypes.Rgba32ArrayLike | None = None,
+        labels: datatypes.Utf8ArrayLike | None = None,
+        show_labels: datatypes.BoolLike | None = None,
+        class_ids: datatypes.ClassIdArrayLike | None = None,
+    ) -> LineStrips3D:
+        """
+        Update only some specific fields of a `LineStrips3D`.
+
+        Parameters
+        ----------
+        clear:
+             If true, all unspecified fields will be explicitly cleared.
+        strips:
+            All the actual 3D line strips that make up the batch.
+        radii:
+            Optional radii for the line strips.
+        colors:
+            Optional colors for the line strips.
+        labels:
+            Optional text labels for the line strips.
+
+            If there's a single label present, it will be placed at the center of the entity.
+            Otherwise, each instance will have its own label.
+        show_labels:
+            Optional choice of whether the text labels should be shown by default.
+        class_ids:
+            Optional [`components.ClassId`][rerun.components.ClassId]s for the lines.
+
+            The [`components.ClassId`][rerun.components.ClassId] provides colors and labels if not specified explicitly.
+
+        """
+
+        kwargs = {
+            "strips": strips,
+            "radii": radii,
+            "colors": colors,
+            "labels": labels,
+            "show_labels": show_labels,
+            "class_ids": class_ids,
+        }
+
+        if clear:
+            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+        return LineStrips3D(**kwargs)  # type: ignore[arg-type]
+
+    @classmethod
+    def clear_fields(cls) -> LineStrips3D:
+        """Clear all the fields of a `LineStrips3D`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            strips=[],  # type: ignore[arg-type]
+            radii=[],  # type: ignore[arg-type]
+            colors=[],  # type: ignore[arg-type]
+            labels=[],  # type: ignore[arg-type]
+            show_labels=[],  # type: ignore[arg-type]
+            class_ids=[],  # type: ignore[arg-type]
+        )
+        return inst
+
     strips: components.LineStrip3DBatch = field(
-        metadata={"component": "required"},
-        converter=components.LineStrip3DBatch._required,  # type: ignore[misc]
+        metadata={"component": "optional"},
+        converter=components.LineStrip3DBatch._optional,  # type: ignore[misc]
     )
     # All the actual 3D line strips that make up the batch.
     #

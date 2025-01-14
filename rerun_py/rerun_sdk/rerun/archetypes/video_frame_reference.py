@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from attrs import define, field
 
-from .. import components
+from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
 )
@@ -126,9 +126,66 @@ class VideoFrameReference(VideoFrameReferenceExt, Archetype):
         inst.__attrs_clear__()
         return inst
 
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        timestamp: datatypes.VideoTimestampLike | None = None,
+        video_reference: datatypes.EntityPathLike | None = None,
+    ) -> VideoFrameReference:
+        """
+        Update only some specific fields of a `VideoFrameReference`.
+
+        Parameters
+        ----------
+        clear:
+             If true, all unspecified fields will be explicitly cleared.
+        timestamp:
+            References the closest video frame to this timestamp.
+
+            Note that this uses the closest video frame instead of the latest at this timestamp
+            in order to be more forgiving of rounding errors for inprecise timestamp types.
+
+            Timestamps are relative to the start of the video, i.e. a timestamp of 0 always corresponds to the first frame.
+            This is oftentimes equivalent to presentation timestamps (known as PTS), but in the presence of B-frames
+            (bidirectionally predicted frames) there may be an offset on the first presentation timestamp in the video.
+        video_reference:
+            Optional reference to an entity with a [`archetypes.AssetVideo`][rerun.archetypes.AssetVideo].
+
+            If none is specified, the video is assumed to be at the same entity.
+            Note that blueprint overrides on the referenced video will be ignored regardless,
+            as this is always interpreted as a reference to the data store.
+
+            For a series of video frame references, it is recommended to specify this path only once
+            at the beginning of the series and then rely on latest-at query semantics to
+            keep the video reference active.
+
+        """
+
+        kwargs = {
+            "timestamp": timestamp,
+            "video_reference": video_reference,
+        }
+
+        if clear:
+            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+        return VideoFrameReference(**kwargs)  # type: ignore[arg-type]
+
+    @classmethod
+    def clear_fields(cls) -> VideoFrameReference:
+        """Clear all the fields of a `VideoFrameReference`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            timestamp=[],  # type: ignore[arg-type]
+            video_reference=[],  # type: ignore[arg-type]
+        )
+        return inst
+
     timestamp: components.VideoTimestampBatch = field(
-        metadata={"component": "required"},
-        converter=components.VideoTimestampBatch._required,  # type: ignore[misc]
+        metadata={"component": "optional"},
+        converter=components.VideoTimestampBatch._optional,  # type: ignore[misc]
     )
     # References the closest video frame to this timestamp.
     #

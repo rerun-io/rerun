@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from attrs import define, field
 
-from .. import components
+from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
 )
@@ -68,9 +68,68 @@ class GeoPoints(GeoPointsExt, Archetype):
         inst.__attrs_clear__()
         return inst
 
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        positions: datatypes.DVec2DArrayLike | None = None,
+        radii: datatypes.Float32ArrayLike | None = None,
+        colors: datatypes.Rgba32ArrayLike | None = None,
+        class_ids: datatypes.ClassIdArrayLike | None = None,
+    ) -> GeoPoints:
+        """
+        Update only some specific fields of a `GeoPoints`.
+
+        Parameters
+        ----------
+        clear:
+             If true, all unspecified fields will be explicitly cleared.
+        positions:
+            The [EPSG:4326](https://epsg.io/4326) coordinates for the points (North/East-positive degrees).
+        radii:
+            Optional radii for the points, effectively turning them into circles.
+
+            *Note*: scene units radiii are interpreted as meters.
+        colors:
+            Optional colors for the points.
+
+            The colors are interpreted as RGB or RGBA in sRGB gamma-space,
+            As either 0-1 floats or 0-255 integers, with separate alpha.
+        class_ids:
+            Optional class Ids for the points.
+
+            The [`components.ClassId`][rerun.components.ClassId] provides colors if not specified explicitly.
+
+        """
+
+        kwargs = {
+            "positions": positions,
+            "radii": radii,
+            "colors": colors,
+            "class_ids": class_ids,
+        }
+
+        if clear:
+            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+        return GeoPoints(**kwargs)  # type: ignore[arg-type]
+
+    @classmethod
+    def clear_fields(cls) -> GeoPoints:
+        """Clear all the fields of a `GeoPoints`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            positions=[],  # type: ignore[arg-type]
+            radii=[],  # type: ignore[arg-type]
+            colors=[],  # type: ignore[arg-type]
+            class_ids=[],  # type: ignore[arg-type]
+        )
+        return inst
+
     positions: components.LatLonBatch = field(
-        metadata={"component": "required"},
-        converter=components.LatLonBatch._required,  # type: ignore[misc]
+        metadata={"component": "optional"},
+        converter=components.LatLonBatch._optional,  # type: ignore[misc]
     )
     # The [EPSG:4326](https://epsg.io/4326) coordinates for the points (North/East-positive degrees).
     #

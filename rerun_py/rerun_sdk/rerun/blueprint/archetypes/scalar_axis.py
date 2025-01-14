@@ -58,6 +58,50 @@ class ScalarAxis(Archetype):
         inst.__attrs_clear__()
         return inst
 
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        range: datatypes.Range1DLike | None = None,
+        zoom_lock: datatypes.BoolLike | None = None,
+    ) -> ScalarAxis:
+        """
+        Update only some specific fields of a `ScalarAxis`.
+
+        Parameters
+        ----------
+        clear:
+             If true, all unspecified fields will be explicitly cleared.
+        range:
+            The range of the axis.
+
+            If unset, the range well be automatically determined based on the queried data.
+        zoom_lock:
+            If enabled, the Y axis range will remain locked to the specified range when zooming.
+
+        """
+
+        kwargs = {
+            "range": range,
+            "zoom_lock": zoom_lock,
+        }
+
+        if clear:
+            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+        return ScalarAxis(**kwargs)  # type: ignore[arg-type]
+
+    @classmethod
+    def clear_fields(cls) -> ScalarAxis:
+        """Clear all the fields of a `ScalarAxis`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            range=[],  # type: ignore[arg-type]
+            zoom_lock=[],  # type: ignore[arg-type]
+        )
+        return inst
+
     range: components.Range1DBatch | None = field(
         metadata={"component": "optional"},
         default=None,

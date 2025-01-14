@@ -79,9 +79,69 @@ class ViewBlueprint(Archetype):
         inst.__attrs_clear__()
         return inst
 
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        class_identifier: datatypes.Utf8Like | None = None,
+        display_name: datatypes.Utf8Like | None = None,
+        space_origin: datatypes.EntityPathLike | None = None,
+        visible: datatypes.BoolLike | None = None,
+    ) -> ViewBlueprint:
+        """
+        Update only some specific fields of a `ViewBlueprint`.
+
+        Parameters
+        ----------
+        clear:
+             If true, all unspecified fields will be explicitly cleared.
+        class_identifier:
+            The class of the view.
+        display_name:
+            The name of the view.
+        space_origin:
+            The "anchor point" of this view.
+
+            Defaults to the root path '/' if not specified.
+
+            The transform at this path forms the reference point for all scene->world transforms in this view.
+            I.e. the position of this entity path in space forms the origin of the coordinate system in this view.
+            Furthermore, this is the primary indicator for heuristics on what entities we show in this view.
+        visible:
+            Whether this view is visible.
+
+            Defaults to true if not specified.
+
+        """
+
+        kwargs = {
+            "class_identifier": class_identifier,
+            "display_name": display_name,
+            "space_origin": space_origin,
+            "visible": visible,
+        }
+
+        if clear:
+            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+        return ViewBlueprint(**kwargs)  # type: ignore[arg-type]
+
+    @classmethod
+    def clear_fields(cls) -> ViewBlueprint:
+        """Clear all the fields of a `ViewBlueprint`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            class_identifier=[],  # type: ignore[arg-type]
+            display_name=[],  # type: ignore[arg-type]
+            space_origin=[],  # type: ignore[arg-type]
+            visible=[],  # type: ignore[arg-type]
+        )
+        return inst
+
     class_identifier: blueprint_components.ViewClassBatch = field(
-        metadata={"component": "required"},
-        converter=blueprint_components.ViewClassBatch._required,  # type: ignore[misc]
+        metadata={"component": "optional"},
+        converter=blueprint_components.ViewClassBatch._optional,  # type: ignore[misc]
     )
     # The class of the view.
     #

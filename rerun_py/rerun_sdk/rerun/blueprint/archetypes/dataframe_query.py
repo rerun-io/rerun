@@ -7,10 +7,11 @@ from __future__ import annotations
 
 from attrs import define, field
 
+from ... import datatypes
 from ..._baseclasses import (
     Archetype,
 )
-from ...blueprint import components as blueprint_components
+from ...blueprint import components as blueprint_components, datatypes as blueprint_datatypes
 from .dataframe_query_ext import DataframeQueryExt
 
 __all__ = ["DataframeQuery"]
@@ -37,6 +38,67 @@ class DataframeQuery(DataframeQueryExt, Archetype):
         """Produce an empty DataframeQuery, bypassing `__init__`."""
         inst = cls.__new__(cls)
         inst.__attrs_clear__()
+        return inst
+
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        timeline: datatypes.Utf8Like | None = None,
+        filter_by_range: blueprint_datatypes.FilterByRangeLike | None = None,
+        filter_is_not_null: blueprint_datatypes.FilterIsNotNullLike | None = None,
+        apply_latest_at: datatypes.BoolLike | None = None,
+        select: blueprint_datatypes.SelectedColumnsLike | None = None,
+    ) -> DataframeQuery:
+        """
+        Update only some specific fields of a `DataframeQuery`.
+
+        Parameters
+        ----------
+        clear:
+             If true, all unspecified fields will be explicitly cleared.
+        timeline:
+            The timeline for this query.
+
+            If unset, the timeline currently active on the time panel is used.
+        filter_by_range:
+            If provided, only rows whose timestamp is within this range will be shown.
+
+            Note: will be unset as soon as `timeline` is changed.
+        filter_is_not_null:
+            If provided, only show rows which contains a logged event for the specified component.
+        apply_latest_at:
+            Should empty cells be filled with latest-at queries?
+        select:
+            Selected columns. If unset, all columns are selected.
+
+        """
+
+        kwargs = {
+            "timeline": timeline,
+            "filter_by_range": filter_by_range,
+            "filter_is_not_null": filter_is_not_null,
+            "apply_latest_at": apply_latest_at,
+            "select": select,
+        }
+
+        if clear:
+            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+        return DataframeQuery(**kwargs)  # type: ignore[arg-type]
+
+    @classmethod
+    def clear_fields(cls) -> DataframeQuery:
+        """Clear all the fields of a `DataframeQuery`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            timeline=[],  # type: ignore[arg-type]
+            filter_by_range=[],  # type: ignore[arg-type]
+            filter_is_not_null=[],  # type: ignore[arg-type]
+            apply_latest_at=[],  # type: ignore[arg-type]
+            select=[],  # type: ignore[arg-type]
+        )
         return inst
 
     timeline: blueprint_components.TimelineNameBatch | None = field(

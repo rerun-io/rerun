@@ -170,9 +170,83 @@ class LineStrips2D(Archetype):
         inst.__attrs_clear__()
         return inst
 
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        strips: components.LineStrip2DArrayLike | None = None,
+        radii: datatypes.Float32ArrayLike | None = None,
+        colors: datatypes.Rgba32ArrayLike | None = None,
+        labels: datatypes.Utf8ArrayLike | None = None,
+        show_labels: datatypes.BoolLike | None = None,
+        draw_order: datatypes.Float32Like | None = None,
+        class_ids: datatypes.ClassIdArrayLike | None = None,
+    ) -> LineStrips2D:
+        """
+        Update only some specific fields of a `LineStrips2D`.
+
+        Parameters
+        ----------
+        clear:
+             If true, all unspecified fields will be explicitly cleared.
+        strips:
+            All the actual 2D line strips that make up the batch.
+        radii:
+            Optional radii for the line strips.
+        colors:
+            Optional colors for the line strips.
+        labels:
+            Optional text labels for the line strips.
+
+            If there's a single label present, it will be placed at the center of the entity.
+            Otherwise, each instance will have its own label.
+        show_labels:
+            Optional choice of whether the text labels should be shown by default.
+        draw_order:
+            An optional floating point value that specifies the 2D drawing order of each line strip.
+
+            Objects with higher values are drawn on top of those with lower values.
+        class_ids:
+            Optional [`components.ClassId`][rerun.components.ClassId]s for the lines.
+
+            The [`components.ClassId`][rerun.components.ClassId] provides colors and labels if not specified explicitly.
+
+        """
+
+        kwargs = {
+            "strips": strips,
+            "radii": radii,
+            "colors": colors,
+            "labels": labels,
+            "show_labels": show_labels,
+            "draw_order": draw_order,
+            "class_ids": class_ids,
+        }
+
+        if clear:
+            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+        return LineStrips2D(**kwargs)  # type: ignore[arg-type]
+
+    @classmethod
+    def clear_fields(cls) -> LineStrips2D:
+        """Clear all the fields of a `LineStrips2D`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            strips=[],  # type: ignore[arg-type]
+            radii=[],  # type: ignore[arg-type]
+            colors=[],  # type: ignore[arg-type]
+            labels=[],  # type: ignore[arg-type]
+            show_labels=[],  # type: ignore[arg-type]
+            draw_order=[],  # type: ignore[arg-type]
+            class_ids=[],  # type: ignore[arg-type]
+        )
+        return inst
+
     strips: components.LineStrip2DBatch = field(
-        metadata={"component": "required"},
-        converter=components.LineStrip2DBatch._required,  # type: ignore[misc]
+        metadata={"component": "optional"},
+        converter=components.LineStrip2DBatch._optional,  # type: ignore[misc]
     )
     # All the actual 2D line strips that make up the batch.
     #

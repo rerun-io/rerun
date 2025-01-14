@@ -79,6 +79,68 @@ class TensorSliceSelection(Archetype):
         inst.__attrs_clear__()
         return inst
 
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        width: datatypes.TensorDimensionSelectionLike | None = None,
+        height: datatypes.TensorDimensionSelectionLike | None = None,
+        indices: datatypes.TensorDimensionIndexSelectionArrayLike | None = None,
+        slider: blueprint_datatypes.TensorDimensionIndexSliderArrayLike | None = None,
+    ) -> TensorSliceSelection:
+        """
+        Update only some specific fields of a `TensorSliceSelection`.
+
+        Parameters
+        ----------
+        clear:
+             If true, all unspecified fields will be explicitly cleared.
+        width:
+            Which dimension to map to width.
+
+            If not specified, the height will be determined automatically based on the name and index of the dimension.
+        height:
+            Which dimension to map to height.
+
+            If not specified, the height will be determined automatically based on the name and index of the dimension.
+        indices:
+            Selected indices for all other dimensions.
+
+            If any of the here listed dimensions is equal to `width` or `height`, it will be ignored.
+        slider:
+            Any dimension listed here will have a slider for the index.
+
+            Edits to the sliders will directly manipulate dimensions on the `indices` list.
+            If any of the here listed dimensions is equal to `width` or `height`, it will be ignored.
+            If not specified, adds slides for any dimension in `indices`.
+
+        """
+
+        kwargs = {
+            "width": width,
+            "height": height,
+            "indices": indices,
+            "slider": slider,
+        }
+
+        if clear:
+            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+        return TensorSliceSelection(**kwargs)  # type: ignore[arg-type]
+
+    @classmethod
+    def clear_fields(cls) -> TensorSliceSelection:
+        """Clear all the fields of a `TensorSliceSelection`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            width=[],  # type: ignore[arg-type]
+            height=[],  # type: ignore[arg-type]
+            indices=[],  # type: ignore[arg-type]
+            slider=[],  # type: ignore[arg-type]
+        )
+        return inst
+
     width: components.TensorWidthDimensionBatch | None = field(
         metadata={"component": "optional"},
         default=None,

@@ -72,6 +72,61 @@ class TensorScalarMapping(Archetype):
         inst.__attrs_clear__()
         return inst
 
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        mag_filter: components.MagnificationFilterLike | None = None,
+        colormap: components.ColormapLike | None = None,
+        gamma: datatypes.Float32Like | None = None,
+    ) -> TensorScalarMapping:
+        """
+        Update only some specific fields of a `TensorScalarMapping`.
+
+        Parameters
+        ----------
+        clear:
+             If true, all unspecified fields will be explicitly cleared.
+        mag_filter:
+            Filter used when zooming in on the tensor.
+
+            Note that the filter is applied to the scalar values *before* they are mapped to color.
+        colormap:
+            How scalar values map to colors.
+        gamma:
+            Gamma exponent applied to normalized values before mapping to color.
+
+            Raises the normalized values to the power of this value before mapping to color.
+            Acts like an inverse brightness. Defaults to 1.0.
+
+            The final value for display is set as:
+            `colormap( ((value - data_display_range.min) / (data_display_range.max - data_display_range.min)) ** gamma )`
+
+        """
+
+        kwargs = {
+            "mag_filter": mag_filter,
+            "colormap": colormap,
+            "gamma": gamma,
+        }
+
+        if clear:
+            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+        return TensorScalarMapping(**kwargs)  # type: ignore[arg-type]
+
+    @classmethod
+    def clear_fields(cls) -> TensorScalarMapping:
+        """Clear all the fields of a `TensorScalarMapping`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            mag_filter=[],  # type: ignore[arg-type]
+            colormap=[],  # type: ignore[arg-type]
+            gamma=[],  # type: ignore[arg-type]
+        )
+        return inst
+
     mag_filter: components.MagnificationFilterBatch | None = field(
         metadata={"component": "optional"},
         default=None,

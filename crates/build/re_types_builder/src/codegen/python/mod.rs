@@ -19,7 +19,6 @@ use crate::{
     objects::ObjectClass,
     ArrowRegistry, CodeGenerator, Docs, ElementType, GeneratedFiles, Object, ObjectField,
     ObjectKind, Objects, Reporter, Type, ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES,
-    ATTR_RERUN_LOG_MISSING_AS_EMPTY,
 };
 
 use self::views::code_for_view;
@@ -592,11 +591,7 @@ fn code_for_struct(
             } else if *kind == ObjectKind::Archetype {
                 // Archetypes use the ComponentBatch constructor for their fields
                 let (typ_unwrapped, _) = quote_field_type_from_field(objects, field, true);
-                if field.is_nullable && !obj.attrs.has(ATTR_RERUN_LOG_MISSING_AS_EMPTY) {
-                    format!("converter={typ_unwrapped}Batch._optional,  # type: ignore[misc]\n")
-                } else {
-                    format!("converter={typ_unwrapped}Batch._required,  # type: ignore[misc]\n")
-                }
+                format!("converter={typ_unwrapped}Batch._optional,  # type: ignore[misc]\n")
             } else if !default_converter.is_empty() {
                 code.push_indented(0, &converter_function, 1);
                 format!("converter={default_converter}")
@@ -699,6 +694,7 @@ fn code_for_struct(
 
     if obj.kind == ObjectKind::Archetype {
         code.push_indented(1, quote_clear_methods(obj), 2);
+        code.push_indented(1, quote_partial_update_methods(reporter, obj, objects), 2);
     }
 
     if obj.is_delegating_component() {
@@ -739,10 +735,7 @@ fn code_for_struct(
             };
 
             let metadata = if *kind == ObjectKind::Archetype {
-                format!(
-                    "\nmetadata={{'component': '{}'}}, ",
-                    if *is_nullable { "optional" } else { "required" }
-                )
+                "\nmetadata={'component': 'optional'}, ".to_owned()
             } else {
                 String::new()
             };
@@ -2336,57 +2329,91 @@ fn quote_init_parameter_from_field(
     }
 }
 
+fn compute_init_parameters(obj: &Object, objects: &Objects) -> Vec<String> {
+    // If the type is fully transparent (single non-nullable field and not an archetype),
+    // we have to use the "{obj.name}Like" type directly since the type of the field itself might be too narrow.
+    // -> Whatever type aliases there are for this type, we need to pick them up.
+    if obj.kind != ObjectKind::Archetype && obj.fields.len() == 1 && !obj.fields[0].is_nullable {
+        vec![format!(
+            "{}: {}",
+            obj.fields[0].name,
+            quote_parameter_type_alias(&obj.fqname, &obj.fqname, objects, false)
+        )]
+    } else if obj.is_union() {
+        vec![format!(
+            "inner: {} | None = None",
+            quote_parameter_type_alias(&obj.fqname, &obj.fqname, objects, false)
+        )]
+    } else {
+        let required = obj
+            .fields
+            .iter()
+            .filter(|field| !field.is_nullable)
+            .map(|field| quote_init_parameter_from_field(field, objects, &obj.fqname))
+            .collect_vec();
+
+        let optional = obj
+            .fields
+            .iter()
+            .filter(|field| field.is_nullable)
+            .map(|field| quote_init_parameter_from_field(field, objects, &obj.fqname))
+            .collect_vec();
+
+        if optional.is_empty() {
+            required
+        } else if obj.kind == ObjectKind::Archetype {
+            // Force kw-args for all optional arguments:
+            required
+                .into_iter()
+                .chain(std::iter::once("*".to_owned()))
+                .chain(optional)
+                .collect()
+        } else {
+            required.into_iter().chain(optional).collect()
+        }
+    }
+}
+
+fn compute_init_parameter_docs(
+    reporter: &Reporter,
+    obj: &Object,
+    objects: &Objects,
+) -> Vec<String> {
+    if obj.is_union() {
+        Vec::new()
+    } else {
+        obj.fields
+            .iter()
+            .filter_map(|field| {
+                let doc_content = field.docs.lines_for(reporter, objects, Target::Python);
+                if doc_content.is_empty() {
+                    if !field.is_testing() && obj.fields.len() > 1 {
+                        reporter.error(
+                            &field.virtpath,
+                            &field.fqname,
+                            format!("Field {} is missing documentation", field.name),
+                        );
+                    }
+                    None
+                } else {
+                    Some(format!(
+                        "{}:\n    {}",
+                        field.name,
+                        doc_content.join("\n    ")
+                    ))
+                }
+            })
+            .collect::<Vec<_>>()
+    }
+}
+
 fn quote_init_method(
     reporter: &Reporter,
     obj: &Object,
     ext_class: &ExtensionClass,
     objects: &Objects,
 ) -> String {
-    // If the type is fully transparent (single non-nullable field and not an archetype),
-    // we have to use the "{obj.name}Like" type directly since the type of the field itself might be too narrow.
-    // -> Whatever type aliases there are for this type, we need to pick them up.
-    let parameters: Vec<_> =
-        if obj.kind != ObjectKind::Archetype && obj.fields.len() == 1 && !obj.fields[0].is_nullable
-        {
-            vec![format!(
-                "{}: {}",
-                obj.fields[0].name,
-                quote_parameter_type_alias(&obj.fqname, &obj.fqname, objects, false)
-            )]
-        } else if obj.is_union() {
-            vec![format!(
-                "inner: {} | None = None",
-                quote_parameter_type_alias(&obj.fqname, &obj.fqname, objects, false)
-            )]
-        } else {
-            let required = obj
-                .fields
-                .iter()
-                .filter(|field| !field.is_nullable)
-                .map(|field| quote_init_parameter_from_field(field, objects, &obj.fqname))
-                .collect_vec();
-
-            let optional = obj
-                .fields
-                .iter()
-                .filter(|field| field.is_nullable)
-                .map(|field| quote_init_parameter_from_field(field, objects, &obj.fqname))
-                .collect_vec();
-
-            if optional.is_empty() {
-                required
-            } else if obj.kind == ObjectKind::Archetype {
-                // Force kw-args for all optional arguments:
-                required
-                    .into_iter()
-                    .chain(std::iter::once("*".to_owned()))
-                    .chain(optional)
-                    .collect()
-            } else {
-                required.into_iter().chain(optional).collect()
-            }
-        };
-
+    let parameters = compute_init_parameters(obj, objects);
     let head = format!("def __init__(self: Any, {}):", parameters.join(", "));
 
     let parameter_docs = if obj.is_union() {
@@ -2492,6 +2519,93 @@ fn quote_clear_methods(obj: &Object) -> String {
             """Produce an empty {classname}, bypassing `__init__`."""
             inst = cls.__new__(cls)
             inst.__attrs_clear__()
+            return inst
+        "#
+    ))
+}
+
+fn quote_partial_update_methods(reporter: &Reporter, obj: &Object, objects: &Objects) -> String {
+    let name = &obj.name;
+
+    let parameters = obj
+        .fields
+        .iter()
+        .map(|field| {
+            let mut field = field.clone();
+            field.is_nullable = true;
+            quote_init_parameter_from_field(&field, objects, &obj.fqname)
+        })
+        .collect_vec()
+        .join(",                          ");
+
+    let kwargs = obj
+        .fields
+        .iter()
+        .map(|field| {
+            let field_name = field.snake_case_name();
+            format!("'{field_name}': {field_name}")
+        })
+        .collect_vec()
+        .join(",                          ");
+
+    let parameter_docs = compute_init_parameter_docs(reporter, obj, objects);
+    let mut doc_string_lines = vec![format!("Update only some specific fields of a `{name}`.")];
+    if !parameter_docs.is_empty() {
+        doc_string_lines.push("\n".to_owned());
+        doc_string_lines.push("Parameters".to_owned());
+        doc_string_lines.push("----------".to_owned());
+        doc_string_lines.push("clear:".to_owned());
+        doc_string_lines
+            .push("     If true, all unspecified fields will be explicitly cleared.".to_owned());
+        for doc in parameter_docs {
+            doc_string_lines.push(doc);
+        }
+    };
+    let doc_block = quote_doc_lines(doc_string_lines)
+        .lines()
+        .map(|line| format!("            {line}"))
+        .collect_vec()
+        .join("\n");
+
+    let field_clears = obj
+        .fields
+        .iter()
+        .map(|field| {
+            let field_name = field.snake_case_name();
+            format!("{field_name}=[],  # type: ignore[arg-type]")
+        })
+        .collect_vec()
+        .join("\n                          ");
+    let field_clears = indent::indent_by(4, field_clears);
+
+    unindent(&format!(
+        r#"
+        @classmethod
+        def update_fields(
+            cls,
+            *,
+            clear: bool = False,
+            {parameters},
+        ) -> {name}:
+
+{doc_block}
+
+            kwargs = {{
+                {kwargs},
+            }}
+
+            if clear:
+                kwargs = {{k: v if v is not None else [] for k, v in kwargs.items()}}  # type: ignore[misc]
+
+            return {name}(**kwargs)  # type: ignore[arg-type]
+
+        @classmethod
+        def clear_fields(cls) -> {name}:
+            """Clear all the fields of a `{name}`."""
+            inst = cls.__new__(cls)
+            inst.__attrs_init__(
+                {field_clears}
+            )
             return inst
         "#
     ))

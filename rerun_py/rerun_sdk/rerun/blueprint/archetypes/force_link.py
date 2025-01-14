@@ -69,6 +69,57 @@ class ForceLink(Archetype):
         inst.__attrs_clear__()
         return inst
 
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        enabled: datatypes.BoolLike | None = None,
+        distance: datatypes.Float64Like | None = None,
+        iterations: datatypes.UInt64Like | None = None,
+    ) -> ForceLink:
+        """
+        Update only some specific fields of a `ForceLink`.
+
+        Parameters
+        ----------
+        clear:
+             If true, all unspecified fields will be explicitly cleared.
+        enabled:
+            Whether the link force is enabled.
+
+            The link force aims to achieve a target distance between two nodes that are connected by one ore more edges.
+        distance:
+            The target distance between two nodes.
+        iterations:
+            Specifies how often this force should be applied per iteration.
+
+            Increasing this parameter can lead to better results at the cost of longer computation time.
+
+        """
+
+        kwargs = {
+            "enabled": enabled,
+            "distance": distance,
+            "iterations": iterations,
+        }
+
+        if clear:
+            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+        return ForceLink(**kwargs)  # type: ignore[arg-type]
+
+    @classmethod
+    def clear_fields(cls) -> ForceLink:
+        """Clear all the fields of a `ForceLink`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            enabled=[],  # type: ignore[arg-type]
+            distance=[],  # type: ignore[arg-type]
+            iterations=[],  # type: ignore[arg-type]
+        )
+        return inst
+
     enabled: blueprint_components.EnabledBatch | None = field(
         metadata={"component": "optional"},
         default=None,

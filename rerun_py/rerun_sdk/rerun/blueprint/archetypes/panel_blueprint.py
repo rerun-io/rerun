@@ -52,6 +52,43 @@ class PanelBlueprint(Archetype):
         inst.__attrs_clear__()
         return inst
 
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        state: blueprint_components.PanelStateLike | None = None,
+    ) -> PanelBlueprint:
+        """
+        Update only some specific fields of a `PanelBlueprint`.
+
+        Parameters
+        ----------
+        clear:
+             If true, all unspecified fields will be explicitly cleared.
+        state:
+            Current state of the panels.
+
+        """
+
+        kwargs = {
+            "state": state,
+        }
+
+        if clear:
+            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+        return PanelBlueprint(**kwargs)  # type: ignore[arg-type]
+
+    @classmethod
+    def clear_fields(cls) -> PanelBlueprint:
+        """Clear all the fields of a `PanelBlueprint`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            state=[],  # type: ignore[arg-type]
+        )
+        return inst
+
     state: blueprint_components.PanelStateBatch | None = field(
         metadata={"component": "optional"},
         default=None,

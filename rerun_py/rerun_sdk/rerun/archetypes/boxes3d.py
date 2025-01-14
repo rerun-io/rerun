@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from attrs import define, field
 
-from .. import components
+from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
 )
@@ -85,9 +85,105 @@ class Boxes3D(Boxes3DExt, Archetype):
         inst.__attrs_clear__()
         return inst
 
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        half_sizes: datatypes.Vec3DArrayLike | None = None,
+        centers: datatypes.Vec3DArrayLike | None = None,
+        rotation_axis_angles: datatypes.RotationAxisAngleArrayLike | None = None,
+        quaternions: datatypes.QuaternionArrayLike | None = None,
+        colors: datatypes.Rgba32ArrayLike | None = None,
+        radii: datatypes.Float32ArrayLike | None = None,
+        fill_mode: components.FillModeLike | None = None,
+        labels: datatypes.Utf8ArrayLike | None = None,
+        show_labels: datatypes.BoolLike | None = None,
+        class_ids: datatypes.ClassIdArrayLike | None = None,
+    ) -> Boxes3D:
+        """
+        Update only some specific fields of a `Boxes3D`.
+
+        Parameters
+        ----------
+        clear:
+             If true, all unspecified fields will be explicitly cleared.
+        half_sizes:
+            All half-extents that make up the batch of boxes.
+        centers:
+            Optional center positions of the boxes.
+
+            If not specified, the centers will be at (0, 0, 0).
+            Note that this uses a [`components.PoseTranslation3D`][rerun.components.PoseTranslation3D] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
+        rotation_axis_angles:
+            Rotations via axis + angle.
+
+            If no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.
+            Note that this uses a [`components.PoseRotationAxisAngle`][rerun.components.PoseRotationAxisAngle] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
+        quaternions:
+            Rotations via quaternion.
+
+            If no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.
+            Note that this uses a [`components.PoseRotationQuat`][rerun.components.PoseRotationQuat] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
+        colors:
+            Optional colors for the boxes.
+        radii:
+            Optional radii for the lines that make up the boxes.
+        fill_mode:
+            Optionally choose whether the boxes are drawn with lines or solid.
+        labels:
+            Optional text labels for the boxes.
+
+            If there's a single label present, it will be placed at the center of the entity.
+            Otherwise, each instance will have its own label.
+        show_labels:
+            Optional choice of whether the text labels should be shown by default.
+        class_ids:
+            Optional [`components.ClassId`][rerun.components.ClassId]s for the boxes.
+
+            The [`components.ClassId`][rerun.components.ClassId] provides colors and labels if not specified explicitly.
+
+        """
+
+        kwargs = {
+            "half_sizes": half_sizes,
+            "centers": centers,
+            "rotation_axis_angles": rotation_axis_angles,
+            "quaternions": quaternions,
+            "colors": colors,
+            "radii": radii,
+            "fill_mode": fill_mode,
+            "labels": labels,
+            "show_labels": show_labels,
+            "class_ids": class_ids,
+        }
+
+        if clear:
+            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+        return Boxes3D(**kwargs)  # type: ignore[arg-type]
+
+    @classmethod
+    def clear_fields(cls) -> Boxes3D:
+        """Clear all the fields of a `Boxes3D`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            half_sizes=[],  # type: ignore[arg-type]
+            centers=[],  # type: ignore[arg-type]
+            rotation_axis_angles=[],  # type: ignore[arg-type]
+            quaternions=[],  # type: ignore[arg-type]
+            colors=[],  # type: ignore[arg-type]
+            radii=[],  # type: ignore[arg-type]
+            fill_mode=[],  # type: ignore[arg-type]
+            labels=[],  # type: ignore[arg-type]
+            show_labels=[],  # type: ignore[arg-type]
+            class_ids=[],  # type: ignore[arg-type]
+        )
+        return inst
+
     half_sizes: components.HalfSize3DBatch = field(
-        metadata={"component": "required"},
-        converter=components.HalfSize3DBatch._required,  # type: ignore[misc]
+        metadata={"component": "optional"},
+        converter=components.HalfSize3DBatch._optional,  # type: ignore[misc]
     )
     # All half-extents that make up the batch of boxes.
     #

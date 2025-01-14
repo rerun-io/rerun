@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from attrs import define, field
 
-from .. import components
+from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
 )
@@ -72,9 +72,68 @@ class Asset3D(Asset3DExt, Archetype):
         inst.__attrs_clear__()
         return inst
 
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        blob: datatypes.BlobLike | None = None,
+        media_type: datatypes.Utf8Like | None = None,
+        albedo_factor: datatypes.Rgba32Like | None = None,
+    ) -> Asset3D:
+        """
+        Update only some specific fields of a `Asset3D`.
+
+        Parameters
+        ----------
+        clear:
+             If true, all unspecified fields will be explicitly cleared.
+        blob:
+            The asset's bytes.
+        media_type:
+            The Media Type of the asset.
+
+            Supported values:
+            * `model/gltf-binary`
+            * `model/gltf+json`
+            * `model/obj` (.mtl material files are not supported yet, references are silently ignored)
+            * `model/stl`
+
+            If omitted, the viewer will try to guess from the data blob.
+            If it cannot guess, it won't be able to render the asset.
+        albedo_factor:
+            A color multiplier applied to the whole asset.
+
+            For mesh who already have `albedo_factor` in materials,
+            it will be overwritten by actual `albedo_factor` of [`archetypes.Asset3D`][rerun.archetypes.Asset3D] (if specified).
+
+        """
+
+        kwargs = {
+            "blob": blob,
+            "media_type": media_type,
+            "albedo_factor": albedo_factor,
+        }
+
+        if clear:
+            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+        return Asset3D(**kwargs)  # type: ignore[arg-type]
+
+    @classmethod
+    def clear_fields(cls) -> Asset3D:
+        """Clear all the fields of a `Asset3D`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            blob=[],  # type: ignore[arg-type]
+            media_type=[],  # type: ignore[arg-type]
+            albedo_factor=[],  # type: ignore[arg-type]
+        )
+        return inst
+
     blob: components.BlobBatch = field(
-        metadata={"component": "required"},
-        converter=components.BlobBatch._required,  # type: ignore[misc]
+        metadata={"component": "optional"},
+        converter=components.BlobBatch._optional,  # type: ignore[misc]
     )
     # The asset's bytes.
     #

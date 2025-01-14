@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from attrs import define, field
 
-from .. import components
+from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
 )
@@ -98,17 +98,105 @@ class Capsules3D(Capsules3DExt, Archetype):
         inst.__attrs_clear__()
         return inst
 
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        lengths: datatypes.Float32ArrayLike | None = None,
+        radii: datatypes.Float32ArrayLike | None = None,
+        translations: datatypes.Vec3DArrayLike | None = None,
+        rotation_axis_angles: datatypes.RotationAxisAngleArrayLike | None = None,
+        quaternions: datatypes.QuaternionArrayLike | None = None,
+        colors: datatypes.Rgba32ArrayLike | None = None,
+        labels: datatypes.Utf8ArrayLike | None = None,
+        show_labels: datatypes.BoolLike | None = None,
+        class_ids: datatypes.ClassIdArrayLike | None = None,
+    ) -> Capsules3D:
+        """
+        Update only some specific fields of a `Capsules3D`.
+
+        Parameters
+        ----------
+        clear:
+             If true, all unspecified fields will be explicitly cleared.
+        lengths:
+            Lengths of the capsules, defined as the distance between the centers of the endcaps.
+        radii:
+            Radii of the capsules.
+        translations:
+            Optional translations of the capsules.
+
+            If not specified, one end of each capsule will be at (0, 0, 0).
+            Note that this uses a [`components.PoseTranslation3D`][rerun.components.PoseTranslation3D] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
+        rotation_axis_angles:
+            Rotations via axis + angle.
+
+            If no rotation is specified, the capsules align with the +Z axis of the local coordinate system.
+            Note that this uses a [`components.PoseRotationAxisAngle`][rerun.components.PoseRotationAxisAngle] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
+        quaternions:
+            Rotations via quaternion.
+
+            If no rotation is specified, the capsules align with the +Z axis of the local coordinate system.
+            Note that this uses a [`components.PoseRotationQuat`][rerun.components.PoseRotationQuat] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
+        colors:
+            Optional colors for the capsules.
+        labels:
+            Optional text labels for the capsules, which will be located at their centers.
+        show_labels:
+            Optional choice of whether the text labels should be shown by default.
+        class_ids:
+            Optional class ID for the ellipsoids.
+
+            The class ID provides colors and labels if not specified explicitly.
+
+        """
+
+        kwargs = {
+            "lengths": lengths,
+            "radii": radii,
+            "translations": translations,
+            "rotation_axis_angles": rotation_axis_angles,
+            "quaternions": quaternions,
+            "colors": colors,
+            "labels": labels,
+            "show_labels": show_labels,
+            "class_ids": class_ids,
+        }
+
+        if clear:
+            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+        return Capsules3D(**kwargs)  # type: ignore[arg-type]
+
+    @classmethod
+    def clear_fields(cls) -> Capsules3D:
+        """Clear all the fields of a `Capsules3D`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            lengths=[],  # type: ignore[arg-type]
+            radii=[],  # type: ignore[arg-type]
+            translations=[],  # type: ignore[arg-type]
+            rotation_axis_angles=[],  # type: ignore[arg-type]
+            quaternions=[],  # type: ignore[arg-type]
+            colors=[],  # type: ignore[arg-type]
+            labels=[],  # type: ignore[arg-type]
+            show_labels=[],  # type: ignore[arg-type]
+            class_ids=[],  # type: ignore[arg-type]
+        )
+        return inst
+
     lengths: components.LengthBatch = field(
-        metadata={"component": "required"},
-        converter=components.LengthBatch._required,  # type: ignore[misc]
+        metadata={"component": "optional"},
+        converter=components.LengthBatch._optional,  # type: ignore[misc]
     )
     # Lengths of the capsules, defined as the distance between the centers of the endcaps.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     radii: components.RadiusBatch = field(
-        metadata={"component": "required"},
-        converter=components.RadiusBatch._required,  # type: ignore[misc]
+        metadata={"component": "optional"},
+        converter=components.RadiusBatch._optional,  # type: ignore[misc]
     )
     # Radii of the capsules.
     #

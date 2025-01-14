@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from attrs import define, field
 
+from ... import datatypes
 from ..._baseclasses import (
     Archetype,
 )
@@ -34,6 +35,52 @@ class PlotLegend(PlotLegendExt, Archetype):
         """Produce an empty PlotLegend, bypassing `__init__`."""
         inst = cls.__new__(cls)
         inst.__attrs_clear__()
+        return inst
+
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        corner: blueprint_components.Corner2DLike | None = None,
+        visible: datatypes.BoolLike | None = None,
+    ) -> PlotLegend:
+        """
+        Update only some specific fields of a `PlotLegend`.
+
+        Parameters
+        ----------
+        clear:
+             If true, all unspecified fields will be explicitly cleared.
+        corner:
+            To what corner the legend is aligned.
+
+            Defaults to the right bottom corner.
+        visible:
+            Whether the legend is shown at all.
+
+            True by default.
+
+        """
+
+        kwargs = {
+            "corner": corner,
+            "visible": visible,
+        }
+
+        if clear:
+            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+        return PlotLegend(**kwargs)  # type: ignore[arg-type]
+
+    @classmethod
+    def clear_fields(cls) -> PlotLegend:
+        """Clear all the fields of a `PlotLegend`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            corner=[],  # type: ignore[arg-type]
+            visible=[],  # type: ignore[arg-type]
+        )
         return inst
 
     corner: blueprint_components.Corner2DBatch | None = field(

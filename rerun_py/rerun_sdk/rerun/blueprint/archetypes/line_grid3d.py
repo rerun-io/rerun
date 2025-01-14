@@ -85,6 +85,75 @@ class LineGrid3D(Archetype):
         inst.__attrs_clear__()
         return inst
 
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        visible: datatypes.BoolLike | None = None,
+        spacing: datatypes.Float32Like | None = None,
+        plane: datatypes.Plane3DLike | None = None,
+        stroke_width: datatypes.Float32Like | None = None,
+        color: datatypes.Rgba32Like | None = None,
+    ) -> LineGrid3D:
+        """
+        Update only some specific fields of a `LineGrid3D`.
+
+        Parameters
+        ----------
+        clear:
+             If true, all unspecified fields will be explicitly cleared.
+        visible:
+            Whether the grid is visible.
+
+            Defaults to true.
+        spacing:
+            Space between grid lines spacing of one line to the next in scene units.
+
+            As you zoom out, successively only every tenth line is shown.
+            This controls the closest zoom level.
+        plane:
+            In what plane the grid is drawn.
+
+            Defaults to whatever plane is determined as the plane at zero units up/down as defined by [`components.ViewCoordinates`][rerun.components.ViewCoordinates] if present.
+        stroke_width:
+            How thick the lines should be in ui units.
+
+            Default is 1.0 ui unit.
+        color:
+            Color used for the grid.
+
+            Transparency via alpha channel is supported.
+            Defaults to a slightly transparent light gray.
+
+        """
+
+        kwargs = {
+            "visible": visible,
+            "spacing": spacing,
+            "plane": plane,
+            "stroke_width": stroke_width,
+            "color": color,
+        }
+
+        if clear:
+            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+        return LineGrid3D(**kwargs)  # type: ignore[arg-type]
+
+    @classmethod
+    def clear_fields(cls) -> LineGrid3D:
+        """Clear all the fields of a `LineGrid3D`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            visible=[],  # type: ignore[arg-type]
+            spacing=[],  # type: ignore[arg-type]
+            plane=[],  # type: ignore[arg-type]
+            stroke_width=[],  # type: ignore[arg-type]
+            color=[],  # type: ignore[arg-type]
+        )
+        return inst
+
     visible: blueprint_components.VisibleBatch | None = field(
         metadata={"component": "optional"},
         default=None,

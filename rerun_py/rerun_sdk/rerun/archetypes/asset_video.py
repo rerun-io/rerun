@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from attrs import define, field
 
-from .. import components
+from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
 )
@@ -128,9 +128,57 @@ class AssetVideo(AssetVideoExt, Archetype):
         inst.__attrs_clear__()
         return inst
 
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        blob: datatypes.BlobLike | None = None,
+        media_type: datatypes.Utf8Like | None = None,
+    ) -> AssetVideo:
+        """
+        Update only some specific fields of a `AssetVideo`.
+
+        Parameters
+        ----------
+        clear:
+             If true, all unspecified fields will be explicitly cleared.
+        blob:
+            The asset's bytes.
+        media_type:
+            The Media Type of the asset.
+
+            Supported values:
+            * `video/mp4`
+
+            If omitted, the viewer will try to guess from the data blob.
+            If it cannot guess, it won't be able to render the asset.
+
+        """
+
+        kwargs = {
+            "blob": blob,
+            "media_type": media_type,
+        }
+
+        if clear:
+            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+        return AssetVideo(**kwargs)  # type: ignore[arg-type]
+
+    @classmethod
+    def clear_fields(cls) -> AssetVideo:
+        """Clear all the fields of a `AssetVideo`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            blob=[],  # type: ignore[arg-type]
+            media_type=[],  # type: ignore[arg-type]
+        )
+        return inst
+
     blob: components.BlobBatch = field(
-        metadata={"component": "required"},
-        converter=components.BlobBatch._required,  # type: ignore[misc]
+        metadata={"component": "optional"},
+        converter=components.BlobBatch._optional,  # type: ignore[misc]
     )
     # The asset's bytes.
     #
