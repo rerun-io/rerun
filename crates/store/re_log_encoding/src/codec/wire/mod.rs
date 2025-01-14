@@ -43,10 +43,11 @@ mod tests {
         };
         let decoded = dataframe_part.decode();
 
-        assert!(matches!(
-            decoded.err().unwrap(),
-            CodecError::ArrowDeserialization(_)
-        ));
+        let error = decoded.err().unwrap();
+        assert!(
+            matches!(error, CodecError::ArrowDeserialization(_)),
+            "Expected CodecError::ArrowDeserialization; got {error:?}"
+        );
     }
 
     #[test]
