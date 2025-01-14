@@ -777,7 +777,7 @@ impl App {
             }
 
             UICommand::ResetViewer => self.command_sender.send_system(SystemCommand::ResetViewer),
-            UICommand::ClearAndGenerateBlueprint => {
+            UICommand::ClearActiveBlueprintAndEnableHeuristics => {
                 self.command_sender
                     .send_system(SystemCommand::ClearActiveBlueprintAndEnableHeuristics);
             }
