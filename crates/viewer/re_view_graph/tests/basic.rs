@@ -188,6 +188,7 @@ fn run_graph_view_and_save_snapshot(
         bundle: &Default::default(),
         caches: &Default::default(),
         hub: &Default::default(),
+        should_enable_heuristics: false,
     };
 
     // Execute the queries for every `View`

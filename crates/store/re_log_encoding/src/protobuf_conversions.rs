@@ -1,7 +1,3 @@
-use re_protos::missing_field;
-
-use crate::codec::CodecError;
-
 impl From<re_protos::log_msg::v0::Compression> for crate::Compression {
     fn from(value: re_protos::log_msg::v0::Compression) -> Self {
         match value {
@@ -24,9 +20,12 @@ impl From<crate::Compression> for re_protos::log_msg::v0::Compression {
 pub fn log_msg_from_proto(
     message: re_protos::log_msg::v0::LogMsg,
 ) -> Result<re_log_types::LogMsg, crate::decoder::DecodeError> {
-    use crate::codec::arrow::decode_arrow;
+    use crate::codec::{arrow::decode_arrow, CodecError};
     use crate::decoder::DecodeError;
-    use re_protos::log_msg::v0::{log_msg::Msg, Encoding};
+    use re_protos::{
+        log_msg::v0::{log_msg::Msg, Encoding},
+        missing_field,
+    };
 
     match message.msg {
         Some(Msg::SetStoreInfo(set_store_info)) => Ok(re_log_types::LogMsg::SetStoreInfo(

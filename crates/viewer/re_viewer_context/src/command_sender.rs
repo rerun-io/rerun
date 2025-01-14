@@ -27,11 +27,23 @@ pub enum SystemCommand {
     /// Reset the `Viewer` to the default state
     ResetViewer,
 
-    /// Reset the `Blueprint` to the default state
+    /// Clear the active blueprint.
+    ///
+    /// This may have two outcomes:
+    /// - If a default blueprint is set, it will be used.
+    /// - Otherwise, the heuristics will be enabled.
+    ///
+    /// To force using the heuristics, use [`Self::ClearActiveBlueprintAndEnableHeuristics`].
+    ///
+    /// UI note: because of the above ambiguity, controls for this command should only be enabled if
+    /// a default blueprint is set.
     ClearActiveBlueprint,
 
-    /// Clear the blueprint and generate a new one
-    ClearAndGenerateBlueprint,
+    /// Clear the active blueprint and enable heuristics.
+    ///
+    /// The final outcome of this is to set the active blueprint to the heuristics. This command
+    /// does not affect the default blueprint if any was set.
+    ClearActiveBlueprintAndEnableHeuristics,
 
     /// If this is a recording, switch to it.
     ActivateRecording(StoreId),

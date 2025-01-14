@@ -655,6 +655,16 @@ pub trait UiExt {
         self.ui().painter().add(shadow);
     }
 
+    /// Convenience function to create a [`list_item::list_item_scope`].
+    #[inline]
+    fn list_item_scope<R>(
+        &mut self,
+        id_salt: impl std::hash::Hash,
+        content: impl FnOnce(&mut egui::Ui) -> R,
+    ) -> R {
+        list_item::list_item_scope(self.ui_mut(), id_salt, content)
+    }
+
     /// Convenience function to create a [`list_item::ListItem`].
     #[allow(clippy::unused_self)]
     fn list_item(&self) -> list_item::ListItem {

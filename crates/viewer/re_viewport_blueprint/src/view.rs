@@ -760,6 +760,7 @@ mod tests {
             bundle: &Default::default(),
             caches: &Default::default(),
             hub: &re_viewer_context::StoreHub::test_hub(),
+            should_enable_heuristics: false,
         };
 
         let mut query_result = view.contents.execute_query(

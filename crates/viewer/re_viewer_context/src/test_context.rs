@@ -281,6 +281,7 @@ impl TestContext {
             bundle: &Default::default(),
             caches: &Default::default(),
             hub: &Default::default(),
+            should_enable_heuristics: false,
         };
 
         let drag_and_drop_manager = crate::DragAndDropManager::new(ItemCollection::default());
@@ -398,7 +399,7 @@ impl TestContext {
                 | SystemCommand::AddReceiver(_)
                 | SystemCommand::ResetViewer
                 | SystemCommand::ClearActiveBlueprint
-                | SystemCommand::ClearAndGenerateBlueprint
+                | SystemCommand::ClearActiveBlueprintAndEnableHeuristics
                 | SystemCommand::ActivateRecording(_)
                 | SystemCommand::CloseStore(_)
                 | SystemCommand::UndoBlueprint { .. }
