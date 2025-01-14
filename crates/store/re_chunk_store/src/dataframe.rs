@@ -150,15 +150,11 @@ impl TimeColumnDescriptor {
     }
 
     #[inline]
-    // Time column must be nullable since static data doesn't have a time.
     pub fn to_arrow_field(&self) -> Arrow2Field {
         let Self { timeline, datatype } = self;
-        Arrow2Field::new(
-            timeline.name().to_string(),
-            datatype.clone(),
-            true, /* nullable */
-        )
-        .with_metadata(self.metadata())
+        let nullable = true; // Time column must be nullable since static data doesn't have a time.
+        Arrow2Field::new(timeline.name().to_string(), datatype.clone(), nullable)
+            .with_metadata(self.metadata())
     }
 }
 
