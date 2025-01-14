@@ -1397,7 +1397,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
+            let got = format!("{:#?}", dataframe.all_columns_collected());
             let expected = unindent::unindent(
                 "\
                 [
@@ -1432,7 +1432,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
+            let got = format!("{:#?}", dataframe.all_columns_collected());
             let expected = unindent::unindent(
                 "\
                 [
@@ -1479,7 +1479,7 @@ mod tests {
         )?;
         eprintln!("{dataframe}");
 
-        let got = format!("{:#?}", dataframe.data.iter().collect_vec());
+        let got = format!("{:#?}", dataframe.all_columns_collected());
         let expected = unindent::unindent(
             "\
             [
@@ -1525,7 +1525,7 @@ mod tests {
         )?;
         eprintln!("{dataframe}");
 
-        let got = format!("{:#?}", dataframe.data.iter().collect_vec());
+        let got = format!("{:#?}", dataframe.all_columns_collected());
         let expected = unindent::unindent(
             "\
             [
@@ -1577,7 +1577,7 @@ mod tests {
         )?;
         eprintln!("{dataframe}");
 
-        let got = format!("{:#?}", dataframe.data.iter().collect_vec());
+        let got = format!("{:#?}", dataframe.all_columns_collected());
         let expected = unindent::unindent(
             "\
             [
@@ -1632,7 +1632,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
+            let got = format!("{:#?}", dataframe.all_columns_collected());
             let expected = unindent::unindent(
                 "\
                 [
@@ -1675,7 +1675,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
+            let got = format!("{:#?}", dataframe.all_columns_collected());
             let expected = unindent::unindent(
                 "\
                 [
@@ -1729,7 +1729,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
+            let got = format!("{:#?}", dataframe.all_columns_collected());
             let expected = "[]";
 
             similar_asserts::assert_eq!(expected, got);
@@ -1758,7 +1758,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
+            let got = format!("{:#?}", dataframe.all_columns_collected());
             let expected = "[]";
 
             similar_asserts::assert_eq!(expected, got);
@@ -1787,7 +1787,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
+            let got = format!("{:#?}", dataframe.all_columns_collected());
             let expected = unindent::unindent(
                 "\
                 [
@@ -1826,7 +1826,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
+            let got = format!("{:#?}", dataframe.all_columns_collected());
             let expected = unindent::unindent(
                 "\
                 [
@@ -1881,7 +1881,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
+            let got = format!("{:#?}", dataframe.all_columns_collected());
             let expected = "[]";
 
             similar_asserts::assert_eq!(expected, got);
@@ -1921,7 +1921,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
+            let got = format!("{:#?}", dataframe.all_columns_collected());
             let expected = unindent::unindent(
                 "\
                 [
@@ -1971,7 +1971,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
+            let got = format!("{:#?}", dataframe.all_columns_collected());
             let expected = "[]";
 
             similar_asserts::assert_eq!(expected, got);
@@ -2007,7 +2007,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
+            let got = format!("{:#?}", dataframe.all_columns_collected());
             let expected = unindent::unindent(
                 "\
                 [
@@ -2058,7 +2058,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
+            let got = format!("{:#?}", dataframe.all_columns_collected());
             let expected = unindent::unindent(
                 "\
                 [
@@ -2131,7 +2131,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
+            let got = format!("{:#?}", dataframe.all_columns_collected());
             let expected = unindent::unindent(
                 "\
                 [
@@ -2219,7 +2219,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
+            let got = format!("{:#?}", dataframe.all_columns_collected());
             let expected = unindent::unindent(
                 "\
                 [
@@ -2273,7 +2273,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
+            let got = format!("{:#?}", dataframe.all_columns_collected());
             let expected = unindent::unindent(
             "\
             [
@@ -2314,7 +2314,7 @@ mod tests {
             // static clear semantics in general are pretty unhinged right now, especially when
             // ranges are involved.
             // It's extremely niche, our time is better spent somewhere else right now.
-            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
+            let got = format!("{:#?}", dataframe.all_columns_collected());
             let expected = unindent::unindent(
             "\
             [
@@ -2374,8 +2374,8 @@ mod tests {
                         &query_handle.batch_iter().take(3).collect_vec(),
                     )?;
 
-                    let expected = format!("{:#?}", expected.data.iter().collect_vec());
-                    let got = format!("{:#?}", got.data.iter().collect_vec());
+                    let expected = format!("{:#?}", expected.all_columns_collected());
+                    let got = format!("{:#?}", got.all_columns_collected());
 
                     similar_asserts::assert_eq!(expected, got);
                 }
@@ -2415,8 +2415,8 @@ mod tests {
                         &query_handle.batch_iter().take(3).collect_vec(),
                     )?;
 
-                    let expected = format!("{:#?}", expected.data.iter().collect_vec());
-                    let got = format!("{:#?}", got.data.iter().collect_vec());
+                    let expected = format!("{:#?}", expected.all_columns_collected());
+                    let got = format!("{:#?}", got.all_columns_collected());
 
                     similar_asserts::assert_eq!(expected, got);
                 }
@@ -2459,8 +2459,8 @@ mod tests {
                         &query_handle.batch_iter().take(3).collect_vec(),
                     )?;
 
-                    let expected = format!("{:#?}", expected.data.iter().collect_vec());
-                    let got = format!("{:#?}", got.data.iter().collect_vec());
+                    let expected = format!("{:#?}", expected.all_columns_collected());
+                    let got = format!("{:#?}", got.all_columns_collected());
 
                     similar_asserts::assert_eq!(expected, got);
                 }
@@ -2497,8 +2497,8 @@ mod tests {
                         &query_handle.batch_iter().take(3).collect_vec(),
                     )?;
 
-                    let expected = format!("{:#?}", expected.data.iter().collect_vec());
-                    let got = format!("{:#?}", got.data.iter().collect_vec());
+                    let expected = format!("{:#?}", expected.all_columns_collected());
+                    let got = format!("{:#?}", got.all_columns_collected());
 
                     similar_asserts::assert_eq!(expected, got);
                 }
@@ -2565,7 +2565,7 @@ mod tests {
                 )?;
                 eprintln!("{dataframe}");
 
-                let got = format!("{:#?}", dataframe.data.iter().collect_vec());
+                let got = format!("{:#?}", dataframe.all_columns_collected());
                 let expected = unindent::unindent(
                     "\
                     [
@@ -2609,7 +2609,7 @@ mod tests {
                 )?;
                 eprintln!("{dataframe}");
 
-                let got = format!("{:#?}", dataframe.data.iter().collect_vec());
+                let got = format!("{:#?}", dataframe.all_columns_collected());
                 let expected = unindent::unindent(
                     "\
                     [
