@@ -76,7 +76,11 @@ impl FilterState {
     ///
     /// Note: this uses [`egui::Ui::available_width`] to determine the location of the right-aligned
     /// search button, as usual for [`list_item::ListItem`]-based widgets.
-    pub fn ui(&mut self, ui: &mut egui::Ui, section_title: impl Into<egui::WidgetText>) {
+    pub fn ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        section_title: impl Into<egui::WidgetText>,
+    ) -> Option<egui::Response> {
         let mut button_clicked = false;
 
         let icon = if self.inner_state.is_none() {
@@ -94,6 +98,8 @@ impl FilterState {
             egui::FontSelection::default(),
         );
         let text_width = galley.size().x;
+
+        let mut title_response = None;
 
         list_item::list_item_scope(ui, ui.next_auto_id(), |ui| {
             ui.list_item()
@@ -126,7 +132,7 @@ impl FilterState {
                                 response.request_focus();
                             }
                         } else {
-                            ui.label(galley);
+                            title_response = Some(ui.label(galley));
                         }
                     })
                     .with_content_width(text_width)
@@ -145,6 +151,8 @@ impl FilterState {
                 self.inner_state = None;
             }
         }
+
+        title_response
     }
 }
 
