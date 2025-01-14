@@ -102,6 +102,42 @@ message Query {
     SparseFillStrategy sparse_fill_strategy = 11;
 }
 
+message ColumnDescriptor {
+    oneof descriptor_type {
+        TimeColumnDescriptor time_column = 1;
+        ComponentColumnDescriptor component_column = 2;
+    }
+}
+
+message TimeColumnDescriptor {
+    /// The timeline this column is associated with.
+    Timeline timeline = 1;
+    /// The Arrow datatype of the column.
+    string datatype = 2;
+}
+
+/// Describes a data/component column, such as `Position3D`.
+message ComponentColumnDescriptor {
+    /// The path of the entity.
+    EntityPath entity_path = 1;
+    /// Optional name of the `Archetype` associated with this data.
+    optional string archetype_name = 2;
+    /// Optional name of the field within `Archetype` associated with this data.
+    optional string archetype_field_name = 3;
+    /// Semantic name associated with this data.
+    string component_name = 4;
+    /// The Arrow datatype of the column.
+    string datatype = 5;
+    /// Whether the column is a static column.
+    bool is_static = 6;
+    /// Whether the column is a tombstone column.
+    bool is_tombstone = 7;
+    /// Whether the column is an indicator column.
+    bool is_indicator = 8;
+    /// Whether the column is semantically empty.
+    bool is_semantically_empty = 9;
+}
+
 message ColumnSelection {
     repeated ColumnSelector columns = 1;
 }

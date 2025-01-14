@@ -25,14 +25,15 @@ use re_protos::{
     common::v0::RecordingId,
     remote_store::v0::{
         storage_node_client::StorageNodeClient, CatalogFilter, ColumnProjection,
-        FetchRecordingRequest, QueryCatalogRequest, QueryRequest, RecordingType,
-        RegisterRecordingRequest, UpdateCatalogRequest,
+        FetchRecordingRequest, GetRecordingSchemaRequest, QueryCatalogRequest, QueryRequest,
+        RecordingType, RegisterRecordingRequest, UpdateCatalogRequest,
     },
+    TypeConversionError,
 };
 use re_sdk::{ApplicationId, ComponentName, StoreId, StoreKind, Time, Timeline};
 use tokio_stream::StreamExt;
 
-use crate::dataframe::{ComponentLike, PyRecording, PyRecordingHandle, PyRecordingView};
+use crate::dataframe::{ComponentLike, PyRecording, PyRecordingHandle, PyRecordingView, PySchema};
 
 /// Register the `rerun.remote` module.
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -255,6 +256,42 @@ impl PyStorageNodeClient {
         })?;
 
         Ok(PyArrowType(Box::new(reader)))
+    }
+
+    #[pyo3(signature = (id,))]
+    /// Get the schema for a recording in the storage node.
+    ///
+    /// Parameters
+    /// ----------
+    /// id : str
+    ///    The id of the recording to get the schema for.
+    ///
+    /// Returns
+    /// -------
+    /// Schema
+    ///    The schema of the recording.
+    fn get_recording_schema(&mut self, id: String) -> PyResult<PySchema> {
+        self.runtime.block_on(async {
+            let request = GetRecordingSchemaRequest {
+                recording_id: Some(RecordingId { id }),
+            };
+
+            let column_descriptors = self
+                .client
+                .get_recording_schema(request)
+                .await
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
+                .into_inner()
+                .column_descriptors
+                .into_iter()
+                .map(|cd| cd.try_into())
+                .collect::<Result<Vec<_>, _>>()
+                .map_err(|err: TypeConversionError| PyRuntimeError::new_err(err.to_string()))?;
+
+            Ok(PySchema {
+                schema: column_descriptors,
+            })
+        })
     }
 
     /// Register a recording along with some metadata.

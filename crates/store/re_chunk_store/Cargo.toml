@@ -42,13 +42,14 @@ re_types_core.workspace = true
 ahash.workspace = true
 anyhow.workspace = true
 arrow.workspace = true
-arrow2 = { workspace = true, features = ["compute_concatenate"] }
+arrow2 = { workspace = true, features = ["compute_concatenate", "serde_types"] }
 document-features.workspace = true
 indent.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true
 once_cell.workspace = true
 parking_lot = { workspace = true, features = ["arc_lock"] }
+serde_json.workspace = true
 thiserror.workspace = true
 web-time.workspace = true
 

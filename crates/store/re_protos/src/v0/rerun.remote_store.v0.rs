@@ -20,6 +20,36 @@ impl ::prost::Name for DataframePart {
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetRecordingSchemaRequest {
+    #[prost(message, optional, tag = "1")]
+    pub recording_id: ::core::option::Option<super::super::common::v0::RecordingId>,
+}
+impl ::prost::Name for GetRecordingSchemaRequest {
+    const NAME: &'static str = "GetRecordingSchemaRequest";
+    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.remote_store.v0.GetRecordingSchemaRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.remote_store.v0.GetRecordingSchemaRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetRecordingSchemaResponse {
+    #[prost(message, repeated, tag = "1")]
+    pub column_descriptors: ::prost::alloc::vec::Vec<super::super::common::v0::ColumnDescriptor>,
+}
+impl ::prost::Name for GetRecordingSchemaResponse {
+    const NAME: &'static str = "GetRecordingSchemaResponse";
+    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.remote_store.v0.GetRecordingSchemaResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.remote_store.v0.GetRecordingSchemaResponse".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RegisterRecordingRequest {
     /// human readable description of the recording
     #[prost(string, tag = "1")]
@@ -496,6 +526,25 @@ pub mod storage_node_client {
             ));
             self.inner.unary(req, path, codec).await
         }
+        pub async fn get_recording_schema(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetRecordingSchemaRequest>,
+        ) -> std::result::Result<tonic::Response<super::GetRecordingSchemaResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.remote_store.v0.StorageNode/GetRecordingSchema",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.remote_store.v0.StorageNode",
+                "GetRecordingSchema",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
         /// TODO(zehiko) support registering more than one recording at a time
         pub async fn register_recording(
             &mut self,
@@ -606,6 +655,10 @@ pub mod storage_node_server {
             &self,
             request: tonic::Request<super::UpdateCatalogRequest>,
         ) -> std::result::Result<tonic::Response<super::UpdateCatalogResponse>, tonic::Status>;
+        async fn get_recording_schema(
+            &self,
+            request: tonic::Request<super::GetRecordingSchemaRequest>,
+        ) -> std::result::Result<tonic::Response<super::GetRecordingSchemaResponse>, tonic::Status>;
         /// TODO(zehiko) support registering more than one recording at a time
         async fn register_recording(
             &self,
@@ -850,6 +903,48 @@ pub mod storage_node_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = UpdateCatalogSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.remote_store.v0.StorageNode/GetRecordingSchema" => {
+                    #[allow(non_camel_case_types)]
+                    struct GetRecordingSchemaSvc<T: StorageNode>(pub Arc<T>);
+                    impl<T: StorageNode>
+                        tonic::server::UnaryService<super::GetRecordingSchemaRequest>
+                        for GetRecordingSchemaSvc<T>
+                    {
+                        type Response = super::GetRecordingSchemaResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::GetRecordingSchemaRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as StorageNode>::get_recording_schema(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = GetRecordingSchemaSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
