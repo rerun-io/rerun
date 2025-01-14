@@ -185,7 +185,7 @@ impl DisplayColumn {
     ) -> Result<Self, DisplayRecordBatchError> {
         match column_descriptor {
             ColumnDescriptor::Time(desc) => {
-                let timeline = desc.timeline;
+                let timeline = desc.timeline();
 
                 let time_data = TimeColumn::read_array(column_data).map_err(|err| {
                     DisplayRecordBatchError::BadTimeColumn {

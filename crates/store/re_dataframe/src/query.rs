@@ -373,82 +373,75 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     ) -> Vec<(usize, ColumnDescriptor)> {
         selection
             .iter()
-            .map(|column| {
-                match column {
-                    ColumnSelector::Time(selected_column) => {
-                        let TimeColumnSelector {
-                            timeline: selected_timeline,
-                        } = selected_column;
+            .map(|column| match column {
+                ColumnSelector::Time(selected_column) => {
+                    let TimeColumnSelector {
+                        timeline: selected_timeline,
+                    } = selected_column;
 
-                        view_contents
-                            .iter()
-                            .enumerate()
-                            .filter_map(|(idx, view_column)| match view_column {
-                                ColumnDescriptor::Time(view_descr) => Some((idx, view_descr)),
-                                ColumnDescriptor::Component(_) => None,
-                            })
-                            .find(|(_idx, view_descr)| {
-                                *view_descr.timeline.name() == *selected_timeline
-                            })
-                            .map_or_else(
-                                || {
-                                    (
-                                        usize::MAX,
-                                        ColumnDescriptor::Time(TimeColumnDescriptor {
-                                            // TODO(cmc): I picked a sequence here because I have to pick something.
-                                            // It doesn't matter, only the name will remain in the Arrow schema anyhow.
-                                            timeline: Timeline::new_sequence(*selected_timeline),
-                                            datatype: arrow2::datatypes::DataType::Null,
-                                        }),
-                                    )
-                                },
-                                |(idx, view_descr)| {
-                                    (idx, ColumnDescriptor::Time(view_descr.clone()))
-                                },
-                            )
-                    }
+                    view_contents
+                        .iter()
+                        .enumerate()
+                        .filter_map(|(idx, view_column)| match view_column {
+                            ColumnDescriptor::Time(view_descr) => Some((idx, view_descr)),
+                            ColumnDescriptor::Component(_) => None,
+                        })
+                        .find(|(_idx, view_descr)| {
+                            *view_descr.timeline.name() == *selected_timeline
+                        })
+                        .map_or_else(
+                            || {
+                                (
+                                    usize::MAX,
+                                    ColumnDescriptor::Time(TimeColumnDescriptor::new_null(
+                                        *selected_timeline,
+                                    )),
+                                )
+                            },
+                            |(idx, view_descr)| (idx, ColumnDescriptor::Time(view_descr.clone())),
+                        )
+                }
 
-                    ColumnSelector::Component(selected_column) => {
-                        let ComponentColumnSelector {
-                            entity_path: selected_entity_path,
-                            component_name: selected_component_name,
-                        } = selected_column;
+                ColumnSelector::Component(selected_column) => {
+                    let ComponentColumnSelector {
+                        entity_path: selected_entity_path,
+                        component_name: selected_component_name,
+                    } = selected_column;
 
-                        view_contents
-                            .iter()
-                            .enumerate()
-                            .filter_map(|(idx, view_column)| match view_column {
-                                ColumnDescriptor::Component(view_descr) => Some((idx, view_descr)),
-                                ColumnDescriptor::Time(_) => None,
-                            })
-                            .find(|(_idx, view_descr)| {
-                                view_descr.entity_path == *selected_entity_path
-                                    && view_descr.component_name.matches(selected_component_name)
-                            })
-                            .map_or_else(
-                                || {
-                                    (
-                                        usize::MAX,
-                                        ColumnDescriptor::Component(ComponentColumnDescriptor {
-                                            entity_path: selected_entity_path.clone(),
-                                            archetype_name: None,
-                                            archetype_field_name: None,
-                                            component_name: ComponentName::from(
-                                                selected_component_name.clone(),
-                                            ),
-                                            store_datatype: arrow2::datatypes::DataType::Null,
-                                            is_static: false,
-                                            is_indicator: false,
-                                            is_tombstone: false,
-                                            is_semantically_empty: false,
-                                        }),
-                                    )
-                                },
-                                |(idx, view_descr)| {
-                                    (idx, ColumnDescriptor::Component(view_descr.clone()))
-                                },
-                            )
-                    }
+                    view_contents
+                        .iter()
+                        .enumerate()
+                        .filter_map(|(idx, view_column)| match view_column {
+                            ColumnDescriptor::Component(view_descr) => Some((idx, view_descr)),
+                            ColumnDescriptor::Time(_) => None,
+                        })
+                        .find(|(_idx, view_descr)| {
+                            view_descr.entity_path == *selected_entity_path
+                                && view_descr.component_name.matches(selected_component_name)
+                        })
+                        .map_or_else(
+                            || {
+                                (
+                                    usize::MAX,
+                                    ColumnDescriptor::Component(ComponentColumnDescriptor {
+                                        entity_path: selected_entity_path.clone(),
+                                        archetype_name: None,
+                                        archetype_field_name: None,
+                                        component_name: ComponentName::from(
+                                            selected_component_name.clone(),
+                                        ),
+                                        store_datatype: arrow2::datatypes::DataType::Null,
+                                        is_static: false,
+                                        is_indicator: false,
+                                        is_tombstone: false,
+                                        is_semantically_empty: false,
+                                    }),
+                                )
+                            },
+                            |(idx, view_descr)| {
+                                (idx, ColumnDescriptor::Component(view_descr.clone()))
+                            },
+                        )
                 }
             })
             .collect_vec()
@@ -1248,14 +1241,10 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             .iter()
             .map(|(view_idx, column)| match column {
                 ColumnDescriptor::Time(descr) => {
-                    max_value_per_index.get(&descr.timeline).map_or_else(
+                    max_value_per_index.get(&descr.timeline()).map_or_else(
                         || arrow2::array::new_null_array(column.datatype(), 1),
                         |(_time, time_sliced)| {
-                            descr
-                                .timeline
-                                .typ()
-                                .make_arrow_array(time_sliced.clone())
-                                .into()
+                            descr.typ().make_arrow_array(time_sliced.clone()).into()
                         },
                     )
                 }

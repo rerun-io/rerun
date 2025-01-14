@@ -104,6 +104,37 @@ impl Ord for TimeColumnDescriptor {
 }
 
 impl TimeColumnDescriptor {
+    /// Used when returning a null column, i.e. when a lookup failed.
+    #[inline]
+    pub fn new_null(name: TimelineName) -> Self {
+        Self {
+            // TODO(cmc): I picked a sequence here because I have to pick something.
+            // It doesn't matter, only the name will remain in the Arrow schema anyhow.
+            timeline: Timeline::new_sequence(name),
+            datatype: Arrow2Datatype::Null,
+        }
+    }
+
+    #[inline]
+    pub fn timeline(&self) -> Timeline {
+        self.timeline
+    }
+
+    #[inline]
+    pub fn name(&self) -> &TimelineName {
+        self.timeline.name()
+    }
+
+    #[inline]
+    pub fn typ(&self) -> re_log_types::TimeType {
+        self.timeline.typ()
+    }
+
+    #[inline]
+    pub fn datatype(&self) -> &Arrow2Datatype {
+        &self.datatype
+    }
+
     fn metadata(&self) -> arrow2::datatypes::Metadata {
         let Self {
             timeline,
