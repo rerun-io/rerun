@@ -3,11 +3,11 @@ use arrow::array::{
     StructArray as ArrowStructArray,
 };
 use arrow2::{
-    array::{Array as Arrow2Array, ListArray},
+    array::{Array as Arrow2Array, ListArray as Arrow2ListArray},
     chunk::Chunk as Arrow2Chunk,
     datatypes::{
-        DataType as Arrow2Datatype, Field as ArrowField, Metadata as Arrow2Metadata,
-        Schema as Arrow2Schema, TimeUnit as ArrowTimeUnit,
+        DataType as Arrow2Datatype, Field as Arrow2Field, Metadata as Arrow2Metadata,
+        Schema as Arrow2Schema, TimeUnit as Arrow2TimeUnit,
     },
 };
 use itertools::Itertools;
@@ -284,7 +284,7 @@ impl TransportChunk {
     }
 
     #[inline]
-    pub fn component_descriptor_from_field(field: &ArrowField) -> ComponentDescriptor {
+    pub fn component_descriptor_from_field(field: &Arrow2Field) -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: field
                 .metadata
@@ -385,7 +385,7 @@ impl TransportChunk {
     pub fn columns<'a>(
         &'a self,
         kind: &'a str,
-    ) -> impl Iterator<Item = (&'a ArrowField, &'a Box<dyn Arrow2Array>)> + 'a {
+    ) -> impl Iterator<Item = (&'a Arrow2Field, &'a Box<dyn Arrow2Array>)> + 'a {
         self.schema
             .fields
             .iter()
@@ -399,7 +399,7 @@ impl TransportChunk {
     }
 
     #[inline]
-    pub fn all_columns(&self) -> impl Iterator<Item = (&ArrowField, &Box<dyn Arrow2Array>)> + '_ {
+    pub fn all_columns(&self) -> impl Iterator<Item = (&Arrow2Field, &Box<dyn Arrow2Array>)> + '_ {
         self.schema
             .fields
             .iter()
@@ -414,19 +414,19 @@ impl TransportChunk {
 
     /// Iterates all control columns present in this chunk.
     #[inline]
-    pub fn controls(&self) -> impl Iterator<Item = (&ArrowField, &Box<dyn Arrow2Array>)> {
+    pub fn controls(&self) -> impl Iterator<Item = (&Arrow2Field, &Box<dyn Arrow2Array>)> {
         self.columns(Self::FIELD_METADATA_VALUE_KIND_CONTROL)
     }
 
     /// Iterates all data columns present in this chunk.
     #[inline]
-    pub fn components(&self) -> impl Iterator<Item = (&ArrowField, &Box<dyn Arrow2Array>)> {
+    pub fn components(&self) -> impl Iterator<Item = (&Arrow2Field, &Box<dyn Arrow2Array>)> {
         self.columns(Self::FIELD_METADATA_VALUE_KIND_DATA)
     }
 
     /// Iterates all timeline columns present in this chunk.
     #[inline]
-    pub fn timelines(&self) -> impl Iterator<Item = (&ArrowField, &Box<dyn Arrow2Array>)> {
+    pub fn timelines(&self) -> impl Iterator<Item = (&Arrow2Field, &Box<dyn Arrow2Array>)> {
         self.columns(Self::FIELD_METADATA_VALUE_KIND_TIME)
     }
 
@@ -514,7 +514,7 @@ impl Chunk {
             re_tracing::profile_scope!("row ids");
 
             schema.fields.push(
-                ArrowField::new(
+                Arrow2Field::new(
                     RowId::descriptor().to_string(),
                     RowId::arrow_datatype().clone().into(),
                     false,
@@ -547,7 +547,7 @@ impl Chunk {
                     } = info;
 
                     let nullable = false; // timelines within a single chunk are always dense
-                    let field = ArrowField::new(
+                    let field = Arrow2Field::new(
                         timeline.name().to_string(),
                         timeline.datatype().into(),
                         nullable,
@@ -582,7 +582,7 @@ impl Chunk {
                 .values()
                 .flat_map(|per_desc| per_desc.iter())
                 .map(|(component_desc, list_array)| {
-                    let field = ArrowField::new(
+                    let field = Arrow2Field::new(
                         component_desc.component_name.to_string(),
                         list_array.data_type().clone(),
                         true,
@@ -669,7 +669,7 @@ impl Chunk {
                 // See also [`Timeline::datatype`]
                 let timeline = match column.data_type().to_logical_type() {
                     Arrow2Datatype::Int64 => Timeline::new_sequence(field.name.as_str()),
-                    Arrow2Datatype::Timestamp(ArrowTimeUnit::Nanosecond, None) => {
+                    Arrow2Datatype::Timestamp(Arrow2TimeUnit::Nanosecond, None) => {
                         Timeline::new_temporal(field.name.as_str())
                     }
                     _ => {
@@ -714,7 +714,7 @@ impl Chunk {
             for (field, column) in transport.components() {
                 let column = column
                     .as_any()
-                    .downcast_ref::<ListArray<i32>>()
+                    .downcast_ref::<Arrow2ListArray<i32>>()
                     .ok_or_else(|| ChunkError::Malformed {
                         reason: format!(
                             "The outer array in a chunked component batch must be a sparse list, got {:?}",
