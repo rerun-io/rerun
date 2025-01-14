@@ -123,7 +123,7 @@ impl RedapProvider {
     /// Generates a new JWT token that is valid for the given duration.
     ///
     /// It is important to note that the token is not encrypted, but merely
-    /// signed by the [`SecretKey`]. This means that its contents are readable
+    /// signed by the [`RedapProvider`]. This means that its contents are readable
     /// by everyone.
     ///
     /// If `duration` is `None`, the token will be valid forever. `scope` can be

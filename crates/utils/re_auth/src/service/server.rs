@@ -32,7 +32,7 @@ pub struct Authenticator {
 }
 
 impl Authenticator {
-    /// Creates a new [`AuthInterceptor`] with the given secret key and scope.
+    /// Creates a new [`Authenticator`] with the given secret key and scope.
     pub fn new(secret_key: RedapProvider) -> Self {
         Self { secret_key }
     }
