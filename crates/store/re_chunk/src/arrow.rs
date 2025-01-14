@@ -14,13 +14,13 @@ impl TransportChunk {
     /// related rust structures that refer to those data buffers.
     pub fn try_to_arrow_record_batch(&self) -> Result<RecordBatch, ArrowError> {
         let fields: Vec<Field> = self
-            .schema
+            .schema_ref()
             .fields
             .iter()
             .map(|f| f.clone().into())
             .collect();
 
-        let metadata = self.schema.metadata.clone().into_iter().collect();
+        let metadata = self.schema().metadata.into_iter().collect();
 
         let schema = Schema::new_with_metadata(fields, metadata);
 

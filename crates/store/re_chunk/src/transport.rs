@@ -42,7 +42,7 @@ pub struct TransportChunk {
     ///
     /// Take a look at the `TransportChunk::CHUNK_METADATA_*` and `TransportChunk::FIELD_METADATA_*`
     /// constants for more information about available metadata.
-    pub schema: Arrow2Schema,
+    schema: Arrow2Schema,
 
     /// All the control, time and component data.
     data: Arrow2Chunk<Box<dyn Arrow2Array>>,
@@ -345,8 +345,17 @@ impl TransportChunk {
     }
 
     #[inline]
+    pub fn schema(&self) -> Arrow2Schema {
+        self.schema.clone()
+    }
+
+    #[inline]
     pub fn schema_ref(&self) -> &Arrow2Schema {
         &self.schema
+    }
+
+    pub fn insert_metadata(&mut self, key: String, value: String) {
+        self.schema.metadata.insert(key, value);
     }
 
     /// Looks in the chunk metadata for the `IS_SORTED` marker.

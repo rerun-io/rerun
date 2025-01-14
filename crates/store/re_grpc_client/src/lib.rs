@@ -457,8 +457,7 @@ async fn stream_catalog_async(
 
         // modified and enriched TransportChunk
         let mut tc = TransportChunk::new(schema, arrow2::chunk::Chunk::new(arrays));
-
-        tc.schema.metadata.insert(
+        tc.insert_metadata(
             TransportChunk::CHUNK_METADATA_KEY_ID.to_owned(),
             ChunkId::new().to_string(),
         );
