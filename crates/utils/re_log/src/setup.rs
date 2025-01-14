@@ -146,13 +146,16 @@ impl log::Log for PanicOnWarn {
     }
 
     fn log(&self, record: &log::Record<'_>) {
-        let level = match record.level() {
-            log::Level::Error => "error",
-            log::Level::Warn => "warning",
-            log::Level::Info | log::Level::Debug | log::Level::Trace => return,
-        };
-
-        panic!("{level} logged with RERUN_PANIC_ON_WARN: {}", record.args());
+        // `enabled` isn't called automatically by the `log!` macros, so we have to call it here.
+        // (it is only used by `log_enabled!`)
+        if self.enabled(record.metadata()) {
+            let level = match record.level() {
+                log::Level::Error => "error",
+                log::Level::Warn => "warning",
+                log::Level::Info | log::Level::Debug | log::Level::Trace => return,
+            };
+            panic!("{level} logged with RERUN_PANIC_ON_WARN: {}", record.args());
+        }
     }
 
     fn flush(&self) {}
