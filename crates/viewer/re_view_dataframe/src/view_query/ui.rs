@@ -314,7 +314,7 @@ impl Query {
 
                 // The query timeline is always active because it's necessary for the dataframe ui
                 // (for tooltips).
-                let is_query_timeline = time_column_descriptor.timeline.name() == timeline.name();
+                let is_query_timeline = time_column_descriptor.name() == timeline.name();
                 let is_enabled = !is_query_timeline;
                 let mut is_visible =
                     is_query_timeline || selected_columns.contains(&column_selector);

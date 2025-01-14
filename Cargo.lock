@@ -5995,9 +5995,9 @@ dependencies = [
 name = "re_format_arrow"
 version = "0.22.0-alpha.1+dev"
 dependencies = [
+ "arrow",
  "comfy-table",
  "itertools 0.13.0",
- "re_arrow2",
  "re_tuid",
  "re_types_core",
 ]

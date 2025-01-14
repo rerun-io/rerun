@@ -51,10 +51,20 @@ pub struct TransportChunk {
 impl std::fmt::Display for TransportChunk {
     #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // TODO(#3741): simplify code when we have migrated to arrow-rs
         re_format_arrow::format_dataframe(
-            &self.schema.metadata,
-            &self.schema.fields,
-            self.data.iter().map(|list_array| &**list_array),
+            &self.schema.metadata.clone().into_iter().collect(),
+            &self
+                .schema
+                .fields
+                .iter()
+                .map(|field| arrow::datatypes::Field::from(field.clone()))
+                .collect(),
+            &self
+                .data
+                .iter()
+                .map(|list_array| ArrowArrayRef::from(list_array.clone()))
+                .collect_vec(),
         )
         .fmt(f)
     }
