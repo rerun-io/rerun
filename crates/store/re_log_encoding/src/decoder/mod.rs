@@ -86,7 +86,7 @@ pub enum DecodeError {
     Chunk(#[from] re_chunk::ChunkError),
 
     #[error("Arrow error: {0}")]
-    Arrow(#[from] arrow2::error::Error),
+    Arrow(#[from] arrow::error::ArrowError),
 
     #[error("MsgPack error: {0}")]
     MsgPack(#[from] rmp_serde::decode::Error),
@@ -411,9 +411,35 @@ mod tests {
         ApplicationId, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource, Time,
     };
 
+    // TODO(#3741): remove this once we are all in on arrow-rs
+    fn strip_arrow_extensions_from_log_messages(log_msg: Vec<LogMsg>) -> Vec<LogMsg> {
+        log_msg
+            .into_iter()
+            .map(LogMsg::strip_arrow_extension_types)
+            .collect()
+    }
+
     fn fake_log_messages() -> Vec<LogMsg> {
         let store_id = StoreId::random(StoreKind::Blueprint);
-        vec![
+
+        let arrow_msg = re_chunk::Chunk::builder("test_entity".into())
+            .with_archetype(
+                re_chunk::RowId::new(),
+                re_log_types::TimePoint::default().with(
+                    re_log_types::Timeline::new_sequence("blueprint"),
+                    re_log_types::TimeInt::from_milliseconds(re_log_types::NonMinI64::MIN),
+                ),
+                &re_types::blueprint::archetypes::Background::new(
+                    re_types::blueprint::components::BackgroundKind::SolidColor,
+                )
+                .with_color([255, 0, 0]),
+            )
+            .build()
+            .unwrap()
+            .to_arrow_msg()
+            .unwrap();
+
+        strip_arrow_extensions_from_log_messages(vec![
             LogMsg::SetStoreInfo(SetStoreInfo {
                 row_id: *RowId::new(),
                 info: StoreInfo {
@@ -429,51 +455,20 @@ mod tests {
                     store_version: Some(CrateVersion::LOCAL),
                 },
             }),
-            LogMsg::ArrowMsg(
-                store_id.clone(),
-                re_chunk::Chunk::builder("test_entity".into())
-                    .with_archetype(
-                        re_chunk::RowId::new(),
-                        re_log_types::TimePoint::default().with(
-                            re_log_types::Timeline::new_sequence("blueprint"),
-                            re_log_types::TimeInt::from_milliseconds(re_log_types::NonMinI64::MIN),
-                        ),
-                        &re_types::blueprint::archetypes::Background::new(
-                            re_types::blueprint::components::BackgroundKind::SolidColor,
-                        )
-                        .with_color([255, 0, 0]),
-                    )
-                    .build()
-                    .unwrap()
-                    .to_arrow_msg()
-                    .unwrap(),
-            ),
+            LogMsg::ArrowMsg(store_id.clone(), arrow_msg),
             LogMsg::BlueprintActivationCommand(re_log_types::BlueprintActivationCommand {
                 blueprint_id: store_id,
                 make_active: true,
                 make_default: true,
             }),
-        ]
-    }
-
-    // TODO(#3741): should not be needed once the migration from arrow2 is complete
-    fn clear_arrow_extension_metadata(messages: &mut Vec<LogMsg>) {
-        for msg in messages {
-            if let LogMsg::ArrowMsg(_, arrow_msg) = msg {
-                for field in &mut arrow_msg.schema.fields {
-                    field
-                        .metadata
-                        .retain(|k, _| !k.starts_with("ARROW:extension"));
-                }
-            }
-        }
+        ])
     }
 
     #[test]
     fn test_encode_decode() {
         let rrd_version = CrateVersion::LOCAL;
 
-        let mut messages = fake_log_messages();
+        let messages = fake_log_messages();
 
         let options = [
             EncodingOptions {
@@ -499,19 +494,14 @@ mod tests {
             crate::encoder::encode_ref(rrd_version, options, messages.iter().map(Ok), &mut file)
                 .unwrap();
 
-            let mut decoded_messages = Decoder::new(VersionPolicy::Error, &mut file.as_slice())
-                .unwrap()
-                .collect::<Result<Vec<LogMsg>, DecodeError>>()
-                .unwrap();
-
-            // TODO(#3741): should not be needed once the migration from arrow2 is complete
-            clear_arrow_extension_metadata(&mut messages);
-            clear_arrow_extension_metadata(&mut decoded_messages);
-
-            assert!(
-                messages == decoded_messages,
-                "Got: {decoded_messages:#?}, expected: {messages:#?}"
+            let decoded_messages = strip_arrow_extensions_from_log_messages(
+                Decoder::new(VersionPolicy::Error, &mut file.as_slice())
+                    .unwrap()
+                    .collect::<Result<Vec<LogMsg>, DecodeError>>()
+                    .unwrap(),
             );
+
+            similar_asserts::assert_eq!(decoded_messages, messages);
         }
     }
 
@@ -542,7 +532,7 @@ mod tests {
             let mut data = vec![];
 
             // write "2 files" i.e. 2 streams that end with end-of-stream marker
-            let mut messages = fake_log_messages();
+            let messages = fake_log_messages();
 
             // (2 encoders as each encoder writes a file header)
             let writer = std::io::Cursor::new(&mut data);
@@ -569,13 +559,11 @@ mod tests {
             )
             .unwrap();
 
-            let mut decoded_messages = decoder.into_iter().collect::<Result<Vec<_>, _>>().unwrap();
+            let decoded_messages = strip_arrow_extensions_from_log_messages(
+                decoder.into_iter().collect::<Result<Vec<_>, _>>().unwrap(),
+            );
 
-            // TODO(#3741): should not be needed once the migration from arrow2 is complete
-            clear_arrow_extension_metadata(&mut messages);
-            clear_arrow_extension_metadata(&mut decoded_messages);
-
-            assert_eq!([messages.clone(), messages].concat(), decoded_messages);
+            similar_asserts::assert_eq!(decoded_messages, [messages.clone(), messages].concat());
         }
     }
 }

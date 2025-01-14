@@ -203,7 +203,7 @@ impl ChunkUi {
         };
 
         let fields_ui = |ui: &mut egui::Ui, transport: &TransportChunk| {
-            for field in &transport.schema.fields {
+            for field in &transport.schema_ref().fields {
                 ui.push_id(field.name.clone(), |ui| {
                     ui.list_item_collapsible_noninteractive_label(&field.name, false, |ui| {
                         ui.list_item_collapsible_noninteractive_label("Data type", false, |ui| {
@@ -279,7 +279,7 @@ impl ChunkUi {
                 Ok(transport) => {
                     ui.list_item_collapsible_noninteractive_label("Transport", false, |ui| {
                         ui.list_item_collapsible_noninteractive_label("Metadata", false, |ui| {
-                            metadata_ui(ui, &transport.schema.metadata);
+                            metadata_ui(ui, &transport.schema_ref().metadata);
                         });
                         ui.list_item_collapsible_noninteractive_label("Fields", false, |ui| {
                             fields_ui(ui, &transport);

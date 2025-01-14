@@ -52,10 +52,10 @@ pub struct BatcherHooks {
 
     /// Callback to be run when an Arrow Chunk goes out of scope.
     ///
-    /// See [`re_log_types::ArrowChunkReleaseCallback`] for more information.
+    /// See [`re_log_types::ArrowRecordBatchReleaseCallback`] for more information.
     //
     // TODO(#6412): probably don't need this anymore.
-    pub on_release: Option<re_log_types::ArrowChunkReleaseCallback>,
+    pub on_release: Option<re_log_types::ArrowRecordBatchReleaseCallback>,
 }
 
 impl BatcherHooks {

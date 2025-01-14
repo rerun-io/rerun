@@ -6,7 +6,7 @@ use arrow::datatypes::DataType as ArrowDataType;
 use arrow2::datatypes::DataType as Arrow2DataType;
 use nohash_hasher::IntMap;
 
-use re_chunk::{Chunk, ChunkId, RowId, TransportChunk};
+use re_chunk::{Chunk, ChunkId, RowId};
 use re_log_types::{EntityPath, StoreId, StoreInfo, TimeInt, Timeline};
 use re_types_core::{ComponentDescriptor, ComponentName};
 
@@ -734,12 +734,7 @@ impl ChunkStore {
                         anyhow::bail!("unknown store ID: {store_id}");
                     };
 
-                    let transport = TransportChunk {
-                        schema: msg.schema.clone(),
-                        data: msg.chunk.clone(),
-                    };
-
-                    let chunk = Chunk::from_transport(&transport)
+                    let chunk = Chunk::from_arrow_msg(&msg)
                         .with_context(|| format!("couldn't decode chunk {path_to_rrd:?}"))?;
 
                     store
@@ -787,12 +782,7 @@ impl ChunkStore {
                         anyhow::bail!("unknown store ID: {store_id}");
                     };
 
-                    let transport = TransportChunk {
-                        schema: msg.schema.clone(),
-                        data: msg.chunk.clone(),
-                    };
-
-                    let chunk = Chunk::from_transport(&transport)
+                    let chunk = Chunk::from_arrow_msg(&msg)
                         .with_context(|| "couldn't decode chunk".to_owned())?;
 
                     store

@@ -555,10 +555,12 @@ significant_drop_tightening = "allow" # An update of parking_lot made this trigg
 
 [patch.crates-io]
 # Try to avoid patching crates! It prevents us from publishing the crates on crates.io.
-# If you do patch always prefer to patch to a commit on the trunk of the upstream repo.
+# If you do patch always prefer to patch to the trunk branch of the upstream repo (i.e. `main`, `master`, …).
 # If that is not possible, patch to a branch that has a PR open on the upstream repo.
-# As a last resport, patch with a commit to our own repository.
-# ALWAYS document what PR the commit hash is part of, or when it was merged into the upstream trunk.
+# As a last resort, patch to a branch on our own repository.
+#
+# Prefer patching with `branch` over `rev` and let `Cargo.lock` handle the commit hash.
+# That makes it easy to upade with `cargo update -p $CRATE`.
 
 ecolor = { git = "https://github.com/emilk/egui.git", rev = "f0d7c74e838b8e8920a22e7515990fbe057ec218" }       # egui master 2025-01-08
 eframe = { git = "https://github.com/emilk/egui.git", rev = "f0d7c74e838b8e8920a22e7515990fbe057ec218" }       # egui master 2025-01-08

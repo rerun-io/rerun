@@ -14,7 +14,7 @@ use re_chunk::{
     ChunkId, PendingRow, RowId, TimeColumn,
 };
 use re_log_types::{
-    ApplicationId, ArrowChunkReleaseCallback, BlueprintActivationCommand, EntityPath, LogMsg,
+    ApplicationId, ArrowRecordBatchReleaseCallback, BlueprintActivationCommand, EntityPath, LogMsg,
     StoreId, StoreInfo, StoreKind, StoreSource, Time, TimeInt, TimePoint, TimeType, Timeline,
     TimelineName,
 };
@@ -1411,7 +1411,7 @@ fn forwarding_thread(
     mut sink: Box<dyn LogSink>,
     cmds_rx: Receiver<Command>,
     chunks: Receiver<Chunk>,
-    on_release: Option<ArrowChunkReleaseCallback>,
+    on_release: Option<ArrowRecordBatchReleaseCallback>,
 ) {
     /// Returns `true` to indicate that processing can continue; i.e. `false` means immediate
     /// shutdown.
@@ -2350,7 +2350,6 @@ impl RecordingStream {
 
 #[cfg(test)]
 mod tests {
-    use re_chunk::TransportChunk;
     use re_log_types::example_components::MyLabel;
 
     use super::*;
@@ -2410,11 +2409,7 @@ mod tests {
             LogMsg::ArrowMsg(rid, msg) => {
                 assert_eq!(store_info.store_id, rid);
 
-                let chunk = Chunk::from_transport(&TransportChunk {
-                    schema: msg.schema.clone(),
-                    data: msg.chunk.clone(),
-                })
-                .unwrap();
+                let chunk = Chunk::from_arrow_msg(&msg).unwrap();
 
                 chunk.sanity_check().unwrap();
             }
@@ -2472,11 +2467,7 @@ mod tests {
             LogMsg::ArrowMsg(rid, msg) => {
                 assert_eq!(store_info.store_id, rid);
 
-                let chunk = Chunk::from_transport(&TransportChunk {
-                    schema: msg.schema.clone(),
-                    data: msg.chunk.clone(),
-                })
-                .unwrap();
+                let chunk = Chunk::from_arrow_msg(&msg).unwrap();
 
                 chunk.sanity_check().unwrap();
             }
@@ -2543,11 +2534,7 @@ mod tests {
                 LogMsg::ArrowMsg(rid, msg) => {
                     assert_eq!(store_info.store_id, rid);
 
-                    let chunk = Chunk::from_transport(&TransportChunk {
-                        schema: msg.schema.clone(),
-                        data: msg.chunk.clone(),
-                    })
-                    .unwrap();
+                    let chunk = Chunk::from_arrow_msg(&msg).unwrap();
 
                     chunk.sanity_check().unwrap();
                 }

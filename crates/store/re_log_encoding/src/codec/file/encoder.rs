@@ -25,7 +25,7 @@ pub(crate) fn encode(
             set_store_info.encode(buf)?;
         }
         LogMsg::ArrowMsg(store_id, arrow_msg) => {
-            let payload = encode_arrow(&arrow_msg.schema, &arrow_msg.chunk, compression)?;
+            let payload = encode_arrow(&arrow_msg.batch, compression)?;
             let arrow_msg = ArrowMsg {
                 store_id: Some(store_id.clone().into()),
                 compression: match compression {

@@ -1268,10 +1268,10 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     /// See [`Self::next_row`] for more information.
     #[inline]
     pub fn next_row_batch(&self) -> Option<RecordBatch> {
-        Some(RecordBatch {
-            schema: self.schema().clone(),
-            data: Arrow2Chunk::new(self.next_row_arrow2()?),
-        })
+        Some(RecordBatch::new(
+            self.schema().clone(),
+            Arrow2Chunk::new(self.next_row_arrow2()?),
+        ))
     }
 
     #[inline]
@@ -1286,10 +1286,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         #[allow(clippy::unwrap_used)]
         let schema = self.state.get().unwrap().arrow_schema.clone();
 
-        Some(RecordBatch {
-            schema,
-            data: Arrow2Chunk::new(row),
-        })
+        Some(RecordBatch::new(schema, Arrow2Chunk::new(row)))
     }
 }
 

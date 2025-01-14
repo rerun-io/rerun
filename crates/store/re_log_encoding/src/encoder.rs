@@ -28,7 +28,7 @@ pub enum EncodeError {
     Protobuf(#[from] re_protos::external::prost::EncodeError),
 
     #[error("Arrow error: {0}")]
-    Arrow(#[from] arrow2::error::Error),
+    Arrow(#[from] arrow::error::ArrowError),
 
     #[error("{0}")]
     Codec(#[from] codec::CodecError),

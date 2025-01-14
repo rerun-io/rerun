@@ -1,5 +1,6 @@
 use arrow::array::{
-    Array as ArrowArray, ArrayRef as ArrowArrayRef, StructArray as ArrowStructArray,
+    Array as ArrowArray, ArrayRef as ArrowArrayRef, RecordBatch as ArrowRecordBatch,
+    StructArray as ArrowStructArray,
 };
 use arrow2::{
     array::{Array as Arrow2Array, ListArray},
@@ -66,6 +67,48 @@ impl std::fmt::Display for TransportChunk {
                 .collect_vec(),
         )
         .fmt(f)
+    }
+}
+
+impl TransportChunk {
+    pub fn new(
+        schema: impl Into<Arrow2Schema>,
+        columns: impl Into<Arrow2Chunk<Box<dyn Arrow2Array>>>,
+    ) -> Self {
+        Self {
+            schema: schema.into(),
+            data: columns.into(),
+        }
+    }
+}
+
+impl From<ArrowRecordBatch> for TransportChunk {
+    fn from(batch: ArrowRecordBatch) -> Self {
+        Self::new(
+            batch.schema(),
+            Arrow2Chunk::new(
+                batch
+                    .columns()
+                    .iter()
+                    .map(|column| column.clone().into())
+                    .collect(),
+            ),
+        )
+    }
+}
+
+impl TryFrom<TransportChunk> for ArrowRecordBatch {
+    type Error = arrow::error::ArrowError;
+
+    fn try_from(chunk: TransportChunk) -> Result<Self, Self::Error> {
+        let TransportChunk { schema, data } = chunk;
+        Self::try_new(
+            schema.into(),
+            data.columns()
+                .iter()
+                .map(|column| column.clone().into())
+                .collect(),
+        )
     }
 }
 
@@ -299,6 +342,11 @@ impl TransportChunk {
             .metadata
             .get(Self::CHUNK_METADATA_KEY_HEAP_SIZE_BYTES)
             .and_then(|s| s.parse::<u64>().ok())
+    }
+
+    #[inline]
+    pub fn schema_ref(&self) -> &Arrow2Schema {
+        &self.schema
     }
 
     /// Looks in the chunk metadata for the `IS_SORTED` marker.
@@ -541,10 +589,11 @@ impl Chunk {
             }
         }
 
-        Ok(TransportChunk {
-            schema,
-            data: Arrow2Chunk::new(columns),
-        })
+        Ok(TransportChunk::new(schema, Arrow2Chunk::new(columns)))
+    }
+
+    pub fn from_record_batch(batch: ArrowRecordBatch) -> ChunkResult<Self> {
+        Self::from_transport(&batch.into())
     }
 
     pub fn from_transport(transport: &TransportChunk) -> ChunkResult<Self> {
@@ -694,15 +743,11 @@ impl Chunk {
         let re_log_types::ArrowMsg {
             chunk_id: _,
             timepoint_max: _,
-            schema,
-            chunk,
+            batch,
             on_release: _,
         } = msg;
 
-        Self::from_transport(&TransportChunk {
-            schema: schema.clone(),
-            data: chunk.clone(),
-        })
+        Self::from_record_batch(batch.clone())
     }
 
     #[inline]
@@ -714,8 +759,7 @@ impl Chunk {
         Ok(re_log_types::ArrowMsg {
             chunk_id: re_tuid::Tuid::from_u128(self.id().as_u128()),
             timepoint_max: self.timepoint_max(),
-            schema: transport.schema,
-            chunk: transport.data,
+            batch: transport.try_into()?,
             on_release: None,
         })
     }
@@ -805,14 +849,10 @@ mod tests {
             for _ in 0..3 {
                 let chunk_in_transport = chunk_before.to_transport()?;
                 #[cfg(feature = "arrow")]
-                let chunk_after = {
-                    let chunk_in_record_batch = chunk_in_transport.try_to_arrow_record_batch()?;
-                    let chunk_roundtrip =
-                        TransportChunk::from_arrow_record_batch(&chunk_in_record_batch);
-                    Chunk::from_transport(&chunk_roundtrip)?
-                };
+                let chunk_after =
+                    Chunk::from_record_batch(chunk_in_transport.try_to_arrow_record_batch()?)?;
                 #[cfg(not(feature = "arrow"))]
-                let chunk_after = { Chunk::from_transport(&chunk_in_transport)? };
+                let chunk_after = Chunk::from_transport(&chunk_in_transport)?;
 
                 assert_eq!(
                     chunk_in_transport.entity_path()?,
