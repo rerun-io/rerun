@@ -6090,6 +6090,7 @@ dependencies = [
  "re_types",
  "rmp-serde",
  "serde_test",
+ "similar-asserts",
  "thiserror 1.0.65",
  "wasm-bindgen",
  "wasm-bindgen-futures",

@@ -491,10 +491,7 @@ mod tests {
                 .collect::<Result<Vec<LogMsg>, DecodeError>>()
                 .unwrap();
 
-            assert!(
-                messages == decoded_messages,
-                "Got: {decoded_messages:#?}, expected: {messages:#?}"
-            );
+            similar_asserts::assert_eq!(decoded_messages, messages);
         }
     }
 
@@ -554,7 +551,7 @@ mod tests {
 
             let decoded_messages = decoder.into_iter().collect::<Result<Vec<_>, _>>().unwrap();
 
-            assert_eq!([messages.clone(), messages].concat(), decoded_messages);
+            similar_asserts::assert_eq!(decoded_messages, [messages.clone(), messages].concat());
         }
     }
 }

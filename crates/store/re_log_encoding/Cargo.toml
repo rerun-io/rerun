@@ -75,6 +75,7 @@ re_types.workspace = true
 criterion.workspace = true
 mimalloc.workspace = true
 serde_test.workspace = true
+similar-asserts.workspace = true
 
 [lib]
 bench = false
