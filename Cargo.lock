@@ -6290,6 +6290,7 @@ dependencies = [
  "ordered-float",
  "parking_lot",
  "pathdiff",
+ "pollster 0.4.0",
  "profiling",
  "re_arrow2",
  "re_build_tools",

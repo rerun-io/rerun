@@ -162,67 +162,8 @@ static SHARED_WGPU_RENDERER_SETUP: Lazy<SharedWgpuResources> =
     Lazy::new(init_shared_renderer_setup);
 
 fn init_shared_renderer_setup() -> SharedWgpuResources {
-    // TODO(andreas, emilk/egui#5506): Use centralized wgpu setup logic that…
-    // * lives mostly in re_renderer and is shared with viewer & renderer examples
-    // * can be told to prefer software rendering
-    // * can be told to match a specific device tier
-
-    // We rely a lot on logging in the viewer to identify issues.
-    // Make sure logging is set up if it hasn't been done yet.
-    //let _ = env_logger::builder().is_test(true).try_init();
-    let _ = env_logger::builder()
-        .filter_level(re_log::external::log::LevelFilter::Trace)
-        .is_test(false)
-        .try_init();
-
-    // We don't test on GL & DX12 right now (and don't want to do so by mistake!).
-    // Several reasons for this:
-    // * our CI is setup to draw with native Mac & lavapipe
-    // * we generally prefer Vulkan over DX12 on Windows since it reduces the
-    //   number of backends and wgpu's DX12 backend isn't as far along as of writing.
-    // * we don't want to use the GL backend here since we regard it as a fallback only
-    //   (TODO(andreas): Ideally we'd test that as well to check it is well-behaved,
-    //   but for now we only want to have a look at the happy path)
-    let backends = wgpu::Backends::VULKAN | wgpu::Backends::METAL;
-    let flags = (wgpu::InstanceFlags::ALLOW_UNDERLYING_NONCOMPLIANT_ADAPTER
-        | wgpu::InstanceFlags::VALIDATION
-        | wgpu::InstanceFlags::GPU_BASED_VALIDATION)
-        .with_env(); // Allow overwriting flags via env vars.
-    let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
-        backends,
-        flags,
-        ..Default::default()
-    });
-
-    let mut adapters = instance.enumerate_adapters(backends);
-    assert!(!adapters.is_empty(), "No graphics adapter found!");
-    re_log::info!("Found the following adapters:");
-    for adapter in &adapters {
-        re_log::info!("* {}", egui_wgpu::adapter_info_summary(&adapter.get_info()));
-    }
-
-    // Adapters are already sorted by preferred backend by wgpu, but let's be explicit.
-    adapters.sort_by_key(|a| match a.get_info().backend {
-        wgpu::Backend::Metal => 0,
-        wgpu::Backend::Vulkan => 1,
-        wgpu::Backend::Dx12 => 2,
-        wgpu::Backend::Gl => 4,
-        wgpu::Backend::BrowserWebGpu => 6,
-        wgpu::Backend::Empty => 7,
-    });
-
-    // Prefer CPU adapters, otherwise if we can't, prefer discrete GPU over integrated GPU.
-    adapters.sort_by_key(|a| match a.get_info().device_type {
-        wgpu::DeviceType::Cpu => 0, // CPU is the best for our purposes!
-        wgpu::DeviceType::DiscreteGpu => 1,
-        wgpu::DeviceType::Other
-        | wgpu::DeviceType::IntegratedGpu
-        | wgpu::DeviceType::VirtualGpu => 2,
-    });
-
-    let adapter = adapters.remove(0);
-    re_log::info!("Picked adapter: {:?}", adapter.get_info());
-
+    let instance = wgpu::Instance::new(re_renderer::config::testing_instance_descriptor());
+    let adapter = re_renderer::config::select_testing_adapter(&instance);
     let device_caps = re_renderer::config::DeviceCaps::from_adapter(&adapter)
         .expect("Failed to determine device capabilities");
     let (device, queue) =
@@ -271,6 +212,7 @@ impl TestContext {
     /// IMPORTANT: call [`Self::handle_system_commands`] after calling this function if your test
     /// relies on system commands.
     pub fn run(&self, egui_ctx: &egui::Context, func: impl FnOnce(&ViewerContext<'_>)) {
+        re_log::PanicOnWarnScope::new(); // TODO(andreas): There should be a way to opt-out of this.
         re_ui::apply_style_and_install_loaders(egui_ctx);
 
         let store_context = StoreContext {
