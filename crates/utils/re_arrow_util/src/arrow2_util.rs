@@ -19,11 +19,11 @@ pub trait Arrow2ArrayDowncastRef {
     ///
     /// This is shorter, but also better: it means we don't accidentally downcast
     /// an arrow2 array to an arrow1 array, or vice versa.
-    fn downcast_array_ref<T: Arrow2Array + 'static>(&self) -> Option<&T>;
+    fn downcast_array2_ref<T: Arrow2Array + 'static>(&self) -> Option<&T>;
 }
 
 impl Arrow2ArrayDowncastRef for dyn Arrow2Array {
-    fn downcast_array_ref<T: Arrow2Array + 'static>(&self) -> Option<&T> {
+    fn downcast_array2_ref<T: Arrow2Array + 'static>(&self) -> Option<&T> {
         self.as_any().downcast_ref()
     }
 }
