@@ -118,28 +118,28 @@ impl std::fmt::Display for DisplayDatatype<'_> {
             DataType::Float64 => "f64",
             DataType::Timestamp(unit, timezone) => {
                 let s = if let Some(tz) = timezone {
-                    format!("timestamp({}, {tz})", DisplayTimeUnit(*unit))
+                    format!("Timestamp({}, {tz})", DisplayTimeUnit(*unit))
                 } else {
-                    format!("timestamp({})", DisplayTimeUnit(*unit))
+                    format!("Timestamp({})", DisplayTimeUnit(*unit))
                 };
                 return f.write_str(&s);
             }
-            DataType::Date32 => "date32",
-            DataType::Date64 => "date64",
+            DataType::Date32 => "Date32",
+            DataType::Date64 => "Date64",
             DataType::Time32(unit) => {
-                let s = format!("time32({})", DisplayTimeUnit(*unit));
+                let s = format!("Time32({})", DisplayTimeUnit(*unit));
                 return f.write_str(&s);
             }
             DataType::Time64(unit) => {
-                let s = format!("time64({})", DisplayTimeUnit(*unit));
+                let s = format!("Time64({})", DisplayTimeUnit(*unit));
                 return f.write_str(&s);
             }
             DataType::Duration(unit) => {
-                let s = format!("duration({})", DisplayTimeUnit(*unit));
+                let s = format!("Duration({})", DisplayTimeUnit(*unit));
                 return f.write_str(&s);
             }
             DataType::Interval(unit) => {
-                let s = format!("interval({})", DisplayIntervalUnit(*unit));
+                let s = format!("Interval({})", DisplayIntervalUnit(*unit));
                 return f.write_str(&s);
             }
             DataType::Binary => "Binary",
@@ -159,14 +159,14 @@ impl std::fmt::Display for DisplayDatatype<'_> {
                 let s = format!("LargeList[{}]", Self(field.data_type()));
                 return f.write_str(&s);
             }
-            DataType::Struct(fields) => return write!(f, "struct[{}]", fields.len()),
-            DataType::Union(fields, _) => return write!(f, "union[{}]", fields.len()),
-            DataType::Map(field, _) => return write!(f, "map[{}]", Self(field.data_type())),
+            DataType::Struct(fields) => return write!(f, "Struct[{}]", fields.len()),
+            DataType::Union(fields, _) => return write!(f, "Union[{}]", fields.len()),
+            DataType::Map(field, _) => return write!(f, "Map[{}]", Self(field.data_type())),
             DataType::Dictionary(key, value) => {
-                return write!(f, "dictionary{{{}: {}}}", Self(key), Self(value))
+                return write!(f, "Dictionary{{{}: {}}}", Self(key), Self(value))
             }
-            DataType::Decimal128(_, _) => "decimal128",
-            DataType::Decimal256(_, _) => "decimal256",
+            DataType::Decimal128(_, _) => "Decimal128",
+            DataType::Decimal256(_, _) => "Decimal256",
             DataType::BinaryView => "BinaryView",
             DataType::Utf8View => "Utf8View",
             DataType::ListView(field) => return write!(f, "ListView[{}]", Self(field.data_type())),
