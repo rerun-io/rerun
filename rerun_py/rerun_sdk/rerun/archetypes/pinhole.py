@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from attrs import define, field
 
-from .. import components
+from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
 )
@@ -88,9 +88,96 @@ class Pinhole(PinholeExt, Archetype):
         inst.__attrs_clear__()
         return inst
 
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        image_from_camera: datatypes.Mat3x3Like | None = None,
+        resolution: datatypes.Vec2DLike | None = None,
+        camera_xyz: datatypes.ViewCoordinatesLike | None = None,
+        image_plane_distance: datatypes.Float32Like | None = None,
+    ) -> Pinhole:
+        """
+        Update only some specific fields of a `Pinhole`.
+
+        Parameters
+        ----------
+        clear:
+            If true, all unspecified fields will be explicitly cleared.
+        image_from_camera:
+            Camera projection, from image coordinates to view coordinates.
+        resolution:
+            Pixel resolution (usually integers) of child image space. Width and height.
+
+            Example:
+            ```text
+            [1920.0, 1440.0]
+            ```
+
+            `image_from_camera` project onto the space spanned by `(0,0)` and `resolution - 1`.
+        camera_xyz:
+            Sets the view coordinates for the camera.
+
+            All common values are available as constants on the [`components.ViewCoordinates`][rerun.components.ViewCoordinates] class.
+
+            The default is `ViewCoordinates::RDF`, i.e. X=Right, Y=Down, Z=Forward, and this is also the recommended setting.
+            This means that the camera frustum will point along the positive Z axis of the parent space,
+            and the cameras "up" direction will be along the negative Y axis of the parent space.
+
+            The camera frustum will point whichever axis is set to `F` (or the opposite of `B`).
+            When logging a depth image under this entity, this is the direction the point cloud will be projected.
+            With `RDF`, the default forward is +Z.
+
+            The frustum's "up" direction will be whichever axis is set to `U` (or the opposite of `D`).
+            This will match the negative Y direction of pixel space (all images are assumed to have xyz=RDF).
+            With `RDF`, the default is up is -Y.
+
+            The frustum's "right" direction will be whichever axis is set to `R` (or the opposite of `L`).
+            This will match the positive X direction of pixel space (all images are assumed to have xyz=RDF).
+            With `RDF`, the default right is +x.
+
+            Other common formats are `RUB` (X=Right, Y=Up, Z=Back) and `FLU` (X=Forward, Y=Left, Z=Up).
+
+            NOTE: setting this to something else than `RDF` (the default) will change the orientation of the camera frustum,
+            and make the pinhole matrix not match up with the coordinate system of the pinhole entity.
+
+            The pinhole matrix (the `image_from_camera` argument) always project along the third (Z) axis,
+            but will be re-oriented to project along the forward axis of the `camera_xyz` argument.
+        image_plane_distance:
+            The distance from the camera origin to the image plane when the projection is shown in a 3D viewer.
+
+            This is only used for visualization purposes, and does not affect the projection itself.
+
+        """
+
+        kwargs = {
+            "image_from_camera": image_from_camera,
+            "resolution": resolution,
+            "camera_xyz": camera_xyz,
+            "image_plane_distance": image_plane_distance,
+        }
+
+        if clear:
+            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+        return Pinhole(**kwargs)  # type: ignore[arg-type]
+
+    @classmethod
+    def clear_fields(cls) -> Pinhole:
+        """Clear all the fields of a `Pinhole`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            image_from_camera=[],  # type: ignore[arg-type]
+            resolution=[],  # type: ignore[arg-type]
+            camera_xyz=[],  # type: ignore[arg-type]
+            image_plane_distance=[],  # type: ignore[arg-type]
+        )
+        return inst
+
     image_from_camera: components.PinholeProjectionBatch = field(
-        metadata={"component": "required"},
-        converter=components.PinholeProjectionBatch._required,  # type: ignore[misc]
+        metadata={"component": "optional"},
+        converter=components.PinholeProjectionBatch._optional,  # type: ignore[misc]
     )
     # Camera projection, from image coordinates to view coordinates.
     #

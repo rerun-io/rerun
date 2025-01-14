@@ -128,6 +128,60 @@ class SeriesPoint(Archetype):
         inst.__attrs_clear__()
         return inst
 
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        color: datatypes.Rgba32Like | None = None,
+        marker: components.MarkerShapeLike | None = None,
+        name: datatypes.Utf8Like | None = None,
+        marker_size: datatypes.Float32Like | None = None,
+    ) -> SeriesPoint:
+        """
+        Update only some specific fields of a `SeriesPoint`.
+
+        Parameters
+        ----------
+        clear:
+            If true, all unspecified fields will be explicitly cleared.
+        color:
+            Color for the corresponding series.
+        marker:
+            What shape to use to represent the point
+        name:
+            Display name of the series.
+
+            Used in the legend.
+        marker_size:
+            Size of the marker.
+
+        """
+
+        kwargs = {
+            "color": color,
+            "marker": marker,
+            "name": name,
+            "marker_size": marker_size,
+        }
+
+        if clear:
+            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+        return SeriesPoint(**kwargs)  # type: ignore[arg-type]
+
+    @classmethod
+    def clear_fields(cls) -> SeriesPoint:
+        """Clear all the fields of a `SeriesPoint`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            color=[],  # type: ignore[arg-type]
+            marker=[],  # type: ignore[arg-type]
+            name=[],  # type: ignore[arg-type]
+            marker_size=[],  # type: ignore[arg-type]
+        )
+        return inst
+
     color: components.ColorBatch | None = field(
         metadata={"component": "optional"},
         default=None,

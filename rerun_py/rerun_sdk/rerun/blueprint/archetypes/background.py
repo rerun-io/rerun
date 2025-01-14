@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from attrs import define, field
 
-from ... import components
+from ... import components, datatypes
 from ..._baseclasses import (
     Archetype,
 )
@@ -37,9 +37,51 @@ class Background(BackgroundExt, Archetype):
         inst.__attrs_clear__()
         return inst
 
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        kind: blueprint_components.BackgroundKindLike | None = None,
+        color: datatypes.Rgba32Like | None = None,
+    ) -> Background:
+        """
+        Update only some specific fields of a `Background`.
+
+        Parameters
+        ----------
+        clear:
+            If true, all unspecified fields will be explicitly cleared.
+        kind:
+            The type of the background.
+        color:
+            Color used for the solid background type.
+
+        """
+
+        kwargs = {
+            "kind": kind,
+            "color": color,
+        }
+
+        if clear:
+            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+        return Background(**kwargs)  # type: ignore[arg-type]
+
+    @classmethod
+    def clear_fields(cls) -> Background:
+        """Clear all the fields of a `Background`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            kind=[],  # type: ignore[arg-type]
+            color=[],  # type: ignore[arg-type]
+        )
+        return inst
+
     kind: blueprint_components.BackgroundKindBatch = field(
-        metadata={"component": "required"},
-        converter=blueprint_components.BackgroundKindBatch._required,  # type: ignore[misc]
+        metadata={"component": "optional"},
+        converter=blueprint_components.BackgroundKindBatch._optional,  # type: ignore[misc]
     )
     # The type of the background.
     #

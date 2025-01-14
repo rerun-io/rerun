@@ -80,8 +80,50 @@ class BarChart(BarChartExt, Archetype):
         inst.__attrs_clear__()
         return inst
 
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        values: datatypes.TensorDataLike | None = None,
+        color: datatypes.Rgba32Like | None = None,
+    ) -> BarChart:
+        """
+        Update only some specific fields of a `BarChart`.
+
+        Parameters
+        ----------
+        clear:
+            If true, all unspecified fields will be explicitly cleared.
+        values:
+            The values. Should always be a 1-dimensional tensor (i.e. a vector).
+        color:
+            The color of the bar chart
+
+        """
+
+        kwargs = {
+            "values": values,
+            "color": color,
+        }
+
+        if clear:
+            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+        return BarChart(**kwargs)  # type: ignore[arg-type]
+
+    @classmethod
+    def clear_fields(cls) -> BarChart:
+        """Clear all the fields of a `BarChart`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            values=[],  # type: ignore[arg-type]
+            color=[],  # type: ignore[arg-type]
+        )
+        return inst
+
     values: components.TensorDataBatch = field(
-        metadata={"component": "required"},
+        metadata={"component": "optional"},
         converter=BarChartExt.values__field_converter_override,  # type: ignore[misc]
     )
     # The values. Should always be a 1-dimensional tensor (i.e. a vector).

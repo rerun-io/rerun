@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from attrs import define, field
 
-from .. import components
+from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
 )
@@ -78,9 +78,36 @@ class Clear(ClearExt, Archetype):
         inst.__attrs_clear__()
         return inst
 
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        is_recursive: datatypes.BoolLike | None = None,
+    ) -> Clear:
+        """Update only some specific fields of a `Clear`."""
+
+        kwargs = {
+            "is_recursive": is_recursive,
+        }
+
+        if clear:
+            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+        return Clear(**kwargs)  # type: ignore[arg-type]
+
+    @classmethod
+    def clear_fields(cls) -> Clear:
+        """Clear all the fields of a `Clear`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            is_recursive=[],  # type: ignore[arg-type]
+        )
+        return inst
+
     is_recursive: components.ClearIsRecursiveBatch = field(
-        metadata={"component": "required"},
-        converter=components.ClearIsRecursiveBatch._required,  # type: ignore[misc]
+        metadata={"component": "optional"},
+        converter=components.ClearIsRecursiveBatch._optional,  # type: ignore[misc]
     )
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__  # type: ignore[assignment]

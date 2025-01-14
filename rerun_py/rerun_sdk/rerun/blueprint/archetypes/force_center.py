@@ -60,6 +60,50 @@ class ForceCenter(Archetype):
         inst.__attrs_clear__()
         return inst
 
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        enabled: datatypes.BoolLike | None = None,
+        strength: datatypes.Float64Like | None = None,
+    ) -> ForceCenter:
+        """
+        Update only some specific fields of a `ForceCenter`.
+
+        Parameters
+        ----------
+        clear:
+            If true, all unspecified fields will be explicitly cleared.
+        enabled:
+            Whether the center force is enabled.
+
+            The center force tries to move the center of mass of the graph towards the origin.
+        strength:
+            The strength of the force.
+
+        """
+
+        kwargs = {
+            "enabled": enabled,
+            "strength": strength,
+        }
+
+        if clear:
+            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+        return ForceCenter(**kwargs)  # type: ignore[arg-type]
+
+    @classmethod
+    def clear_fields(cls) -> ForceCenter:
+        """Clear all the fields of a `ForceCenter`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            enabled=[],  # type: ignore[arg-type]
+            strength=[],  # type: ignore[arg-type]
+        )
+        return inst
+
     enabled: blueprint_components.EnabledBatch | None = field(
         metadata={"component": "optional"},
         default=None,

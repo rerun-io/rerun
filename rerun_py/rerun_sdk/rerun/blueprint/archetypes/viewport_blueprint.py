@@ -91,6 +91,75 @@ class ViewportBlueprint(Archetype):
         inst.__attrs_clear__()
         return inst
 
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        root_container: datatypes.UuidLike | None = None,
+        maximized: datatypes.UuidLike | None = None,
+        auto_layout: datatypes.BoolLike | None = None,
+        auto_views: datatypes.BoolLike | None = None,
+        past_viewer_recommendations: datatypes.UInt64ArrayLike | None = None,
+    ) -> ViewportBlueprint:
+        """
+        Update only some specific fields of a `ViewportBlueprint`.
+
+        Parameters
+        ----------
+        clear:
+            If true, all unspecified fields will be explicitly cleared.
+        root_container:
+            The layout of the views
+        maximized:
+            Show one tab as maximized?
+        auto_layout:
+            Whether the viewport layout is determined automatically.
+
+            If `true`, the container layout will be reset whenever a new view is added or removed.
+            This defaults to `false` and is automatically set to `false` when there is user determined layout.
+        auto_views:
+            Whether or not views should be created automatically.
+
+            If `true`, the viewer will only add views that it hasn't considered previously (as identified by `past_viewer_recommendations`)
+            and which aren't deemed redundant to existing views.
+            This defaults to `false` and is automatically set to `false` when the user adds views manually in the viewer.
+        past_viewer_recommendations:
+            Hashes of all recommended views the viewer has already added and that should not be added again.
+
+            This is an internal field and should not be set usually.
+            If you want the viewer from stopping to add views, you should set `auto_views` to `false`.
+
+            The viewer uses this to determine whether it should keep adding views.
+
+        """
+
+        kwargs = {
+            "root_container": root_container,
+            "maximized": maximized,
+            "auto_layout": auto_layout,
+            "auto_views": auto_views,
+            "past_viewer_recommendations": past_viewer_recommendations,
+        }
+
+        if clear:
+            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+        return ViewportBlueprint(**kwargs)  # type: ignore[arg-type]
+
+    @classmethod
+    def clear_fields(cls) -> ViewportBlueprint:
+        """Clear all the fields of a `ViewportBlueprint`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            root_container=[],  # type: ignore[arg-type]
+            maximized=[],  # type: ignore[arg-type]
+            auto_layout=[],  # type: ignore[arg-type]
+            auto_views=[],  # type: ignore[arg-type]
+            past_viewer_recommendations=[],  # type: ignore[arg-type]
+        )
+        return inst
+
     root_container: blueprint_components.RootContainerBatch | None = field(
         metadata={"component": "optional"},
         default=None,

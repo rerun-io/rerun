@@ -55,9 +55,48 @@ class NearClipPlane(Archetype):
         inst.__attrs_clear__()
         return inst
 
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        near_clip_plane: datatypes.Float32Like | None = None,
+    ) -> NearClipPlane:
+        """
+        Update only some specific fields of a `NearClipPlane`.
+
+        Parameters
+        ----------
+        clear:
+            If true, all unspecified fields will be explicitly cleared.
+        near_clip_plane:
+            Controls the distance to the near clip plane in 3D scene units.
+
+            Content closer than this distance will not be visible.
+
+        """
+
+        kwargs = {
+            "near_clip_plane": near_clip_plane,
+        }
+
+        if clear:
+            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+        return NearClipPlane(**kwargs)  # type: ignore[arg-type]
+
+    @classmethod
+    def clear_fields(cls) -> NearClipPlane:
+        """Clear all the fields of a `NearClipPlane`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            near_clip_plane=[],  # type: ignore[arg-type]
+        )
+        return inst
+
     near_clip_plane: blueprint_components.NearClipPlaneBatch = field(
-        metadata={"component": "required"},
-        converter=blueprint_components.NearClipPlaneBatch._required,  # type: ignore[misc]
+        metadata={"component": "optional"},
+        converter=blueprint_components.NearClipPlaneBatch._optional,  # type: ignore[misc]
     )
     # Controls the distance to the near clip plane in 3D scene units.
     #

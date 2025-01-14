@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from attrs import define, field
 
-from .. import components
+from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
 )
@@ -61,9 +61,72 @@ class EncodedImage(EncodedImageExt, Archetype):
         inst.__attrs_clear__()
         return inst
 
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        blob: datatypes.BlobLike | None = None,
+        media_type: datatypes.Utf8Like | None = None,
+        opacity: datatypes.Float32Like | None = None,
+        draw_order: datatypes.Float32Like | None = None,
+    ) -> EncodedImage:
+        """
+        Update only some specific fields of a `EncodedImage`.
+
+        Parameters
+        ----------
+        clear:
+            If true, all unspecified fields will be explicitly cleared.
+        blob:
+            The encoded content of some image file, e.g. a PNG or JPEG.
+        media_type:
+            The Media Type of the asset.
+
+            Supported values:
+            * `image/jpeg`
+            * `image/png`
+
+            If omitted, the viewer will try to guess from the data blob.
+            If it cannot guess, it won't be able to render the asset.
+        opacity:
+            Opacity of the image, useful for layering several images.
+
+            Defaults to 1.0 (fully opaque).
+        draw_order:
+            An optional floating point value that specifies the 2D drawing order.
+
+            Objects with higher values are drawn on top of those with lower values.
+
+        """
+
+        kwargs = {
+            "blob": blob,
+            "media_type": media_type,
+            "opacity": opacity,
+            "draw_order": draw_order,
+        }
+
+        if clear:
+            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+        return EncodedImage(**kwargs)  # type: ignore[arg-type]
+
+    @classmethod
+    def clear_fields(cls) -> EncodedImage:
+        """Clear all the fields of a `EncodedImage`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            blob=[],  # type: ignore[arg-type]
+            media_type=[],  # type: ignore[arg-type]
+            opacity=[],  # type: ignore[arg-type]
+            draw_order=[],  # type: ignore[arg-type]
+        )
+        return inst
+
     blob: components.BlobBatch = field(
-        metadata={"component": "required"},
-        converter=components.BlobBatch._required,  # type: ignore[misc]
+        metadata={"component": "optional"},
+        converter=components.BlobBatch._optional,  # type: ignore[misc]
     )
     # The encoded content of some image file, e.g. a PNG or JPEG.
     #

@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from attrs import define, field
 
-from .. import components
+from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
 )
@@ -74,9 +74,93 @@ class Arrows2D(Arrows2DExt, Archetype):
         inst.__attrs_clear__()
         return inst
 
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        vectors: datatypes.Vec2DArrayLike | None = None,
+        origins: datatypes.Vec2DArrayLike | None = None,
+        radii: datatypes.Float32ArrayLike | None = None,
+        colors: datatypes.Rgba32ArrayLike | None = None,
+        labels: datatypes.Utf8ArrayLike | None = None,
+        show_labels: datatypes.BoolLike | None = None,
+        draw_order: datatypes.Float32Like | None = None,
+        class_ids: datatypes.ClassIdArrayLike | None = None,
+    ) -> Arrows2D:
+        """
+        Update only some specific fields of a `Arrows2D`.
+
+        Parameters
+        ----------
+        clear:
+            If true, all unspecified fields will be explicitly cleared.
+        vectors:
+            All the vectors for each arrow in the batch.
+        origins:
+            All the origin (base) positions for each arrow in the batch.
+
+            If no origins are set, (0, 0) is used as the origin for each arrow.
+        radii:
+            Optional radii for the arrows.
+
+            The shaft is rendered as a line with `radius = 0.5 * radius`.
+            The tip is rendered with `height = 2.0 * radius` and `radius = 1.0 * radius`.
+        colors:
+            Optional colors for the points.
+        labels:
+            Optional text labels for the arrows.
+
+            If there's a single label present, it will be placed at the center of the entity.
+            Otherwise, each instance will have its own label.
+        show_labels:
+            Optional choice of whether the text labels should be shown by default.
+        draw_order:
+            An optional floating point value that specifies the 2D drawing order.
+
+            Objects with higher values are drawn on top of those with lower values.
+        class_ids:
+            Optional class Ids for the points.
+
+            The [`components.ClassId`][rerun.components.ClassId] provides colors and labels if not specified explicitly.
+
+        """
+
+        kwargs = {
+            "vectors": vectors,
+            "origins": origins,
+            "radii": radii,
+            "colors": colors,
+            "labels": labels,
+            "show_labels": show_labels,
+            "draw_order": draw_order,
+            "class_ids": class_ids,
+        }
+
+        if clear:
+            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+        return Arrows2D(**kwargs)  # type: ignore[arg-type]
+
+    @classmethod
+    def clear_fields(cls) -> Arrows2D:
+        """Clear all the fields of a `Arrows2D`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            vectors=[],  # type: ignore[arg-type]
+            origins=[],  # type: ignore[arg-type]
+            radii=[],  # type: ignore[arg-type]
+            colors=[],  # type: ignore[arg-type]
+            labels=[],  # type: ignore[arg-type]
+            show_labels=[],  # type: ignore[arg-type]
+            draw_order=[],  # type: ignore[arg-type]
+            class_ids=[],  # type: ignore[arg-type]
+        )
+        return inst
+
     vectors: components.Vector2DBatch = field(
-        metadata={"component": "required"},
-        converter=components.Vector2DBatch._required,  # type: ignore[misc]
+        metadata={"component": "optional"},
+        converter=components.Vector2DBatch._optional,  # type: ignore[misc]
     )
     # All the vectors for each arrow in the batch.
     #

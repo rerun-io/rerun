@@ -110,9 +110,97 @@ class ContainerBlueprint(Archetype):
         inst.__attrs_clear__()
         return inst
 
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        container_kind: blueprint_components.ContainerKindLike | None = None,
+        display_name: datatypes.Utf8Like | None = None,
+        contents: datatypes.EntityPathArrayLike | None = None,
+        col_shares: datatypes.Float32ArrayLike | None = None,
+        row_shares: datatypes.Float32ArrayLike | None = None,
+        active_tab: datatypes.EntityPathLike | None = None,
+        visible: datatypes.BoolLike | None = None,
+        grid_columns: datatypes.UInt32Like | None = None,
+    ) -> ContainerBlueprint:
+        """
+        Update only some specific fields of a `ContainerBlueprint`.
+
+        Parameters
+        ----------
+        clear:
+            If true, all unspecified fields will be explicitly cleared.
+        container_kind:
+            The class of the view.
+        display_name:
+            The name of the container.
+        contents:
+            `ContainerId`s or `ViewId`s that are children of this container.
+        col_shares:
+            The layout shares of each column in the container.
+
+            For [`components.ContainerKind.Horizontal`][rerun.blueprint.components.ContainerKind.Horizontal] containers, the length of this list should always match the number of contents.
+
+            Ignored for [`components.ContainerKind.Vertical`][rerun.blueprint.components.ContainerKind.Vertical] containers.
+        row_shares:
+            The layout shares of each row of the container.
+
+            For [`components.ContainerKind.Vertical`][rerun.blueprint.components.ContainerKind.Vertical] containers, the length of this list should always match the number of contents.
+
+            Ignored for [`components.ContainerKind.Horizontal`][rerun.blueprint.components.ContainerKind.Horizontal] containers.
+        active_tab:
+            Which tab is active.
+
+            Only applies to `Tabs` containers.
+        visible:
+            Whether this container is visible.
+
+            Defaults to true if not specified.
+        grid_columns:
+            How many columns this grid should have.
+
+            If unset, the grid layout will be auto.
+
+            Ignored for [`components.ContainerKind.Horizontal`][rerun.blueprint.components.ContainerKind.Horizontal]/[`components.ContainerKind.Vertical`][rerun.blueprint.components.ContainerKind.Vertical] containers.
+
+        """
+
+        kwargs = {
+            "container_kind": container_kind,
+            "display_name": display_name,
+            "contents": contents,
+            "col_shares": col_shares,
+            "row_shares": row_shares,
+            "active_tab": active_tab,
+            "visible": visible,
+            "grid_columns": grid_columns,
+        }
+
+        if clear:
+            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+        return ContainerBlueprint(**kwargs)  # type: ignore[arg-type]
+
+    @classmethod
+    def clear_fields(cls) -> ContainerBlueprint:
+        """Clear all the fields of a `ContainerBlueprint`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            container_kind=[],  # type: ignore[arg-type]
+            display_name=[],  # type: ignore[arg-type]
+            contents=[],  # type: ignore[arg-type]
+            col_shares=[],  # type: ignore[arg-type]
+            row_shares=[],  # type: ignore[arg-type]
+            active_tab=[],  # type: ignore[arg-type]
+            visible=[],  # type: ignore[arg-type]
+            grid_columns=[],  # type: ignore[arg-type]
+        )
+        return inst
+
     container_kind: blueprint_components.ContainerKindBatch = field(
-        metadata={"component": "required"},
-        converter=blueprint_components.ContainerKindBatch._required,  # type: ignore[misc]
+        metadata={"component": "optional"},
+        converter=blueprint_components.ContainerKindBatch._optional,  # type: ignore[misc]
     )
     # The class of the view.
     #

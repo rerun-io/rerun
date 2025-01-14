@@ -99,6 +99,84 @@ class AffixFuzzer3(Archetype):
         inst.__attrs_clear__()
         return inst
 
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        fuzz2001: datatypes.AffixFuzzer1Like | None = None,
+        fuzz2002: datatypes.AffixFuzzer1Like | None = None,
+        fuzz2003: datatypes.AffixFuzzer1Like | None = None,
+        fuzz2004: datatypes.AffixFuzzer1Like | None = None,
+        fuzz2005: datatypes.AffixFuzzer1Like | None = None,
+        fuzz2006: datatypes.AffixFuzzer1Like | None = None,
+        fuzz2007: components.AffixFuzzer7Like | None = None,
+        fuzz2008: components.AffixFuzzer8Like | None = None,
+        fuzz2009: components.AffixFuzzer9Like | None = None,
+        fuzz2010: components.AffixFuzzer10Like | None = None,
+        fuzz2011: components.AffixFuzzer11Like | None = None,
+        fuzz2012: components.AffixFuzzer12Like | None = None,
+        fuzz2013: components.AffixFuzzer13Like | None = None,
+        fuzz2014: datatypes.AffixFuzzer3Like | None = None,
+        fuzz2015: datatypes.AffixFuzzer3Like | None = None,
+        fuzz2016: components.AffixFuzzer16Like | None = None,
+        fuzz2017: components.AffixFuzzer17Like | None = None,
+        fuzz2018: components.AffixFuzzer18Like | None = None,
+    ) -> AffixFuzzer3:
+        """Update only some specific fields of a `AffixFuzzer3`."""
+
+        kwargs = {
+            "fuzz2001": fuzz2001,
+            "fuzz2002": fuzz2002,
+            "fuzz2003": fuzz2003,
+            "fuzz2004": fuzz2004,
+            "fuzz2005": fuzz2005,
+            "fuzz2006": fuzz2006,
+            "fuzz2007": fuzz2007,
+            "fuzz2008": fuzz2008,
+            "fuzz2009": fuzz2009,
+            "fuzz2010": fuzz2010,
+            "fuzz2011": fuzz2011,
+            "fuzz2012": fuzz2012,
+            "fuzz2013": fuzz2013,
+            "fuzz2014": fuzz2014,
+            "fuzz2015": fuzz2015,
+            "fuzz2016": fuzz2016,
+            "fuzz2017": fuzz2017,
+            "fuzz2018": fuzz2018,
+        }
+
+        if clear:
+            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+        return AffixFuzzer3(**kwargs)  # type: ignore[arg-type]
+
+    @classmethod
+    def clear_fields(cls) -> AffixFuzzer3:
+        """Clear all the fields of a `AffixFuzzer3`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            fuzz2001=[],  # type: ignore[arg-type]
+            fuzz2002=[],  # type: ignore[arg-type]
+            fuzz2003=[],  # type: ignore[arg-type]
+            fuzz2004=[],  # type: ignore[arg-type]
+            fuzz2005=[],  # type: ignore[arg-type]
+            fuzz2006=[],  # type: ignore[arg-type]
+            fuzz2007=[],  # type: ignore[arg-type]
+            fuzz2008=[],  # type: ignore[arg-type]
+            fuzz2009=[],  # type: ignore[arg-type]
+            fuzz2010=[],  # type: ignore[arg-type]
+            fuzz2011=[],  # type: ignore[arg-type]
+            fuzz2012=[],  # type: ignore[arg-type]
+            fuzz2013=[],  # type: ignore[arg-type]
+            fuzz2014=[],  # type: ignore[arg-type]
+            fuzz2015=[],  # type: ignore[arg-type]
+            fuzz2016=[],  # type: ignore[arg-type]
+            fuzz2017=[],  # type: ignore[arg-type]
+            fuzz2018=[],  # type: ignore[arg-type]
+        )
+        return inst
+
     fuzz2001: components.AffixFuzzer1Batch | None = field(
         metadata={"component": "optional"},
         default=None,

@@ -22,6 +22,7 @@ class Transform3DExt:
     def __init__(
         self: Any,
         *,
+        clear: bool = True,
         translation: Vec3DLike | None = None,
         rotation: QuaternionLike | RotationAxisAngleLike | None = None,
         rotation_axis_angle: RotationAxisAngleLike | None = None,
@@ -37,6 +38,8 @@ class Transform3DExt:
 
         Parameters
         ----------
+        clear:
+             If true (the default), all unspecified fields will be explicitly cleared.
         translation:
             3D translation vector.
         rotation:
@@ -124,14 +127,25 @@ class Transform3DExt:
                 if from_parent:
                     relation = TransformRelation.ChildFromParent
 
-            self.__attrs_init__(
-                translation=translation,
-                rotation_axis_angle=rotation_axis_angle,
-                quaternion=quaternion,
-                scale=scale,
-                mat3x3=mat3x3,
-                relation=relation,
-                axis_length=axis_length,
-            )
+            if clear:
+                self.__attrs_init__(
+                    translation=translation or [],
+                    rotation_axis_angle=rotation_axis_angle or [],
+                    quaternion=quaternion or [],
+                    scale=scale or [],
+                    mat3x3=mat3x3 or [],
+                    relation=relation or [],
+                    axis_length=axis_length or [],
+                )
+            else:
+                self.__attrs_init__(
+                    translation=translation,
+                    rotation_axis_angle=rotation_axis_angle,
+                    quaternion=quaternion,
+                    scale=scale,
+                    mat3x3=mat3x3,
+                    relation=relation,
+                    axis_length=axis_length,
+                )
             return
         self.__attrs_clear__()

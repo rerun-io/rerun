@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from attrs import define, field
 
-from .. import components
+from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
 )
@@ -65,9 +65,90 @@ class Boxes2D(Boxes2DExt, Archetype):
         inst.__attrs_clear__()
         return inst
 
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        half_sizes: datatypes.Vec2DArrayLike | None = None,
+        centers: datatypes.Vec2DArrayLike | None = None,
+        colors: datatypes.Rgba32ArrayLike | None = None,
+        radii: datatypes.Float32ArrayLike | None = None,
+        labels: datatypes.Utf8ArrayLike | None = None,
+        show_labels: datatypes.BoolLike | None = None,
+        draw_order: datatypes.Float32Like | None = None,
+        class_ids: datatypes.ClassIdArrayLike | None = None,
+    ) -> Boxes2D:
+        """
+        Update only some specific fields of a `Boxes2D`.
+
+        Parameters
+        ----------
+        clear:
+            If true, all unspecified fields will be explicitly cleared.
+        half_sizes:
+            All half-extents that make up the batch of boxes.
+        centers:
+            Optional center positions of the boxes.
+        colors:
+            Optional colors for the boxes.
+        radii:
+            Optional radii for the lines that make up the boxes.
+        labels:
+            Optional text labels for the boxes.
+
+            If there's a single label present, it will be placed at the center of the entity.
+            Otherwise, each instance will have its own label.
+        show_labels:
+            Optional choice of whether the text labels should be shown by default.
+        draw_order:
+            An optional floating point value that specifies the 2D drawing order.
+
+            Objects with higher values are drawn on top of those with lower values.
+
+            The default for 2D boxes is 10.0.
+        class_ids:
+            Optional [`components.ClassId`][rerun.components.ClassId]s for the boxes.
+
+            The [`components.ClassId`][rerun.components.ClassId] provides colors and labels if not specified explicitly.
+
+        """
+
+        kwargs = {
+            "half_sizes": half_sizes,
+            "centers": centers,
+            "colors": colors,
+            "radii": radii,
+            "labels": labels,
+            "show_labels": show_labels,
+            "draw_order": draw_order,
+            "class_ids": class_ids,
+        }
+
+        if clear:
+            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+        return Boxes2D(**kwargs)  # type: ignore[arg-type]
+
+    @classmethod
+    def clear_fields(cls) -> Boxes2D:
+        """Clear all the fields of a `Boxes2D`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            half_sizes=[],  # type: ignore[arg-type]
+            centers=[],  # type: ignore[arg-type]
+            colors=[],  # type: ignore[arg-type]
+            radii=[],  # type: ignore[arg-type]
+            labels=[],  # type: ignore[arg-type]
+            show_labels=[],  # type: ignore[arg-type]
+            draw_order=[],  # type: ignore[arg-type]
+            class_ids=[],  # type: ignore[arg-type]
+        )
+        return inst
+
     half_sizes: components.HalfSize2DBatch = field(
-        metadata={"component": "required"},
-        converter=components.HalfSize2DBatch._required,  # type: ignore[misc]
+        metadata={"component": "optional"},
+        converter=components.HalfSize2DBatch._optional,  # type: ignore[misc]
     )
     # All half-extents that make up the batch of boxes.
     #

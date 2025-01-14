@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from attrs import define, field
 
-from .. import components
+from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
 )
@@ -105,17 +105,73 @@ class Image(ImageExt, Archetype):
         inst.__attrs_clear__()
         return inst
 
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        buffer: datatypes.BlobLike | None = None,
+        format: datatypes.ImageFormatLike | None = None,
+        opacity: datatypes.Float32Like | None = None,
+        draw_order: datatypes.Float32Like | None = None,
+    ) -> Image:
+        """
+        Update only some specific fields of a `Image`.
+
+        Parameters
+        ----------
+        clear:
+            If true, all unspecified fields will be explicitly cleared.
+        buffer:
+            The raw image data.
+        format:
+            The format of the image.
+        opacity:
+            Opacity of the image, useful for layering several images.
+
+            Defaults to 1.0 (fully opaque).
+        draw_order:
+            An optional floating point value that specifies the 2D drawing order.
+
+            Objects with higher values are drawn on top of those with lower values.
+
+        """
+
+        kwargs = {
+            "buffer": buffer,
+            "format": format,
+            "opacity": opacity,
+            "draw_order": draw_order,
+        }
+
+        if clear:
+            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+        return Image(**kwargs)  # type: ignore[arg-type]
+
+    @classmethod
+    def clear_fields(cls) -> Image:
+        """Clear all the fields of a `Image`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            buffer=[],  # type: ignore[arg-type]
+            format=[],  # type: ignore[arg-type]
+            opacity=[],  # type: ignore[arg-type]
+            draw_order=[],  # type: ignore[arg-type]
+        )
+        return inst
+
     buffer: components.ImageBufferBatch = field(
-        metadata={"component": "required"},
-        converter=components.ImageBufferBatch._required,  # type: ignore[misc]
+        metadata={"component": "optional"},
+        converter=components.ImageBufferBatch._optional,  # type: ignore[misc]
     )
     # The raw image data.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     format: components.ImageFormatBatch = field(
-        metadata={"component": "required"},
-        converter=components.ImageFormatBatch._required,  # type: ignore[misc]
+        metadata={"component": "optional"},
+        converter=components.ImageFormatBatch._optional,  # type: ignore[misc]
     )
     # The format of the image.
     #

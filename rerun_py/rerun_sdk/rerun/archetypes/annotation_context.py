@@ -92,9 +92,46 @@ class AnnotationContext(Archetype):
         inst.__attrs_clear__()
         return inst
 
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        context: components.AnnotationContextLike | None = None,
+    ) -> AnnotationContext:
+        """
+        Update only some specific fields of a `AnnotationContext`.
+
+        Parameters
+        ----------
+        clear:
+            If true, all unspecified fields will be explicitly cleared.
+        context:
+            List of class descriptions, mapping class indices to class names, colors etc.
+
+        """
+
+        kwargs = {
+            "context": context,
+        }
+
+        if clear:
+            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+        return AnnotationContext(**kwargs)  # type: ignore[arg-type]
+
+    @classmethod
+    def clear_fields(cls) -> AnnotationContext:
+        """Clear all the fields of a `AnnotationContext`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            context=[],  # type: ignore[arg-type]
+        )
+        return inst
+
     context: components.AnnotationContextBatch = field(
-        metadata={"component": "required"},
-        converter=components.AnnotationContextBatch._required,  # type: ignore[misc]
+        metadata={"component": "optional"},
+        converter=components.AnnotationContextBatch._optional,  # type: ignore[misc]
     )
     # List of class descriptions, mapping class indices to class names, colors etc.
     #

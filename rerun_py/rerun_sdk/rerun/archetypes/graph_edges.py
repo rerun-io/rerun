@@ -88,9 +88,53 @@ class GraphEdges(Archetype):
         inst.__attrs_clear__()
         return inst
 
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        edges: datatypes.Utf8PairArrayLike | None = None,
+        graph_type: components.GraphTypeLike | None = None,
+    ) -> GraphEdges:
+        """
+        Update only some specific fields of a `GraphEdges`.
+
+        Parameters
+        ----------
+        clear:
+            If true, all unspecified fields will be explicitly cleared.
+        edges:
+            A list of node tuples.
+        graph_type:
+            Specifies if the graph is directed or undirected.
+
+            If no [`components.GraphType`][rerun.components.GraphType] is provided, the graph is assumed to be undirected.
+
+        """
+
+        kwargs = {
+            "edges": edges,
+            "graph_type": graph_type,
+        }
+
+        if clear:
+            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+        return GraphEdges(**kwargs)  # type: ignore[arg-type]
+
+    @classmethod
+    def clear_fields(cls) -> GraphEdges:
+        """Clear all the fields of a `GraphEdges`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            edges=[],  # type: ignore[arg-type]
+            graph_type=[],  # type: ignore[arg-type]
+        )
+        return inst
+
     edges: components.GraphEdgeBatch = field(
-        metadata={"component": "required"},
-        converter=components.GraphEdgeBatch._required,  # type: ignore[misc]
+        metadata={"component": "optional"},
+        converter=components.GraphEdgeBatch._optional,  # type: ignore[misc]
     )
     # A list of node tuples.
     #

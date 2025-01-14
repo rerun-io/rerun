@@ -94,9 +94,48 @@ class ViewContents(Archetype):
         inst.__attrs_clear__()
         return inst
 
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        query: datatypes.Utf8ArrayLike | None = None,
+    ) -> ViewContents:
+        """
+        Update only some specific fields of a `ViewContents`.
+
+        Parameters
+        ----------
+        clear:
+            If true, all unspecified fields will be explicitly cleared.
+        query:
+            The `QueryExpression` that populates the contents for the view.
+
+            They determine which entities are part of the view.
+
+        """
+
+        kwargs = {
+            "query": query,
+        }
+
+        if clear:
+            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+        return ViewContents(**kwargs)  # type: ignore[arg-type]
+
+    @classmethod
+    def clear_fields(cls) -> ViewContents:
+        """Clear all the fields of a `ViewContents`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            query=[],  # type: ignore[arg-type]
+        )
+        return inst
+
     query: blueprint_components.QueryExpressionBatch = field(
-        metadata={"component": "required"},
-        converter=blueprint_components.QueryExpressionBatch._required,  # type: ignore[misc]
+        metadata={"component": "optional"},
+        converter=blueprint_components.QueryExpressionBatch._optional,  # type: ignore[misc]
     )
     # The `QueryExpression` that populates the contents for the view.
     #

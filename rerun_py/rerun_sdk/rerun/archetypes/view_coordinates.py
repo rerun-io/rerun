@@ -94,9 +94,46 @@ class ViewCoordinates(ViewCoordinatesExt, Archetype):
         inst.__attrs_clear__()
         return inst
 
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        xyz: datatypes.ViewCoordinatesLike | None = None,
+    ) -> ViewCoordinates:
+        """
+        Update only some specific fields of a `ViewCoordinates`.
+
+        Parameters
+        ----------
+        clear:
+            If true, all unspecified fields will be explicitly cleared.
+        xyz:
+            The directions of the [x, y, z] axes.
+
+        """
+
+        kwargs = {
+            "xyz": xyz,
+        }
+
+        if clear:
+            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+        return ViewCoordinates(**kwargs)  # type: ignore[arg-type]
+
+    @classmethod
+    def clear_fields(cls) -> ViewCoordinates:
+        """Clear all the fields of a `ViewCoordinates`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            xyz=[],  # type: ignore[arg-type]
+        )
+        return inst
+
     xyz: components.ViewCoordinatesBatch = field(
-        metadata={"component": "required"},
-        converter=components.ViewCoordinatesBatch._required,  # type: ignore[misc]
+        metadata={"component": "optional"},
+        converter=components.ViewCoordinatesBatch._optional,  # type: ignore[misc]
     )
     # The directions of the [x, y, z] axes.
     #

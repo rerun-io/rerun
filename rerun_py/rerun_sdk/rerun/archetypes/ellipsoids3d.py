@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from attrs import define, field
 
-from .. import components
+from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
 )
@@ -88,9 +88,104 @@ class Ellipsoids3D(Ellipsoids3DExt, Archetype):
         inst.__attrs_clear__()
         return inst
 
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        half_sizes: datatypes.Vec3DArrayLike | None = None,
+        centers: datatypes.Vec3DArrayLike | None = None,
+        rotation_axis_angles: datatypes.RotationAxisAngleArrayLike | None = None,
+        quaternions: datatypes.QuaternionArrayLike | None = None,
+        colors: datatypes.Rgba32ArrayLike | None = None,
+        line_radii: datatypes.Float32ArrayLike | None = None,
+        fill_mode: components.FillModeLike | None = None,
+        labels: datatypes.Utf8ArrayLike | None = None,
+        show_labels: datatypes.BoolLike | None = None,
+        class_ids: datatypes.ClassIdArrayLike | None = None,
+    ) -> Ellipsoids3D:
+        """
+        Update only some specific fields of a `Ellipsoids3D`.
+
+        Parameters
+        ----------
+        clear:
+            If true, all unspecified fields will be explicitly cleared.
+        half_sizes:
+            For each ellipsoid, half of its size on its three axes.
+
+            If all components are equal, then it is a sphere with that radius.
+        centers:
+            Optional center positions of the ellipsoids.
+
+            If not specified, the centers will be at (0, 0, 0).
+            Note that this uses a [`components.PoseTranslation3D`][rerun.components.PoseTranslation3D] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
+        rotation_axis_angles:
+            Rotations via axis + angle.
+
+            If no rotation is specified, the axes of the ellipsoid align with the axes of the local coordinate system.
+            Note that this uses a [`components.PoseRotationAxisAngle`][rerun.components.PoseRotationAxisAngle] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
+        quaternions:
+            Rotations via quaternion.
+
+            If no rotation is specified, the axes of the ellipsoid align with the axes of the local coordinate system.
+            Note that this uses a [`components.PoseRotationQuat`][rerun.components.PoseRotationQuat] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
+        colors:
+            Optional colors for the ellipsoids.
+        line_radii:
+            Optional radii for the lines used when the ellipsoid is rendered as a wireframe.
+        fill_mode:
+            Optionally choose whether the ellipsoids are drawn with lines or solid.
+        labels:
+            Optional text labels for the ellipsoids.
+        show_labels:
+            Optional choice of whether the text labels should be shown by default.
+        class_ids:
+            Optional class ID for the ellipsoids.
+
+            The class ID provides colors and labels if not specified explicitly.
+
+        """
+
+        kwargs = {
+            "half_sizes": half_sizes,
+            "centers": centers,
+            "rotation_axis_angles": rotation_axis_angles,
+            "quaternions": quaternions,
+            "colors": colors,
+            "line_radii": line_radii,
+            "fill_mode": fill_mode,
+            "labels": labels,
+            "show_labels": show_labels,
+            "class_ids": class_ids,
+        }
+
+        if clear:
+            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+        return Ellipsoids3D(**kwargs)  # type: ignore[arg-type]
+
+    @classmethod
+    def clear_fields(cls) -> Ellipsoids3D:
+        """Clear all the fields of a `Ellipsoids3D`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            half_sizes=[],  # type: ignore[arg-type]
+            centers=[],  # type: ignore[arg-type]
+            rotation_axis_angles=[],  # type: ignore[arg-type]
+            quaternions=[],  # type: ignore[arg-type]
+            colors=[],  # type: ignore[arg-type]
+            line_radii=[],  # type: ignore[arg-type]
+            fill_mode=[],  # type: ignore[arg-type]
+            labels=[],  # type: ignore[arg-type]
+            show_labels=[],  # type: ignore[arg-type]
+            class_ids=[],  # type: ignore[arg-type]
+        )
+        return inst
+
     half_sizes: components.HalfSize3DBatch = field(
-        metadata={"component": "required"},
-        converter=components.HalfSize3DBatch._required,  # type: ignore[misc]
+        metadata={"component": "optional"},
+        converter=components.HalfSize3DBatch._optional,  # type: ignore[misc]
     )
     # For each ellipsoid, half of its size on its three axes.
     #

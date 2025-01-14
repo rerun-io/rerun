@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from attrs import define, field
 
-from .. import components
+from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
 )
@@ -75,9 +75,62 @@ class GeoLineStrings(GeoLineStringsExt, Archetype):
         inst.__attrs_clear__()
         return inst
 
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        line_strings: components.GeoLineStringArrayLike | None = None,
+        radii: datatypes.Float32ArrayLike | None = None,
+        colors: datatypes.Rgba32ArrayLike | None = None,
+    ) -> GeoLineStrings:
+        """
+        Update only some specific fields of a `GeoLineStrings`.
+
+        Parameters
+        ----------
+        clear:
+            If true, all unspecified fields will be explicitly cleared.
+        line_strings:
+            The line strings, expressed in [EPSG:4326](https://epsg.io/4326) coordinates (North/East-positive degrees).
+        radii:
+            Optional radii for the line strings.
+
+            *Note*: scene units radiii are interpreted as meters. Currently, the display scale only considers the latitude of
+            the first vertex of each line string (see [this issue](https://github.com/rerun-io/rerun/issues/8013)).
+        colors:
+            Optional colors for the line strings.
+
+            The colors are interpreted as RGB or RGBA in sRGB gamma-space,
+            As either 0-1 floats or 0-255 integers, with separate alpha.
+
+        """
+
+        kwargs = {
+            "line_strings": line_strings,
+            "radii": radii,
+            "colors": colors,
+        }
+
+        if clear:
+            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+        return GeoLineStrings(**kwargs)  # type: ignore[arg-type]
+
+    @classmethod
+    def clear_fields(cls) -> GeoLineStrings:
+        """Clear all the fields of a `GeoLineStrings`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            line_strings=[],  # type: ignore[arg-type]
+            radii=[],  # type: ignore[arg-type]
+            colors=[],  # type: ignore[arg-type]
+        )
+        return inst
+
     line_strings: components.GeoLineStringBatch = field(
-        metadata={"component": "required"},
-        converter=components.GeoLineStringBatch._required,  # type: ignore[misc]
+        metadata={"component": "optional"},
+        converter=components.GeoLineStringBatch._optional,  # type: ignore[misc]
     )
     # The line strings, expressed in [EPSG:4326](https://epsg.io/4326) coordinates (North/East-positive degrees).
     #

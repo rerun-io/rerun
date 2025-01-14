@@ -55,9 +55,48 @@ class MapZoom(Archetype):
         inst.__attrs_clear__()
         return inst
 
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        zoom: datatypes.Float64Like | None = None,
+    ) -> MapZoom:
+        """
+        Update only some specific fields of a `MapZoom`.
+
+        Parameters
+        ----------
+        clear:
+            If true, all unspecified fields will be explicitly cleared.
+        zoom:
+            Zoom level for the map.
+
+            Zoom level follow the [`OpenStreetMap` definition](https://wiki.openstreetmap.org/wiki/Zoom_levels).
+
+        """
+
+        kwargs = {
+            "zoom": zoom,
+        }
+
+        if clear:
+            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+        return MapZoom(**kwargs)  # type: ignore[arg-type]
+
+    @classmethod
+    def clear_fields(cls) -> MapZoom:
+        """Clear all the fields of a `MapZoom`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            zoom=[],  # type: ignore[arg-type]
+        )
+        return inst
+
     zoom: blueprint_components.ZoomLevelBatch = field(
-        metadata={"component": "required"},
-        converter=blueprint_components.ZoomLevelBatch._required,  # type: ignore[misc]
+        metadata={"component": "optional"},
+        converter=blueprint_components.ZoomLevelBatch._optional,  # type: ignore[misc]
     )
     # Zoom level for the map.
     #
