@@ -1,6 +1,6 @@
 //! Basic authentication helpers for Rerun.
 //!
-//! Currently, this crate provides a simple JWT-based authentication scheme on
+//! Currently, this crate provides a simple [`Jwt`]-based authentication scheme on
 //! top of a rudimentary [`RedapProvider`] that uses a symmetric key to _both_
 //! generate and sign tokens.
 //!
