@@ -2416,32 +2416,7 @@ fn quote_init_method(
     let parameters = compute_init_parameters(obj, objects);
     let head = format!("def __init__(self: Any, {}):", parameters.join(", "));
 
-    let parameter_docs = if obj.is_union() {
-        Vec::new()
-    } else {
-        obj.fields
-            .iter()
-            .filter_map(|field| {
-                let doc_content = field.docs.lines_for(reporter, objects, Target::Python);
-                if doc_content.is_empty() {
-                    if !field.is_testing() && obj.fields.len() > 1 {
-                        reporter.error(
-                            &field.virtpath,
-                            &field.fqname,
-                            format!("Field {} is missing documentation", field.name),
-                        );
-                    }
-                    None
-                } else {
-                    Some(format!(
-                        "{}:\n    {}",
-                        field.name,
-                        doc_content.join("\n    ")
-                    ))
-                }
-            })
-            .collect::<Vec<_>>()
-    };
+    let parameter_docs = compute_init_parameter_docs(reporter, obj, objects);
     let mut doc_string_lines = vec![format!(
         "Create a new instance of the {} {}.",
         obj.name,
