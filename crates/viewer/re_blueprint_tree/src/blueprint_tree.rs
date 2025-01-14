@@ -940,7 +940,7 @@ fn set_blueprint_to_auto_menu_button(
     {
         ui.close_menu();
         ctx.command_sender
-            .send_system(re_viewer_context::SystemCommand::ClearAndGenerateBlueprint);
+            .send_system(re_viewer_context::SystemCommand::ClearActiveBlueprintAndEnableHeuristics);
     }
 }
 

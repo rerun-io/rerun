@@ -524,7 +524,7 @@ impl App {
             }
 
             SystemCommand::ResetViewer => self.reset_viewer(store_hub, egui_ctx),
-            SystemCommand::ClearAndGenerateBlueprint => {
+            SystemCommand::ClearActiveBlueprintAndEnableHeuristics => {
                 re_log::debug!("Clear and generate new blueprint");
                 store_hub.clear_active_blueprint_and_generate();
                 egui_ctx.request_repaint(); // Many changes take a frame delay to show up.
@@ -779,7 +779,7 @@ impl App {
             UICommand::ResetViewer => self.command_sender.send_system(SystemCommand::ResetViewer),
             UICommand::ClearAndGenerateBlueprint => {
                 self.command_sender
-                    .send_system(SystemCommand::ClearAndGenerateBlueprint);
+                    .send_system(SystemCommand::ClearActiveBlueprintAndEnableHeuristics);
             }
 
             #[cfg(not(target_arch = "wasm32"))]

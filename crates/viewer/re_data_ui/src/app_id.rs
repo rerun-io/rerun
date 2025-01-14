@@ -99,7 +99,7 @@ impl crate::DataUi for ApplicationId {
                 "Reset to heuristic blueprint",
             )).on_hover_text("Clear both active and default blueprint, and auto-generate a new blueprint based on heuristics").clicked() {
                 ctx.command_sender
-                    .send_system(re_viewer_context::SystemCommand::ClearAndGenerateBlueprint);
+                    .send_system(re_viewer_context::SystemCommand::ClearActiveBlueprintAndEnableHeuristics);
             }
         }
     }

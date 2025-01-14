@@ -399,7 +399,7 @@ impl TestContext {
                 | SystemCommand::AddReceiver(_)
                 | SystemCommand::ResetViewer
                 | SystemCommand::ClearActiveBlueprint
-                | SystemCommand::ClearAndGenerateBlueprint
+                | SystemCommand::ClearActiveBlueprintAndEnableHeuristics
                 | SystemCommand::ActivateRecording(_)
                 | SystemCommand::CloseStore(_)
                 | SystemCommand::UndoBlueprint { .. }
