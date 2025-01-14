@@ -6,9 +6,6 @@ use re_log_types::LogMsg;
 use re_protos::missing_field;
 
 pub(crate) fn decode(data: &mut impl std::io::Read) -> Result<(u64, Option<LogMsg>), DecodeError> {
-    use re_protos::external::prost::Message;
-    use re_protos::log_msg::v0::{ArrowMsg, BlueprintActivationCommand, Encoding, SetStoreInfo};
-
     let mut read_bytes = 0u64;
     let header = MessageHeader::decode(data)?;
     read_bytes += std::mem::size_of::<MessageHeader>() as u64 + header.len;
@@ -16,13 +13,25 @@ pub(crate) fn decode(data: &mut impl std::io::Read) -> Result<(u64, Option<LogMs
     let mut buf = vec![0; header.len as usize];
     data.read_exact(&mut buf[..])?;
 
-    let msg = match header.kind {
+    let msg = bytes_to_message(header.kind, &buf)?;
+
+    Ok((read_bytes, msg))
+}
+
+pub fn bytes_to_message(
+    message_kind: MessageKind,
+    buf: &[u8],
+) -> Result<Option<LogMsg>, DecodeError> {
+    use re_protos::external::prost::Message;
+    use re_protos::log_msg::v0::{ArrowMsg, BlueprintActivationCommand, Encoding, SetStoreInfo};
+
+    let msg = match message_kind {
         MessageKind::SetStoreInfo => {
-            let set_store_info = SetStoreInfo::decode(&buf[..])?;
+            let set_store_info = SetStoreInfo::decode(buf)?;
             Some(LogMsg::SetStoreInfo(set_store_info.try_into()?))
         }
         MessageKind::ArrowMsg => {
-            let arrow_msg = ArrowMsg::decode(&buf[..])?;
+            let arrow_msg = ArrowMsg::decode(buf)?;
             if arrow_msg.encoding() != Encoding::ArrowIpc {
                 return Err(DecodeError::Codec(CodecError::UnsupportedEncoding));
             }
@@ -46,7 +55,7 @@ pub(crate) fn decode(data: &mut impl std::io::Read) -> Result<(u64, Option<LogMs
             Some(LogMsg::ArrowMsg(store_id, chunk.to_arrow_msg()?))
         }
         MessageKind::BlueprintActivationCommand => {
-            let blueprint_activation_command = BlueprintActivationCommand::decode(&buf[..])?;
+            let blueprint_activation_command = BlueprintActivationCommand::decode(buf)?;
             Some(LogMsg::BlueprintActivationCommand(
                 blueprint_activation_command.try_into()?,
             ))
@@ -54,5 +63,5 @@ pub(crate) fn decode(data: &mut impl std::io::Read) -> Result<(u64, Option<LogMs
         MessageKind::End => None,
     };
 
-    Ok((read_bytes, msg))
+    Ok(msg)
 }

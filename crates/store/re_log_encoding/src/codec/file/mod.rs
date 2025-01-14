@@ -48,6 +48,11 @@ impl MessageHeader {
         let mut buf = [0; std::mem::size_of::<Self>()];
         data.read_exact(&mut buf)?;
 
+        Self::bytes_to_header(&buf)
+    }
+
+    #[cfg(feature = "decoder")]
+    pub fn bytes_to_header(buf: &[u8]) -> Result<Self, crate::decoder::DecodeError> {
         #[allow(clippy::unwrap_used)] // cannot fail
         let kind = u64::from_le_bytes(buf[0..8].try_into().unwrap());
         let kind = match kind {
