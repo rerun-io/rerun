@@ -236,10 +236,6 @@ impl PerStoreChunkSubscriber for TransformCacheStoreSubscriber {
         re_tracing::profile_function!();
 
         for event in events {
-            if event.compacted.is_some() {
-                // Compactions don't change the data.
-                continue;
-            }
             if event.kind == re_chunk_store::ChunkStoreDiffKind::Deletion {
                 // Not participating in GC for now.
                 continue;
