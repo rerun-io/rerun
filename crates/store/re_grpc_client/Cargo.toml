@@ -29,6 +29,7 @@ re_protos.workspace = true
 re_smart_channel.workspace = true
 re_types.workspace = true
 
+arrow.workspace = true
 thiserror.workspace = true
 tokio-stream.workspace = true
 url.workspace = true

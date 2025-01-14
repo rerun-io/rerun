@@ -4,7 +4,6 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::ops::Deref;
 use std::ops::DerefMut;
 
-use arrow::datatypes::DataType as ArrowDatatype;
 use arrow2::{
     array::ListArray as ArrowListArray,
     datatypes::{DataType as Arrow2Datatype, Field as Arrow2Field},
@@ -46,7 +45,7 @@ impl ColumnDescriptor {
     #[inline]
     pub fn datatype(&self) -> Arrow2Datatype {
         match self {
-            Self::Time(descr) => descr.datatype().into(),
+            Self::Time(descr) => descr.datatype.clone(),
             Self::Component(descr) => descr.returned_datatype(),
         }
     }
@@ -80,9 +79,10 @@ impl ColumnDescriptor {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TimeColumnDescriptor {
     /// The timeline this column is associated with.
-    timeline: Timeline,
+    pub timeline: Timeline,
 
-    is_null: bool,
+    /// The Arrow datatype of the column.
+    pub datatype: Arrow2Datatype,
 }
 
 impl PartialOrd for TimeColumnDescriptor {
@@ -97,7 +97,7 @@ impl Ord for TimeColumnDescriptor {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         let Self {
             timeline,
-            is_null: _,
+            datatype: _,
         } = self;
         timeline.cmp(&other.timeline)
     }
@@ -105,41 +105,40 @@ impl Ord for TimeColumnDescriptor {
 
 impl TimeColumnDescriptor {
     /// Used when returning a null column, i.e. when a lookup failed.
+    #[inline]
     pub fn new_null(name: TimelineName) -> Self {
         Self {
             // TODO(cmc): I picked a sequence here because I have to pick something.
             // It doesn't matter, only the name will remain in the Arrow schema anyhow.
             timeline: Timeline::new_sequence(name),
-            is_null: true,
+            datatype: Arrow2Datatype::Null,
         }
     }
 
+    #[inline]
     pub fn timeline(&self) -> Timeline {
         self.timeline
     }
 
+    #[inline]
     pub fn name(&self) -> &TimelineName {
         self.timeline.name()
     }
 
+    #[inline]
     pub fn typ(&self) -> re_log_types::TimeType {
         self.timeline.typ()
     }
 
     #[inline]
-    pub fn datatype(&self) -> ArrowDatatype {
-        let Self { timeline, is_null } = self;
-        if *is_null {
-            ArrowDatatype::Null
-        } else {
-            timeline.typ().datatype()
-        }
+    pub fn datatype(&self) -> &Arrow2Datatype {
+        &self.datatype
     }
 
     fn metadata(&self) -> arrow2::datatypes::Metadata {
         let Self {
             timeline,
-            is_null: _,
+            datatype: _,
         } = self;
 
         std::iter::once(Some((
@@ -152,8 +151,9 @@ impl TimeColumnDescriptor {
 
     #[inline]
     pub fn to_arrow_field(&self) -> Arrow2Field {
+        let Self { timeline, datatype } = self;
         let nullable = true; // Time column must be nullable since static data doesn't have a time.
-        Arrow2Field::new(self.name().to_string(), self.datatype().into(), nullable)
+        Arrow2Field::new(timeline.name().to_string(), datatype.clone(), nullable)
             .with_metadata(self.metadata())
     }
 }
@@ -735,7 +735,7 @@ impl ChunkStore {
         let timelines = self.all_timelines_sorted().into_iter().map(|timeline| {
             ColumnDescriptor::Time(TimeColumnDescriptor {
                 timeline,
-                is_null: false,
+                datatype: timeline.datatype().into(),
             })
         });
 
@@ -809,7 +809,7 @@ impl ChunkStore {
 
         TimeColumnDescriptor {
             timeline,
-            is_null: false,
+            datatype: timeline.datatype().into(),
         }
     }
 

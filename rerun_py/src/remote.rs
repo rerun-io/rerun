@@ -4,7 +4,7 @@ use std::collections::BTreeSet;
 
 use arrow::{
     array::{RecordBatch, RecordBatchIterator, RecordBatchReader},
-    datatypes::Schema,
+    datatypes::Schema as ArrowSchema,
     ffi_stream::ArrowArrayStreamReader,
     pyarrow::PyArrowType,
 };
@@ -25,14 +25,15 @@ use re_protos::{
     common::v0::RecordingId,
     remote_store::v0::{
         storage_node_client::StorageNodeClient, CatalogFilter, ColumnProjection,
-        FetchRecordingRequest, QueryCatalogRequest, QueryRequest, RecordingType,
-        RegisterRecordingRequest, UpdateCatalogRequest,
+        FetchRecordingRequest, GetRecordingSchemaRequest, QueryCatalogRequest, QueryRequest,
+        RecordingType, RegisterRecordingRequest, UpdateCatalogRequest,
     },
+    TypeConversionError,
 };
 use re_sdk::{ApplicationId, ComponentName, StoreId, StoreKind, Time, Timeline};
 use tokio_stream::StreamExt;
 
-use crate::dataframe::{ComponentLike, PyRecording, PyRecordingHandle, PyRecordingView};
+use crate::dataframe::{ComponentLike, PyRecording, PyRecordingHandle, PyRecordingView, PySchema};
 
 /// Register the `rerun.remote` module.
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -167,17 +168,12 @@ impl PyStorageNodeClient {
 
             let schema = batches
                 .first()
-                .map(|batch| batch.schema.clone())
-                .unwrap_or_default();
-
-            let fields: Vec<arrow::datatypes::Field> =
-                schema.fields.iter().map(|f| f.clone().into()).collect();
-            let metadata = schema.metadata.clone().into_iter().collect();
-            let schema = arrow::datatypes::Schema::new_with_metadata(fields, metadata);
+                .map(|batch| batch.schema())
+                .unwrap_or_else(|| ArrowSchema::empty().into());
 
             Ok(RecordBatchIterator::new(
                 batches.into_iter().map(|tc| tc.try_to_arrow_record_batch()),
-                std::sync::Arc::new(schema),
+                schema,
             ))
         });
 
@@ -247,7 +243,7 @@ impl PyStorageNodeClient {
             let schema = record_batches
                 .first()
                 .and_then(|batch| batch.as_ref().ok().map(|batch| batch.schema()))
-                .unwrap_or(std::sync::Arc::new(Schema::empty()));
+                .unwrap_or(std::sync::Arc::new(ArrowSchema::empty()));
 
             let reader = RecordBatchIterator::new(record_batches, schema);
 
@@ -255,6 +251,42 @@ impl PyStorageNodeClient {
         })?;
 
         Ok(PyArrowType(Box::new(reader)))
+    }
+
+    #[pyo3(signature = (id,))]
+    /// Get the schema for a recording in the storage node.
+    ///
+    /// Parameters
+    /// ----------
+    /// id : str
+    ///     The id of the recording to get the schema for.
+    ///
+    /// Returns
+    /// -------
+    /// Schema
+    ///     The schema of the recording.
+    fn get_recording_schema(&mut self, id: String) -> PyResult<PySchema> {
+        self.runtime.block_on(async {
+            let request = GetRecordingSchemaRequest {
+                recording_id: Some(RecordingId { id }),
+            };
+
+            let column_descriptors = self
+                .client
+                .get_recording_schema(request)
+                .await
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
+                .into_inner()
+                .column_descriptors
+                .into_iter()
+                .map(|cd| cd.try_into())
+                .collect::<Result<Vec<_>, _>>()
+                .map_err(|err: TypeConversionError| PyRuntimeError::new_err(err.to_string()))?;
+
+            Ok(PySchema {
+                schema: column_descriptors,
+            })
+        })
     }
 
     /// Register a recording along with some metadata.
@@ -315,7 +347,7 @@ impl PyStorageNodeClient {
 
             let recording_id = metadata
                 .all_columns()
-                .find(|(field, _data)| field.name == "rerun_recording_id")
+                .find(|(field, _data)| field.name() == "rerun_recording_id")
                 .map(|(_field, data)| data)
                 .ok_or(PyRuntimeError::new_err("No rerun_recording_id"))?
                 .as_any()
