@@ -74,7 +74,7 @@ struct PyIndexColumnDescriptor(TimeColumnDescriptor);
 #[pymethods]
 impl PyIndexColumnDescriptor {
     fn __repr__(&self) -> String {
-        format!("Index(timeline:{})", self.0.timeline.name())
+        format!("Index(timeline:{})", self.0.name())
     }
 
     /// The name of the index.
@@ -82,7 +82,7 @@ impl PyIndexColumnDescriptor {
     /// This property is read-only.
     #[getter]
     fn name(&self) -> &str {
-        self.0.timeline.name()
+        self.0.name()
     }
 
     /// Part of generic ColumnDescriptor interface: always False for Index.
@@ -1371,7 +1371,7 @@ impl PyRecording {
             include_semantically_empty_columns,
             include_indicator_columns,
             include_tombstone_columns,
-            filtered_index: Some(timeline.timeline),
+            filtered_index: Some(timeline.timeline()),
             filtered_index_range: None,
             filtered_index_values: None,
             using_index_values: None,
