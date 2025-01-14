@@ -172,9 +172,9 @@ impl DesignTokens {
         }
 
         {
-            egui_style.visuals.widgets.hovered.expansion = 2.0;
-            egui_style.visuals.widgets.active.expansion = 2.0;
-            egui_style.visuals.widgets.open.expansion = 2.0;
+            egui_style.visuals.widgets.hovered.expansion = 0.0;
+            egui_style.visuals.widgets.active.expansion = 0.0;
+            egui_style.visuals.widgets.open.expansion = 0.0;
         }
 
         egui_style.visuals.selection.bg_fill = self.color(ColorToken::blue(S350));
@@ -194,7 +194,9 @@ impl DesignTokens {
         egui_style.visuals.widgets.inactive.fg_stroke.color = default; // button text
         egui_style.visuals.widgets.active.fg_stroke.color = strong; // strong text and active button text
 
-        let wide_stroke_width = 2.0; // Make it a bit more visible, especially important for spatial primitives.
+        // Visually, this is the same as 2.0 for spatial primitive (for some reason). Having it set
+        // at 1.0 is lighter and more compact for text edit though.
+        let wide_stroke_width = 1.0;
         egui_style.visuals.widgets.active.fg_stroke.width = wide_stroke_width;
         egui_style.visuals.selection.stroke.width = wide_stroke_width;
 
