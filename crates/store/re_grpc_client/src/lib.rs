@@ -439,7 +439,7 @@ async fn stream_catalog_async(
             let data_arrays = sliced.iter().map(|e| Some(e.as_ref())).collect::<Vec<_>>();
             #[allow(clippy::unwrap_used)] // we know we've given the right field type
             let data_field_array: arrow2::array::ListArray<i32> =
-                re_chunk::arrow2_util::arrays_to_list_array(
+                re_arrow_util::arrow2_util::arrays_to_list_array(
                     data_field_inner.data_type().clone().into(),
                     &data_arrays,
                 )
@@ -500,7 +500,7 @@ async fn stream_catalog_async(
 
         let rec_id_field = ArrowField::new("item", ArrowDataType::Utf8, true);
         #[allow(clippy::unwrap_used)] // we know we've given the right field type
-        let uris = re_chunk::arrow2_util::arrays_to_list_array(
+        let uris = re_arrow_util::arrow2_util::arrays_to_list_array(
             rec_id_field.data_type().clone().into(),
             &recording_id_arrays,
         )

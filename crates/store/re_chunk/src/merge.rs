@@ -4,10 +4,9 @@ use arrow2::array::{Array as Arrow2Array, ListArray as Arrow2ListArray};
 use itertools::{izip, Itertools};
 use nohash_hasher::IntMap;
 
-use crate::{
-    arrow2_util, arrow_util, chunk::ChunkComponents, Chunk, ChunkError, ChunkId, ChunkResult,
-    TimeColumn,
-};
+use re_arrow_util::{arrow2_util, arrow_util};
+
+use crate::{chunk::ChunkComponents, Chunk, ChunkError, ChunkId, ChunkResult, TimeColumn};
 
 // ---
 

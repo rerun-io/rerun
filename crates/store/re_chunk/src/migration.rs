@@ -1,7 +1,8 @@
 use arrow2::array::{Array, Utf8Array};
-
 use itertools::Itertools;
 use nohash_hasher::IntMap;
+
+use re_arrow_util::arrow2_util;
 
 use crate::Chunk;
 
@@ -78,8 +79,7 @@ impl Chunk {
                         .map(|a| a.as_deref() as Option<&dyn Array>)
                         .collect_vec();
 
-                    if let Some(list_array_patched) =
-                        crate::arrow2_util::arrays_to_list_array_opt(&arrays)
+                    if let Some(list_array_patched) = arrow2_util::arrays_to_list_array_opt(&arrays)
                     {
                         *list_array = list_array_patched;
                     }

@@ -3,7 +3,7 @@ use arrow::{
     buffer::{NullBuffer, OffsetBuffer},
     datatypes::{DataType, Field},
 };
-use itertools::Itertools;
+use itertools::Itertools as _;
 
 // ---
 

@@ -62,7 +62,7 @@ use arrow2::{
     offset::Offsets as Arrow2Offsets,
 };
 use itertools::Itertools;
-use re_chunk::arrow2_util;
+use re_arrow_util::arrow2_util;
 
 // --- concat ---
 

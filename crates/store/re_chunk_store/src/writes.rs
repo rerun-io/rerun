@@ -387,7 +387,7 @@ impl ChunkStore {
                 });
             {
                 let is_semantically_empty =
-                    re_chunk::arrow2_util::is_list_array_semantically_empty(list_array);
+                    re_arrow_util::arrow2_util::is_list_array_semantically_empty(list_array);
 
                 column_metadata_state.is_semantically_empty &= is_semantically_empty;
             }

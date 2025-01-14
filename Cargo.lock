@@ -5611,6 +5611,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_arrow_util"
+version = "0.22.0-alpha.1+dev"
+dependencies = [
+ "arrow",
+ "itertools 0.13.0",
+ "re_arrow2",
+ "re_log",
+ "re_tracing",
+]
+
+[[package]]
 name = "re_blueprint_tree"
 version = "0.22.0-alpha.1+dev"
 dependencies = [
@@ -5692,6 +5703,7 @@ dependencies = [
  "nohash-hasher",
  "rand",
  "re_arrow2",
+ "re_arrow_util",
  "re_byte_size",
  "re_error",
  "re_format",
@@ -5725,6 +5737,7 @@ dependencies = [
  "parking_lot",
  "rand",
  "re_arrow2",
+ "re_arrow_util",
  "re_byte_size",
  "re_chunk",
  "re_format",
@@ -5904,6 +5917,7 @@ dependencies = [
  "nohash-hasher",
  "rayon",
  "re_arrow2",
+ "re_arrow_util",
  "re_chunk",
  "re_chunk_store",
  "re_log",
@@ -6010,6 +6024,7 @@ name = "re_grpc_client"
 version = "0.22.0-alpha.1+dev"
 dependencies = [
  "arrow",
+ "re_arrow_util",
  "re_chunk",
  "re_error",
  "re_log",

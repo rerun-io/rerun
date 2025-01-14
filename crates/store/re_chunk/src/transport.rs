@@ -16,14 +16,12 @@ use itertools::Itertools;
 use nohash_hasher::IntMap;
 use tap::Tap as _;
 
+use re_arrow_util::arrow_util::into_arrow_ref;
 use re_byte_size::SizeBytes as _;
 use re_log_types::{EntityPath, Timeline};
 use re_types_core::{Component as _, ComponentDescriptor, Loggable as _};
 
-use crate::{
-    arrow_util::into_arrow_ref, chunk::ChunkComponents, Chunk, ChunkError, ChunkId, ChunkResult,
-    RowId, TimeColumn,
-};
+use crate::{chunk::ChunkComponents, Chunk, ChunkError, ChunkId, ChunkResult, RowId, TimeColumn};
 
 pub type ArrowMetadata = std::collections::HashMap<String, String>;
 
@@ -791,12 +789,12 @@ impl Chunk {
 #[cfg(test)]
 mod tests {
     use nohash_hasher::IntMap;
+
+    use re_arrow_util::arrow2_util;
     use re_log_types::{
         example_components::{MyColor, MyPoint},
         Timeline,
     };
-
-    use crate::arrow2_util;
 
     use super::*;
 
