@@ -57,30 +57,25 @@ impl BlueprintTree {
             ui.add_space(-1.);
 
             ui.list_item_scope("blueprint_section_title", |ui| {
-                //TODO: move height to design token
-                //TODO: make it fit 24 using no expand + 1.0 selection
-                ui.list_item()
-                    .interactive(false)
-                    .with_height(30.0)
-                    .show_flat(
-                        ui,
-                        list_item::CustomContent::new(|ui, _| {
-                            let title_response = self
-                                .filter_state
-                                .ui(ui, egui::RichText::new("Blueprint").strong());
+                ui.list_item().interactive(false).show_flat(
+                    ui,
+                    list_item::CustomContent::new(|ui, _| {
+                        let title_response = self
+                            .filter_state
+                            .ui(ui, egui::RichText::new("Blueprint").strong());
 
-                            if let Some(title_response) = title_response {
-                                title_response.on_hover_text(
-                                    "The blueprint is where you can configure the Rerun Viewer",
-                                );
-                            }
-                        })
-                        .menu_button(&re_ui::icons::MORE, |ui| {
-                            add_new_view_or_container_menu_button(ctx, viewport, ui);
-                            set_blueprint_to_default_menu_buttons(ctx, ui);
-                            set_blueprint_to_auto_menu_button(ctx, viewport, ui);
-                        }),
-                    );
+                        if let Some(title_response) = title_response {
+                            title_response.on_hover_text(
+                                "The blueprint is where you can configure the Rerun Viewer",
+                            );
+                        }
+                    })
+                    .menu_button(&re_ui::icons::MORE, |ui| {
+                        add_new_view_or_container_menu_button(ctx, viewport, ui);
+                        set_blueprint_to_default_menu_buttons(ctx, ui);
+                        set_blueprint_to_auto_menu_button(ctx, viewport, ui);
+                    }),
+                );
             });
 
             ui.full_span_separator();
