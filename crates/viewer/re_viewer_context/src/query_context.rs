@@ -163,6 +163,47 @@ impl DataResultTree {
         }
     }
 
+    /// Depth-first traversal of the tree, calling `visitor` on each result, starting from a
+    /// specific node.
+    ///
+    /// Stops traversing a branch if `visitor` returns `false`.
+    pub fn visit_from_node<'a>(
+        &'a self,
+        node: &DataResultNode,
+        visitor: &mut impl FnMut(&'a DataResultNode) -> bool,
+    ) {
+        if let Some(handle) = self
+            .data_results_by_path
+            .get(&node.data_result.entity_path.hash())
+        {
+            self.visit_recursive(*handle, visitor);
+        }
+    }
+
+    /// Depth-first search of a node based on the provided predicate.
+    ///
+    /// If a `staring_node` is provided, the search starts at that node. Otherwise, it starts at the
+    /// root node.
+    pub fn find_node_by(
+        &self,
+        starting_node: Option<&DataResultNode>,
+        predicate: impl Fn(&DataResultNode) -> bool,
+    ) -> Option<&DataResultNode> {
+        let mut result = None;
+
+        starting_node.or_else(|| self.root_node()).and_then(|node| {
+            self.visit_from_node(node, &mut |node| {
+                if predicate(node) {
+                    result = Some(node);
+                    false
+                } else {
+                    true
+                }
+            });
+            result
+        })
+    }
+
     /// Look up a [`DataResult`] in the tree based on its handle.
     #[inline]
     pub fn lookup_result(&self, handle: DataResultHandle) -> Option<&DataResult> {

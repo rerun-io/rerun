@@ -429,7 +429,10 @@ impl ViewportBlueprint {
     /// Walk the entire [`Contents`] tree, starting from the root container.
     ///
     /// See [`Self::visit_contents_in_container`] for details.
-    pub fn visit_contents(&self, visitor: &mut impl FnMut(&Contents, &SmallVec<[ContainerId; 4]>)) {
+    pub fn visit_contents(
+        &self,
+        visitor: &mut impl FnMut(&Contents, &SmallVec<[ContainerId; 4]>) -> bool,
+    ) {
         self.visit_contents_in_container(&self.root_container, visitor);
     }
 
@@ -437,13 +440,14 @@ impl ViewportBlueprint {
     /// [`Contents`].
     ///
     /// Note:
+    /// - Stops traversing if `visitor` returns `false`.
     /// - `visitor` is first called for the container passed in argument
     /// - `visitor`'s second argument contains the hierarchy leading to the visited contents, from
     ///   (and including) the container passed in argument
     pub fn visit_contents_in_container(
         &self,
         container_id: &ContainerId,
-        visitor: &mut impl FnMut(&Contents, &SmallVec<[ContainerId; 4]>),
+        visitor: &mut impl FnMut(&Contents, &SmallVec<[ContainerId; 4]>) -> bool,
     ) {
         let mut hierarchy = SmallVec::new();
         self.visit_contents_in_container_impl(container_id, &mut hierarchy, visitor);
@@ -453,21 +457,29 @@ impl ViewportBlueprint {
         &self,
         container_id: &ContainerId,
         hierarchy: &mut SmallVec<[ContainerId; 4]>,
-        visitor: &mut impl FnMut(&Contents, &SmallVec<[ContainerId; 4]>),
+        visitor: &mut impl FnMut(&Contents, &SmallVec<[ContainerId; 4]>) -> bool,
     ) {
-        visitor(&Contents::Container(*container_id), hierarchy);
-        if let Some(container) = self.container(container_id) {
-            hierarchy.push(*container_id);
-            for contents in &container.contents {
-                visitor(contents, hierarchy);
-                match contents {
-                    Contents::Container(container_id) => {
-                        self.visit_contents_in_container_impl(container_id, hierarchy, visitor);
+        if visitor(&Contents::Container(*container_id), hierarchy) {
+            if let Some(container) = self.container(container_id) {
+                hierarchy.push(*container_id);
+                for contents in &container.contents {
+                    if visitor(contents, hierarchy) {
+                        match contents {
+                            Contents::Container(container_id) => {
+                                self.visit_contents_in_container_impl(
+                                    container_id,
+                                    hierarchy,
+                                    visitor,
+                                );
+                            }
+                            Contents::View(_) => {}
+                        }
+                    } else {
+                        return;
                     }
-                    Contents::View(_) => {}
                 }
+                hierarchy.pop();
             }
-            hierarchy.pop();
         }
     }
 

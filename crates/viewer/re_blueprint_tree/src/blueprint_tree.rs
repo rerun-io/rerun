@@ -99,6 +99,8 @@ impl BlueprintTree {
         self.candidate_drop_parent_container_id = self.next_candidate_drop_parent_container_id;
         self.next_candidate_drop_parent_container_id = None;
 
+        let filter_matcher = self.filter_state.filter();
+
         egui::ScrollArea::both()
             .id_salt("blueprint_tree_scroll_area")
             .auto_shrink([true, false])
@@ -110,7 +112,7 @@ impl BlueprintTree {
                         .and_then(|item| handle_focused_item(ctx, viewport, ui, item));
 
                     list_item::list_item_scope(ui, "blueprint tree", |ui| {
-                        self.root_container_ui(ctx, viewport, ui);
+                        self.root_container_ui(ctx, viewport, ui, &filter_matcher);
                     });
 
                     let empty_space_response =
@@ -157,13 +159,21 @@ impl BlueprintTree {
         ui: &mut egui::Ui,
         contents: &Contents,
         parent_visible: bool,
+        filter_matcher: &filter_widget::FilterMatcher,
     ) {
         match contents {
             Contents::Container(container_id) => {
-                self.container_ui(ctx, viewport, ui, container_id, parent_visible);
+                self.container_ui(
+                    ctx,
+                    viewport,
+                    ui,
+                    container_id,
+                    parent_visible,
+                    filter_matcher,
+                );
             }
             Contents::View(view_id) => {
-                self.view_ui(ctx, viewport, ui, view_id, parent_visible);
+                self.view_ui(ctx, viewport, ui, view_id, parent_visible, filter_matcher);
             }
         };
     }
@@ -177,8 +187,12 @@ impl BlueprintTree {
         ctx: &ViewerContext<'_>,
         viewport: &ViewportBlueprint,
         ui: &mut egui::Ui,
+        filter_matcher: &filter_widget::FilterMatcher,
     ) {
         let container_id = viewport.root_container;
+        if !match_container(ctx, viewport, &container_id, filter_matcher) {
+            return;
+        }
 
         let Some(container_blueprint) = viewport.container(&container_id) else {
             re_log::warn!("Failed to find root container {container_id} in ViewportBlueprint");
@@ -201,7 +215,7 @@ impl BlueprintTree {
             );
 
         for child in &container_blueprint.contents {
-            self.contents_ui(ctx, viewport, ui, child, true);
+            self.contents_ui(ctx, viewport, ui, child, true, filter_matcher);
         }
 
         context_menu_ui_for_item(
@@ -230,7 +244,12 @@ impl BlueprintTree {
         ui: &mut egui::Ui,
         container_id: &ContainerId,
         parent_visible: bool,
+        filter_matcher: &filter_widget::FilterMatcher,
     ) {
+        if !match_container(ctx, viewport, container_id, filter_matcher) {
+            return;
+        }
+
         let item = Item::Container(*container_id);
         let content = Contents::Container(*container_id);
 
@@ -277,7 +296,7 @@ impl BlueprintTree {
             .drop_target_style(self.is_candidate_drop_parent_container(container_id))
             .show_hierarchical_with_children(ui, id, default_open, item_content, |ui| {
                 for child in &container_blueprint.contents {
-                    self.contents_ui(ctx, viewport, ui, child, container_visible);
+                    self.contents_ui(ctx, viewport, ui, child, container_visible, filter_matcher);
                 }
             });
 
@@ -315,7 +334,12 @@ impl BlueprintTree {
         ui: &mut egui::Ui,
         view_id: &ViewId,
         container_visible: bool,
+        filter_matcher: &filter_widget::FilterMatcher,
     ) {
+        if !match_view(ctx, view_id, filter_matcher) {
+            return;
+        }
+
         let Some(view) = viewport.view(view_id) else {
             re_log::warn_once!("Bug: asked to show a UI for a view that doesn't exist");
             return;
@@ -380,6 +404,7 @@ impl BlueprintTree {
                     view,
                     view_visible,
                     false,
+                    filter_matcher,
                 );
 
                 // Show 'projections' if there's any items that weren't part of the tree under origin but are directly included.
@@ -411,6 +436,7 @@ impl BlueprintTree {
                             view,
                             view_visible,
                             true,
+                            filter_matcher,
                         );
                     }
                 }
@@ -456,8 +482,50 @@ impl BlueprintTree {
         view: &ViewBlueprint,
         view_visible: bool,
         projection_mode: bool,
+        filter_matcher: &filter_widget::FilterMatcher,
     ) {
         let entity_path = node_or_path.path();
+
+        // We traverse and display this data result only if contains a matching entity part
+        'early_exit: {
+            if filter_matcher.matches_nothing() {
+                return;
+            }
+
+            // Filter is inactive or otherwise whitelisting everything.
+            if filter_matcher.matches_everything() {
+                break 'early_exit;
+            }
+
+            // The current path is a match.
+            if entity_path
+                .iter()
+                .any(|entity_part| filter_matcher.matches(&entity_part.ui_string()))
+            {
+                break 'early_exit;
+            }
+
+            // Our subtree contains a match.
+            if let Some(node) = node_or_path.data_result_node() {
+                if query_result
+                    .tree
+                    .find_node_by(Some(node), |node| {
+                        node.data_result
+                            .entity_path
+                            .last()
+                            .is_some_and(|entity_part| {
+                                filter_matcher.matches(&entity_part.ui_string())
+                            })
+                    })
+                    .is_some()
+                {
+                    break 'early_exit;
+                }
+            }
+
+            // No match to be found, so nothing to display.
+            return;
+        }
 
         if projection_mode && entity_path == &view.space_origin {
             if ui
@@ -502,9 +570,11 @@ impl BlueprintTree {
                 .map_or("unknown".to_owned(), |e| e.ui_string())
         };
         let item_label = if ctx.recording().is_known_entity(entity_path) {
-            egui::RichText::new(item_label)
+            filter_matcher
+                .matches_formatted(ui.ctx(), &item_label)
+                .unwrap_or_else(|| item_label.into())
         } else {
-            ui.ctx().warning_text(item_label)
+            ui.ctx().warning_text(item_label).into()
         };
 
         let subdued = !view_visible || !visible;
@@ -586,6 +656,7 @@ impl BlueprintTree {
                             view,
                             view_visible,
                             projection_mode,
+                            filter_matcher,
                         );
                     }
                 })
@@ -864,6 +935,67 @@ impl BlueprintTree {
 
 // ----------------------------------------------------------------------------
 
+fn match_container(
+    ctx: &ViewerContext<'_>,
+    viewport: &ViewportBlueprint,
+    container_id: &ContainerId,
+    filter_matcher: &filter_widget::FilterMatcher,
+) -> bool {
+    if filter_matcher.matches_everything() {
+        return true;
+    }
+
+    if filter_matcher.matches_nothing() {
+        return false;
+    }
+
+    viewport
+        .find_contents_in_container_by(
+            &|content| {
+                // dont recurse infinitely
+                if content == &Contents::Container(*container_id) {
+                    return false;
+                }
+
+                match content {
+                    Contents::Container(container_id) => {
+                        match_container(ctx, viewport, container_id, filter_matcher)
+                    }
+                    Contents::View(view_id) => match_view(ctx, view_id, filter_matcher),
+                }
+            },
+            container_id,
+        )
+        .is_some()
+}
+
+/// Does this view match the provided filter?
+fn match_view(
+    ctx: &ViewerContext<'_>,
+    view_id: &ViewId,
+    filter_matcher: &filter_widget::FilterMatcher,
+) -> bool {
+    if filter_matcher.matches_everything() {
+        return true;
+    }
+
+    if filter_matcher.matches_nothing() {
+        return false;
+    };
+
+    let query_result = ctx.lookup_query_result(*view_id);
+    let result_tree = &query_result.tree;
+
+    result_tree
+        .find_node_by(None, |node| {
+            node.data_result
+                .entity_path
+                .last()
+                .is_some_and(|entity_part| filter_matcher.matches(&entity_part.ui_string()))
+        })
+        .is_some()
+}
+
 /// Add a button to trigger the addition of a new view or container.
 fn add_new_view_or_container_menu_button(
     ctx: &ViewerContext<'_>,
@@ -1026,6 +1158,7 @@ fn expand_all_contents_until(
                 expend_contents(&Contents::Container(*parent));
             }
         }
+        true
     });
 }
 
@@ -1044,6 +1177,7 @@ fn list_views_with_entity(
                 view_ids.push(*view_id);
             }
         }
+        true
     });
     view_ids
 }
