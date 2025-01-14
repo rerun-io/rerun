@@ -335,69 +335,7 @@ fn quote_struct(
     } else {
         quote! { pub struct #name { #(#quoted_fields,)* }}
     };
-    let quoted_struct_native = obj_native.as_ref().map(|obj_native| {
-        let native_name = format_ident!("{}", obj_native.name);
-
-        let quoted_fields = obj_native
-            .fields
-            .iter()
-            .map(|obj_field| ObjectFieldTokenizer(reporter, obj_native, obj_field).quoted(objects));
-        let quoted_struct = if is_tuple_struct {
-            quote! { pub struct #native_name(#(#quoted_fields,)*); }
-        } else {
-            quote! { pub struct #native_name { #(#quoted_fields,)* }}
-        };
-
-        let eager_fields_to_native_fields = obj.fields.iter().map(|field| {
-            let field_name = format_ident!("{}", field.name);
-            quote!(value.#field_name.clone().map(|batch| (batch.descriptor, batch.array)))
-        });
-        let eager_to_native = quote! {
-            impl TryFrom<&#name> for #native_name {
-                type Error = crate::DeserializationError;
-
-                #[rustfmt::skip] // so it doesn't take 1000 lines for no reason
-                fn try_from(value: &#name) -> Result<Self, Self::Error> {
-                    use ::re_types_core::Archetype as _;
-                    Self::from_arrow_components(
-                        [ #(#eager_fields_to_native_fields),* ]
-                        .into_iter()
-                        .flatten(),
-                    )
-                }
-            }
-        };
-
-        let native_fields_to_eager_fields = obj_native.fields.iter().map(|field| {
-            let field_name = format_ident!("{}", field.name);
-            if field.is_nullable {
-                quote!(#field_name: value.#field_name.as_ref().and_then(|v| v.serialized()))
-            } else {
-                quote!(#field_name: value.#field_name.serialized())
-            }
-        });
-        let native_to_eager = quote! {
-            impl From<&#native_name> for #name {
-                #[rustfmt::skip] // so it doesn't take 1000 lines for no reason
-                #[inline]
-                fn from(value: &#native_name) -> Self {
-                    Self {
-                        #(#native_fields_to_eager_fields),*
-                    }
-                }
-            }
-        };
-
-        quote! {
-            #[doc(hidden)]
-            #quoted_derive_clone_debug
-            #quoted_struct
-
-            #eager_to_native
-
-            #native_to_eager
-        }
-    });
+    let quoted_struct_native = quote_struct_native(reporter, objects, obj);
 
     let quoted_from_impl = quote_from_impl_from_obj(obj);
 
@@ -470,6 +408,99 @@ fn quote_struct(
     };
 
     tokens
+}
+
+/// Certain eager archetypes might require the generation of an associated native archetype, as
+/// the internal viewer code heavily relies on it.
+fn quote_struct_native(
+    reporter: &Reporter,
+    objects: &Objects,
+    obj: &Object,
+) -> Option<TokenStream> {
+    assert!(obj.is_struct());
+
+    let obj_native = obj.requires_native_rust_archetype().then(|| {
+        let mut obj_native = obj.clone();
+        obj_native.name = format!("Native{}", obj_native.name);
+        obj_native.attrs.remove(ATTR_RUST_ARCHETYPE_EAGER);
+        obj_native
+    });
+
+    let Object { name, .. } = obj;
+
+    let name = format_ident!("{name}");
+
+    let derive_only = obj.is_attr_set(ATTR_RUST_DERIVE_ONLY);
+    let quoted_derive_clone_debug = if derive_only {
+        quote!()
+    } else {
+        quote_derive_clone_debug()
+    };
+
+    let is_tuple_struct = is_tuple_struct_from_obj(obj);
+    obj_native.as_ref().map(|obj_native| {
+        let native_name = format_ident!("{}", obj_native.name);
+
+        let quoted_fields = obj_native
+            .fields
+            .iter()
+            .map(|obj_field| ObjectFieldTokenizer(reporter, obj_native, obj_field).quoted(objects));
+        let quoted_struct = if is_tuple_struct {
+            quote! { pub struct #native_name(#(#quoted_fields,)*); }
+        } else {
+            quote! { pub struct #native_name { #(#quoted_fields,)* }}
+        };
+
+        let eager_fields_to_native_fields = obj.fields.iter().map(|field| {
+            let field_name = format_ident!("{}", field.name);
+            quote!(value.#field_name.clone().map(|batch| (batch.descriptor, batch.array)))
+        });
+        let eager_to_native = quote! {
+            impl TryFrom<&#name> for #native_name {
+                type Error = crate::DeserializationError;
+
+                #[rustfmt::skip] // so it doesn't take 1000 lines for no reason
+                fn try_from(value: &#name) -> Result<Self, Self::Error> {
+                    use ::re_types_core::Archetype as _;
+                    Self::from_arrow_components(
+                        [ #(#eager_fields_to_native_fields),* ]
+                        .into_iter()
+                        .flatten(),
+                    )
+                }
+            }
+        };
+
+        let native_fields_to_eager_fields = obj_native.fields.iter().map(|field| {
+            let field_name = format_ident!("{}", field.name);
+            if field.is_nullable {
+                quote!(#field_name: value.#field_name.as_ref().and_then(|v| v.serialized()))
+            } else {
+                quote!(#field_name: value.#field_name.serialized())
+            }
+        });
+        let native_to_eager = quote! {
+            impl From<&#native_name> for #name {
+                #[rustfmt::skip] // so it doesn't take 1000 lines for no reason
+                #[inline]
+                fn from(value: &#native_name) -> Self {
+                    Self {
+                        #(#native_fields_to_eager_fields),*
+                    }
+                }
+            }
+        };
+
+        quote! {
+            #[doc(hidden)]
+            #quoted_derive_clone_debug
+            #quoted_struct
+
+            #eager_to_native
+
+            #native_to_eager
+        }
+    })
 }
 
 fn quote_union(
