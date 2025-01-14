@@ -173,7 +173,7 @@ impl Chunk {
         let components = {
             let mut per_name = ChunkComponents::default();
             for (component_desc, list_array) in components {
-                per_name.insert_descriptor(component_desc.clone(), list_array.into());
+                per_name.insert_descriptor_arrow2(component_desc.clone(), list_array);
             }
             per_name
         };
