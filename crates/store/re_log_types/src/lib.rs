@@ -781,6 +781,32 @@ impl SizeBytes for LogMsg {
     }
 }
 
+/// USE ONLY FOR TESTS
+// TODO(#3741): remove once <https://github.com/apache/arrow-rs/issues/6803> is released
+use arrow::array::RecordBatch as ArrowRecordBatch;
+
+pub fn strip_arrow_extension_types_from_batch(batch: &mut ArrowRecordBatch) {
+    use arrow::datatypes::{Field, Schema};
+    fn strip_arrow_extensions_from_field(field: &Field) -> Field {
+        let mut metadata = field.metadata().clone();
+        metadata.retain(|key, _| !key.starts_with("ARROW:extension"));
+        field.clone().with_metadata(metadata)
+    }
+
+    let old_schema = batch.schema();
+    let new_fields: arrow::datatypes::Fields = old_schema
+        .fields()
+        .iter()
+        .map(|field| strip_arrow_extensions_from_field(field))
+        .collect();
+    let new_schema = Schema::new_with_metadata(new_fields, old_schema.metadata().clone());
+
+    #[allow(clippy::unwrap_used)] // The invariants of the input aren't changed
+    {
+        *batch = ArrowRecordBatch::try_new(new_schema.into(), batch.columns().to_vec()).unwrap();
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -832,31 +858,5 @@ mod tests {
                 suffix: "a1".to_owned(),
             }
         );
-    }
-}
-
-/// USE ONLY FOR TESTS
-// TODO(#3741): remove once <https://github.com/apache/arrow-rs/issues/6803> is released
-use arrow::array::RecordBatch as ArrowRecordBatch;
-
-pub fn strip_arrow_extension_types_from_batch(batch: &mut ArrowRecordBatch) {
-    use arrow::datatypes::{Field, Schema};
-    fn strip_arrow_extensions_from_field(field: &Field) -> Field {
-        let mut metadata = field.metadata().clone();
-        metadata.retain(|key, _| !key.starts_with("ARROW:extension"));
-        field.clone().with_metadata(metadata)
-    }
-
-    let old_schema = batch.schema();
-    let new_fields: arrow::datatypes::Fields = old_schema
-        .fields()
-        .iter()
-        .map(|field| strip_arrow_extensions_from_field(field))
-        .collect();
-    let new_schema = Schema::new_with_metadata(new_fields, old_schema.metadata().clone());
-
-    #[allow(clippy::unwrap_used)] // The invariants of the input aren't changed
-    {
-        *batch = ArrowRecordBatch::try_new(new_schema.into(), batch.columns().to_vec()).unwrap();
     }
 }
