@@ -10,7 +10,7 @@ fn key_base64_round_trip() {
     let expected = RedapProvider::generate(ThreadRng::default());
     let base64 = expected.to_base64();
     let actual = RedapProvider::from_base64(&base64).unwrap();
-    assert_eq!(expected, actual);
+    assert_eq!(actual, expected);
 }
 
 #[test]
