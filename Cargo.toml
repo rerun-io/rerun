@@ -557,7 +557,7 @@ significant_drop_tightening = "allow" # An update of parking_lot made this trigg
 # Try to avoid patching crates! It prevents us from publishing the crates on crates.io.
 # If you do patch always prefer to patch to the trunk branch of the upstream repo (i.e. `main`, `master`, …).
 # If that is not possible, patch to a branch that has a PR open on the upstream repo.
-# As a last resport, patch to a branch on our own repository.
+# As a last resort, patch to a branch on our own repository.
 #
 # Prefer patching with `branch` over `rev` and let `Cargo.lock` handle the commit hash.
 # That makes it easy to upade with `cargo update -p $CRATE`.
