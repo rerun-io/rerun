@@ -84,13 +84,19 @@ pub struct PerTimelinePerEntityTransforms {
     pose_transforms: BTreeMap<TimeInt, Vec<glam::Affine3A>>,
     // Note that pinhole projections are fairly rare - it's worth considering storing them separately so we don't have this around for every entity.
     // The flipside of that is of course that we'd have to do more lookups (unless we come up with a way to linearly iterate them)
-    pinhole_projections: BTreeMap<TimeInt, ResolvedPinholeProjection>,
+    pinhole_projections: BTreeMap<TimeInt, Option<ResolvedPinholeProjection>>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct ResolvedPinholeProjection {
     pub image_from_camera: components::PinholeProjection,
     pub view_coordinates: components::ViewCoordinates,
+}
+
+impl ResolvedPinholeProjection {
+    /// View coordinates used when there's no view coordinates explicitely logged.
+    pub const DEFAULT_VIEW_COORDINATES: components::ViewCoordinates =
+        components::ViewCoordinates::RDF;
 }
 
 impl CachedTransformsPerTimeline {
@@ -105,21 +111,23 @@ impl CachedTransformsPerTimeline {
 
 impl PerTimelinePerEntityTransforms {
     #[inline]
-    pub fn latest_at_tree_transform(&self, query: &LatestAtQuery) -> Option<&glam::Affine3A> {
+    pub fn latest_at_tree_transform(&self, query: &LatestAtQuery) -> glam::Affine3A {
         debug_assert!(query.timeline() == self.timeline);
         self.tree_transforms
             .range(..query.at().inc())
             .next_back()
-            .map(|(_time, transform)| transform)
+            .map(|(_time, transform)| *transform)
+            .unwrap_or(glam::Affine3A::IDENTITY)
     }
 
     #[inline]
-    pub fn latest_at_instance_poses(&self, query: &LatestAtQuery) -> Option<&Vec<glam::Affine3A>> {
+    pub fn latest_at_instance_poses(&self, query: &LatestAtQuery) -> &[glam::Affine3A] {
         debug_assert!(query.timeline() == self.timeline);
         self.pose_transforms
             .range(..query.at().inc())
             .next_back()
-            .map(|(_time, transform)| transform)
+            .map(|(_time, transform)| transform.as_slice())
+            .unwrap_or(&[])
     }
 
     #[inline]
@@ -128,7 +136,7 @@ impl PerTimelinePerEntityTransforms {
         self.pinhole_projections
             .range(..query.at().inc())
             .next_back()
-            .map(|(_time, transform)| transform)
+            .and_then(|(_time, transform)| transform.as_ref())
     }
 }
 
@@ -193,6 +201,11 @@ impl TransformCacheStoreSubscriber {
                             &query,
                         ) {
                             entity_entry.tree_transforms.insert(time, transform);
+                        } else {
+                            // If there's *no* transform, we have to put identity in, otherwise we'd miss clears!
+                            entity_entry
+                                .tree_transforms
+                                .insert(time, glam::Affine3A::IDENTITY);
                         }
                     }
                     if queued_update.aspects.contains(TransformAspect::Pose) {
@@ -201,25 +214,22 @@ impl TransformCacheStoreSubscriber {
                             entity_db,
                             &query,
                         );
-                        if !transforms.is_empty() {
-                            entity_entry.pose_transforms.insert(time, transforms);
-                        }
+                        // *do* also insert empty ones, otherwise it's not possible to clear previous state.
+                        entity_entry.pose_transforms.insert(time, transforms);
                     }
                     if queued_update
                         .aspects
                         .contains(TransformAspect::PinholeOrViewCoordinates)
                     {
-                        if let Some(resolved_pinhole_projection) =
+                        // `None` values need to be inserted as well to clear out previous state.
+                        entity_entry.pinhole_projections.insert(
+                            time,
                             query_and_resolve_pinhole_projection_at_entity(
                                 entity_path,
                                 entity_db,
                                 &query,
-                            )
-                        {
-                            entity_entry
-                                .pinhole_projections
-                                .insert(time, resolved_pinhole_projection);
-                        }
+                            ),
+                        );
                     }
                 }
             }
@@ -411,36 +421,36 @@ fn query_and_resolve_instance_poses_at_entity(
         )
     }
 
-    let mut iter_translation = clamped_or_nothing(
-        result
-            .component_batch::<components::PoseTranslation3D>()
-            .unwrap_or_default(),
-        max_count,
-    );
-    let mut iter_rotation_quat = clamped_or_nothing(
-        result
-            .component_batch::<components::PoseRotationQuat>()
-            .unwrap_or_default(),
-        max_count,
-    );
-    let mut iter_rotation_axis_angle = clamped_or_nothing(
-        result
-            .component_batch::<components::PoseRotationAxisAngle>()
-            .unwrap_or_default(),
-        max_count,
-    );
-    let mut iter_scale = clamped_or_nothing(
-        result
-            .component_batch::<components::PoseScale3D>()
-            .unwrap_or_default(),
-        max_count,
-    );
-    let mut iter_mat3x3 = clamped_or_nothing(
-        result
-            .component_batch::<components::PoseTransformMat3x3>()
-            .unwrap_or_default(),
-        max_count,
-    );
+    let batch_translation = result
+        .component_batch::<components::PoseTranslation3D>()
+        .unwrap_or_default();
+    let batch_rotation_quat = result
+        .component_batch::<components::PoseRotationQuat>()
+        .unwrap_or_default();
+    let batch_rotation_axis_angle = result
+        .component_batch::<components::PoseRotationAxisAngle>()
+        .unwrap_or_default();
+    let batch_scale = result
+        .component_batch::<components::PoseScale3D>()
+        .unwrap_or_default();
+    let batch_mat3x3 = result
+        .component_batch::<components::PoseTransformMat3x3>()
+        .unwrap_or_default();
+
+    if batch_translation.is_empty()
+        && batch_rotation_quat.is_empty()
+        && batch_rotation_axis_angle.is_empty()
+        && batch_scale.is_empty()
+        && batch_mat3x3.is_empty()
+    {
+        return Vec::new();
+    }
+
+    let mut iter_translation = clamped_or_nothing(batch_translation, max_count);
+    let mut iter_rotation_quat = clamped_or_nothing(batch_rotation_quat, max_count);
+    let mut iter_rotation_axis_angle = clamped_or_nothing(batch_rotation_axis_angle, max_count);
+    let mut iter_scale = clamped_or_nothing(batch_scale, max_count);
+    let mut iter_mat3x3 = clamped_or_nothing(batch_mat3x3, max_count);
 
     let mut transforms = Vec::with_capacity(max_count);
     for _ in 0..max_count {
@@ -487,7 +497,10 @@ fn query_and_resolve_pinhole_projection_at_entity(
             image_from_camera,
             view_coordinates: entity_db
                 .latest_at_component::<components::ViewCoordinates>(entity_path, query)
-                .map_or(components::ViewCoordinates::RDF, |(_index, res)| res),
+                .map_or(
+                    ResolvedPinholeProjection::DEFAULT_VIEW_COORDINATES,
+                    |(_index, res)| res,
+                ),
         })
 }
 
@@ -496,105 +509,317 @@ mod tests {
     use std::sync::Arc;
 
     use re_chunk_store::{external::re_chunk::ChunkBuilder, ChunkId, RowId};
-    use re_types::archetypes;
+    use re_types::{archetypes, Loggable, SerializedComponentBatch};
 
     use super::*;
+
+    fn ensure_subscriber_registered(entity_db: &EntityDb) {
+        TransformCacheStoreSubscriber::access(&entity_db.store_id(), |_| {
+            // Make sure the subscriber is registered.
+        });
+    }
+
+    #[test]
+    fn test_transforms_per_timeline_access() {
+        let mut entity_db = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
+        ensure_subscriber_registered(&entity_db);
+
+        // Log a few tree transforms at different times.
+        let timeline = Timeline::new_sequence("t");
+        let chunk0 = ChunkBuilder::new(ChunkId::new(), EntityPath::from("with_transform"))
+            .with_archetype(
+                RowId::new(),
+                [(timeline, 1)],
+                &archetypes::Transform3D::from_translation([1.0, 2.0, 3.0]),
+            )
+            .build()
+            .unwrap();
+        let chunk1 = ChunkBuilder::new(ChunkId::new(), EntityPath::from("without_transform"))
+            .with_archetype(
+                RowId::new(),
+                [(timeline, 1)],
+                // Anything that doesn't have components the transform cache is interested in.
+                &archetypes::Points3D::new([[1.0, 2.0, 3.0]]),
+            )
+            .build()
+            .unwrap();
+        entity_db.add_chunk(&Arc::new(chunk0)).unwrap();
+        entity_db.add_chunk(&Arc::new(chunk1)).unwrap();
+
+        TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+            cache.apply_all_updates(&entity_db);
+            let transforms_per_timeline = cache.transforms_per_timeline(timeline).unwrap();
+            assert!(transforms_per_timeline
+                .entity_transforms(EntityPath::from("without_transform").hash())
+                .is_none());
+            assert!(transforms_per_timeline
+                .entity_transforms(EntityPath::from("rando").hash())
+                .is_none());
+            let transforms = transforms_per_timeline
+                .entity_transforms(EntityPath::from("with_transform").hash())
+                .unwrap();
+            assert_eq!(transforms.timeline, timeline);
+            assert_eq!(transforms.tree_transforms.len(), 1);
+            assert_eq!(transforms.pose_transforms.len(), 0);
+            assert_eq!(transforms.pinhole_projections.len(), 0);
+        });
+    }
 
     #[test]
     fn test_tree_transforms() {
         let mut entity_db = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
-        TransformCacheStoreSubscriber::access(&entity_db.store_id(), |_| {
-            // Make sure the subscriber is registered.
-        });
+        ensure_subscriber_registered(&entity_db);
 
         // Log a few tree transforms at different times.
         let timeline = Timeline::new_sequence("t");
-        entity_db
-            .add_chunk(&Arc::new(
-                ChunkBuilder::new(ChunkId::new(), EntityPath::from("my_entity"))
-                    .with_archetype(
-                        RowId::new(),
-                        [(timeline, 1)],
-                        &archetypes::Transform3D::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
-                    )
-                    .with_component_batch(
-                        RowId::new(),
-                        [(timeline, 3)],
-                        // Don't clear out existing translation.
-                        &[components::Scale3D(glam::Vec3::new(1.0, 2.0, 3.0).into())],
-                    )
-                    .with_archetype(
-                        RowId::new(),
-                        [(timeline, 4)],
-                        // Clears out previous translation & scale.
-                        //&archetypes::Transform3D::from_rotation(glam::Quat::from_rotation_x(1.0)),
-                        &archetypes::Transform3D::from_translation(glam::Vec3::new(
-                            123.0, 2.0, 3.0,
-                        )),
-                    )
-                    .build()
-                    .unwrap(),
-            ))
+        let chunk = ChunkBuilder::new(ChunkId::new(), EntityPath::from("my_entity"))
+            .with_archetype(
+                RowId::new(),
+                [(timeline, 1)],
+                &archetypes::Transform3D::from_translation([1.0, 2.0, 3.0]),
+            )
+            .with_archetype(
+                RowId::new(),
+                [(timeline, 3)],
+                &archetypes::Transform3D::update_fields().with_scale([1.0, 2.0, 3.0]),
+            )
+            .with_archetype(
+                RowId::new(),
+                [(timeline, 4)],
+                &archetypes::Transform3D::from_rotation(glam::Quat::from_rotation_x(1.0)),
+            )
+            .with_archetype(
+                RowId::new(),
+                [(timeline, 5)],
+                &archetypes::Transform3D::clear_fields(),
+            )
+            .build()
             .unwrap();
+        entity_db.add_chunk(&Arc::new(chunk)).unwrap();
 
         // Check that the transform cache has the expected transforms.
         TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
             cache.apply_all_updates(&entity_db);
             let transforms_per_timeline = cache.transforms_per_timeline(timeline).unwrap();
-            assert!(transforms_per_timeline
-                .entity_transforms(EntityPath::from("not_my_entity").hash())
-                .is_none());
-
             let transforms = transforms_per_timeline
                 .entity_transforms(EntityPath::from("my_entity").hash())
                 .unwrap();
 
             assert_eq!(
                 transforms.latest_at_tree_transform(&LatestAtQuery::new(timeline, 0)),
-                None
+                glam::Affine3A::IDENTITY
             );
             assert_eq!(
                 transforms.latest_at_tree_transform(&LatestAtQuery::new(timeline, 1)),
-                Some(&glam::Affine3A::from_translation(glam::Vec3::new(
-                    1.0, 2.0, 3.0
-                )))
+                glam::Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0))
             );
             assert_eq!(
                 transforms.latest_at_tree_transform(&LatestAtQuery::new(timeline, 2)),
-                Some(&glam::Affine3A::from_translation(glam::Vec3::new(
-                    1.0, 2.0, 3.0
-                )))
+                glam::Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0))
             );
             assert_eq!(
                 transforms.latest_at_tree_transform(&LatestAtQuery::new(timeline, 3)),
-                Some(&glam::Affine3A::from_scale_rotation_translation(
+                glam::Affine3A::from_scale_rotation_translation(
                     glam::Vec3::new(1.0, 2.0, 3.0),
                     glam::Quat::IDENTITY,
                     glam::Vec3::new(1.0, 2.0, 3.0),
-                ))
+                )
             );
             assert_eq!(
                 transforms.latest_at_tree_transform(&LatestAtQuery::new(timeline, 4)),
-                //       Some(&glam::Affine3A::from_quat(glam::Quat::from_rotation_x(1.0)))
-                Some(&glam::Affine3A::from_translation(glam::Vec3::new(
-                    123.0, 2.0, 3.0
-                )))
+                glam::Affine3A::from_quat(glam::Quat::from_rotation_x(1.0))
             );
+            assert_eq!(
+                transforms.latest_at_tree_transform(&LatestAtQuery::new(timeline, 5)),
+                glam::Affine3A::IDENTITY
+            )
         });
     }
 
     #[test]
     fn test_pose_transforms() {
-        // TODO:
+        let mut entity_db = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
+        ensure_subscriber_registered(&entity_db);
+
+        // Log a few tree transforms at different times.
+        let timeline = Timeline::new_sequence("t");
+        let chunk = ChunkBuilder::new(ChunkId::new(), EntityPath::from("my_entity"))
+            .with_archetype(
+                RowId::new(),
+                [(timeline, 1)],
+                &archetypes::InstancePoses3D::new().with_translations([
+                    [1.0, 2.0, 3.0],
+                    [4.0, 5.0, 6.0],
+                    [7.0, 8.0, 9.0],
+                ]),
+            )
+            .with_archetype(
+                RowId::new(),
+                [(timeline, 3)],
+                // Less instances, and a splatted scale.
+                &archetypes::InstancePoses3D::new()
+                    .with_translations([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+                    .with_scales([[2.0, 3.0, 4.0]]),
+            )
+            .with_serialized_batches(
+                RowId::new(),
+                [(timeline, 4)],
+                [
+                    SerializedComponentBatch::new(
+                        arrow::array::new_empty_array(&components::Translation3D::arrow_datatype()),
+                        archetypes::InstancePoses3D::descriptor_translations(),
+                    ),
+                    SerializedComponentBatch::new(
+                        arrow::array::new_empty_array(&components::Scale3D::arrow_datatype()),
+                        archetypes::InstancePoses3D::descriptor_scales(),
+                    ),
+                ],
+            )
+            // TODO(#7245): Use this instead of the above
+            // .with_archetype(
+            //     RowId::new(),
+            //     [(timeline, 4)],
+            //     &archetypes::InstancePoses3D::clear_fields(),
+            // )
+            .build()
+            .unwrap();
+        entity_db.add_chunk(&Arc::new(chunk)).unwrap();
+
+        // Check that the transform cache has the expected transforms.
+        TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+            cache.apply_all_updates(&entity_db);
+            let transforms_per_timeline = cache.transforms_per_timeline(timeline).unwrap();
+            let transforms = transforms_per_timeline
+                .entity_transforms(EntityPath::from("my_entity").hash())
+                .unwrap();
+
+            assert_eq!(
+                transforms.latest_at_instance_poses(&LatestAtQuery::new(timeline, 0)),
+                &[]
+            );
+            assert_eq!(
+                transforms.latest_at_instance_poses(&LatestAtQuery::new(timeline, 1)),
+                &[
+                    glam::Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
+                    glam::Affine3A::from_translation(glam::Vec3::new(4.0, 5.0, 6.0)),
+                    glam::Affine3A::from_translation(glam::Vec3::new(7.0, 8.0, 9.0)),
+                ]
+            );
+            assert_eq!(
+                transforms.latest_at_instance_poses(&LatestAtQuery::new(timeline, 2)),
+                &[
+                    glam::Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
+                    glam::Affine3A::from_translation(glam::Vec3::new(4.0, 5.0, 6.0)),
+                    glam::Affine3A::from_translation(glam::Vec3::new(7.0, 8.0, 9.0)),
+                ]
+            );
+            assert_eq!(
+                transforms.latest_at_instance_poses(&LatestAtQuery::new(timeline, 3)),
+                &[
+                    glam::Affine3A::from_scale_rotation_translation(
+                        glam::Vec3::new(2.0, 3.0, 4.0),
+                        glam::Quat::IDENTITY,
+                        glam::Vec3::new(1.0, 2.0, 3.0),
+                    ),
+                    glam::Affine3A::from_scale_rotation_translation(
+                        glam::Vec3::new(2.0, 3.0, 4.0),
+                        glam::Quat::IDENTITY,
+                        glam::Vec3::new(4.0, 5.0, 6.0),
+                    ),
+                ]
+            );
+            assert_eq!(
+                transforms.latest_at_instance_poses(&LatestAtQuery::new(timeline, 4)),
+                &[]
+            );
+        });
     }
 
     #[test]
     fn test_pinhole_projections() {
-        // TODO:
+        let mut entity_db = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
+        ensure_subscriber_registered(&entity_db);
+
+        let image_from_camera =
+            components::PinholeProjection::from_focal_length_and_principal_point(
+                [1.0, 2.0],
+                [1.0, 2.0],
+            );
+
+        // Log a few tree transforms at different times.
+        let timeline = Timeline::new_sequence("t");
+        let chunk = ChunkBuilder::new(ChunkId::new(), EntityPath::from("my_entity"))
+            .with_archetype(
+                RowId::new(),
+                [(timeline, 1)],
+                &archetypes::Pinhole::new(image_from_camera),
+            )
+            .with_archetype(
+                RowId::new(),
+                [(timeline, 3)],
+                &archetypes::ViewCoordinates::BLU,
+            )
+            // Clear out the pinhole projection (this should yield nothing then for the remaining view coordinates.)
+            .with_serialized_batch(
+                RowId::new(),
+                [(timeline, 4)],
+                SerializedComponentBatch::new(
+                    arrow::array::new_empty_array(&components::PinholeProjection::arrow_datatype()),
+                    archetypes::Pinhole::descriptor_image_from_camera(),
+                ),
+            )
+            // TODO(#7245): Use this instead
+            // .with_archetype(
+            //     RowId::new(),
+            //     [(timeline, 4)],
+            //     &archetypes::Pinhole::clear_fields(),
+            // )
+            .build()
+            .unwrap();
+        entity_db.add_chunk(&Arc::new(chunk)).unwrap();
+
+        // Check that the transform cache has the expected transforms.
+        TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+            cache.apply_all_updates(&entity_db);
+            let transforms_per_timeline = cache.transforms_per_timeline(timeline).unwrap();
+            let transforms = transforms_per_timeline
+                .entity_transforms(EntityPath::from("my_entity").hash())
+                .unwrap();
+
+            assert_eq!(
+                transforms.latest_at_pinhole(&LatestAtQuery::new(timeline, 0)),
+                None
+            );
+            assert_eq!(
+                transforms.latest_at_pinhole(&LatestAtQuery::new(timeline, 1)),
+                Some(&ResolvedPinholeProjection {
+                    image_from_camera,
+                    view_coordinates: ResolvedPinholeProjection::DEFAULT_VIEW_COORDINATES,
+                })
+            );
+            assert_eq!(
+                transforms.latest_at_pinhole(&LatestAtQuery::new(timeline, 2)),
+                Some(&ResolvedPinholeProjection {
+                    image_from_camera,
+                    view_coordinates: ResolvedPinholeProjection::DEFAULT_VIEW_COORDINATES,
+                })
+            );
+            assert_eq!(
+                transforms.latest_at_pinhole(&LatestAtQuery::new(timeline, 3)),
+                Some(&ResolvedPinholeProjection {
+                    image_from_camera,
+                    view_coordinates: components::ViewCoordinates::BLU,
+                })
+            );
+            assert_eq!(
+                transforms.latest_at_pinhole(&LatestAtQuery::new(timeline, 4)),
+                None // View coordinates alone doesn't give us a pinhole projection from the transform cache.
+            );
+        });
     }
 
     #[test]
-    fn test_invalidation() {
+    fn test_out_of_order_updates() {
         // TODO:
     }
 }

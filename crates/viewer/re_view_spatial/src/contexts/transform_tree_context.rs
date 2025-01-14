@@ -286,7 +286,7 @@ impl TransformTreeContext {
             );
             let new_transform = transform_info_for_upward_propagation(
                 reference_from_ancestor,
-                transforms_at_entity,
+                &transforms_at_entity,
             );
 
             reference_from_ancestor = new_transform.reference_from_entity;
@@ -347,7 +347,7 @@ impl TransformTreeContext {
                 child_path,
                 reference_from_parent,
                 twod_in_threed_info.clone(),
-                transforms_at_entity,
+                &transforms_at_entity,
             );
 
             self.gather_descendants_transforms(
@@ -398,7 +398,7 @@ fn lookup_image_plane_distance(
 /// Compute transform info for when we walk up the tree from the reference.
 fn transform_info_for_upward_propagation(
     reference_from_ancestor: glam::Affine3A,
-    transforms_at_entity: TransformsAtEntity,
+    transforms_at_entity: &TransformsAtEntity<'_>,
 ) -> TransformInfo {
     let mut reference_from_entity = reference_from_ancestor;
 
@@ -416,7 +416,7 @@ fn transform_info_for_upward_propagation(
 
     // Collect & compute poses.
     let (mut reference_from_instances, has_instance_transforms) =
-        if let Ok(mut entity_from_instances) = SmallVec1::<[glam::Affine3A; 1]>::try_from_vec(
+        if let Ok(mut entity_from_instances) = SmallVec1::<[glam::Affine3A; 1]>::try_from_slice(
             transforms_at_entity.entity_from_instance_poses,
         ) {
             for entity_from_instance in &mut entity_from_instances {
@@ -429,17 +429,15 @@ fn transform_info_for_upward_propagation(
         };
 
     // Apply tree transform if any.
-    if let Some(parent_from_entity_tree_transform) =
-        transforms_at_entity.parent_from_entity_tree_transform
-    {
-        reference_from_entity *= parent_from_entity_tree_transform.inverse();
-        if has_instance_transforms {
-            for reference_from_instance in &mut reference_from_instances {
-                *reference_from_instance = reference_from_entity * (*reference_from_instance);
-            }
-        } else {
-            *reference_from_instances.first_mut() = reference_from_entity;
+    reference_from_entity *= transforms_at_entity
+        .parent_from_entity_tree_transform
+        .inverse();
+    if has_instance_transforms {
+        for reference_from_instance in &mut reference_from_instances {
+            *reference_from_instance = reference_from_entity * (*reference_from_instance);
         }
+    } else {
+        *reference_from_instances.first_mut() = reference_from_entity;
     }
 
     TransformInfo {
@@ -457,21 +455,18 @@ fn transform_info_for_downward_propagation(
     current_path: &EntityPath,
     reference_from_parent: glam::Affine3A,
     mut twod_in_threed_info: Option<TwoDInThreeDTransformInfo>,
-    transforms_at_entity: TransformsAtEntity,
+    transforms_at_entity: &TransformsAtEntity<'_>,
 ) -> TransformInfo {
     let mut reference_from_entity = reference_from_parent;
 
     // Apply tree transform.
-    if let Some(parent_from_entity_tree_transform) =
-        transforms_at_entity.parent_from_entity_tree_transform
-    {
-        reference_from_entity *= parent_from_entity_tree_transform;
-    }
+
+    reference_from_entity *= transforms_at_entity.parent_from_entity_tree_transform;
 
     // Collect & compute poses.
     let (mut reference_from_instances, has_instance_transforms) =
         if let Ok(mut entity_from_instances) =
-            SmallVec1::try_from_vec(transforms_at_entity.entity_from_instance_poses)
+            SmallVec1::try_from_slice(transforms_at_entity.entity_from_instance_poses)
         {
             for entity_from_instance in &mut entity_from_instances {
                 *entity_from_instance = reference_from_entity * (*entity_from_instance);
@@ -603,19 +598,19 @@ fn pinhole_with_image_plane_to_transform(
 
 /// Resolved transforms at an entity.
 #[derive(Default)]
-struct TransformsAtEntity {
-    parent_from_entity_tree_transform: Option<glam::Affine3A>,
-    entity_from_instance_poses: Vec<glam::Affine3A>,
+struct TransformsAtEntity<'a> {
+    parent_from_entity_tree_transform: glam::Affine3A,
+    entity_from_instance_poses: &'a [glam::Affine3A],
     instance_from_pinhole_image_plane: Option<glam::Affine3A>,
 }
 
-fn transforms_at(
+fn transforms_at<'a>(
     entity_path: &EntityPath,
     query: &LatestAtQuery,
     pinhole_image_plane_distance: impl Fn(&EntityPath) -> f32,
     encountered_pinhole: &mut Option<EntityPath>,
-    transforms_per_timeline: &CachedTransformsPerTimeline,
-) -> TransformsAtEntity {
+    transforms_per_timeline: &'a CachedTransformsPerTimeline,
+) -> TransformsAtEntity<'a> {
     // This is called very frequently, don't put a profile scope here.
 
     let Some(entity_transforms) = transforms_per_timeline.entity_transforms(entity_path.hash())
@@ -637,8 +632,8 @@ fn transforms_at(
             });
 
     let transforms_at_entity = TransformsAtEntity {
-        parent_from_entity_tree_transform: parent_from_entity_tree_transform.copied(),
-        entity_from_instance_poses: entity_from_instance_poses.map_or(Vec::new(), |v| v.clone()),
+        parent_from_entity_tree_transform,
+        entity_from_instance_poses,
         instance_from_pinhole_image_plane,
     };
 
