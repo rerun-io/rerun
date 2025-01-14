@@ -194,7 +194,6 @@ glob = "0.3"
 gltf = "1.1"
 half = "2.3.1"
 hexasphere = "14.1.0"
-hmac = "0.12"
 home = "=0.5.9"
 image = { version = "0.25", default-features = false }
 indent = "0.1"

@@ -17,7 +17,6 @@ workspace = true
 re_log.workspace = true
 
 base64.workspace = true
-hmac.workspace = true
 jsonwebtoken.workspace = true
 rand.workspace = true
 serde.workspace = true
