@@ -204,8 +204,8 @@ impl Query {
             .filter(|column| match column {
                 ColumnDescriptor::Time(desc) => {
                     // we always include the query timeline column because we need it for the dataframe ui
-                    desc.timeline.name() == &query_timeline_name
-                        || selected_time_columns.contains(desc.timeline.name())
+                    desc.name() == &query_timeline_name
+                        || selected_time_columns.contains(desc.name())
                 }
 
                 ColumnDescriptor::Component(desc) => {

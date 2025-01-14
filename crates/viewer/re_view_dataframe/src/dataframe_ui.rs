@@ -166,7 +166,7 @@ impl RowsDisplayData {
             .iter()
             .find_position(|desc| match desc {
                 ColumnDescriptor::Time(time_column_desc) => {
-                    &time_column_desc.timeline == query_timeline
+                    &time_column_desc.timeline() == query_timeline
                 }
                 ColumnDescriptor::Component(_) => false,
             })
@@ -283,29 +283,27 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
                         .unwrap_or_else(|| Timeline::new("", TimeType::Sequence));
 
                     // if this column can actually be hidden, then that's the corresponding action
-                    let hide_action = match column {
-                        ColumnDescriptor::Time(desc) => {
-                            (desc.timeline != filtered_index).then(|| {
-                                HideColumnAction::HideTimeColumn {
-                                    timeline_name: *desc.timeline.name(),
-                                }
-                            })
-                        }
+                    let hide_action =
+                        match column {
+                            ColumnDescriptor::Time(desc) => (desc.timeline() != filtered_index)
+                                .then(|| HideColumnAction::HideTimeColumn {
+                                    timeline_name: *desc.name(),
+                                }),
 
-                        ColumnDescriptor::Component(desc) => {
-                            Some(HideColumnAction::HideComponentColumn {
-                                entity_path: desc.entity_path.clone(),
-                                component_name: desc.component_name,
-                            })
-                        }
-                    };
+                            ColumnDescriptor::Component(desc) => {
+                                Some(HideColumnAction::HideComponentColumn {
+                                    entity_path: desc.entity_path.clone(),
+                                    component_name: desc.component_name,
+                                })
+                            }
+                        };
 
                     let header_ui = |ui: &mut egui::Ui| {
                         let text = egui::RichText::new(column.short_name()).strong();
 
                         let is_selected = match column {
                             ColumnDescriptor::Time(descr) => {
-                                &descr.timeline == self.ctx.rec_cfg.time_ctrl.read().timeline()
+                                &descr.timeline() == self.ctx.rec_cfg.time_ctrl.read().timeline()
                             }
                             ColumnDescriptor::Component(component_column_descriptor) => self
                                 .ctx
@@ -323,7 +321,7 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
                                     self.ctx.command_sender.send_system(
                                         re_viewer_context::SystemCommand::SetActiveTimeline {
                                             rec_id: self.ctx.recording_id().clone(),
-                                            timeline: descr.timeline,
+                                            timeline: descr.timeline(),
                                         },
                                     );
                                 }
