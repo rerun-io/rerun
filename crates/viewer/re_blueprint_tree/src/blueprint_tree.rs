@@ -7,7 +7,9 @@ use re_context_menu::{context_menu_ui_for_item, SelectionUpdateBehavior};
 use re_entity_db::InstancePath;
 use re_log_types::EntityPath;
 use re_types::blueprint::components::Visible;
-use re_ui::{drag_and_drop::DropTarget, list_item, ContextExt as _, DesignTokens, UiExt as _};
+use re_ui::{
+    drag_and_drop::DropTarget, filter_widget, list_item, ContextExt as _, DesignTokens, UiExt as _,
+};
 use re_viewer_context::{
     contents_name_style, icon_for_container_kind, CollapseScope, Contents, DataResultNodeOrPath,
     DragAndDropFeedback, DragAndDropPayload, SystemCommandSender,
@@ -38,6 +40,8 @@ pub struct BlueprintTree {
     ///
     /// We double-buffer this value to deal with ordering constraints.
     next_candidate_drop_parent_container_id: Option<ContainerId>,
+
+    filter_state: filter_widget::FilterState,
 }
 
 impl BlueprintTree {
@@ -53,18 +57,30 @@ impl BlueprintTree {
             ui.add_space(-1.);
 
             ui.list_item_scope("blueprint_section_title", |ui| {
-                ui.list_item_flat_noninteractive(
-                    list_item::CustomContent::new(|ui, _| {
-                        ui.strong("Blueprint").on_hover_text(
-                            "The blueprint is where you can configure the Rerun Viewer",
-                        );
-                    })
-                    .menu_button(&re_ui::icons::MORE, |ui| {
-                        add_new_view_or_container_menu_button(ctx, viewport, ui);
-                        set_blueprint_to_default_menu_buttons(ctx, ui);
-                        set_blueprint_to_auto_menu_button(ctx, viewport, ui);
-                    }),
-                );
+                //TODO: move height to design token
+                //TODO: make it fit 24 using no expand + 1.0 selection
+                ui.list_item()
+                    .interactive(false)
+                    .with_height(30.0)
+                    .show_flat(
+                        ui,
+                        list_item::CustomContent::new(|ui, _| {
+                            let title_response = self
+                                .filter_state
+                                .ui(ui, egui::RichText::new("Blueprint").strong());
+
+                            if let Some(title_response) = title_response {
+                                title_response.on_hover_text(
+                                    "The blueprint is where you can configure the Rerun Viewer",
+                                );
+                            }
+                        })
+                        .menu_button(&re_ui::icons::MORE, |ui| {
+                            add_new_view_or_container_menu_button(ctx, viewport, ui);
+                            set_blueprint_to_default_menu_buttons(ctx, ui);
+                            set_blueprint_to_auto_menu_button(ctx, viewport, ui);
+                        }),
+                    );
             });
 
             ui.full_span_separator();
