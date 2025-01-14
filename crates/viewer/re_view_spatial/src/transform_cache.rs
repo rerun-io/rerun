@@ -632,6 +632,10 @@ mod tests {
             assert_eq!(
                 transforms.latest_at_tree_transform(&LatestAtQuery::new(timeline, 5)),
                 glam::Affine3A::IDENTITY
+            );
+            assert_eq!(
+                transforms.latest_at_tree_transform(&LatestAtQuery::new(timeline, 123)),
+                glam::Affine3A::IDENTITY
             )
         });
     }
@@ -732,6 +736,10 @@ mod tests {
                 transforms.latest_at_instance_poses(&LatestAtQuery::new(timeline, 4)),
                 &[]
             );
+            assert_eq!(
+                transforms.latest_at_instance_poses(&LatestAtQuery::new(timeline, 123)),
+                &[]
+            );
         });
     }
 
@@ -815,11 +823,96 @@ mod tests {
                 transforms.latest_at_pinhole(&LatestAtQuery::new(timeline, 4)),
                 None // View coordinates alone doesn't give us a pinhole projection from the transform cache.
             );
+            assert_eq!(
+                transforms.latest_at_pinhole(&LatestAtQuery::new(timeline, 123)),
+                None
+            );
         });
     }
 
     #[test]
     fn test_out_of_order_updates() {
-        // TODO:
+        let mut entity_db = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
+        ensure_subscriber_registered(&entity_db);
+
+        // Log a few tree transforms at different times.
+        let timeline = Timeline::new_sequence("t");
+        let chunk = ChunkBuilder::new(ChunkId::new(), EntityPath::from("my_entity"))
+            .with_archetype(
+                RowId::new(),
+                [(timeline, 1)],
+                &archetypes::Transform3D::from_translation([1.0, 2.0, 3.0]),
+            )
+            .with_archetype(
+                RowId::new(),
+                [(timeline, 3)],
+                // Note that this doesn't clear anything that could be inserted at time 2.
+                &archetypes::Transform3D::update_fields().with_translation([2.0, 3.0, 4.0]),
+            )
+            .build()
+            .unwrap();
+        entity_db.add_chunk(&Arc::new(chunk)).unwrap();
+
+        // Check that the transform cache has the expected transforms.
+        TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+            cache.apply_all_updates(&entity_db);
+            let transforms_per_timeline = cache.transforms_per_timeline(timeline).unwrap();
+            let transforms = transforms_per_timeline
+                .entity_transforms(EntityPath::from("my_entity").hash())
+                .unwrap();
+
+            // Check that the transform cache has the expected transforms.
+            assert_eq!(
+                transforms.latest_at_tree_transform(&LatestAtQuery::new(timeline, 1)),
+                glam::Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0))
+            );
+            assert_eq!(
+                transforms.latest_at_tree_transform(&LatestAtQuery::new(timeline, 3)),
+                glam::Affine3A::from_translation(glam::Vec3::new(2.0, 3.0, 4.0))
+            );
+        });
+
+        // Add a transform between the two that invalidates the one at time stamp 3.
+        let timeline = Timeline::new_sequence("t");
+        let chunk = ChunkBuilder::new(ChunkId::new(), EntityPath::from("my_entity"))
+            .with_archetype(
+                RowId::new(),
+                [(timeline, 2)],
+                &archetypes::Transform3D::update_fields().with_scale([-1.0, -2.0, -3.0]),
+            )
+            .build()
+            .unwrap();
+        entity_db.add_chunk(&Arc::new(chunk)).unwrap();
+
+        // Check that the transform cache has the expected changed transforms.
+        TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+            cache.apply_all_updates(&entity_db);
+            let transforms_per_timeline = cache.transforms_per_timeline(timeline).unwrap();
+            let transforms = transforms_per_timeline
+                .entity_transforms(EntityPath::from("my_entity").hash())
+                .unwrap();
+
+            // Check that the transform cache has the expected transforms.
+            assert_eq!(
+                transforms.latest_at_tree_transform(&LatestAtQuery::new(timeline, 1)),
+                glam::Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0))
+            );
+            assert_eq!(
+                transforms.latest_at_tree_transform(&LatestAtQuery::new(timeline, 2)),
+                glam::Affine3A::from_scale_rotation_translation(
+                    glam::Vec3::new(-1.0, -2.0, -3.0),
+                    glam::Quat::IDENTITY,
+                    glam::Vec3::new(1.0, 2.0, 3.0),
+                )
+            );
+            assert_eq!(
+                transforms.latest_at_tree_transform(&LatestAtQuery::new(timeline, 3)),
+                glam::Affine3A::from_scale_rotation_translation(
+                    glam::Vec3::new(-1.0, -2.0, -3.0),
+                    glam::Quat::IDENTITY,
+                    glam::Vec3::new(2.0, 3.0, 4.0),
+                )
+            );
+        });
     }
 }
