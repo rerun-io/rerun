@@ -110,21 +110,21 @@ impl TransformInfo {
 /// Provides transforms from an entity to a chosen reference space for all elements in the scene
 /// for the currently selected time & timeline.
 ///
-/// The resulting transforms are are dependent on:
+/// The resulting transforms are dependent on:
 /// * tree, pose, pinhole and view-coordinates transforms components as logged to the data store
 ///    * TODO(#6743): blueprint overrides aren't respected yet
 /// * the view' spatial origin
 /// * the query time
 ///    * TODO(#723): ranges aren't taken into account yet
 /// * TODO(andreas): the queried entities. Right now we determine transforms for ALL entities in the scene.
-///                  since 3D views tend to display almost everything that's mostly fine, but it's very very wasteful when they don't.
+///                  since 3D views tend to display almost everything that's mostly fine, but it's very wasteful when they don't.
 ///
 /// The renderer then uses this reference space as its world space,
 /// making world and reference space equivalent for a given view.
 ///
 /// TODO(#7025): Right now we also do full tree traversal in here to resolve transforms to the root.
 /// However, for views that share the same query, we can easily make all entities relative to the respective origin in a linear pass over all matrices.
-/// (Note that right now the query IS always the same accross all views for a given frame since it's just latest-at controlled by the timeline,
+/// (Note that right now the query IS always the same across all views for a given frame since it's just latest-at controlled by the timeline,
 /// but once we support range queries it may be not or only partially the case)
 #[derive(Clone)]
 pub struct TransformTreeContext {
@@ -240,7 +240,7 @@ impl ViewContextSystem for TransformTreeContext {
                 &time_query,
                 transforms_per_timeline,
             );
-        }); // Note that this can return None if no event has happend for this timeline yet.
+        }); // Note that this can return None if no event has happened for this timeline yet.
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
@@ -428,7 +428,7 @@ fn transform_info_for_upward_propagation(
             (SmallVec1::new(reference_from_entity), false)
         };
 
-    // Apply tree transform if any.
+    // Apply tree transform.
     reference_from_entity *= transforms_at_entity
         .parent_from_entity_tree_transform
         .inverse();

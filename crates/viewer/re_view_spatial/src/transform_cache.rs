@@ -94,7 +94,7 @@ pub struct ResolvedPinholeProjection {
 }
 
 impl ResolvedPinholeProjection {
-    /// View coordinates used when there's no view coordinates explicitely logged.
+    /// View coordinates used when there's no view coordinates explicitly logged.
     pub const DEFAULT_VIEW_COORDINATES: components::ViewCoordinates =
         components::ViewCoordinates::RDF;
 }
