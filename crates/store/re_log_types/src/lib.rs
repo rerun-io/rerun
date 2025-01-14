@@ -787,6 +787,7 @@ use arrow::array::RecordBatch as ArrowRecordBatch;
 
 pub fn strip_arrow_extension_types_from_batch(batch: &mut ArrowRecordBatch) {
     use arrow::datatypes::{Field, Schema};
+
     fn strip_arrow_extensions_from_field(field: &Field) -> Field {
         let mut metadata = field.metadata().clone();
         metadata.retain(|key, _| !key.starts_with("ARROW:extension"));
