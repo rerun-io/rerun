@@ -49,10 +49,7 @@ impl Interceptor for Authenticator {
             let claims = self
                 .secret_key
                 .verify(&token, VerificationOptions::default())
-                .map_err(|err| match err {
-                    Error::InvalidPermission { .. } => Status::permission_denied(err.to_string()),
-                    _ => Status::unauthenticated("invalid credentials"),
-                })?;
+                .map_err(|_err| Status::unauthenticated("invalid credentials"))?;
 
             req.extensions_mut().insert(UserContext {
                 user_id: claims.sub,

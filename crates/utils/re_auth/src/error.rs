@@ -12,7 +12,4 @@ pub enum Error {
 
     #[error("failed to parse token")]
     MalformedToken,
-
-    #[error("invalid permission: expected `{expected}` but got `{actual}`")]
-    InvalidPermission { expected: String, actual: String },
 }
