@@ -838,6 +838,7 @@ mod tests {
 /// USE ONLY FOR TESTS
 // TODO(#3741): remove once <https://github.com/apache/arrow-rs/issues/6803> is released
 use arrow::array::RecordBatch as ArrowRecordBatch;
+
 pub fn strip_arrow_extension_types_from_batch(batch: &mut ArrowRecordBatch) {
     use arrow::datatypes::{Field, Schema};
     fn strip_arrow_extensions_from_field(field: &Field) -> Field {
@@ -854,6 +855,8 @@ pub fn strip_arrow_extension_types_from_batch(batch: &mut ArrowRecordBatch) {
         .collect();
     let new_schema = Schema::new_with_metadata(new_fields, old_schema.metadata().clone());
 
-    let columns = batch.columns().iter().cloned().collect();
-    *batch = ArrowRecordBatch::try_new(new_schema.into(), columns).unwrap();
+    #[allow(clippy::unwrap_used)] // The invariants of the input aren't changed
+    {
+        *batch = ArrowRecordBatch::try_new(new_schema.into(), batch.columns().to_vec()).unwrap();
+    }
 }
