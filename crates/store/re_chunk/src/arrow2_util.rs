@@ -449,21 +449,26 @@ pub fn concatenate_record_batches(
     schema: Arrow2Schema,
     batches: &[TransportChunk],
 ) -> anyhow::Result<TransportChunk> {
-    assert!(batches.iter().map(|batch| batch.schema_ref()).all_equal());
+    anyhow::ensure!(
+        batches.iter().all(|batch| batch.schema_ref() == &schema),
+        "concatenate_record_batches: all batches must have the same schema"
+    );
 
-    let mut arrays = Vec::new();
+    let mut output_columns = Vec::new();
 
     if !batches.is_empty() {
         for (i, _field) in schema.fields.iter().enumerate() {
-            let array = concat_arrays(
-                &batches
-                    .iter()
-                    .map(|batch| &*batch.data[i] as &dyn Arrow2Array)
-                    .collect_vec(),
-            )?;
-            arrays.push(array);
+            let arrays: Option<Vec<_>> = batches.iter().map(|batch| batch.column(i)).collect();
+            let arrays = arrays.ok_or_else(|| {
+                anyhow::anyhow!("concatenate_record_batches: all batches must have the same schema")
+            })?;
+            let array = concat_arrays(&arrays)?;
+            output_columns.push(array);
         }
     }
 
-    Ok(TransportChunk::new(schema, Arrow2Chunk::new(arrays)))
+    Ok(TransportChunk::new(
+        schema,
+        Arrow2Chunk::new(output_columns),
+    ))
 }

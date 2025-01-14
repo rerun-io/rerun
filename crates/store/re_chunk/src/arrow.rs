@@ -25,10 +25,8 @@ impl TransportChunk {
         let schema = Schema::new_with_metadata(fields, metadata);
 
         let columns: Vec<_> = self
-            .data
-            .columns()
-            .iter()
-            .map(|arr2_array| {
+            .all_columns()
+            .map(|(_field, arr2_array)| {
                 let data = arrow2::array::to_data(arr2_array.as_ref());
                 make_array(data)
             })
@@ -62,6 +60,6 @@ impl TransportChunk {
 
         let data = arrow2::chunk::Chunk::new(columns);
 
-        Self { schema, data }
+        Self::new(schema, data)
     }
 }

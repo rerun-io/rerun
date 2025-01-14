@@ -45,7 +45,7 @@ pub struct TransportChunk {
     pub schema: Arrow2Schema,
 
     /// All the control, time and component data.
-    pub data: Arrow2Chunk<Box<dyn Arrow2Array>>,
+    data: Arrow2Chunk<Box<dyn Arrow2Array>>,
 }
 
 impl std::fmt::Display for TransportChunk {
@@ -360,6 +360,12 @@ impl TransportChunk {
             .contains_key(Self::CHUNK_METADATA_MARKER_IS_SORTED_BY_ROW_ID)
     }
 
+    /// Access specific column
+    #[inline]
+    pub fn column(&self, index: usize) -> Option<&dyn Arrow2Array> {
+        self.data.get(index).map(|c| c.as_ref())
+    }
+
     /// Iterates all columns of the specified `kind`.
     ///
     /// See:
@@ -390,6 +396,11 @@ impl TransportChunk {
             .iter()
             .enumerate()
             .filter_map(|(i, field)| self.data.columns().get(i).map(|column| (field, column)))
+    }
+
+    #[inline]
+    pub fn all_columns_collected(&self) -> Vec<&dyn Arrow2Array> {
+        self.data.iter().map(|c| c.as_ref()).collect()
     }
 
     /// Iterates all control columns present in this chunk.
