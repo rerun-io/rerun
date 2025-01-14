@@ -411,9 +411,35 @@ mod tests {
         ApplicationId, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource, Time,
     };
 
+    // TODO(#3741): remove this once we are all in on arrow-rs
+    fn strip_arrow_extensions_from_log_messages(log_msg: Vec<LogMsg>) -> Vec<LogMsg> {
+        log_msg
+            .into_iter()
+            .map(LogMsg::strip_arrow_extension_types)
+            .collect()
+    }
+
     fn fake_log_messages() -> Vec<LogMsg> {
         let store_id = StoreId::random(StoreKind::Blueprint);
-        vec![
+
+        let arrow_msg = re_chunk::Chunk::builder("test_entity".into())
+            .with_archetype(
+                re_chunk::RowId::new(),
+                re_log_types::TimePoint::default().with(
+                    re_log_types::Timeline::new_sequence("blueprint"),
+                    re_log_types::TimeInt::from_milliseconds(re_log_types::NonMinI64::MIN),
+                ),
+                &re_types::blueprint::archetypes::Background::new(
+                    re_types::blueprint::components::BackgroundKind::SolidColor,
+                )
+                .with_color([255, 0, 0]),
+            )
+            .build()
+            .unwrap()
+            .to_arrow_msg()
+            .unwrap();
+
+        strip_arrow_extensions_from_log_messages(vec![
             LogMsg::SetStoreInfo(SetStoreInfo {
                 row_id: *RowId::new(),
                 info: StoreInfo {
@@ -429,31 +455,13 @@ mod tests {
                     store_version: Some(CrateVersion::LOCAL),
                 },
             }),
-            LogMsg::ArrowMsg(
-                store_id.clone(),
-                re_chunk::Chunk::builder("test_entity".into())
-                    .with_archetype(
-                        re_chunk::RowId::new(),
-                        re_log_types::TimePoint::default().with(
-                            re_log_types::Timeline::new_sequence("blueprint"),
-                            re_log_types::TimeInt::from_milliseconds(re_log_types::NonMinI64::MIN),
-                        ),
-                        &re_types::blueprint::archetypes::Background::new(
-                            re_types::blueprint::components::BackgroundKind::SolidColor,
-                        )
-                        .with_color([255, 0, 0]),
-                    )
-                    .build()
-                    .unwrap()
-                    .to_arrow_msg()
-                    .unwrap(),
-            ),
+            LogMsg::ArrowMsg(store_id.clone(), arrow_msg),
             LogMsg::BlueprintActivationCommand(re_log_types::BlueprintActivationCommand {
                 blueprint_id: store_id,
                 make_active: true,
                 make_default: true,
             }),
-        ]
+        ])
     }
 
     #[test]
@@ -486,10 +494,12 @@ mod tests {
             crate::encoder::encode_ref(rrd_version, options, messages.iter().map(Ok), &mut file)
                 .unwrap();
 
-            let decoded_messages = Decoder::new(VersionPolicy::Error, &mut file.as_slice())
-                .unwrap()
-                .collect::<Result<Vec<LogMsg>, DecodeError>>()
-                .unwrap();
+            let decoded_messages = strip_arrow_extensions_from_log_messages(
+                Decoder::new(VersionPolicy::Error, &mut file.as_slice())
+                    .unwrap()
+                    .collect::<Result<Vec<LogMsg>, DecodeError>>()
+                    .unwrap(),
+            );
 
             similar_asserts::assert_eq!(decoded_messages, messages);
         }
@@ -549,7 +559,9 @@ mod tests {
             )
             .unwrap();
 
-            let decoded_messages = decoder.into_iter().collect::<Result<Vec<_>, _>>().unwrap();
+            let decoded_messages = strip_arrow_extensions_from_log_messages(
+                decoder.into_iter().collect::<Result<Vec<_>, _>>().unwrap(),
+            );
 
             similar_asserts::assert_eq!(decoded_messages, [messages.clone(), messages].concat());
         }
