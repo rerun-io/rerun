@@ -5,7 +5,7 @@ use arrow::{
 };
 use itertools::Itertools as _;
 
-// ---
+// ---------------------------------------------------------------------------------
 
 /// Downcast an arrow array to another array, without having to go via `Any`.
 ///
@@ -24,6 +24,17 @@ impl ArrowArrayDowncastRef for dyn Array {
         self.as_any().downcast_ref()
     }
 }
+
+impl<A> ArrowArrayDowncastRef for A
+where
+    A: Array,
+{
+    fn downcast_array_ref<T: Array + 'static>(&self) -> Option<&T> {
+        self.as_any().downcast_ref()
+    }
+}
+
+// ---------------------------------------------------------------------------------
 
 #[inline]
 pub fn into_arrow_ref(array: impl Array + 'static) -> ArrayRef {

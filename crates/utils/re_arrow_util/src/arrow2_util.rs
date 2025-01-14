@@ -10,6 +10,8 @@ use arrow2::{
 };
 use itertools::Itertools as _;
 
+// ---------------------------------------------------------------------------------
+
 /// Downcast an arrow array to another array, without having to go via `Any`.
 ///
 /// This is shorter, but also better: it means we don't accidentally downcast
@@ -28,7 +30,16 @@ impl Arrow2ArrayDowncastRef for dyn Arrow2Array {
     }
 }
 
-// ---
+impl<A> Arrow2ArrayDowncastRef for A
+where
+    A: Arrow2Array,
+{
+    fn downcast_array2_ref<T: Arrow2Array + 'static>(&self) -> Option<&T> {
+        self.as_any().downcast_ref()
+    }
+}
+
+// ---------------------------------------------------------------------------------
 
 /// Returns true if the given `list_array` is semantically empty.
 ///
