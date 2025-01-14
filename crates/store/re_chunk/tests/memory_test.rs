@@ -62,7 +62,7 @@ use arrow2::{
     offset::Offsets as Arrow2Offsets,
 };
 use itertools::Itertools;
-use re_arrow_util::arrow2_util;
+use re_arrow_util::{arrow2_util, Arrow2ArrayDowncastRef as _};
 
 // --- concat ---
 
@@ -140,12 +140,10 @@ fn concat_single_is_noop() {
 
     {
         let unconcatenated = unconcatenated
-            .as_any()
-            .downcast_ref::<Arrow2PrimitiveArray<i64>>()
+            .downcast_array2_ref::<Arrow2PrimitiveArray<i64>>()
             .unwrap();
         let concatenated = concatenated
-            .as_any()
-            .downcast_ref::<Arrow2PrimitiveArray<i64>>()
+            .downcast_array2_ref::<Arrow2PrimitiveArray<i64>>()
             .unwrap();
 
         assert!(
@@ -203,13 +201,11 @@ fn filter_does_allocate() {
     {
         let unfiltered = unfiltered
             .values()
-            .as_any()
-            .downcast_ref::<Arrow2PrimitiveArray<i64>>()
+            .downcast_array2_ref::<Arrow2PrimitiveArray<i64>>()
             .unwrap();
         let filtered = filtered
             .values()
-            .as_any()
-            .downcast_ref::<Arrow2PrimitiveArray<i64>>()
+            .downcast_array2_ref::<Arrow2PrimitiveArray<i64>>()
             .unwrap();
 
         assert!(
@@ -269,13 +265,11 @@ fn filter_empty_or_full_is_noop() {
     {
         let unfiltered = unfiltered
             .values()
-            .as_any()
-            .downcast_ref::<Arrow2PrimitiveArray<i64>>()
+            .downcast_array2_ref::<Arrow2PrimitiveArray<i64>>()
             .unwrap();
         let filtered = filtered
             .values()
-            .as_any()
-            .downcast_ref::<Arrow2PrimitiveArray<i64>>()
+            .downcast_array2_ref::<Arrow2PrimitiveArray<i64>>()
             .unwrap();
 
         assert!(
@@ -338,13 +332,11 @@ fn take_does_not_allocate() {
     {
         let untaken = untaken
             .values()
-            .as_any()
-            .downcast_ref::<Arrow2PrimitiveArray<i64>>()
+            .downcast_array2_ref::<Arrow2PrimitiveArray<i64>>()
             .unwrap();
         let taken = taken
             .values()
-            .as_any()
-            .downcast_ref::<Arrow2PrimitiveArray<i64>>()
+            .downcast_array2_ref::<Arrow2PrimitiveArray<i64>>()
             .unwrap();
 
         assert!(
@@ -400,13 +392,11 @@ fn take_empty_or_full_is_noop() {
     {
         let untaken = untaken
             .values()
-            .as_any()
-            .downcast_ref::<Arrow2PrimitiveArray<i64>>()
+            .downcast_array2_ref::<Arrow2PrimitiveArray<i64>>()
             .unwrap();
         let taken = taken
             .values()
-            .as_any()
-            .downcast_ref::<Arrow2PrimitiveArray<i64>>()
+            .downcast_array2_ref::<Arrow2PrimitiveArray<i64>>()
             .unwrap();
 
         assert!(

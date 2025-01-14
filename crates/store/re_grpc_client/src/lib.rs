@@ -3,6 +3,7 @@
 mod address;
 
 pub use address::{InvalidRedapAddress, RedapAddress};
+use re_arrow_util::Arrow2ArrayDowncastRef as _;
 use re_chunk::external::arrow2;
 use re_log_encoding::codec::wire::decoder::Decode;
 use re_log_types::external::re_types_core::ComponentDescriptor;
@@ -280,8 +281,7 @@ pub fn store_info_from_catalog_chunk(
             reason: "no application_id field found".to_owned(),
         }))?;
     let app_id = data
-        .as_any()
-        .downcast_ref::<Arrow2Utf8Array<i32>>()
+        .downcast_array2_ref::<Arrow2Utf8Array<i32>>()
         .ok_or(StreamError::ChunkError(re_chunk::ChunkError::Malformed {
             reason: format!("application_id must be a utf8 array: {:?}", tc.schema_ref()),
         }))?
@@ -294,8 +294,7 @@ pub fn store_info_from_catalog_chunk(
             reason: "no start_time field found".to_owned(),
         }))?;
     let start_time = data
-        .as_any()
-        .downcast_ref::<arrow2::array::Int64Array>()
+        .downcast_array2_ref::<arrow2::array::Int64Array>()
         .ok_or(StreamError::ChunkError(re_chunk::ChunkError::Malformed {
             reason: format!("start_time must be an int64 array: {:?}", tc.schema_ref()),
         }))?

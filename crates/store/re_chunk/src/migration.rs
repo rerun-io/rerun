@@ -2,7 +2,7 @@ use arrow2::array::{Array, Utf8Array};
 use itertools::Itertools;
 use nohash_hasher::IntMap;
 
-use re_arrow_util::arrow2_util;
+use re_arrow_util::{arrow2_util, Arrow2ArrayDowncastRef as _};
 
 use crate::Chunk;
 
@@ -52,7 +52,7 @@ impl Chunk {
                         .iter()
                         .map(|utf8_array| {
                             utf8_array.map(|array| {
-                                let Some(array) = array.as_any().downcast_ref::<Utf8Array<i32>>()
+                                let Some(array) = array.downcast_array2_ref::<Utf8Array<i32>>()
                                 else {
                                     // Unreachable, just avoiding unwraps.
                                     return array;

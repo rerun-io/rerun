@@ -7,6 +7,7 @@ use nohash_hasher::IntSet;
 
 use re_arrow_util::arrow2_util;
 use re_arrow_util::arrow_util;
+use re_arrow_util::Arrow2ArrayDowncastRef as _;
 use re_log_types::Timeline;
 use re_types_core::{ComponentDescriptor, ComponentName};
 
@@ -388,8 +389,7 @@ impl Chunk {
                         #[allow(clippy::unwrap_used)]
                         filtered
                             .with_validity(None)
-                            .as_any()
-                            .downcast_ref::<Arrow2ListArray<i32>>()
+                            .downcast_array2_ref::<Arrow2ListArray<i32>>()
                             // Unwrap: cannot possibly fail -- going from a ListArray back to a ListArray.
                             .unwrap()
                             .clone()

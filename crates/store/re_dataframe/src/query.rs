@@ -19,6 +19,7 @@ use arrow2::{
 use itertools::Itertools;
 
 use nohash_hasher::{IntMap, IntSet};
+use re_arrow_util::Arrow2ArrayDowncastRef as _;
 use re_chunk::{
     external::arrow::array::ArrayRef, Chunk, ComponentName, EntityPath, RangeQuery, RowId, TimeInt,
     Timeline, UnitChunkShared,
@@ -518,8 +519,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
 
             let values = list_array
                 .values()
-                .as_any()
-                .downcast_ref::<Arrow2BooleanArray>()?;
+                .downcast_array2_ref::<Arrow2BooleanArray>()?;
 
             let indices = Arrow2PrimitiveArray::from_vec(
                 values

@@ -16,7 +16,7 @@ use itertools::Itertools;
 use nohash_hasher::IntMap;
 use tap::Tap as _;
 
-use re_arrow_util::arrow_util::into_arrow_ref;
+use re_arrow_util::{arrow_util::into_arrow_ref, Arrow2ArrayDowncastRef as _};
 use re_byte_size::SizeBytes as _;
 use re_log_types::{EntityPath, Timeline};
 use re_types_core::{Component as _, ComponentDescriptor, Loggable as _};
@@ -714,8 +714,7 @@ impl Chunk {
 
             for (field, column) in transport.components() {
                 let column = column
-                    .as_any()
-                    .downcast_ref::<Arrow2ListArray<i32>>()
+                    .downcast_array2_ref::<Arrow2ListArray<i32>>()
                     .ok_or_else(|| ChunkError::Malformed {
                         reason: format!(
                             "The outer array in a chunked component batch must be a sparse list, got {:?}",
