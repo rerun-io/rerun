@@ -1,7 +1,7 @@
 //! [`ArrowMsg`] is the [`crate::LogMsg`] sub-type containing an Arrow payload.
 //!
 //! We have custom implementations of [`serde::Serialize`] and [`serde::Deserialize`] that wraps
-//! the inner Arrow serialization of [`Arrow2Schema`] and [`Arrow2Chunk`].
+//! the inner Arrow serialization of an [`ArrowRecordBatch`].
 
 use std::sync::Arc;
 
@@ -10,7 +10,7 @@ use arrow::array::RecordBatch as ArrowRecordBatch;
 use crate::TimePoint;
 
 /// An arbitrary callback to be run when an [`ArrowMsg`], and more specifically the
-/// [`Arrow2Chunk`] within it, goes out of scope.
+/// [`ArrowRecordBatch`] within it, goes out of scope.
 ///
 /// If the [`ArrowMsg`] has been cloned in a bunch of places, the callback will run for each and
 /// every instance.
