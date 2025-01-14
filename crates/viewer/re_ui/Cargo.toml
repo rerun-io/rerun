@@ -34,6 +34,7 @@ arrow = ["dep:arrow"]
 
 
 [dependencies]
+re_arrow_util.workspace = true
 re_entity_db.workspace = true # syntax-highlighting for InstancePath. TODO(emilk): move InstancePath
 re_format.workspace = true
 re_log.workspace = true

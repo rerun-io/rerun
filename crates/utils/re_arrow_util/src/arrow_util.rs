@@ -19,16 +19,13 @@ pub trait ArrowArrayDowncastRef {
     fn downcast_array_ref<T: Array + 'static>(&self) -> Option<&T>;
 }
 
-impl ArrowArrayDowncastRef for dyn Array {
+impl ArrowArrayDowncastRef for &dyn Array {
     fn downcast_array_ref<T: Array + 'static>(&self) -> Option<&T> {
         self.as_any().downcast_ref()
     }
 }
 
-impl<A> ArrowArrayDowncastRef for A
-where
-    A: Array,
-{
+impl ArrowArrayDowncastRef for ArrayRef {
     fn downcast_array_ref<T: Array + 'static>(&self) -> Option<&T> {
         self.as_any().downcast_ref()
     }

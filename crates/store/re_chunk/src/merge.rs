@@ -4,7 +4,9 @@ use arrow2::array::{Array as Arrow2Array, ListArray as Arrow2ListArray};
 use itertools::{izip, Itertools};
 use nohash_hasher::IntMap;
 
-use re_arrow_util::{arrow2_util, arrow_util, Arrow2ArrayDowncastRef as _};
+use re_arrow_util::{
+    arrow2_util, arrow_util, Arrow2ArrayDowncastRef as _, ArrowArrayDowncastRef as _,
+};
 
 use crate::{chunk::ChunkComponents, Chunk, ChunkError, ChunkId, ChunkResult, TimeColumn};
 
@@ -51,8 +53,7 @@ impl Chunk {
             #[allow(clippy::unwrap_used)]
             // concatenating 2 RowId arrays must yield another RowId array
             row_ids
-                .as_any()
-                .downcast_ref::<ArrowStructArray>()
+                .downcast_array_ref::<ArrowStructArray>()
                 .unwrap()
                 .clone()
         };

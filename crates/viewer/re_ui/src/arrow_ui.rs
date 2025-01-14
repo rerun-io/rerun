@@ -1,6 +1,8 @@
 use arrow::util::display::{ArrayFormatter, FormatOptions};
 use itertools::Itertools as _;
 
+use re_arrow_util::ArrowArrayDowncastRef as _;
+
 use crate::UiLayout;
 
 pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array::Array) {
@@ -16,14 +18,14 @@ pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array
 
         // Special-treat text.
         // Note: we match on the raw data here, so this works for any component containing text.
-        if let Some(utf8) = array.as_any().downcast_ref::<StringArray>() {
+        if let Some(utf8) = array.downcast_array_ref::<StringArray>() {
             if utf8.values().len() == 1 {
                 let string = utf8.value(0);
                 ui_layout.data_label(ui, string);
                 return;
             }
         }
-        if let Some(utf8) = array.as_any().downcast_ref::<LargeStringArray>() {
+        if let Some(utf8) = array.downcast_array_ref::<LargeStringArray>() {
             if utf8.values().len() == 1 {
                 let string = utf8.value(0);
                 ui_layout.data_label(ui, string);

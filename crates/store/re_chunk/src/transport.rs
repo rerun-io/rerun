@@ -2,8 +2,7 @@ use std::sync::Arc;
 
 use arrow::{
     array::{
-        Array as ArrowArray, ArrayRef as ArrowArrayRef, RecordBatch as ArrowRecordBatch,
-        StructArray as ArrowStructArray,
+        ArrayRef as ArrowArrayRef, RecordBatch as ArrowRecordBatch, StructArray as ArrowStructArray,
     },
     datatypes::{Field as ArrowField, Schema as ArrowSchema, SchemaRef as ArrowSchemaRef},
 };
@@ -16,7 +15,9 @@ use itertools::Itertools;
 use nohash_hasher::IntMap;
 use tap::Tap as _;
 
-use re_arrow_util::{arrow_util::into_arrow_ref, Arrow2ArrayDowncastRef as _};
+use re_arrow_util::{
+    arrow_util::into_arrow_ref, Arrow2ArrayDowncastRef as _, ArrowArrayDowncastRef as _,
+};
 use re_byte_size::SizeBytes as _;
 use re_log_types::{EntityPath, Timeline};
 use re_types_core::{Component as _, ComponentDescriptor, Loggable as _};
@@ -648,8 +649,7 @@ impl Chunk {
             };
 
             ArrowArrayRef::from(row_ids.clone())
-                .as_any()
-                .downcast_ref::<ArrowStructArray>()
+                .downcast_array_ref::<ArrowStructArray>()
                 .ok_or_else(|| ChunkError::Malformed {
                     reason: format!(
                         "RowId data has the wrong datatype: expected {:?} but got {:?} instead",

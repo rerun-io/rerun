@@ -8,7 +8,7 @@ use std::{
 };
 
 use arrow::{
-    array::{make_array, Array, ArrayData, Int64Array, RecordBatchIterator, RecordBatchReader},
+    array::{make_array, ArrayData, Int64Array, RecordBatchIterator, RecordBatchReader},
     pyarrow::PyArrowType,
 };
 use numpy::PyArrayMethods as _;
@@ -18,6 +18,7 @@ use pyo3::{
     types::{PyDict, PyTuple},
 };
 
+use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk_store::{
     ChunkStore, ChunkStoreConfig, ChunkStoreHandle, ColumnDescriptor, ColumnSelector,
     ComponentColumnDescriptor, ComponentColumnSelector, QueryExpression, SparseFillStrategy,
@@ -344,7 +345,7 @@ impl IndexValuesLike<'_> {
             Self::PyArrow(array) => {
                 let array = make_array(array.0.clone());
 
-                let int_array = array.as_any().downcast_ref::<Int64Array>().ok_or_else(|| {
+                let int_array = array.downcast_array_ref::<Int64Array>().ok_or_else(|| {
                     PyTypeError::new_err("pyarrow.Array for IndexValuesLike must be of type int64.")
                 })?;
 
@@ -393,7 +394,7 @@ impl IndexValuesLike<'_> {
                         let array = make_array(chunk.0.clone());
 
                         let int_array =
-                            array.as_any().downcast_ref::<Int64Array>().ok_or_else(|| {
+                            array.downcast_array_ref::<Int64Array>().ok_or_else(|| {
                                 PyTypeError::new_err(
                                     "pyarrow.Array for IndexValuesLike must be of type int64.",
                                 )
