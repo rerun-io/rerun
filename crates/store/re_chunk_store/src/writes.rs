@@ -267,13 +267,15 @@ impl ChunkStore {
                 for (timeline, time_range_per_component) in
                     chunk_or_compacted.time_range_per_component()
                 {
-                    let temporal_chunk_ids_per_component =
+                    let temporal_chunk_ids_per_name =
                         temporal_chunk_ids_per_timeline.entry(timeline).or_default();
 
                     for (component_name, per_desc) in time_range_per_component {
-                        for (_component_desc, time_range) in per_desc {
-                            let temporal_chunk_ids_per_time = temporal_chunk_ids_per_component
+                        for (component_desc, time_range) in per_desc {
+                            let temporal_chunk_ids_per_time = temporal_chunk_ids_per_name
                                 .entry(component_name)
+                                .or_default()
+                                .entry(component_desc)
                                 .or_default();
 
                             // See `ChunkIdSetPerTime::max_interval_length`'s documentation.
@@ -475,16 +477,20 @@ impl ChunkStore {
             .get(chunk.entity_path())?;
 
         for (timeline, time_range_per_component) in chunk.time_range_per_component() {
-            let Some(temporal_chunk_ids_per_component) =
-                temporal_chunk_ids_per_timeline.get(&timeline)
+            let Some(temporal_chunk_ids_per_name) = temporal_chunk_ids_per_timeline.get(&timeline)
             else {
                 continue;
             };
 
             for (component_name, per_desc) in time_range_per_component {
-                for (_component_desc, time_range) in per_desc {
+                for (component_desc, time_range) in per_desc {
+                    let Some(temporal_chunk_ids_per_descr) =
+                        temporal_chunk_ids_per_name.get(&component_name)
+                    else {
+                        continue;
+                    };
                     let Some(temporal_chunk_ids_per_time) =
-                        temporal_chunk_ids_per_component.get(&component_name)
+                        temporal_chunk_ids_per_descr.get(&component_desc)
                     else {
                         continue;
                     };

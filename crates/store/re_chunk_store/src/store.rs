@@ -259,12 +259,16 @@ pub struct ChunkIdSetPerTime {
     pub(crate) per_end_time: BTreeMap<TimeInt, ChunkIdSet>,
 }
 
-pub type ChunkIdSetPerTimePerName = IntMap<ComponentName, ChunkIdSetPerTime>;
+pub type ChunkIdSetPerTimePerDescriptor = IntMap<ComponentDescriptor, ChunkIdSetPerTime>;
 
-pub type ChunkIdSetPerTimePerNamePerTimeline = IntMap<Timeline, ChunkIdSetPerTimePerName>;
+pub type ChunkIdSetPerTimePerDescriptorPerName =
+    IntMap<ComponentName, ChunkIdSetPerTimePerDescriptor>;
 
-pub type ChunkIdSetPerTimePerNamePerTimelinePerEntity =
-    IntMap<EntityPath, ChunkIdSetPerTimePerNamePerTimeline>;
+pub type ChunkIdSetPerTimePerDescriptorPerNamePerTimeline =
+    IntMap<Timeline, ChunkIdSetPerTimePerDescriptorPerName>;
+
+pub type ChunkIdSetPerTimePerDescriptorPerNamePerTimelinePerEntity =
+    IntMap<EntityPath, ChunkIdSetPerTimePerDescriptorPerNamePerTimeline>;
 
 pub type ChunkIdPerDescriptor = IntMap<ComponentDescriptor, ChunkId>;
 
@@ -430,7 +434,7 @@ pub struct ChunkStore {
     /// * [`Self::temporal_chunk_ids_per_entity`].
     /// * [`Self::static_chunk_ids_per_entity`].
     pub(crate) temporal_chunk_ids_per_entity_per_component:
-        ChunkIdSetPerTimePerNamePerTimelinePerEntity,
+        ChunkIdSetPerTimePerDescriptorPerNamePerTimelinePerEntity,
 
     /// All temporal [`ChunkId`]s for all entities on all timelines, without the [`ComponentName`] index.
     ///

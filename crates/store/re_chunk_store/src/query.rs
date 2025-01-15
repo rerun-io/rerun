@@ -432,8 +432,10 @@ impl ChunkStore {
             .is_some_and(|temporal_chunks_per_timeline| {
                 temporal_chunks_per_timeline
                     .values()
-                    .flat_map(|temporal_chunks_per_component| {
-                        temporal_chunks_per_component.values()
+                    .flat_map(|temporal_chunks_per_name| {
+                        temporal_chunks_per_name
+                            .values()
+                            .flat_map(|per_desc| per_desc.values())
                     })
                     .flat_map(|chunk_id_sets| chunk_id_sets.per_start_time.values())
                     .flat_map(|chunk_id_set| chunk_id_set.iter())
@@ -458,9 +460,10 @@ impl ChunkStore {
         self.temporal_chunk_ids_per_entity_per_component
             .get(entity_path)
             .and_then(|temporal_chunks_per_timeline| temporal_chunks_per_timeline.get(timeline))
-            .is_some_and(|temporal_chunks_per_component| {
-                temporal_chunks_per_component
+            .is_some_and(|temporal_chunks_per_name| {
+                temporal_chunks_per_name
                     .values()
+                    .flat_map(|per_desc| per_desc.values())
                     .flat_map(|chunk_id_sets| chunk_id_sets.per_start_time.values())
                     .flat_map(|chunk_id_set| chunk_id_set.iter())
                     .any(|chunk_id| self.chunks_per_chunk_id.contains_key(chunk_id))
@@ -483,7 +486,10 @@ impl ChunkStore {
         let temporal_chunk_ids_per_component = temporal_chunk_ids_per_timeline.get(timeline)?;
 
         let mut time_min = TimeInt::MAX;
-        for temporal_chunk_ids_per_time in temporal_chunk_ids_per_component.values() {
+        for temporal_chunk_ids_per_time in temporal_chunk_ids_per_component
+            .values()
+            .flat_map(|per_desc| per_desc.values())
+        {
             let Some(time) = temporal_chunk_ids_per_time
                 .per_start_time
                 .first_key_value()
@@ -588,7 +594,9 @@ impl ChunkStore {
                 temporal_chunk_ids_per_timeline.get(&query.timeline())
             })
             .and_then(|temporal_chunk_ids_per_component| {
-                temporal_chunk_ids_per_component.get(&component_name)
+                temporal_chunk_ids_per_component
+                    .get(&component_name)
+                    .and_then(|per_desc| per_desc.values().next())
             })
             .and_then(|temporal_chunk_ids_per_time| {
                 self.latest_at(query, temporal_chunk_ids_per_time)
@@ -737,8 +745,10 @@ impl ChunkStore {
                     .and_then(|temporal_chunk_ids_per_timeline| {
                         temporal_chunk_ids_per_timeline.get(&query.timeline())
                     })
-                    .and_then(|temporal_chunk_ids_per_component| {
-                        temporal_chunk_ids_per_component.get(&component_name)
+                    .and_then(|temporal_chunk_ids_per_name| {
+                        temporal_chunk_ids_per_name
+                            .get(&component_name)
+                            .and_then(|per_desc| per_desc.values().next())
                     })
                     .into_iter(),
             )

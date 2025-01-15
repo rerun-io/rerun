@@ -313,7 +313,9 @@ impl ChunkStore {
                 temporal_chunk_ids_per_timeline.get(timeline)
             })
             .and_then(|temporal_chunk_ids_per_component| {
-                temporal_chunk_ids_per_component.get(&component_name)
+                temporal_chunk_ids_per_component
+                    .get(&component_name)
+                    .and_then(|per_desc| per_desc.values().next())
             })
             .map_or(0, |chunk_id_sets| {
                 chunk_id_sets
