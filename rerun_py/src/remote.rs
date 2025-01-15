@@ -347,7 +347,7 @@ impl PyStorageNodeClient {
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
             let recording_id = metadata
-                .all_columns()
+                .fields_and_columns()
                 .find(|(field, _data)| field.name() == "rerun_recording_id")
                 .map(|(_field, data)| data)
                 .ok_or(PyRuntimeError::new_err("No rerun_recording_id"))?

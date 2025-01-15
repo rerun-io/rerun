@@ -1399,7 +1399,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            assert_debug_snapshot!(dataframe.all_columns_collected());
+            assert_debug_snapshot!(dataframe.columns());
         }
 
         // temporal
@@ -1421,7 +1421,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            assert_debug_snapshot!(dataframe.all_columns_collected());
+            assert_debug_snapshot!(dataframe.columns());
         }
 
         Ok(())
@@ -1455,7 +1455,7 @@ mod tests {
         )?;
         eprintln!("{dataframe}");
 
-        assert_debug_snapshot!(dataframe.all_columns_collected());
+        assert_debug_snapshot!(dataframe.columns());
 
         Ok(())
     }
@@ -1488,7 +1488,7 @@ mod tests {
         )?;
         eprintln!("{dataframe}");
 
-        assert_debug_snapshot!(dataframe.all_columns_collected());
+        assert_debug_snapshot!(dataframe.columns());
 
         Ok(())
     }
@@ -1527,7 +1527,7 @@ mod tests {
         )?;
         eprintln!("{dataframe}");
 
-        assert_debug_snapshot!(dataframe.all_columns_collected());
+        assert_debug_snapshot!(dataframe.columns());
 
         Ok(())
     }
@@ -1569,7 +1569,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            assert_debug_snapshot!(dataframe.all_columns_collected());
+            assert_debug_snapshot!(dataframe.columns());
         }
 
         // sparse-filled
@@ -1599,7 +1599,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            assert_debug_snapshot!(dataframe.all_columns_collected());
+            assert_debug_snapshot!(dataframe.columns());
         }
 
         Ok(())
@@ -1640,7 +1640,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            assert_debug_snapshot!(dataframe.all_columns_collected());
+            assert_debug_snapshot!(dataframe.columns());
         }
 
         // non-existing component
@@ -1666,7 +1666,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            assert_debug_snapshot!(dataframe.all_columns_collected());
+            assert_debug_snapshot!(dataframe.columns());
         }
 
         // MyPoint
@@ -1692,7 +1692,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            assert_debug_snapshot!(dataframe.all_columns_collected());
+            assert_debug_snapshot!(dataframe.columns());
         }
 
         // MyColor
@@ -1718,7 +1718,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            assert_debug_snapshot!(dataframe.all_columns_collected());
+            assert_debug_snapshot!(dataframe.columns());
         }
 
         Ok(())
@@ -1760,7 +1760,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            assert_debug_snapshot!(dataframe.all_columns_collected());
+            assert_debug_snapshot!(dataframe.columns());
         }
 
         {
@@ -1797,7 +1797,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            assert_debug_snapshot!(dataframe.all_columns_collected());
+            assert_debug_snapshot!(dataframe.columns());
         }
 
         Ok(())
@@ -1835,7 +1835,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            assert_debug_snapshot!(dataframe.all_columns_collected());
+            assert_debug_snapshot!(dataframe.columns());
         }
 
         // only indices (+ duplication)
@@ -1868,7 +1868,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            assert_debug_snapshot!(dataframe.all_columns_collected());
+            assert_debug_snapshot!(dataframe.columns());
         }
 
         // only components (+ duplication)
@@ -1908,7 +1908,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            assert_debug_snapshot!(dataframe.all_columns_collected());
+            assert_debug_snapshot!(dataframe.columns());
         }
 
         // static
@@ -1969,7 +1969,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            assert_debug_snapshot!(dataframe.all_columns_collected());
+            assert_debug_snapshot!(dataframe.columns());
         }
 
         Ok(())
@@ -2038,7 +2038,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            assert_debug_snapshot!(dataframe.all_columns_collected());
+            assert_debug_snapshot!(dataframe.columns());
         }
 
         Ok(())
@@ -2078,7 +2078,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            assert_debug_snapshot!(dataframe.all_columns_collected());
+            assert_debug_snapshot!(dataframe.columns());
         }
 
         // sparse-filled
@@ -2106,7 +2106,7 @@ mod tests {
             // static clear semantics in general are pretty unhinged right now, especially when
             // ranges are involved.
             // It's extremely niche, our time is better spent somewhere else right now.
-            assert_debug_snapshot!(dataframe.all_columns_collected());
+            assert_debug_snapshot!(dataframe.columns());
         }
 
         Ok(())
@@ -2153,8 +2153,8 @@ mod tests {
                         &query_handle.batch_iter().take(3).collect_vec(),
                     )?;
 
-                    let expected = format!("{:#?}", expected.all_columns_collected());
-                    let got = format!("{:#?}", got.all_columns_collected());
+                    let expected = format!("{:#?}", expected.columns());
+                    let got = format!("{:#?}", got.columns());
 
                     similar_asserts::assert_eq!(expected, got);
                 }
@@ -2194,8 +2194,8 @@ mod tests {
                         &query_handle.batch_iter().take(3).collect_vec(),
                     )?;
 
-                    let expected = format!("{:#?}", expected.all_columns_collected());
-                    let got = format!("{:#?}", got.all_columns_collected());
+                    let expected = format!("{:#?}", expected.columns());
+                    let got = format!("{:#?}", got.columns());
 
                     similar_asserts::assert_eq!(expected, got);
                 }
@@ -2238,8 +2238,8 @@ mod tests {
                         &query_handle.batch_iter().take(3).collect_vec(),
                     )?;
 
-                    let expected = format!("{:#?}", expected.all_columns_collected());
-                    let got = format!("{:#?}", got.all_columns_collected());
+                    let expected = format!("{:#?}", expected.columns());
+                    let got = format!("{:#?}", got.columns());
 
                     similar_asserts::assert_eq!(expected, got);
                 }
@@ -2276,8 +2276,8 @@ mod tests {
                         &query_handle.batch_iter().take(3).collect_vec(),
                     )?;
 
-                    let expected = format!("{:#?}", expected.all_columns_collected());
-                    let got = format!("{:#?}", got.all_columns_collected());
+                    let expected = format!("{:#?}", expected.columns());
+                    let got = format!("{:#?}", got.columns());
 
                     similar_asserts::assert_eq!(expected, got);
                 }
@@ -2344,7 +2344,7 @@ mod tests {
                 )?;
                 eprintln!("{dataframe}");
 
-                assert_debug_snapshot!(dataframe.all_columns_collected());
+                assert_debug_snapshot!(dataframe.columns());
 
                 Ok::<_, anyhow::Error>(())
             }
@@ -2375,7 +2375,7 @@ mod tests {
                 )?;
                 eprintln!("{dataframe}");
 
-                assert_debug_snapshot!(dataframe.all_columns_collected());
+                assert_debug_snapshot!(dataframe.columns());
 
                 Ok::<_, anyhow::Error>(())
             }

@@ -380,7 +380,7 @@ impl TransportChunk {
     /// * [`Self::FIELD_METADATA_VALUE_KIND_CONTROL`]
     /// * [`Self::FIELD_METADATA_VALUE_KIND_DATA`]
     #[inline]
-    pub fn columns<'a>(
+    fn columns_of_kind<'a>(
         &'a self,
         kind: &'a str,
     ) -> impl Iterator<Item = (&'a ArrowField, &'a Box<dyn Arrow2Array>)> + 'a {
@@ -402,7 +402,9 @@ impl TransportChunk {
     }
 
     #[inline]
-    pub fn all_columns(&self) -> impl Iterator<Item = (&ArrowField, &Box<dyn Arrow2Array>)> + '_ {
+    pub fn fields_and_columns(
+        &self,
+    ) -> impl Iterator<Item = (&ArrowField, &Box<dyn Arrow2Array>)> + '_ {
         self.schema
             .fields
             .iter()
@@ -416,26 +418,26 @@ impl TransportChunk {
     }
 
     #[inline]
-    pub fn all_columns_collected(&self) -> Vec<&dyn Arrow2Array> {
+    pub fn columns(&self) -> Vec<&dyn Arrow2Array> {
         self.data.iter().map(|c| c.as_ref()).collect()
     }
 
     /// Iterates all control columns present in this chunk.
     #[inline]
     pub fn controls(&self) -> impl Iterator<Item = (&ArrowField, &Box<dyn Arrow2Array>)> {
-        self.columns(Self::FIELD_METADATA_VALUE_KIND_CONTROL)
+        self.columns_of_kind(Self::FIELD_METADATA_VALUE_KIND_CONTROL)
     }
 
     /// Iterates all data columns present in this chunk.
     #[inline]
     pub fn components(&self) -> impl Iterator<Item = (&ArrowField, &Box<dyn Arrow2Array>)> {
-        self.columns(Self::FIELD_METADATA_VALUE_KIND_DATA)
+        self.columns_of_kind(Self::FIELD_METADATA_VALUE_KIND_DATA)
     }
 
     /// Iterates all timeline columns present in this chunk.
     #[inline]
     pub fn timelines(&self) -> impl Iterator<Item = (&ArrowField, &Box<dyn Arrow2Array>)> {
-        self.columns(Self::FIELD_METADATA_VALUE_KIND_TIME)
+        self.columns_of_kind(Self::FIELD_METADATA_VALUE_KIND_TIME)
     }
 
     /// How many columns in total? Includes control, time, and component columns.
