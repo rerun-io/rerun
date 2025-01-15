@@ -33,11 +33,6 @@ impl SegmentationImage {
 
         let image_format = ImageFormat::segmentation([width as _, height as _], datatype);
 
-        Ok(Self {
-            buffer: blob.into(),
-            format: image_format.into(),
-            draw_order: None,
-            opacity: None,
-        })
+        Ok(Self::new(blob, image_format))
     }
 }

@@ -64,7 +64,8 @@ fn resolution_of_image_at(
 ) -> Option<Resolution> {
     // First check assumptions:
     static_assert_struct_has_fields!(archetypes::Image, format: components::ImageFormat);
-    static_assert_struct_has_fields!(archetypes::EncodedImage, blob: components::Blob);
+    // TODO(#7245): How to check this with eager serialized archetypes?
+    //static_assert_struct_has_fields!(archetypes::EncodedImage, blob: components::Blob);
 
     let db = ctx.recording();
 

@@ -17,6 +17,7 @@ namespace rerun.archetypes;
 ///
 /// \example archetypes/view_coordinates_simple title="View coordinates for adjusting the eye camera" image="https://static.rerun.io/viewcoordinates/0833f0dc8616a676b7b2c566f2a6f613363680c5/1200w.png"
 table ViewCoordinates (
+  // TODO(#7245): "attr.rust.archetype_eager",
   "attr.rust.derive": "Copy, PartialEq, Eq, bytemuck::Pod, bytemuck::Zeroable",
   "attr.rust.repr": "transparent",
   "attr.docs.category": "Spatial 3D",

@@ -90,22 +90,22 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/leaf_transform3d/41674f0082d6de489f8a1cd1583f60f6b5820ddf/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub struct InstancePoses3D {
     /// Translation vectors.
-    pub translations: Option<Vec<crate::components::PoseTranslation3D>>,
+    pub translations: Option<SerializedComponentBatch>,
 
     /// Rotations via axis + angle.
-    pub rotation_axis_angles: Option<Vec<crate::components::PoseRotationAxisAngle>>,
+    pub rotation_axis_angles: Option<SerializedComponentBatch>,
 
     /// Rotations via quaternion.
-    pub quaternions: Option<Vec<crate::components::PoseRotationQuat>>,
+    pub quaternions: Option<SerializedComponentBatch>,
 
     /// Scaling factors.
-    pub scales: Option<Vec<crate::components::PoseScale3D>>,
+    pub scales: Option<SerializedComponentBatch>,
 
     /// 3x3 transformation matrices.
-    pub mat3x3: Option<Vec<crate::components::PoseTransformMat3x3>>,
+    pub mat3x3: Option<SerializedComponentBatch>,
 }
 
 impl InstancePoses3D {
@@ -253,69 +253,30 @@ impl ::re_types_core::Archetype for InstancePoses3D {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
         let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
-        let translations =
-            if let Some(array) = arrays_by_descr.get(&Self::descriptor_translations()) {
-                Some({
-                    <crate::components::PoseTranslation3D>::from_arrow_opt(&**array)
-                        .with_context("rerun.archetypes.InstancePoses3D#translations")?
-                        .into_iter()
-                        .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                        .collect::<DeserializationResult<Vec<_>>>()
-                        .with_context("rerun.archetypes.InstancePoses3D#translations")?
-                })
-            } else {
-                None
-            };
-        let rotation_axis_angles =
-            if let Some(array) = arrays_by_descr.get(&Self::descriptor_rotation_axis_angles()) {
-                Some({
-                    <crate::components::PoseRotationAxisAngle>::from_arrow_opt(&**array)
-                        .with_context("rerun.archetypes.InstancePoses3D#rotation_axis_angles")?
-                        .into_iter()
-                        .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                        .collect::<DeserializationResult<Vec<_>>>()
-                        .with_context("rerun.archetypes.InstancePoses3D#rotation_axis_angles")?
-                })
-            } else {
-                None
-            };
-        let quaternions = if let Some(array) = arrays_by_descr.get(&Self::descriptor_quaternions())
-        {
-            Some({
-                <crate::components::PoseRotationQuat>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.InstancePoses3D#quaternions")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                    .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.InstancePoses3D#quaternions")?
-            })
-        } else {
-            None
-        };
-        let scales = if let Some(array) = arrays_by_descr.get(&Self::descriptor_scales()) {
-            Some({
-                <crate::components::PoseScale3D>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.InstancePoses3D#scales")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                    .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.InstancePoses3D#scales")?
-            })
-        } else {
-            None
-        };
-        let mat3x3 = if let Some(array) = arrays_by_descr.get(&Self::descriptor_mat3x3()) {
-            Some({
-                <crate::components::PoseTransformMat3x3>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.InstancePoses3D#mat3x3")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                    .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.InstancePoses3D#mat3x3")?
-            })
-        } else {
-            None
-        };
+        let translations = arrays_by_descr
+            .get(&Self::descriptor_translations())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_translations())
+            });
+        let rotation_axis_angles = arrays_by_descr
+            .get(&Self::descriptor_rotation_axis_angles())
+            .map(|array| {
+                SerializedComponentBatch::new(
+                    array.clone(),
+                    Self::descriptor_rotation_axis_angles(),
+                )
+            });
+        let quaternions = arrays_by_descr
+            .get(&Self::descriptor_quaternions())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_quaternions())
+            });
+        let scales = arrays_by_descr
+            .get(&Self::descriptor_scales())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_scales()));
+        let mat3x3 = arrays_by_descr
+            .get(&Self::descriptor_mat3x3())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_mat3x3()));
         Ok(Self {
             translations,
             rotation_axis_angles,
@@ -327,51 +288,16 @@ impl ::re_types_core::Archetype for InstancePoses3D {
 }
 
 impl ::re_types_core::AsComponents for InstancePoses3D {
-    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
-        re_tracing::profile_function!();
+    #[inline]
+    fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
-            (self
-                .translations
-                .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_translations()),
-            }),
-            (self
-                .rotation_axis_angles
-                .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_rotation_axis_angles()),
-            }),
-            (self
-                .quaternions
-                .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_quaternions()),
-            }),
-            (self
-                .scales
-                .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_scales()),
-            }),
-            (self
-                .mat3x3
-                .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_mat3x3()),
-            }),
+            Self::indicator().serialized(),
+            self.translations.clone(),
+            self.rotation_axis_angles.clone(),
+            self.quaternions.clone(),
+            self.scales.clone(),
+            self.mat3x3.clone(),
         ]
         .into_iter()
         .flatten()
@@ -394,13 +320,47 @@ impl InstancePoses3D {
         }
     }
 
+    /// Update only some specific fields of a `InstancePoses3D`.
+    #[inline]
+    pub fn update_fields() -> Self {
+        Self::default()
+    }
+
+    /// Clear all the fields of a `InstancePoses3D`.
+    #[inline]
+    pub fn clear_fields() -> Self {
+        use ::re_types_core::Loggable as _;
+        Self {
+            translations: Some(SerializedComponentBatch::new(
+                crate::components::PoseTranslation3D::arrow_empty(),
+                Self::descriptor_translations(),
+            )),
+            rotation_axis_angles: Some(SerializedComponentBatch::new(
+                crate::components::PoseRotationAxisAngle::arrow_empty(),
+                Self::descriptor_rotation_axis_angles(),
+            )),
+            quaternions: Some(SerializedComponentBatch::new(
+                crate::components::PoseRotationQuat::arrow_empty(),
+                Self::descriptor_quaternions(),
+            )),
+            scales: Some(SerializedComponentBatch::new(
+                crate::components::PoseScale3D::arrow_empty(),
+                Self::descriptor_scales(),
+            )),
+            mat3x3: Some(SerializedComponentBatch::new(
+                crate::components::PoseTransformMat3x3::arrow_empty(),
+                Self::descriptor_mat3x3(),
+            )),
+        }
+    }
+
     /// Translation vectors.
     #[inline]
     pub fn with_translations(
         mut self,
         translations: impl IntoIterator<Item = impl Into<crate::components::PoseTranslation3D>>,
     ) -> Self {
-        self.translations = Some(translations.into_iter().map(Into::into).collect());
+        self.translations = try_serialize_field(Self::descriptor_translations(), translations);
         self
     }
 
@@ -412,8 +372,10 @@ impl InstancePoses3D {
             Item = impl Into<crate::components::PoseRotationAxisAngle>,
         >,
     ) -> Self {
-        self.rotation_axis_angles =
-            Some(rotation_axis_angles.into_iter().map(Into::into).collect());
+        self.rotation_axis_angles = try_serialize_field(
+            Self::descriptor_rotation_axis_angles(),
+            rotation_axis_angles,
+        );
         self
     }
 
@@ -423,7 +385,7 @@ impl InstancePoses3D {
         mut self,
         quaternions: impl IntoIterator<Item = impl Into<crate::components::PoseRotationQuat>>,
     ) -> Self {
-        self.quaternions = Some(quaternions.into_iter().map(Into::into).collect());
+        self.quaternions = try_serialize_field(Self::descriptor_quaternions(), quaternions);
         self
     }
 
@@ -433,7 +395,7 @@ impl InstancePoses3D {
         mut self,
         scales: impl IntoIterator<Item = impl Into<crate::components::PoseScale3D>>,
     ) -> Self {
-        self.scales = Some(scales.into_iter().map(Into::into).collect());
+        self.scales = try_serialize_field(Self::descriptor_scales(), scales);
         self
     }
 
@@ -443,7 +405,7 @@ impl InstancePoses3D {
         mut self,
         mat3x3: impl IntoIterator<Item = impl Into<crate::components::PoseTransformMat3x3>>,
     ) -> Self {
-        self.mat3x3 = Some(mat3x3.into_iter().map(Into::into).collect());
+        self.mat3x3 = try_serialize_field(Self::descriptor_mat3x3(), mat3x3);
         self
     }
 }
@@ -456,14 +418,5 @@ impl ::re_byte_size::SizeBytes for InstancePoses3D {
             + self.quaternions.heap_size_bytes()
             + self.scales.heap_size_bytes()
             + self.mat3x3.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <Option<Vec<crate::components::PoseTranslation3D>>>::is_pod()
-            && <Option<Vec<crate::components::PoseRotationAxisAngle>>>::is_pod()
-            && <Option<Vec<crate::components::PoseRotationQuat>>>::is_pod()
-            && <Option<Vec<crate::components::PoseScale3D>>>::is_pod()
-            && <Option<Vec<crate::components::PoseTransformMat3x3>>>::is_pod()
     }
 }

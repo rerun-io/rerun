@@ -17,7 +17,8 @@ namespace rerun.archetypes;
 /// \example archetypes/clear_simple title="Flat" image="https://static.rerun.io/clear_simple/2f5df95fcc53e9f0552f65670aef7f94830c5c1a/1200w.png"
 /// \example archetypes/clear_recursive !api "Recursive"
 table Clear (
-  "attr.rust.derive": "PartialEq, Eq",
+  "attr.rust.archetype_eager",
+  "attr.rust.derive": "PartialEq",
   "attr.rust.override_crate": "re_types_core",
   "attr.docs.view_types": "Spatial2DView, Spatial3DView, TimeSeriesView"
 ) {
