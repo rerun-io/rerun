@@ -238,17 +238,15 @@ impl TransformCacheStoreSubscriber {
                             entity_db,
                             &query,
                         )
-                        // If there's *no* transform, we have to put identity in, otherwise we'd miss clears!
                         .unwrap_or(glam::Affine3A::IDENTITY);
-                        entity_entry
-                            .tree_transforms
-                            .insert(time, glam::Affine3A::IDENTITY);
+                        // If there's *no* transform, we have to put identity in, otherwise we'd miss clears!
+                        entity_entry.tree_transforms.insert(time, transform);
                     }
                     if invalidated_transform
                         .aspects
                         .contains(TransformAspect::Pose)
                     {
-                        let transforms = query_and_resolve_instance_poses_at_entity(
+                        let poses = query_and_resolve_instance_poses_at_entity(
                             entity_path,
                             entity_db,
                             &query,
@@ -257,7 +255,7 @@ impl TransformCacheStoreSubscriber {
                         entity_entry
                             .pose_transforms
                             .get_or_insert_with(Box::default)
-                            .insert(time, transforms);
+                            .insert(time, poses);
                     }
                     if invalidated_transform
                         .aspects
@@ -283,7 +281,7 @@ impl TransformCacheStoreSubscriber {
 
 impl PerStoreChunkSubscriber for TransformCacheStoreSubscriber {
     fn name() -> String {
-        "rerun.TransformResolverStoreSubscriber".to_owned()
+        "rerun.TransformCacheStoreSubscriber".to_owned()
     }
 
     fn on_events<'a>(&mut self, events: impl Iterator<Item = &'a re_chunk_store::ChunkStoreEvent>) {
