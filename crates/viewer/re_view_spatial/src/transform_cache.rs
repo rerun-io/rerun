@@ -17,6 +17,17 @@ use re_types::{
 };
 
 /// Store subscriber that resolves all transform components at a given entity to an affine transform.
+///
+/// It only handles resulting transforms individually to each entity, not how these transforms propagate in the tree.
+/// For transform tree propagation see [`crate::contexts::TransformTreeContext`].
+///
+/// There are different kinds of transforms handled here:
+/// * [`archetypes::Transform3D`]
+///   Tree transforms that should propagate in the tree (via [`crate::contexts::TransformTreeContext`]).
+/// * [`archetypes::InstancePoses3D`]
+///   Instance poses that should be applied to the tree transforms (via [`crate::contexts::TransformTreeContext`]) but not propagate.
+/// * [`components::PinholeProjection`] and [`components::ViewCoordinates`]
+///   Pinhole projections & associated view coordinates used for visualizing cameras in 3D and embedding 2D in 3D
 pub struct TransformCacheStoreSubscriber {
     /// All components of [`archetypes::Transform3D`]
     transform_components: IntSet<ComponentName>,
@@ -88,19 +99,35 @@ pub struct CachedTransformsPerTimeline {
     per_entity: IntMap<EntityPathHash, PerTimelinePerEntityTransforms>,
 }
 
+type PoseTransformMap = BTreeMap<TimeInt, Vec<glam::Affine3A>>;
+
+/// Maps from time to pinhole projection.
+///
+/// Unlike with tree & pose transforms, there's identity value that we can insert upon clears.
+/// (clears here meaning that the user first logs a pinhole and then later either logs a clear or an empty pinhole array)
+/// Therefore, we instead store those events as `None` values to ensure that everything after a clear
+/// is properly marked as having no pinhole projection.
+type PinholeProjectionMap = BTreeMap<TimeInt, Option<ResolvedPinholeProjection>>;
+
 pub struct PerTimelinePerEntityTransforms {
     timeline: Timeline,
 
     tree_transforms: BTreeMap<TimeInt, glam::Affine3A>,
-    pose_transforms: BTreeMap<TimeInt, Vec<glam::Affine3A>>,
-    // Note that pinhole projections are fairly rare - it's worth considering storing them separately so we don't have this around for every entity.
-    // The flipside of that is of course that we'd have to do more lookups (unless we come up with a way to linearly iterate them)
-    pinhole_projections: BTreeMap<TimeInt, Option<ResolvedPinholeProjection>>,
+
+    // Pose transforms and pinhole projections are typically more rare, which is why we store them as optional boxes.
+    pose_transforms: Option<Box<PoseTransformMap>>,
+    pinhole_projections: Option<Box<PinholeProjectionMap>>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ResolvedPinholeProjection {
     pub image_from_camera: components::PinholeProjection,
+
+    /// View coordinates at this pinhole camera.
+    ///
+    /// This is needed to orient 2D in 3D and 3D in 2D the right way around
+    /// (answering questions like which axis is distance to viewer increasing).
+    /// If no view coordinates were logged, this is set to [`Self::DEFAULT_VIEW_COORDINATES`].
     pub view_coordinates: components::ViewCoordinates,
 }
 
@@ -135,9 +162,9 @@ impl PerTimelinePerEntityTransforms {
     pub fn latest_at_instance_poses(&self, query: &LatestAtQuery) -> &[glam::Affine3A] {
         debug_assert!(query.timeline() == self.timeline);
         self.pose_transforms
-            .range(..query.at().inc())
-            .next_back()
-            .map(|(_time, transform)| transform.as_slice())
+            .as_ref()
+            .and_then(|pose_transforms| pose_transforms.range(..query.at().inc()).next_back())
+            .map(|(_time, pose_transforms)| pose_transforms.as_slice())
             .unwrap_or(&[])
     }
 
@@ -145,9 +172,11 @@ impl PerTimelinePerEntityTransforms {
     pub fn latest_at_pinhole(&self, query: &LatestAtQuery) -> Option<&ResolvedPinholeProjection> {
         debug_assert!(query.timeline() == self.timeline);
         self.pinhole_projections
-            .range(..query.at().inc())
-            .next_back()
-            .and_then(|(_time, transform)| transform.as_ref())
+            .as_ref()
+            .and_then(|pinhole_projections| {
+                pinhole_projections.range(..query.at().inc()).next_back()
+            })
+            .and_then(|(_time, projection)| projection.as_ref())
     }
 }
 
@@ -226,21 +255,28 @@ impl TransformCacheStoreSubscriber {
                             &query,
                         );
                         // *do* also insert empty ones, otherwise it's not possible to clear previous state.
-                        entity_entry.pose_transforms.insert(time, transforms);
+                        entity_entry
+                            .pose_transforms
+                            .get_or_insert_with(Box::default)
+                            .insert(time, transforms);
                     }
                     if queued_update
                         .aspects
                         .contains(TransformAspect::PinholeOrViewCoordinates)
                     {
                         // `None` values need to be inserted as well to clear out previous state.
-                        entity_entry.pinhole_projections.insert(
-                            time,
-                            query_and_resolve_pinhole_projection_at_entity(
-                                entity_path,
-                                entity_db,
-                                &query,
-                            ),
-                        );
+                        // See also doc string on `PinholeProjectionMap`.
+                        entity_entry
+                            .pinhole_projections
+                            .get_or_insert_with(Box::default)
+                            .insert(
+                                time,
+                                query_and_resolve_pinhole_projection_at_entity(
+                                    entity_path,
+                                    entity_db,
+                                    &query,
+                                ),
+                            );
                     }
                 }
             }
@@ -309,14 +345,17 @@ impl PerStoreChunkSubscriber for TransformCacheStoreSubscriber {
                         invalidated_times.extend(invalidated_tree_transforms.into_keys());
                     }
                     if aspects.contains(TransformAspect::Pose) {
-                        let invalidated_pose_transforms =
-                            entity_entry.pose_transforms.split_off(&min_time);
-                        invalidated_times.extend(invalidated_pose_transforms.into_keys());
+                        if let Some(pose_transforms) = &mut entity_entry.pose_transforms {
+                            let invalidated_pose_transforms = pose_transforms.split_off(&min_time);
+                            invalidated_times.extend(invalidated_pose_transforms.into_keys());
+                        }
                     }
                     if aspects.contains(TransformAspect::PinholeOrViewCoordinates) {
-                        let invalidated_pinhole_projections =
-                            entity_entry.pinhole_projections.split_off(&min_time);
-                        invalidated_times.extend(invalidated_pinhole_projections.into_keys());
+                        if let Some(pinhole_projections) = &mut entity_entry.pinhole_projections {
+                            let invalidated_pinhole_projections =
+                                pinhole_projections.split_off(&min_time);
+                            invalidated_times.extend(invalidated_pinhole_projections.into_keys());
+                        }
                     }
                 }
 
@@ -573,8 +612,8 @@ mod tests {
                 .unwrap();
             assert_eq!(transforms.timeline, timeline);
             assert_eq!(transforms.tree_transforms.len(), 1);
-            assert_eq!(transforms.pose_transforms.len(), 0);
-            assert_eq!(transforms.pinhole_projections.len(), 0);
+            assert_eq!(transforms.pose_transforms, None);
+            assert_eq!(transforms.pinhole_projections, None);
         });
     }
 
