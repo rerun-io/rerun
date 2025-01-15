@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use ahash::HashMap;
+use ahash::{HashMap, HashSet};
 use glam::Affine3A;
 use itertools::Either;
 use nohash_hasher::{IntMap, IntSet};
@@ -279,6 +279,120 @@ impl TransformCacheStoreSubscriber {
             }
         }
     }
+
+    fn add_chunk(&mut self, event: &re_chunk_store::ChunkStoreEvent, aspects: TransformAspect) {
+        let entity_path = event.chunk.entity_path();
+
+        for (timeline, time_column) in event.diff.chunk.timelines() {
+            let per_timeline = self.per_timeline.entry(*timeline).or_default();
+
+            // All of these require complex latest-at queries that would require a lot more context,
+            // are fairly expensive, and may depend on other components that may come in at the same time.
+            // (we could inject that here, but it's not entirely straight forward).
+            // So instead, we note down that the caches is invalidated for the given entity & times.
+
+            // This invalidates any time _after_ the first event in this chunk.
+            // (e.g. if a rotation is added prior to translations later on,
+            // then the resulting transforms at those translations changes as well for latest-at queries)
+            let mut invalidated_times = Vec::new();
+            let Some(min_time) = time_column.times().min() else {
+                continue;
+            };
+            if let Some(entity_entry) = per_timeline.per_entity.get_mut(&entity_path.hash()) {
+                if aspects.contains(TransformAspect::Tree) {
+                    let invalidated_tree_transforms =
+                        entity_entry.tree_transforms.split_off(&min_time);
+                    invalidated_times.extend(invalidated_tree_transforms.into_keys());
+                }
+                if aspects.contains(TransformAspect::Pose) {
+                    if let Some(pose_transforms) = &mut entity_entry.pose_transforms {
+                        let invalidated_pose_transforms = pose_transforms.split_off(&min_time);
+                        invalidated_times.extend(invalidated_pose_transforms.into_keys());
+                    }
+                }
+                if aspects.contains(TransformAspect::PinholeOrViewCoordinates) {
+                    if let Some(pinhole_projections) = &mut entity_entry.pinhole_projections {
+                        let invalidated_pinhole_projections =
+                            pinhole_projections.split_off(&min_time);
+                        invalidated_times.extend(invalidated_pinhole_projections.into_keys());
+                    }
+                }
+            }
+
+            per_timeline
+                .invalidated_transforms
+                .push(InvalidatedTransforms {
+                    entity_path: entity_path.clone(),
+                    times: time_column
+                        .times()
+                        .chain(invalidated_times.into_iter())
+                        .collect(),
+                    aspects,
+                });
+        }
+    }
+
+    fn remove_chunk(&mut self, event: &re_chunk_store::ChunkStoreEvent, aspects: TransformAspect) {
+        let entity_path = event.chunk.entity_path();
+
+        for (timeline, time_column) in event.diff.chunk.timelines() {
+            let Some(per_timeline) = self.per_timeline.get_mut(timeline) else {
+                continue;
+            };
+
+            // Remove incoming data.
+            for invalidated_transform in per_timeline
+                .invalidated_transforms
+                .iter_mut()
+                .filter(|invalidated_transform| &invalidated_transform.entity_path == entity_path)
+            {
+                let times = time_column.times().collect::<HashSet<_>>();
+                invalidated_transform
+                    .times
+                    .retain(|time| !times.contains(time));
+            }
+            per_timeline
+                .invalidated_transforms
+                .retain(|invalidated_transform| !invalidated_transform.times.is_empty());
+
+            // Remove existing data.
+            if let Some(per_entity) = per_timeline.per_entity.get_mut(&entity_path.hash()) {
+                for time in time_column.times() {
+                    if aspects.contains(TransformAspect::Tree) {
+                        per_entity.tree_transforms.remove(&time);
+                    }
+                    if aspects.contains(TransformAspect::Pose) {
+                        if let Some(pose_transforms) = &mut per_entity.pose_transforms {
+                            pose_transforms.remove(&time);
+                        }
+                    }
+                    if aspects.contains(TransformAspect::PinholeOrViewCoordinates) {
+                        if let Some(pinhole_projections) = &mut per_entity.pinhole_projections {
+                            pinhole_projections.remove(&time);
+                        }
+                    }
+                }
+
+                if per_entity.tree_transforms.is_empty()
+                    && per_entity
+                        .pose_transforms
+                        .as_ref()
+                        .map_or(true, |pose_transforms| pose_transforms.is_empty())
+                    && per_entity
+                        .pinhole_projections
+                        .as_ref()
+                        .map_or(true, |pinhole_projections| pinhole_projections.is_empty())
+                {
+                    per_timeline.per_entity.remove(&entity_path.hash());
+                }
+            }
+
+            if per_timeline.per_entity.is_empty() && per_timeline.invalidated_transforms.is_empty()
+            {
+                self.per_timeline.remove(timeline);
+            }
+        }
+    }
 }
 
 impl PerStoreChunkSubscriber for TransformCacheStoreSubscriber {
@@ -290,11 +404,6 @@ impl PerStoreChunkSubscriber for TransformCacheStoreSubscriber {
         re_tracing::profile_function!();
 
         for event in events {
-            if event.kind == re_chunk_store::ChunkStoreDiffKind::Deletion {
-                // Not participating in GC for now.
-                continue;
-            }
-
             // The components we are interested in may only show up on some of the timelines
             // within this chunk, so strictly speaking the affected "aspects" we compute here are conservative.
             // But that's fairly rare, so a few false positive entries here are fine.
@@ -314,54 +423,10 @@ impl PerStoreChunkSubscriber for TransformCacheStoreSubscriber {
                 continue;
             }
 
-            let entity_path = event.chunk.entity_path();
-
-            for (timeline, time_column) in event.diff.chunk.timelines() {
-                let per_timeline = self.per_timeline.entry(*timeline).or_default();
-
-                // All of these require complex latest-at queries that would require a lot more context,
-                // are fairly expensive, and may depend on other components that may come in at the same time.
-                // (we could inject that here, but it's not entirely straight forward).
-                // So instead, we note down that the caches is invalidated for the given entity & times.
-
-                // This invalidates any time _after_ the first event in this chunk.
-                // (e.g. if a rotation is added prior to translations later on,
-                // then the resulting transforms at those translations changes as well for latest-at queries)
-                let mut invalidated_times = Vec::new();
-                let Some(min_time) = time_column.times().min() else {
-                    continue;
-                };
-                if let Some(entity_entry) = per_timeline.per_entity.get_mut(&entity_path.hash()) {
-                    if aspects.contains(TransformAspect::Tree) {
-                        let invalidated_tree_transforms =
-                            entity_entry.tree_transforms.split_off(&min_time);
-                        invalidated_times.extend(invalidated_tree_transforms.into_keys());
-                    }
-                    if aspects.contains(TransformAspect::Pose) {
-                        if let Some(pose_transforms) = &mut entity_entry.pose_transforms {
-                            let invalidated_pose_transforms = pose_transforms.split_off(&min_time);
-                            invalidated_times.extend(invalidated_pose_transforms.into_keys());
-                        }
-                    }
-                    if aspects.contains(TransformAspect::PinholeOrViewCoordinates) {
-                        if let Some(pinhole_projections) = &mut entity_entry.pinhole_projections {
-                            let invalidated_pinhole_projections =
-                                pinhole_projections.split_off(&min_time);
-                            invalidated_times.extend(invalidated_pinhole_projections.into_keys());
-                        }
-                    }
-                }
-
-                per_timeline
-                    .invalidated_transforms
-                    .push(InvalidatedTransforms {
-                        entity_path: entity_path.clone(),
-                        times: time_column
-                            .times()
-                            .chain(invalidated_times.into_iter())
-                            .collect(),
-                        aspects,
-                    });
+            if event.kind == re_chunk_store::ChunkStoreDiffKind::Deletion {
+                self.remove_chunk(event, aspects);
+            } else {
+                self.add_chunk(event, aspects);
             }
         }
     }
@@ -513,7 +578,6 @@ fn query_and_resolve_instance_poses_at_entity(
     let mut iter_mat3x3 = clamped_or_nothing(batch_mat3x3, max_num_instances);
 
     (0..max_num_instances)
-        .into_iter()
         .map(|_| {
             // We apply these in a specific order - see `debug_assert_transform_field_order`
             let mut transform = Affine3A::IDENTITY;
@@ -564,7 +628,9 @@ fn query_and_resolve_pinhole_projection_at_entity(
 mod tests {
     use std::sync::Arc;
 
-    use re_chunk_store::{external::re_chunk::ChunkBuilder, ChunkId, RowId};
+    use re_chunk_store::{
+        external::re_chunk::ChunkBuilder, ChunkId, GarbageCollectionOptions, RowId,
+    };
     use re_types::{archetypes, Loggable, SerializedComponentBatch};
 
     use super::*;
@@ -969,6 +1035,46 @@ mod tests {
                     glam::Vec3::new(2.0, 3.0, 4.0),
                 )
             );
+        });
+    }
+
+    #[test]
+    fn test_gc() {
+        let mut entity_db = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
+        ensure_subscriber_registered(&entity_db);
+
+        let timeline = Timeline::new_sequence("t");
+        let chunk = ChunkBuilder::new(ChunkId::new(), EntityPath::from("my_entity0"))
+            .with_archetype(
+                RowId::new(),
+                [(timeline, 1)],
+                &archetypes::Transform3D::from_translation([1.0, 2.0, 3.0]),
+            )
+            .build()
+            .unwrap();
+        entity_db.add_chunk(&Arc::new(chunk)).unwrap();
+
+        // Apply some updates to the transform before GC pass.
+        TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+            cache.apply_all_updates(&entity_db);
+        });
+
+        let chunk = ChunkBuilder::new(ChunkId::new(), EntityPath::from("my_entity1"))
+            .with_archetype(
+                RowId::new(),
+                [(timeline, 2)],
+                &archetypes::Transform3D::from_translation([4.0, 5.0, 6.0]),
+            )
+            .build()
+            .unwrap();
+        entity_db.add_chunk(&Arc::new(chunk)).unwrap();
+
+        // Don't apply updates for this chunk.
+
+        entity_db.gc(&GarbageCollectionOptions::gc_everything());
+
+        TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+            assert!(cache.transforms_per_timeline(timeline).is_none());
         });
     }
 }
