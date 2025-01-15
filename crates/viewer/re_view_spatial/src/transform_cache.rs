@@ -91,6 +91,7 @@ struct InvalidatedTransforms {
     aspects: TransformAspect,
 }
 
+#[derive(Default)]
 pub struct CachedTransformsPerTimeline {
     /// Updates that should be applied to the cache.
     /// I.e. times & entities at which the cache is invalid right now.
@@ -293,16 +294,19 @@ impl PerStoreChunkSubscriber for TransformCacheStoreSubscriber {
                 continue;
             }
 
+            // The components we are interested in may only show up on some of the timelines
+            // within this chunk, so strictly speaking the affected "aspects" we compute here are conservative.
+            // But that's fairly rare, so a few false positive entries here are fine.
             let mut aspects = TransformAspect::empty();
             for component_name in event.chunk.component_names() {
                 if self.transform_components.contains(&component_name) {
-                    aspects.set(TransformAspect::Tree, true);
+                    aspects |= TransformAspect::Tree;
                 }
                 if self.pose_components.contains(&component_name) {
-                    aspects.set(TransformAspect::Pose, true);
+                    aspects |= TransformAspect::Pose;
                 }
                 if self.pinhole_components.contains(&component_name) {
-                    aspects.set(TransformAspect::PinholeOrViewCoordinates, true);
+                    aspects |= TransformAspect::PinholeOrViewCoordinates;
                 }
             }
             if aspects.is_empty() {
@@ -312,14 +316,7 @@ impl PerStoreChunkSubscriber for TransformCacheStoreSubscriber {
             let entity_path = event.chunk.entity_path();
 
             for (timeline, time_column) in event.diff.chunk.timelines() {
-                // The components we are interested in may only show up on some of the timelines.
-                // But that's fairly rare, so a few false positive entries here are fine.
-                let per_timeline = self.per_timeline.entry(*timeline).or_insert_with(|| {
-                    CachedTransformsPerTimeline {
-                        invalidated_transforms: Default::default(),
-                        per_entity: Default::default(),
-                    }
-                });
+                let per_timeline = self.per_timeline.entry(*timeline).or_default();
 
                 // All of these require complex latest-at queries that would require a lot more context,
                 // are fairly expensive, and may depend on other components that may come in at the same time.
