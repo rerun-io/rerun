@@ -144,7 +144,7 @@ impl CachedTransformsPerTimeline {
 impl PerTimelinePerEntityTransforms {
     #[inline]
     pub fn latest_at_tree_transform(&self, query: &LatestAtQuery) -> glam::Affine3A {
-        debug_assert!(query.timeline() == self.timeline);
+        debug_assert_eq!(query.timeline(), self.timeline);
         self.tree_transforms
             .range(..query.at().inc())
             .next_back()
@@ -154,7 +154,7 @@ impl PerTimelinePerEntityTransforms {
 
     #[inline]
     pub fn latest_at_instance_poses(&self, query: &LatestAtQuery) -> &[glam::Affine3A] {
-        debug_assert!(query.timeline() == self.timeline);
+        debug_assert_eq!(query.timeline(), self.timeline);
         self.pose_transforms
             .as_ref()
             .and_then(|pose_transforms| pose_transforms.range(..query.at().inc()).next_back())
@@ -164,7 +164,7 @@ impl PerTimelinePerEntityTransforms {
 
     #[inline]
     pub fn latest_at_pinhole(&self, query: &LatestAtQuery) -> Option<&ResolvedPinholeProjection> {
-        debug_assert!(query.timeline() == self.timeline);
+        debug_assert_eq!(query.timeline(), self.timeline);
         self.pinhole_projections
             .as_ref()
             .and_then(|pinhole_projections| {
@@ -208,13 +208,14 @@ impl TransformCacheStoreSubscriber {
 
     /// Makes sure the transform cache is up to date with the latest data.
     ///
-    /// This needs to be called once per frame.
+    /// This needs to be called once per frame prior to any transform propagation.
+    /// (which is done by [`crate::contexts::TransformTreeContext`])
     pub fn apply_all_updates(&mut self, entity_db: &EntityDb) {
         re_tracing::profile_function!();
 
         for (timeline, per_timeline) in &mut self.per_timeline {
-            for queued_update in per_timeline.invalidated_transforms.drain(..) {
-                let entity_path = &queued_update.entity_path;
+            for invalidated_transform in per_timeline.invalidated_transforms.drain(..) {
+                let entity_path = &invalidated_transform.entity_path;
                 let entity_entry = per_timeline
                     .per_entity
                     .entry(entity_path.hash())
@@ -225,24 +226,28 @@ impl TransformCacheStoreSubscriber {
                         pinhole_projections: Default::default(),
                     });
 
-                for time in queued_update.times {
+                for time in invalidated_transform.times {
                     let query = LatestAtQuery::new(*timeline, time);
 
-                    if queued_update.aspects.contains(TransformAspect::Tree) {
-                        if let Some(transform) = query_and_resolve_tree_transform_at_entity(
+                    if invalidated_transform
+                        .aspects
+                        .contains(TransformAspect::Tree)
+                    {
+                        let transform = query_and_resolve_tree_transform_at_entity(
                             entity_path,
                             entity_db,
                             &query,
-                        ) {
-                            entity_entry.tree_transforms.insert(time, transform);
-                        } else {
-                            // If there's *no* transform, we have to put identity in, otherwise we'd miss clears!
-                            entity_entry
-                                .tree_transforms
-                                .insert(time, glam::Affine3A::IDENTITY);
-                        }
+                        )
+                        // If there's *no* transform, we have to put identity in, otherwise we'd miss clears!
+                        .unwrap_or(glam::Affine3A::IDENTITY);
+                        entity_entry
+                            .tree_transforms
+                            .insert(time, glam::Affine3A::IDENTITY);
                     }
-                    if queued_update.aspects.contains(TransformAspect::Pose) {
+                    if invalidated_transform
+                        .aspects
+                        .contains(TransformAspect::Pose)
+                    {
                         let transforms = query_and_resolve_instance_poses_at_entity(
                             entity_path,
                             entity_db,
@@ -254,23 +259,21 @@ impl TransformCacheStoreSubscriber {
                             .get_or_insert_with(Box::default)
                             .insert(time, transforms);
                     }
-                    if queued_update
+                    if invalidated_transform
                         .aspects
                         .contains(TransformAspect::PinholeOrViewCoordinates)
                     {
+                        let pinhole_projection = query_and_resolve_pinhole_projection_at_entity(
+                            entity_path,
+                            entity_db,
+                            &query,
+                        );
                         // `None` values need to be inserted as well to clear out previous state.
                         // See also doc string on `PinholeProjectionMap`.
                         entity_entry
                             .pinhole_projections
                             .get_or_insert_with(Box::default)
-                            .insert(
-                                time,
-                                query_and_resolve_pinhole_projection_at_entity(
-                                    entity_path,
-                                    entity_db,
-                                    &query,
-                                ),
-                            );
+                            .insert(time, pinhole_projection);
                     }
                 }
             }
