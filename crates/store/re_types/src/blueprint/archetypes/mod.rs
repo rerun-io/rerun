@@ -22,7 +22,6 @@ mod view_blueprint;
 mod view_contents;
 mod viewport_blueprint;
 mod visible_time_ranges;
-mod visible_time_ranges_ext;
 mod visual_bounds2d;
 
 pub use self::background::Background;

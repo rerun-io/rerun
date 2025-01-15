@@ -364,12 +364,13 @@ impl ViewBlueprint {
             blueprint_query,
             self.id,
         );
-        let ranges = property.component_array();
+        let ranges = property.component_array::<blueprint_components::VisibleTimeRange>();
 
         let time_range = ranges.ok().flatten().and_then(|ranges| {
-            blueprint_archetypes::VisibleTimeRanges { ranges }
-                .range_for_timeline(active_timeline.name().as_str())
-                .cloned()
+            ranges
+                .iter()
+                .find(|range| range.timeline.as_str() == active_timeline.name().as_str())
+                .map(|range| range.range.clone())
         });
         time_range.map_or_else(
             || {
