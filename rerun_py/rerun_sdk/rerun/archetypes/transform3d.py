@@ -207,7 +207,6 @@ class Transform3D(Transform3DExt, Archetype):
                 "mat3x3": mat3x3,
                 "relation": relation,
                 "axis_length": axis_length,
-                "clear": False,
             }
 
             if clear:

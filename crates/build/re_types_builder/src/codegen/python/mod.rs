@@ -2520,16 +2520,6 @@ fn quote_partial_update_methods(reporter: &Reporter, obj: &Object, objects: &Obj
             let field_name = field.snake_case_name();
             format!("'{field_name}': {field_name}")
         })
-        .chain(
-            // For `Transform3D` and `Transform3D` only, we feel it is more natural for the
-            // (extended/custom) constructor to have `clear_fields` semantics by default (`clear=True`).
-            // This makes sure that when `Transform3D.update_fields()` calls into `Transform3D.init()`,
-            // those clear semantics are not applied.
-            std::iter::once(
-                (obj.fqname == "rerun.archetypes.Transform3D").then(|| "'clear': False".to_owned()),
-            )
-            .flatten(),
-        )
         .collect_vec()
         .join(",                          ");
 
