@@ -230,7 +230,7 @@ class Transform3D(Transform3DExt, Archetype):
     translation: components.Translation3DBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.Translation3DBatch._optional,  # type: ignore[misc]
+        converter=components.Translation3DBatch._converter,  # type: ignore[misc]
     )
     # Translation vector.
     #
@@ -239,7 +239,7 @@ class Transform3D(Transform3DExt, Archetype):
     rotation_axis_angle: components.RotationAxisAngleBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.RotationAxisAngleBatch._optional,  # type: ignore[misc]
+        converter=components.RotationAxisAngleBatch._converter,  # type: ignore[misc]
     )
     # Rotation via axis + angle.
     #
@@ -248,7 +248,7 @@ class Transform3D(Transform3DExt, Archetype):
     quaternion: components.RotationQuatBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.RotationQuatBatch._optional,  # type: ignore[misc]
+        converter=components.RotationQuatBatch._converter,  # type: ignore[misc]
     )
     # Rotation via quaternion.
     #
@@ -257,7 +257,7 @@ class Transform3D(Transform3DExt, Archetype):
     scale: components.Scale3DBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.Scale3DBatch._optional,  # type: ignore[misc]
+        converter=components.Scale3DBatch._converter,  # type: ignore[misc]
     )
     # Scaling factor.
     #
@@ -266,7 +266,7 @@ class Transform3D(Transform3DExt, Archetype):
     mat3x3: components.TransformMat3x3Batch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.TransformMat3x3Batch._optional,  # type: ignore[misc]
+        converter=components.TransformMat3x3Batch._converter,  # type: ignore[misc]
     )
     # 3x3 transformation matrix.
     #
@@ -275,7 +275,7 @@ class Transform3D(Transform3DExt, Archetype):
     relation: components.TransformRelationBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.TransformRelationBatch._optional,  # type: ignore[misc]
+        converter=components.TransformRelationBatch._converter,  # type: ignore[misc]
     )
     # Specifies the relation this transform establishes between this entity and its parent.
     #
@@ -284,7 +284,7 @@ class Transform3D(Transform3DExt, Archetype):
     axis_length: components.AxisLengthBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.AxisLengthBatch._optional,  # type: ignore[misc]
+        converter=components.AxisLengthBatch._converter,  # type: ignore[misc]
     )
     # Visual length of the 3 axes.
     #

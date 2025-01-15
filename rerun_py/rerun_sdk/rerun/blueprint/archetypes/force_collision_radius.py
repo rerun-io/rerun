@@ -123,7 +123,7 @@ class ForceCollisionRadius(Archetype):
     enabled: blueprint_components.EnabledBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint_components.EnabledBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.EnabledBatch._converter,  # type: ignore[misc]
     )
     # Whether the collision force is enabled.
     #
@@ -134,7 +134,7 @@ class ForceCollisionRadius(Archetype):
     strength: blueprint_components.ForceStrengthBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint_components.ForceStrengthBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.ForceStrengthBatch._converter,  # type: ignore[misc]
     )
     # The strength of the force.
     #
@@ -143,7 +143,7 @@ class ForceCollisionRadius(Archetype):
     iterations: blueprint_components.ForceIterationsBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint_components.ForceIterationsBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.ForceIterationsBatch._converter,  # type: ignore[misc]
     )
     # Specifies how often this force should be applied per iteration.
     #

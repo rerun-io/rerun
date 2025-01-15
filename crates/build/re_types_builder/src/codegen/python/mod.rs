@@ -591,7 +591,7 @@ fn code_for_struct(
             } else if *kind == ObjectKind::Archetype {
                 // Archetypes use the ComponentBatch constructor for their fields
                 let (typ_unwrapped, _) = quote_field_type_from_field(objects, field, true);
-                format!("converter={typ_unwrapped}Batch._optional,  # type: ignore[misc]\n")
+                format!("converter={typ_unwrapped}Batch._converter,  # type: ignore[misc]\n")
             } else if !default_converter.is_empty() {
                 code.push_indented(0, &converter_function, 1);
                 format!("converter={default_converter}")

@@ -130,7 +130,7 @@ class GeoPoints(GeoPointsExt, Archetype):
     positions: components.LatLonBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.LatLonBatch._optional,  # type: ignore[misc]
+        converter=components.LatLonBatch._converter,  # type: ignore[misc]
     )
     # The [EPSG:4326](https://epsg.io/4326) coordinates for the points (North/East-positive degrees).
     #
@@ -139,7 +139,7 @@ class GeoPoints(GeoPointsExt, Archetype):
     radii: components.RadiusBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.RadiusBatch._optional,  # type: ignore[misc]
+        converter=components.RadiusBatch._converter,  # type: ignore[misc]
     )
     # Optional radii for the points, effectively turning them into circles.
     #
@@ -150,7 +150,7 @@ class GeoPoints(GeoPointsExt, Archetype):
     colors: components.ColorBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ColorBatch._optional,  # type: ignore[misc]
+        converter=components.ColorBatch._converter,  # type: ignore[misc]
     )
     # Optional colors for the points.
     #
@@ -162,7 +162,7 @@ class GeoPoints(GeoPointsExt, Archetype):
     class_ids: components.ClassIdBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ClassIdBatch._optional,  # type: ignore[misc]
+        converter=components.ClassIdBatch._converter,  # type: ignore[misc]
     )
     # Optional class Ids for the points.
     #

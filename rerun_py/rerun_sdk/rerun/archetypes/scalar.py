@@ -128,7 +128,7 @@ class Scalar(Archetype):
     scalar: components.ScalarBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ScalarBatch._optional,  # type: ignore[misc]
+        converter=components.ScalarBatch._converter,  # type: ignore[misc]
     )
     # The scalar value to log.
     #

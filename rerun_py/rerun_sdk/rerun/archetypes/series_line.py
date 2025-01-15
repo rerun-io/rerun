@@ -175,7 +175,7 @@ class SeriesLine(Archetype):
     color: components.ColorBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ColorBatch._optional,  # type: ignore[misc]
+        converter=components.ColorBatch._converter,  # type: ignore[misc]
     )
     # Color for the corresponding series.
     #
@@ -184,7 +184,7 @@ class SeriesLine(Archetype):
     width: components.StrokeWidthBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.StrokeWidthBatch._optional,  # type: ignore[misc]
+        converter=components.StrokeWidthBatch._converter,  # type: ignore[misc]
     )
     # Stroke width for the corresponding series.
     #
@@ -193,7 +193,7 @@ class SeriesLine(Archetype):
     name: components.NameBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.NameBatch._optional,  # type: ignore[misc]
+        converter=components.NameBatch._converter,  # type: ignore[misc]
     )
     # Display name of the series.
     #
@@ -204,7 +204,7 @@ class SeriesLine(Archetype):
     aggregation_policy: components.AggregationPolicyBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.AggregationPolicyBatch._optional,  # type: ignore[misc]
+        converter=components.AggregationPolicyBatch._converter,  # type: ignore[misc]
     )
     # Configures the zoom-dependent scalar aggregation.
     #

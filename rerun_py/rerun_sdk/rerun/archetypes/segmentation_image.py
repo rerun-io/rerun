@@ -136,7 +136,7 @@ class SegmentationImage(SegmentationImageExt, Archetype):
     buffer: components.ImageBufferBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ImageBufferBatch._optional,  # type: ignore[misc]
+        converter=components.ImageBufferBatch._converter,  # type: ignore[misc]
     )
     # The raw image data.
     #
@@ -145,7 +145,7 @@ class SegmentationImage(SegmentationImageExt, Archetype):
     format: components.ImageFormatBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ImageFormatBatch._optional,  # type: ignore[misc]
+        converter=components.ImageFormatBatch._converter,  # type: ignore[misc]
     )
     # The format of the image.
     #
@@ -154,7 +154,7 @@ class SegmentationImage(SegmentationImageExt, Archetype):
     opacity: components.OpacityBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.OpacityBatch._optional,  # type: ignore[misc]
+        converter=components.OpacityBatch._converter,  # type: ignore[misc]
     )
     # Opacity of the image, useful for layering the segmentation image on top of another image.
     #
@@ -165,7 +165,7 @@ class SegmentationImage(SegmentationImageExt, Archetype):
     draw_order: components.DrawOrderBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.DrawOrderBatch._optional,  # type: ignore[misc]
+        converter=components.DrawOrderBatch._converter,  # type: ignore[misc]
     )
     # An optional floating point value that specifies the 2D drawing order.
     #

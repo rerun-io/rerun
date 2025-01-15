@@ -134,7 +134,7 @@ class ViewCoordinates(ViewCoordinatesExt, Archetype):
     xyz: components.ViewCoordinatesBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ViewCoordinatesBatch._optional,  # type: ignore[misc]
+        converter=components.ViewCoordinatesBatch._converter,  # type: ignore[misc]
     )
     # The directions of the [x, y, z] axes.
     #

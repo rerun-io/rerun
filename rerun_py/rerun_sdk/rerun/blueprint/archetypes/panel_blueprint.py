@@ -92,7 +92,7 @@ class PanelBlueprint(Archetype):
     state: blueprint_components.PanelStateBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint_components.PanelStateBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.PanelStateBatch._converter,  # type: ignore[misc]
     )
     # Current state of the panels.
     #

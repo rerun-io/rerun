@@ -88,7 +88,7 @@ class VisibleTimeRanges(VisibleTimeRangesExt, Archetype):
     ranges: blueprint_components.VisibleTimeRangeBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint_components.VisibleTimeRangeBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.VisibleTimeRangeBatch._converter,  # type: ignore[misc]
     )
     # The time ranges to show for each timeline unless specified otherwise on a per-entity basis.
     #

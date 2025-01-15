@@ -142,7 +142,7 @@ class ViewBlueprint(Archetype):
     class_identifier: blueprint_components.ViewClassBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint_components.ViewClassBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.ViewClassBatch._converter,  # type: ignore[misc]
     )
     # The class of the view.
     #
@@ -151,7 +151,7 @@ class ViewBlueprint(Archetype):
     display_name: components.NameBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.NameBatch._optional,  # type: ignore[misc]
+        converter=components.NameBatch._converter,  # type: ignore[misc]
     )
     # The name of the view.
     #
@@ -160,7 +160,7 @@ class ViewBlueprint(Archetype):
     space_origin: blueprint_components.ViewOriginBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint_components.ViewOriginBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.ViewOriginBatch._converter,  # type: ignore[misc]
     )
     # The "anchor point" of this view.
     #
@@ -175,7 +175,7 @@ class ViewBlueprint(Archetype):
     visible: blueprint_components.VisibleBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint_components.VisibleBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.VisibleBatch._converter,  # type: ignore[misc]
     )
     # Whether this view is visible.
     #

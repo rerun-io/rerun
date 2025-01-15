@@ -119,7 +119,7 @@ class ForcePosition(Archetype):
     enabled: blueprint_components.EnabledBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint_components.EnabledBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.EnabledBatch._converter,  # type: ignore[misc]
     )
     # Whether the position force is enabled.
     #
@@ -130,7 +130,7 @@ class ForcePosition(Archetype):
     strength: blueprint_components.ForceStrengthBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint_components.ForceStrengthBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.ForceStrengthBatch._converter,  # type: ignore[misc]
     )
     # The strength of the force.
     #
@@ -139,7 +139,7 @@ class ForcePosition(Archetype):
     position: components.Position2DBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.Position2DBatch._optional,  # type: ignore[misc]
+        converter=components.Position2DBatch._converter,  # type: ignore[misc]
     )
     # The position where the nodes should be pulled towards.
     #

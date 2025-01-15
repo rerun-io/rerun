@@ -186,7 +186,7 @@ class Ellipsoids3D(Ellipsoids3DExt, Archetype):
     half_sizes: components.HalfSize3DBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.HalfSize3DBatch._optional,  # type: ignore[misc]
+        converter=components.HalfSize3DBatch._converter,  # type: ignore[misc]
     )
     # For each ellipsoid, half of its size on its three axes.
     #
@@ -197,7 +197,7 @@ class Ellipsoids3D(Ellipsoids3DExt, Archetype):
     centers: components.PoseTranslation3DBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.PoseTranslation3DBatch._optional,  # type: ignore[misc]
+        converter=components.PoseTranslation3DBatch._converter,  # type: ignore[misc]
     )
     # Optional center positions of the ellipsoids.
     #
@@ -209,7 +209,7 @@ class Ellipsoids3D(Ellipsoids3DExt, Archetype):
     rotation_axis_angles: components.PoseRotationAxisAngleBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.PoseRotationAxisAngleBatch._optional,  # type: ignore[misc]
+        converter=components.PoseRotationAxisAngleBatch._converter,  # type: ignore[misc]
     )
     # Rotations via axis + angle.
     #
@@ -221,7 +221,7 @@ class Ellipsoids3D(Ellipsoids3DExt, Archetype):
     quaternions: components.PoseRotationQuatBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.PoseRotationQuatBatch._optional,  # type: ignore[misc]
+        converter=components.PoseRotationQuatBatch._converter,  # type: ignore[misc]
     )
     # Rotations via quaternion.
     #
@@ -233,7 +233,7 @@ class Ellipsoids3D(Ellipsoids3DExt, Archetype):
     colors: components.ColorBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ColorBatch._optional,  # type: ignore[misc]
+        converter=components.ColorBatch._converter,  # type: ignore[misc]
     )
     # Optional colors for the ellipsoids.
     #
@@ -242,7 +242,7 @@ class Ellipsoids3D(Ellipsoids3DExt, Archetype):
     line_radii: components.RadiusBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.RadiusBatch._optional,  # type: ignore[misc]
+        converter=components.RadiusBatch._converter,  # type: ignore[misc]
     )
     # Optional radii for the lines used when the ellipsoid is rendered as a wireframe.
     #
@@ -251,7 +251,7 @@ class Ellipsoids3D(Ellipsoids3DExt, Archetype):
     fill_mode: components.FillModeBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.FillModeBatch._optional,  # type: ignore[misc]
+        converter=components.FillModeBatch._converter,  # type: ignore[misc]
     )
     # Optionally choose whether the ellipsoids are drawn with lines or solid.
     #
@@ -260,7 +260,7 @@ class Ellipsoids3D(Ellipsoids3DExt, Archetype):
     labels: components.TextBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.TextBatch._optional,  # type: ignore[misc]
+        converter=components.TextBatch._converter,  # type: ignore[misc]
     )
     # Optional text labels for the ellipsoids.
     #
@@ -269,7 +269,7 @@ class Ellipsoids3D(Ellipsoids3DExt, Archetype):
     show_labels: components.ShowLabelsBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ShowLabelsBatch._optional,  # type: ignore[misc]
+        converter=components.ShowLabelsBatch._converter,  # type: ignore[misc]
     )
     # Optional choice of whether the text labels should be shown by default.
     #
@@ -278,7 +278,7 @@ class Ellipsoids3D(Ellipsoids3DExt, Archetype):
     class_ids: components.ClassIdBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ClassIdBatch._optional,  # type: ignore[misc]
+        converter=components.ClassIdBatch._converter,  # type: ignore[misc]
     )
     # Optional class ID for the ellipsoids.
     #

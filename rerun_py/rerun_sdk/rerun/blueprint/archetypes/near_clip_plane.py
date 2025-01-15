@@ -97,7 +97,7 @@ class NearClipPlane(Archetype):
     near_clip_plane: blueprint_components.NearClipPlaneBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint_components.NearClipPlaneBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.NearClipPlaneBatch._converter,  # type: ignore[misc]
     )
     # Controls the distance to the near clip plane in 3D scene units.
     #

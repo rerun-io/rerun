@@ -178,7 +178,7 @@ class DepthImage(DepthImageExt, Archetype):
     buffer: components.ImageBufferBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ImageBufferBatch._optional,  # type: ignore[misc]
+        converter=components.ImageBufferBatch._converter,  # type: ignore[misc]
     )
     # The raw depth image data.
     #
@@ -187,7 +187,7 @@ class DepthImage(DepthImageExt, Archetype):
     format: components.ImageFormatBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ImageFormatBatch._optional,  # type: ignore[misc]
+        converter=components.ImageFormatBatch._converter,  # type: ignore[misc]
     )
     # The format of the image.
     #
@@ -196,7 +196,7 @@ class DepthImage(DepthImageExt, Archetype):
     meter: components.DepthMeterBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.DepthMeterBatch._optional,  # type: ignore[misc]
+        converter=components.DepthMeterBatch._converter,  # type: ignore[misc]
     )
     # An optional floating point value that specifies how long a meter is in the native depth units.
     #
@@ -211,7 +211,7 @@ class DepthImage(DepthImageExt, Archetype):
     colormap: components.ColormapBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ColormapBatch._optional,  # type: ignore[misc]
+        converter=components.ColormapBatch._converter,  # type: ignore[misc]
     )
     # Colormap to use for rendering the depth image.
     #
@@ -222,7 +222,7 @@ class DepthImage(DepthImageExt, Archetype):
     depth_range: components.ValueRangeBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ValueRangeBatch._optional,  # type: ignore[misc]
+        converter=components.ValueRangeBatch._converter,  # type: ignore[misc]
     )
     # The expected range of depth values.
     #
@@ -241,7 +241,7 @@ class DepthImage(DepthImageExt, Archetype):
     point_fill_ratio: components.FillRatioBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.FillRatioBatch._optional,  # type: ignore[misc]
+        converter=components.FillRatioBatch._converter,  # type: ignore[misc]
     )
     # Scale the radii of the points in the point cloud generated from this image.
     #
@@ -256,7 +256,7 @@ class DepthImage(DepthImageExt, Archetype):
     draw_order: components.DrawOrderBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.DrawOrderBatch._optional,  # type: ignore[misc]
+        converter=components.DrawOrderBatch._converter,  # type: ignore[misc]
     )
     # An optional floating point value that specifies the 2D drawing order, used only if the depth image is shown as a 2D image.
     #

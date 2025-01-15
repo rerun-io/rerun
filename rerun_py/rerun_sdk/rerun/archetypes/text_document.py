@@ -179,7 +179,7 @@ class TextDocument(Archetype):
     text: components.TextBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.TextBatch._optional,  # type: ignore[misc]
+        converter=components.TextBatch._converter,  # type: ignore[misc]
     )
     # Contents of the text document.
     #
@@ -188,7 +188,7 @@ class TextDocument(Archetype):
     media_type: components.MediaTypeBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.MediaTypeBatch._optional,  # type: ignore[misc]
+        converter=components.MediaTypeBatch._converter,  # type: ignore[misc]
     )
     # The Media Type of the text.
     #

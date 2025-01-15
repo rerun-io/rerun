@@ -135,7 +135,7 @@ class GraphEdges(Archetype):
     edges: components.GraphEdgeBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.GraphEdgeBatch._optional,  # type: ignore[misc]
+        converter=components.GraphEdgeBatch._converter,  # type: ignore[misc]
     )
     # A list of node tuples.
     #
@@ -144,7 +144,7 @@ class GraphEdges(Archetype):
     graph_type: components.GraphTypeBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.GraphTypeBatch._optional,  # type: ignore[misc]
+        converter=components.GraphTypeBatch._converter,  # type: ignore[misc]
     )
     # Specifies if the graph is directed or undirected.
     #

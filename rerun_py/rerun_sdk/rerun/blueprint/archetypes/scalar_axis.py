@@ -105,7 +105,7 @@ class ScalarAxis(Archetype):
     range: components.Range1DBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.Range1DBatch._optional,  # type: ignore[misc]
+        converter=components.Range1DBatch._converter,  # type: ignore[misc]
     )
     # The range of the axis.
     #
@@ -116,7 +116,7 @@ class ScalarAxis(Archetype):
     zoom_lock: blueprint_components.LockRangeDuringZoomBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint_components.LockRangeDuringZoomBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.LockRangeDuringZoomBatch._converter,  # type: ignore[misc]
     )
     # If enabled, the Y axis range will remain locked to the specified range when zooming.
     #

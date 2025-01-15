@@ -75,7 +75,7 @@ class TensorViewFit(TensorViewFitExt, Archetype):
     scaling: blueprint_components.ViewFitBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint_components.ViewFitBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.ViewFitBatch._converter,  # type: ignore[misc]
     )
     # How the image is scaled to fit the view.
     #

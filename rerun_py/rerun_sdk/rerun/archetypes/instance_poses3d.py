@@ -188,7 +188,7 @@ class InstancePoses3D(Archetype):
     translations: components.PoseTranslation3DBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.PoseTranslation3DBatch._optional,  # type: ignore[misc]
+        converter=components.PoseTranslation3DBatch._converter,  # type: ignore[misc]
     )
     # Translation vectors.
     #
@@ -197,7 +197,7 @@ class InstancePoses3D(Archetype):
     rotation_axis_angles: components.PoseRotationAxisAngleBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.PoseRotationAxisAngleBatch._optional,  # type: ignore[misc]
+        converter=components.PoseRotationAxisAngleBatch._converter,  # type: ignore[misc]
     )
     # Rotations via axis + angle.
     #
@@ -206,7 +206,7 @@ class InstancePoses3D(Archetype):
     quaternions: components.PoseRotationQuatBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.PoseRotationQuatBatch._optional,  # type: ignore[misc]
+        converter=components.PoseRotationQuatBatch._converter,  # type: ignore[misc]
     )
     # Rotations via quaternion.
     #
@@ -215,7 +215,7 @@ class InstancePoses3D(Archetype):
     scales: components.PoseScale3DBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.PoseScale3DBatch._optional,  # type: ignore[misc]
+        converter=components.PoseScale3DBatch._converter,  # type: ignore[misc]
     )
     # Scaling factors.
     #
@@ -224,7 +224,7 @@ class InstancePoses3D(Archetype):
     mat3x3: components.PoseTransformMat3x3Batch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.PoseTransformMat3x3Batch._optional,  # type: ignore[misc]
+        converter=components.PoseTransformMat3x3Batch._converter,  # type: ignore[misc]
     )
     # 3x3 transformation matrices.
     #

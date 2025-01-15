@@ -184,7 +184,7 @@ class Boxes3D(Boxes3DExt, Archetype):
     half_sizes: components.HalfSize3DBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.HalfSize3DBatch._optional,  # type: ignore[misc]
+        converter=components.HalfSize3DBatch._converter,  # type: ignore[misc]
     )
     # All half-extents that make up the batch of boxes.
     #
@@ -193,7 +193,7 @@ class Boxes3D(Boxes3DExt, Archetype):
     centers: components.PoseTranslation3DBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.PoseTranslation3DBatch._optional,  # type: ignore[misc]
+        converter=components.PoseTranslation3DBatch._converter,  # type: ignore[misc]
     )
     # Optional center positions of the boxes.
     #
@@ -205,7 +205,7 @@ class Boxes3D(Boxes3DExt, Archetype):
     rotation_axis_angles: components.PoseRotationAxisAngleBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.PoseRotationAxisAngleBatch._optional,  # type: ignore[misc]
+        converter=components.PoseRotationAxisAngleBatch._converter,  # type: ignore[misc]
     )
     # Rotations via axis + angle.
     #
@@ -217,7 +217,7 @@ class Boxes3D(Boxes3DExt, Archetype):
     quaternions: components.PoseRotationQuatBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.PoseRotationQuatBatch._optional,  # type: ignore[misc]
+        converter=components.PoseRotationQuatBatch._converter,  # type: ignore[misc]
     )
     # Rotations via quaternion.
     #
@@ -229,7 +229,7 @@ class Boxes3D(Boxes3DExt, Archetype):
     colors: components.ColorBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ColorBatch._optional,  # type: ignore[misc]
+        converter=components.ColorBatch._converter,  # type: ignore[misc]
     )
     # Optional colors for the boxes.
     #
@@ -238,7 +238,7 @@ class Boxes3D(Boxes3DExt, Archetype):
     radii: components.RadiusBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.RadiusBatch._optional,  # type: ignore[misc]
+        converter=components.RadiusBatch._converter,  # type: ignore[misc]
     )
     # Optional radii for the lines that make up the boxes.
     #
@@ -247,7 +247,7 @@ class Boxes3D(Boxes3DExt, Archetype):
     fill_mode: components.FillModeBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.FillModeBatch._optional,  # type: ignore[misc]
+        converter=components.FillModeBatch._converter,  # type: ignore[misc]
     )
     # Optionally choose whether the boxes are drawn with lines or solid.
     #
@@ -256,7 +256,7 @@ class Boxes3D(Boxes3DExt, Archetype):
     labels: components.TextBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.TextBatch._optional,  # type: ignore[misc]
+        converter=components.TextBatch._converter,  # type: ignore[misc]
     )
     # Optional text labels for the boxes.
     #
@@ -268,7 +268,7 @@ class Boxes3D(Boxes3DExt, Archetype):
     show_labels: components.ShowLabelsBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ShowLabelsBatch._optional,  # type: ignore[misc]
+        converter=components.ShowLabelsBatch._converter,  # type: ignore[misc]
     )
     # Optional choice of whether the text labels should be shown by default.
     #
@@ -277,7 +277,7 @@ class Boxes3D(Boxes3DExt, Archetype):
     class_ids: components.ClassIdBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ClassIdBatch._optional,  # type: ignore[misc]
+        converter=components.ClassIdBatch._converter,  # type: ignore[misc]
     )
     # Optional [`components.ClassId`][rerun.components.ClassId]s for the boxes.
     #

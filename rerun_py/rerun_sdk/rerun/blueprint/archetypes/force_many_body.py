@@ -117,7 +117,7 @@ class ForceManyBody(Archetype):
     enabled: blueprint_components.EnabledBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint_components.EnabledBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.EnabledBatch._converter,  # type: ignore[misc]
     )
     # Whether the many body force is enabled.
     #
@@ -129,7 +129,7 @@ class ForceManyBody(Archetype):
     strength: blueprint_components.ForceStrengthBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint_components.ForceStrengthBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.ForceStrengthBatch._converter,  # type: ignore[misc]
     )
     # The strength of the force.
     #

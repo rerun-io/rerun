@@ -178,7 +178,7 @@ class Pinhole(PinholeExt, Archetype):
     image_from_camera: components.PinholeProjectionBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.PinholeProjectionBatch._optional,  # type: ignore[misc]
+        converter=components.PinholeProjectionBatch._converter,  # type: ignore[misc]
     )
     # Camera projection, from image coordinates to view coordinates.
     #
@@ -187,7 +187,7 @@ class Pinhole(PinholeExt, Archetype):
     resolution: components.ResolutionBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ResolutionBatch._optional,  # type: ignore[misc]
+        converter=components.ResolutionBatch._converter,  # type: ignore[misc]
     )
     # Pixel resolution (usually integers) of child image space. Width and height.
     #
@@ -203,7 +203,7 @@ class Pinhole(PinholeExt, Archetype):
     camera_xyz: components.ViewCoordinatesBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ViewCoordinatesBatch._optional,  # type: ignore[misc]
+        converter=components.ViewCoordinatesBatch._converter,  # type: ignore[misc]
     )
     # Sets the view coordinates for the camera.
     #
@@ -238,7 +238,7 @@ class Pinhole(PinholeExt, Archetype):
     image_plane_distance: components.ImagePlaneDistanceBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ImagePlaneDistanceBatch._optional,  # type: ignore[misc]
+        converter=components.ImagePlaneDistanceBatch._converter,  # type: ignore[misc]
     )
     # The distance from the camera origin to the image plane when the projection is shown in a 3D viewer.
     #

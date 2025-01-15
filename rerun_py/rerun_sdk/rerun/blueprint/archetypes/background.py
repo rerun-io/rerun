@@ -82,7 +82,7 @@ class Background(BackgroundExt, Archetype):
     kind: blueprint_components.BackgroundKindBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint_components.BackgroundKindBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.BackgroundKindBatch._converter,  # type: ignore[misc]
     )
     # The type of the background.
     #
@@ -91,7 +91,7 @@ class Background(BackgroundExt, Archetype):
     color: components.ColorBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ColorBatch._optional,  # type: ignore[misc]
+        converter=components.ColorBatch._converter,  # type: ignore[misc]
     )
     # Color used for the solid background type.
     #

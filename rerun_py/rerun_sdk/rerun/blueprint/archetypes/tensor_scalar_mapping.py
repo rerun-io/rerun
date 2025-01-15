@@ -130,7 +130,7 @@ class TensorScalarMapping(Archetype):
     mag_filter: components.MagnificationFilterBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.MagnificationFilterBatch._optional,  # type: ignore[misc]
+        converter=components.MagnificationFilterBatch._converter,  # type: ignore[misc]
     )
     # Filter used when zooming in on the tensor.
     #
@@ -141,7 +141,7 @@ class TensorScalarMapping(Archetype):
     colormap: components.ColormapBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ColormapBatch._optional,  # type: ignore[misc]
+        converter=components.ColormapBatch._converter,  # type: ignore[misc]
     )
     # How scalar values map to colors.
     #
@@ -150,7 +150,7 @@ class TensorScalarMapping(Archetype):
     gamma: components.GammaCorrectionBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.GammaCorrectionBatch._optional,  # type: ignore[misc]
+        converter=components.GammaCorrectionBatch._converter,  # type: ignore[misc]
     )
     # Gamma exponent applied to normalized values before mapping to color.
     #

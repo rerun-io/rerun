@@ -123,7 +123,7 @@ class ForceLink(Archetype):
     enabled: blueprint_components.EnabledBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint_components.EnabledBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.EnabledBatch._converter,  # type: ignore[misc]
     )
     # Whether the link force is enabled.
     #
@@ -134,7 +134,7 @@ class ForceLink(Archetype):
     distance: blueprint_components.ForceDistanceBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint_components.ForceDistanceBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.ForceDistanceBatch._converter,  # type: ignore[misc]
     )
     # The target distance between two nodes.
     #
@@ -143,7 +143,7 @@ class ForceLink(Archetype):
     iterations: blueprint_components.ForceIterationsBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint_components.ForceIterationsBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.ForceIterationsBatch._converter,  # type: ignore[misc]
     )
     # Specifies how often this force should be applied per iteration.
     #

@@ -104,7 +104,7 @@ class DataframeQuery(DataframeQueryExt, Archetype):
     timeline: blueprint_components.TimelineNameBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint_components.TimelineNameBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.TimelineNameBatch._converter,  # type: ignore[misc]
     )
     # The timeline for this query.
     #
@@ -115,7 +115,7 @@ class DataframeQuery(DataframeQueryExt, Archetype):
     filter_by_range: blueprint_components.FilterByRangeBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint_components.FilterByRangeBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.FilterByRangeBatch._converter,  # type: ignore[misc]
     )
     # If provided, only rows whose timestamp is within this range will be shown.
     #
@@ -126,7 +126,7 @@ class DataframeQuery(DataframeQueryExt, Archetype):
     filter_is_not_null: blueprint_components.FilterIsNotNullBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint_components.FilterIsNotNullBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.FilterIsNotNullBatch._converter,  # type: ignore[misc]
     )
     # If provided, only show rows which contains a logged event for the specified component.
     #
@@ -135,7 +135,7 @@ class DataframeQuery(DataframeQueryExt, Archetype):
     apply_latest_at: blueprint_components.ApplyLatestAtBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint_components.ApplyLatestAtBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.ApplyLatestAtBatch._converter,  # type: ignore[misc]
     )
     # Should empty cells be filled with latest-at queries?
     #
@@ -144,7 +144,7 @@ class DataframeQuery(DataframeQueryExt, Archetype):
     select: blueprint_components.SelectedColumnsBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint_components.SelectedColumnsBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.SelectedColumnsBatch._converter,  # type: ignore[misc]
     )
     # Selected columns. If unset, all columns are selected.
     #

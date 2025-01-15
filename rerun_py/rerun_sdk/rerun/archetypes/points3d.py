@@ -238,7 +238,7 @@ class Points3D(Points3DExt, Archetype):
     positions: components.Position3DBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.Position3DBatch._optional,  # type: ignore[misc]
+        converter=components.Position3DBatch._converter,  # type: ignore[misc]
     )
     # All the 3D positions at which the point cloud shows points.
     #
@@ -247,7 +247,7 @@ class Points3D(Points3DExt, Archetype):
     radii: components.RadiusBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.RadiusBatch._optional,  # type: ignore[misc]
+        converter=components.RadiusBatch._converter,  # type: ignore[misc]
     )
     # Optional radii for the points, effectively turning them into circles.
     #
@@ -256,7 +256,7 @@ class Points3D(Points3DExt, Archetype):
     colors: components.ColorBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ColorBatch._optional,  # type: ignore[misc]
+        converter=components.ColorBatch._converter,  # type: ignore[misc]
     )
     # Optional colors for the points.
     #
@@ -268,7 +268,7 @@ class Points3D(Points3DExt, Archetype):
     labels: components.TextBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.TextBatch._optional,  # type: ignore[misc]
+        converter=components.TextBatch._converter,  # type: ignore[misc]
     )
     # Optional text labels for the points.
     #
@@ -280,7 +280,7 @@ class Points3D(Points3DExt, Archetype):
     show_labels: components.ShowLabelsBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ShowLabelsBatch._optional,  # type: ignore[misc]
+        converter=components.ShowLabelsBatch._converter,  # type: ignore[misc]
     )
     # Optional choice of whether the text labels should be shown by default.
     #
@@ -289,7 +289,7 @@ class Points3D(Points3DExt, Archetype):
     class_ids: components.ClassIdBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ClassIdBatch._optional,  # type: ignore[misc]
+        converter=components.ClassIdBatch._converter,  # type: ignore[misc]
     )
     # Optional class Ids for the points.
     #
@@ -300,7 +300,7 @@ class Points3D(Points3DExt, Archetype):
     keypoint_ids: components.KeypointIdBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.KeypointIdBatch._optional,  # type: ignore[misc]
+        converter=components.KeypointIdBatch._converter,  # type: ignore[misc]
     )
     # Optional keypoint IDs for the points, identifying them within a class.
     #

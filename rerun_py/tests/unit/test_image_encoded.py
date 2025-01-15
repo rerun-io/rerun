@@ -137,8 +137,8 @@ def test_image_encoded_nv12() -> None:
     def bgr2nv12(bgr: cv2.typing.MatLike) -> cv2.typing.MatLike:
         yuv = cv2.cvtColor(bgr, cv2.COLOR_BGR2YUV_I420)
         uv_row_cnt = yuv.shape[0] // 3
-        uv_plane = np.transpose(yuv[uv_row_cnt * 2:].reshape(2, -1), [1, 0])
-        yuv[uv_row_cnt * 2:] = uv_plane.reshape(uv_row_cnt, -1)
+        uv_plane = np.transpose(yuv[uv_row_cnt * 2 :].reshape(2, -1), [1, 0])
+        yuv[uv_row_cnt * 2 :] = uv_plane.reshape(uv_row_cnt, -1)
         return yuv
 
     img_bgr = np.random.randint(0, 255, (480, 640, 3), dtype=np.uint8)
@@ -154,7 +154,7 @@ def test_image_encoded_nv12() -> None:
 
     assert type(img) is rr.Image
     assert img.format is not None
-    
+
     image_format_arrow = img.format.as_arrow_array()[0].as_py()
 
     image_format = rr.components.ImageFormat(

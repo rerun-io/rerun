@@ -163,7 +163,7 @@ class ViewportBlueprint(Archetype):
     root_container: blueprint_components.RootContainerBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint_components.RootContainerBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.RootContainerBatch._converter,  # type: ignore[misc]
     )
     # The layout of the views
     #
@@ -172,7 +172,7 @@ class ViewportBlueprint(Archetype):
     maximized: blueprint_components.ViewMaximizedBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint_components.ViewMaximizedBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.ViewMaximizedBatch._converter,  # type: ignore[misc]
     )
     # Show one tab as maximized?
     #
@@ -181,7 +181,7 @@ class ViewportBlueprint(Archetype):
     auto_layout: blueprint_components.AutoLayoutBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint_components.AutoLayoutBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.AutoLayoutBatch._converter,  # type: ignore[misc]
     )
     # Whether the viewport layout is determined automatically.
     #
@@ -193,7 +193,7 @@ class ViewportBlueprint(Archetype):
     auto_views: blueprint_components.AutoViewsBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint_components.AutoViewsBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.AutoViewsBatch._converter,  # type: ignore[misc]
     )
     # Whether or not views should be created automatically.
     #
@@ -206,7 +206,7 @@ class ViewportBlueprint(Archetype):
     past_viewer_recommendations: blueprint_components.ViewerRecommendationHashBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint_components.ViewerRecommendationHashBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.ViewerRecommendationHashBatch._converter,  # type: ignore[misc]
     )
     # Hashes of all recommended views the viewer has already added and that should not be added again.
     #

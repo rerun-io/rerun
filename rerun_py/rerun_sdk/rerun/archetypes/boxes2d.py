@@ -149,7 +149,7 @@ class Boxes2D(Boxes2DExt, Archetype):
     half_sizes: components.HalfSize2DBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.HalfSize2DBatch._optional,  # type: ignore[misc]
+        converter=components.HalfSize2DBatch._converter,  # type: ignore[misc]
     )
     # All half-extents that make up the batch of boxes.
     #
@@ -158,7 +158,7 @@ class Boxes2D(Boxes2DExt, Archetype):
     centers: components.Position2DBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.Position2DBatch._optional,  # type: ignore[misc]
+        converter=components.Position2DBatch._converter,  # type: ignore[misc]
     )
     # Optional center positions of the boxes.
     #
@@ -167,7 +167,7 @@ class Boxes2D(Boxes2DExt, Archetype):
     colors: components.ColorBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ColorBatch._optional,  # type: ignore[misc]
+        converter=components.ColorBatch._converter,  # type: ignore[misc]
     )
     # Optional colors for the boxes.
     #
@@ -176,7 +176,7 @@ class Boxes2D(Boxes2DExt, Archetype):
     radii: components.RadiusBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.RadiusBatch._optional,  # type: ignore[misc]
+        converter=components.RadiusBatch._converter,  # type: ignore[misc]
     )
     # Optional radii for the lines that make up the boxes.
     #
@@ -185,7 +185,7 @@ class Boxes2D(Boxes2DExt, Archetype):
     labels: components.TextBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.TextBatch._optional,  # type: ignore[misc]
+        converter=components.TextBatch._converter,  # type: ignore[misc]
     )
     # Optional text labels for the boxes.
     #
@@ -197,7 +197,7 @@ class Boxes2D(Boxes2DExt, Archetype):
     show_labels: components.ShowLabelsBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ShowLabelsBatch._optional,  # type: ignore[misc]
+        converter=components.ShowLabelsBatch._converter,  # type: ignore[misc]
     )
     # Optional choice of whether the text labels should be shown by default.
     #
@@ -206,7 +206,7 @@ class Boxes2D(Boxes2DExt, Archetype):
     draw_order: components.DrawOrderBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.DrawOrderBatch._optional,  # type: ignore[misc]
+        converter=components.DrawOrderBatch._converter,  # type: ignore[misc]
     )
     # An optional floating point value that specifies the 2D drawing order.
     #
@@ -219,7 +219,7 @@ class Boxes2D(Boxes2DExt, Archetype):
     class_ids: components.ClassIdBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ClassIdBatch._optional,  # type: ignore[misc]
+        converter=components.ClassIdBatch._converter,  # type: ignore[misc]
     )
     # Optional [`components.ClassId`][rerun.components.ClassId]s for the boxes.
     #

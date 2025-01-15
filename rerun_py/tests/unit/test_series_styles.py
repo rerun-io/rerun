@@ -28,11 +28,11 @@ def test_line_series() -> None:
 
     for input in inputs:
         if input.color is not None:
-            assert input.color == ColorBatch._optional([Color([255, 0, 0])])
+            assert input.color == ColorBatch._converter([Color([255, 0, 0])])
         if input.width is not None:
-            assert input.width == StrokeWidthBatch._optional([StrokeWidth(2.0)])
+            assert input.width == StrokeWidthBatch._converter([StrokeWidth(2.0)])
         if input.name is not None:
-            assert input.name == NameBatch._optional([Name("my plot")])
+            assert input.name == NameBatch._converter([Name("my plot")])
 
 
 def test_point_series() -> None:
@@ -49,13 +49,13 @@ def test_point_series() -> None:
 
     for input in inputs:
         if input.color is not None:
-            assert input.color == ColorBatch._optional([Color([255, 0, 0])])
+            assert input.color == ColorBatch._converter([Color([255, 0, 0])])
         if input.marker_size is not None:
-            assert input.marker_size == MarkerSizeBatch._optional([MarkerSize(2.0)])
+            assert input.marker_size == MarkerSizeBatch._converter([MarkerSize(2.0)])
         if input.marker is not None:
-            assert input.marker == MarkerShapeBatch._optional([MarkerShape.Diamond])
+            assert input.marker == MarkerShapeBatch._converter([MarkerShape.Diamond])
         if input.name is not None:
-            assert input.name == NameBatch._optional([Name("my plot")])
+            assert input.name == NameBatch._converter([Name("my plot")])
 
 
 if __name__ == "__main__":

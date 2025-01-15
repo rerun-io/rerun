@@ -243,7 +243,7 @@ class LineStrips3D(Archetype):
     strips: components.LineStrip3DBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.LineStrip3DBatch._optional,  # type: ignore[misc]
+        converter=components.LineStrip3DBatch._converter,  # type: ignore[misc]
     )
     # All the actual 3D line strips that make up the batch.
     #
@@ -252,7 +252,7 @@ class LineStrips3D(Archetype):
     radii: components.RadiusBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.RadiusBatch._optional,  # type: ignore[misc]
+        converter=components.RadiusBatch._converter,  # type: ignore[misc]
     )
     # Optional radii for the line strips.
     #
@@ -261,7 +261,7 @@ class LineStrips3D(Archetype):
     colors: components.ColorBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ColorBatch._optional,  # type: ignore[misc]
+        converter=components.ColorBatch._converter,  # type: ignore[misc]
     )
     # Optional colors for the line strips.
     #
@@ -270,7 +270,7 @@ class LineStrips3D(Archetype):
     labels: components.TextBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.TextBatch._optional,  # type: ignore[misc]
+        converter=components.TextBatch._converter,  # type: ignore[misc]
     )
     # Optional text labels for the line strips.
     #
@@ -282,7 +282,7 @@ class LineStrips3D(Archetype):
     show_labels: components.ShowLabelsBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ShowLabelsBatch._optional,  # type: ignore[misc]
+        converter=components.ShowLabelsBatch._converter,  # type: ignore[misc]
     )
     # Optional choice of whether the text labels should be shown by default.
     #
@@ -291,7 +291,7 @@ class LineStrips3D(Archetype):
     class_ids: components.ClassIdBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ClassIdBatch._optional,  # type: ignore[misc]
+        converter=components.ClassIdBatch._converter,  # type: ignore[misc]
     )
     # Optional [`components.ClassId`][rerun.components.ClassId]s for the lines.
     #

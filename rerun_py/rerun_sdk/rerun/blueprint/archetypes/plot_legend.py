@@ -86,7 +86,7 @@ class PlotLegend(PlotLegendExt, Archetype):
     corner: blueprint_components.Corner2DBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint_components.Corner2DBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.Corner2DBatch._converter,  # type: ignore[misc]
     )
     # To what corner the legend is aligned.
     #
@@ -97,7 +97,7 @@ class PlotLegend(PlotLegendExt, Archetype):
     visible: blueprint_components.VisibleBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint_components.VisibleBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.VisibleBatch._converter,  # type: ignore[misc]
     )
     # Whether the legend is shown at all.
     #

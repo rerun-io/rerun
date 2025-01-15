@@ -211,7 +211,7 @@ class Points2D(Points2DExt, Archetype):
     positions: components.Position2DBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.Position2DBatch._optional,  # type: ignore[misc]
+        converter=components.Position2DBatch._converter,  # type: ignore[misc]
     )
     # All the 2D positions at which the point cloud shows points.
     #
@@ -220,7 +220,7 @@ class Points2D(Points2DExt, Archetype):
     radii: components.RadiusBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.RadiusBatch._optional,  # type: ignore[misc]
+        converter=components.RadiusBatch._converter,  # type: ignore[misc]
     )
     # Optional radii for the points, effectively turning them into circles.
     #
@@ -229,7 +229,7 @@ class Points2D(Points2DExt, Archetype):
     colors: components.ColorBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ColorBatch._optional,  # type: ignore[misc]
+        converter=components.ColorBatch._converter,  # type: ignore[misc]
     )
     # Optional colors for the points.
     #
@@ -241,7 +241,7 @@ class Points2D(Points2DExt, Archetype):
     labels: components.TextBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.TextBatch._optional,  # type: ignore[misc]
+        converter=components.TextBatch._converter,  # type: ignore[misc]
     )
     # Optional text labels for the points.
     #
@@ -253,7 +253,7 @@ class Points2D(Points2DExt, Archetype):
     show_labels: components.ShowLabelsBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ShowLabelsBatch._optional,  # type: ignore[misc]
+        converter=components.ShowLabelsBatch._converter,  # type: ignore[misc]
     )
     # Optional choice of whether the text labels should be shown by default.
     #
@@ -262,7 +262,7 @@ class Points2D(Points2DExt, Archetype):
     draw_order: components.DrawOrderBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.DrawOrderBatch._optional,  # type: ignore[misc]
+        converter=components.DrawOrderBatch._converter,  # type: ignore[misc]
     )
     # An optional floating point value that specifies the 2D drawing order.
     #
@@ -273,7 +273,7 @@ class Points2D(Points2DExt, Archetype):
     class_ids: components.ClassIdBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ClassIdBatch._optional,  # type: ignore[misc]
+        converter=components.ClassIdBatch._converter,  # type: ignore[misc]
     )
     # Optional class Ids for the points.
     #
@@ -284,7 +284,7 @@ class Points2D(Points2DExt, Archetype):
     keypoint_ids: components.KeypointIdBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.KeypointIdBatch._optional,  # type: ignore[misc]
+        converter=components.KeypointIdBatch._converter,  # type: ignore[misc]
     )
     # Optional keypoint IDs for the points, identifying them within a class.
     #

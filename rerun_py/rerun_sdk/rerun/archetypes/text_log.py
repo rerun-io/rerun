@@ -149,7 +149,7 @@ class TextLog(Archetype):
     text: components.TextBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.TextBatch._optional,  # type: ignore[misc]
+        converter=components.TextBatch._converter,  # type: ignore[misc]
     )
     # The body of the message.
     #
@@ -158,7 +158,7 @@ class TextLog(Archetype):
     level: components.TextLogLevelBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.TextLogLevelBatch._optional,  # type: ignore[misc]
+        converter=components.TextLogLevelBatch._converter,  # type: ignore[misc]
     )
     # The verbosity level of the message.
     #
@@ -169,7 +169,7 @@ class TextLog(Archetype):
     color: components.ColorBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ColorBatch._optional,  # type: ignore[misc]
+        converter=components.ColorBatch._converter,  # type: ignore[misc]
     )
     # Optional color to use for the log line in the Rerun Viewer.
     #

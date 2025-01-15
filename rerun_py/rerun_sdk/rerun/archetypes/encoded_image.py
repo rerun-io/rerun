@@ -127,7 +127,7 @@ class EncodedImage(EncodedImageExt, Archetype):
     blob: components.BlobBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.BlobBatch._optional,  # type: ignore[misc]
+        converter=components.BlobBatch._converter,  # type: ignore[misc]
     )
     # The encoded content of some image file, e.g. a PNG or JPEG.
     #
@@ -136,7 +136,7 @@ class EncodedImage(EncodedImageExt, Archetype):
     media_type: components.MediaTypeBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.MediaTypeBatch._optional,  # type: ignore[misc]
+        converter=components.MediaTypeBatch._converter,  # type: ignore[misc]
     )
     # The Media Type of the asset.
     #
@@ -152,7 +152,7 @@ class EncodedImage(EncodedImageExt, Archetype):
     opacity: components.OpacityBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.OpacityBatch._optional,  # type: ignore[misc]
+        converter=components.OpacityBatch._converter,  # type: ignore[misc]
     )
     # Opacity of the image, useful for layering several images.
     #
@@ -163,7 +163,7 @@ class EncodedImage(EncodedImageExt, Archetype):
     draw_order: components.DrawOrderBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.DrawOrderBatch._optional,  # type: ignore[misc]
+        converter=components.DrawOrderBatch._converter,  # type: ignore[misc]
     )
     # An optional floating point value that specifies the 2D drawing order.
     #

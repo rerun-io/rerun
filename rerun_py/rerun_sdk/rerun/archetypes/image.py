@@ -164,7 +164,7 @@ class Image(ImageExt, Archetype):
     buffer: components.ImageBufferBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ImageBufferBatch._optional,  # type: ignore[misc]
+        converter=components.ImageBufferBatch._converter,  # type: ignore[misc]
     )
     # The raw image data.
     #
@@ -173,7 +173,7 @@ class Image(ImageExt, Archetype):
     format: components.ImageFormatBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ImageFormatBatch._optional,  # type: ignore[misc]
+        converter=components.ImageFormatBatch._converter,  # type: ignore[misc]
     )
     # The format of the image.
     #
@@ -182,7 +182,7 @@ class Image(ImageExt, Archetype):
     opacity: components.OpacityBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.OpacityBatch._optional,  # type: ignore[misc]
+        converter=components.OpacityBatch._converter,  # type: ignore[misc]
     )
     # Opacity of the image, useful for layering several images.
     #
@@ -193,7 +193,7 @@ class Image(ImageExt, Archetype):
     draw_order: components.DrawOrderBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.DrawOrderBatch._optional,  # type: ignore[misc]
+        converter=components.DrawOrderBatch._converter,  # type: ignore[misc]
     )
     # An optional floating point value that specifies the 2D drawing order.
     #

@@ -131,7 +131,7 @@ class GeoLineStrings(GeoLineStringsExt, Archetype):
     line_strings: components.GeoLineStringBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.GeoLineStringBatch._optional,  # type: ignore[misc]
+        converter=components.GeoLineStringBatch._converter,  # type: ignore[misc]
     )
     # The line strings, expressed in [EPSG:4326](https://epsg.io/4326) coordinates (North/East-positive degrees).
     #
@@ -140,7 +140,7 @@ class GeoLineStrings(GeoLineStringsExt, Archetype):
     radii: components.RadiusBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.RadiusBatch._optional,  # type: ignore[misc]
+        converter=components.RadiusBatch._converter,  # type: ignore[misc]
     )
     # Optional radii for the line strings.
     #
@@ -152,7 +152,7 @@ class GeoLineStrings(GeoLineStringsExt, Archetype):
     colors: components.ColorBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ColorBatch._optional,  # type: ignore[misc]
+        converter=components.ColorBatch._converter,  # type: ignore[misc]
     )
     # Optional colors for the line strings.
     #

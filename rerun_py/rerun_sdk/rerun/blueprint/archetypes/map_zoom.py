@@ -97,7 +97,7 @@ class MapZoom(Archetype):
     zoom: blueprint_components.ZoomLevelBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint_components.ZoomLevelBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.ZoomLevelBatch._converter,  # type: ignore[misc]
     )
     # Zoom level for the map.
     #

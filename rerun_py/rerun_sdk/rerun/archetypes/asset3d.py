@@ -134,7 +134,7 @@ class Asset3D(Asset3DExt, Archetype):
     blob: components.BlobBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.BlobBatch._optional,  # type: ignore[misc]
+        converter=components.BlobBatch._converter,  # type: ignore[misc]
     )
     # The asset's bytes.
     #
@@ -143,7 +143,7 @@ class Asset3D(Asset3DExt, Archetype):
     media_type: components.MediaTypeBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.MediaTypeBatch._optional,  # type: ignore[misc]
+        converter=components.MediaTypeBatch._converter,  # type: ignore[misc]
     )
     # The Media Type of the asset.
     #
@@ -161,7 +161,7 @@ class Asset3D(Asset3DExt, Archetype):
     albedo_factor: components.AlbedoFactorBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.AlbedoFactorBatch._optional,  # type: ignore[misc]
+        converter=components.AlbedoFactorBatch._converter,  # type: ignore[misc]
     )
     # A color multiplier applied to the whole asset.
     #

@@ -186,7 +186,7 @@ class VideoFrameReference(VideoFrameReferenceExt, Archetype):
     timestamp: components.VideoTimestampBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.VideoTimestampBatch._optional,  # type: ignore[misc]
+        converter=components.VideoTimestampBatch._converter,  # type: ignore[misc]
     )
     # References the closest video frame to this timestamp.
     #
@@ -202,7 +202,7 @@ class VideoFrameReference(VideoFrameReferenceExt, Archetype):
     video_reference: components.EntityPathBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.EntityPathBatch._optional,  # type: ignore[misc]
+        converter=components.EntityPathBatch._converter,  # type: ignore[misc]
     )
     # Optional reference to an entity with a [`archetypes.AssetVideo`][rerun.archetypes.AssetVideo].
     #

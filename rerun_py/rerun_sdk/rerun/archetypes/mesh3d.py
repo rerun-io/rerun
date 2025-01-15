@@ -209,7 +209,7 @@ class Mesh3D(Mesh3DExt, Archetype):
     vertex_positions: components.Position3DBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.Position3DBatch._optional,  # type: ignore[misc]
+        converter=components.Position3DBatch._converter,  # type: ignore[misc]
     )
     # The positions of each vertex.
     #
@@ -220,7 +220,7 @@ class Mesh3D(Mesh3DExt, Archetype):
     triangle_indices: components.TriangleIndicesBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.TriangleIndicesBatch._optional,  # type: ignore[misc]
+        converter=components.TriangleIndicesBatch._converter,  # type: ignore[misc]
     )
     # Optional indices for the triangles that make up the mesh.
     #
@@ -229,7 +229,7 @@ class Mesh3D(Mesh3DExt, Archetype):
     vertex_normals: components.Vector3DBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.Vector3DBatch._optional,  # type: ignore[misc]
+        converter=components.Vector3DBatch._converter,  # type: ignore[misc]
     )
     # An optional normal for each vertex.
     #
@@ -238,7 +238,7 @@ class Mesh3D(Mesh3DExt, Archetype):
     vertex_colors: components.ColorBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ColorBatch._optional,  # type: ignore[misc]
+        converter=components.ColorBatch._converter,  # type: ignore[misc]
     )
     # An optional color for each vertex.
     #
@@ -247,7 +247,7 @@ class Mesh3D(Mesh3DExt, Archetype):
     vertex_texcoords: components.Texcoord2DBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.Texcoord2DBatch._optional,  # type: ignore[misc]
+        converter=components.Texcoord2DBatch._converter,  # type: ignore[misc]
     )
     # An optional uv texture coordinate for each vertex.
     #
@@ -256,7 +256,7 @@ class Mesh3D(Mesh3DExt, Archetype):
     albedo_factor: components.AlbedoFactorBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.AlbedoFactorBatch._optional,  # type: ignore[misc]
+        converter=components.AlbedoFactorBatch._converter,  # type: ignore[misc]
     )
     # A color multiplier applied to the whole mesh.
     #
@@ -265,7 +265,7 @@ class Mesh3D(Mesh3DExt, Archetype):
     albedo_texture_buffer: components.ImageBufferBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ImageBufferBatch._optional,  # type: ignore[misc]
+        converter=components.ImageBufferBatch._converter,  # type: ignore[misc]
     )
     # Optional albedo texture.
     #
@@ -279,7 +279,7 @@ class Mesh3D(Mesh3DExt, Archetype):
     albedo_texture_format: components.ImageFormatBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ImageFormatBatch._optional,  # type: ignore[misc]
+        converter=components.ImageFormatBatch._converter,  # type: ignore[misc]
     )
     # The format of the `albedo_texture_buffer`, if any.
     #
@@ -288,7 +288,7 @@ class Mesh3D(Mesh3DExt, Archetype):
     class_ids: components.ClassIdBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ClassIdBatch._optional,  # type: ignore[misc]
+        converter=components.ClassIdBatch._converter,  # type: ignore[misc]
     )
     # Optional class Ids for the vertices.
     #

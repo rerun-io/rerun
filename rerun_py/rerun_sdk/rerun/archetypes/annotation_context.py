@@ -132,7 +132,7 @@ class AnnotationContext(Archetype):
     context: components.AnnotationContextBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.AnnotationContextBatch._optional,  # type: ignore[misc]
+        converter=components.AnnotationContextBatch._converter,  # type: ignore[misc]
     )
     # List of class descriptions, mapping class indices to class names, colors etc.
     #

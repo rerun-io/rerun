@@ -39,7 +39,7 @@ albedo_factors: list[Rgba32Like | None] = [
 def albedo_factor_expected(obj: Any) -> Any:
     expected = none_empty_or_value(obj, Rgba32(0xAA0000CC))
 
-    return AlbedoFactorBatch._optional(expected)
+    return AlbedoFactorBatch._converter(expected)
 
 
 def test_mesh3d() -> None:

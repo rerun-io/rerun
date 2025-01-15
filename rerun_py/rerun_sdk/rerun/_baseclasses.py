@@ -281,21 +281,11 @@ class BaseBatch(Generic[T]):
         self.pa_array = _empty_pa_array(self._ARROW_DATATYPE)
 
     @classmethod
-    def _required(cls, data: T | None) -> BaseBatch[T]:
+    def _converter(cls, data: T | None) -> BaseBatch[T] | None:
         """
-        Primary method for creating Arrow arrays for optional components.
+        Primary method for creating Arrow arrays for components.
 
-        Just calls through to __init__, but with clearer type annotations.
-        """
-        return cls(data)
-
-    @classmethod
-    def _optional(cls, data: T | None) -> BaseBatch[T] | None:
-        """
-        Primary method for creating Arrow arrays for optional components.
-
-        For optional components, the default value of None is preserved in the field to indicate that the optional
-        field was not specified.
+        The default value of None is preserved in the field to indicate that the optional field was not specified.
         If any value other than None is provided, it is passed through to `__init__`.
 
         Parameters

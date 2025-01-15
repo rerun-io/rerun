@@ -177,7 +177,7 @@ class GraphNodes(Archetype):
     node_ids: components.GraphNodeBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.GraphNodeBatch._optional,  # type: ignore[misc]
+        converter=components.GraphNodeBatch._converter,  # type: ignore[misc]
     )
     # A list of node IDs.
     #
@@ -186,7 +186,7 @@ class GraphNodes(Archetype):
     positions: components.Position2DBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.Position2DBatch._optional,  # type: ignore[misc]
+        converter=components.Position2DBatch._converter,  # type: ignore[misc]
     )
     # Optional center positions of the nodes.
     #
@@ -195,7 +195,7 @@ class GraphNodes(Archetype):
     colors: components.ColorBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ColorBatch._optional,  # type: ignore[misc]
+        converter=components.ColorBatch._converter,  # type: ignore[misc]
     )
     # Optional colors for the boxes.
     #
@@ -204,7 +204,7 @@ class GraphNodes(Archetype):
     labels: components.TextBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.TextBatch._optional,  # type: ignore[misc]
+        converter=components.TextBatch._converter,  # type: ignore[misc]
     )
     # Optional text labels for the node.
     #
@@ -213,7 +213,7 @@ class GraphNodes(Archetype):
     show_labels: components.ShowLabelsBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ShowLabelsBatch._optional,  # type: ignore[misc]
+        converter=components.ShowLabelsBatch._converter,  # type: ignore[misc]
     )
     # Optional choice of whether the text labels should be shown by default.
     #
@@ -222,7 +222,7 @@ class GraphNodes(Archetype):
     radii: components.RadiusBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.RadiusBatch._optional,  # type: ignore[misc]
+        converter=components.RadiusBatch._converter,  # type: ignore[misc]
     )
     # Optional radii for nodes.
     #

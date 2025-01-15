@@ -86,7 +86,7 @@ class VisualBounds2D(VisualBounds2DExt, Archetype):
     range: blueprint_components.VisualBounds2DBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint_components.VisualBounds2DBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.VisualBounds2DBatch._converter,  # type: ignore[misc]
     )
     # Controls the visible range of a 2D view.
     #

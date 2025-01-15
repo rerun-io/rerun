@@ -157,7 +157,7 @@ class LineGrid3D(Archetype):
     visible: blueprint_components.VisibleBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint_components.VisibleBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.VisibleBatch._converter,  # type: ignore[misc]
     )
     # Whether the grid is visible.
     #
@@ -168,7 +168,7 @@ class LineGrid3D(Archetype):
     spacing: blueprint_components.GridSpacingBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint_components.GridSpacingBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.GridSpacingBatch._converter,  # type: ignore[misc]
     )
     # Space between grid lines spacing of one line to the next in scene units.
     #
@@ -180,7 +180,7 @@ class LineGrid3D(Archetype):
     plane: components.Plane3DBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.Plane3DBatch._optional,  # type: ignore[misc]
+        converter=components.Plane3DBatch._converter,  # type: ignore[misc]
     )
     # In what plane the grid is drawn.
     #
@@ -191,7 +191,7 @@ class LineGrid3D(Archetype):
     stroke_width: components.StrokeWidthBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.StrokeWidthBatch._optional,  # type: ignore[misc]
+        converter=components.StrokeWidthBatch._converter,  # type: ignore[misc]
     )
     # How thick the lines should be in ui units.
     #
@@ -202,7 +202,7 @@ class LineGrid3D(Archetype):
     color: components.ColorBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ColorBatch._optional,  # type: ignore[misc]
+        converter=components.ColorBatch._converter,  # type: ignore[misc]
     )
     # Color used for the grid.
     #

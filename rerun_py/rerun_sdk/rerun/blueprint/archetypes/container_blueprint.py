@@ -201,7 +201,7 @@ class ContainerBlueprint(Archetype):
     container_kind: blueprint_components.ContainerKindBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint_components.ContainerKindBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.ContainerKindBatch._converter,  # type: ignore[misc]
     )
     # The class of the view.
     #
@@ -210,7 +210,7 @@ class ContainerBlueprint(Archetype):
     display_name: components.NameBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.NameBatch._optional,  # type: ignore[misc]
+        converter=components.NameBatch._converter,  # type: ignore[misc]
     )
     # The name of the container.
     #
@@ -219,7 +219,7 @@ class ContainerBlueprint(Archetype):
     contents: blueprint_components.IncludedContentBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint_components.IncludedContentBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.IncludedContentBatch._converter,  # type: ignore[misc]
     )
     # `ContainerId`s or `ViewId`s that are children of this container.
     #
@@ -228,7 +228,7 @@ class ContainerBlueprint(Archetype):
     col_shares: blueprint_components.ColumnShareBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint_components.ColumnShareBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.ColumnShareBatch._converter,  # type: ignore[misc]
     )
     # The layout shares of each column in the container.
     #
@@ -241,7 +241,7 @@ class ContainerBlueprint(Archetype):
     row_shares: blueprint_components.RowShareBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint_components.RowShareBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.RowShareBatch._converter,  # type: ignore[misc]
     )
     # The layout shares of each row of the container.
     #
@@ -254,7 +254,7 @@ class ContainerBlueprint(Archetype):
     active_tab: blueprint_components.ActiveTabBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint_components.ActiveTabBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.ActiveTabBatch._converter,  # type: ignore[misc]
     )
     # Which tab is active.
     #
@@ -265,7 +265,7 @@ class ContainerBlueprint(Archetype):
     visible: blueprint_components.VisibleBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint_components.VisibleBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.VisibleBatch._converter,  # type: ignore[misc]
     )
     # Whether this container is visible.
     #
@@ -276,7 +276,7 @@ class ContainerBlueprint(Archetype):
     grid_columns: blueprint_components.GridColumnsBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint_components.GridColumnsBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.GridColumnsBatch._converter,  # type: ignore[misc]
     )
     # How many columns this grid should have.
     #

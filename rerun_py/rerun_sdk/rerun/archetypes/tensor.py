@@ -122,7 +122,7 @@ class Tensor(TensorExt, Archetype):
     data: components.TensorDataBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.TensorDataBatch._optional,  # type: ignore[misc]
+        converter=components.TensorDataBatch._converter,  # type: ignore[misc]
     )
     # The tensor data
     #
@@ -131,7 +131,7 @@ class Tensor(TensorExt, Archetype):
     value_range: components.ValueRangeBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ValueRangeBatch._optional,  # type: ignore[misc]
+        converter=components.ValueRangeBatch._converter,  # type: ignore[misc]
     )
     # The expected range of values.
     #

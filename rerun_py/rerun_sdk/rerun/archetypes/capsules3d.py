@@ -189,7 +189,7 @@ class Capsules3D(Capsules3DExt, Archetype):
     lengths: components.LengthBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.LengthBatch._optional,  # type: ignore[misc]
+        converter=components.LengthBatch._converter,  # type: ignore[misc]
     )
     # Lengths of the capsules, defined as the distance between the centers of the endcaps.
     #
@@ -198,7 +198,7 @@ class Capsules3D(Capsules3DExt, Archetype):
     radii: components.RadiusBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.RadiusBatch._optional,  # type: ignore[misc]
+        converter=components.RadiusBatch._converter,  # type: ignore[misc]
     )
     # Radii of the capsules.
     #
@@ -207,7 +207,7 @@ class Capsules3D(Capsules3DExt, Archetype):
     translations: components.PoseTranslation3DBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.PoseTranslation3DBatch._optional,  # type: ignore[misc]
+        converter=components.PoseTranslation3DBatch._converter,  # type: ignore[misc]
     )
     # Optional translations of the capsules.
     #
@@ -219,7 +219,7 @@ class Capsules3D(Capsules3DExt, Archetype):
     rotation_axis_angles: components.PoseRotationAxisAngleBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.PoseRotationAxisAngleBatch._optional,  # type: ignore[misc]
+        converter=components.PoseRotationAxisAngleBatch._converter,  # type: ignore[misc]
     )
     # Rotations via axis + angle.
     #
@@ -231,7 +231,7 @@ class Capsules3D(Capsules3DExt, Archetype):
     quaternions: components.PoseRotationQuatBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.PoseRotationQuatBatch._optional,  # type: ignore[misc]
+        converter=components.PoseRotationQuatBatch._converter,  # type: ignore[misc]
     )
     # Rotations via quaternion.
     #
@@ -243,7 +243,7 @@ class Capsules3D(Capsules3DExt, Archetype):
     colors: components.ColorBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ColorBatch._optional,  # type: ignore[misc]
+        converter=components.ColorBatch._converter,  # type: ignore[misc]
     )
     # Optional colors for the capsules.
     #
@@ -252,7 +252,7 @@ class Capsules3D(Capsules3DExt, Archetype):
     labels: components.TextBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.TextBatch._optional,  # type: ignore[misc]
+        converter=components.TextBatch._converter,  # type: ignore[misc]
     )
     # Optional text labels for the capsules, which will be located at their centers.
     #
@@ -261,7 +261,7 @@ class Capsules3D(Capsules3DExt, Archetype):
     show_labels: components.ShowLabelsBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ShowLabelsBatch._optional,  # type: ignore[misc]
+        converter=components.ShowLabelsBatch._converter,  # type: ignore[misc]
     )
     # Optional choice of whether the text labels should be shown by default.
     #
@@ -270,7 +270,7 @@ class Capsules3D(Capsules3DExt, Archetype):
     class_ids: components.ClassIdBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ClassIdBatch._optional,  # type: ignore[misc]
+        converter=components.ClassIdBatch._converter,  # type: ignore[misc]
     )
     # Optional class ID for the ellipsoids.
     #
