@@ -6,7 +6,6 @@
 
 mod builder;
 mod chunk;
-pub mod concat_record_batches;
 mod helpers;
 mod id;
 mod iter;

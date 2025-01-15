@@ -239,7 +239,7 @@ impl<'de> serde::Deserialize<'de> for ArrowMsg {
                         })?;
 
                         if chunks.is_empty() {
-                            return Err(serde::de::Error::custom("No Arrow2Chunk found in stream"));
+                            return Err(serde::de::Error::custom("No chunks found in stream"));
                         }
                         if chunks.len() > 1 {
                             return Err(serde::de::Error::custom(format!(

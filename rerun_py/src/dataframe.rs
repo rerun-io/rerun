@@ -755,10 +755,8 @@ impl PyRecordingView {
 
                 let schema = query_handle.schema().clone();
 
-                let reader = RecordBatchIterator::new(
-                    query_handle.into_batch_iter().map(Ok),
-                    std::sync::Arc::new(schema),
-                );
+                let reader =
+                    RecordBatchIterator::new(query_handle.into_batch_iter().map(Ok), schema);
                 Ok(PyArrowType(Box::new(reader)))
             }
             #[cfg(feature = "remote")]
@@ -847,7 +845,7 @@ impl PyRecordingView {
                 let schema = query_handle.schema().clone();
 
                 let reader =
-                    RecordBatchIterator::new(query_handle.into_batch_iter().map(Ok), schema.into());
+                    RecordBatchIterator::new(query_handle.into_batch_iter().map(Ok), schema);
 
                 Ok(PyArrowType(Box::new(reader)))
             }

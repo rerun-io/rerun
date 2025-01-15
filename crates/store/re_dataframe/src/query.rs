@@ -9,6 +9,7 @@ use std::{
 use arrow::{
     array::RecordBatch as ArrowRecordBatch, buffer::ScalarBuffer as ArrowScalarBuffer,
     datatypes::Fields as ArrowFields, datatypes::Schema as ArrowSchema,
+    datatypes::SchemaRef as ArrowSchemaRef,
 };
 use arrow2::{
     array::{
@@ -106,7 +107,7 @@ struct QueryHandleState {
     /// The Arrow schema that corresponds to the `selected_contents`.
     ///
     /// All returned rows will have this schema.
-    arrow_schema: ArrowSchema,
+    arrow_schema: ArrowSchemaRef,
 
     /// All the [`Chunk`]s included in the view contents.
     ///
@@ -190,13 +191,13 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         // 3. Compute the Arrow schema of the selected components.
         //
         // Every result returned using this `QueryHandle` will match this schema exactly.
-        let arrow2_schema = ArrowSchema::new_with_metadata(
+        let arrow_schema = ArrowSchemaRef::from(ArrowSchema::new_with_metadata(
             selected_contents
                 .iter()
                 .map(|(_, descr)| descr.to_arrow_field())
                 .collect::<ArrowFields>(),
             Default::default(),
-        );
+        ));
 
         // 4. Perform the query and keep track of all the relevant chunks.
         let query = {
@@ -358,7 +359,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             selected_contents,
             selected_static_values,
             filtered_index,
-            arrow_schema: arrow2_schema,
+            arrow_schema,
             view_chunks,
             cur_row: AtomicU64::new(0),
             unique_index_values,
@@ -668,7 +669,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     ///
     /// Columns that do not yield any data will still be present in the results, filled with null values.
     #[inline]
-    pub fn schema(&self) -> &ArrowSchema {
+    pub fn schema(&self) -> &ArrowSchemaRef {
         &self.init().arrow_schema
     }
 
@@ -1268,7 +1269,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     #[inline]
     pub fn next_row_batch(&self) -> Option<ArrowRecordBatch> {
         let row = self.next_row()?;
-        ArrowRecordBatch::try_new(self.schema().clone().into(), row).ok()
+        ArrowRecordBatch::try_new(self.schema().clone(), row).ok()
     }
 
     #[inline]
@@ -1284,7 +1285,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         let schema = self.state.get().unwrap().arrow_schema.clone();
 
         // TODO(#3741): remove the collect
-        ArrowRecordBatch::try_new(schema.into(), row.into_iter().map(|a| a.into()).collect()).ok()
+        ArrowRecordBatch::try_new(schema, row.into_iter().map(|a| a.into()).collect()).ok()
     }
 }
 
@@ -1321,10 +1322,8 @@ impl<E: StorageEngineLike> QueryHandle<E> {
 mod tests {
     use std::sync::Arc;
 
-    use re_chunk::{
-        concat_record_batches::concatenate_record_batches, Chunk, ChunkId, RowId, TimePoint,
-        TransportChunk,
-    };
+    use arrow::compute::concat_batches;
+    use re_chunk::{Chunk, ChunkId, RowId, TimePoint, TransportChunk};
     use re_chunk_store::{
         ChunkStore, ChunkStoreConfig, ChunkStoreHandle, ResolvedTimeRange, TimeInt,
     };
@@ -1396,9 +1395,9 @@ mod tests {
                 query_engine.query(query.clone()).into_iter().count() as u64,
                 query_handle.num_rows()
             );
-            let dataframe = concatenate_record_batches(
-                query_handle.schema().clone(),
-                &query_handle.into_batch_iter().collect_vec(),
+            let dataframe = concat_batches(
+                query_handle.schema(),
+                &query_handle.batch_iter().collect_vec(),
             )?;
             eprintln!("{}", TransportChunk::from(dataframe.clone()));
 
@@ -1418,9 +1417,9 @@ mod tests {
                 query_engine.query(query.clone()).into_iter().count() as u64,
                 query_handle.num_rows()
             );
-            let dataframe = concatenate_record_batches(
-                query_handle.schema().clone(),
-                &query_handle.into_batch_iter().collect_vec(),
+            let dataframe = concat_batches(
+                query_handle.schema(),
+                &query_handle.batch_iter().collect_vec(),
             )?;
             eprintln!("{}", TransportChunk::from(dataframe.clone()));
 
@@ -1452,9 +1451,9 @@ mod tests {
             query_engine.query(query.clone()).into_iter().count() as u64,
             query_handle.num_rows()
         );
-        let dataframe = concatenate_record_batches(
-            query_handle.schema().clone(),
-            &query_handle.into_batch_iter().collect_vec(),
+        let dataframe = concat_batches(
+            query_handle.schema(),
+            &query_handle.batch_iter().collect_vec(),
         )?;
         eprintln!("{}", TransportChunk::from(dataframe.clone()));
 
@@ -1485,9 +1484,9 @@ mod tests {
             query_engine.query(query.clone()).into_iter().count() as u64,
             query_handle.num_rows()
         );
-        let dataframe = concatenate_record_batches(
-            query_handle.schema().clone(),
-            &query_handle.into_batch_iter().collect_vec(),
+        let dataframe = concat_batches(
+            query_handle.schema(),
+            &query_handle.batch_iter().collect_vec(),
         )?;
         eprintln!("{}", TransportChunk::from(dataframe.clone()));
 
@@ -1524,9 +1523,9 @@ mod tests {
             query_engine.query(query.clone()).into_iter().count() as u64,
             query_handle.num_rows()
         );
-        let dataframe = concatenate_record_batches(
-            query_handle.schema().clone(),
-            &query_handle.into_batch_iter().collect_vec(),
+        let dataframe = concat_batches(
+            query_handle.schema(),
+            &query_handle.batch_iter().collect_vec(),
         )?;
         eprintln!("{}", TransportChunk::from(dataframe.clone()));
 
@@ -1566,9 +1565,9 @@ mod tests {
                 query_engine.query(query.clone()).into_iter().count() as u64,
                 query_handle.num_rows()
             );
-            let dataframe = concatenate_record_batches(
-                query_handle.schema().clone(),
-                &query_handle.into_batch_iter().collect_vec(),
+            let dataframe = concat_batches(
+                query_handle.schema(),
+                &query_handle.batch_iter().collect_vec(),
             )?;
             eprintln!("{}", TransportChunk::from(dataframe.clone()));
 
@@ -1596,9 +1595,9 @@ mod tests {
                 query_engine.query(query.clone()).into_iter().count() as u64,
                 query_handle.num_rows()
             );
-            let dataframe = concatenate_record_batches(
-                query_handle.schema().clone(),
-                &query_handle.into_batch_iter().collect_vec(),
+            let dataframe = concat_batches(
+                query_handle.schema(),
+                &query_handle.batch_iter().collect_vec(),
             )?;
             eprintln!("{}", TransportChunk::from(dataframe.clone()));
 
@@ -1637,9 +1636,9 @@ mod tests {
                 query_engine.query(query.clone()).into_iter().count() as u64,
                 query_handle.num_rows()
             );
-            let dataframe = concatenate_record_batches(
-                query_handle.schema().clone(),
-                &query_handle.into_batch_iter().collect_vec(),
+            let dataframe = concat_batches(
+                query_handle.schema(),
+                &query_handle.batch_iter().collect_vec(),
             )?;
             eprintln!("{}", TransportChunk::from(dataframe.clone()));
 
@@ -1663,9 +1662,9 @@ mod tests {
                 query_engine.query(query.clone()).into_iter().count() as u64,
                 query_handle.num_rows()
             );
-            let dataframe = concatenate_record_batches(
-                query_handle.schema().clone(),
-                &query_handle.into_batch_iter().collect_vec(),
+            let dataframe = concat_batches(
+                query_handle.schema(),
+                &query_handle.batch_iter().collect_vec(),
             )?;
             eprintln!("{}", TransportChunk::from(dataframe.clone()));
 
@@ -1689,9 +1688,9 @@ mod tests {
                 query_engine.query(query.clone()).into_iter().count() as u64,
                 query_handle.num_rows()
             );
-            let dataframe = concatenate_record_batches(
-                query_handle.schema().clone(),
-                &query_handle.into_batch_iter().collect_vec(),
+            let dataframe = concat_batches(
+                query_handle.schema(),
+                &query_handle.batch_iter().collect_vec(),
             )?;
             eprintln!("{}", TransportChunk::from(dataframe.clone()));
 
@@ -1715,9 +1714,9 @@ mod tests {
                 query_engine.query(query.clone()).into_iter().count() as u64,
                 query_handle.num_rows()
             );
-            let dataframe = concatenate_record_batches(
-                query_handle.schema().clone(),
-                &query_handle.into_batch_iter().collect_vec(),
+            let dataframe = concat_batches(
+                query_handle.schema(),
+                &query_handle.batch_iter().collect_vec(),
             )?;
             eprintln!("{}", TransportChunk::from(dataframe.clone()));
 
@@ -1757,9 +1756,9 @@ mod tests {
                 query_engine.query(query.clone()).into_iter().count() as u64,
                 query_handle.num_rows()
             );
-            let dataframe = concatenate_record_batches(
-                query_handle.schema().clone(),
-                &query_handle.into_batch_iter().collect_vec(),
+            let dataframe = concat_batches(
+                query_handle.schema(),
+                &query_handle.batch_iter().collect_vec(),
             )?;
             eprintln!("{}", TransportChunk::from(dataframe.clone()));
 
@@ -1794,9 +1793,9 @@ mod tests {
                 query_engine.query(query.clone()).into_iter().count() as u64,
                 query_handle.num_rows()
             );
-            let dataframe = concatenate_record_batches(
-                query_handle.schema().clone(),
-                &query_handle.into_batch_iter().collect_vec(),
+            let dataframe = concat_batches(
+                query_handle.schema(),
+                &query_handle.batch_iter().collect_vec(),
             )?;
             eprintln!("{}", TransportChunk::from(dataframe.clone()));
 
@@ -1832,9 +1831,9 @@ mod tests {
                 query_engine.query(query.clone()).into_iter().count() as u64,
                 query_handle.num_rows()
             );
-            let dataframe = concatenate_record_batches(
-                query_handle.schema().clone(),
-                &query_handle.into_batch_iter().collect_vec(),
+            let dataframe = concat_batches(
+                query_handle.schema(),
+                &query_handle.batch_iter().collect_vec(),
             )?;
             eprintln!("{}", TransportChunk::from(dataframe.clone()));
 
@@ -1865,9 +1864,9 @@ mod tests {
                 query_engine.query(query.clone()).into_iter().count() as u64,
                 query_handle.num_rows()
             );
-            let dataframe = concatenate_record_batches(
-                query_handle.schema().clone(),
-                &query_handle.into_batch_iter().collect_vec(),
+            let dataframe = concat_batches(
+                query_handle.schema(),
+                &query_handle.batch_iter().collect_vec(),
             )?;
             eprintln!("{}", TransportChunk::from(dataframe.clone()));
 
@@ -1905,9 +1904,9 @@ mod tests {
                 query_engine.query(query.clone()).into_iter().count() as u64,
                 query_handle.num_rows()
             );
-            let dataframe = concatenate_record_batches(
-                query_handle.schema().clone(),
-                &query_handle.into_batch_iter().collect_vec(),
+            let dataframe = concat_batches(
+                query_handle.schema(),
+                &query_handle.batch_iter().collect_vec(),
             )?;
             eprintln!("{}", TransportChunk::from(dataframe.clone()));
 
@@ -1966,9 +1965,9 @@ mod tests {
                 query_engine.query(query.clone()).into_iter().count() as u64,
                 query_handle.num_rows()
             );
-            let dataframe = concatenate_record_batches(
-                query_handle.schema().clone(),
-                &query_handle.into_batch_iter().collect_vec(),
+            let dataframe = concat_batches(
+                query_handle.schema(),
+                &query_handle.batch_iter().collect_vec(),
             )?;
             eprintln!("{}", TransportChunk::from(dataframe.clone()));
 
@@ -2035,9 +2034,9 @@ mod tests {
                 query_engine.query(query.clone()).into_iter().count() as u64,
                 query_handle.num_rows()
             );
-            let dataframe = concatenate_record_batches(
-                query_handle.schema().clone(),
-                &query_handle.into_batch_iter().collect_vec(),
+            let dataframe = concat_batches(
+                query_handle.schema(),
+                &query_handle.batch_iter().collect_vec(),
             )?;
             eprintln!("{}", TransportChunk::from(dataframe.clone()));
 
@@ -2075,9 +2074,9 @@ mod tests {
                 query_engine.query(query.clone()).into_iter().count() as u64,
                 query_handle.num_rows()
             );
-            let dataframe = concatenate_record_batches(
-                query_handle.schema().clone(),
-                &query_handle.into_batch_iter().collect_vec(),
+            let dataframe = concat_batches(
+                query_handle.schema(),
+                &query_handle.batch_iter().collect_vec(),
             )?;
             eprintln!("{}", TransportChunk::from(dataframe.clone()));
 
@@ -2099,9 +2098,9 @@ mod tests {
                 query_engine.query(query.clone()).into_iter().count() as u64,
                 query_handle.num_rows()
             );
-            let dataframe = concatenate_record_batches(
-                query_handle.schema().clone(),
-                &query_handle.into_batch_iter().collect_vec(),
+            let dataframe = concat_batches(
+                query_handle.schema(),
+                &query_handle.batch_iter().collect_vec(),
             )?;
             eprintln!("{}", TransportChunk::from(dataframe.clone()));
 
@@ -2147,12 +2146,12 @@ mod tests {
                 for i in 0..expected_rows.len() {
                     query_handle.seek_to_row(i);
 
-                    let expected = concatenate_record_batches(
-                        query_handle.schema().clone(),
+                    let expected = concat_batches(
+                        query_handle.schema(),
                         &expected_rows.iter().skip(i).take(3).cloned().collect_vec(),
                     )?;
-                    let got = concatenate_record_batches(
-                        query_handle.schema().clone(),
+                    let got = concat_batches(
+                        query_handle.schema(),
                         &query_handle.batch_iter().take(3).collect_vec(),
                     )?;
 
@@ -2188,12 +2187,12 @@ mod tests {
                 for i in 0..expected_rows.len() {
                     query_handle.seek_to_row(i);
 
-                    let expected = concatenate_record_batches(
-                        query_handle.schema().clone(),
+                    let expected = concat_batches(
+                        query_handle.schema(),
                         &expected_rows.iter().skip(i).take(3).cloned().collect_vec(),
                     )?;
-                    let got = concatenate_record_batches(
-                        query_handle.schema().clone(),
+                    let got = concat_batches(
+                        query_handle.schema(),
                         &query_handle.batch_iter().take(3).collect_vec(),
                     )?;
 
@@ -2232,12 +2231,12 @@ mod tests {
                 for i in 0..expected_rows.len() {
                     query_handle.seek_to_row(i);
 
-                    let expected = concatenate_record_batches(
-                        query_handle.schema().clone(),
+                    let expected = concat_batches(
+                        query_handle.schema(),
                         &expected_rows.iter().skip(i).take(3).cloned().collect_vec(),
                     )?;
-                    let got = concatenate_record_batches(
-                        query_handle.schema().clone(),
+                    let got = concat_batches(
+                        query_handle.schema(),
                         &query_handle.batch_iter().take(3).collect_vec(),
                     )?;
 
@@ -2270,12 +2269,12 @@ mod tests {
                 for i in 0..expected_rows.len() {
                     query_handle.seek_to_row(i);
 
-                    let expected = concatenate_record_batches(
-                        query_handle.schema().clone(),
+                    let expected = concat_batches(
+                        query_handle.schema(),
                         &expected_rows.iter().skip(i).take(3).cloned().collect_vec(),
                     )?;
-                    let got = concatenate_record_batches(
-                        query_handle.schema().clone(),
+                    let got = concat_batches(
+                        query_handle.schema(),
                         &query_handle.batch_iter().take(3).collect_vec(),
                     )?;
 
@@ -2339,8 +2338,8 @@ mod tests {
                         .len() as u64,
                     query_handle.num_rows()
                 );
-                let dataframe = concatenate_record_batches(
-                    query_handle.schema().clone(),
+                let dataframe = concat_batches(
+                    query_handle.schema(),
                     &QueryHandleStream(query_engine.query(query.clone()))
                         .collect::<Vec<_>>()
                         .await,
@@ -2373,8 +2372,8 @@ mod tests {
                         .len() as u64,
                     query_handle.num_rows()
                 );
-                let dataframe = concatenate_record_batches(
-                    query_handle.schema().clone(),
+                let dataframe = concat_batches(
+                    query_handle.schema(),
                     &QueryHandleStream(query_engine.query(query.clone()))
                         .collect::<Vec<_>>()
                         .await,
