@@ -15,10 +15,7 @@ impl TransportChunk {
         let columns: Vec<_> = self
             .columns()
             .iter()
-            .map(|arr2_array| {
-                let data = arrow2::array::to_data(arr2_array.as_ref());
-                make_array(data)
-            })
+            .map(|arr2_array| make_array(arrow2::array::to_data(*arr2_array)))
             .collect();
 
         RecordBatch::try_new(self.schema(), columns)
