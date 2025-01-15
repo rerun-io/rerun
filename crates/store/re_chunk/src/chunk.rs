@@ -79,7 +79,7 @@ impl ChunkComponents {
             .entry(component_desc.component_name)
             .or_default()
             .insert(component_desc, list_array.into())
-            .map(|la| la.into())
+            .map(|list_array| list_array.into())
     }
 
     #[inline]
@@ -278,20 +278,42 @@ impl PartialEq for Chunk {
 }
 
 impl Chunk {
+    // TODO: test this
+    // TODO: seems a bit weird this doesn't return a descriptor..?
     /// Returns any list-array that matches the given [`ComponentName`].
     ///
     /// This is undefined behavior if there are more than one component with that name.
-    //
-    // TODO(cmc): Kinda disgusting but it makes our lives easier during the interim, as long as we're
-    // in this weird halfway in-between state where we still have a bunch of things indexed by name only.
     #[inline]
-    pub fn get_first_component(
+    pub fn get_most_specific_by_component_name(
         &self,
         component_name: &ComponentName,
     ) -> Option<&Arrow2ListArray<i32>> {
-        self.components
-            .get(component_name)
-            .and_then(|per_desc| per_desc.values().next())
+        self.components.get(component_name).and_then(|per_desc| {
+            let a = || {
+                per_desc.iter().find_map(|(desc, list_array)| {
+                    (desc.archetype_name.is_some() && desc.archetype_field_name.is_some())
+                        .then_some(list_array)
+                })
+            };
+            let b = || {
+                per_desc.iter().find_map(|(desc, list_array)| {
+                    desc.archetype_field_name.is_some().then_some(list_array)
+                })
+            };
+            let c = || {
+                per_desc.iter().find_map(|(desc, list_array)| {
+                    desc.archetype_field_name.is_some().then_some(list_array)
+                })
+            };
+            let d = || {
+                per_desc.iter().find_map(|(desc, list_array)| {
+                    desc.archetype_field_name.is_some().then_some(list_array)
+                })
+            };
+            let e = || per_desc.values().next();
+
+            a().or_else(b).or_else(c).or_else(d).or_else(e)
+        })
     }
 }
 
@@ -661,12 +683,13 @@ impl Chunk {
     #[inline]
     pub fn num_events_for_component(&self, component_name: ComponentName) -> Option<u64> {
         // Reminder: component columns are sparse, we must check validity bitmap.
-        self.get_first_component(&component_name).map(|list_array| {
-            list_array.validity().map_or_else(
-                || list_array.len() as u64,
-                |validity| validity.len() as u64 - validity.unset_bits() as u64,
-            )
-        })
+        self.get_most_specific_by_component_name(&component_name)
+            .map(|list_array| {
+                list_array.validity().map_or_else(
+                    || list_array.len() as u64,
+                    |validity| validity.len() as u64 - validity.unset_bits() as u64,
+                )
+            })
     }
 
     /// Computes the `RowId` range covered by each individual component column on each timeline.
@@ -1232,7 +1255,7 @@ impl Chunk {
         &self,
         component_name: &ComponentName,
     ) -> impl Iterator<Item = RowId> + '_ {
-        let Some(list_array) = self.get_first_component(component_name) else {
+        let Some(list_array) = self.get_most_specific_by_component_name(component_name) else {
             return Either::Left(std::iter::empty());
         };
 

@@ -22,7 +22,7 @@ impl Chunk {
         component_name: &ComponentName,
         row_index: usize,
     ) -> Option<ChunkResult<ArrowArrayRef>> {
-        self.get_first_component(component_name)
+        self.get_most_specific_by_component_name(component_name)
             .and_then(|list_array| {
                 if list_array.len() > row_index {
                     list_array
@@ -265,7 +265,7 @@ impl UnitChunkShared {
     #[inline]
     pub fn component_batch_raw(&self, component_name: &ComponentName) -> Option<ArrowArrayRef> {
         debug_assert!(self.num_rows() == 1);
-        self.get_first_component(component_name)
+        self.get_most_specific_by_component_name(component_name)
             .and_then(|list_array| list_array.is_valid(0).then(|| list_array.value(0)))
             .map(|array| array.into())
     }

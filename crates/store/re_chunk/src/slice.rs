@@ -354,7 +354,9 @@ impl Chunk {
             return self.clone();
         }
 
-        let Some(component_list_array) = self.get_first_component(&component_name_pov) else {
+        let Some(component_list_array) =
+            self.get_most_specific_by_component_name(&component_name_pov)
+        else {
             return self.clone();
         };
 

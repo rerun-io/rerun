@@ -65,7 +65,7 @@ impl Chunk {
         timeline: &Timeline,
         component_name: &ComponentName,
     ) -> impl Iterator<Item = (TimeInt, RowId)> + '_ {
-        let Some(list_array) = self.get_first_component(component_name) else {
+        let Some(list_array) = self.get_most_specific_by_component_name(component_name) else {
             return Either::Left(std::iter::empty());
         };
 
@@ -131,7 +131,7 @@ impl Chunk {
         &self,
         component_name: &ComponentName,
     ) -> impl Iterator<Item = TimePoint> + '_ {
-        let Some(list_array) = self.get_first_component(component_name) else {
+        let Some(list_array) = self.get_most_specific_by_component_name(component_name) else {
             return Either::Left(std::iter::empty());
         };
 
@@ -184,7 +184,7 @@ impl Chunk {
         &self,
         component_name: &ComponentName,
     ) -> impl Iterator<Item = (usize, usize)> + '_ {
-        let Some(list_array) = self.get_first_component(component_name) else {
+        let Some(list_array) = self.get_most_specific_by_component_name(component_name) else {
             return Either::Left(std::iter::empty());
         };
 
@@ -217,7 +217,7 @@ impl Chunk {
         &'a self,
         component_name: ComponentName,
     ) -> impl Iterator<Item = S::Item<'a>> + 'a {
-        let Some(list_array) = self.get_first_component(&component_name) else {
+        let Some(list_array) = self.get_most_specific_by_component_name(&component_name) else {
             return Either::Left(std::iter::empty());
         };
 
@@ -245,7 +245,7 @@ impl Chunk {
         component_name: ComponentName,
         field_name: &'a str,
     ) -> impl Iterator<Item = S::Item<'a>> + '_ {
-        let Some(list_array) = self.get_first_component(&component_name) else {
+        let Some(list_array) = self.get_most_specific_by_component_name(&component_name) else {
             return Either::Left(std::iter::empty());
         };
 
@@ -830,7 +830,7 @@ impl Chunk {
     pub fn iter_component<C: Component>(
         &self,
     ) -> ChunkComponentIter<C, impl Iterator<Item = (usize, usize)> + '_> {
-        let Some(list_array) = self.get_first_component(&C::name()) else {
+        let Some(list_array) = self.get_most_specific_by_component_name(&C::name()) else {
             return ChunkComponentIter {
                 values: Arc::new(vec![]),
                 offsets: Either::Left(std::iter::empty()),
