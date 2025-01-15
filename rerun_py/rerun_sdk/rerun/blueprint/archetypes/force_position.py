@@ -55,9 +55,9 @@ class ForcePosition(Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            enabled=None,  # type: ignore[arg-type]
-            strength=None,  # type: ignore[arg-type]
-            position=None,  # type: ignore[arg-type]
+            enabled=None,
+            strength=None,
+            position=None,
         )
 
     @classmethod
@@ -67,10 +67,65 @@ class ForcePosition(Archetype):
         inst.__attrs_clear__()
         return inst
 
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        enabled: datatypes.BoolLike | None = None,
+        strength: datatypes.Float64Like | None = None,
+        position: datatypes.Vec2DLike | None = None,
+    ) -> ForcePosition:
+        """
+        Update only some specific fields of a `ForcePosition`.
+
+        Parameters
+        ----------
+        clear:
+            If true, all unspecified fields will be explicitly cleared.
+        enabled:
+            Whether the position force is enabled.
+
+            The position force pulls nodes towards a specific position, similar to gravity.
+        strength:
+            The strength of the force.
+        position:
+            The position where the nodes should be pulled towards.
+
+        """
+
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            kwargs = {
+                "enabled": enabled,
+                "strength": strength,
+                "position": position,
+            }
+
+            if clear:
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+            inst.__attrs_init__(**kwargs)
+            return inst
+
+        inst.__attrs_clear__()
+        return inst
+
+    @classmethod
+    def clear_fields(cls) -> ForcePosition:
+        """Clear all the fields of a `ForcePosition`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            enabled=[],
+            strength=[],
+            position=[],
+        )
+        return inst
+
     enabled: blueprint_components.EnabledBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=blueprint_components.EnabledBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.EnabledBatch._converter,  # type: ignore[misc]
     )
     # Whether the position force is enabled.
     #
@@ -79,18 +134,18 @@ class ForcePosition(Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     strength: blueprint_components.ForceStrengthBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=blueprint_components.ForceStrengthBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.ForceStrengthBatch._converter,  # type: ignore[misc]
     )
     # The strength of the force.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     position: components.Position2DBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.Position2DBatch._optional,  # type: ignore[misc]
+        converter=components.Position2DBatch._converter,  # type: ignore[misc]
     )
     # The position where the nodes should be pulled towards.
     #

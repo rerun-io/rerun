@@ -115,10 +115,10 @@ class SeriesPoint(Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            color=None,  # type: ignore[arg-type]
-            marker=None,  # type: ignore[arg-type]
-            name=None,  # type: ignore[arg-type]
-            marker_size=None,  # type: ignore[arg-type]
+            color=None,
+            marker=None,
+            name=None,
+            marker_size=None,
         )
 
     @classmethod
@@ -128,28 +128,88 @@ class SeriesPoint(Archetype):
         inst.__attrs_clear__()
         return inst
 
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        color: datatypes.Rgba32Like | None = None,
+        marker: components.MarkerShapeLike | None = None,
+        name: datatypes.Utf8Like | None = None,
+        marker_size: datatypes.Float32Like | None = None,
+    ) -> SeriesPoint:
+        """
+        Update only some specific fields of a `SeriesPoint`.
+
+        Parameters
+        ----------
+        clear:
+            If true, all unspecified fields will be explicitly cleared.
+        color:
+            Color for the corresponding series.
+        marker:
+            What shape to use to represent the point
+        name:
+            Display name of the series.
+
+            Used in the legend.
+        marker_size:
+            Size of the marker.
+
+        """
+
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            kwargs = {
+                "color": color,
+                "marker": marker,
+                "name": name,
+                "marker_size": marker_size,
+            }
+
+            if clear:
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+            inst.__attrs_init__(**kwargs)
+            return inst
+
+        inst.__attrs_clear__()
+        return inst
+
+    @classmethod
+    def clear_fields(cls) -> SeriesPoint:
+        """Clear all the fields of a `SeriesPoint`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            color=[],
+            marker=[],
+            name=[],
+            marker_size=[],
+        )
+        return inst
+
     color: components.ColorBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.ColorBatch._optional,  # type: ignore[misc]
+        converter=components.ColorBatch._converter,  # type: ignore[misc]
     )
     # Color for the corresponding series.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     marker: components.MarkerShapeBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.MarkerShapeBatch._optional,  # type: ignore[misc]
+        converter=components.MarkerShapeBatch._converter,  # type: ignore[misc]
     )
     # What shape to use to represent the point
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     name: components.NameBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.NameBatch._optional,  # type: ignore[misc]
+        converter=components.NameBatch._converter,  # type: ignore[misc]
     )
     # Display name of the series.
     #
@@ -158,9 +218,9 @@ class SeriesPoint(Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     marker_size: components.MarkerSizeBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.MarkerSizeBatch._optional,  # type: ignore[misc]
+        converter=components.MarkerSizeBatch._converter,  # type: ignore[misc]
     )
     # Size of the marker.
     #

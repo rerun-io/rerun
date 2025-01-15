@@ -60,9 +60,9 @@ class TensorScalarMapping(Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            mag_filter=None,  # type: ignore[arg-type]
-            colormap=None,  # type: ignore[arg-type]
-            gamma=None,  # type: ignore[arg-type]
+            mag_filter=None,
+            colormap=None,
+            gamma=None,
         )
 
     @classmethod
@@ -72,10 +72,71 @@ class TensorScalarMapping(Archetype):
         inst.__attrs_clear__()
         return inst
 
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        mag_filter: components.MagnificationFilterLike | None = None,
+        colormap: components.ColormapLike | None = None,
+        gamma: datatypes.Float32Like | None = None,
+    ) -> TensorScalarMapping:
+        """
+        Update only some specific fields of a `TensorScalarMapping`.
+
+        Parameters
+        ----------
+        clear:
+            If true, all unspecified fields will be explicitly cleared.
+        mag_filter:
+            Filter used when zooming in on the tensor.
+
+            Note that the filter is applied to the scalar values *before* they are mapped to color.
+        colormap:
+            How scalar values map to colors.
+        gamma:
+            Gamma exponent applied to normalized values before mapping to color.
+
+            Raises the normalized values to the power of this value before mapping to color.
+            Acts like an inverse brightness. Defaults to 1.0.
+
+            The final value for display is set as:
+            `colormap( ((value - data_display_range.min) / (data_display_range.max - data_display_range.min)) ** gamma )`
+
+        """
+
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            kwargs = {
+                "mag_filter": mag_filter,
+                "colormap": colormap,
+                "gamma": gamma,
+            }
+
+            if clear:
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+            inst.__attrs_init__(**kwargs)
+            return inst
+
+        inst.__attrs_clear__()
+        return inst
+
+    @classmethod
+    def clear_fields(cls) -> TensorScalarMapping:
+        """Clear all the fields of a `TensorScalarMapping`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            mag_filter=[],
+            colormap=[],
+            gamma=[],
+        )
+        return inst
+
     mag_filter: components.MagnificationFilterBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.MagnificationFilterBatch._optional,  # type: ignore[misc]
+        converter=components.MagnificationFilterBatch._converter,  # type: ignore[misc]
     )
     # Filter used when zooming in on the tensor.
     #
@@ -84,18 +145,18 @@ class TensorScalarMapping(Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     colormap: components.ColormapBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.ColormapBatch._optional,  # type: ignore[misc]
+        converter=components.ColormapBatch._converter,  # type: ignore[misc]
     )
     # How scalar values map to colors.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     gamma: components.GammaCorrectionBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.GammaCorrectionBatch._optional,  # type: ignore[misc]
+        converter=components.GammaCorrectionBatch._converter,  # type: ignore[misc]
     )
     # Gamma exponent applied to normalized values before mapping to color.
     #

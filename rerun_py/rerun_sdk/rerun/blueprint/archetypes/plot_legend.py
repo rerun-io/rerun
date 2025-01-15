@@ -7,10 +7,12 @@ from __future__ import annotations
 
 from attrs import define, field
 
+from ... import datatypes
 from ..._baseclasses import (
     Archetype,
 )
 from ...blueprint import components as blueprint_components
+from ...error_utils import catch_and_log_exceptions
 from .plot_legend_ext import PlotLegendExt
 
 __all__ = ["PlotLegend"]
@@ -25,8 +27,8 @@ class PlotLegend(PlotLegendExt, Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            corner=None,  # type: ignore[arg-type]
-            visible=None,  # type: ignore[arg-type]
+            corner=None,
+            visible=None,
         )
 
     @classmethod
@@ -36,10 +38,62 @@ class PlotLegend(PlotLegendExt, Archetype):
         inst.__attrs_clear__()
         return inst
 
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        corner: blueprint_components.Corner2DLike | None = None,
+        visible: datatypes.BoolLike | None = None,
+    ) -> PlotLegend:
+        """
+        Update only some specific fields of a `PlotLegend`.
+
+        Parameters
+        ----------
+        clear:
+            If true, all unspecified fields will be explicitly cleared.
+        corner:
+            To what corner the legend is aligned.
+
+            Defaults to the right bottom corner.
+        visible:
+            Whether the legend is shown at all.
+
+            True by default.
+
+        """
+
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            kwargs = {
+                "corner": corner,
+                "visible": visible,
+            }
+
+            if clear:
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+            inst.__attrs_init__(**kwargs)
+            return inst
+
+        inst.__attrs_clear__()
+        return inst
+
+    @classmethod
+    def clear_fields(cls) -> PlotLegend:
+        """Clear all the fields of a `PlotLegend`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            corner=[],
+            visible=[],
+        )
+        return inst
+
     corner: blueprint_components.Corner2DBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=blueprint_components.Corner2DBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.Corner2DBatch._converter,  # type: ignore[misc]
     )
     # To what corner the legend is aligned.
     #
@@ -48,9 +102,9 @@ class PlotLegend(PlotLegendExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     visible: blueprint_components.VisibleBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=blueprint_components.VisibleBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.VisibleBatch._converter,  # type: ignore[misc]
     )
     # Whether the legend is shown at all.
     #

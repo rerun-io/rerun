@@ -7,10 +7,11 @@ from __future__ import annotations
 
 from attrs import define, field
 
-from .. import components
+from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
 )
+from ..error_utils import catch_and_log_exceptions
 from .asset_video_ext import AssetVideoExt
 
 __all__ = ["AssetVideo"]
@@ -117,8 +118,8 @@ class AssetVideo(AssetVideoExt, Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            blob=None,  # type: ignore[arg-type]
-            media_type=None,  # type: ignore[arg-type]
+            blob=None,
+            media_type=None,
         )
 
     @classmethod
@@ -128,18 +129,73 @@ class AssetVideo(AssetVideoExt, Archetype):
         inst.__attrs_clear__()
         return inst
 
-    blob: components.BlobBatch = field(
-        metadata={"component": "required"},
-        converter=components.BlobBatch._required,  # type: ignore[misc]
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        blob: datatypes.BlobLike | None = None,
+        media_type: datatypes.Utf8Like | None = None,
+    ) -> AssetVideo:
+        """
+        Update only some specific fields of a `AssetVideo`.
+
+        Parameters
+        ----------
+        clear:
+            If true, all unspecified fields will be explicitly cleared.
+        blob:
+            The asset's bytes.
+        media_type:
+            The Media Type of the asset.
+
+            Supported values:
+            * `video/mp4`
+
+            If omitted, the viewer will try to guess from the data blob.
+            If it cannot guess, it won't be able to render the asset.
+
+        """
+
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            kwargs = {
+                "blob": blob,
+                "media_type": media_type,
+            }
+
+            if clear:
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+            inst.__attrs_init__(**kwargs)
+            return inst
+
+        inst.__attrs_clear__()
+        return inst
+
+    @classmethod
+    def clear_fields(cls) -> AssetVideo:
+        """Clear all the fields of a `AssetVideo`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            blob=[],
+            media_type=[],
+        )
+        return inst
+
+    blob: components.BlobBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.BlobBatch._converter,  # type: ignore[misc]
     )
     # The asset's bytes.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     media_type: components.MediaTypeBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.MediaTypeBatch._optional,  # type: ignore[misc]
+        converter=components.MediaTypeBatch._converter,  # type: ignore[misc]
     )
     # The Media Type of the asset.
     #

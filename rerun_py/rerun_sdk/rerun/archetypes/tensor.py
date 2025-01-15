@@ -7,10 +7,11 @@ from __future__ import annotations
 
 from attrs import define, field
 
-from .. import components
+from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
 )
+from ..error_utils import catch_and_log_exceptions
 from .tensor_ext import TensorExt
 
 __all__ = ["Tensor"]
@@ -56,8 +57,8 @@ class Tensor(TensorExt, Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            data=None,  # type: ignore[arg-type]
-            value_range=None,  # type: ignore[arg-type]
+            data=None,
+            value_range=None,
         )
 
     @classmethod
@@ -67,18 +68,77 @@ class Tensor(TensorExt, Archetype):
         inst.__attrs_clear__()
         return inst
 
-    data: components.TensorDataBatch = field(
-        metadata={"component": "required"},
-        converter=components.TensorDataBatch._required,  # type: ignore[misc]
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        data: datatypes.TensorDataLike | None = None,
+        value_range: datatypes.Range1DLike | None = None,
+    ) -> Tensor:
+        """
+        Update only some specific fields of a `Tensor`.
+
+        Parameters
+        ----------
+        clear:
+            If true, all unspecified fields will be explicitly cleared.
+        data:
+            The tensor data
+        value_range:
+            The expected range of values.
+
+            This is typically the expected range of valid values.
+            Everything outside of the range is clamped to the range for the purpose of colormpaping.
+            Any colormap applied for display, will map this range.
+
+            If not specified, the range will be automatically estimated from the data.
+            Note that the Viewer may try to guess a wider range than the minimum/maximum of values
+            in the contents of the tensor.
+            E.g. if all values are positive, some bigger than 1.0 and all smaller than 255.0,
+            the Viewer will guess that the data likely came from an 8bit image, thus assuming a range of 0-255.
+
+        """
+
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            kwargs = {
+                "data": data,
+                "value_range": value_range,
+            }
+
+            if clear:
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+            inst.__attrs_init__(**kwargs)
+            return inst
+
+        inst.__attrs_clear__()
+        return inst
+
+    @classmethod
+    def clear_fields(cls) -> Tensor:
+        """Clear all the fields of a `Tensor`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            data=[],
+            value_range=[],
+        )
+        return inst
+
+    data: components.TensorDataBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.TensorDataBatch._converter,  # type: ignore[misc]
     )
     # The tensor data
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     value_range: components.ValueRangeBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.ValueRangeBatch._optional,  # type: ignore[misc]
+        converter=components.ValueRangeBatch._converter,  # type: ignore[misc]
     )
     # The expected range of values.
     #

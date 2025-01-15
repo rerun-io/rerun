@@ -22,6 +22,7 @@ class Transform3DExt:
     def __init__(
         self: Any,
         *,
+        clear: bool = True,
         translation: Vec3DLike | None = None,
         rotation: QuaternionLike | RotationAxisAngleLike | None = None,
         rotation_axis_angle: RotationAxisAngleLike | None = None,
@@ -37,6 +38,8 @@ class Transform3DExt:
 
         Parameters
         ----------
+        clear:
+             If true (the default), all unspecified fields will be explicitly cleared.
         translation:
             3D translation vector.
         rotation:
@@ -124,14 +127,25 @@ class Transform3DExt:
                 if from_parent:
                     relation = TransformRelation.ChildFromParent
 
-            self.__attrs_init__(
-                translation=translation,
-                rotation_axis_angle=rotation_axis_angle,
-                quaternion=quaternion,
-                scale=scale,
-                mat3x3=mat3x3,
-                relation=relation,
-                axis_length=axis_length,
-            )
+            if clear:
+                self.__attrs_init__(
+                    translation=translation if translation is not None else [],
+                    rotation_axis_angle=rotation_axis_angle if rotation_axis_angle is not None else [],
+                    quaternion=quaternion if quaternion is not None else [],
+                    scale=scale if scale is not None else [],
+                    mat3x3=mat3x3 if mat3x3 is not None else [],
+                    relation=relation if relation is not None else [],
+                    axis_length=axis_length if axis_length is not None else [],
+                )
+            else:
+                self.__attrs_init__(
+                    translation=translation,
+                    rotation_axis_angle=rotation_axis_angle,
+                    quaternion=quaternion,
+                    scale=scale,
+                    mat3x3=mat3x3,
+                    relation=relation,
+                    axis_length=axis_length,
+                )
             return
         self.__attrs_clear__()

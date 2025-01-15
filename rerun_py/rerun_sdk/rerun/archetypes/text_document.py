@@ -117,8 +117,8 @@ class TextDocument(Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            text=None,  # type: ignore[arg-type]
-            media_type=None,  # type: ignore[arg-type]
+            text=None,
+            media_type=None,
         )
 
     @classmethod
@@ -128,18 +128,73 @@ class TextDocument(Archetype):
         inst.__attrs_clear__()
         return inst
 
-    text: components.TextBatch = field(
-        metadata={"component": "required"},
-        converter=components.TextBatch._required,  # type: ignore[misc]
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        text: datatypes.Utf8Like | None = None,
+        media_type: datatypes.Utf8Like | None = None,
+    ) -> TextDocument:
+        """
+        Update only some specific fields of a `TextDocument`.
+
+        Parameters
+        ----------
+        clear:
+            If true, all unspecified fields will be explicitly cleared.
+        text:
+            Contents of the text document.
+        media_type:
+            The Media Type of the text.
+
+            For instance:
+            * `text/plain`
+            * `text/markdown`
+
+            If omitted, `text/plain` is assumed.
+
+        """
+
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            kwargs = {
+                "text": text,
+                "media_type": media_type,
+            }
+
+            if clear:
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+            inst.__attrs_init__(**kwargs)
+            return inst
+
+        inst.__attrs_clear__()
+        return inst
+
+    @classmethod
+    def clear_fields(cls) -> TextDocument:
+        """Clear all the fields of a `TextDocument`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            text=[],
+            media_type=[],
+        )
+        return inst
+
+    text: components.TextBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.TextBatch._converter,  # type: ignore[misc]
     )
     # Contents of the text document.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     media_type: components.MediaTypeBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.MediaTypeBatch._optional,  # type: ignore[misc]
+        converter=components.MediaTypeBatch._converter,  # type: ignore[misc]
     )
     # The Media Type of the text.
     #

@@ -66,10 +66,10 @@ class TensorSliceSelection(Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            width=None,  # type: ignore[arg-type]
-            height=None,  # type: ignore[arg-type]
-            indices=None,  # type: ignore[arg-type]
-            slider=None,  # type: ignore[arg-type]
+            width=None,
+            height=None,
+            indices=None,
+            slider=None,
         )
 
     @classmethod
@@ -79,10 +79,78 @@ class TensorSliceSelection(Archetype):
         inst.__attrs_clear__()
         return inst
 
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        width: datatypes.TensorDimensionSelectionLike | None = None,
+        height: datatypes.TensorDimensionSelectionLike | None = None,
+        indices: datatypes.TensorDimensionIndexSelectionArrayLike | None = None,
+        slider: blueprint_datatypes.TensorDimensionIndexSliderArrayLike | None = None,
+    ) -> TensorSliceSelection:
+        """
+        Update only some specific fields of a `TensorSliceSelection`.
+
+        Parameters
+        ----------
+        clear:
+            If true, all unspecified fields will be explicitly cleared.
+        width:
+            Which dimension to map to width.
+
+            If not specified, the height will be determined automatically based on the name and index of the dimension.
+        height:
+            Which dimension to map to height.
+
+            If not specified, the height will be determined automatically based on the name and index of the dimension.
+        indices:
+            Selected indices for all other dimensions.
+
+            If any of the here listed dimensions is equal to `width` or `height`, it will be ignored.
+        slider:
+            Any dimension listed here will have a slider for the index.
+
+            Edits to the sliders will directly manipulate dimensions on the `indices` list.
+            If any of the here listed dimensions is equal to `width` or `height`, it will be ignored.
+            If not specified, adds slides for any dimension in `indices`.
+
+        """
+
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            kwargs = {
+                "width": width,
+                "height": height,
+                "indices": indices,
+                "slider": slider,
+            }
+
+            if clear:
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+            inst.__attrs_init__(**kwargs)
+            return inst
+
+        inst.__attrs_clear__()
+        return inst
+
+    @classmethod
+    def clear_fields(cls) -> TensorSliceSelection:
+        """Clear all the fields of a `TensorSliceSelection`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            width=[],
+            height=[],
+            indices=[],
+            slider=[],
+        )
+        return inst
+
     width: components.TensorWidthDimensionBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.TensorWidthDimensionBatch._optional,  # type: ignore[misc]
+        converter=components.TensorWidthDimensionBatch._converter,  # type: ignore[misc]
     )
     # Which dimension to map to width.
     #
@@ -91,9 +159,9 @@ class TensorSliceSelection(Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     height: components.TensorHeightDimensionBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.TensorHeightDimensionBatch._optional,  # type: ignore[misc]
+        converter=components.TensorHeightDimensionBatch._converter,  # type: ignore[misc]
     )
     # Which dimension to map to height.
     #
@@ -102,9 +170,9 @@ class TensorSliceSelection(Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     indices: components.TensorDimensionIndexSelectionBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.TensorDimensionIndexSelectionBatch._optional,  # type: ignore[misc]
+        converter=components.TensorDimensionIndexSelectionBatch._converter,  # type: ignore[misc]
     )
     # Selected indices for all other dimensions.
     #
@@ -113,9 +181,9 @@ class TensorSliceSelection(Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     slider: blueprint_components.TensorDimensionIndexSliderBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=blueprint_components.TensorDimensionIndexSliderBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.TensorDimensionIndexSliderBatch._converter,  # type: ignore[misc]
     )
     # Any dimension listed here will have a slider for the index.
     #

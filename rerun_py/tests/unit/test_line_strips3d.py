@@ -30,22 +30,24 @@ strips_arrays: list[LineStrip3DArrayLike] = [
     [],
     np.array([]),
     [
-        [[0, 0, 2], [1, 0, 2], [1, 1, 2], (0, 1, 2)], # type: ignore[list-item]
+        [[0, 0, 2], [1, 0, 2], [1, 1, 2], (0, 1, 2)],  # type: ignore[list-item]
         [[0, 0, 0], [0, 0, 1], [1, 0, 0], (1, 0, 1),
-                   [1, 1, 0], (1, 1, 1), [0, 1, 0], (0, 1, 1)], # type: ignore[list-item]
+         [1, 1, 0], (1, 1, 1), [0, 1, 0], (0, 1, 1)],  # type: ignore[list-item]
     ],
     [
-        [Vec3D([0, 0, 2]), (1, 0, 2), [1, 1, 2], (0, 1, 2)], # type: ignore[list-item]
+        [Vec3D([0, 0, 2]), (1, 0, 2), [1, 1, 2], (0, 1, 2)],  # type: ignore[list-item]
         [Vec3D([0, 0, 0]), (0, 0, 1), [1, 0, 0], (1, 0, 1),
-                   [1, 1, 0], (1, 1, 1), [0, 1, 0], (0, 1, 1)], # type: ignore[list-item]
+         [1, 1, 0], (1, 1, 1), [0, 1, 0], (0, 1, 1)],  # type: ignore[list-item]
     ],
     [
         np.array([([0, 0, 2]), (1, 0, 2), [1, 1, 2], (0, 1, 2)], dtype=np.float32),
-        np.array([([0, 0, 0]), (0, 0, 1), [1, 0, 0], (1, 0, 1), [1, 1, 0], (1, 1, 1), [0, 1, 0], (0, 1, 1)], dtype=np.float32), # noqa
+        np.array([([0, 0, 0]), (0, 0, 1), [1, 0, 0], (1, 0, 1), [1, 1, 0], (1, 1, 1), [0, 1, 0], (0, 1, 1)],
+                 dtype=np.float32),  # noqa
     ],
     [
         torch.tensor([([0, 0, 2]), (1, 0, 2), [1, 1, 2], (0, 1, 2)], dtype=torch.float32),
-        torch.tensor([([0, 0, 0]), (0, 0, 1), [1, 0, 0], (1, 0, 1), [1, 1, 0], (1, 1, 1), [0, 1, 0], (0, 1, 1)], dtype=torch.float32), # noqa
+        torch.tensor([([0, 0, 0]), (0, 0, 1), [1, 0, 0], (1, 0, 1), [1, 1, 0], (1, 1, 1), [0, 1, 0], (0, 1, 1)],
+                     dtype=torch.float32),  # noqa
     ],
     # NOTE: Not legal -- non-homogeneous.
     # np.array([
@@ -53,6 +55,8 @@ strips_arrays: list[LineStrip3DArrayLike] = [
     #     [([0, 0, 0]), [0, 0, 1], [1, 0, 0], [1, 0, 1], [1, 1, 0], [1, 1, 1], [0, 1, 0], [0, 1, 1]],
     # ]),
 ]
+
+
 # fmt: on
 
 
@@ -141,7 +145,7 @@ def test_single_line_strip2d() -> None:
     # Regression test for #3643
     # Single linestrip can be passed and is not interpreted as batch of zero sized line strips.
     reference = rr.LineStrips3D([rr.components.LineStrip3D([[0, 0, 0], [1, 1, 1]])])
-    assert len(reference.strips) == 1
+    assert reference.strips is not None and len(reference.strips) == 1
     assert reference == rr.LineStrips3D(rr.components.LineStrip3D([[0, 0, 0], [1, 1, 1]]))
     assert reference == rr.LineStrips3D([[[0, 0, 0], [1, 1, 1]]])
     assert reference == rr.LineStrips3D([[0, 0, 0], [1, 1, 1]])

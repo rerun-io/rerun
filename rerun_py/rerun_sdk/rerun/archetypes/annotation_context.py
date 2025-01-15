@@ -82,7 +82,7 @@ class AnnotationContext(Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            context=None,  # type: ignore[arg-type]
+            context=None,
         )
 
     @classmethod
@@ -92,9 +92,53 @@ class AnnotationContext(Archetype):
         inst.__attrs_clear__()
         return inst
 
-    context: components.AnnotationContextBatch = field(
-        metadata={"component": "required"},
-        converter=components.AnnotationContextBatch._required,  # type: ignore[misc]
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        context: components.AnnotationContextLike | None = None,
+    ) -> AnnotationContext:
+        """
+        Update only some specific fields of a `AnnotationContext`.
+
+        Parameters
+        ----------
+        clear:
+            If true, all unspecified fields will be explicitly cleared.
+        context:
+            List of class descriptions, mapping class indices to class names, colors etc.
+
+        """
+
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            kwargs = {
+                "context": context,
+            }
+
+            if clear:
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+            inst.__attrs_init__(**kwargs)
+            return inst
+
+        inst.__attrs_clear__()
+        return inst
+
+    @classmethod
+    def clear_fields(cls) -> AnnotationContext:
+        """Clear all the fields of a `AnnotationContext`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            context=[],
+        )
+        return inst
+
+    context: components.AnnotationContextBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.AnnotationContextBatch._converter,  # type: ignore[misc]
     )
     # List of class descriptions, mapping class indices to class names, colors etc.
     #

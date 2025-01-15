@@ -127,15 +127,15 @@ def test_container_blueprint() -> None:
         )
         print(f"{arch}\n")
 
-        assert arch.container_kind == ContainerKindBatch._required(
+        assert arch.container_kind == ContainerKindBatch._converter(
             none_empty_or_value(container_kind, ContainerKind.Tabs)
         )
-        assert arch.display_name == NameBatch._optional(none_empty_or_value(display_name, Name("my container")))
-        assert arch.contents == IncludedContentBatch._optional(none_empty_or_value(contents, contents_arrays[-1]))
-        assert arch.col_shares == ColumnShareBatch._optional(none_empty_or_value(col_shares, col_shares_arrays[-1]))
-        assert arch.row_shares == RowShareBatch._optional(none_empty_or_value(row_shares, row_shares_arrays[-1]))
-        assert arch.active_tab == ActiveTabBatch._optional(none_empty_or_value(active_tab, active_tab_arrays[-1]))
-        assert arch.visible == VisibleBatch._optional(none_empty_or_value(visible, visible_arrays[-1]))
-        assert arch.grid_columns == GridColumnsBatch._optional(
+        assert arch.display_name == NameBatch._converter(none_empty_or_value(display_name, Name("my container")))
+        assert arch.contents == IncludedContentBatch._converter(none_empty_or_value(contents, contents_arrays[-1]))
+        assert arch.col_shares == ColumnShareBatch._converter(none_empty_or_value(col_shares, col_shares_arrays[-1]))
+        assert arch.row_shares == RowShareBatch._converter(none_empty_or_value(row_shares, row_shares_arrays[-1]))
+        assert arch.active_tab == ActiveTabBatch._converter(none_empty_or_value(active_tab, active_tab_arrays[-1]))
+        assert arch.visible == VisibleBatch._converter(none_empty_or_value(visible, visible_arrays[-1]))
+        assert arch.grid_columns == GridColumnsBatch._converter(
             none_empty_or_value(grid_columns, grid_columns_arrays[-1])
         )

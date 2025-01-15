@@ -7,10 +7,11 @@ from __future__ import annotations
 
 from attrs import define, field
 
-from .. import components
+from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
 )
+from ..error_utils import catch_and_log_exceptions
 from .transform3d_ext import Transform3DExt
 
 __all__ = ["Transform3D"]
@@ -140,13 +141,13 @@ class Transform3D(Transform3DExt, Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            translation=None,  # type: ignore[arg-type]
-            rotation_axis_angle=None,  # type: ignore[arg-type]
-            quaternion=None,  # type: ignore[arg-type]
-            scale=None,  # type: ignore[arg-type]
-            mat3x3=None,  # type: ignore[arg-type]
-            relation=None,  # type: ignore[arg-type]
-            axis_length=None,  # type: ignore[arg-type]
+            translation=None,
+            rotation_axis_angle=None,
+            quaternion=None,
+            scale=None,
+            mat3x3=None,
+            relation=None,
+            axis_length=None,
         )
 
     @classmethod
@@ -156,64 +157,140 @@ class Transform3D(Transform3DExt, Archetype):
         inst.__attrs_clear__()
         return inst
 
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        translation: datatypes.Vec3DLike | None = None,
+        rotation_axis_angle: datatypes.RotationAxisAngleLike | None = None,
+        quaternion: datatypes.QuaternionLike | None = None,
+        scale: datatypes.Vec3DLike | None = None,
+        mat3x3: datatypes.Mat3x3Like | None = None,
+        relation: components.TransformRelationLike | None = None,
+        axis_length: datatypes.Float32Like | None = None,
+    ) -> Transform3D:
+        """
+        Update only some specific fields of a `Transform3D`.
+
+        Parameters
+        ----------
+        clear:
+            If true, all unspecified fields will be explicitly cleared.
+        translation:
+            Translation vector.
+        rotation_axis_angle:
+            Rotation via axis + angle.
+        quaternion:
+            Rotation via quaternion.
+        scale:
+            Scaling factor.
+        mat3x3:
+            3x3 transformation matrix.
+        relation:
+            Specifies the relation this transform establishes between this entity and its parent.
+        axis_length:
+            Visual length of the 3 axes.
+
+            The length is interpreted in the local coordinate system of the transform.
+            If the transform is scaled, the axes will be scaled accordingly.
+
+        """
+
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            kwargs = {
+                "translation": translation,
+                "rotation_axis_angle": rotation_axis_angle,
+                "quaternion": quaternion,
+                "scale": scale,
+                "mat3x3": mat3x3,
+                "relation": relation,
+                "axis_length": axis_length,
+            }
+
+            if clear:
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+            inst.__attrs_init__(**kwargs)
+            return inst
+
+        inst.__attrs_clear__()
+        return inst
+
+    @classmethod
+    def clear_fields(cls) -> Transform3D:
+        """Clear all the fields of a `Transform3D`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            translation=[],
+            rotation_axis_angle=[],
+            quaternion=[],
+            scale=[],
+            mat3x3=[],
+            relation=[],
+            axis_length=[],
+        )
+        return inst
+
     translation: components.Translation3DBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.Translation3DBatch._required,  # type: ignore[misc]
+        converter=components.Translation3DBatch._converter,  # type: ignore[misc]
     )
     # Translation vector.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     rotation_axis_angle: components.RotationAxisAngleBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.RotationAxisAngleBatch._required,  # type: ignore[misc]
+        converter=components.RotationAxisAngleBatch._converter,  # type: ignore[misc]
     )
     # Rotation via axis + angle.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     quaternion: components.RotationQuatBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.RotationQuatBatch._required,  # type: ignore[misc]
+        converter=components.RotationQuatBatch._converter,  # type: ignore[misc]
     )
     # Rotation via quaternion.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     scale: components.Scale3DBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.Scale3DBatch._required,  # type: ignore[misc]
+        converter=components.Scale3DBatch._converter,  # type: ignore[misc]
     )
     # Scaling factor.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     mat3x3: components.TransformMat3x3Batch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.TransformMat3x3Batch._required,  # type: ignore[misc]
+        converter=components.TransformMat3x3Batch._converter,  # type: ignore[misc]
     )
     # 3x3 transformation matrix.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     relation: components.TransformRelationBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.TransformRelationBatch._required,  # type: ignore[misc]
+        converter=components.TransformRelationBatch._converter,  # type: ignore[misc]
     )
     # Specifies the relation this transform establishes between this entity and its parent.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     axis_length: components.AxisLengthBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.AxisLengthBatch._required,  # type: ignore[misc]
+        converter=components.AxisLengthBatch._converter,  # type: ignore[misc]
     )
     # Visual length of the 3 axes.
     #

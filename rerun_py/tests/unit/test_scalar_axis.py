@@ -47,5 +47,5 @@ def test_scalar_axis() -> None:
         )
         print(f"{arch}\n")
 
-        assert arch.range == rr.components.Range1DBatch._optional(none_empty_or_value(range, [42.1337, 1337.42]))
-        assert arch.zoom_lock == rrb.components.LockRangeDuringZoomBatch._optional(zoom_lock)
+        assert arch.range == rr.components.Range1DBatch._converter(none_empty_or_value(range, [42.1337, 1337.42]))
+        assert arch.zoom_lock == rrb.components.LockRangeDuringZoomBatch._converter(zoom_lock)

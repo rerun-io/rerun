@@ -71,11 +71,11 @@ class LineGrid3D(Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            visible=None,  # type: ignore[arg-type]
-            spacing=None,  # type: ignore[arg-type]
-            plane=None,  # type: ignore[arg-type]
-            stroke_width=None,  # type: ignore[arg-type]
-            color=None,  # type: ignore[arg-type]
+            visible=None,
+            spacing=None,
+            plane=None,
+            stroke_width=None,
+            color=None,
         )
 
     @classmethod
@@ -85,10 +85,85 @@ class LineGrid3D(Archetype):
         inst.__attrs_clear__()
         return inst
 
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        visible: datatypes.BoolLike | None = None,
+        spacing: datatypes.Float32Like | None = None,
+        plane: datatypes.Plane3DLike | None = None,
+        stroke_width: datatypes.Float32Like | None = None,
+        color: datatypes.Rgba32Like | None = None,
+    ) -> LineGrid3D:
+        """
+        Update only some specific fields of a `LineGrid3D`.
+
+        Parameters
+        ----------
+        clear:
+            If true, all unspecified fields will be explicitly cleared.
+        visible:
+            Whether the grid is visible.
+
+            Defaults to true.
+        spacing:
+            Space between grid lines spacing of one line to the next in scene units.
+
+            As you zoom out, successively only every tenth line is shown.
+            This controls the closest zoom level.
+        plane:
+            In what plane the grid is drawn.
+
+            Defaults to whatever plane is determined as the plane at zero units up/down as defined by [`components.ViewCoordinates`][rerun.components.ViewCoordinates] if present.
+        stroke_width:
+            How thick the lines should be in ui units.
+
+            Default is 1.0 ui unit.
+        color:
+            Color used for the grid.
+
+            Transparency via alpha channel is supported.
+            Defaults to a slightly transparent light gray.
+
+        """
+
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            kwargs = {
+                "visible": visible,
+                "spacing": spacing,
+                "plane": plane,
+                "stroke_width": stroke_width,
+                "color": color,
+            }
+
+            if clear:
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+            inst.__attrs_init__(**kwargs)
+            return inst
+
+        inst.__attrs_clear__()
+        return inst
+
+    @classmethod
+    def clear_fields(cls) -> LineGrid3D:
+        """Clear all the fields of a `LineGrid3D`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            visible=[],
+            spacing=[],
+            plane=[],
+            stroke_width=[],
+            color=[],
+        )
+        return inst
+
     visible: blueprint_components.VisibleBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=blueprint_components.VisibleBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.VisibleBatch._converter,  # type: ignore[misc]
     )
     # Whether the grid is visible.
     #
@@ -97,9 +172,9 @@ class LineGrid3D(Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     spacing: blueprint_components.GridSpacingBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=blueprint_components.GridSpacingBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.GridSpacingBatch._converter,  # type: ignore[misc]
     )
     # Space between grid lines spacing of one line to the next in scene units.
     #
@@ -109,9 +184,9 @@ class LineGrid3D(Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     plane: components.Plane3DBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.Plane3DBatch._optional,  # type: ignore[misc]
+        converter=components.Plane3DBatch._converter,  # type: ignore[misc]
     )
     # In what plane the grid is drawn.
     #
@@ -120,9 +195,9 @@ class LineGrid3D(Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     stroke_width: components.StrokeWidthBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.StrokeWidthBatch._optional,  # type: ignore[misc]
+        converter=components.StrokeWidthBatch._converter,  # type: ignore[misc]
     )
     # How thick the lines should be in ui units.
     #
@@ -131,9 +206,9 @@ class LineGrid3D(Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     color: components.ColorBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.ColorBatch._optional,  # type: ignore[misc]
+        converter=components.ColorBatch._converter,  # type: ignore[misc]
     )
     # Color used for the grid.
     #

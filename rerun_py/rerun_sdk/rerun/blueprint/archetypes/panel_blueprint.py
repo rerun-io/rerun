@@ -42,7 +42,7 @@ class PanelBlueprint(Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            state=None,  # type: ignore[arg-type]
+            state=None,
         )
 
     @classmethod
@@ -52,10 +52,53 @@ class PanelBlueprint(Archetype):
         inst.__attrs_clear__()
         return inst
 
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        state: blueprint_components.PanelStateLike | None = None,
+    ) -> PanelBlueprint:
+        """
+        Update only some specific fields of a `PanelBlueprint`.
+
+        Parameters
+        ----------
+        clear:
+            If true, all unspecified fields will be explicitly cleared.
+        state:
+            Current state of the panels.
+
+        """
+
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            kwargs = {
+                "state": state,
+            }
+
+            if clear:
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+            inst.__attrs_init__(**kwargs)
+            return inst
+
+        inst.__attrs_clear__()
+        return inst
+
+    @classmethod
+    def clear_fields(cls) -> PanelBlueprint:
+        """Clear all the fields of a `PanelBlueprint`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            state=[],
+        )
+        return inst
+
     state: blueprint_components.PanelStateBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=blueprint_components.PanelStateBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.PanelStateBatch._converter,  # type: ignore[misc]
     )
     # Current state of the panels.
     #

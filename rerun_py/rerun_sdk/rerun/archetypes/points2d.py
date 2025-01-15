@@ -7,10 +7,11 @@ from __future__ import annotations
 
 from attrs import define, field
 
-from .. import components
+from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
 )
+from ..error_utils import catch_and_log_exceptions
 from .points2d_ext import Points2DExt
 
 __all__ = ["Points2D"]
@@ -102,14 +103,14 @@ class Points2D(Points2DExt, Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            positions=None,  # type: ignore[arg-type]
-            radii=None,  # type: ignore[arg-type]
-            colors=None,  # type: ignore[arg-type]
-            labels=None,  # type: ignore[arg-type]
-            show_labels=None,  # type: ignore[arg-type]
-            draw_order=None,  # type: ignore[arg-type]
-            class_ids=None,  # type: ignore[arg-type]
-            keypoint_ids=None,  # type: ignore[arg-type]
+            positions=None,
+            radii=None,
+            colors=None,
+            labels=None,
+            show_labels=None,
+            draw_order=None,
+            class_ids=None,
+            keypoint_ids=None,
         )
 
     @classmethod
@@ -119,27 +120,123 @@ class Points2D(Points2DExt, Archetype):
         inst.__attrs_clear__()
         return inst
 
-    positions: components.Position2DBatch = field(
-        metadata={"component": "required"},
-        converter=components.Position2DBatch._required,  # type: ignore[misc]
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        positions: datatypes.Vec2DArrayLike | None = None,
+        radii: datatypes.Float32ArrayLike | None = None,
+        colors: datatypes.Rgba32ArrayLike | None = None,
+        labels: datatypes.Utf8ArrayLike | None = None,
+        show_labels: datatypes.BoolLike | None = None,
+        draw_order: datatypes.Float32Like | None = None,
+        class_ids: datatypes.ClassIdArrayLike | None = None,
+        keypoint_ids: datatypes.KeypointIdArrayLike | None = None,
+    ) -> Points2D:
+        """
+        Update only some specific fields of a `Points2D`.
+
+        Parameters
+        ----------
+        clear:
+            If true, all unspecified fields will be explicitly cleared.
+        positions:
+            All the 2D positions at which the point cloud shows points.
+        radii:
+            Optional radii for the points, effectively turning them into circles.
+        colors:
+            Optional colors for the points.
+
+            The colors are interpreted as RGB or RGBA in sRGB gamma-space,
+            As either 0-1 floats or 0-255 integers, with separate alpha.
+        labels:
+            Optional text labels for the points.
+
+            If there's a single label present, it will be placed at the center of the entity.
+            Otherwise, each instance will have its own label.
+        show_labels:
+            Optional choice of whether the text labels should be shown by default.
+        draw_order:
+            An optional floating point value that specifies the 2D drawing order.
+
+            Objects with higher values are drawn on top of those with lower values.
+        class_ids:
+            Optional class Ids for the points.
+
+            The [`components.ClassId`][rerun.components.ClassId] provides colors and labels if not specified explicitly.
+        keypoint_ids:
+            Optional keypoint IDs for the points, identifying them within a class.
+
+            If keypoint IDs are passed in but no [`components.ClassId`][rerun.components.ClassId]s were specified, the [`components.ClassId`][rerun.components.ClassId] will
+            default to 0.
+            This is useful to identify points within a single classification (which is identified
+            with `class_id`).
+            E.g. the classification might be 'Person' and the keypoints refer to joints on a
+            detected skeleton.
+
+        """
+
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            kwargs = {
+                "positions": positions,
+                "radii": radii,
+                "colors": colors,
+                "labels": labels,
+                "show_labels": show_labels,
+                "draw_order": draw_order,
+                "class_ids": class_ids,
+                "keypoint_ids": keypoint_ids,
+            }
+
+            if clear:
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+            inst.__attrs_init__(**kwargs)
+            return inst
+
+        inst.__attrs_clear__()
+        return inst
+
+    @classmethod
+    def clear_fields(cls) -> Points2D:
+        """Clear all the fields of a `Points2D`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            positions=[],
+            radii=[],
+            colors=[],
+            labels=[],
+            show_labels=[],
+            draw_order=[],
+            class_ids=[],
+            keypoint_ids=[],
+        )
+        return inst
+
+    positions: components.Position2DBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.Position2DBatch._converter,  # type: ignore[misc]
     )
     # All the 2D positions at which the point cloud shows points.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     radii: components.RadiusBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.RadiusBatch._optional,  # type: ignore[misc]
+        converter=components.RadiusBatch._converter,  # type: ignore[misc]
     )
     # Optional radii for the points, effectively turning them into circles.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     colors: components.ColorBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.ColorBatch._optional,  # type: ignore[misc]
+        converter=components.ColorBatch._converter,  # type: ignore[misc]
     )
     # Optional colors for the points.
     #
@@ -149,9 +246,9 @@ class Points2D(Points2DExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     labels: components.TextBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.TextBatch._optional,  # type: ignore[misc]
+        converter=components.TextBatch._converter,  # type: ignore[misc]
     )
     # Optional text labels for the points.
     #
@@ -161,18 +258,18 @@ class Points2D(Points2DExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     show_labels: components.ShowLabelsBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.ShowLabelsBatch._optional,  # type: ignore[misc]
+        converter=components.ShowLabelsBatch._converter,  # type: ignore[misc]
     )
     # Optional choice of whether the text labels should be shown by default.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     draw_order: components.DrawOrderBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.DrawOrderBatch._optional,  # type: ignore[misc]
+        converter=components.DrawOrderBatch._converter,  # type: ignore[misc]
     )
     # An optional floating point value that specifies the 2D drawing order.
     #
@@ -181,9 +278,9 @@ class Points2D(Points2DExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     class_ids: components.ClassIdBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.ClassIdBatch._optional,  # type: ignore[misc]
+        converter=components.ClassIdBatch._converter,  # type: ignore[misc]
     )
     # Optional class Ids for the points.
     #
@@ -192,9 +289,9 @@ class Points2D(Points2DExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     keypoint_ids: components.KeypointIdBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.KeypointIdBatch._optional,  # type: ignore[misc]
+        converter=components.KeypointIdBatch._converter,  # type: ignore[misc]
     )
     # Optional keypoint IDs for the points, identifying them within a class.
     #

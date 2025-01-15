@@ -84,7 +84,7 @@ class ViewContents(Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            query=None,  # type: ignore[arg-type]
+            query=None,
         )
 
     @classmethod
@@ -94,9 +94,55 @@ class ViewContents(Archetype):
         inst.__attrs_clear__()
         return inst
 
-    query: blueprint_components.QueryExpressionBatch = field(
-        metadata={"component": "required"},
-        converter=blueprint_components.QueryExpressionBatch._required,  # type: ignore[misc]
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        query: datatypes.Utf8ArrayLike | None = None,
+    ) -> ViewContents:
+        """
+        Update only some specific fields of a `ViewContents`.
+
+        Parameters
+        ----------
+        clear:
+            If true, all unspecified fields will be explicitly cleared.
+        query:
+            The `QueryExpression` that populates the contents for the view.
+
+            They determine which entities are part of the view.
+
+        """
+
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            kwargs = {
+                "query": query,
+            }
+
+            if clear:
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+            inst.__attrs_init__(**kwargs)
+            return inst
+
+        inst.__attrs_clear__()
+        return inst
+
+    @classmethod
+    def clear_fields(cls) -> ViewContents:
+        """Clear all the fields of a `ViewContents`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            query=[],
+        )
+        return inst
+
+    query: blueprint_components.QueryExpressionBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=blueprint_components.QueryExpressionBatch._converter,  # type: ignore[misc]
     )
     # The `QueryExpression` that populates the contents for the view.
     #

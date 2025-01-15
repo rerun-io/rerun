@@ -7,10 +7,11 @@ from __future__ import annotations
 
 from attrs import define, field
 
-from .. import components
+from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
 )
+from ..error_utils import catch_and_log_exceptions
 from .asset3d_ext import Asset3DExt
 
 __all__ = ["Asset3D"]
@@ -60,9 +61,9 @@ class Asset3D(Asset3DExt, Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            blob=None,  # type: ignore[arg-type]
-            media_type=None,  # type: ignore[arg-type]
-            albedo_factor=None,  # type: ignore[arg-type]
+            blob=None,
+            media_type=None,
+            albedo_factor=None,
         )
 
     @classmethod
@@ -72,18 +73,84 @@ class Asset3D(Asset3DExt, Archetype):
         inst.__attrs_clear__()
         return inst
 
-    blob: components.BlobBatch = field(
-        metadata={"component": "required"},
-        converter=components.BlobBatch._required,  # type: ignore[misc]
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        blob: datatypes.BlobLike | None = None,
+        media_type: datatypes.Utf8Like | None = None,
+        albedo_factor: datatypes.Rgba32Like | None = None,
+    ) -> Asset3D:
+        """
+        Update only some specific fields of a `Asset3D`.
+
+        Parameters
+        ----------
+        clear:
+            If true, all unspecified fields will be explicitly cleared.
+        blob:
+            The asset's bytes.
+        media_type:
+            The Media Type of the asset.
+
+            Supported values:
+            * `model/gltf-binary`
+            * `model/gltf+json`
+            * `model/obj` (.mtl material files are not supported yet, references are silently ignored)
+            * `model/stl`
+
+            If omitted, the viewer will try to guess from the data blob.
+            If it cannot guess, it won't be able to render the asset.
+        albedo_factor:
+            A color multiplier applied to the whole asset.
+
+            For mesh who already have `albedo_factor` in materials,
+            it will be overwritten by actual `albedo_factor` of [`archetypes.Asset3D`][rerun.archetypes.Asset3D] (if specified).
+
+        """
+
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            kwargs = {
+                "blob": blob,
+                "media_type": media_type,
+                "albedo_factor": albedo_factor,
+            }
+
+            if clear:
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+            inst.__attrs_init__(**kwargs)
+            return inst
+
+        inst.__attrs_clear__()
+        return inst
+
+    @classmethod
+    def clear_fields(cls) -> Asset3D:
+        """Clear all the fields of a `Asset3D`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            blob=[],
+            media_type=[],
+            albedo_factor=[],
+        )
+        return inst
+
+    blob: components.BlobBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.BlobBatch._converter,  # type: ignore[misc]
     )
     # The asset's bytes.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     media_type: components.MediaTypeBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.MediaTypeBatch._optional,  # type: ignore[misc]
+        converter=components.MediaTypeBatch._converter,  # type: ignore[misc]
     )
     # The Media Type of the asset.
     #
@@ -99,9 +166,9 @@ class Asset3D(Asset3DExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     albedo_factor: components.AlbedoFactorBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.AlbedoFactorBatch._optional,  # type: ignore[misc]
+        converter=components.AlbedoFactorBatch._converter,  # type: ignore[misc]
     )
     # A color multiplier applied to the whole asset.
     #

@@ -7,10 +7,11 @@ from __future__ import annotations
 
 from attrs import define, field
 
-from .. import components
+from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
 )
+from ..error_utils import catch_and_log_exceptions
 from .geo_line_strings_ext import GeoLineStringsExt
 
 __all__ = ["GeoLineStrings"]
@@ -63,9 +64,9 @@ class GeoLineStrings(GeoLineStringsExt, Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            line_strings=None,  # type: ignore[arg-type]
-            radii=None,  # type: ignore[arg-type]
-            colors=None,  # type: ignore[arg-type]
+            line_strings=None,
+            radii=None,
+            colors=None,
         )
 
     @classmethod
@@ -75,18 +76,78 @@ class GeoLineStrings(GeoLineStringsExt, Archetype):
         inst.__attrs_clear__()
         return inst
 
-    line_strings: components.GeoLineStringBatch = field(
-        metadata={"component": "required"},
-        converter=components.GeoLineStringBatch._required,  # type: ignore[misc]
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        line_strings: components.GeoLineStringArrayLike | None = None,
+        radii: datatypes.Float32ArrayLike | None = None,
+        colors: datatypes.Rgba32ArrayLike | None = None,
+    ) -> GeoLineStrings:
+        """
+        Update only some specific fields of a `GeoLineStrings`.
+
+        Parameters
+        ----------
+        clear:
+            If true, all unspecified fields will be explicitly cleared.
+        line_strings:
+            The line strings, expressed in [EPSG:4326](https://epsg.io/4326) coordinates (North/East-positive degrees).
+        radii:
+            Optional radii for the line strings.
+
+            *Note*: scene units radiii are interpreted as meters. Currently, the display scale only considers the latitude of
+            the first vertex of each line string (see [this issue](https://github.com/rerun-io/rerun/issues/8013)).
+        colors:
+            Optional colors for the line strings.
+
+            The colors are interpreted as RGB or RGBA in sRGB gamma-space,
+            As either 0-1 floats or 0-255 integers, with separate alpha.
+
+        """
+
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            kwargs = {
+                "line_strings": line_strings,
+                "radii": radii,
+                "colors": colors,
+            }
+
+            if clear:
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+            inst.__attrs_init__(**kwargs)
+            return inst
+
+        inst.__attrs_clear__()
+        return inst
+
+    @classmethod
+    def clear_fields(cls) -> GeoLineStrings:
+        """Clear all the fields of a `GeoLineStrings`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            line_strings=[],
+            radii=[],
+            colors=[],
+        )
+        return inst
+
+    line_strings: components.GeoLineStringBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.GeoLineStringBatch._converter,  # type: ignore[misc]
     )
     # The line strings, expressed in [EPSG:4326](https://epsg.io/4326) coordinates (North/East-positive degrees).
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     radii: components.RadiusBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.RadiusBatch._optional,  # type: ignore[misc]
+        converter=components.RadiusBatch._converter,  # type: ignore[misc]
     )
     # Optional radii for the line strings.
     #
@@ -96,9 +157,9 @@ class GeoLineStrings(GeoLineStringsExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     colors: components.ColorBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.ColorBatch._optional,  # type: ignore[misc]
+        converter=components.ColorBatch._converter,  # type: ignore[misc]
     )
     # Optional colors for the line strings.
     #

@@ -7,10 +7,11 @@ from __future__ import annotations
 
 from attrs import define, field
 
-from .. import components
+from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
 )
+from ..error_utils import catch_and_log_exceptions
 from .encoded_image_ext import EncodedImageExt
 
 __all__ = ["EncodedImage"]
@@ -48,10 +49,10 @@ class EncodedImage(EncodedImageExt, Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            blob=None,  # type: ignore[arg-type]
-            media_type=None,  # type: ignore[arg-type]
-            opacity=None,  # type: ignore[arg-type]
-            draw_order=None,  # type: ignore[arg-type]
+            blob=None,
+            media_type=None,
+            opacity=None,
+            draw_order=None,
         )
 
     @classmethod
@@ -61,18 +62,88 @@ class EncodedImage(EncodedImageExt, Archetype):
         inst.__attrs_clear__()
         return inst
 
-    blob: components.BlobBatch = field(
-        metadata={"component": "required"},
-        converter=components.BlobBatch._required,  # type: ignore[misc]
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        blob: datatypes.BlobLike | None = None,
+        media_type: datatypes.Utf8Like | None = None,
+        opacity: datatypes.Float32Like | None = None,
+        draw_order: datatypes.Float32Like | None = None,
+    ) -> EncodedImage:
+        """
+        Update only some specific fields of a `EncodedImage`.
+
+        Parameters
+        ----------
+        clear:
+            If true, all unspecified fields will be explicitly cleared.
+        blob:
+            The encoded content of some image file, e.g. a PNG or JPEG.
+        media_type:
+            The Media Type of the asset.
+
+            Supported values:
+            * `image/jpeg`
+            * `image/png`
+
+            If omitted, the viewer will try to guess from the data blob.
+            If it cannot guess, it won't be able to render the asset.
+        opacity:
+            Opacity of the image, useful for layering several images.
+
+            Defaults to 1.0 (fully opaque).
+        draw_order:
+            An optional floating point value that specifies the 2D drawing order.
+
+            Objects with higher values are drawn on top of those with lower values.
+
+        """
+
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            kwargs = {
+                "blob": blob,
+                "media_type": media_type,
+                "opacity": opacity,
+                "draw_order": draw_order,
+            }
+
+            if clear:
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+            inst.__attrs_init__(**kwargs)
+            return inst
+
+        inst.__attrs_clear__()
+        return inst
+
+    @classmethod
+    def clear_fields(cls) -> EncodedImage:
+        """Clear all the fields of a `EncodedImage`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            blob=[],
+            media_type=[],
+            opacity=[],
+            draw_order=[],
+        )
+        return inst
+
+    blob: components.BlobBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.BlobBatch._converter,  # type: ignore[misc]
     )
     # The encoded content of some image file, e.g. a PNG or JPEG.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     media_type: components.MediaTypeBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.MediaTypeBatch._optional,  # type: ignore[misc]
+        converter=components.MediaTypeBatch._converter,  # type: ignore[misc]
     )
     # The Media Type of the asset.
     #
@@ -86,9 +157,9 @@ class EncodedImage(EncodedImageExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     opacity: components.OpacityBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.OpacityBatch._optional,  # type: ignore[misc]
+        converter=components.OpacityBatch._converter,  # type: ignore[misc]
     )
     # Opacity of the image, useful for layering several images.
     #
@@ -97,9 +168,9 @@ class EncodedImage(EncodedImageExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     draw_order: components.DrawOrderBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.DrawOrderBatch._optional,  # type: ignore[misc]
+        converter=components.DrawOrderBatch._converter,  # type: ignore[misc]
     )
     # An optional floating point value that specifies the 2D drawing order.
     #

@@ -154,13 +154,13 @@ class LineStrips2D(Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            strips=None,  # type: ignore[arg-type]
-            radii=None,  # type: ignore[arg-type]
-            colors=None,  # type: ignore[arg-type]
-            labels=None,  # type: ignore[arg-type]
-            show_labels=None,  # type: ignore[arg-type]
-            draw_order=None,  # type: ignore[arg-type]
-            class_ids=None,  # type: ignore[arg-type]
+            strips=None,
+            radii=None,
+            colors=None,
+            labels=None,
+            show_labels=None,
+            draw_order=None,
+            class_ids=None,
         )
 
     @classmethod
@@ -170,36 +170,117 @@ class LineStrips2D(Archetype):
         inst.__attrs_clear__()
         return inst
 
-    strips: components.LineStrip2DBatch = field(
-        metadata={"component": "required"},
-        converter=components.LineStrip2DBatch._required,  # type: ignore[misc]
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        strips: components.LineStrip2DArrayLike | None = None,
+        radii: datatypes.Float32ArrayLike | None = None,
+        colors: datatypes.Rgba32ArrayLike | None = None,
+        labels: datatypes.Utf8ArrayLike | None = None,
+        show_labels: datatypes.BoolLike | None = None,
+        draw_order: datatypes.Float32Like | None = None,
+        class_ids: datatypes.ClassIdArrayLike | None = None,
+    ) -> LineStrips2D:
+        """
+        Update only some specific fields of a `LineStrips2D`.
+
+        Parameters
+        ----------
+        clear:
+            If true, all unspecified fields will be explicitly cleared.
+        strips:
+            All the actual 2D line strips that make up the batch.
+        radii:
+            Optional radii for the line strips.
+        colors:
+            Optional colors for the line strips.
+        labels:
+            Optional text labels for the line strips.
+
+            If there's a single label present, it will be placed at the center of the entity.
+            Otherwise, each instance will have its own label.
+        show_labels:
+            Optional choice of whether the text labels should be shown by default.
+        draw_order:
+            An optional floating point value that specifies the 2D drawing order of each line strip.
+
+            Objects with higher values are drawn on top of those with lower values.
+        class_ids:
+            Optional [`components.ClassId`][rerun.components.ClassId]s for the lines.
+
+            The [`components.ClassId`][rerun.components.ClassId] provides colors and labels if not specified explicitly.
+
+        """
+
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            kwargs = {
+                "strips": strips,
+                "radii": radii,
+                "colors": colors,
+                "labels": labels,
+                "show_labels": show_labels,
+                "draw_order": draw_order,
+                "class_ids": class_ids,
+            }
+
+            if clear:
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+            inst.__attrs_init__(**kwargs)
+            return inst
+
+        inst.__attrs_clear__()
+        return inst
+
+    @classmethod
+    def clear_fields(cls) -> LineStrips2D:
+        """Clear all the fields of a `LineStrips2D`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            strips=[],
+            radii=[],
+            colors=[],
+            labels=[],
+            show_labels=[],
+            draw_order=[],
+            class_ids=[],
+        )
+        return inst
+
+    strips: components.LineStrip2DBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.LineStrip2DBatch._converter,  # type: ignore[misc]
     )
     # All the actual 2D line strips that make up the batch.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     radii: components.RadiusBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.RadiusBatch._optional,  # type: ignore[misc]
+        converter=components.RadiusBatch._converter,  # type: ignore[misc]
     )
     # Optional radii for the line strips.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     colors: components.ColorBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.ColorBatch._optional,  # type: ignore[misc]
+        converter=components.ColorBatch._converter,  # type: ignore[misc]
     )
     # Optional colors for the line strips.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     labels: components.TextBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.TextBatch._optional,  # type: ignore[misc]
+        converter=components.TextBatch._converter,  # type: ignore[misc]
     )
     # Optional text labels for the line strips.
     #
@@ -209,18 +290,18 @@ class LineStrips2D(Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     show_labels: components.ShowLabelsBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.ShowLabelsBatch._optional,  # type: ignore[misc]
+        converter=components.ShowLabelsBatch._converter,  # type: ignore[misc]
     )
     # Optional choice of whether the text labels should be shown by default.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     draw_order: components.DrawOrderBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.DrawOrderBatch._optional,  # type: ignore[misc]
+        converter=components.DrawOrderBatch._converter,  # type: ignore[misc]
     )
     # An optional floating point value that specifies the 2D drawing order of each line strip.
     #
@@ -229,9 +310,9 @@ class LineStrips2D(Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     class_ids: components.ClassIdBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.ClassIdBatch._optional,  # type: ignore[misc]
+        converter=components.ClassIdBatch._converter,  # type: ignore[misc]
     )
     # Optional [`components.ClassId`][rerun.components.ClassId]s for the lines.
     #

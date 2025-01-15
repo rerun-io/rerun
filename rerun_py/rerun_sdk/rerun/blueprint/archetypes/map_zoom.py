@@ -45,7 +45,7 @@ class MapZoom(Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            zoom=None,  # type: ignore[arg-type]
+            zoom=None,
         )
 
     @classmethod
@@ -55,9 +55,55 @@ class MapZoom(Archetype):
         inst.__attrs_clear__()
         return inst
 
-    zoom: blueprint_components.ZoomLevelBatch = field(
-        metadata={"component": "required"},
-        converter=blueprint_components.ZoomLevelBatch._required,  # type: ignore[misc]
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        zoom: datatypes.Float64Like | None = None,
+    ) -> MapZoom:
+        """
+        Update only some specific fields of a `MapZoom`.
+
+        Parameters
+        ----------
+        clear:
+            If true, all unspecified fields will be explicitly cleared.
+        zoom:
+            Zoom level for the map.
+
+            Zoom level follow the [`OpenStreetMap` definition](https://wiki.openstreetmap.org/wiki/Zoom_levels).
+
+        """
+
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            kwargs = {
+                "zoom": zoom,
+            }
+
+            if clear:
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+            inst.__attrs_init__(**kwargs)
+            return inst
+
+        inst.__attrs_clear__()
+        return inst
+
+    @classmethod
+    def clear_fields(cls) -> MapZoom:
+        """Clear all the fields of a `MapZoom`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            zoom=[],
+        )
+        return inst
+
+    zoom: blueprint_components.ZoomLevelBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=blueprint_components.ZoomLevelBatch._converter,  # type: ignore[misc]
     )
     # Zoom level for the map.
     #

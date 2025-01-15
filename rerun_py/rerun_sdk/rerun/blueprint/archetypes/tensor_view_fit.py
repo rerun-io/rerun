@@ -11,6 +11,7 @@ from ..._baseclasses import (
     Archetype,
 )
 from ...blueprint import components as blueprint_components
+from ...error_utils import catch_and_log_exceptions
 from .tensor_view_fit_ext import TensorViewFitExt
 
 __all__ = ["TensorViewFit"]
@@ -25,7 +26,7 @@ class TensorViewFit(TensorViewFitExt, Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            scaling=None,  # type: ignore[arg-type]
+            scaling=None,
         )
 
     @classmethod
@@ -35,10 +36,53 @@ class TensorViewFit(TensorViewFitExt, Archetype):
         inst.__attrs_clear__()
         return inst
 
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        scaling: blueprint_components.ViewFitLike | None = None,
+    ) -> TensorViewFit:
+        """
+        Update only some specific fields of a `TensorViewFit`.
+
+        Parameters
+        ----------
+        clear:
+            If true, all unspecified fields will be explicitly cleared.
+        scaling:
+            How the image is scaled to fit the view.
+
+        """
+
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            kwargs = {
+                "scaling": scaling,
+            }
+
+            if clear:
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+            inst.__attrs_init__(**kwargs)
+            return inst
+
+        inst.__attrs_clear__()
+        return inst
+
+    @classmethod
+    def clear_fields(cls) -> TensorViewFit:
+        """Clear all the fields of a `TensorViewFit`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            scaling=[],
+        )
+        return inst
+
     scaling: blueprint_components.ViewFitBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=blueprint_components.ViewFitBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.ViewFitBatch._converter,  # type: ignore[misc]
     )
     # How the image is scaled to fit the view.
     #

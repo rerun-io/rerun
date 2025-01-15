@@ -114,11 +114,11 @@ class InstancePoses3D(Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            translations=None,  # type: ignore[arg-type]
-            rotation_axis_angles=None,  # type: ignore[arg-type]
-            quaternions=None,  # type: ignore[arg-type]
-            scales=None,  # type: ignore[arg-type]
-            mat3x3=None,  # type: ignore[arg-type]
+            translations=None,
+            rotation_axis_angles=None,
+            quaternions=None,
+            scales=None,
+            mat3x3=None,
         )
 
     @classmethod
@@ -128,46 +128,109 @@ class InstancePoses3D(Archetype):
         inst.__attrs_clear__()
         return inst
 
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        translations: datatypes.Vec3DArrayLike | None = None,
+        rotation_axis_angles: datatypes.RotationAxisAngleArrayLike | None = None,
+        quaternions: datatypes.QuaternionArrayLike | None = None,
+        scales: datatypes.Vec3DArrayLike | None = None,
+        mat3x3: datatypes.Mat3x3ArrayLike | None = None,
+    ) -> InstancePoses3D:
+        """
+        Update only some specific fields of a `InstancePoses3D`.
+
+        Parameters
+        ----------
+        clear:
+            If true, all unspecified fields will be explicitly cleared.
+        translations:
+            Translation vectors.
+        rotation_axis_angles:
+            Rotations via axis + angle.
+        quaternions:
+            Rotations via quaternion.
+        scales:
+            Scaling factors.
+        mat3x3:
+            3x3 transformation matrices.
+
+        """
+
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            kwargs = {
+                "translations": translations,
+                "rotation_axis_angles": rotation_axis_angles,
+                "quaternions": quaternions,
+                "scales": scales,
+                "mat3x3": mat3x3,
+            }
+
+            if clear:
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+            inst.__attrs_init__(**kwargs)
+            return inst
+
+        inst.__attrs_clear__()
+        return inst
+
+    @classmethod
+    def clear_fields(cls) -> InstancePoses3D:
+        """Clear all the fields of a `InstancePoses3D`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            translations=[],
+            rotation_axis_angles=[],
+            quaternions=[],
+            scales=[],
+            mat3x3=[],
+        )
+        return inst
+
     translations: components.PoseTranslation3DBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.PoseTranslation3DBatch._optional,  # type: ignore[misc]
+        converter=components.PoseTranslation3DBatch._converter,  # type: ignore[misc]
     )
     # Translation vectors.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     rotation_axis_angles: components.PoseRotationAxisAngleBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.PoseRotationAxisAngleBatch._optional,  # type: ignore[misc]
+        converter=components.PoseRotationAxisAngleBatch._converter,  # type: ignore[misc]
     )
     # Rotations via axis + angle.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     quaternions: components.PoseRotationQuatBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.PoseRotationQuatBatch._optional,  # type: ignore[misc]
+        converter=components.PoseRotationQuatBatch._converter,  # type: ignore[misc]
     )
     # Rotations via quaternion.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     scales: components.PoseScale3DBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.PoseScale3DBatch._optional,  # type: ignore[misc]
+        converter=components.PoseScale3DBatch._converter,  # type: ignore[misc]
     )
     # Scaling factors.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     mat3x3: components.PoseTransformMat3x3Batch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.PoseTransformMat3x3Batch._optional,  # type: ignore[misc]
+        converter=components.PoseTransformMat3x3Batch._converter,  # type: ignore[misc]
     )
     # 3x3 transformation matrices.
     #

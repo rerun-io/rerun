@@ -7,10 +7,11 @@ from __future__ import annotations
 
 from attrs import define, field
 
-from .. import components
+from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
 )
+from ..error_utils import catch_and_log_exceptions
 from .depth_image_ext import DepthImageExt
 
 __all__ = ["DepthImage"]
@@ -66,13 +67,13 @@ class DepthImage(DepthImageExt, Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            buffer=None,  # type: ignore[arg-type]
-            format=None,  # type: ignore[arg-type]
-            meter=None,  # type: ignore[arg-type]
-            colormap=None,  # type: ignore[arg-type]
-            depth_range=None,  # type: ignore[arg-type]
-            point_fill_ratio=None,  # type: ignore[arg-type]
-            draw_order=None,  # type: ignore[arg-type]
+            buffer=None,
+            format=None,
+            meter=None,
+            colormap=None,
+            depth_range=None,
+            point_fill_ratio=None,
+            draw_order=None,
         )
 
     @classmethod
@@ -82,26 +83,127 @@ class DepthImage(DepthImageExt, Archetype):
         inst.__attrs_clear__()
         return inst
 
-    buffer: components.ImageBufferBatch = field(
-        metadata={"component": "required"},
-        converter=components.ImageBufferBatch._required,  # type: ignore[misc]
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        buffer: datatypes.BlobLike | None = None,
+        format: datatypes.ImageFormatLike | None = None,
+        meter: datatypes.Float32Like | None = None,
+        colormap: components.ColormapLike | None = None,
+        depth_range: datatypes.Range1DLike | None = None,
+        point_fill_ratio: datatypes.Float32Like | None = None,
+        draw_order: datatypes.Float32Like | None = None,
+    ) -> DepthImage:
+        """
+        Update only some specific fields of a `DepthImage`.
+
+        Parameters
+        ----------
+        clear:
+            If true, all unspecified fields will be explicitly cleared.
+        buffer:
+            The raw depth image data.
+        format:
+            The format of the image.
+        meter:
+            An optional floating point value that specifies how long a meter is in the native depth units.
+
+            For instance: with uint16, perhaps meter=1000 which would mean you have millimeter precision
+            and a range of up to ~65 meters (2^16 / 1000).
+
+            Note that the only effect on 2D views is the physical depth values shown when hovering the image.
+            In 3D views on the other hand, this affects where the points of the point cloud are placed.
+        colormap:
+            Colormap to use for rendering the depth image.
+
+            If not set, the depth image will be rendered using the Turbo colormap.
+        depth_range:
+            The expected range of depth values.
+
+            This is typically the expected range of valid values.
+            Everything outside of the range is clamped to the range for the purpose of colormpaping.
+            Note that point clouds generated from this image will still display all points, regardless of this range.
+
+            If not specified, the range will be automatically estimated from the data.
+            Note that the Viewer may try to guess a wider range than the minimum/maximum of values
+            in the contents of the depth image.
+            E.g. if all values are positive, some bigger than 1.0 and all smaller than 255.0,
+            the Viewer will guess that the data likely came from an 8bit image, thus assuming a range of 0-255.
+        point_fill_ratio:
+            Scale the radii of the points in the point cloud generated from this image.
+
+            A fill ratio of 1.0 (the default) means that each point is as big as to touch the center of its neighbor
+            if it is at the same depth, leaving no gaps.
+            A fill ratio of 0.5 means that each point touches the edge of its neighbor if it has the same depth.
+
+            TODO(#6744): This applies only to 3D views!
+        draw_order:
+            An optional floating point value that specifies the 2D drawing order, used only if the depth image is shown as a 2D image.
+
+            Objects with higher values are drawn on top of those with lower values.
+
+        """
+
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            kwargs = {
+                "buffer": buffer,
+                "format": format,
+                "meter": meter,
+                "colormap": colormap,
+                "depth_range": depth_range,
+                "point_fill_ratio": point_fill_ratio,
+                "draw_order": draw_order,
+            }
+
+            if clear:
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+            inst.__attrs_init__(**kwargs)
+            return inst
+
+        inst.__attrs_clear__()
+        return inst
+
+    @classmethod
+    def clear_fields(cls) -> DepthImage:
+        """Clear all the fields of a `DepthImage`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            buffer=[],
+            format=[],
+            meter=[],
+            colormap=[],
+            depth_range=[],
+            point_fill_ratio=[],
+            draw_order=[],
+        )
+        return inst
+
+    buffer: components.ImageBufferBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.ImageBufferBatch._converter,  # type: ignore[misc]
     )
     # The raw depth image data.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    format: components.ImageFormatBatch = field(
-        metadata={"component": "required"},
-        converter=components.ImageFormatBatch._required,  # type: ignore[misc]
+    format: components.ImageFormatBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.ImageFormatBatch._converter,  # type: ignore[misc]
     )
     # The format of the image.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     meter: components.DepthMeterBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.DepthMeterBatch._optional,  # type: ignore[misc]
+        converter=components.DepthMeterBatch._converter,  # type: ignore[misc]
     )
     # An optional floating point value that specifies how long a meter is in the native depth units.
     #
@@ -114,9 +216,9 @@ class DepthImage(DepthImageExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     colormap: components.ColormapBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.ColormapBatch._optional,  # type: ignore[misc]
+        converter=components.ColormapBatch._converter,  # type: ignore[misc]
     )
     # Colormap to use for rendering the depth image.
     #
@@ -125,9 +227,9 @@ class DepthImage(DepthImageExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     depth_range: components.ValueRangeBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.ValueRangeBatch._optional,  # type: ignore[misc]
+        converter=components.ValueRangeBatch._converter,  # type: ignore[misc]
     )
     # The expected range of depth values.
     #
@@ -144,9 +246,9 @@ class DepthImage(DepthImageExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     point_fill_ratio: components.FillRatioBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.FillRatioBatch._optional,  # type: ignore[misc]
+        converter=components.FillRatioBatch._converter,  # type: ignore[misc]
     )
     # Scale the radii of the points in the point cloud generated from this image.
     #
@@ -159,9 +261,9 @@ class DepthImage(DepthImageExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     draw_order: components.DrawOrderBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.DrawOrderBatch._optional,  # type: ignore[misc]
+        converter=components.DrawOrderBatch._converter,  # type: ignore[misc]
     )
     # An optional floating point value that specifies the 2D drawing order, used only if the depth image is shown as a 2D image.
     #

@@ -84,7 +84,7 @@ class ViewCoordinates(ViewCoordinatesExt, Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            xyz=None,  # type: ignore[arg-type]
+            xyz=None,
         )
 
     @classmethod
@@ -94,9 +94,53 @@ class ViewCoordinates(ViewCoordinatesExt, Archetype):
         inst.__attrs_clear__()
         return inst
 
-    xyz: components.ViewCoordinatesBatch = field(
-        metadata={"component": "required"},
-        converter=components.ViewCoordinatesBatch._required,  # type: ignore[misc]
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        xyz: datatypes.ViewCoordinatesLike | None = None,
+    ) -> ViewCoordinates:
+        """
+        Update only some specific fields of a `ViewCoordinates`.
+
+        Parameters
+        ----------
+        clear:
+            If true, all unspecified fields will be explicitly cleared.
+        xyz:
+            The directions of the [x, y, z] axes.
+
+        """
+
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            kwargs = {
+                "xyz": xyz,
+            }
+
+            if clear:
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+            inst.__attrs_init__(**kwargs)
+            return inst
+
+        inst.__attrs_clear__()
+        return inst
+
+    @classmethod
+    def clear_fields(cls) -> ViewCoordinates:
+        """Clear all the fields of a `ViewCoordinates`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            xyz=[],
+        )
+        return inst
+
+    xyz: components.ViewCoordinatesBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.ViewCoordinatesBatch._converter,  # type: ignore[misc]
     )
     # The directions of the [x, y, z] axes.
     #

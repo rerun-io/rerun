@@ -125,25 +125,25 @@ def test_transform3d() -> None:
         )
         print(f"{arch}\n")
 
-        assert arch.scale == rr.components.Scale3DBatch._required(
+        assert arch.scale == rr.components.Scale3DBatch(
             none_empty_or_value(scale, rr.components.Scale3D(scale))  # type: ignore[arg-type]
         )
-        assert arch.rotation_axis_angle == rr.components.RotationAxisAngleBatch._required(
+        assert arch.rotation_axis_angle == rr.components.RotationAxisAngleBatch(
             none_empty_or_value(rotation_axis_angle, rr.components.RotationAxisAngle([1, 2, 3], Angle(deg=10)))
         )
-        assert arch.quaternion == rr.components.RotationQuatBatch._required(
+        assert arch.quaternion == rr.components.RotationQuatBatch(
             none_empty_or_value(quaternion, rr.components.RotationQuat(xyzw=[1, 2, 3, 4]))
         )
-        assert arch.translation == rr.components.Translation3DBatch._required(
+        assert arch.translation == rr.components.Translation3DBatch(
             none_empty_or_value(translation, rr.components.Translation3D([1, 2, 3]))
         )
-        assert arch.mat3x3 == rr.components.TransformMat3x3Batch._required(
+        assert arch.mat3x3 == rr.components.TransformMat3x3Batch(
             none_empty_or_value(mat3x3, rr.components.TransformMat3x3([[1, 2, 3], [4, 5, 6], [7, 8, 9]]))
         )
-        assert arch.axis_length == rr.components.AxisLengthBatch._required(
+        assert arch.axis_length == rr.components.AxisLengthBatch(
             none_empty_or_value(axis_length, rr.components.AxisLength(1.0))
         )
-        assert arch.relation == rr.components.TransformRelationBatch._required(relation)
+        assert arch.relation == rr.components.TransformRelationBatch(relation)
 
 
 def test_transform_mat3x3_snippets() -> None:
