@@ -63,6 +63,11 @@ impl FilterState {
         self.request_focus = true;
     }
 
+    /// Is the filter currently active?
+    pub fn is_active(&self) -> bool {
+        self.inner_state.is_some()
+    }
+
     /// Return the filter if any.
     ///
     /// Returns `None` if the filter is disabled. Returns `Some(query)` if the filter is enabled

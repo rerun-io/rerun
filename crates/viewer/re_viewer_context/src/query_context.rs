@@ -195,10 +195,10 @@ impl DataResultTree {
             self.visit_from_node(node, &mut |node| {
                 if predicate(node) {
                     result = Some(node);
-                    false
-                } else {
-                    true
                 }
+
+                // keep recursing until we find something
+                result.is_none()
             });
             result
         })

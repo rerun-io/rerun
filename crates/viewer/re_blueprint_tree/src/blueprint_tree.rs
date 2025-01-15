@@ -420,6 +420,7 @@ impl BlueprintTree {
                         false // We found a projection, stop recursing as everything below is now included in the projections.
                     }
                 });
+                //TODO: this must consider the filter as well
                 if !projections.is_empty() {
                     ui.list_item().interactive(false).show_flat(
                         ui,
@@ -484,50 +485,19 @@ impl BlueprintTree {
         projection_mode: bool,
         filter_matcher: &filter_widget::FilterMatcher,
     ) {
-        let entity_path = node_or_path.path();
-
-        // We traverse and display this data result only if contains a matching entity part
-        'early_exit: {
-            if filter_matcher.matches_nothing() {
-                return;
-            }
-
-            // Filter is inactive or otherwise whitelisting everything.
-            if filter_matcher.matches_everything() {
-                break 'early_exit;
-            }
-
-            // The current path is a match.
-            if entity_path
-                .iter()
-                .any(|entity_part| filter_matcher.matches(&entity_part.ui_string()))
-            {
-                break 'early_exit;
-            }
-
-            // Our subtree contains a match.
-            if let Some(node) = node_or_path.data_result_node() {
-                if query_result
-                    .tree
-                    .find_node_by(Some(node), |node| {
-                        node.data_result
-                            .entity_path
-                            .last()
-                            .is_some_and(|entity_part| {
-                                filter_matcher.matches(&entity_part.ui_string())
-                            })
-                    })
-                    .is_some()
-                {
-                    break 'early_exit;
-                }
-            }
-
-            // No match to be found, so nothing to display.
+        if !self.match_data_result(
+            query_result,
+            node_or_path,
+            view,
+            projection_mode,
+            filter_matcher,
+        ) {
             return;
         }
 
-        if projection_mode && entity_path == &view.space_origin {
+        let entity_path = node_or_path.path();
+        let display_origin_placeholder = projection_mode && entity_path == &view.space_origin;
+        if display_origin_placeholder {
             if ui
                 .list_item()
                 .show_hierarchical(
@@ -693,6 +663,82 @@ impl BlueprintTree {
         );
         self.scroll_to_me_if_needed(ui, &item, &response);
         ctx.handle_select_hover_drag_interactions(&response, item, true);
+    }
+
+    /// Should this data result (and its children) be displayed?
+    fn match_data_result(
+        &self,
+        query_result: &DataQueryResult,
+        node_or_path: &DataResultNodeOrPath<'_>,
+        view: &ViewBlueprint,
+        projection_mode: bool,
+        filter_matcher: &filter_widget::FilterMatcher,
+    ) -> bool {
+        let entity_path = node_or_path.path();
+        let display_origin_placeholder = projection_mode && entity_path == &view.space_origin;
+
+        if filter_matcher.matches_nothing() {
+            return false;
+        }
+
+        // Filter is inactive or otherwise whitelisting everything.
+        if filter_matcher.matches_everything() {
+            return true;
+        }
+
+        // We never display the origin placeholder if the filter is active, because if the
+        // `$origin` subtree matched something, it would be visible in the non-projected
+        // data-results.
+        if display_origin_placeholder && self.filter_state.is_active() {
+            return false;
+        }
+
+        // Is the current path a match?
+        //
+        // This is subtle! If we are in projection mode, we check for all parts starting at the
+        // root for a match. However, if we are _not_ in projection mode, we skip checking the
+        // origin part (which is always the first part of the entity path in this case), because
+        // that part is not displayed and, as such, should not trigger a match.
+        if entity_path
+            .iter()
+            .skip(
+                if !projection_mode && entity_path.starts_with(&view.space_origin) {
+                    view.space_origin.len()
+                } else {
+                    0
+                },
+            )
+            .any(|entity_part| filter_matcher.matches(&entity_part.ui_string()))
+        {
+            return true;
+        }
+
+        // Our subtree contains a match.
+        if let Some(node) = node_or_path.data_result_node() {
+            if query_result
+                .tree
+                .find_node_by(Some(node), |node| {
+                    // If are in projection mode, we must reject anything that is the origin or
+                    // its child. If there was a match there, then it would be displayed in the
+                    // non-projected data results.
+                    if projection_mode
+                        && node.data_result.entity_path.starts_with(&view.space_origin)
+                    {
+                        return false;
+                    }
+
+                    node.data_result
+                        .entity_path
+                        .last()
+                        .is_some_and(|entity_part| filter_matcher.matches(&entity_part.ui_string()))
+                })
+                .is_some()
+            {
+                return true;
+            }
+        }
+
+        false
     }
 
     // ----------------------------------------------------------------------------
@@ -995,6 +1041,8 @@ fn match_view(
         })
         .is_some()
 }
+
+// ----------------------------------------------------------------------------
 
 /// Add a button to trigger the addition of a new view or container.
 fn add_new_view_or_container_menu_button(
