@@ -578,6 +578,11 @@ export class WebViewer {
   /**
    * Get the current time.
    *
+   * The interpretation of time depends on what kind of timeline it is:
+   *
+   * - For time timelines, this is the time in nanoseconds.
+   * - For sequence timelines, this is the sequence number.
+   *
    * This always returns `0` if the recording or timeline can't be found.
    */
   get_current_time(recording_id: string, timeline: string): number {
@@ -594,8 +599,8 @@ export class WebViewer {
    * Equivalent to clicking on the timeline in the time panel at the specified `time`.
    * The interpretation of `time` depends on what kind of timeline it is:
    *
-   * - For time timelines, this is the time in seconds.
-   * - For sequence timelines, this is the frame number.
+   * - For time timelines, this is the time in nanoseconds.
+   * - For sequence timelines, this is the sequence number.
    *
    * This does nothing if the recording or timeline can't be found.
    *
