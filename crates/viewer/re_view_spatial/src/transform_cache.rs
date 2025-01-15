@@ -60,8 +60,13 @@ bitflags::bitflags! {
     /// Flags for the different kinds of independent transforms that the transform cache handles.
     #[derive(Debug, Clone, Copy)]
     pub struct TransformAspect: u8 {
+        /// The entity has a tree transform, i.e. any non-style component of [`archetypes::Transform3D`].
         const Tree = 1 << 0;
+
+        /// The entity has instance poses, i.e. any non-style component of [`archetypes::InstancePoses3D`].
         const Pose = 1 << 1;
+
+        /// The entity has a pinhole projection or view coordinates, i.e. either [`components::PinholeProjection`] or [`components::ViewCoordinates`].
         const PinholeOrViewCoordinates = 1 << 2;
     }
 }
@@ -69,7 +74,7 @@ bitflags::bitflags! {
 /// Points in time that have changed for a given entity,
 /// i.e. the cache is invalid for these times.
 #[derive(Debug)]
-struct QueuedTransformUpdates {
+struct InvalidatedTransforms {
     entity_path: EntityPath,
     times: Vec<TimeInt>,
     aspects: TransformAspect,
@@ -78,7 +83,7 @@ struct QueuedTransformUpdates {
 pub struct CachedTransformsPerTimeline {
     /// Updates that should be applied to the cache.
     /// I.e. times & entities at which the cache is invalid right now.
-    queued_updates: Vec<QueuedTransformUpdates>,
+    invalidated_transforms: Vec<InvalidatedTransforms>,
 
     per_entity: IntMap<EntityPathHash, PerTimelinePerEntityTransforms>,
 }
@@ -185,7 +190,7 @@ impl TransformCacheStoreSubscriber {
         re_tracing::profile_function!();
 
         for (timeline, per_timeline) in &mut self.per_timeline {
-            for queued_update in per_timeline.queued_updates.drain(..) {
+            for queued_update in per_timeline.invalidated_transforms.drain(..) {
                 let entity_path = &queued_update.entity_path;
                 let entity_entry = per_timeline
                     .per_entity
@@ -280,7 +285,7 @@ impl PerStoreChunkSubscriber for TransformCacheStoreSubscriber {
                 // But that's fairly rare, so a few false positive entries here are fine.
                 let per_timeline = self.per_timeline.entry(*timeline).or_insert_with(|| {
                     CachedTransformsPerTimeline {
-                        queued_updates: Default::default(),
+                        invalidated_transforms: Default::default(),
                         per_entity: Default::default(),
                     }
                 });
@@ -315,14 +320,16 @@ impl PerStoreChunkSubscriber for TransformCacheStoreSubscriber {
                     }
                 }
 
-                per_timeline.queued_updates.push(QueuedTransformUpdates {
-                    entity_path: entity_path.clone(),
-                    times: time_column
-                        .times()
-                        .chain(invalidated_times.into_iter())
-                        .collect(),
-                    aspects,
-                });
+                per_timeline
+                    .invalidated_transforms
+                    .push(InvalidatedTransforms {
+                        entity_path: entity_path.clone(),
+                        times: time_column
+                            .times()
+                            .chain(invalidated_times.into_iter())
+                            .collect(),
+                        aspects,
+                    });
             }
         }
     }
