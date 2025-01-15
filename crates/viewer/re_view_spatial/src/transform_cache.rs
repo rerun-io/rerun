@@ -11,14 +11,20 @@ use re_chunk_store::{
 use re_entity_db::EntityDb;
 use re_log_types::{EntityPath, EntityPathHash, StoreId, TimeInt, Timeline};
 use re_types::{
+    archetypes::{self},
     components::{self},
     Archetype as _, Component, ComponentName,
 };
 
 /// Store subscriber that resolves all transform components at a given entity to an affine transform.
 pub struct TransformCacheStoreSubscriber {
+    /// All components of [`archetypes::Transform3D`]
     transform_components: IntSet<ComponentName>,
+
+    /// All components of [`archetypes::InstancePoses3D`]
     pose_components: IntSet<ComponentName>,
+
+    /// All components related to pinholes (i.e. [`components::PinholeProjection`] and [`components::ViewCoordinates`]).
     pinhole_components: IntSet<ComponentName>,
 
     per_timeline: HashMap<Timeline, CachedTransformsPerTimeline>,
@@ -30,11 +36,11 @@ impl Default for TransformCacheStoreSubscriber {
         use re_types::Archetype as _;
 
         Self {
-            transform_components: re_types::archetypes::Transform3D::all_components()
+            transform_components: archetypes::Transform3D::all_components()
                 .iter()
                 .map(|descr| descr.component_name)
                 .collect(),
-            pose_components: re_types::archetypes::InstancePoses3D::all_components()
+            pose_components: archetypes::InstancePoses3D::all_components()
                 .iter()
                 .map(|descr| descr.component_name)
                 .collect(),
@@ -328,7 +334,7 @@ fn query_and_resolve_tree_transform_at_entity(
     query: &LatestAtQuery,
 ) -> Option<glam::Affine3A> {
     // TODO(andreas): Filter out the components we're actually interested in?
-    let components = re_types::archetypes::Transform3D::all_components();
+    let components = archetypes::Transform3D::all_components();
     let component_names = components.iter().map(|descr| descr.component_name);
     let result = entity_db.latest_at(query, entity_path, component_names);
     if result.components.is_empty() {
@@ -389,18 +395,18 @@ fn query_and_resolve_instance_poses_at_entity(
     query: &LatestAtQuery,
 ) -> Vec<glam::Affine3A> {
     // TODO(andreas): Filter out the components we're actually interested in?
-    let components = re_types::archetypes::InstancePoses3D::all_components();
+    let components = archetypes::InstancePoses3D::all_components();
     let component_names = components.iter().map(|descr| descr.component_name);
     let result = entity_db.latest_at(query, entity_path, component_names);
 
-    let max_count = result
+    let max_num_instances = result
         .components
         .iter()
         .map(|(name, row)| row.num_instances(name))
         .max()
         .unwrap_or(0) as usize;
 
-    if max_count == 0 {
+    if max_num_instances == 0 {
         return Vec::new();
     }
 
@@ -445,16 +451,16 @@ fn query_and_resolve_instance_poses_at_entity(
     {
         return Vec::new();
     }
+    let mut iter_translation = clamped_or_nothing(batch_translation, max_num_instances);
+    let mut iter_rotation_quat = clamped_or_nothing(batch_rotation_quat, max_num_instances);
+    let mut iter_rotation_axis_angle =
+        clamped_or_nothing(batch_rotation_axis_angle, max_num_instances);
+    let mut iter_scale = clamped_or_nothing(batch_scale, max_num_instances);
+    let mut iter_mat3x3 = clamped_or_nothing(batch_mat3x3, max_num_instances);
 
-    let mut iter_translation = clamped_or_nothing(batch_translation, max_count);
-    let mut iter_rotation_quat = clamped_or_nothing(batch_rotation_quat, max_count);
-    let mut iter_rotation_axis_angle = clamped_or_nothing(batch_rotation_axis_angle, max_count);
-    let mut iter_scale = clamped_or_nothing(batch_scale, max_count);
-    let mut iter_mat3x3 = clamped_or_nothing(batch_mat3x3, max_count);
-
-    let mut transforms = Vec::with_capacity(max_count);
-    for _ in 0..max_count {
-        // Order see `debug_assert_transform_field_order`
+    let mut transforms = Vec::with_capacity(max_num_instances);
+    for _ in 0..max_num_instances {
+        // We apply these in a specific order - see `debug_assert_transform_field_order`
         let mut transform = glam::Affine3A::IDENTITY;
         if let Some(translation) = iter_translation.next() {
             transform = glam::Affine3A::from(translation);
@@ -636,7 +642,7 @@ mod tests {
             assert_eq!(
                 transforms.latest_at_tree_transform(&LatestAtQuery::new(timeline, 123)),
                 glam::Affine3A::IDENTITY
-            )
+            );
         });
     }
 

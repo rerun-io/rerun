@@ -206,7 +206,6 @@ impl ViewContextSystem for TransformTreeContext {
             let Some(transforms_per_timeline) = cache.transforms_per_timeline(query.timeline)
             else {
                 // No transforms on this timeline at all. In other words, everything is identity!
-                // TODO(andreas): why are query results a tree to begin with? We want a flat list not just here!
                 query_result.tree.visit(&mut |node: &DataResultNode| {
                     self.transform_per_entity.insert(
                         node.data_result.entity_path.hash(),
@@ -226,7 +225,7 @@ impl ViewContextSystem for TransformTreeContext {
                     data_result_tree,
                     current_tree,
                     &time_query,
-                    // Ignore potential pinhole camera at the root of the view, since it regarded as being "above" this root.
+                    // Ignore potential pinhole camera at the root of the view, since it is regarded as being "above" this root.
                     TransformInfo::default(),
                     transforms_per_timeline,
                 );
@@ -267,8 +266,7 @@ impl TransformTreeContext {
             let Some(parent_tree) = entity_tree.subtree(&parent_path) else {
                 // Unlike not having the space path in the hierarchy, this should be impossible.
                 re_log::error_once!(
-                    "Path {} is not part of the global entity tree whereas its child is",
-                    parent_path
+                    "Path {parent_path} is not part of the global entity tree whereas its child is"
                 );
                 return;
             };
@@ -379,8 +377,6 @@ fn lookup_image_plane_distance(
     entity_path: &EntityPath,
     query: &LatestAtQuery,
 ) -> f32 {
-    re_tracing::profile_function!();
-
     data_result_tree
         .lookup_result_by_path(entity_path)
         .cloned()
@@ -550,7 +546,7 @@ But they are instead ordered like this:\n{actual_order:?}"
 #[cfg(not(debug_assertions))]
 fn debug_assert_transform_field_order(_: &re_types::reflection::Reflection) {}
 
-fn pinhole_with_image_plane_to_transform(
+fn transform_from_pinhole_with_image_plane(
     entity_path: &EntityPath,
     resolved_pinhole_projection: &ResolvedPinholeProjection,
     pinhole_image_plane_distance: impl Fn(&EntityPath) -> f32,
@@ -624,7 +620,7 @@ fn transforms_at<'a>(
         entity_transforms
             .latest_at_pinhole(query)
             .map(|resolved_pinhole_projection| {
-                pinhole_with_image_plane_to_transform(
+                transform_from_pinhole_with_image_plane(
                     entity_path,
                     resolved_pinhole_projection,
                     pinhole_image_plane_distance,
