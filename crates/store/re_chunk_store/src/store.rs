@@ -530,7 +530,12 @@ impl std::fmt::Display for ChunkStore {
         f.write_str(&indent::indent_all_by(4, "chunks: [\n"))?;
         for chunk_id in chunk_id_per_min_row_id.values().flatten() {
             if let Some(chunk) = chunks_per_chunk_id.get(chunk_id) {
-                f.write_str(&indent::indent_all_by(8, format!("{chunk}\n")))?;
+                if let Some(width) = f.width() {
+                    let chunk_width = width.saturating_sub(8);
+                    f.write_str(&indent::indent_all_by(8, format!("{chunk:chunk_width$}\n")))?;
+                } else {
+                    f.write_str(&indent::indent_all_by(8, format!("{chunk}\n")))?;
+                }
             } else {
                 f.write_str(&indent::indent_all_by(8, "<not_found>\n"))?;
             }

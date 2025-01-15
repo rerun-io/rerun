@@ -212,7 +212,12 @@ fn trim_name(name: &str) -> &str {
         .trim_start_matches("rerun.")
 }
 
-pub fn format_dataframe(metadata: &Metadata, fields: &Fields, columns: &[ArrayRef]) -> Table {
+pub fn format_dataframe(
+    metadata: &Metadata,
+    fields: &Fields,
+    columns: &[ArrayRef],
+    width: Option<usize>,
+) -> Table {
     const MAXIMUM_CELL_CONTENT_WIDTH: u16 = 100;
 
     let mut outer_table = Table::new();
@@ -220,6 +225,16 @@ pub fn format_dataframe(metadata: &Metadata, fields: &Fields, columns: &[ArrayRe
 
     let mut table = Table::new();
     table.load_preset(presets::UTF8_FULL);
+
+    if let Some(width) = width {
+        outer_table.set_width(width as _);
+        outer_table.set_content_arrangement(comfy_table::ContentArrangement::Disabled);
+        table.set_width(width as _);
+        table.set_content_arrangement(comfy_table::ContentArrangement::Disabled);
+    } else {
+        outer_table.set_content_arrangement(comfy_table::ContentArrangement::Dynamic);
+        table.set_content_arrangement(comfy_table::ContentArrangement::Dynamic);
+    }
 
     outer_table.add_row({
         let mut row = Row::new();

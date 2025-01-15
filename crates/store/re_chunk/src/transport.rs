@@ -63,6 +63,7 @@ impl std::fmt::Display for TransportChunk {
                 .iter()
                 .map(|list_array| ArrowArrayRef::from(list_array.clone()))
                 .collect_vec(),
+            f.width(),
         )
         .fmt(f)
     }
