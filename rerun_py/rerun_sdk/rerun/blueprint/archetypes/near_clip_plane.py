@@ -45,7 +45,7 @@ class NearClipPlane(Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            near_clip_plane=None,  # type: ignore[arg-type]
+            near_clip_plane=None,
         )
 
     @classmethod

@@ -77,8 +77,8 @@ class GraphEdges(Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            edges=None,  # type: ignore[arg-type]
-            graph_type=None,  # type: ignore[arg-type]
+            edges=None,
+            graph_type=None,
         )
 
     @classmethod

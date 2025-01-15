@@ -75,10 +75,10 @@ class Pinhole(PinholeExt, Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            image_from_camera=None,  # type: ignore[arg-type]
-            resolution=None,  # type: ignore[arg-type]
-            camera_xyz=None,  # type: ignore[arg-type]
-            image_plane_distance=None,  # type: ignore[arg-type]
+            image_from_camera=None,
+            resolution=None,
+            camera_xyz=None,
+            image_plane_distance=None,
         )
 
     @classmethod

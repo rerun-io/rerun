@@ -63,9 +63,9 @@ class GeoLineStrings(GeoLineStringsExt, Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            line_strings=None,  # type: ignore[arg-type]
-            radii=None,  # type: ignore[arg-type]
-            colors=None,  # type: ignore[arg-type]
+            line_strings=None,
+            radii=None,
+            colors=None,
         )
 
     @classmethod

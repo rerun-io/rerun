@@ -115,8 +115,8 @@ class VideoFrameReference(VideoFrameReferenceExt, Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            timestamp=None,  # type: ignore[arg-type]
-            video_reference=None,  # type: ignore[arg-type]
+            timestamp=None,
+            video_reference=None,
         )
 
     @classmethod

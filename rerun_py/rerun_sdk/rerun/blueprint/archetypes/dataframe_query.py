@@ -26,11 +26,11 @@ class DataframeQuery(DataframeQueryExt, Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            timeline=None,  # type: ignore[arg-type]
-            filter_by_range=None,  # type: ignore[arg-type]
-            filter_is_not_null=None,  # type: ignore[arg-type]
-            apply_latest_at=None,  # type: ignore[arg-type]
-            select=None,  # type: ignore[arg-type]
+            timeline=None,
+            filter_by_range=None,
+            filter_is_not_null=None,
+            apply_latest_at=None,
+            select=None,
         )
 
     @classmethod

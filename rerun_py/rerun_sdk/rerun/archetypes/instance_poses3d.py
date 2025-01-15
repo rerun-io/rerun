@@ -114,11 +114,11 @@ class InstancePoses3D(Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            translations=None,  # type: ignore[arg-type]
-            rotation_axis_angles=None,  # type: ignore[arg-type]
-            quaternions=None,  # type: ignore[arg-type]
-            scales=None,  # type: ignore[arg-type]
-            mat3x3=None,  # type: ignore[arg-type]
+            translations=None,
+            rotation_axis_angles=None,
+            quaternions=None,
+            scales=None,
+            mat3x3=None,
         )
 
     @classmethod

@@ -102,15 +102,15 @@ class Mesh3D(Mesh3DExt, Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            vertex_positions=None,  # type: ignore[arg-type]
-            triangle_indices=None,  # type: ignore[arg-type]
-            vertex_normals=None,  # type: ignore[arg-type]
-            vertex_colors=None,  # type: ignore[arg-type]
-            vertex_texcoords=None,  # type: ignore[arg-type]
-            albedo_factor=None,  # type: ignore[arg-type]
-            albedo_texture_buffer=None,  # type: ignore[arg-type]
-            albedo_texture_format=None,  # type: ignore[arg-type]
-            class_ids=None,  # type: ignore[arg-type]
+            vertex_positions=None,
+            triangle_indices=None,
+            vertex_normals=None,
+            vertex_colors=None,
+            vertex_texcoords=None,
+            albedo_factor=None,
+            albedo_texture_buffer=None,
+            albedo_texture_format=None,
+            class_ids=None,
         )
 
     @classmethod

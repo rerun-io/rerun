@@ -77,11 +77,11 @@ class ViewportBlueprint(Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            root_container=None,  # type: ignore[arg-type]
-            maximized=None,  # type: ignore[arg-type]
-            auto_layout=None,  # type: ignore[arg-type]
-            auto_views=None,  # type: ignore[arg-type]
-            past_viewer_recommendations=None,  # type: ignore[arg-type]
+            root_container=None,
+            maximized=None,
+            auto_layout=None,
+            auto_views=None,
+            past_viewer_recommendations=None,
         )
 
     @classmethod

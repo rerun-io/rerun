@@ -73,25 +73,25 @@ class AffixFuzzer2(Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            fuzz1101=None,  # type: ignore[arg-type]
-            fuzz1102=None,  # type: ignore[arg-type]
-            fuzz1103=None,  # type: ignore[arg-type]
-            fuzz1104=None,  # type: ignore[arg-type]
-            fuzz1105=None,  # type: ignore[arg-type]
-            fuzz1106=None,  # type: ignore[arg-type]
-            fuzz1107=None,  # type: ignore[arg-type]
-            fuzz1108=None,  # type: ignore[arg-type]
-            fuzz1109=None,  # type: ignore[arg-type]
-            fuzz1110=None,  # type: ignore[arg-type]
-            fuzz1111=None,  # type: ignore[arg-type]
-            fuzz1112=None,  # type: ignore[arg-type]
-            fuzz1113=None,  # type: ignore[arg-type]
-            fuzz1114=None,  # type: ignore[arg-type]
-            fuzz1115=None,  # type: ignore[arg-type]
-            fuzz1116=None,  # type: ignore[arg-type]
-            fuzz1117=None,  # type: ignore[arg-type]
-            fuzz1118=None,  # type: ignore[arg-type]
-            fuzz1122=None,  # type: ignore[arg-type]
+            fuzz1101=None,
+            fuzz1102=None,
+            fuzz1103=None,
+            fuzz1104=None,
+            fuzz1105=None,
+            fuzz1106=None,
+            fuzz1107=None,
+            fuzz1108=None,
+            fuzz1109=None,
+            fuzz1110=None,
+            fuzz1111=None,
+            fuzz1112=None,
+            fuzz1113=None,
+            fuzz1114=None,
+            fuzz1115=None,
+            fuzz1116=None,
+            fuzz1117=None,
+            fuzz1118=None,
+            fuzz1122=None,
         )
 
     @classmethod

@@ -42,7 +42,7 @@ class PanelBlueprint(Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            state=None,  # type: ignore[arg-type]
+            state=None,
         )
 
     @classmethod

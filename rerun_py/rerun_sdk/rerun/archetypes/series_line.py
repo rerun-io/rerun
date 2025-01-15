@@ -101,10 +101,10 @@ class SeriesLine(Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            color=None,  # type: ignore[arg-type]
-            width=None,  # type: ignore[arg-type]
-            name=None,  # type: ignore[arg-type]
-            aggregation_policy=None,  # type: ignore[arg-type]
+            color=None,
+            width=None,
+            name=None,
+            aggregation_policy=None,
         )
 
     @classmethod

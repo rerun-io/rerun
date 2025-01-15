@@ -66,10 +66,10 @@ class TensorSliceSelection(Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            width=None,  # type: ignore[arg-type]
-            height=None,  # type: ignore[arg-type]
-            indices=None,  # type: ignore[arg-type]
-            slider=None,  # type: ignore[arg-type]
+            width=None,
+            height=None,
+            indices=None,
+            slider=None,
         )
 
     @classmethod

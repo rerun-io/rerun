@@ -36,7 +36,7 @@ class VisibleTimeRanges(VisibleTimeRangesExt, Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            ranges=None,  # type: ignore[arg-type]
+            ranges=None,
         )
 
     @classmethod

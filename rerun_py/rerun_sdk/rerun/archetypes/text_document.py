@@ -117,8 +117,8 @@ class TextDocument(Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            text=None,  # type: ignore[arg-type]
-            media_type=None,  # type: ignore[arg-type]
+            text=None,
+            media_type=None,
         )
 
     @classmethod

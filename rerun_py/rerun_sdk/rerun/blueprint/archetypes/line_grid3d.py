@@ -71,11 +71,11 @@ class LineGrid3D(Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            visible=None,  # type: ignore[arg-type]
-            spacing=None,  # type: ignore[arg-type]
-            plane=None,  # type: ignore[arg-type]
-            stroke_width=None,  # type: ignore[arg-type]
-            color=None,  # type: ignore[arg-type]
+            visible=None,
+            spacing=None,
+            plane=None,
+            stroke_width=None,
+            color=None,
         )
 
     @classmethod

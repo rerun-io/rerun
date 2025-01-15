@@ -57,14 +57,14 @@ class Arrows2D(Arrows2DExt, Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            vectors=None,  # type: ignore[arg-type]
-            origins=None,  # type: ignore[arg-type]
-            radii=None,  # type: ignore[arg-type]
-            colors=None,  # type: ignore[arg-type]
-            labels=None,  # type: ignore[arg-type]
-            show_labels=None,  # type: ignore[arg-type]
-            draw_order=None,  # type: ignore[arg-type]
-            class_ids=None,  # type: ignore[arg-type]
+            vectors=None,
+            origins=None,
+            radii=None,
+            colors=None,
+            labels=None,
+            show_labels=None,
+            draw_order=None,
+            class_ids=None,
         )
 
     @classmethod

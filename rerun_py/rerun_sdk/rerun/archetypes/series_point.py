@@ -115,10 +115,10 @@ class SeriesPoint(Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            color=None,  # type: ignore[arg-type]
-            marker=None,  # type: ignore[arg-type]
-            name=None,  # type: ignore[arg-type]
-            marker_size=None,  # type: ignore[arg-type]
+            color=None,
+            marker=None,
+            name=None,
+            marker_size=None,
         )
 
     @classmethod

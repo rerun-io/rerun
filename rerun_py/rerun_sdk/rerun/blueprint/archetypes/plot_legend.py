@@ -26,8 +26,8 @@ class PlotLegend(PlotLegendExt, Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            corner=None,  # type: ignore[arg-type]
-            visible=None,  # type: ignore[arg-type]
+            corner=None,
+            visible=None,
         )
 
     @classmethod

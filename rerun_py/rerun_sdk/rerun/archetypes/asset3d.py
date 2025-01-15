@@ -60,9 +60,9 @@ class Asset3D(Asset3DExt, Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            blob=None,  # type: ignore[arg-type]
-            media_type=None,  # type: ignore[arg-type]
-            albedo_factor=None,  # type: ignore[arg-type]
+            blob=None,
+            media_type=None,
+            albedo_factor=None,
         )
 
     @classmethod

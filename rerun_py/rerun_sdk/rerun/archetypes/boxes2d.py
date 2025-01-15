@@ -48,14 +48,14 @@ class Boxes2D(Boxes2DExt, Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            half_sizes=None,  # type: ignore[arg-type]
-            centers=None,  # type: ignore[arg-type]
-            colors=None,  # type: ignore[arg-type]
-            radii=None,  # type: ignore[arg-type]
-            labels=None,  # type: ignore[arg-type]
-            show_labels=None,  # type: ignore[arg-type]
-            draw_order=None,  # type: ignore[arg-type]
-            class_ids=None,  # type: ignore[arg-type]
+            half_sizes=None,
+            centers=None,
+            colors=None,
+            radii=None,
+            labels=None,
+            show_labels=None,
+            draw_order=None,
+            class_ids=None,
         )
 
     @classmethod

@@ -69,16 +69,16 @@ class Ellipsoids3D(Ellipsoids3DExt, Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            half_sizes=None,  # type: ignore[arg-type]
-            centers=None,  # type: ignore[arg-type]
-            rotation_axis_angles=None,  # type: ignore[arg-type]
-            quaternions=None,  # type: ignore[arg-type]
-            colors=None,  # type: ignore[arg-type]
-            line_radii=None,  # type: ignore[arg-type]
-            fill_mode=None,  # type: ignore[arg-type]
-            labels=None,  # type: ignore[arg-type]
-            show_labels=None,  # type: ignore[arg-type]
-            class_ids=None,  # type: ignore[arg-type]
+            half_sizes=None,
+            centers=None,
+            rotation_axis_angles=None,
+            quaternions=None,
+            colors=None,
+            line_radii=None,
+            fill_mode=None,
+            labels=None,
+            show_labels=None,
+            class_ids=None,
         )
 
     @classmethod

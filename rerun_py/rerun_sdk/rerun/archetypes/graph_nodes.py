@@ -97,12 +97,12 @@ class GraphNodes(Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            node_ids=None,  # type: ignore[arg-type]
-            positions=None,  # type: ignore[arg-type]
-            colors=None,  # type: ignore[arg-type]
-            labels=None,  # type: ignore[arg-type]
-            show_labels=None,  # type: ignore[arg-type]
-            radii=None,  # type: ignore[arg-type]
+            node_ids=None,
+            positions=None,
+            colors=None,
+            labels=None,
+            show_labels=None,
+            radii=None,
         )
 
     @classmethod

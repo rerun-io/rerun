@@ -66,13 +66,13 @@ class DepthImage(DepthImageExt, Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            buffer=None,  # type: ignore[arg-type]
-            format=None,  # type: ignore[arg-type]
-            meter=None,  # type: ignore[arg-type]
-            colormap=None,  # type: ignore[arg-type]
-            depth_range=None,  # type: ignore[arg-type]
-            point_fill_ratio=None,  # type: ignore[arg-type]
-            draw_order=None,  # type: ignore[arg-type]
+            buffer=None,
+            format=None,
+            meter=None,
+            colormap=None,
+            depth_range=None,
+            point_fill_ratio=None,
+            draw_order=None,
         )
 
     @classmethod

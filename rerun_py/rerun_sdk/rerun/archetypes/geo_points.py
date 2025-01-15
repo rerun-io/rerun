@@ -55,10 +55,10 @@ class GeoPoints(GeoPointsExt, Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            positions=None,  # type: ignore[arg-type]
-            radii=None,  # type: ignore[arg-type]
-            colors=None,  # type: ignore[arg-type]
-            class_ids=None,  # type: ignore[arg-type]
+            positions=None,
+            radii=None,
+            colors=None,
+            class_ids=None,
         )
 
     @classmethod

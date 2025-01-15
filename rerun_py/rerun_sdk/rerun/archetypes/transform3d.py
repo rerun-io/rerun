@@ -140,13 +140,13 @@ class Transform3D(Transform3DExt, Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            translation=None,  # type: ignore[arg-type]
-            rotation_axis_angle=None,  # type: ignore[arg-type]
-            quaternion=None,  # type: ignore[arg-type]
-            scale=None,  # type: ignore[arg-type]
-            mat3x3=None,  # type: ignore[arg-type]
-            relation=None,  # type: ignore[arg-type]
-            axis_length=None,  # type: ignore[arg-type]
+            translation=None,
+            rotation_axis_angle=None,
+            quaternion=None,
+            scale=None,
+            mat3x3=None,
+            relation=None,
+            axis_length=None,
         )
 
     @classmethod

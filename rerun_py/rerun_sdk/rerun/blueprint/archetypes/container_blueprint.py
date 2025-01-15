@@ -93,14 +93,14 @@ class ContainerBlueprint(Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            container_kind=None,  # type: ignore[arg-type]
-            display_name=None,  # type: ignore[arg-type]
-            contents=None,  # type: ignore[arg-type]
-            col_shares=None,  # type: ignore[arg-type]
-            row_shares=None,  # type: ignore[arg-type]
-            active_tab=None,  # type: ignore[arg-type]
-            visible=None,  # type: ignore[arg-type]
-            grid_columns=None,  # type: ignore[arg-type]
+            container_kind=None,
+            display_name=None,
+            contents=None,
+            col_shares=None,
+            row_shares=None,
+            active_tab=None,
+            visible=None,
+            grid_columns=None,
         )
 
     @classmethod

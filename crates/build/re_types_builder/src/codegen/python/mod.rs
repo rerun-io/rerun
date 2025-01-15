@@ -2476,7 +2476,7 @@ fn quote_clear_methods(obj: &Object) -> String {
     let param_nones = obj
         .fields
         .iter()
-        .map(|field| format!("{} = None, # type: ignore[arg-type]", field.name))
+        .map(|field| format!("{} = None,", field.name))
         .join("\n                ");
 
     let classname = &obj.name;

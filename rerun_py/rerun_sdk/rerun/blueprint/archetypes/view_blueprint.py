@@ -66,10 +66,10 @@ class ViewBlueprint(Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            class_identifier=None,  # type: ignore[arg-type]
-            display_name=None,  # type: ignore[arg-type]
-            space_origin=None,  # type: ignore[arg-type]
-            visible=None,  # type: ignore[arg-type]
+            class_identifier=None,
+            display_name=None,
+            space_origin=None,
+            visible=None,
         )
 
     @classmethod

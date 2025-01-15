@@ -69,8 +69,8 @@ class BarChart(BarChartExt, Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            values=None,  # type: ignore[arg-type]
-            color=None,  # type: ignore[arg-type]
+            values=None,
+            color=None,
         )
 
     @classmethod

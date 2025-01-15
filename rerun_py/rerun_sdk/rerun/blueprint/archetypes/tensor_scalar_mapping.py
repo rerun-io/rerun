@@ -60,9 +60,9 @@ class TensorScalarMapping(Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            mag_filter=None,  # type: ignore[arg-type]
-            colormap=None,  # type: ignore[arg-type]
-            gamma=None,  # type: ignore[arg-type]
+            mag_filter=None,
+            colormap=None,
+            gamma=None,
         )
 
     @classmethod

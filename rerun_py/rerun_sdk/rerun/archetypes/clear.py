@@ -68,7 +68,7 @@ class Clear(ClearExt, Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            is_recursive=None,  # type: ignore[arg-type]
+            is_recursive=None,
         )
 
     @classmethod

@@ -64,10 +64,10 @@ class SegmentationImage(SegmentationImageExt, Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            buffer=None,  # type: ignore[arg-type]
-            format=None,  # type: ignore[arg-type]
-            opacity=None,  # type: ignore[arg-type]
-            draw_order=None,  # type: ignore[arg-type]
+            buffer=None,
+            format=None,
+            opacity=None,
+            draw_order=None,
         )
 
     @classmethod

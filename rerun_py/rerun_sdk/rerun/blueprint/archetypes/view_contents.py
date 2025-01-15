@@ -84,7 +84,7 @@ class ViewContents(Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            query=None,  # type: ignore[arg-type]
+            query=None,
         )
 
     @classmethod

@@ -85,9 +85,9 @@ class TextLog(Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            text=None,  # type: ignore[arg-type]
-            level=None,  # type: ignore[arg-type]
-            color=None,  # type: ignore[arg-type]
+            text=None,
+            level=None,
+            color=None,
         )
 
     @classmethod

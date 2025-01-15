@@ -25,7 +25,7 @@ class TensorViewFit(TensorViewFitExt, Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            scaling=None,  # type: ignore[arg-type]
+            scaling=None,
         )
 
     @classmethod

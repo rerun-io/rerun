@@ -56,8 +56,8 @@ class ForceManyBody(Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            enabled=None,  # type: ignore[arg-type]
-            strength=None,  # type: ignore[arg-type]
+            enabled=None,
+            strength=None,
         )
 
     @classmethod
