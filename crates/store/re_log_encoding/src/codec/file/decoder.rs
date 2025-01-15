@@ -13,15 +13,12 @@ pub(crate) fn decode(data: &mut impl std::io::Read) -> Result<(u64, Option<LogMs
     let mut buf = vec![0; header.len as usize];
     data.read_exact(&mut buf[..])?;
 
-    let msg = bytes_to_message(header.kind, &buf)?;
+    let msg = decode_bytes(header.kind, &buf)?;
 
     Ok((read_bytes, msg))
 }
 
-pub fn bytes_to_message(
-    message_kind: MessageKind,
-    buf: &[u8],
-) -> Result<Option<LogMsg>, DecodeError> {
+pub fn decode_bytes(message_kind: MessageKind, buf: &[u8]) -> Result<Option<LogMsg>, DecodeError> {
     use re_protos::external::prost::Message;
     use re_protos::log_msg::v0::{ArrowMsg, BlueprintActivationCommand, Encoding, SetStoreInfo};
 
