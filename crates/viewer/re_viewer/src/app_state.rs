@@ -151,6 +151,7 @@ impl AppState {
         command_sender: &CommandSender,
         welcome_screen_state: &WelcomeScreenState,
         is_history_enabled: bool,
+        timeline_callbacks: Option<&re_viewer_context::TimelineCallbacks>,
     ) {
         re_tracing::profile_function!();
 
@@ -291,7 +292,7 @@ impl AppState {
 
         // We move the time at the very start of the frame,
         // so that we always show the latest data when we're in "follow" mode.
-        move_time(&ctx, recording, rx);
+        move_time(&ctx, recording, rx, timeline_callbacks);
 
         // Update the viewport. May spawn new views and handle queued requests (like screenshots).
         viewport_ui.on_frame_start(&ctx);
@@ -546,6 +547,11 @@ impl AppState {
         *focused_item = None;
     }
 
+    #[cfg(target_arch = "wasm32")] // Only used in Wasm
+    pub fn recording_config(&self, rec_id: &StoreId) -> Option<&RecordingConfig> {
+        self.recording_configs.get(rec_id)
+    }
+
     pub fn recording_config_mut(&mut self, rec_id: &StoreId) -> Option<&mut RecordingConfig> {
         self.recording_configs.get_mut(rec_id)
     }
@@ -584,7 +590,12 @@ impl AppState {
     }
 }
 
-fn move_time(ctx: &ViewerContext<'_>, recording: &EntityDb, rx: &ReceiveSet<LogMsg>) {
+fn move_time(
+    ctx: &ViewerContext<'_>,
+    recording: &EntityDb,
+    rx: &ReceiveSet<LogMsg>,
+    timeline_callbacks: Option<&re_viewer_context::TimelineCallbacks>,
+) {
     let dt = ctx.egui_ctx.input(|i| i.stable_dt);
 
     // Are we still connected to the data source for the current store?
@@ -598,6 +609,7 @@ fn move_time(ctx: &ViewerContext<'_>, recording: &EntityDb, rx: &ReceiveSet<LogM
         recording.times_per_timeline(),
         dt,
         more_data_is_coming,
+        timeline_callbacks,
     );
 
     let blueprint_needs_repaint = if ctx.app_options.inspect_blueprint_timeline {
@@ -605,6 +617,7 @@ fn move_time(ctx: &ViewerContext<'_>, recording: &EntityDb, rx: &ReceiveSet<LogM
             ctx.store_context.blueprint.times_per_timeline(),
             dt,
             more_data_is_coming,
+            None,
         )
     } else {
         re_viewer_context::NeedsRepaint::No

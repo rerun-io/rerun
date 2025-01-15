@@ -1,0 +1,9 @@
+---
+source: crates/store/re_dataframe/src/query.rs
+assertion_line: 1838
+expression: dataframe
+snapshot_kind: text
+---
+┌┐
+╞╡
+└┘

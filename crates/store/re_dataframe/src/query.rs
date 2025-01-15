@@ -1343,6 +1343,12 @@ mod tests {
 
     use super::*;
 
+    macro_rules! assert_snapshot_fixed_width {
+        ($($arg:tt)*) => {
+            insta::_assert_snapshot_base!(transform=|v| std::format!("{v:200}"), $($arg)*)
+        };
+    }
+
     // NOTE: The best way to understand what these tests are doing is to run them in verbose mode,
     // e.g. `cargo t -p re_dataframe -- --show-output barebones`.
     // Each test will print the state of the store, the query being run, and the results that were
@@ -1398,20 +1404,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            let got = format!("{:#?}", dataframe.all_columns_collected());
-            let expected = unindent::unindent(
-                "\
-                [
-                    Int64[None],
-                    Timestamp(Nanosecond, None)[None],
-                    ListArray[None],
-                    ListArray[[c]],
-                    ListArray[None],
-                ]\
-                ",
-            );
-
-            similar_asserts::assert_eq!(expected, got);
+            assert_snapshot_fixed_width!(dataframe);
         }
 
         // temporal
@@ -1433,20 +1426,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            let got = format!("{:#?}", dataframe.all_columns_collected());
-            let expected = unindent::unindent(
-                "\
-                [
-                    Int64[10, 20, 30, 40, 50, 60, 70],
-                    Timestamp(Nanosecond, None)[1970-01-01 00:00:00.000000010, None, None, None, 1970-01-01 00:00:00.000000050, None, 1970-01-01 00:00:00.000000070],
-                    ListArray[None, None, [2], [3], [4], None, [6]],
-                    ListArray[[c], [c], [c], [c], [c], [c], [c]],
-                    ListArray[[{x: 0, y: 0}], [{x: 1, y: 1}], [{x: 2, y: 2}], [{x: 3, y: 3}], [{x: 4, y: 4}], [{x: 5, y: 5}], [{x: 8, y: 8}]],
-                ]\
-                "
-            );
-
-            similar_asserts::assert_eq!(expected, got);
+            assert_snapshot_fixed_width!(dataframe);
         }
 
         Ok(())
@@ -1480,20 +1460,7 @@ mod tests {
         )?;
         eprintln!("{dataframe}");
 
-        let got = format!("{:#?}", dataframe.all_columns_collected());
-        let expected = unindent::unindent(
-            "\
-            [
-                Int64[10, 20, 30, 40, 50, 60, 70],
-                Timestamp(Nanosecond, None)[1970-01-01 00:00:00.000000010, None, None, None, 1970-01-01 00:00:00.000000050, None, 1970-01-01 00:00:00.000000070],
-                ListArray[None, None, [2], [3], [4], [4], [6]],
-                ListArray[[c], [c], [c], [c], [c], [c], [c]],
-                ListArray[[{x: 0, y: 0}], [{x: 1, y: 1}], [{x: 2, y: 2}], [{x: 3, y: 3}], [{x: 4, y: 4}], [{x: 5, y: 5}], [{x: 8, y: 8}]],
-            ]\
-            "
-        );
-
-        similar_asserts::assert_eq!(expected, got);
+        assert_snapshot_fixed_width!(dataframe);
 
         Ok(())
     }
@@ -1526,20 +1493,7 @@ mod tests {
         )?;
         eprintln!("{dataframe}");
 
-        let got = format!("{:#?}", dataframe.all_columns_collected());
-        let expected = unindent::unindent(
-            "\
-            [
-                Int64[30, 40, 50, 60],
-                Timestamp(Nanosecond, None)[None, None, 1970-01-01 00:00:00.000000050, None],
-                ListArray[[2], [3], [4], None],
-                ListArray[[c], [c], [c], [c]],
-                ListArray[[{x: 2, y: 2}], [{x: 3, y: 3}], [{x: 4, y: 4}], [{x: 5, y: 5}]],
-            ]\
-            ",
-        );
-
-        similar_asserts::assert_eq!(expected, got);
+        assert_snapshot_fixed_width!(dataframe);
 
         Ok(())
     }
@@ -1578,20 +1532,7 @@ mod tests {
         )?;
         eprintln!("{dataframe}");
 
-        let got = format!("{:#?}", dataframe.all_columns_collected());
-        let expected = unindent::unindent(
-            "\
-            [
-                Int64[30, 60],
-                Timestamp(Nanosecond, None)[None, None],
-                ListArray[[2], None],
-                ListArray[[c], [c]],
-                ListArray[[{x: 2, y: 2}], [{x: 5, y: 5}]],
-            ]\
-            ",
-        );
-
-        similar_asserts::assert_eq!(expected, got);
+        assert_snapshot_fixed_width!(dataframe);
 
         Ok(())
     }
@@ -1633,20 +1574,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            let got = format!("{:#?}", dataframe.all_columns_collected());
-            let expected = unindent::unindent(
-                "\
-                [
-                    Int64[0, 15, 30, 45, 60, 75, 90],
-                    Timestamp(Nanosecond, None)[None, None, None, None, None, None, None],
-                    ListArray[None, None, [2], None, None, None, None],
-                    ListArray[[c], [c], [c], [c], [c], [c], [c]],
-                    ListArray[None, None, [{x: 2, y: 2}], None, [{x: 5, y: 5}], None, None],
-                ]\
-                ",
-            );
-
-            similar_asserts::assert_eq!(expected, got);
+            assert_snapshot_fixed_width!(dataframe);
         }
 
         // sparse-filled
@@ -1676,20 +1604,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            let got = format!("{:#?}", dataframe.all_columns_collected());
-            let expected = unindent::unindent(
-                "\
-                [
-                    Int64[0, 15, 30, 45, 60, 75, 90],
-                    Timestamp(Nanosecond, None)[None, 1970-01-01 00:00:00.000000010, None, None, None, 1970-01-01 00:00:00.000000070, 1970-01-01 00:00:00.000000070],
-                    ListArray[None, None, [2], [3], [4], [6], [6]],
-                    ListArray[[c], [c], [c], [c], [c], [c], [c]],
-                    ListArray[None, [{x: 0, y: 0}], [{x: 2, y: 2}], [{x: 3, y: 3}], [{x: 5, y: 5}], [{x: 8, y: 8}], [{x: 8, y: 8}]],
-                ]\
-                ",
-            );
-
-            similar_asserts::assert_eq!(expected, got);
+            assert_snapshot_fixed_width!(dataframe);
         }
 
         Ok(())
@@ -1729,11 +1644,8 @@ mod tests {
                 &query_handle.into_batch_iter().collect_vec(),
             )?;
             eprintln!("{dataframe}");
-
-            let got = format!("{:#?}", dataframe.all_columns_collected());
-            let expected = "[]";
-
-            similar_asserts::assert_eq!(expected, got);
+          
+            assert_snapshot_fixed_width!(dataframe);
         }
 
         // non-existing component
@@ -1759,10 +1671,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            let got = format!("{:#?}", dataframe.all_columns_collected());
-            let expected = "[]";
-
-            similar_asserts::assert_eq!(expected, got);
+            assert_snapshot_fixed_width!(dataframe);
         }
 
         // MyPoint
@@ -1788,20 +1697,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            let got = format!("{:#?}", dataframe.all_columns_collected());
-            let expected = unindent::unindent(
-                "\
-                [
-                    Int64[10, 20, 30, 40, 50, 60, 70],
-                    Timestamp(Nanosecond, None)[1970-01-01 00:00:00.000000010, None, None, None, 1970-01-01 00:00:00.000000050, None, 1970-01-01 00:00:00.000000070],
-                    ListArray[None, None, [2], [3], [4], None, [6]],
-                    ListArray[[c], [c], [c], [c], [c], [c], [c]],
-                    ListArray[[{x: 0, y: 0}], [{x: 1, y: 1}], [{x: 2, y: 2}], [{x: 3, y: 3}], [{x: 4, y: 4}], [{x: 5, y: 5}], [{x: 8, y: 8}]],
-                ]\
-                "
-            );
-
-            similar_asserts::assert_eq!(expected, got);
+            assert_snapshot_fixed_width!(dataframe);
         }
 
         // MyColor
@@ -1827,20 +1723,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            let got = format!("{:#?}", dataframe.all_columns_collected());
-            let expected = unindent::unindent(
-                "\
-                [
-                    Int64[30, 40, 50, 70],
-                    Timestamp(Nanosecond, None)[None, None, 1970-01-01 00:00:00.000000050, 1970-01-01 00:00:00.000000070],
-                    ListArray[[2], [3], [4], [6]],
-                    ListArray[[c], [c], [c], [c]],
-                    ListArray[[{x: 2, y: 2}], [{x: 3, y: 3}], [{x: 4, y: 4}], [{x: 8, y: 8}]],
-                ]\
-                ",
-            );
-
-            similar_asserts::assert_eq!(expected, got);
+            assert_snapshot_fixed_width!(dataframe);
         }
 
         Ok(())
@@ -1882,10 +1765,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            let got = format!("{:#?}", dataframe.all_columns_collected());
-            let expected = "[]";
-
-            similar_asserts::assert_eq!(expected, got);
+            assert_snapshot_fixed_width!(dataframe);
         }
 
         {
@@ -1921,20 +1801,8 @@ mod tests {
                 &query_handle.into_batch_iter().collect_vec(),
             )?;
             eprintln!("{dataframe}");
-
-            let got = format!("{:#?}", dataframe.all_columns_collected());
-            let expected = unindent::unindent(
-                "\
-                [
-                    Int64[30, 40, 50, 70],
-                    Timestamp(Nanosecond, None)[None, None, None, None],
-                    ListArray[[2], [3], [4], [6]],
-                    ListArray[[c], [c], [c], [c]],
-                ]\
-                ",
-            );
-
-            similar_asserts::assert_eq!(expected, got);
+          
+            assert_snapshot_fixed_width!(dataframe);
         }
 
         Ok(())
@@ -1971,11 +1839,8 @@ mod tests {
                 &query_handle.into_batch_iter().collect_vec(),
             )?;
             eprintln!("{dataframe}");
-
-            let got = format!("{:#?}", dataframe.all_columns_collected());
-            let expected = "[]";
-
-            similar_asserts::assert_eq!(expected, got);
+          
+            assert_snapshot_fixed_width!(dataframe);
         }
 
         // only indices (+ duplication)
@@ -2008,18 +1873,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            let got = format!("{:#?}", dataframe.all_columns_collected());
-            let expected = unindent::unindent(
-                "\
-                [
-                    Int64[10, 20, 30, 40, 50, 60, 70],
-                    Int64[10, 20, 30, 40, 50, 60, 70],
-                    NullArray(7),
-                ]\
-                ",
-            );
-
-            similar_asserts::assert_eq!(expected, got);
+            assert_snapshot_fixed_width!(dataframe);
         }
 
         // only components (+ duplication)
@@ -2059,19 +1913,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            let got = format!("{:#?}", dataframe.all_columns_collected());
-            let expected = unindent::unindent(
-                "\
-                [
-                    ListArray[None, None, [2], [3], [4], None, [6]],
-                    ListArray[None, None, [2], [3], [4], None, [6]],
-                    NullArray(7),
-                    NullArray(7),
-                ]\
-                ",
-            );
-
-            similar_asserts::assert_eq!(expected, got);
+            assert_snapshot_fixed_width!(dataframe);
         }
 
         // static
@@ -2132,26 +1974,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            let got = format!("{:#?}", dataframe.all_columns_collected());
-            let expected = unindent::unindent(
-                "\
-                [
-                    Int64[10, 20, 30, 40, 50, 60, 70],
-                    Int64[10, 20, 30, 40, 50, 60, 70],
-                    Int64[10, 20, 30, 40, 50, 60, 70],
-                    Int64[10, 20, 30, 40, 50, 60, 70],
-                    Int64[10, 20, 30, 40, 50, 60, 70],
-                    Int64[10, 20, 30, 40, 50, 60, 70],
-                    Int64[10, 20, 30, 40, 50, 60, 70],
-                    Int64[10, 20, 30, 40, 50, 60, 70],
-                    Int64[10, 20, 30, 40, 50, 60, 70],
-                    Int64[10, 20, 30, 40, 50, 60, 70],
-                    ListArray[[c], [c], [c], [c], [c], [c], [c]],
-                ]\
-                ",
-            );
-
-            similar_asserts::assert_eq!(expected, got);
+            assert_snapshot_fixed_width!(dataframe);
         }
 
         Ok(())
@@ -2220,21 +2043,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            let got = format!("{:#?}", dataframe.all_columns_collected());
-            let expected = unindent::unindent(
-                "\
-                [
-                    Int64[30, 40, 50, 70],
-                    Timestamp(Nanosecond, None)[None, None, None, None],
-                    NullArray(4),
-                    NullArray(4),
-                    ListArray[[2], [3], [4], [6]],
-                    ListArray[[c], [c], [c], [c]],
-                ]\
-                ",
-            );
-
-            similar_asserts::assert_eq!(expected, got);
+            assert_snapshot_fixed_width!(dataframe);
         }
 
         Ok(())
@@ -2274,20 +2083,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            let got = format!("{:#?}", dataframe.all_columns_collected());
-            let expected = unindent::unindent(
-            "\
-            [
-                Int64[10, 20, 30, 40, 50, 60, 65, 70],
-                Timestamp(Nanosecond, None)[1970-01-01 00:00:00.000000010, None, None, None, 1970-01-01 00:00:00.000000050, 1970-01-01 00:00:00.000000060, 1970-01-01 00:00:00.000000065, 1970-01-01 00:00:00.000000070],
-                ListArray[None, None, [2], [3], [4], [], [], [6]],
-                ListArray[[c], [c], [c], [c], [c], [c], [c], [c]],
-                ListArray[[{x: 0, y: 0}], [{x: 1, y: 1}], [{x: 2, y: 2}], [{x: 3, y: 3}], [{x: 4, y: 4}], [], [], [{x: 8, y: 8}]],
-            ]\
-            "
-        );
-
-            similar_asserts::assert_eq!(expected, got);
+            assert_snapshot_fixed_width!(dataframe);
         }
 
         // sparse-filled
@@ -2315,20 +2111,7 @@ mod tests {
             // static clear semantics in general are pretty unhinged right now, especially when
             // ranges are involved.
             // It's extremely niche, our time is better spent somewhere else right now.
-            let got = format!("{:#?}", dataframe.all_columns_collected());
-            let expected = unindent::unindent(
-            "\
-            [
-                Int64[10, 20, 30, 40, 50, 60, 65, 70],
-                Timestamp(Nanosecond, None)[1970-01-01 00:00:00.000000010, None, None, None, 1970-01-01 00:00:00.000000050, 1970-01-01 00:00:00.000000060, 1970-01-01 00:00:00.000000065, 1970-01-01 00:00:00.000000070],
-                ListArray[None, None, [2], [3], [4], [], [], [6]],
-                ListArray[[c], [c], [c], [c], [c], [c], [c], [c]],
-                ListArray[[{x: 0, y: 0}], [{x: 1, y: 1}], [{x: 2, y: 2}], [{x: 3, y: 3}], [{x: 4, y: 4}], [], [], [{x: 8, y: 8}]],
-            ]\
-            "
-        );
-
-            similar_asserts::assert_eq!(expected, got);
+            assert_snapshot_fixed_width!(dataframe);
         }
 
         Ok(())
@@ -2375,8 +2158,8 @@ mod tests {
                         &query_handle.batch_iter().take(3).collect_vec(),
                     )?;
 
-                    let expected = format!("{:#?}", expected.all_columns_collected());
-                    let got = format!("{:#?}", got.all_columns_collected());
+                    let expected = format!("{:#?}", expected.columns());
+                    let got = format!("{:#?}", got.columns());
 
                     similar_asserts::assert_eq!(expected, got);
                 }
@@ -2416,8 +2199,8 @@ mod tests {
                         &query_handle.batch_iter().take(3).collect_vec(),
                     )?;
 
-                    let expected = format!("{:#?}", expected.all_columns_collected());
-                    let got = format!("{:#?}", got.all_columns_collected());
+                    let expected = format!("{:#?}", expected.columns());
+                    let got = format!("{:#?}", got.columns());
 
                     similar_asserts::assert_eq!(expected, got);
                 }
@@ -2460,8 +2243,8 @@ mod tests {
                         &query_handle.batch_iter().take(3).collect_vec(),
                     )?;
 
-                    let expected = format!("{:#?}", expected.all_columns_collected());
-                    let got = format!("{:#?}", got.all_columns_collected());
+                    let expected = format!("{:#?}", expected.columns());
+                    let got = format!("{:#?}", got.columns());
 
                     similar_asserts::assert_eq!(expected, got);
                 }
@@ -2498,8 +2281,8 @@ mod tests {
                         &query_handle.batch_iter().take(3).collect_vec(),
                     )?;
 
-                    let expected = format!("{:#?}", expected.all_columns_collected());
-                    let got = format!("{:#?}", got.all_columns_collected());
+                    let expected = format!("{:#?}", expected.columns());
+                    let got = format!("{:#?}", got.columns());
 
                     similar_asserts::assert_eq!(expected, got);
                 }
@@ -2566,20 +2349,7 @@ mod tests {
                 )?;
                 eprintln!("{dataframe}");
 
-                let got = format!("{:#?}", dataframe.all_columns_collected());
-                let expected = unindent::unindent(
-                    "\
-                    [
-                        Int64[None],
-                        Timestamp(Nanosecond, None)[None],
-                        ListArray[None],
-                        ListArray[[c]],
-                        ListArray[None],
-                    ]\
-                    ",
-                );
-
-                similar_asserts::assert_eq!(expected, got);
+                assert_snapshot_fixed_width!("async_barebones_static", dataframe);
 
                 Ok::<_, anyhow::Error>(())
             }
@@ -2610,20 +2380,7 @@ mod tests {
                 )?;
                 eprintln!("{dataframe}");
 
-                let got = format!("{:#?}", dataframe.all_columns_collected());
-                let expected = unindent::unindent(
-                    "\
-                    [
-                        Int64[10, 20, 30, 40, 50, 60, 70],
-                        Timestamp(Nanosecond, None)[1970-01-01 00:00:00.000000010, None, None, None, 1970-01-01 00:00:00.000000050, None, 1970-01-01 00:00:00.000000070],
-                        ListArray[None, None, [2], [3], [4], None, [6]],
-                        ListArray[[c], [c], [c], [c], [c], [c], [c]],
-                        ListArray[[{x: 0, y: 0}], [{x: 1, y: 1}], [{x: 2, y: 2}], [{x: 3, y: 3}], [{x: 4, y: 4}], [{x: 5, y: 5}], [{x: 8, y: 8}]],
-                    ]\
-                    "
-                );
-
-                similar_asserts::assert_eq!(expected, got);
+                assert_snapshot_fixed_width!("async_barebones_temporal", dataframe);
 
                 Ok::<_, anyhow::Error>(())
             }

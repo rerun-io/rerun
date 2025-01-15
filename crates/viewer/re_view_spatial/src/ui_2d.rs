@@ -10,7 +10,6 @@ use re_types::{
         archetypes::{Background, NearClipPlane, VisualBounds2D},
         components as blueprint_components,
     },
-    components::ViewCoordinates,
 };
 use re_ui::{ContextExt as _, ModifiersMarkdown, MouseButtonMarkdown};
 use re_view::controls::{DRAG_PAN2D_BUTTON, ZOOM_SCROLL_MODIFIER};
@@ -353,7 +352,7 @@ fn setup_target_config(
             )
             .into(),
             resolution: Some([resolution.x, resolution.y].into()),
-            camera_xyz: Some(ViewCoordinates::RDF),
+            camera_xyz: Some(Pinhole::DEFAULT_CAMERA_XYZ),
             image_plane_distance: None,
         };
     }

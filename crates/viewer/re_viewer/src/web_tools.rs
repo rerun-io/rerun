@@ -191,9 +191,21 @@ pub struct Callback(#[serde(with = "serde_wasm_bindgen::preserve")] js_sys::Func
 
 impl Callback {
     #[inline]
-    pub fn call(&self) -> Result<JsValue, JsValue> {
+    pub fn call0(&self) -> Result<JsValue, JsValue> {
         let window: JsValue = window()?.into();
         self.0.call0(&window)
+    }
+
+    #[inline]
+    pub fn call1(&self, arg0: &JsValue) -> Result<JsValue, JsValue> {
+        let window: JsValue = window()?.into();
+        self.0.call1(&window, arg0)
+    }
+
+    #[inline]
+    pub fn call2(&self, arg0: &JsValue, arg1: &JsValue) -> Result<JsValue, JsValue> {
+        let window: JsValue = window()?.into();
+        self.0.call2(&window, arg0, arg1)
     }
 }
 

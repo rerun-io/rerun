@@ -5913,6 +5913,7 @@ version = "0.22.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "arrow",
+ "insta",
  "itertools 0.13.0",
  "nohash-hasher",
  "rayon",
