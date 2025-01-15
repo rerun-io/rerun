@@ -2,6 +2,7 @@ namespace rerun.blueprint.archetypes;
 
 /// Configures how a selected tensor slice is shown on screen.
 table TensorViewFit (
+    "attr.rust.archetype_eager",
     "attr.rerun.scope": "blueprint",
     "attr.rust.derive": "Default",
     "attr.python.aliases": "blueprint_components.ViewFitLike"

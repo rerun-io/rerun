@@ -2,6 +2,7 @@ namespace rerun.blueprint.archetypes;
 
 /// Resolves collisions between the bounding circles, according to the radius of the nodes.
 struct ForceCollisionRadius (
+    "attr.rust.archetype_eager",
     "attr.rerun.scope": "blueprint"
 ) {
     /// Whether the collision force is enabled.

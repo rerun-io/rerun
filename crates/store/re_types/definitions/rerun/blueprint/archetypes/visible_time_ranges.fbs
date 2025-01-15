@@ -12,6 +12,8 @@ namespace rerun.blueprint.archetypes;
 /// - For time series views, the default is to show the entire timeline.
 /// - For any other view, the default is to apply latest-at semantics.
 table VisibleTimeRanges (
+    // TODO:?
+    //"attr.rust.archetype_eager",
     "attr.rerun.scope": "blueprint",
     "attr.rust.derive": "Default",
     "attr.python.aliases": "datatypes.VisibleTimeRangeLike, Sequence[datatypes.VisibleTimeRangeLike]"

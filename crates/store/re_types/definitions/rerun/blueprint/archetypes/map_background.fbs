@@ -3,6 +3,7 @@ namespace rerun.blueprint.archetypes;
 
 /// Configuration for the background map of the map view.
 table MapBackground (
+    "attr.rust.archetype_eager",
     "attr.rerun.scope": "blueprint",
     "attr.python.aliases": "blueprint_components.MapProviderLike"
 ) {

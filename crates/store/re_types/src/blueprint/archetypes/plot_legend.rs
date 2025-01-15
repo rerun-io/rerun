@@ -24,12 +24,12 @@ pub struct PlotLegend {
     /// To what corner the legend is aligned.
     ///
     /// Defaults to the right bottom corner.
-    pub corner: Option<crate::blueprint::components::Corner2D>,
+    pub corner: Option<SerializedComponentBatch>,
 
     /// Whether the legend is shown at all.
     ///
     /// True by default.
-    pub visible: Option<crate::blueprint::components::Visible>,
+    pub visible: Option<SerializedComponentBatch>,
 }
 
 impl PlotLegend {
@@ -141,50 +141,24 @@ impl ::re_types_core::Archetype for PlotLegend {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
         let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
-        let corner = if let Some(array) = arrays_by_descr.get(&Self::descriptor_corner()) {
-            <crate::blueprint::components::Corner2D>::from_arrow_opt(&**array)
-                .with_context("rerun.blueprint.archetypes.PlotLegend#corner")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
-        let visible = if let Some(array) = arrays_by_descr.get(&Self::descriptor_visible()) {
-            <crate::blueprint::components::Visible>::from_arrow_opt(&**array)
-                .with_context("rerun.blueprint.archetypes.PlotLegend#visible")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
+        let corner = arrays_by_descr
+            .get(&Self::descriptor_corner())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_corner()));
+        let visible = arrays_by_descr
+            .get(&Self::descriptor_visible())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_visible()));
         Ok(Self { corner, visible })
     }
 }
 
 impl ::re_types_core::AsComponents for PlotLegend {
-    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
-        re_tracing::profile_function!();
+    #[inline]
+    fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
-            (self
-                .corner
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_corner()),
-            }),
-            (self
-                .visible
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_visible()),
-            }),
+            Self::indicator().serialized(),
+            self.corner.clone(),
+            self.visible.clone(),
         ]
         .into_iter()
         .flatten()
@@ -204,6 +178,28 @@ impl PlotLegend {
         }
     }
 
+    /// Update only some specific fields of a `PlotLegend`.
+    #[inline]
+    pub fn update_fields() -> Self {
+        Self::default()
+    }
+
+    /// Clear all the fields of a `PlotLegend`.
+    #[inline]
+    pub fn clear_fields() -> Self {
+        use ::re_types_core::Loggable as _;
+        Self {
+            corner: Some(SerializedComponentBatch::new(
+                crate::blueprint::components::Corner2D::arrow_empty(),
+                Self::descriptor_corner(),
+            )),
+            visible: Some(SerializedComponentBatch::new(
+                crate::blueprint::components::Visible::arrow_empty(),
+                Self::descriptor_visible(),
+            )),
+        }
+    }
+
     /// To what corner the legend is aligned.
     ///
     /// Defaults to the right bottom corner.
@@ -212,7 +208,7 @@ impl PlotLegend {
         mut self,
         corner: impl Into<crate::blueprint::components::Corner2D>,
     ) -> Self {
-        self.corner = Some(corner.into());
+        self.corner = try_serialize_field(Self::descriptor_corner(), [corner]);
         self
     }
 
@@ -224,7 +220,7 @@ impl PlotLegend {
         mut self,
         visible: impl Into<crate::blueprint::components::Visible>,
     ) -> Self {
-        self.visible = Some(visible.into());
+        self.visible = try_serialize_field(Self::descriptor_visible(), [visible]);
         self
     }
 }
@@ -233,11 +229,5 @@ impl ::re_byte_size::SizeBytes for PlotLegend {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.corner.heap_size_bytes() + self.visible.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <Option<crate::blueprint::components::Corner2D>>::is_pod()
-            && <Option<crate::blueprint::components::Visible>>::is_pod()
     }
 }
