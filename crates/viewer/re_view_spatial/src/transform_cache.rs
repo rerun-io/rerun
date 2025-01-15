@@ -436,13 +436,13 @@ impl PerStoreChunkSubscriber for TransformCacheStoreSubscriber {
 ///
 /// If any of the components yields an invalid transform, returns a `glam::Affine3A::ZERO`.
 /// (this effectively disconnects a subtree from the transform hierarchy!)
-// TODO(andreas): There's no way to discover invalid transforms right now.
+// TODO(#3849): There's no way to discover invalid transforms right now (they can be intentional but often aren't).
 fn query_and_resolve_tree_transform_at_entity(
     entity_path: &EntityPath,
     entity_db: &EntityDb,
     query: &LatestAtQuery,
 ) -> Option<Affine3A> {
-    // TODO(andreas): Filter out the components we're actually interested in?
+    // TODO(andreas): Filter out styling components.
     let components = archetypes::Transform3D::all_components();
     let component_names = components.iter().map(|descr| descr.component_name);
     let result = entity_db.latest_at(query, entity_path, component_names);
@@ -507,13 +507,13 @@ fn query_and_resolve_tree_transform_at_entity(
 ///
 /// If any of the components yields an invalid transform, returns a `glam::Affine3A::ZERO` for that instance.
 /// (this effectively ignores the instance for most visualizations!)
-// TODO(andreas): There's no way to discover invalid transforms right now.
+// TODO(#3849): There's no way to discover invalid transforms right now (they can be intentional but often aren't).
 fn query_and_resolve_instance_poses_at_entity(
     entity_path: &EntityPath,
     entity_db: &EntityDb,
     query: &LatestAtQuery,
 ) -> Vec<Affine3A> {
-    // TODO(andreas): Filter out the components we're actually interested in?
+    // TODO(andreas): Filter out styling components.
     let components = archetypes::InstancePoses3D::all_components();
     let component_names = components.iter().map(|descr| descr.component_name);
     let result = entity_db.latest_at(query, entity_path, component_names);
