@@ -122,8 +122,9 @@ class BarChart(BarChartExt, Archetype):
         )
         return inst
 
-    values: components.TensorDataBatch = field(
+    values: components.TensorDataBatch | None = field(
         metadata={"component": "optional"},
+        default=None,
         converter=BarChartExt.values__field_converter_override,  # type: ignore[misc]
     )
     # The values. Should always be a 1-dimensional tensor (i.e. a vector).

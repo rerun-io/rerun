@@ -240,8 +240,9 @@ class LineStrips3D(Archetype):
         )
         return inst
 
-    strips: components.LineStrip3DBatch = field(
+    strips: components.LineStrip3DBatch | None = field(
         metadata={"component": "optional"},
+        default=None,
         converter=components.LineStrip3DBatch._optional,  # type: ignore[misc]
     )
     # All the actual 3D line strips that make up the batch.

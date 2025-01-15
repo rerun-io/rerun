@@ -133,8 +133,9 @@ class ViewContents(Archetype):
         )
         return inst
 
-    query: blueprint_components.QueryExpressionBatch = field(
+    query: blueprint_components.QueryExpressionBatch | None = field(
         metadata={"component": "optional"},
+        default=None,
         converter=blueprint_components.QueryExpressionBatch._optional,  # type: ignore[misc]
     )
     # The `QueryExpression` that populates the contents for the view.

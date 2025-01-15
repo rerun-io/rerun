@@ -182,80 +182,99 @@ class AffixFuzzer2(Archetype):
         )
         return inst
 
-    fuzz1101: components.AffixFuzzer1Batch = field(
+    fuzz1101: components.AffixFuzzer1Batch | None = field(
         metadata={"component": "optional"},
+        default=None,
         converter=components.AffixFuzzer1Batch._optional,  # type: ignore[misc]
     )
-    fuzz1102: components.AffixFuzzer2Batch = field(
+    fuzz1102: components.AffixFuzzer2Batch | None = field(
         metadata={"component": "optional"},
+        default=None,
         converter=components.AffixFuzzer2Batch._optional,  # type: ignore[misc]
     )
-    fuzz1103: components.AffixFuzzer3Batch = field(
+    fuzz1103: components.AffixFuzzer3Batch | None = field(
         metadata={"component": "optional"},
+        default=None,
         converter=components.AffixFuzzer3Batch._optional,  # type: ignore[misc]
     )
-    fuzz1104: components.AffixFuzzer4Batch = field(
+    fuzz1104: components.AffixFuzzer4Batch | None = field(
         metadata={"component": "optional"},
+        default=None,
         converter=components.AffixFuzzer4Batch._optional,  # type: ignore[misc]
     )
-    fuzz1105: components.AffixFuzzer5Batch = field(
+    fuzz1105: components.AffixFuzzer5Batch | None = field(
         metadata={"component": "optional"},
+        default=None,
         converter=components.AffixFuzzer5Batch._optional,  # type: ignore[misc]
     )
-    fuzz1106: components.AffixFuzzer6Batch = field(
+    fuzz1106: components.AffixFuzzer6Batch | None = field(
         metadata={"component": "optional"},
+        default=None,
         converter=components.AffixFuzzer6Batch._optional,  # type: ignore[misc]
     )
-    fuzz1107: components.AffixFuzzer7Batch = field(
+    fuzz1107: components.AffixFuzzer7Batch | None = field(
         metadata={"component": "optional"},
+        default=None,
         converter=components.AffixFuzzer7Batch._optional,  # type: ignore[misc]
     )
-    fuzz1108: components.AffixFuzzer8Batch = field(
+    fuzz1108: components.AffixFuzzer8Batch | None = field(
         metadata={"component": "optional"},
+        default=None,
         converter=components.AffixFuzzer8Batch._optional,  # type: ignore[misc]
     )
-    fuzz1109: components.AffixFuzzer9Batch = field(
+    fuzz1109: components.AffixFuzzer9Batch | None = field(
         metadata={"component": "optional"},
+        default=None,
         converter=components.AffixFuzzer9Batch._optional,  # type: ignore[misc]
     )
-    fuzz1110: components.AffixFuzzer10Batch = field(
+    fuzz1110: components.AffixFuzzer10Batch | None = field(
         metadata={"component": "optional"},
+        default=None,
         converter=components.AffixFuzzer10Batch._optional,  # type: ignore[misc]
     )
-    fuzz1111: components.AffixFuzzer11Batch = field(
+    fuzz1111: components.AffixFuzzer11Batch | None = field(
         metadata={"component": "optional"},
+        default=None,
         converter=components.AffixFuzzer11Batch._optional,  # type: ignore[misc]
     )
-    fuzz1112: components.AffixFuzzer12Batch = field(
+    fuzz1112: components.AffixFuzzer12Batch | None = field(
         metadata={"component": "optional"},
+        default=None,
         converter=components.AffixFuzzer12Batch._optional,  # type: ignore[misc]
     )
-    fuzz1113: components.AffixFuzzer13Batch = field(
+    fuzz1113: components.AffixFuzzer13Batch | None = field(
         metadata={"component": "optional"},
+        default=None,
         converter=components.AffixFuzzer13Batch._optional,  # type: ignore[misc]
     )
-    fuzz1114: components.AffixFuzzer14Batch = field(
+    fuzz1114: components.AffixFuzzer14Batch | None = field(
         metadata={"component": "optional"},
+        default=None,
         converter=components.AffixFuzzer14Batch._optional,  # type: ignore[misc]
     )
-    fuzz1115: components.AffixFuzzer15Batch = field(
+    fuzz1115: components.AffixFuzzer15Batch | None = field(
         metadata={"component": "optional"},
+        default=None,
         converter=components.AffixFuzzer15Batch._optional,  # type: ignore[misc]
     )
-    fuzz1116: components.AffixFuzzer16Batch = field(
+    fuzz1116: components.AffixFuzzer16Batch | None = field(
         metadata={"component": "optional"},
+        default=None,
         converter=components.AffixFuzzer16Batch._optional,  # type: ignore[misc]
     )
-    fuzz1117: components.AffixFuzzer17Batch = field(
+    fuzz1117: components.AffixFuzzer17Batch | None = field(
         metadata={"component": "optional"},
+        default=None,
         converter=components.AffixFuzzer17Batch._optional,  # type: ignore[misc]
     )
-    fuzz1118: components.AffixFuzzer18Batch = field(
+    fuzz1118: components.AffixFuzzer18Batch | None = field(
         metadata={"component": "optional"},
+        default=None,
         converter=components.AffixFuzzer18Batch._optional,  # type: ignore[misc]
     )
-    fuzz1122: components.AffixFuzzer22Batch = field(
+    fuzz1122: components.AffixFuzzer22Batch | None = field(
         metadata={"component": "optional"},
+        default=None,
         converter=components.AffixFuzzer22Batch._optional,  # type: ignore[misc]
     )
     __str__ = Archetype.__str__

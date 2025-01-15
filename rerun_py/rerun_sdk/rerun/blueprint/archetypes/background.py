@@ -79,8 +79,9 @@ class Background(BackgroundExt, Archetype):
         )
         return inst
 
-    kind: blueprint_components.BackgroundKindBatch = field(
+    kind: blueprint_components.BackgroundKindBatch | None = field(
         metadata={"component": "optional"},
+        default=None,
         converter=blueprint_components.BackgroundKindBatch._optional,  # type: ignore[misc]
     )
     # The type of the background.

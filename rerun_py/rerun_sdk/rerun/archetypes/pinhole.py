@@ -175,8 +175,9 @@ class Pinhole(PinholeExt, Archetype):
         )
         return inst
 
-    image_from_camera: components.PinholeProjectionBatch = field(
+    image_from_camera: components.PinholeProjectionBatch | None = field(
         metadata={"component": "optional"},
+        default=None,
         converter=components.PinholeProjectionBatch._optional,  # type: ignore[misc]
     )
     # Camera projection, from image coordinates to view coordinates.

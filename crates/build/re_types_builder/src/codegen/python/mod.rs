@@ -749,7 +749,7 @@ fn code_for_struct(
                 String::new()
             };
             // Note: mypy gets confused using staticmethods for field-converters
-            let typ = if !*is_nullable {
+            let typ = if !obj.is_archetype() && !*is_nullable {
                 format!("{typ} = field(\n{metadata}{converter}{type_ignore}\n)")
             } else {
                 format!(

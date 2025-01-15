@@ -131,8 +131,9 @@ class Asset3D(Asset3DExt, Archetype):
         )
         return inst
 
-    blob: components.BlobBatch = field(
+    blob: components.BlobBatch | None = field(
         metadata={"component": "optional"},
+        default=None,
         converter=components.BlobBatch._optional,  # type: ignore[misc]
     )
     # The asset's bytes.

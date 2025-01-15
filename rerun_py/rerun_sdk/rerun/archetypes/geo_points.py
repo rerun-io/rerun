@@ -127,8 +127,9 @@ class GeoPoints(GeoPointsExt, Archetype):
         )
         return inst
 
-    positions: components.LatLonBatch = field(
+    positions: components.LatLonBatch | None = field(
         metadata={"component": "optional"},
+        default=None,
         converter=components.LatLonBatch._optional,  # type: ignore[misc]
     )
     # The [EPSG:4326](https://epsg.io/4326) coordinates for the points (North/East-positive degrees).

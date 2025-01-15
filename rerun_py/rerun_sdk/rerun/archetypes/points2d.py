@@ -208,8 +208,9 @@ class Points2D(Points2DExt, Archetype):
         )
         return inst
 
-    positions: components.Position2DBatch = field(
+    positions: components.Position2DBatch | None = field(
         metadata={"component": "optional"},
+        default=None,
         converter=components.Position2DBatch._optional,  # type: ignore[misc]
     )
     # All the 2D positions at which the point cloud shows points.

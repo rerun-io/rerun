@@ -161,16 +161,18 @@ class Image(ImageExt, Archetype):
         )
         return inst
 
-    buffer: components.ImageBufferBatch = field(
+    buffer: components.ImageBufferBatch | None = field(
         metadata={"component": "optional"},
+        default=None,
         converter=components.ImageBufferBatch._optional,  # type: ignore[misc]
     )
     # The raw image data.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    format: components.ImageFormatBatch = field(
+    format: components.ImageFormatBatch | None = field(
         metadata={"component": "optional"},
+        default=None,
         converter=components.ImageFormatBatch._optional,  # type: ignore[misc]
     )
     # The format of the image.

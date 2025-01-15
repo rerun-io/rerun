@@ -150,8 +150,9 @@ class Arrows3D(Arrows3DExt, Archetype):
         )
         return inst
 
-    vectors: components.Vector3DBatch = field(
+    vectors: components.Vector3DBatch | None = field(
         metadata={"component": "optional"},
+        default=None,
         converter=components.Vector3DBatch._optional,  # type: ignore[misc]
     )
     # All the vectors for each arrow in the batch.

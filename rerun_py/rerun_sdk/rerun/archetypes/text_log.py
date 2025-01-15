@@ -146,8 +146,9 @@ class TextLog(Archetype):
         )
         return inst
 
-    text: components.TextBatch = field(
+    text: components.TextBatch | None = field(
         metadata={"component": "optional"},
+        default=None,
         converter=components.TextBatch._optional,  # type: ignore[misc]
     )
     # The body of the message.

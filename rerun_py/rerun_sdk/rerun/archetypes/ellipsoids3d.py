@@ -183,8 +183,9 @@ class Ellipsoids3D(Ellipsoids3DExt, Archetype):
         )
         return inst
 
-    half_sizes: components.HalfSize3DBatch = field(
+    half_sizes: components.HalfSize3DBatch | None = field(
         metadata={"component": "optional"},
+        default=None,
         converter=components.HalfSize3DBatch._optional,  # type: ignore[misc]
     )
     # For each ellipsoid, half of its size on its three axes.

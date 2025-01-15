@@ -158,8 +158,9 @@ class Arrows2D(Arrows2DExt, Archetype):
         )
         return inst
 
-    vectors: components.Vector2DBatch = field(
+    vectors: components.Vector2DBatch | None = field(
         metadata={"component": "optional"},
+        default=None,
         converter=components.Vector2DBatch._optional,  # type: ignore[misc]
     )
     # All the vectors for each arrow in the batch.

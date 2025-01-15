@@ -186,16 +186,18 @@ class Capsules3D(Capsules3DExt, Archetype):
         )
         return inst
 
-    lengths: components.LengthBatch = field(
+    lengths: components.LengthBatch | None = field(
         metadata={"component": "optional"},
+        default=None,
         converter=components.LengthBatch._optional,  # type: ignore[misc]
     )
     # Lengths of the capsules, defined as the distance between the centers of the endcaps.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    radii: components.RadiusBatch = field(
+    radii: components.RadiusBatch | None = field(
         metadata={"component": "optional"},
+        default=None,
         converter=components.RadiusBatch._optional,  # type: ignore[misc]
     )
     # Radii of the capsules.

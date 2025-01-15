@@ -181,8 +181,9 @@ class Boxes3D(Boxes3DExt, Archetype):
         )
         return inst
 
-    half_sizes: components.HalfSize3DBatch = field(
+    half_sizes: components.HalfSize3DBatch | None = field(
         metadata={"component": "optional"},
+        default=None,
         converter=components.HalfSize3DBatch._optional,  # type: ignore[misc]
     )
     # All half-extents that make up the batch of boxes.

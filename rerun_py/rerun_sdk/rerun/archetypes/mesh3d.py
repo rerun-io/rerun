@@ -206,8 +206,9 @@ class Mesh3D(Mesh3DExt, Archetype):
         )
         return inst
 
-    vertex_positions: components.Position3DBatch = field(
+    vertex_positions: components.Position3DBatch | None = field(
         metadata={"component": "optional"},
+        default=None,
         converter=components.Position3DBatch._optional,  # type: ignore[misc]
     )
     # The positions of each vertex.

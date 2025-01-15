@@ -235,8 +235,9 @@ class Points3D(Points3DExt, Archetype):
         )
         return inst
 
-    positions: components.Position3DBatch = field(
+    positions: components.Position3DBatch | None = field(
         metadata={"component": "optional"},
+        default=None,
         converter=components.Position3DBatch._optional,  # type: ignore[misc]
     )
     # All the 3D positions at which the point cloud shows points.

@@ -244,8 +244,9 @@ class LineStrips2D(Archetype):
         )
         return inst
 
-    strips: components.LineStrip2DBatch = field(
+    strips: components.LineStrip2DBatch | None = field(
         metadata={"component": "optional"},
+        default=None,
         converter=components.LineStrip2DBatch._optional,  # type: ignore[misc]
     )
     # All the actual 2D line strips that make up the batch.

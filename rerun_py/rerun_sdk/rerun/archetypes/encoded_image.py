@@ -124,8 +124,9 @@ class EncodedImage(EncodedImageExt, Archetype):
         )
         return inst
 
-    blob: components.BlobBatch = field(
+    blob: components.BlobBatch | None = field(
         metadata={"component": "optional"},
+        default=None,
         converter=components.BlobBatch._optional,  # type: ignore[misc]
     )
     # The encoded content of some image file, e.g. a PNG or JPEG.

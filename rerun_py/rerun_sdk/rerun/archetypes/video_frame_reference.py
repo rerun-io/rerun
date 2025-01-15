@@ -183,8 +183,9 @@ class VideoFrameReference(VideoFrameReferenceExt, Archetype):
         )
         return inst
 
-    timestamp: components.VideoTimestampBatch = field(
+    timestamp: components.VideoTimestampBatch | None = field(
         metadata={"component": "optional"},
+        default=None,
         converter=components.VideoTimestampBatch._optional,  # type: ignore[misc]
     )
     # References the closest video frame to this timestamp.

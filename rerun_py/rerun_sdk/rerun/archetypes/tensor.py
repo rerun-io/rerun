@@ -119,8 +119,9 @@ class Tensor(TensorExt, Archetype):
         )
         return inst
 
-    data: components.TensorDataBatch = field(
+    data: components.TensorDataBatch | None = field(
         metadata={"component": "optional"},
+        default=None,
         converter=components.TensorDataBatch._optional,  # type: ignore[misc]
     )
     # The tensor data

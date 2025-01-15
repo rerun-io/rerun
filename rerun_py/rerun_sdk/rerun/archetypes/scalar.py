@@ -125,8 +125,9 @@ class Scalar(Archetype):
         )
         return inst
 
-    scalar: components.ScalarBatch = field(
+    scalar: components.ScalarBatch | None = field(
         metadata={"component": "optional"},
+        default=None,
         converter=components.ScalarBatch._optional,  # type: ignore[misc]
     )
     # The scalar value to log.

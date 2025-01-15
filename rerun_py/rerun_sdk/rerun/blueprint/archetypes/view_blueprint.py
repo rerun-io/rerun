@@ -139,8 +139,9 @@ class ViewBlueprint(Archetype):
         )
         return inst
 
-    class_identifier: blueprint_components.ViewClassBatch = field(
+    class_identifier: blueprint_components.ViewClassBatch | None = field(
         metadata={"component": "optional"},
+        default=None,
         converter=blueprint_components.ViewClassBatch._optional,  # type: ignore[misc]
     )
     # The class of the view.

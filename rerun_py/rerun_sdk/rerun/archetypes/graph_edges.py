@@ -132,8 +132,9 @@ class GraphEdges(Archetype):
         )
         return inst
 
-    edges: components.GraphEdgeBatch = field(
+    edges: components.GraphEdgeBatch | None = field(
         metadata={"component": "optional"},
+        default=None,
         converter=components.GraphEdgeBatch._optional,  # type: ignore[misc]
     )
     # A list of node tuples.

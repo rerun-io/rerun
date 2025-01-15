@@ -128,8 +128,9 @@ class GeoLineStrings(GeoLineStringsExt, Archetype):
         )
         return inst
 
-    line_strings: components.GeoLineStringBatch = field(
+    line_strings: components.GeoLineStringBatch | None = field(
         metadata={"component": "optional"},
+        default=None,
         converter=components.GeoLineStringBatch._optional,  # type: ignore[misc]
     )
     # The line strings, expressed in [EPSG:4326](https://epsg.io/4326) coordinates (North/East-positive degrees).

@@ -174,8 +174,9 @@ class GraphNodes(Archetype):
         )
         return inst
 
-    node_ids: components.GraphNodeBatch = field(
+    node_ids: components.GraphNodeBatch | None = field(
         metadata={"component": "optional"},
+        default=None,
         converter=components.GraphNodeBatch._optional,  # type: ignore[misc]
     )
     # A list of node IDs.

@@ -198,8 +198,9 @@ class ContainerBlueprint(Archetype):
         )
         return inst
 
-    container_kind: blueprint_components.ContainerKindBatch = field(
+    container_kind: blueprint_components.ContainerKindBatch | None = field(
         metadata={"component": "optional"},
+        default=None,
         converter=blueprint_components.ContainerKindBatch._optional,  # type: ignore[misc]
     )
     # The class of the view.
