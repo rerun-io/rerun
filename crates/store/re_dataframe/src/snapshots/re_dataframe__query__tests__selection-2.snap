@@ -1,0 +1,11 @@
+---
+source: crates/store/re_dataframe/src/query.rs
+assertion_line: 1871
+expression: dataframe.all_columns_collected()
+snapshot_kind: text
+---
+[
+    Int64[10, 20, 30, 40, 50, 60, 70],
+    Int64[10, 20, 30, 40, 50, 60, 70],
+    NullArray(7),
+]

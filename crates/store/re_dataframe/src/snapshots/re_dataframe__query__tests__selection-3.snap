@@ -1,0 +1,12 @@
+---
+source: crates/store/re_dataframe/src/query.rs
+assertion_line: 1911
+expression: dataframe.all_columns_collected()
+snapshot_kind: text
+---
+[
+    ListArray[None, None, [2], [3], [4], None, [6]],
+    ListArray[None, None, [2], [3], [4], None, [6]],
+    NullArray(7),
+    NullArray(7),
+]
