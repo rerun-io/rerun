@@ -349,7 +349,7 @@ impl UnitChunkShared {
 
     /// Returns the raw data for the specified component, assuming a mono-batch.
     ///
-    /// Returns none if the underlying batch is not of unit length.
+    /// Returns an error if the underlying batch is not of unit length.
     #[inline]
     pub fn component_mono_raw(
         &self,
@@ -369,7 +369,7 @@ impl UnitChunkShared {
 
     /// Returns the deserialized data for the specified component, assuming a mono-batch.
     ///
-    /// Returns none if the data cannot be deserialized, or if the underlying batch is not of unit length.
+    /// Returns an error if the data cannot be deserialized, or if the underlying batch is not of unit length.
     #[inline]
     pub fn component_mono<C: Component>(&self) -> Option<ChunkResult<C>> {
         let res = self.component_mono_raw(&C::name())?;
