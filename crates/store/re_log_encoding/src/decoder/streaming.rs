@@ -17,8 +17,6 @@ pub struct StreamingDecoder<R: AsyncBufRead> {
     version: CrateVersion,
     options: EncodingOptions,
     reader: R,
-    /// The size in bytes of the data that has been decoded up to now.
-    size_bytes: u64,
 }
 
 impl<R: AsyncBufRead + Unpin> StreamingDecoder<R> {
@@ -36,12 +34,7 @@ impl<R: AsyncBufRead + Unpin> StreamingDecoder<R> {
             version,
             options,
             reader,
-            size_bytes: 0,
         })
-    }
-
-    pub fn size_bytes(&self) -> u64 {
-        self.size_bytes
     }
 
     fn peek_file_header(data: &[u8]) -> bool {
@@ -92,7 +85,6 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
                     Ok((version, options)) => {
                         self.version = CrateVersion::max(self.version, version);
                         self.options = options;
-                        self.size_bytes += FileHeader::SIZE as u64;
 
                         // Consume the bytes we've processed
                         Pin::new(&mut self.reader).consume(FileHeader::SIZE);
@@ -224,8 +216,6 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
                 // parts of the app can easily access it.
                 msg.info.store_version = Some(self.version);
             }
-
-            self.size_bytes += read_bytes as u64;
 
             // As a message was fully read, consume the bytes we've processed
             Pin::new(&mut self.reader).consume(read_bytes);
