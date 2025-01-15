@@ -2344,7 +2344,7 @@ mod tests {
                 )?;
                 eprintln!("{dataframe}");
 
-                assert_debug_snapshot!(dataframe.columns());
+                assert_debug_snapshot!("async_barebones_static", dataframe.columns());
 
                 Ok::<_, anyhow::Error>(())
             }
@@ -2375,7 +2375,7 @@ mod tests {
                 )?;
                 eprintln!("{dataframe}");
 
-                assert_debug_snapshot!(dataframe.columns());
+                assert_debug_snapshot!("async_barebones_temporal", dataframe.columns());
 
                 Ok::<_, anyhow::Error>(())
             }
