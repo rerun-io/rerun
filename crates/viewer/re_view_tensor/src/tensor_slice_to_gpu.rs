@@ -4,7 +4,6 @@ use re_renderer::{
     resource_managers::{GpuTexture2D, ImageDataDesc, TextureManager2DError},
 };
 use re_types::{
-    blueprint::archetypes::TensorSliceSelection,
     components::GammaCorrection,
     datatypes::TensorData,
     tensor_data::{TensorCastError, TensorDataType},
@@ -14,7 +13,7 @@ use re_viewer_context::{
     ColormapWithRange,
 };
 
-use crate::view_class::selected_tensor_slice;
+use crate::{dimension_mapping::TensorSliceSelection, view_class::selected_tensor_slice};
 
 #[derive(thiserror::Error, Debug, PartialEq)]
 pub enum TensorUploadError {
