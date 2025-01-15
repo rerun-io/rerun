@@ -1644,6 +1644,7 @@ mod tests {
                 &query_handle.into_batch_iter().collect_vec(),
             )?;
             eprintln!("{dataframe}");
+
             assert_snapshot_fixed_width!(dataframe);
         }
 
@@ -1800,6 +1801,7 @@ mod tests {
                 &query_handle.into_batch_iter().collect_vec(),
             )?;
             eprintln!("{dataframe}");
+
             assert_snapshot_fixed_width!(dataframe);
         }
 

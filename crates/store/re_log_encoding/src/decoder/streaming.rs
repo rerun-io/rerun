@@ -68,10 +68,11 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
 
             // if we got back an empty buffer or there's less bytes than the file header size (for a potentially
             // concatenated file), we know we're done
-
             if buf.is_empty() {
                 return std::task::Poll::Ready(None);
             }
+            // Note that message headers are smaller than the file header, but message header + message
+            // is always larger than the file header
             if buf.len() < FileHeader::SIZE {
                 warn!("we have more bytes in the stream but not enough to read the file header");
                 return std::task::Poll::Ready(None);
