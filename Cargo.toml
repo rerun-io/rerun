@@ -72,6 +72,8 @@ rerun-cli = { path = "crates/top/rerun-cli", version = "=0.22.0-alpha.1", defaul
 
 # crates/utils:
 re_analytics = { path = "crates/utils/re_analytics", version = "=0.22.0-alpha.1", default-features = false }
+re_arrow_util = { path = "crates/utils/re_arrow_util", version = "=0.22.0-alpha.1", default-features = false }
+re_byte_size = { path = "crates/utils/re_byte_size", version = "=0.22.0-alpha.1", default-features = false }
 re_capabilities = { path = "crates/utils/re_capabilities", version = "=0.22.0-alpha.1", default-features = false }
 re_case = { path = "crates/utils/re_case", version = "=0.22.0-alpha.1", default-features = false }
 re_crash_handler = { path = "crates/utils/re_crash_handler", version = "=0.22.0-alpha.1", default-features = false }
@@ -80,7 +82,6 @@ re_format = { path = "crates/utils/re_format", version = "=0.22.0-alpha.1", defa
 re_int_histogram = { path = "crates/utils/re_int_histogram", version = "=0.22.0-alpha.1", default-features = false }
 re_log = { path = "crates/utils/re_log", version = "=0.22.0-alpha.1", default-features = false }
 re_memory = { path = "crates/utils/re_memory", version = "=0.22.0-alpha.1", default-features = false }
-re_byte_size = { path = "crates/utils/re_byte_size", version = "=0.22.0-alpha.1", default-features = false }
 re_smart_channel = { path = "crates/utils/re_smart_channel", version = "=0.22.0-alpha.1", default-features = false }
 re_string_interner = { path = "crates/utils/re_string_interner", version = "=0.22.0-alpha.1", default-features = false }
 re_tracing = { path = "crates/utils/re_tracing", version = "=0.22.0-alpha.1", default-features = false }

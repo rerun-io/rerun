@@ -8,8 +8,9 @@ use arrow::{
     util::display::{ArrayFormatter, FormatOptions},
 };
 use comfy_table::{presets, Cell, Row, Table};
-
 use itertools::Itertools as _;
+
+use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_tuid::Tuid;
 use re_types_core::Loggable as _;
 
@@ -55,9 +56,7 @@ fn parse_tuid(array: &dyn Array, index: usize) -> Option<Tuid> {
 
     match array.data_type() {
         // Legacy MsgId lists: just grab the first value, they're all identical
-        DataType::List(_) => {
-            parse_inner(&array.as_any().downcast_ref::<ListArray>()?.value(index), 0)
-        }
+        DataType::List(_) => parse_inner(&array.downcast_array_ref::<ListArray>()?.value(index), 0),
         // New control columns: it's not a list to begin with!
         _ => parse_inner(array, index),
     }

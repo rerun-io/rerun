@@ -1,6 +1,8 @@
 #![allow(unsafe_op_in_unsafe_fn)] // False positive due to #[pyfunction] macro
 
 use pyo3::{exceptions::PyRuntimeError, pyfunction, Bound, PyAny, PyResult};
+
+use re_arrow_util::Arrow2ArrayDowncastRef as _;
 use re_sdk::ComponentDescriptor;
 use re_video::VideoLoadError;
 
@@ -26,9 +28,8 @@ pub fn asset_video_read_frame_timestamps_ns(
     let video_bytes_arrow_array = array_to_rust(video_bytes_arrow_array, &component_descr)?.0;
 
     let video_bytes_arrow_uint8_array = video_bytes_arrow_array
-        .as_any()
-        .downcast_ref::<arrow2::array::ListArray<i32>>()
-        .and_then(|arr| arr.values().as_any().downcast_ref::<arrow2::array::UInt8Array>())
+        .downcast_array2_ref::<arrow2::array::ListArray<i32>>()
+        .and_then(|arr| arr.values().downcast_array2_ref::<arrow2::array::UInt8Array>())
         .ok_or_else(|| {
             PyRuntimeError::new_err(format!(
                 "Expected arrow array to be a list with a single uint8 array, instead it has the datatype {:?}",

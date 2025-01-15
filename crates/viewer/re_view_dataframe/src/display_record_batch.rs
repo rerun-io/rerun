@@ -11,6 +11,7 @@ use arrow::{
 };
 use thiserror::Error;
 
+use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk_store::{ColumnDescriptor, ComponentColumnDescriptor, LatestAtQuery};
 use re_dataframe::external::re_chunk::{TimeColumn, TimeColumnError};
 use re_log_types::{EntityPath, TimeInt, Timeline};
@@ -52,21 +53,18 @@ impl ComponentData {
             ArrowDataType::Null => Ok(Self::Null),
             ArrowDataType::List(_) => Ok(Self::ListArray(
                 column_data
-                    .as_any()
-                    .downcast_ref::<ArrowListArray>()
+                    .downcast_array_ref::<ArrowListArray>()
                     .expect("`data_type` checked, failure is a bug in re_dataframe")
                     .clone(),
             )),
             ArrowDataType::Dictionary(_, _) => {
                 let dict = column_data
-                    .as_any()
-                    .downcast_ref::<ArrowInt32DictionaryArray>()
+                    .downcast_array_ref::<ArrowInt32DictionaryArray>()
                     .expect("`data_type` checked, failure is a bug in re_dataframe")
                     .clone();
                 let values = dict
                     .values()
-                    .as_any()
-                    .downcast_ref::<ArrowListArray>()
+                    .downcast_array_ref::<ArrowListArray>()
                     .expect("`data_type` checked, failure is a bug in re_dataframe")
                     .clone();
                 Ok(Self::DictionaryArray { dict, values })

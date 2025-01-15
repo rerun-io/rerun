@@ -58,6 +58,7 @@ web_viewer = [
 
 
 [dependencies]
+re_arrow_util.workspace = true
 re_build_info.workspace = true
 re_chunk = { workspace = true, features = ["arrow"] }
 re_chunk_store.workspace = true

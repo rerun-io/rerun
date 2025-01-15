@@ -5611,6 +5611,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_arrow_util"
+version = "0.22.0-alpha.1+dev"
+dependencies = [
+ "arrow",
+ "itertools 0.13.0",
+ "re_arrow2",
+ "re_log",
+ "re_tracing",
+]
+
+[[package]]
 name = "re_blueprint_tree"
 version = "0.22.0-alpha.1+dev"
 dependencies = [
@@ -5692,6 +5703,7 @@ dependencies = [
  "nohash-hasher",
  "rand",
  "re_arrow2",
+ "re_arrow_util",
  "re_byte_size",
  "re_error",
  "re_format",
@@ -5725,6 +5737,7 @@ dependencies = [
  "parking_lot",
  "rand",
  "re_arrow2",
+ "re_arrow_util",
  "re_byte_size",
  "re_chunk",
  "re_format",
@@ -5904,6 +5917,7 @@ dependencies = [
  "nohash-hasher",
  "rayon",
  "re_arrow2",
+ "re_arrow_util",
  "re_chunk",
  "re_chunk_store",
  "re_log",
@@ -6001,6 +6015,7 @@ dependencies = [
  "arrow",
  "comfy-table",
  "itertools 0.13.0",
+ "re_arrow_util",
  "re_tuid",
  "re_types_core",
 ]
@@ -6010,6 +6025,7 @@ name = "re_grpc_client"
 version = "0.22.0-alpha.1+dev"
 dependencies = [
  "arrow",
+ "re_arrow_util",
  "re_chunk",
  "re_error",
  "re_log",
@@ -6123,6 +6139,7 @@ dependencies = [
  "num-derive",
  "num-traits",
  "re_arrow2",
+ "re_arrow_util",
  "re_build_info",
  "re_byte_size",
  "re_format",
@@ -6226,6 +6243,7 @@ dependencies = [
  "paste",
  "rand",
  "re_arrow2",
+ "re_arrow_util",
  "re_byte_size",
  "re_chunk",
  "re_chunk_store",
@@ -6585,6 +6603,7 @@ dependencies = [
  "nohash-hasher",
  "once_cell",
  "re_arrow2",
+ "re_arrow_util",
  "re_byte_size",
  "re_case",
  "re_error",
@@ -6613,6 +6632,7 @@ dependencies = [
  "once_cell",
  "parking_lot",
  "rand",
+ "re_arrow_util",
  "re_entity_db",
  "re_format",
  "re_log",
@@ -6707,6 +6727,7 @@ dependencies = [
  "egui",
  "egui_table",
  "itertools 0.13.0",
+ "re_arrow_util",
  "re_chunk_store",
  "re_dataframe",
  "re_error",
@@ -7371,6 +7392,7 @@ dependencies = [
  "once_cell",
  "parking_lot",
  "re_arrow2",
+ "re_arrow_util",
  "re_log",
  "re_sdk",
  "re_video",
@@ -7394,6 +7416,7 @@ dependencies = [
  "pyo3-build-config",
  "rand",
  "re_arrow2",
+ "re_arrow_util",
  "re_build_info",
  "re_build_tools",
  "re_chunk",

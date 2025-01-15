@@ -3,9 +3,35 @@ use arrow::{
     buffer::{NullBuffer, OffsetBuffer},
     datatypes::{DataType, Field},
 };
-use itertools::Itertools;
+use itertools::Itertools as _;
 
-// ---
+// ---------------------------------------------------------------------------------
+
+/// Downcast an arrow array to another array, without having to go via `Any`.
+///
+/// This is shorter, but also better: it means we don't accidentally downcast
+/// an arrow2 array to an arrow1 array, or vice versa.
+pub trait ArrowArrayDowncastRef {
+    /// Downcast an arrow array to another array, without having to go via `Any`.
+    ///
+    /// This is shorter, but also better: it means we don't accidentally downcast
+    /// an arrow2 array to an arrow1 array, or vice versa.
+    fn downcast_array_ref<T: Array + 'static>(&self) -> Option<&T>;
+}
+
+impl ArrowArrayDowncastRef for &dyn Array {
+    fn downcast_array_ref<T: Array + 'static>(&self) -> Option<&T> {
+        self.as_any().downcast_ref()
+    }
+}
+
+impl ArrowArrayDowncastRef for ArrayRef {
+    fn downcast_array_ref<T: Array + 'static>(&self) -> Option<&T> {
+        self.as_any().downcast_ref()
+    }
+}
+
+// ---------------------------------------------------------------------------------
 
 #[inline]
 pub fn into_arrow_ref(array: impl Array + 'static) -> ArrayRef {

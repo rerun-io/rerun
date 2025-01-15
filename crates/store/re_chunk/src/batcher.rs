@@ -9,11 +9,12 @@ use arrow::buffer::ScalarBuffer as ArrowScalarBuffer;
 use crossbeam::channel::{Receiver, Sender};
 use nohash_hasher::IntMap;
 
+use re_arrow_util::arrow_util;
 use re_byte_size::SizeBytes as _;
 use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt, TimePoint, Timeline};
 use re_types_core::ComponentDescriptor;
 
-use crate::{arrow_util, chunk::ChunkComponents, Chunk, ChunkId, ChunkResult, RowId, TimeColumn};
+use crate::{chunk::ChunkComponents, Chunk, ChunkId, ChunkResult, RowId, TimeColumn};
 
 // ---
 

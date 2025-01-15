@@ -15,6 +15,7 @@ use pyo3::{
     types::PyDict,
     Bound, PyResult,
 };
+use re_arrow_util::Arrow2ArrayDowncastRef as _;
 use re_chunk::{Chunk, TransportChunk};
 use re_chunk_store::ChunkStore;
 use re_dataframe::{ChunkStoreHandle, QueryExpression, SparseFillStrategy, ViewContentsSelector};
@@ -350,8 +351,7 @@ impl PyStorageNodeClient {
                 .find(|(field, _data)| field.name() == "rerun_recording_id")
                 .map(|(_field, data)| data)
                 .ok_or(PyRuntimeError::new_err("No rerun_recording_id"))?
-                .as_any()
-                .downcast_ref::<arrow2::array::Utf8Array<i32>>()
+                .downcast_array2_ref::<arrow2::array::Utf8Array<i32>>()
                 .ok_or(PyRuntimeError::new_err("Recording Id is not a string"))?
                 .value(0)
                 .to_owned();

@@ -4,6 +4,7 @@ use anyhow::Context;
 use arrow2::array::PrimitiveArray as Arrow2PrimitiveArray;
 use itertools::Itertools;
 
+use re_arrow_util::Arrow2ArrayDowncastRef as _;
 use re_chunk::{Chunk, RowId};
 use re_chunk_store::{ChunkStore, ChunkStoreHandle, LatestAtQuery};
 use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
@@ -77,8 +78,7 @@ fn main() -> anyhow::Result<()> {
             .component_batch_raw_arrow2(&MyColor::name())
             .context("invalid")?;
         let colors = colors
-            .as_any()
-            .downcast_ref::<Arrow2PrimitiveArray<u32>>()
+            .downcast_array2_ref::<Arrow2PrimitiveArray<u32>>()
             .context("invalid")?;
         let colors = colors
             .values()

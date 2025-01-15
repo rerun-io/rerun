@@ -2,10 +2,11 @@ use arrow::{array::ArrayRef, datatypes::DataType as ArrowDatatype};
 use itertools::Itertools;
 use nohash_hasher::IntMap;
 
+use re_arrow_util::arrow_util;
 use re_log_types::{EntityPath, TimeInt, TimePoint, Timeline};
 use re_types_core::{AsComponents, ComponentBatch, ComponentDescriptor, SerializedComponentBatch};
 
-use crate::{arrow_util, chunk::ChunkComponents, Chunk, ChunkId, ChunkResult, RowId, TimeColumn};
+use crate::{chunk::ChunkComponents, Chunk, ChunkId, ChunkResult, RowId, TimeColumn};
 
 // ---
 

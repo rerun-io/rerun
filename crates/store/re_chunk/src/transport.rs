@@ -2,8 +2,7 @@ use std::sync::Arc;
 
 use arrow::{
     array::{
-        Array as ArrowArray, ArrayRef as ArrowArrayRef, RecordBatch as ArrowRecordBatch,
-        StructArray as ArrowStructArray,
+        ArrayRef as ArrowArrayRef, RecordBatch as ArrowRecordBatch, StructArray as ArrowStructArray,
     },
     datatypes::{Field as ArrowField, Schema as ArrowSchema, SchemaRef as ArrowSchemaRef},
 };
@@ -16,14 +15,14 @@ use itertools::Itertools;
 use nohash_hasher::IntMap;
 use tap::Tap as _;
 
+use re_arrow_util::{
+    arrow_util::into_arrow_ref, Arrow2ArrayDowncastRef as _, ArrowArrayDowncastRef as _,
+};
 use re_byte_size::SizeBytes as _;
 use re_log_types::{EntityPath, Timeline};
 use re_types_core::{Component as _, ComponentDescriptor, Loggable as _};
 
-use crate::{
-    arrow_util::into_arrow_ref, chunk::ChunkComponents, Chunk, ChunkError, ChunkId, ChunkResult,
-    RowId, TimeColumn,
-};
+use crate::{chunk::ChunkComponents, Chunk, ChunkError, ChunkId, ChunkResult, RowId, TimeColumn};
 
 pub type ArrowMetadata = std::collections::HashMap<String, String>;
 
@@ -650,8 +649,7 @@ impl Chunk {
             };
 
             ArrowArrayRef::from(row_ids.clone())
-                .as_any()
-                .downcast_ref::<ArrowStructArray>()
+                .downcast_array_ref::<ArrowStructArray>()
                 .ok_or_else(|| ChunkError::Malformed {
                     reason: format!(
                         "RowId data has the wrong datatype: expected {:?} but got {:?} instead",
@@ -716,8 +714,7 @@ impl Chunk {
 
             for (field, column) in transport.components() {
                 let column = column
-                    .as_any()
-                    .downcast_ref::<Arrow2ListArray<i32>>()
+                    .downcast_array2_ref::<Arrow2ListArray<i32>>()
                     .ok_or_else(|| ChunkError::Malformed {
                         reason: format!(
                             "The outer array in a chunked component batch must be a sparse list, got {:?}",
@@ -791,12 +788,12 @@ impl Chunk {
 #[cfg(test)]
 mod tests {
     use nohash_hasher::IntMap;
+
+    use re_arrow_util::arrow2_util;
     use re_log_types::{
         example_components::{MyColor, MyPoint},
         Timeline,
     };
-
-    use crate::arrow2_util;
 
     use super::*;
 
