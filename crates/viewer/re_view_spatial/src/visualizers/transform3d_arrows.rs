@@ -13,7 +13,7 @@ use re_viewer_context::{
     VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
-use crate::{contexts::TransformContext, ui::SpatialViewState, view_kind::SpatialViewKind};
+use crate::{contexts::TransformTreeContext, ui::SpatialViewState, view_kind::SpatialViewKind};
 
 use super::{filter_visualizable_3d_entities, CamerasVisualizer, SpatialViewVisualizerData};
 
@@ -81,7 +81,7 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
         query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
-        let transforms = context_systems.get::<TransformContext>()?;
+        let transforms = context_systems.get::<TransformTreeContext>()?;
 
         let latest_at_query = re_chunk_store::LatestAtQuery::new(query.timeline, query.latest_at);
 
@@ -95,7 +95,7 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
         for data_result in query.iter_visible_data_results(ctx, Self::identifier()) {
             // Use transform without potential pinhole, since we don't want to visualize image-space coordinates.
             let Some(transform_info) =
-                transforms.transform_info_for_entity(&data_result.entity_path)
+                transforms.transform_info_for_entity(data_result.entity_path.hash())
             else {
                 continue;
             };

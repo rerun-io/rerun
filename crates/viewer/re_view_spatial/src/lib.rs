@@ -19,7 +19,6 @@ mod proc_mesh;
 mod scene_bounding_boxes;
 mod space_camera_3d;
 mod spatial_topology;
-mod transform_component_tracker;
 mod ui;
 mod ui_2d;
 mod ui_3d;
@@ -28,6 +27,8 @@ mod view_2d_properties;
 mod view_3d;
 mod view_3d_properties;
 mod visualizers;
+
+mod transform_cache;
 
 pub use view_2d::SpatialView2D;
 pub use view_3d::SpatialView3D;

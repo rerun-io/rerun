@@ -279,6 +279,272 @@ impl WebHandle {
             );
         }
     }
+
+    #[wasm_bindgen]
+    pub fn get_active_recording_id(&self) -> Option<String> {
+        let app = self.runner.app_mut::<crate::App>()?;
+        let hub = app.store_hub.as_ref()?;
+        let recording = hub.active_recording()?;
+
+        Some(recording.store_id().to_string())
+    }
+
+    #[wasm_bindgen]
+    pub fn set_active_recording_id(&self, store_id: &str) {
+        let Some(mut app) = self.runner.app_mut::<crate::App>() else {
+            return;
+        };
+
+        let Some(hub) = app.store_hub.as_mut() else {
+            return;
+        };
+        let store_id = re_log_types::StoreId::from_string(
+            re_log_types::StoreKind::Recording,
+            store_id.to_owned(),
+        );
+        if !hub.store_bundle().contains(&store_id) {
+            return;
+        };
+
+        hub.set_activate_recording(store_id);
+
+        app.egui_ctx.request_repaint();
+    }
+
+    #[wasm_bindgen]
+    pub fn get_active_timeline(&self, store_id: &str) -> Option<String> {
+        let mut app = self.runner.app_mut::<crate::App>()?;
+        let crate::App {
+            store_hub: Some(ref hub),
+            state,
+            ..
+        } = &mut *app
+        else {
+            return None;
+        };
+
+        let store_id = re_log_types::StoreId::from_string(
+            re_log_types::StoreKind::Recording,
+            store_id.to_owned(),
+        );
+        if !hub.store_bundle().contains(&store_id) {
+            return None;
+        };
+
+        let rec_cfg = state.recording_config_mut(&store_id)?;
+        let time_ctrl = rec_cfg.time_ctrl.read();
+        Some(time_ctrl.timeline().name().as_str().to_owned())
+    }
+
+    /// Set the active timeline.
+    ///
+    /// This does nothing if the timeline can't be found.
+    #[wasm_bindgen]
+    pub fn set_active_timeline(&self, store_id: &str, timeline: &str) {
+        let Some(mut app) = self.runner.app_mut::<crate::App>() else {
+            return;
+        };
+        let crate::App {
+            store_hub: Some(ref hub),
+            state,
+            egui_ctx,
+            ..
+        } = &mut *app
+        else {
+            return;
+        };
+
+        let store_id = re_log_types::StoreId::from_string(
+            re_log_types::StoreKind::Recording,
+            store_id.to_owned(),
+        );
+        let Some(recording) = hub.store_bundle().get(&store_id) else {
+            return;
+        };
+        let Some(rec_cfg) = state.recording_config_mut(&store_id) else {
+            return;
+        };
+        let Some(timeline) = recording
+            .timelines()
+            .find(|t| t.name().as_str() == timeline)
+        else {
+            return;
+        };
+
+        rec_cfg.time_ctrl.write().set_timeline(*timeline);
+
+        egui_ctx.request_repaint();
+    }
+
+    #[wasm_bindgen]
+    pub fn get_time_for_timeline(&self, store_id: &str, timeline: &str) -> Option<f64> {
+        let app = self.runner.app_mut::<crate::App>()?;
+        let crate::App {
+            store_hub: Some(ref hub),
+            state,
+            ..
+        } = &*app
+        else {
+            return None;
+        };
+
+        let store_id = re_log_types::StoreId::from_string(
+            re_log_types::StoreKind::Recording,
+            store_id.to_owned(),
+        );
+        let recording = hub.store_bundle().get(&store_id)?;
+        let rec_cfg = state.recording_config(&store_id)?;
+        let timeline = recording
+            .timelines()
+            .find(|t| t.name().as_str() == timeline)?;
+
+        let time_ctrl = rec_cfg.time_ctrl.read();
+        time_ctrl.time_for_timeline(*timeline).map(|v| v.as_f64())
+    }
+
+    #[wasm_bindgen]
+    pub fn set_time_for_timeline(&self, store_id: &str, timeline: &str, time: f64) {
+        let Some(mut app) = self.runner.app_mut::<crate::App>() else {
+            return;
+        };
+        let crate::App {
+            store_hub: Some(ref hub),
+            state,
+            egui_ctx,
+            ..
+        } = &mut *app
+        else {
+            return;
+        };
+
+        let store_id = re_log_types::StoreId::from_string(
+            re_log_types::StoreKind::Recording,
+            store_id.to_owned(),
+        );
+        let Some(recording) = hub.store_bundle().get(&store_id) else {
+            return;
+        };
+        let Some(rec_cfg) = state.recording_config_mut(&store_id) else {
+            return;
+        };
+        let Some(timeline) = recording
+            .timelines()
+            .find(|t| t.name().as_str() == timeline)
+        else {
+            return;
+        };
+
+        rec_cfg
+            .time_ctrl
+            .write()
+            .set_timeline_and_time(*timeline, time);
+        egui_ctx.request_repaint();
+    }
+
+    #[wasm_bindgen]
+    pub fn get_timeline_time_range(&self, store_id: &str, timeline: &str) -> JsValue {
+        let Some(app) = self.runner.app_mut::<crate::App>() else {
+            return JsValue::null();
+        };
+        let crate::App {
+            store_hub: Some(ref hub),
+            ..
+        } = &*app
+        else {
+            return JsValue::null();
+        };
+
+        let store_id = re_log_types::StoreId::from_string(
+            re_log_types::StoreKind::Recording,
+            store_id.to_owned(),
+        );
+        let Some(recording) = hub.store_bundle().get(&store_id) else {
+            return JsValue::null();
+        };
+        let Some(timeline) = recording
+            .timelines()
+            .find(|t| t.name().as_str() == timeline)
+        else {
+            return JsValue::null();
+        };
+
+        let Some(time_range) = recording.time_range_for(timeline) else {
+            return JsValue::null();
+        };
+
+        let min = time_range.min().as_f64();
+        let max = time_range.max().as_f64();
+
+        let obj = js_sys::Object::new();
+        js_sys::Reflect::set(&obj, &"min".into(), &min.into()).ok_or_log_js_error();
+        js_sys::Reflect::set(&obj, &"max".into(), &max.into()).ok_or_log_js_error();
+
+        JsValue::from(obj)
+    }
+
+    #[wasm_bindgen]
+    pub fn get_playing(&self, store_id: &str) -> Option<bool> {
+        let app = self.runner.app_mut::<crate::App>()?;
+        let crate::App {
+            store_hub: Some(ref hub),
+            state,
+            ..
+        } = &*app
+        else {
+            return None;
+        };
+
+        let store_id = re_log_types::StoreId::from_string(
+            re_log_types::StoreKind::Recording,
+            store_id.to_owned(),
+        );
+        if !hub.store_bundle().contains(&store_id) {
+            return None;
+        };
+        let rec_cfg = state.recording_config(&store_id)?;
+
+        let time_ctrl = rec_cfg.time_ctrl.read();
+        Some(time_ctrl.play_state() == re_viewer_context::PlayState::Playing)
+    }
+
+    #[wasm_bindgen]
+    pub fn set_playing(&self, store_id: &str, value: bool) {
+        let Some(mut app) = self.runner.app_mut::<crate::App>() else {
+            return;
+        };
+        let crate::App {
+            store_hub,
+            state,
+            egui_ctx,
+            ..
+        } = &mut *app;
+
+        let Some(hub) = store_hub.as_ref() else {
+            return;
+        };
+        let store_id = re_log_types::StoreId::from_string(
+            re_log_types::StoreKind::Recording,
+            store_id.to_owned(),
+        );
+        let Some(recording) = hub.store_bundle().get(&store_id) else {
+            return;
+        };
+        let Some(rec_cfg) = state.recording_config_mut(&store_id) else {
+            return;
+        };
+
+        let play_state = if value {
+            re_viewer_context::PlayState::Playing
+        } else {
+            re_viewer_context::PlayState::Paused
+        };
+
+        rec_cfg
+            .time_ctrl
+            .write()
+            .set_play_state(recording.times_per_timeline(), play_state);
+        egui_ctx.request_repaint();
+    }
 }
 
 // TODO(jprochazk): figure out a way to auto-generate these types on JS side
@@ -321,11 +587,30 @@ pub struct AppOptions {
     video_decoder: Option<String>,
     hide_welcome_screen: Option<bool>,
     panel_state_overrides: Option<PanelStateOverrides>,
+    timeline: Option<TimelineOptions>,
     fullscreen: Option<FullscreenOptions>,
     enable_history: Option<bool>,
 
     notebook: Option<bool>,
     persist: Option<bool>,
+}
+
+// Keep in sync with the `TimelineOptions` interface in `rerun_js/web-viewer/index.ts`
+#[derive(Clone, Deserialize)]
+pub struct TimelineOptions {
+    /// Fired when the a different timeline is selected.
+    pub on_timelinechange: Callback,
+
+    /// Fired when the timepoint changes.
+    ///
+    /// Does not fire when `on_seek` is called.
+    pub on_timeupdate: Callback,
+
+    /// Fired when the timeline is paused.
+    pub on_pause: Callback,
+
+    /// Fired when the timeline is played.
+    pub on_play: Callback,
 }
 
 // Keep in sync with the `FullscreenOptions` interface in `rerun_js/web-viewer/index.ts`
@@ -374,6 +659,7 @@ fn create_app(
         video_decoder,
         hide_welcome_screen,
         panel_state_overrides,
+        timeline,
         fullscreen,
         enable_history,
 
@@ -403,6 +689,7 @@ fn create_app(
         force_wgpu_backend: render_backend.clone(),
         video_decoder_hw_acceleration,
         hide_welcome_screen: hide_welcome_screen.unwrap_or(false),
+        timeline_options: timeline.clone(),
         fullscreen_options: fullscreen.clone(),
         panel_state_overrides: panel_state_overrides.unwrap_or_default().into(),
 

@@ -6,7 +6,7 @@ use re_viewer_context::{
     ViewSystemExecutionError,
 };
 
-use crate::contexts::{EntityDepthOffsets, SpatialSceneEntityContext, TransformContext};
+use crate::contexts::{EntityDepthOffsets, SpatialSceneEntityContext, TransformTreeContext};
 
 // ---
 
@@ -84,7 +84,7 @@ where
         &HybridResults<'_>,
     ) -> Result<(), ViewSystemExecutionError>,
 {
-    let transforms = view_ctx.get::<TransformContext>()?;
+    let transforms = view_ctx.get::<TransformTreeContext>()?;
     let depth_offsets = view_ctx.get::<EntityDepthOffsets>()?;
     let annotations = view_ctx.get::<AnnotationSceneContext>()?;
 
@@ -93,7 +93,8 @@ where
     let system_identifier = System::identifier();
 
     for data_result in query.iter_visible_data_results(ctx, system_identifier) {
-        let Some(transform_info) = transforms.transform_info_for_entity(&data_result.entity_path)
+        let Some(transform_info) =
+            transforms.transform_info_for_entity(data_result.entity_path.hash())
         else {
             continue;
         };
