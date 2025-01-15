@@ -11,6 +11,7 @@ from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
 )
+from ..error_utils import catch_and_log_exceptions
 from .transform3d_ext import Transform3DExt
 
 __all__ = ["Transform3D"]
@@ -196,21 +197,27 @@ class Transform3D(Transform3DExt, Archetype):
 
         """
 
-        kwargs = {
-            "translation": translation,
-            "rotation_axis_angle": rotation_axis_angle,
-            "quaternion": quaternion,
-            "scale": scale,
-            "mat3x3": mat3x3,
-            "relation": relation,
-            "axis_length": axis_length,
-            "clear": False,
-        }
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            kwargs = {
+                "translation": translation,
+                "rotation_axis_angle": rotation_axis_angle,
+                "quaternion": quaternion,
+                "scale": scale,
+                "mat3x3": mat3x3,
+                "relation": relation,
+                "axis_length": axis_length,
+                "clear": False,
+            }
 
-        if clear:
-            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+            if clear:
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
-        return Transform3D(**kwargs)  # type: ignore[arg-type]
+            inst.__attrs_init__(**kwargs)
+            return inst
+
+        inst.__attrs_clear__()
+        return inst
 
     @classmethod
     def clear_fields(cls) -> Transform3D:

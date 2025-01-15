@@ -2574,15 +2574,20 @@ fn quote_partial_update_methods(reporter: &Reporter, obj: &Object, objects: &Obj
         ) -> {name}:
 
 {doc_block}
-
-            kwargs = {{
-                {kwargs},
-            }}
-
-            if clear:
-                kwargs = {{k: v if v is not None else [] for k, v in kwargs.items()}}  # type: ignore[misc]
-
-            return {name}(**kwargs)  # type: ignore[arg-type]
+            inst = cls.__new__(cls)
+            with catch_and_log_exceptions(context=cls.__name__):
+                kwargs = {{
+                    {kwargs},
+                }}
+    
+                if clear:
+                    kwargs = {{k: v if v is not None else [] for k, v in kwargs.items()}}  # type: ignore[misc]
+    
+                inst.__attrs_init__(**kwargs)
+                return inst
+            
+            inst.__attrs_clear__()
+            return inst
 
         @classmethod
         def clear_fields(cls) -> {name}:

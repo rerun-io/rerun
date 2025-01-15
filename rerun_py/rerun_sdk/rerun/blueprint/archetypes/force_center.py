@@ -84,15 +84,21 @@ class ForceCenter(Archetype):
 
         """
 
-        kwargs = {
-            "enabled": enabled,
-            "strength": strength,
-        }
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            kwargs = {
+                "enabled": enabled,
+                "strength": strength,
+            }
 
-        if clear:
-            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+            if clear:
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
-        return ForceCenter(**kwargs)  # type: ignore[arg-type]
+            inst.__attrs_init__(**kwargs)
+            return inst
+
+        inst.__attrs_clear__()
+        return inst
 
     @classmethod
     def clear_fields(cls) -> ForceCenter:

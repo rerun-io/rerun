@@ -125,31 +125,37 @@ class AffixFuzzer4(Archetype):
     ) -> AffixFuzzer4:
         """Update only some specific fields of a `AffixFuzzer4`."""
 
-        kwargs = {
-            "fuzz2101": fuzz2101,
-            "fuzz2102": fuzz2102,
-            "fuzz2103": fuzz2103,
-            "fuzz2104": fuzz2104,
-            "fuzz2105": fuzz2105,
-            "fuzz2106": fuzz2106,
-            "fuzz2107": fuzz2107,
-            "fuzz2108": fuzz2108,
-            "fuzz2109": fuzz2109,
-            "fuzz2110": fuzz2110,
-            "fuzz2111": fuzz2111,
-            "fuzz2112": fuzz2112,
-            "fuzz2113": fuzz2113,
-            "fuzz2114": fuzz2114,
-            "fuzz2115": fuzz2115,
-            "fuzz2116": fuzz2116,
-            "fuzz2117": fuzz2117,
-            "fuzz2118": fuzz2118,
-        }
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            kwargs = {
+                "fuzz2101": fuzz2101,
+                "fuzz2102": fuzz2102,
+                "fuzz2103": fuzz2103,
+                "fuzz2104": fuzz2104,
+                "fuzz2105": fuzz2105,
+                "fuzz2106": fuzz2106,
+                "fuzz2107": fuzz2107,
+                "fuzz2108": fuzz2108,
+                "fuzz2109": fuzz2109,
+                "fuzz2110": fuzz2110,
+                "fuzz2111": fuzz2111,
+                "fuzz2112": fuzz2112,
+                "fuzz2113": fuzz2113,
+                "fuzz2114": fuzz2114,
+                "fuzz2115": fuzz2115,
+                "fuzz2116": fuzz2116,
+                "fuzz2117": fuzz2117,
+                "fuzz2118": fuzz2118,
+            }
 
-        if clear:
-            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+            if clear:
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
-        return AffixFuzzer4(**kwargs)  # type: ignore[arg-type]
+            inst.__attrs_init__(**kwargs)
+            return inst
+
+        inst.__attrs_clear__()
+        return inst
 
     @classmethod
     def clear_fields(cls) -> AffixFuzzer4:

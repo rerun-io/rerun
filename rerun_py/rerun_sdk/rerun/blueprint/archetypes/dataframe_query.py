@@ -12,6 +12,7 @@ from ..._baseclasses import (
     Archetype,
 )
 from ...blueprint import components as blueprint_components, datatypes as blueprint_datatypes
+from ...error_utils import catch_and_log_exceptions
 from .dataframe_query_ext import DataframeQueryExt
 
 __all__ = ["DataframeQuery"]
@@ -75,18 +76,24 @@ class DataframeQuery(DataframeQueryExt, Archetype):
 
         """
 
-        kwargs = {
-            "timeline": timeline,
-            "filter_by_range": filter_by_range,
-            "filter_is_not_null": filter_is_not_null,
-            "apply_latest_at": apply_latest_at,
-            "select": select,
-        }
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            kwargs = {
+                "timeline": timeline,
+                "filter_by_range": filter_by_range,
+                "filter_is_not_null": filter_is_not_null,
+                "apply_latest_at": apply_latest_at,
+                "select": select,
+            }
 
-        if clear:
-            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+            if clear:
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
-        return DataframeQuery(**kwargs)  # type: ignore[arg-type]
+            inst.__attrs_init__(**kwargs)
+            return inst
+
+        inst.__attrs_clear__()
+        return inst
 
     @classmethod
     def clear_fields(cls) -> DataframeQuery:

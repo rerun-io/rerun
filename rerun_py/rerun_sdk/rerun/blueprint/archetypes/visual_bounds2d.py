@@ -12,6 +12,7 @@ from ..._baseclasses import (
     Archetype,
 )
 from ...blueprint import components as blueprint_components
+from ...error_utils import catch_and_log_exceptions
 from .visual_bounds2d_ext import VisualBounds2DExt
 
 __all__ = ["VisualBounds2D"]
@@ -65,14 +66,20 @@ class VisualBounds2D(VisualBounds2DExt, Archetype):
 
         """
 
-        kwargs = {
-            "range": range,
-        }
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            kwargs = {
+                "range": range,
+            }
 
-        if clear:
-            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+            if clear:
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
-        return VisualBounds2D(**kwargs)  # type: ignore[arg-type]
+            inst.__attrs_init__(**kwargs)
+            return inst
+
+        inst.__attrs_clear__()
+        return inst
 
     @classmethod
     def clear_fields(cls) -> VisualBounds2D:

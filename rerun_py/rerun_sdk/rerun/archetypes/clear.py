@@ -11,6 +11,7 @@ from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
 )
+from ..error_utils import catch_and_log_exceptions
 from .clear_ext import ClearExt
 
 __all__ = ["Clear"]
@@ -87,14 +88,20 @@ class Clear(ClearExt, Archetype):
     ) -> Clear:
         """Update only some specific fields of a `Clear`."""
 
-        kwargs = {
-            "is_recursive": is_recursive,
-        }
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            kwargs = {
+                "is_recursive": is_recursive,
+            }
 
-        if clear:
-            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+            if clear:
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
-        return Clear(**kwargs)  # type: ignore[arg-type]
+            inst.__attrs_init__(**kwargs)
+            return inst
+
+        inst.__attrs_clear__()
+        return inst
 
     @classmethod
     def clear_fields(cls) -> Clear:

@@ -11,6 +11,7 @@ from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
 )
+from ..error_utils import catch_and_log_exceptions
 from .geo_line_strings_ext import GeoLineStringsExt
 
 __all__ = ["GeoLineStrings"]
@@ -106,16 +107,22 @@ class GeoLineStrings(GeoLineStringsExt, Archetype):
 
         """
 
-        kwargs = {
-            "line_strings": line_strings,
-            "radii": radii,
-            "colors": colors,
-        }
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            kwargs = {
+                "line_strings": line_strings,
+                "radii": radii,
+                "colors": colors,
+            }
 
-        if clear:
-            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+            if clear:
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
-        return GeoLineStrings(**kwargs)  # type: ignore[arg-type]
+            inst.__attrs_init__(**kwargs)
+            return inst
+
+        inst.__attrs_clear__()
+        return inst
 
     @classmethod
     def clear_fields(cls) -> GeoLineStrings:

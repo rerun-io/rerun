@@ -11,6 +11,7 @@ from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
 )
+from ..error_utils import catch_and_log_exceptions
 from .video_frame_reference_ext import VideoFrameReferenceExt
 
 __all__ = ["VideoFrameReference"]
@@ -163,15 +164,21 @@ class VideoFrameReference(VideoFrameReferenceExt, Archetype):
 
         """
 
-        kwargs = {
-            "timestamp": timestamp,
-            "video_reference": video_reference,
-        }
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            kwargs = {
+                "timestamp": timestamp,
+                "video_reference": video_reference,
+            }
 
-        if clear:
-            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+            if clear:
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
-        return VideoFrameReference(**kwargs)  # type: ignore[arg-type]
+            inst.__attrs_init__(**kwargs)
+            return inst
+
+        inst.__attrs_clear__()
+        return inst
 
     @classmethod
     def clear_fields(cls) -> VideoFrameReference:

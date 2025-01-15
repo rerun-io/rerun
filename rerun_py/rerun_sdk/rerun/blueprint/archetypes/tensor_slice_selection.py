@@ -117,17 +117,23 @@ class TensorSliceSelection(Archetype):
 
         """
 
-        kwargs = {
-            "width": width,
-            "height": height,
-            "indices": indices,
-            "slider": slider,
-        }
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            kwargs = {
+                "width": width,
+                "height": height,
+                "indices": indices,
+                "slider": slider,
+            }
 
-        if clear:
-            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+            if clear:
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
-        return TensorSliceSelection(**kwargs)  # type: ignore[arg-type]
+            inst.__attrs_init__(**kwargs)
+            return inst
+
+        inst.__attrs_clear__()
+        return inst
 
     @classmethod
     def clear_fields(cls) -> TensorSliceSelection:

@@ -11,6 +11,7 @@ from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
 )
+from ..error_utils import catch_and_log_exceptions
 from .boxes3d_ext import Boxes3DExt
 
 __all__ = ["Boxes3D"]
@@ -145,23 +146,29 @@ class Boxes3D(Boxes3DExt, Archetype):
 
         """
 
-        kwargs = {
-            "half_sizes": half_sizes,
-            "centers": centers,
-            "rotation_axis_angles": rotation_axis_angles,
-            "quaternions": quaternions,
-            "colors": colors,
-            "radii": radii,
-            "fill_mode": fill_mode,
-            "labels": labels,
-            "show_labels": show_labels,
-            "class_ids": class_ids,
-        }
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            kwargs = {
+                "half_sizes": half_sizes,
+                "centers": centers,
+                "rotation_axis_angles": rotation_axis_angles,
+                "quaternions": quaternions,
+                "colors": colors,
+                "radii": radii,
+                "fill_mode": fill_mode,
+                "labels": labels,
+                "show_labels": show_labels,
+                "class_ids": class_ids,
+            }
 
-        if clear:
-            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+            if clear:
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
-        return Boxes3D(**kwargs)  # type: ignore[arg-type]
+            inst.__attrs_init__(**kwargs)
+            return inst
+
+        inst.__attrs_clear__()
+        return inst
 
     @classmethod
     def clear_fields(cls) -> Boxes3D:

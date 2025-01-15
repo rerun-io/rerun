@@ -166,21 +166,27 @@ class ContainerBlueprint(Archetype):
 
         """
 
-        kwargs = {
-            "container_kind": container_kind,
-            "display_name": display_name,
-            "contents": contents,
-            "col_shares": col_shares,
-            "row_shares": row_shares,
-            "active_tab": active_tab,
-            "visible": visible,
-            "grid_columns": grid_columns,
-        }
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            kwargs = {
+                "container_kind": container_kind,
+                "display_name": display_name,
+                "contents": contents,
+                "col_shares": col_shares,
+                "row_shares": row_shares,
+                "active_tab": active_tab,
+                "visible": visible,
+                "grid_columns": grid_columns,
+            }
 
-        if clear:
-            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+            if clear:
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
-        return ContainerBlueprint(**kwargs)  # type: ignore[arg-type]
+            inst.__attrs_init__(**kwargs)
+            return inst
+
+        inst.__attrs_clear__()
+        return inst
 
     @classmethod
     def clear_fields(cls) -> ContainerBlueprint:

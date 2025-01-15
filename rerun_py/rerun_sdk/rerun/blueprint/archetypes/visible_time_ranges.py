@@ -12,6 +12,7 @@ from ..._baseclasses import (
     Archetype,
 )
 from ...blueprint import components as blueprint_components
+from ...error_utils import catch_and_log_exceptions
 from .visible_time_ranges_ext import VisibleTimeRangesExt
 
 __all__ = ["VisibleTimeRanges"]
@@ -67,14 +68,20 @@ class VisibleTimeRanges(VisibleTimeRangesExt, Archetype):
 
         """
 
-        kwargs = {
-            "ranges": ranges,
-        }
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            kwargs = {
+                "ranges": ranges,
+            }
 
-        if clear:
-            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+            if clear:
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
-        return VisibleTimeRanges(**kwargs)  # type: ignore[arg-type]
+            inst.__attrs_init__(**kwargs)
+            return inst
+
+        inst.__attrs_clear__()
+        return inst
 
     @classmethod
     def clear_fields(cls) -> VisibleTimeRanges:

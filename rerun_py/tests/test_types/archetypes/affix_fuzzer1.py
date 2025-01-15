@@ -140,35 +140,41 @@ class AffixFuzzer1(Archetype):
     ) -> AffixFuzzer1:
         """Update only some specific fields of a `AffixFuzzer1`."""
 
-        kwargs = {
-            "fuzz1001": fuzz1001,
-            "fuzz1002": fuzz1002,
-            "fuzz1003": fuzz1003,
-            "fuzz1004": fuzz1004,
-            "fuzz1005": fuzz1005,
-            "fuzz1006": fuzz1006,
-            "fuzz1007": fuzz1007,
-            "fuzz1008": fuzz1008,
-            "fuzz1009": fuzz1009,
-            "fuzz1010": fuzz1010,
-            "fuzz1011": fuzz1011,
-            "fuzz1012": fuzz1012,
-            "fuzz1013": fuzz1013,
-            "fuzz1014": fuzz1014,
-            "fuzz1015": fuzz1015,
-            "fuzz1016": fuzz1016,
-            "fuzz1017": fuzz1017,
-            "fuzz1018": fuzz1018,
-            "fuzz1019": fuzz1019,
-            "fuzz1020": fuzz1020,
-            "fuzz1021": fuzz1021,
-            "fuzz1022": fuzz1022,
-        }
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            kwargs = {
+                "fuzz1001": fuzz1001,
+                "fuzz1002": fuzz1002,
+                "fuzz1003": fuzz1003,
+                "fuzz1004": fuzz1004,
+                "fuzz1005": fuzz1005,
+                "fuzz1006": fuzz1006,
+                "fuzz1007": fuzz1007,
+                "fuzz1008": fuzz1008,
+                "fuzz1009": fuzz1009,
+                "fuzz1010": fuzz1010,
+                "fuzz1011": fuzz1011,
+                "fuzz1012": fuzz1012,
+                "fuzz1013": fuzz1013,
+                "fuzz1014": fuzz1014,
+                "fuzz1015": fuzz1015,
+                "fuzz1016": fuzz1016,
+                "fuzz1017": fuzz1017,
+                "fuzz1018": fuzz1018,
+                "fuzz1019": fuzz1019,
+                "fuzz1020": fuzz1020,
+                "fuzz1021": fuzz1021,
+                "fuzz1022": fuzz1022,
+            }
 
-        if clear:
-            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+            if clear:
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
-        return AffixFuzzer1(**kwargs)  # type: ignore[arg-type]
+            inst.__attrs_init__(**kwargs)
+            return inst
+
+        inst.__attrs_clear__()
+        return inst
 
     @classmethod
     def clear_fields(cls) -> AffixFuzzer1:

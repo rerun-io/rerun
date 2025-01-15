@@ -212,19 +212,25 @@ class LineStrips3D(Archetype):
 
         """
 
-        kwargs = {
-            "strips": strips,
-            "radii": radii,
-            "colors": colors,
-            "labels": labels,
-            "show_labels": show_labels,
-            "class_ids": class_ids,
-        }
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            kwargs = {
+                "strips": strips,
+                "radii": radii,
+                "colors": colors,
+                "labels": labels,
+                "show_labels": show_labels,
+                "class_ids": class_ids,
+            }
 
-        if clear:
-            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+            if clear:
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
-        return LineStrips3D(**kwargs)  # type: ignore[arg-type]
+            inst.__attrs_init__(**kwargs)
+            return inst
+
+        inst.__attrs_clear__()
+        return inst
 
     @classmethod
     def clear_fields(cls) -> LineStrips3D:

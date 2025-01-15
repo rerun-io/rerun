@@ -11,6 +11,7 @@ from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
 )
+from ..error_utils import catch_and_log_exceptions
 from .segmentation_image_ext import SegmentationImageExt
 
 __all__ = ["SegmentationImage"]
@@ -109,17 +110,23 @@ class SegmentationImage(SegmentationImageExt, Archetype):
 
         """
 
-        kwargs = {
-            "buffer": buffer,
-            "format": format,
-            "opacity": opacity,
-            "draw_order": draw_order,
-        }
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            kwargs = {
+                "buffer": buffer,
+                "format": format,
+                "opacity": opacity,
+                "draw_order": draw_order,
+            }
 
-        if clear:
-            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+            if clear:
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
-        return SegmentationImage(**kwargs)  # type: ignore[arg-type]
+            inst.__attrs_init__(**kwargs)
+            return inst
+
+        inst.__attrs_clear__()
+        return inst
 
     @classmethod
     def clear_fields(cls) -> SegmentationImage:

@@ -11,6 +11,7 @@ from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
 )
+from ..error_utils import catch_and_log_exceptions
 from .pinhole_ext import PinholeExt
 
 __all__ = ["Pinhole"]
@@ -151,17 +152,23 @@ class Pinhole(PinholeExt, Archetype):
 
         """
 
-        kwargs = {
-            "image_from_camera": image_from_camera,
-            "resolution": resolution,
-            "camera_xyz": camera_xyz,
-            "image_plane_distance": image_plane_distance,
-        }
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            kwargs = {
+                "image_from_camera": image_from_camera,
+                "resolution": resolution,
+                "camera_xyz": camera_xyz,
+                "image_plane_distance": image_plane_distance,
+            }
 
-        if clear:
-            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+            if clear:
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
-        return Pinhole(**kwargs)  # type: ignore[arg-type]
+            inst.__attrs_init__(**kwargs)
+            return inst
+
+        inst.__attrs_clear__()
+        return inst
 
     @classmethod
     def clear_fields(cls) -> Pinhole:

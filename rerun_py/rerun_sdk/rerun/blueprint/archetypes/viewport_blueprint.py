@@ -134,18 +134,24 @@ class ViewportBlueprint(Archetype):
 
         """
 
-        kwargs = {
-            "root_container": root_container,
-            "maximized": maximized,
-            "auto_layout": auto_layout,
-            "auto_views": auto_views,
-            "past_viewer_recommendations": past_viewer_recommendations,
-        }
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            kwargs = {
+                "root_container": root_container,
+                "maximized": maximized,
+                "auto_layout": auto_layout,
+                "auto_views": auto_views,
+                "past_viewer_recommendations": past_viewer_recommendations,
+            }
 
-        if clear:
-            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+            if clear:
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
-        return ViewportBlueprint(**kwargs)  # type: ignore[arg-type]
+            inst.__attrs_init__(**kwargs)
+            return inst
+
+        inst.__attrs_clear__()
+        return inst
 
     @classmethod
     def clear_fields(cls) -> ViewportBlueprint:

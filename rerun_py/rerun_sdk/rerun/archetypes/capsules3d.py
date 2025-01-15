@@ -11,6 +11,7 @@ from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
 )
+from ..error_utils import catch_and_log_exceptions
 from .capsules3d_ext import Capsules3DExt
 
 __all__ = ["Capsules3D"]
@@ -152,22 +153,28 @@ class Capsules3D(Capsules3DExt, Archetype):
 
         """
 
-        kwargs = {
-            "lengths": lengths,
-            "radii": radii,
-            "translations": translations,
-            "rotation_axis_angles": rotation_axis_angles,
-            "quaternions": quaternions,
-            "colors": colors,
-            "labels": labels,
-            "show_labels": show_labels,
-            "class_ids": class_ids,
-        }
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            kwargs = {
+                "lengths": lengths,
+                "radii": radii,
+                "translations": translations,
+                "rotation_axis_angles": rotation_axis_angles,
+                "quaternions": quaternions,
+                "colors": colors,
+                "labels": labels,
+                "show_labels": show_labels,
+                "class_ids": class_ids,
+            }
 
-        if clear:
-            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+            if clear:
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
-        return Capsules3D(**kwargs)  # type: ignore[arg-type]
+            inst.__attrs_init__(**kwargs)
+            return inst
+
+        inst.__attrs_clear__()
+        return inst
 
     @classmethod
     def clear_fields(cls) -> Capsules3D:

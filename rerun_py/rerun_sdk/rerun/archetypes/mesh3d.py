@@ -11,6 +11,7 @@ from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
 )
+from ..error_utils import catch_and_log_exceptions
 from .mesh3d_ext import Mesh3DExt
 
 __all__ = ["Mesh3D"]
@@ -172,22 +173,28 @@ class Mesh3D(Mesh3DExt, Archetype):
 
         """
 
-        kwargs = {
-            "vertex_positions": vertex_positions,
-            "triangle_indices": triangle_indices,
-            "vertex_normals": vertex_normals,
-            "vertex_colors": vertex_colors,
-            "vertex_texcoords": vertex_texcoords,
-            "albedo_factor": albedo_factor,
-            "albedo_texture_buffer": albedo_texture_buffer,
-            "albedo_texture_format": albedo_texture_format,
-            "class_ids": class_ids,
-        }
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            kwargs = {
+                "vertex_positions": vertex_positions,
+                "triangle_indices": triangle_indices,
+                "vertex_normals": vertex_normals,
+                "vertex_colors": vertex_colors,
+                "vertex_texcoords": vertex_texcoords,
+                "albedo_factor": albedo_factor,
+                "albedo_texture_buffer": albedo_texture_buffer,
+                "albedo_texture_format": albedo_texture_format,
+                "class_ids": class_ids,
+            }
 
-        if clear:
-            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+            if clear:
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
-        return Mesh3D(**kwargs)  # type: ignore[arg-type]
+            inst.__attrs_init__(**kwargs)
+            return inst
+
+        inst.__attrs_clear__()
+        return inst
 
     @classmethod
     def clear_fields(cls) -> Mesh3D:

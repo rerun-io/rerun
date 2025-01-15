@@ -12,6 +12,7 @@ from ..._baseclasses import (
     Archetype,
 )
 from ...blueprint import components as blueprint_components
+from ...error_utils import catch_and_log_exceptions
 from .plot_legend_ext import PlotLegendExt
 
 __all__ = ["PlotLegend"]
@@ -63,15 +64,21 @@ class PlotLegend(PlotLegendExt, Archetype):
 
         """
 
-        kwargs = {
-            "corner": corner,
-            "visible": visible,
-        }
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            kwargs = {
+                "corner": corner,
+                "visible": visible,
+            }
 
-        if clear:
-            kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+            if clear:
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
-        return PlotLegend(**kwargs)  # type: ignore[arg-type]
+            inst.__attrs_init__(**kwargs)
+            return inst
+
+        inst.__attrs_clear__()
+        return inst
 
     @classmethod
     def clear_fields(cls) -> PlotLegend:
