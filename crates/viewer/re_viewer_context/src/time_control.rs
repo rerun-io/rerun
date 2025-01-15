@@ -315,7 +315,7 @@ impl TimeControl {
             self.last_frame.timeline = Some(*self.timeline);
 
             let time = self
-                .get_time_for_timeline(*self.timeline)
+                .time_for_timeline(*self.timeline)
                 .unwrap_or(TimeReal::MIN);
 
             (callbacks.on_timelinechange)(*self.timeline, time);
@@ -636,7 +636,7 @@ impl TimeControl {
         self.set_time(time);
     }
 
-    pub fn get_time_for_timeline(&self, timeline: Timeline) -> Option<TimeReal> {
+    pub fn time_for_timeline(&self, timeline: Timeline) -> Option<TimeReal> {
         self.states.get(&timeline).map(|state| state.current.time)
     }
 
