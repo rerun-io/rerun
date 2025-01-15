@@ -1323,7 +1323,6 @@ impl<E: StorageEngineLike> QueryHandle<E> {
 mod tests {
     use std::sync::Arc;
 
-    use insta::assert_debug_snapshot;
     use re_chunk::{
         concat_record_batches::concatenate_record_batches, Chunk, ChunkId, RowId, TimePoint,
         TransportChunk,
@@ -1343,6 +1342,12 @@ mod tests {
     use crate::{QueryCache, QueryEngine};
 
     use super::*;
+
+    macro_rules! assert_snapshot_fixed_width {
+        ($($arg:tt)*) => {
+            insta::_assert_snapshot_base!(transform=|v| std::format!("{v:200}"), $($arg)*)
+        };
+    }
 
     // NOTE: The best way to understand what these tests are doing is to run them in verbose mode,
     // e.g. `cargo t -p re_dataframe -- --show-output barebones`.
@@ -1399,7 +1404,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            assert_debug_snapshot!(dataframe.columns());
+            assert_snapshot_fixed_width!(dataframe);
         }
 
         // temporal
@@ -1421,7 +1426,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            assert_debug_snapshot!(dataframe.columns());
+            assert_snapshot_fixed_width!(dataframe);
         }
 
         Ok(())
@@ -1455,7 +1460,7 @@ mod tests {
         )?;
         eprintln!("{dataframe}");
 
-        assert_debug_snapshot!(dataframe.columns());
+        assert_snapshot_fixed_width!(dataframe);
 
         Ok(())
     }
@@ -1488,7 +1493,7 @@ mod tests {
         )?;
         eprintln!("{dataframe}");
 
-        assert_debug_snapshot!(dataframe.columns());
+        assert_snapshot_fixed_width!(dataframe);
 
         Ok(())
     }
@@ -1527,7 +1532,7 @@ mod tests {
         )?;
         eprintln!("{dataframe}");
 
-        assert_debug_snapshot!(dataframe.columns());
+        assert_snapshot_fixed_width!(dataframe);
 
         Ok(())
     }
@@ -1569,7 +1574,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            assert_debug_snapshot!(dataframe.columns());
+            assert_snapshot_fixed_width!(dataframe);
         }
 
         // sparse-filled
@@ -1599,7 +1604,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            assert_debug_snapshot!(dataframe.columns());
+            assert_snapshot_fixed_width!(dataframe);
         }
 
         Ok(())
@@ -1640,7 +1645,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            assert_debug_snapshot!(dataframe.columns());
+            assert_snapshot_fixed_width!(dataframe);
         }
 
         // non-existing component
@@ -1666,7 +1671,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            assert_debug_snapshot!(dataframe.columns());
+            assert_snapshot_fixed_width!(dataframe);
         }
 
         // MyPoint
@@ -1692,7 +1697,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            assert_debug_snapshot!(dataframe.columns());
+            assert_snapshot_fixed_width!(dataframe);
         }
 
         // MyColor
@@ -1718,7 +1723,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            assert_debug_snapshot!(dataframe.columns());
+            assert_snapshot_fixed_width!(dataframe);
         }
 
         Ok(())
@@ -1760,7 +1765,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            assert_debug_snapshot!(dataframe.columns());
+            assert_snapshot_fixed_width!(dataframe);
         }
 
         {
@@ -1797,7 +1802,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            assert_debug_snapshot!(dataframe.columns());
+            assert_snapshot_fixed_width!(dataframe);
         }
 
         Ok(())
@@ -1835,7 +1840,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            assert_debug_snapshot!(dataframe.columns());
+            assert_snapshot_fixed_width!(dataframe);
         }
 
         // only indices (+ duplication)
@@ -1868,7 +1873,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            assert_debug_snapshot!(dataframe.columns());
+            assert_snapshot_fixed_width!(dataframe);
         }
 
         // only components (+ duplication)
@@ -1908,7 +1913,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            assert_debug_snapshot!(dataframe.columns());
+            assert_snapshot_fixed_width!(dataframe);
         }
 
         // static
@@ -1969,7 +1974,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            assert_debug_snapshot!(dataframe.columns());
+            assert_snapshot_fixed_width!(dataframe);
         }
 
         Ok(())
@@ -2038,7 +2043,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            assert_debug_snapshot!(dataframe.columns());
+            assert_snapshot_fixed_width!(dataframe);
         }
 
         Ok(())
@@ -2078,7 +2083,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            assert_debug_snapshot!(dataframe.columns());
+            assert_snapshot_fixed_width!(dataframe);
         }
 
         // sparse-filled
@@ -2106,7 +2111,7 @@ mod tests {
             // static clear semantics in general are pretty unhinged right now, especially when
             // ranges are involved.
             // It's extremely niche, our time is better spent somewhere else right now.
-            assert_debug_snapshot!(dataframe.columns());
+            assert_snapshot_fixed_width!(dataframe);
         }
 
         Ok(())
@@ -2344,7 +2349,7 @@ mod tests {
                 )?;
                 eprintln!("{dataframe}");
 
-                assert_debug_snapshot!("async_barebones_static", dataframe.columns());
+                assert_snapshot_fixed_width!("async_barebones_static", dataframe);
 
                 Ok::<_, anyhow::Error>(())
             }
@@ -2375,7 +2380,7 @@ mod tests {
                 )?;
                 eprintln!("{dataframe}");
 
-                assert_debug_snapshot!("async_barebones_temporal", dataframe.columns());
+                assert_snapshot_fixed_width!("async_barebones_temporal", dataframe);
 
                 Ok::<_, anyhow::Error>(())
             }
