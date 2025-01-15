@@ -49,7 +49,8 @@ impl<R: AsyncBufRead + Unpin> StreamingDecoder<R> {
         if FileHeader::decode(&mut read).is_err() {
             return false;
         }
-        return true;
+
+        true
     }
 }
 
