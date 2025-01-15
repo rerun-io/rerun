@@ -2,6 +2,7 @@
 
 use itertools::Itertools;
 
+use re_chunk::TransportChunk;
 use re_dataframe::{
     ChunkStoreConfig, EntityPathFilter, QueryEngine, QueryExpression, ResolvedTimeRange,
     SparseFillStrategy, StoreKind, TimeInt, Timeline,
@@ -70,7 +71,7 @@ fn main() -> anyhow::Result<()> {
         let query_handle = engine.query(query.clone());
         // eprintln!("{:#?}", query_handle.selected_contents());
         for batch in query_handle.into_batch_iter() {
-            eprintln!("{batch}");
+            eprintln!("{}", TransportChunk::from(batch));
         }
     }
 

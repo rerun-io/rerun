@@ -7,6 +7,7 @@ use rerun::{
         concatenate_record_batches, EntityPathFilter, QueryEngine, QueryExpression,
         SparseFillStrategy, Timeline,
     },
+    log::TransportChunk,
     ChunkStoreConfig, StoreKind, VersionPolicy,
 };
 
@@ -68,8 +69,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let query_handle = engine.query(query.clone());
         let record_batches = query_handle.batch_iter().take(10).collect_vec();
 
-        let table = concatenate_record_batches(query_handle.schema().clone(), &record_batches)?;
-        println!("{table}");
+        let batch = concatenate_record_batches(query_handle.schema().clone(), &record_batches)?;
+        println!("{}", TransportChunk::from(batch));
     }
 
     Ok(())

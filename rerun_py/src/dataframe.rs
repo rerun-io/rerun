@@ -753,16 +753,10 @@ impl PyRecordingView {
                     py_rerun_warn("RecordingView::select: tried to select static data, but no non-static contents generated an index value on this timeline. No results will be returned. Either include non-static data or consider using `select_static()` instead.")?;
                 }
 
-                let schema = query_handle.schema();
-                let fields: Vec<arrow::datatypes::Field> =
-                    schema.fields.iter().map(|f| f.clone().into()).collect();
-                let metadata = schema.metadata.clone().into_iter().collect();
-                let schema = arrow::datatypes::Schema::new_with_metadata(fields, metadata);
+                let schema = query_handle.schema().clone();
 
                 let reader = RecordBatchIterator::new(
-                    query_handle
-                        .into_batch_iter()
-                        .map(|batch| batch.try_to_arrow_record_batch()),
+                    query_handle.into_batch_iter().map(Ok),
                     std::sync::Arc::new(schema),
                 );
                 Ok(PyArrowType(Box::new(reader)))
@@ -850,18 +844,10 @@ impl PyRecordingView {
                     )));
                 }
 
-                let schema = query_handle.schema();
-                let fields: Vec<arrow::datatypes::Field> =
-                    schema.fields.iter().map(|f| f.clone().into()).collect();
-                let metadata = schema.metadata.clone().into_iter().collect();
-                let schema = arrow::datatypes::Schema::new_with_metadata(fields, metadata);
+                let schema = query_handle.schema().clone();
 
-                let reader = RecordBatchIterator::new(
-                    query_handle
-                        .into_batch_iter()
-                        .map(|batch| batch.try_to_arrow_record_batch()),
-                    std::sync::Arc::new(schema),
-                );
+                let reader =
+                    RecordBatchIterator::new(query_handle.into_batch_iter().map(Ok), schema.into());
 
                 Ok(PyArrowType(Box::new(reader)))
             }

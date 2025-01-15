@@ -15,7 +15,7 @@ use pyo3::{
     types::PyDict,
     Bound, PyResult,
 };
-use re_arrow_util::Arrow2ArrayDowncastRef as _;
+use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::{Chunk, TransportChunk};
 use re_chunk_store::ChunkStore;
 use re_dataframe::{ChunkStoreHandle, QueryExpression, SparseFillStrategy, ViewContentsSelector};
@@ -173,7 +173,7 @@ impl PyStorageNodeClient {
                 .unwrap_or_else(|| ArrowSchema::empty().into());
 
             Ok(RecordBatchIterator::new(
-                batches.into_iter().map(|tc| tc.try_to_arrow_record_batch()),
+                batches.into_iter().map(|tc| Ok(tc.into())),
                 schema,
             ))
         });
@@ -236,7 +236,7 @@ impl PyStorageNodeClient {
             let record_batches: Vec<Result<RecordBatch, arrow::error::ArrowError>> =
                 transport_chunks
                     .into_iter()
-                    .map(|tc| tc.try_to_arrow_record_batch())
+                    .map(|tc| Ok(tc.into()))
                     .collect();
 
             // TODO(jleibs): surfacing this schema is awkward. This should be more explicit in
@@ -321,7 +321,7 @@ impl PyStorageNodeClient {
                         ));
                     }
 
-                    let metadata_tc = TransportChunk::from_arrow_record_batch(&metadata);
+                    let metadata_tc = TransportChunk::from(metadata);
                     metadata_tc
                         .encode()
                         .map_err(|err| PyRuntimeError::new_err(err.to_string()))
@@ -351,7 +351,7 @@ impl PyStorageNodeClient {
                 .find(|(field, _data)| field.name() == "rerun_recording_id")
                 .map(|(_field, data)| data)
                 .ok_or(PyRuntimeError::new_err("No rerun_recording_id"))?
-                .downcast_array2_ref::<arrow2::array::Utf8Array<i32>>()
+                .downcast_array_ref::<arrow::array::StringArray>()
                 .ok_or(PyRuntimeError::new_err("Recording Id is not a string"))?
                 .value(0)
                 .to_owned();
@@ -388,7 +388,7 @@ impl PyStorageNodeClient {
                 ));
             }
 
-            let metadata_tc = TransportChunk::from_arrow_record_batch(&metadata);
+            let metadata_tc = TransportChunk::from(metadata);
 
             let request = UpdateCatalogRequest {
                 metadata: Some(

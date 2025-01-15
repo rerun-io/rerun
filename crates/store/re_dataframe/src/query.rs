@@ -6,19 +6,20 @@ use std::{
     },
 };
 
-use arrow::buffer::ScalarBuffer as ArrowScalarBuffer;
+use arrow::{
+    array::RecordBatch as ArrowRecordBatch, buffer::ScalarBuffer as ArrowScalarBuffer,
+    datatypes::Fields as ArrowFields, datatypes::Schema as ArrowSchema,
+};
 use arrow2::{
     array::{
         Array as Arrow2Array, BooleanArray as Arrow2BooleanArray,
         PrimitiveArray as Arrow2PrimitiveArray,
     },
-    chunk::Chunk as Arrow2Chunk,
-    datatypes::Schema as Arrow2Schema,
     Either,
 };
 use itertools::Itertools;
-
 use nohash_hasher::{IntMap, IntSet};
+
 use re_arrow_util::Arrow2ArrayDowncastRef as _;
 use re_chunk::{
     external::arrow::array::ArrayRef, Chunk, ComponentName, EntityPath, RangeQuery, RowId, TimeInt,
@@ -32,8 +33,6 @@ use re_chunk_store::{
 use re_log_types::ResolvedTimeRange;
 use re_query::{QueryCache, StorageEngineLike};
 use re_types_core::{components::ClearIsRecursive, ComponentDescriptor};
-
-use crate::RecordBatch;
 
 // ---
 
@@ -107,7 +106,7 @@ struct QueryHandleState {
     /// The Arrow schema that corresponds to the `selected_contents`.
     ///
     /// All returned rows will have this schema.
-    arrow_schema: Arrow2Schema,
+    arrow_schema: ArrowSchema,
 
     /// All the [`Chunk`]s included in the view contents.
     ///
@@ -191,13 +190,13 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         // 3. Compute the Arrow schema of the selected components.
         //
         // Every result returned using this `QueryHandle` will match this schema exactly.
-        let arrow_schema = Arrow2Schema {
-            fields: selected_contents
+        let arrow2_schema = ArrowSchema::new_with_metadata(
+            selected_contents
                 .iter()
                 .map(|(_, descr)| descr.to_arrow_field())
-                .collect_vec(),
-            metadata: Default::default(),
-        };
+                .collect::<ArrowFields>(),
+            Default::default(),
+        );
 
         // 4. Perform the query and keep track of all the relevant chunks.
         let query = {
@@ -256,7 +255,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                         // Only way this could fail is if the number of rows did not match.
                         #[allow(clippy::unwrap_used)]
                         chunk
-                            .add_component(
+                            .add_component_arrow2(
                                 re_types_core::ComponentDescriptor {
                                     component_name: descr.component_name,
                                     archetype_name: descr.archetype_name,
@@ -359,7 +358,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             selected_contents,
             selected_static_values,
             filtered_index,
-            arrow_schema,
+            arrow_schema: arrow2_schema,
             view_chunks,
             cur_row: AtomicU64::new(0),
             unique_index_values,
@@ -669,7 +668,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     ///
     /// Columns that do not yield any data will still be present in the results, filled with null values.
     #[inline]
-    pub fn schema(&self) -> &Arrow2Schema {
+    pub fn schema(&self) -> &ArrowSchema {
         &self.init().arrow_schema
     }
 
@@ -794,7 +793,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     #[inline]
     pub fn next_row(&self) -> Option<Vec<ArrayRef>> {
         self.engine
-            .with(|store, cache| self._next_row(store, cache))
+            .with(|store, cache| self._next_row_arrow2(store, cache))
             .map(|vec| vec.into_iter().map(|a| a.into()).collect())
     }
 
@@ -826,7 +825,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     #[inline]
     fn next_row_arrow2(&self) -> Option<Vec<Box<dyn Arrow2Array>>> {
         self.engine
-            .with(|store, cache| self._next_row(store, cache))
+            .with(|store, cache| self._next_row_arrow2(store, cache))
     }
 
     /// Asynchronously returns the next row's worth of data.
@@ -845,7 +844,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     /// }
     /// ```
     #[cfg(not(target_arch = "wasm32"))]
-    pub fn next_row_async(
+    pub fn next_row_async_arrow2(
         &self,
     ) -> impl std::future::Future<Output = Option<Vec<Box<dyn Arrow2Array>>>>
     where
@@ -853,7 +852,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     {
         let res: Option<Option<_>> = self
             .engine
-            .try_with(|store, cache| self._next_row(store, cache));
+            .try_with(|store, cache| self._next_row_arrow2(store, cache));
 
         let engine = self.engine.clone();
         std::future::poll_fn(move |cx| {
@@ -883,7 +882,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         })
     }
 
-    pub fn _next_row(
+    pub fn _next_row_arrow2(
         &self,
         store: &ChunkStore,
         cache: &QueryCache,
@@ -1240,7 +1239,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             .map(|(view_idx, column)| match column {
                 ColumnDescriptor::Time(descr) => {
                     max_value_per_index.get(&descr.timeline()).map_or_else(
-                        || arrow2::array::new_null_array(column.datatype(), 1),
+                        || arrow2::array::new_null_array(column.arrow2_datatype(), 1),
                         |(_time, time_sliced)| {
                             descr.typ().make_arrow_array(time_sliced.clone()).into()
                         },
@@ -1251,7 +1250,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                     .get(*view_idx)
                     .cloned()
                     .flatten()
-                    .unwrap_or_else(|| arrow2::array::new_null_array(column.datatype(), 1)),
+                    .unwrap_or_else(|| arrow2::array::new_null_array(column.arrow2_datatype(), 1)),
             })
             .collect_vec();
 
@@ -1260,33 +1259,32 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         Some(selected_arrays)
     }
 
-    /// Calls [`Self::next_row`] and wraps the result in a [`RecordBatch`].
+    /// Calls [`Self::next_row`] and wraps the result in a [`ArrowRecordBatch`].
     ///
-    /// Only use this if you absolutely need a [`RecordBatch`] as this adds a lot of allocation
+    /// Only use this if you absolutely need a [`ArrowRecordBatch`] as this adds a lot of allocation
     /// overhead.
     ///
     /// See [`Self::next_row`] for more information.
     #[inline]
-    pub fn next_row_batch(&self) -> Option<RecordBatch> {
-        Some(RecordBatch::new(
-            self.schema().clone(),
-            Arrow2Chunk::new(self.next_row_arrow2()?),
-        ))
+    pub fn next_row_batch(&self) -> Option<ArrowRecordBatch> {
+        let row = self.next_row()?;
+        ArrowRecordBatch::try_new(self.schema().clone().into(), row).ok()
     }
 
     #[inline]
     #[cfg(not(target_arch = "wasm32"))]
-    pub async fn next_row_batch_async(&self) -> Option<RecordBatch>
+    pub async fn next_row_batch_async(&self) -> Option<ArrowRecordBatch>
     where
         E: 'static + Send + Clone,
     {
-        let row = self.next_row_async().await?;
+        let row = self.next_row_async_arrow2().await?;
 
         // If we managed to get a row, then the state must be initialized already.
         #[allow(clippy::unwrap_used)]
         let schema = self.state.get().unwrap().arrow_schema.clone();
 
-        Some(RecordBatch::new(schema, Arrow2Chunk::new(row)))
+        // TODO(#3741): remove the collect
+        ArrowRecordBatch::try_new(schema.into(), row.into_iter().map(|a| a.into()).collect()).ok()
     }
 }
 
@@ -1305,13 +1303,13 @@ impl<E: StorageEngineLike> QueryHandle<E> {
 
     /// Returns an iterator backed by [`Self::next_row_batch`].
     #[allow(clippy::should_implement_trait)] // we need an anonymous closure, this won't work
-    pub fn batch_iter(&self) -> impl Iterator<Item = RecordBatch> + '_ {
+    pub fn batch_iter(&self) -> impl Iterator<Item = ArrowRecordBatch> + '_ {
         std::iter::from_fn(move || self.next_row_batch())
     }
 
     /// Returns an iterator backed by [`Self::next_row_batch`].
     #[allow(clippy::should_implement_trait)] // we need an anonymous closure, this won't work
-    pub fn into_batch_iter(self) -> impl Iterator<Item = RecordBatch> {
+    pub fn into_batch_iter(self) -> impl Iterator<Item = ArrowRecordBatch> {
         std::iter::from_fn(move || self.next_row_batch())
     }
 }
@@ -1402,9 +1400,9 @@ mod tests {
                 query_handle.schema().clone(),
                 &query_handle.into_batch_iter().collect_vec(),
             )?;
-            eprintln!("{dataframe}");
+            eprintln!("{}", TransportChunk::from(dataframe.clone()));
 
-            assert_snapshot_fixed_width!(dataframe);
+            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
         }
 
         // temporal
@@ -1424,9 +1422,9 @@ mod tests {
                 query_handle.schema().clone(),
                 &query_handle.into_batch_iter().collect_vec(),
             )?;
-            eprintln!("{dataframe}");
+            eprintln!("{}", TransportChunk::from(dataframe.clone()));
 
-            assert_snapshot_fixed_width!(dataframe);
+            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
         }
 
         Ok(())
@@ -1458,9 +1456,9 @@ mod tests {
             query_handle.schema().clone(),
             &query_handle.into_batch_iter().collect_vec(),
         )?;
-        eprintln!("{dataframe}");
+        eprintln!("{}", TransportChunk::from(dataframe.clone()));
 
-        assert_snapshot_fixed_width!(dataframe);
+        assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
 
         Ok(())
     }
@@ -1491,9 +1489,9 @@ mod tests {
             query_handle.schema().clone(),
             &query_handle.into_batch_iter().collect_vec(),
         )?;
-        eprintln!("{dataframe}");
+        eprintln!("{}", TransportChunk::from(dataframe.clone()));
 
-        assert_snapshot_fixed_width!(dataframe);
+        assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
 
         Ok(())
     }
@@ -1530,9 +1528,9 @@ mod tests {
             query_handle.schema().clone(),
             &query_handle.into_batch_iter().collect_vec(),
         )?;
-        eprintln!("{dataframe}");
+        eprintln!("{}", TransportChunk::from(dataframe.clone()));
 
-        assert_snapshot_fixed_width!(dataframe);
+        assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
 
         Ok(())
     }
@@ -1572,9 +1570,9 @@ mod tests {
                 query_handle.schema().clone(),
                 &query_handle.into_batch_iter().collect_vec(),
             )?;
-            eprintln!("{dataframe}");
+            eprintln!("{}", TransportChunk::from(dataframe.clone()));
 
-            assert_snapshot_fixed_width!(dataframe);
+            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
         }
 
         // sparse-filled
@@ -1602,9 +1600,9 @@ mod tests {
                 query_handle.schema().clone(),
                 &query_handle.into_batch_iter().collect_vec(),
             )?;
-            eprintln!("{dataframe}");
+            eprintln!("{}", TransportChunk::from(dataframe.clone()));
 
-            assert_snapshot_fixed_width!(dataframe);
+            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
         }
 
         Ok(())
@@ -1643,9 +1641,9 @@ mod tests {
                 query_handle.schema().clone(),
                 &query_handle.into_batch_iter().collect_vec(),
             )?;
-            eprintln!("{dataframe}");
+            eprintln!("{}", TransportChunk::from(dataframe.clone()));
 
-            assert_snapshot_fixed_width!(dataframe);
+            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
         }
 
         // non-existing component
@@ -1669,9 +1667,9 @@ mod tests {
                 query_handle.schema().clone(),
                 &query_handle.into_batch_iter().collect_vec(),
             )?;
-            eprintln!("{dataframe}");
+            eprintln!("{}", TransportChunk::from(dataframe.clone()));
 
-            assert_snapshot_fixed_width!(dataframe);
+            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
         }
 
         // MyPoint
@@ -1695,9 +1693,9 @@ mod tests {
                 query_handle.schema().clone(),
                 &query_handle.into_batch_iter().collect_vec(),
             )?;
-            eprintln!("{dataframe}");
+            eprintln!("{}", TransportChunk::from(dataframe.clone()));
 
-            assert_snapshot_fixed_width!(dataframe);
+            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
         }
 
         // MyColor
@@ -1721,9 +1719,9 @@ mod tests {
                 query_handle.schema().clone(),
                 &query_handle.into_batch_iter().collect_vec(),
             )?;
-            eprintln!("{dataframe}");
+            eprintln!("{}", TransportChunk::from(dataframe.clone()));
 
-            assert_snapshot_fixed_width!(dataframe);
+            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
         }
 
         Ok(())
@@ -1763,9 +1761,9 @@ mod tests {
                 query_handle.schema().clone(),
                 &query_handle.into_batch_iter().collect_vec(),
             )?;
-            eprintln!("{dataframe}");
+            eprintln!("{}", TransportChunk::from(dataframe.clone()));
 
-            assert_snapshot_fixed_width!(dataframe);
+            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
         }
 
         {
@@ -1800,9 +1798,9 @@ mod tests {
                 query_handle.schema().clone(),
                 &query_handle.into_batch_iter().collect_vec(),
             )?;
-            eprintln!("{dataframe}");
+            eprintln!("{}", TransportChunk::from(dataframe.clone()));
 
-            assert_snapshot_fixed_width!(dataframe);
+            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
         }
 
         Ok(())
@@ -1838,9 +1836,9 @@ mod tests {
                 query_handle.schema().clone(),
                 &query_handle.into_batch_iter().collect_vec(),
             )?;
-            eprintln!("{dataframe}");
+            eprintln!("{}", TransportChunk::from(dataframe.clone()));
 
-            assert_snapshot_fixed_width!(dataframe);
+            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
         }
 
         // only indices (+ duplication)
@@ -1871,9 +1869,9 @@ mod tests {
                 query_handle.schema().clone(),
                 &query_handle.into_batch_iter().collect_vec(),
             )?;
-            eprintln!("{dataframe}");
+            eprintln!("{}", TransportChunk::from(dataframe.clone()));
 
-            assert_snapshot_fixed_width!(dataframe);
+            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
         }
 
         // only components (+ duplication)
@@ -1911,9 +1909,9 @@ mod tests {
                 query_handle.schema().clone(),
                 &query_handle.into_batch_iter().collect_vec(),
             )?;
-            eprintln!("{dataframe}");
+            eprintln!("{}", TransportChunk::from(dataframe.clone()));
 
-            assert_snapshot_fixed_width!(dataframe);
+            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
         }
 
         // static
@@ -1972,9 +1970,9 @@ mod tests {
                 query_handle.schema().clone(),
                 &query_handle.into_batch_iter().collect_vec(),
             )?;
-            eprintln!("{dataframe}");
+            eprintln!("{}", TransportChunk::from(dataframe.clone()));
 
-            assert_snapshot_fixed_width!(dataframe);
+            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
         }
 
         Ok(())
@@ -2041,9 +2039,9 @@ mod tests {
                 query_handle.schema().clone(),
                 &query_handle.into_batch_iter().collect_vec(),
             )?;
-            eprintln!("{dataframe}");
+            eprintln!("{}", TransportChunk::from(dataframe.clone()));
 
-            assert_snapshot_fixed_width!(dataframe);
+            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
         }
 
         Ok(())
@@ -2081,9 +2079,9 @@ mod tests {
                 query_handle.schema().clone(),
                 &query_handle.into_batch_iter().collect_vec(),
             )?;
-            eprintln!("{dataframe}");
+            eprintln!("{}", TransportChunk::from(dataframe.clone()));
 
-            assert_snapshot_fixed_width!(dataframe);
+            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
         }
 
         // sparse-filled
@@ -2105,13 +2103,13 @@ mod tests {
                 query_handle.schema().clone(),
                 &query_handle.into_batch_iter().collect_vec(),
             )?;
-            eprintln!("{dataframe}");
+            eprintln!("{}", TransportChunk::from(dataframe.clone()));
 
             // TODO(#7650): Those null values for `MyColor` on 10 and 20 look completely insane, but then again
             // static clear semantics in general are pretty unhinged right now, especially when
             // ranges are involved.
-            // It's extremely niche, our time is better spent somewhere else right now.
-            assert_snapshot_fixed_width!(dataframe);
+
+            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
         }
 
         Ok(())
@@ -2302,7 +2300,7 @@ mod tests {
         pub struct QueryHandleStream(pub QueryHandle<StorageEngine>);
 
         impl tokio_stream::Stream for QueryHandleStream {
-            type Item = TransportChunk;
+            type Item = ArrowRecordBatch;
 
             #[inline]
             fn poll_next(
@@ -2347,9 +2345,12 @@ mod tests {
                         .collect::<Vec<_>>()
                         .await,
                 )?;
-                eprintln!("{dataframe}");
+                eprintln!("{}", TransportChunk::from(dataframe.clone()));
 
-                assert_snapshot_fixed_width!("async_barebones_static", dataframe);
+                assert_snapshot_fixed_width!(
+                    "async_barebones_static",
+                    TransportChunk::from(dataframe)
+                );
 
                 Ok::<_, anyhow::Error>(())
             }
@@ -2378,9 +2379,12 @@ mod tests {
                         .collect::<Vec<_>>()
                         .await,
                 )?;
-                eprintln!("{dataframe}");
+                eprintln!("{}", TransportChunk::from(dataframe.clone()));
 
-                assert_snapshot_fixed_width!("async_barebones_temporal", dataframe);
+                assert_snapshot_fixed_width!(
+                    "async_barebones_temporal",
+                    TransportChunk::from(dataframe)
+                );
 
                 Ok::<_, anyhow::Error>(())
             }

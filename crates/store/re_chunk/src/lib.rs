@@ -21,9 +21,6 @@ mod transport;
 #[cfg(not(target_arch = "wasm32"))]
 mod batcher;
 
-#[cfg(feature = "arrow")]
-mod arrow;
-
 pub use self::builder::{ChunkBuilder, TimeColumnBuilder};
 pub use self::chunk::{
     Chunk, ChunkComponents, ChunkError, ChunkResult, TimeColumn, TimeColumnError,

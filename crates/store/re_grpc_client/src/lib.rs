@@ -1,40 +1,46 @@
 //! Communications with an Rerun Data Platform gRPC server.
 
-mod address;
+use std::{collections::HashMap, error::Error, sync::Arc};
 
-pub use address::{InvalidRedapAddress, RedapAddress};
-use re_arrow_util::Arrow2ArrayDowncastRef as _;
-use re_chunk::external::arrow2;
-use re_log_encoding::codec::wire::decoder::Decode;
-use re_log_types::external::re_types_core::ComponentDescriptor;
-use re_protos::remote_store::v0::CatalogFilter;
-use re_types::blueprint::archetypes::{ContainerBlueprint, ViewportBlueprint};
-use re_types::blueprint::archetypes::{ViewBlueprint, ViewContents};
-use re_types::blueprint::components::{ContainerKind, RootContainer};
-use re_types::components::RecordingUri;
-use re_types::external::uuid;
-use re_types::{Archetype, Component};
+use arrow::{
+    array::{
+        Array as ArrowArray, ArrayRef as ArrowArrayRef, RecordBatch as ArrowRecordBatch,
+        StringArray as ArrowStringArray,
+    },
+    datatypes::{DataType as ArrowDataType, Field as ArrowField},
+};
 use url::Url;
+
+use re_arrow_util::ArrowArrayDowncastRef as _;
+use re_chunk::{Chunk, ChunkBuilder, ChunkId, EntityPath, RowId, Timeline, TransportChunk};
+use re_log_encoding::codec::{wire::decoder::Decode, CodecError};
+use re_log_types::{
+    external::re_types_core::ComponentDescriptor, ApplicationId, BlueprintActivationCommand,
+    EntityPathFilter, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource, Time,
+};
+use re_protos::{
+    common::v0::RecordingId,
+    remote_store::v0::{
+        storage_node_client::StorageNodeClient, CatalogFilter, FetchRecordingRequest,
+        QueryCatalogRequest,
+    },
+};
+use re_types::{
+    arrow_helpers::as_array_ref,
+    blueprint::{
+        archetypes::{ContainerBlueprint, ViewBlueprint, ViewContents, ViewportBlueprint},
+        components::{ContainerKind, RootContainer},
+    },
+    components::RecordingUri,
+    external::uuid,
+    Archetype, Component,
+};
 
 // ----------------------------------------------------------------------------
 
-use std::sync::Arc;
-use std::{collections::HashMap, error::Error};
+mod address;
 
-use arrow::datatypes::{DataType as ArrowDataType, Field as ArrowField};
-use arrow2::array::Utf8Array as Arrow2Utf8Array;
-use re_chunk::{
-    Arrow2Array, Chunk, ChunkBuilder, ChunkId, EntityPath, RowId, Timeline, TransportChunk,
-};
-use re_log_encoding::codec::CodecError;
-use re_log_types::{
-    ApplicationId, BlueprintActivationCommand, EntityPathFilter, LogMsg, SetStoreInfo, StoreId,
-    StoreInfo, StoreKind, StoreSource, Time,
-};
-use re_protos::common::v0::RecordingId;
-use re_protos::remote_store::v0::{
-    storage_node_client::StorageNodeClient, FetchRecordingRequest, QueryCatalogRequest,
-};
+pub use address::{InvalidRedapAddress, RedapAddress};
 
 // ----------------------------------------------------------------------------
 
@@ -281,7 +287,7 @@ pub fn store_info_from_catalog_chunk(
             reason: "no application_id field found".to_owned(),
         }))?;
     let app_id = data
-        .downcast_array2_ref::<Arrow2Utf8Array<i32>>()
+        .downcast_array_ref::<arrow::array::StringArray>()
         .ok_or(StreamError::ChunkError(re_chunk::ChunkError::Malformed {
             reason: format!("application_id must be a utf8 array: {:?}", tc.schema_ref()),
         }))?
@@ -294,7 +300,7 @@ pub fn store_info_from_catalog_chunk(
             reason: "no start_time field found".to_owned(),
         }))?;
     let start_time = data
-        .downcast_array2_ref::<arrow2::array::Int64Array>()
+        .downcast_array_ref::<arrow::array::Int64Array>()
         .ok_or(StreamError::ChunkError(re_chunk::ChunkError::Malformed {
             reason: format!("start_time must be an int64 array: {:?}", tc.schema_ref()),
         }))?
@@ -391,8 +397,8 @@ async fn stream_catalog_async(
         // - conversion expects "data" columns to be ListArrays, hence we need to convert any individual row column data to ListArray
         // - conversion expects the input TransportChunk to have a ChunkId so we need to add that piece of metadata
 
-        let mut fields = Vec::new();
-        let mut arrays = Vec::new();
+        let mut fields: Vec<ArrowField> = Vec::new();
+        let mut columns: Vec<ArrowArrayRef> = Vec::new();
         // add the (row id) control field
         let (row_id_field, row_id_data) = input.controls().next().ok_or(
             StreamError::ChunkError(re_chunk::ChunkError::Malformed {
@@ -408,12 +414,12 @@ async fn stream_catalog_async(
             )
             .with_metadata(TransportChunk::field_metadata_control_column()),
         );
-        arrays.push(row_id_data.clone());
+        columns.push(row_id_data.clone());
 
         // next add any timeline field
         for (field, data) in input.timelines() {
             fields.push(field.clone());
-            arrays.push(data.clone());
+            columns.push(data.clone());
         }
 
         // now add all the 'data' fields - we slice each column array into individual arrays and then convert the whole lot into a ListArray
@@ -428,41 +434,41 @@ async fn stream_catalog_async(
             )
             .with_metadata(TransportChunk::field_metadata_data_column());
 
-            let mut sliced: Vec<Box<dyn Arrow2Array>> = Vec::new();
+            let mut sliced: Vec<ArrowArrayRef> = Vec::new();
             for idx in 0..data.len() {
-                let mut array = data.clone();
-                array.slice(idx, 1);
-                sliced.push(array);
+                sliced.push(data.clone().slice(idx, 1));
             }
 
             let data_arrays = sliced.iter().map(|e| Some(e.as_ref())).collect::<Vec<_>>();
             #[allow(clippy::unwrap_used)] // we know we've given the right field type
-            let data_field_array: arrow2::array::ListArray<i32> =
-                re_arrow_util::arrow2_util::arrays_to_list_array(
-                    data_field_inner.data_type().clone().into(),
+            let data_field_array: arrow::array::ListArray =
+                re_arrow_util::arrow_util::arrays_to_list_array(
+                    data_field_inner.data_type().clone(),
                     &data_arrays,
                 )
                 .unwrap();
 
             fields.push(data_field);
-            arrays.push(Box::new(data_field_array));
+            columns.push(as_array_ref(data_field_array));
         }
 
         let schema = {
-            let metadata = HashMap::from_iter([(
-                TransportChunk::CHUNK_METADATA_KEY_ENTITY_PATH.to_owned(),
-                "catalog".to_owned(),
-            )]);
+            let metadata = HashMap::from_iter([
+                (
+                    TransportChunk::CHUNK_METADATA_KEY_ENTITY_PATH.to_owned(),
+                    "catalog".to_owned(),
+                ),
+                (
+                    TransportChunk::CHUNK_METADATA_KEY_ID.to_owned(),
+                    ChunkId::new().to_string(),
+                ),
+            ]);
             arrow::datatypes::Schema::new_with_metadata(fields, metadata)
         };
 
-        // modified and enriched TransportChunk
-        let mut tc = TransportChunk::new(schema, arrow2::chunk::Chunk::new(arrays));
-        tc.insert_metadata(
-            TransportChunk::CHUNK_METADATA_KEY_ID.to_owned(),
-            ChunkId::new().to_string(),
-        );
-        let mut chunk = Chunk::from_transport(&tc)?;
+        let record_batch = ArrowRecordBatch::try_new(schema.into(), columns)
+            .map_err(re_chunk::ChunkError::from)?;
+        let mut chunk = Chunk::from_record_batch(record_batch)?;
 
         // finally, enrich catalog data with RecordingUri that's based on the ReDap endpoint (that we know)
         // and the recording id (that we have in the catalog data)
@@ -477,20 +483,16 @@ async fn stream_catalog_async(
                 "couldn't get port from {redap_endpoint}"
             )))?;
 
-        let recording_uri_arrays: Vec<Box<dyn Arrow2Array>> = chunk
+        let recording_uri_arrays: Vec<ArrowArrayRef> = chunk
             .iter_slices::<String>("id".into())
             .map(|id| {
                 let rec_id = &id[0]; // each component batch is of length 1 i.e. single 'id' value
 
                 let recording_uri = format!("rerun://{host}:{port}/recording/{rec_id}");
 
-                let recording_uri_data = Arrow2Utf8Array::<i32>::from([Some(recording_uri)]);
-
-                Ok::<Box<_>, StreamError>(
-                    Box::new(recording_uri_data) as Box<dyn arrow2::array::Array>
-                )
+                as_array_ref(ArrowStringArray::from(vec![recording_uri]))
             })
-            .collect::<Result<Vec<_>, _>>()?;
+            .collect();
 
         let recording_id_arrays = recording_uri_arrays
             .iter()
@@ -499,8 +501,8 @@ async fn stream_catalog_async(
 
         let rec_id_field = ArrowField::new("item", ArrowDataType::Utf8, true);
         #[allow(clippy::unwrap_used)] // we know we've given the right field type
-        let uris = re_arrow_util::arrow2_util::arrays_to_list_array(
-            rec_id_field.data_type().clone().into(),
+        let uris = re_arrow_util::arrow_util::arrays_to_list_array(
+            rec_id_field.data_type().clone(),
             &recording_id_arrays,
         )
         .unwrap();

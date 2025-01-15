@@ -13,7 +13,7 @@ fn decode(
         re_protos::common::v0::EncoderVersion::V0 => {
             let mut reader = std::io::Cursor::new(data);
             let batch = read_arrow_from_bytes(&mut reader)?;
-            Ok(batch.into())
+            Ok(TransportChunk::from(batch))
         }
     }
 }

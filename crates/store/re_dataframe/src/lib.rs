@@ -3,7 +3,7 @@
 mod engine;
 mod query;
 
-pub use self::engine::{QueryEngine, RecordBatch};
+pub use self::engine::QueryEngine;
 pub use self::query::QueryHandle;
 
 #[doc(no_inline)]

@@ -30,7 +30,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let query_handle = engine.query(query.clone());
     for row in query_handle.batch_iter().take(10) {
         // Each row is a `RecordBatch`, which can be easily passed around across different data ecosystems.
-        println!("{row}");
+        println!("{}", rerun::log::TransportChunk::from(row));
     }
 
     Ok(())
