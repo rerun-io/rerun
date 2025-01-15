@@ -147,7 +147,7 @@ class TextLog(Archetype):
         return inst
 
     text: components.TextBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.TextBatch._converter,  # type: ignore[misc]
     )
@@ -156,7 +156,7 @@ class TextLog(Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     level: components.TextLogLevelBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.TextLogLevelBatch._converter,  # type: ignore[misc]
     )
@@ -167,7 +167,7 @@ class TextLog(Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     color: components.ColorBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.ColorBatch._converter,  # type: ignore[misc]
     )

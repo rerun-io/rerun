@@ -94,7 +94,7 @@ class MapBackground(Archetype):
         return inst
 
     provider: blueprint_components.MapProviderBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=blueprint_components.MapProviderBatch._converter,  # type: ignore[misc]
     )

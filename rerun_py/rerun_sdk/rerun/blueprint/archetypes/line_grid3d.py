@@ -155,7 +155,7 @@ class LineGrid3D(Archetype):
         return inst
 
     visible: blueprint_components.VisibleBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=blueprint_components.VisibleBatch._converter,  # type: ignore[misc]
     )
@@ -166,7 +166,7 @@ class LineGrid3D(Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     spacing: blueprint_components.GridSpacingBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=blueprint_components.GridSpacingBatch._converter,  # type: ignore[misc]
     )
@@ -178,7 +178,7 @@ class LineGrid3D(Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     plane: components.Plane3DBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.Plane3DBatch._converter,  # type: ignore[misc]
     )
@@ -189,7 +189,7 @@ class LineGrid3D(Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     stroke_width: components.StrokeWidthBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.StrokeWidthBatch._converter,  # type: ignore[misc]
     )
@@ -200,7 +200,7 @@ class LineGrid3D(Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     color: components.ColorBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.ColorBatch._converter,  # type: ignore[misc]
     )

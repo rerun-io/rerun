@@ -176,7 +176,7 @@ class DepthImage(DepthImageExt, Archetype):
         return inst
 
     buffer: components.ImageBufferBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.ImageBufferBatch._converter,  # type: ignore[misc]
     )
@@ -185,7 +185,7 @@ class DepthImage(DepthImageExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     format: components.ImageFormatBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.ImageFormatBatch._converter,  # type: ignore[misc]
     )
@@ -194,7 +194,7 @@ class DepthImage(DepthImageExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     meter: components.DepthMeterBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.DepthMeterBatch._converter,  # type: ignore[misc]
     )
@@ -209,7 +209,7 @@ class DepthImage(DepthImageExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     colormap: components.ColormapBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.ColormapBatch._converter,  # type: ignore[misc]
     )
@@ -220,7 +220,7 @@ class DepthImage(DepthImageExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     depth_range: components.ValueRangeBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.ValueRangeBatch._converter,  # type: ignore[misc]
     )
@@ -239,7 +239,7 @@ class DepthImage(DepthImageExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     point_fill_ratio: components.FillRatioBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.FillRatioBatch._converter,  # type: ignore[misc]
     )
@@ -254,7 +254,7 @@ class DepthImage(DepthImageExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     draw_order: components.DrawOrderBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.DrawOrderBatch._converter,  # type: ignore[misc]
     )

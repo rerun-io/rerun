@@ -103,7 +103,7 @@ class ScalarAxis(Archetype):
         return inst
 
     range: components.Range1DBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.Range1DBatch._converter,  # type: ignore[misc]
     )
@@ -114,7 +114,7 @@ class ScalarAxis(Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     zoom_lock: blueprint_components.LockRangeDuringZoomBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=blueprint_components.LockRangeDuringZoomBatch._converter,  # type: ignore[misc]
     )

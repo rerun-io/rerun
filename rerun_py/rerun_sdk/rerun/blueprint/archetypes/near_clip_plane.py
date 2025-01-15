@@ -95,7 +95,7 @@ class NearClipPlane(Archetype):
         return inst
 
     near_clip_plane: blueprint_components.NearClipPlaneBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=blueprint_components.NearClipPlaneBatch._converter,  # type: ignore[misc]
     )

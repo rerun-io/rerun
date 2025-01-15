@@ -84,7 +84,7 @@ class VisualBounds2D(VisualBounds2DExt, Archetype):
         return inst
 
     range: blueprint_components.VisualBounds2DBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=blueprint_components.VisualBounds2DBatch._converter,  # type: ignore[misc]
     )

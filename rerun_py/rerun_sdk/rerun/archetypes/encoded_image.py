@@ -125,7 +125,7 @@ class EncodedImage(EncodedImageExt, Archetype):
         return inst
 
     blob: components.BlobBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.BlobBatch._converter,  # type: ignore[misc]
     )
@@ -134,7 +134,7 @@ class EncodedImage(EncodedImageExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     media_type: components.MediaTypeBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.MediaTypeBatch._converter,  # type: ignore[misc]
     )
@@ -150,7 +150,7 @@ class EncodedImage(EncodedImageExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     opacity: components.OpacityBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.OpacityBatch._converter,  # type: ignore[misc]
     )
@@ -161,7 +161,7 @@ class EncodedImage(EncodedImageExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     draw_order: components.DrawOrderBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.DrawOrderBatch._converter,  # type: ignore[misc]
     )

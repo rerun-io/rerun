@@ -228,7 +228,7 @@ class Transform3D(Transform3DExt, Archetype):
         return inst
 
     translation: components.Translation3DBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.Translation3DBatch._converter,  # type: ignore[misc]
     )
@@ -237,7 +237,7 @@ class Transform3D(Transform3DExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     rotation_axis_angle: components.RotationAxisAngleBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.RotationAxisAngleBatch._converter,  # type: ignore[misc]
     )
@@ -246,7 +246,7 @@ class Transform3D(Transform3DExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     quaternion: components.RotationQuatBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.RotationQuatBatch._converter,  # type: ignore[misc]
     )
@@ -255,7 +255,7 @@ class Transform3D(Transform3DExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     scale: components.Scale3DBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.Scale3DBatch._converter,  # type: ignore[misc]
     )
@@ -264,7 +264,7 @@ class Transform3D(Transform3DExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     mat3x3: components.TransformMat3x3Batch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.TransformMat3x3Batch._converter,  # type: ignore[misc]
     )
@@ -273,7 +273,7 @@ class Transform3D(Transform3DExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     relation: components.TransformRelationBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.TransformRelationBatch._converter,  # type: ignore[misc]
     )
@@ -282,7 +282,7 @@ class Transform3D(Transform3DExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     axis_length: components.AxisLengthBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.AxisLengthBatch._converter,  # type: ignore[misc]
     )

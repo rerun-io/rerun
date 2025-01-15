@@ -173,7 +173,7 @@ class SeriesLine(Archetype):
         return inst
 
     color: components.ColorBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.ColorBatch._converter,  # type: ignore[misc]
     )
@@ -182,7 +182,7 @@ class SeriesLine(Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     width: components.StrokeWidthBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.StrokeWidthBatch._converter,  # type: ignore[misc]
     )
@@ -191,7 +191,7 @@ class SeriesLine(Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     name: components.NameBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.NameBatch._converter,  # type: ignore[misc]
     )
@@ -202,7 +202,7 @@ class SeriesLine(Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     aggregation_policy: components.AggregationPolicyBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.AggregationPolicyBatch._converter,  # type: ignore[misc]
     )

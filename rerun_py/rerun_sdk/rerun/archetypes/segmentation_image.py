@@ -134,7 +134,7 @@ class SegmentationImage(SegmentationImageExt, Archetype):
         return inst
 
     buffer: components.ImageBufferBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.ImageBufferBatch._converter,  # type: ignore[misc]
     )
@@ -143,7 +143,7 @@ class SegmentationImage(SegmentationImageExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     format: components.ImageFormatBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.ImageFormatBatch._converter,  # type: ignore[misc]
     )
@@ -152,7 +152,7 @@ class SegmentationImage(SegmentationImageExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     opacity: components.OpacityBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.OpacityBatch._converter,  # type: ignore[misc]
     )
@@ -163,7 +163,7 @@ class SegmentationImage(SegmentationImageExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     draw_order: components.DrawOrderBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.DrawOrderBatch._converter,  # type: ignore[misc]
     )

@@ -177,7 +177,7 @@ class TextDocument(Archetype):
         return inst
 
     text: components.TextBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.TextBatch._converter,  # type: ignore[misc]
     )
@@ -186,7 +186,7 @@ class TextDocument(Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     media_type: components.MediaTypeBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.MediaTypeBatch._converter,  # type: ignore[misc]
     )

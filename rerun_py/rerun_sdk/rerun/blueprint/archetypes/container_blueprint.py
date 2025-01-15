@@ -199,7 +199,7 @@ class ContainerBlueprint(Archetype):
         return inst
 
     container_kind: blueprint_components.ContainerKindBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=blueprint_components.ContainerKindBatch._converter,  # type: ignore[misc]
     )
@@ -208,7 +208,7 @@ class ContainerBlueprint(Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     display_name: components.NameBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.NameBatch._converter,  # type: ignore[misc]
     )
@@ -217,7 +217,7 @@ class ContainerBlueprint(Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     contents: blueprint_components.IncludedContentBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=blueprint_components.IncludedContentBatch._converter,  # type: ignore[misc]
     )
@@ -226,7 +226,7 @@ class ContainerBlueprint(Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     col_shares: blueprint_components.ColumnShareBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=blueprint_components.ColumnShareBatch._converter,  # type: ignore[misc]
     )
@@ -239,7 +239,7 @@ class ContainerBlueprint(Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     row_shares: blueprint_components.RowShareBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=blueprint_components.RowShareBatch._converter,  # type: ignore[misc]
     )
@@ -252,7 +252,7 @@ class ContainerBlueprint(Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     active_tab: blueprint_components.ActiveTabBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=blueprint_components.ActiveTabBatch._converter,  # type: ignore[misc]
     )
@@ -263,7 +263,7 @@ class ContainerBlueprint(Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     visible: blueprint_components.VisibleBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=blueprint_components.VisibleBatch._converter,  # type: ignore[misc]
     )
@@ -274,7 +274,7 @@ class ContainerBlueprint(Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     grid_columns: blueprint_components.GridColumnsBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=blueprint_components.GridColumnsBatch._converter,  # type: ignore[misc]
     )

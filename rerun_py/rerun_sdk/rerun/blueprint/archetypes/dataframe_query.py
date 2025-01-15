@@ -102,7 +102,7 @@ class DataframeQuery(DataframeQueryExt, Archetype):
         return inst
 
     timeline: blueprint_components.TimelineNameBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=blueprint_components.TimelineNameBatch._converter,  # type: ignore[misc]
     )
@@ -113,7 +113,7 @@ class DataframeQuery(DataframeQueryExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     filter_by_range: blueprint_components.FilterByRangeBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=blueprint_components.FilterByRangeBatch._converter,  # type: ignore[misc]
     )
@@ -124,7 +124,7 @@ class DataframeQuery(DataframeQueryExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     filter_is_not_null: blueprint_components.FilterIsNotNullBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=blueprint_components.FilterIsNotNullBatch._converter,  # type: ignore[misc]
     )
@@ -133,7 +133,7 @@ class DataframeQuery(DataframeQueryExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     apply_latest_at: blueprint_components.ApplyLatestAtBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=blueprint_components.ApplyLatestAtBatch._converter,  # type: ignore[misc]
     )
@@ -142,7 +142,7 @@ class DataframeQuery(DataframeQueryExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     select: blueprint_components.SelectedColumnsBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=blueprint_components.SelectedColumnsBatch._converter,  # type: ignore[misc]
     )

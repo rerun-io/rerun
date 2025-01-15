@@ -90,7 +90,7 @@ class PanelBlueprint(Archetype):
         return inst
 
     state: blueprint_components.PanelStateBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=blueprint_components.PanelStateBatch._converter,  # type: ignore[misc]
     )

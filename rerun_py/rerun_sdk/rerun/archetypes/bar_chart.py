@@ -123,7 +123,7 @@ class BarChart(BarChartExt, Archetype):
         return inst
 
     values: components.TensorDataBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=BarChartExt.values__field_converter_override,  # type: ignore[misc]
     )
@@ -132,7 +132,7 @@ class BarChart(BarChartExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     color: components.ColorBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.ColorBatch._converter,  # type: ignore[misc]
     )

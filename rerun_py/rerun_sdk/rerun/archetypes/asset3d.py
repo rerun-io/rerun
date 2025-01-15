@@ -132,7 +132,7 @@ class Asset3D(Asset3DExt, Archetype):
         return inst
 
     blob: components.BlobBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.BlobBatch._converter,  # type: ignore[misc]
     )
@@ -141,7 +141,7 @@ class Asset3D(Asset3DExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     media_type: components.MediaTypeBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.MediaTypeBatch._converter,  # type: ignore[misc]
     )
@@ -159,7 +159,7 @@ class Asset3D(Asset3DExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     albedo_factor: components.AlbedoFactorBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.AlbedoFactorBatch._converter,  # type: ignore[misc]
     )

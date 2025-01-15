@@ -126,7 +126,7 @@ class Scalar(Archetype):
         return inst
 
     scalar: components.ScalarBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.ScalarBatch._converter,  # type: ignore[misc]
     )

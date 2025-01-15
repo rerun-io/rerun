@@ -207,7 +207,7 @@ class Mesh3D(Mesh3DExt, Archetype):
         return inst
 
     vertex_positions: components.Position3DBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.Position3DBatch._converter,  # type: ignore[misc]
     )
@@ -218,7 +218,7 @@ class Mesh3D(Mesh3DExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     triangle_indices: components.TriangleIndicesBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.TriangleIndicesBatch._converter,  # type: ignore[misc]
     )
@@ -227,7 +227,7 @@ class Mesh3D(Mesh3DExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     vertex_normals: components.Vector3DBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.Vector3DBatch._converter,  # type: ignore[misc]
     )
@@ -236,7 +236,7 @@ class Mesh3D(Mesh3DExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     vertex_colors: components.ColorBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.ColorBatch._converter,  # type: ignore[misc]
     )
@@ -245,7 +245,7 @@ class Mesh3D(Mesh3DExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     vertex_texcoords: components.Texcoord2DBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.Texcoord2DBatch._converter,  # type: ignore[misc]
     )
@@ -254,7 +254,7 @@ class Mesh3D(Mesh3DExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     albedo_factor: components.AlbedoFactorBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.AlbedoFactorBatch._converter,  # type: ignore[misc]
     )
@@ -263,7 +263,7 @@ class Mesh3D(Mesh3DExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     albedo_texture_buffer: components.ImageBufferBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.ImageBufferBatch._converter,  # type: ignore[misc]
     )
@@ -277,7 +277,7 @@ class Mesh3D(Mesh3DExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     albedo_texture_format: components.ImageFormatBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.ImageFormatBatch._converter,  # type: ignore[misc]
     )
@@ -286,7 +286,7 @@ class Mesh3D(Mesh3DExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     class_ids: components.ClassIdBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.ClassIdBatch._converter,  # type: ignore[misc]
     )

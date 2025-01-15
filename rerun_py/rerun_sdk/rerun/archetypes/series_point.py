@@ -183,7 +183,7 @@ class SeriesPoint(Archetype):
         return inst
 
     color: components.ColorBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.ColorBatch._converter,  # type: ignore[misc]
     )
@@ -192,7 +192,7 @@ class SeriesPoint(Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     marker: components.MarkerShapeBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.MarkerShapeBatch._converter,  # type: ignore[misc]
     )
@@ -201,7 +201,7 @@ class SeriesPoint(Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     name: components.NameBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.NameBatch._converter,  # type: ignore[misc]
     )
@@ -212,7 +212,7 @@ class SeriesPoint(Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     marker_size: components.MarkerSizeBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.MarkerSizeBatch._converter,  # type: ignore[misc]
     )

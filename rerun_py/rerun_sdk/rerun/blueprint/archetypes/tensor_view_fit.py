@@ -73,7 +73,7 @@ class TensorViewFit(TensorViewFitExt, Archetype):
         return inst
 
     scaling: blueprint_components.ViewFitBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=blueprint_components.ViewFitBatch._converter,  # type: ignore[misc]
     )

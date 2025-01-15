@@ -106,7 +106,7 @@ class Clear(ClearExt, Archetype):
         return inst
 
     is_recursive: components.ClearIsRecursiveBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.ClearIsRecursiveBatch._converter,  # type: ignore[misc]
     )

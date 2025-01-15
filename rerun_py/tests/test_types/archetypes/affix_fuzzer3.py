@@ -178,92 +178,92 @@ class AffixFuzzer3(Archetype):
         return inst
 
     fuzz2001: components.AffixFuzzer1Batch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.AffixFuzzer1Batch._converter,  # type: ignore[misc]
     )
     fuzz2002: components.AffixFuzzer2Batch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.AffixFuzzer2Batch._converter,  # type: ignore[misc]
     )
     fuzz2003: components.AffixFuzzer3Batch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.AffixFuzzer3Batch._converter,  # type: ignore[misc]
     )
     fuzz2004: components.AffixFuzzer4Batch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.AffixFuzzer4Batch._converter,  # type: ignore[misc]
     )
     fuzz2005: components.AffixFuzzer5Batch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.AffixFuzzer5Batch._converter,  # type: ignore[misc]
     )
     fuzz2006: components.AffixFuzzer6Batch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.AffixFuzzer6Batch._converter,  # type: ignore[misc]
     )
     fuzz2007: components.AffixFuzzer7Batch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.AffixFuzzer7Batch._converter,  # type: ignore[misc]
     )
     fuzz2008: components.AffixFuzzer8Batch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.AffixFuzzer8Batch._converter,  # type: ignore[misc]
     )
     fuzz2009: components.AffixFuzzer9Batch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.AffixFuzzer9Batch._converter,  # type: ignore[misc]
     )
     fuzz2010: components.AffixFuzzer10Batch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.AffixFuzzer10Batch._converter,  # type: ignore[misc]
     )
     fuzz2011: components.AffixFuzzer11Batch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.AffixFuzzer11Batch._converter,  # type: ignore[misc]
     )
     fuzz2012: components.AffixFuzzer12Batch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.AffixFuzzer12Batch._converter,  # type: ignore[misc]
     )
     fuzz2013: components.AffixFuzzer13Batch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.AffixFuzzer13Batch._converter,  # type: ignore[misc]
     )
     fuzz2014: components.AffixFuzzer14Batch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.AffixFuzzer14Batch._converter,  # type: ignore[misc]
     )
     fuzz2015: components.AffixFuzzer15Batch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.AffixFuzzer15Batch._converter,  # type: ignore[misc]
     )
     fuzz2016: components.AffixFuzzer16Batch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.AffixFuzzer16Batch._converter,  # type: ignore[misc]
     )
     fuzz2017: components.AffixFuzzer17Batch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.AffixFuzzer17Batch._converter,  # type: ignore[misc]
     )
     fuzz2018: components.AffixFuzzer18Batch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.AffixFuzzer18Batch._converter,  # type: ignore[misc]
     )

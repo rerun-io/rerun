@@ -128,7 +128,7 @@ class TensorScalarMapping(Archetype):
         return inst
 
     mag_filter: components.MagnificationFilterBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.MagnificationFilterBatch._converter,  # type: ignore[misc]
     )
@@ -139,7 +139,7 @@ class TensorScalarMapping(Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     colormap: components.ColormapBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.ColormapBatch._converter,  # type: ignore[misc]
     )
@@ -148,7 +148,7 @@ class TensorScalarMapping(Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     gamma: components.GammaCorrectionBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.GammaCorrectionBatch._converter,  # type: ignore[misc]
     )

@@ -133,7 +133,7 @@ class GraphEdges(Archetype):
         return inst
 
     edges: components.GraphEdgeBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.GraphEdgeBatch._converter,  # type: ignore[misc]
     )
@@ -142,7 +142,7 @@ class GraphEdges(Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     graph_type: components.GraphTypeBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.GraphTypeBatch._converter,  # type: ignore[misc]
     )

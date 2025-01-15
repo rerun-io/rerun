@@ -130,7 +130,7 @@ class AnnotationContext(Archetype):
         return inst
 
     context: components.AnnotationContextBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.AnnotationContextBatch._converter,  # type: ignore[misc]
     )

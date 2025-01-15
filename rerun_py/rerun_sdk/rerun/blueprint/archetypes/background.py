@@ -80,7 +80,7 @@ class Background(BackgroundExt, Archetype):
         return inst
 
     kind: blueprint_components.BackgroundKindBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=blueprint_components.BackgroundKindBatch._converter,  # type: ignore[misc]
     )
@@ -89,7 +89,7 @@ class Background(BackgroundExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     color: components.ColorBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.ColorBatch._converter,  # type: ignore[misc]
     )

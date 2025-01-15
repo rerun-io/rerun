@@ -735,7 +735,7 @@ fn code_for_struct(
             };
 
             let metadata = if *kind == ObjectKind::Archetype {
-                "\nmetadata={'component': 'optional'}, ".to_owned()
+                "\nmetadata={'component': True}, ".to_owned()
             } else {
                 String::new()
             };

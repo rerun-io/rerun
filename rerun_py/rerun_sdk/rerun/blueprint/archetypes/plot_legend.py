@@ -84,7 +84,7 @@ class PlotLegend(PlotLegendExt, Archetype):
         return inst
 
     corner: blueprint_components.Corner2DBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=blueprint_components.Corner2DBatch._converter,  # type: ignore[misc]
     )
@@ -95,7 +95,7 @@ class PlotLegend(PlotLegendExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     visible: blueprint_components.VisibleBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=blueprint_components.VisibleBatch._converter,  # type: ignore[misc]
     )

@@ -147,7 +147,7 @@ class Boxes2D(Boxes2DExt, Archetype):
         return inst
 
     half_sizes: components.HalfSize2DBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.HalfSize2DBatch._converter,  # type: ignore[misc]
     )
@@ -156,7 +156,7 @@ class Boxes2D(Boxes2DExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     centers: components.Position2DBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.Position2DBatch._converter,  # type: ignore[misc]
     )
@@ -165,7 +165,7 @@ class Boxes2D(Boxes2DExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     colors: components.ColorBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.ColorBatch._converter,  # type: ignore[misc]
     )
@@ -174,7 +174,7 @@ class Boxes2D(Boxes2DExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     radii: components.RadiusBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.RadiusBatch._converter,  # type: ignore[misc]
     )
@@ -183,7 +183,7 @@ class Boxes2D(Boxes2DExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     labels: components.TextBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.TextBatch._converter,  # type: ignore[misc]
     )
@@ -195,7 +195,7 @@ class Boxes2D(Boxes2DExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     show_labels: components.ShowLabelsBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.ShowLabelsBatch._converter,  # type: ignore[misc]
     )
@@ -204,7 +204,7 @@ class Boxes2D(Boxes2DExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     draw_order: components.DrawOrderBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.DrawOrderBatch._converter,  # type: ignore[misc]
     )
@@ -217,7 +217,7 @@ class Boxes2D(Boxes2DExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     class_ids: components.ClassIdBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.ClassIdBatch._converter,  # type: ignore[misc]
     )

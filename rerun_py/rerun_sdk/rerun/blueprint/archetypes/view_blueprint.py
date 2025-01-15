@@ -140,7 +140,7 @@ class ViewBlueprint(Archetype):
         return inst
 
     class_identifier: blueprint_components.ViewClassBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=blueprint_components.ViewClassBatch._converter,  # type: ignore[misc]
     )
@@ -149,7 +149,7 @@ class ViewBlueprint(Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     display_name: components.NameBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.NameBatch._converter,  # type: ignore[misc]
     )
@@ -158,7 +158,7 @@ class ViewBlueprint(Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     space_origin: blueprint_components.ViewOriginBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=blueprint_components.ViewOriginBatch._converter,  # type: ignore[misc]
     )
@@ -173,7 +173,7 @@ class ViewBlueprint(Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     visible: blueprint_components.VisibleBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=blueprint_components.VisibleBatch._converter,  # type: ignore[misc]
     )

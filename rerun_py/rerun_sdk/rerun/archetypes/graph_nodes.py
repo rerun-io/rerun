@@ -175,7 +175,7 @@ class GraphNodes(Archetype):
         return inst
 
     node_ids: components.GraphNodeBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.GraphNodeBatch._converter,  # type: ignore[misc]
     )
@@ -184,7 +184,7 @@ class GraphNodes(Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     positions: components.Position2DBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.Position2DBatch._converter,  # type: ignore[misc]
     )
@@ -193,7 +193,7 @@ class GraphNodes(Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     colors: components.ColorBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.ColorBatch._converter,  # type: ignore[misc]
     )
@@ -202,7 +202,7 @@ class GraphNodes(Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     labels: components.TextBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.TextBatch._converter,  # type: ignore[misc]
     )
@@ -211,7 +211,7 @@ class GraphNodes(Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     show_labels: components.ShowLabelsBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.ShowLabelsBatch._converter,  # type: ignore[misc]
     )
@@ -220,7 +220,7 @@ class GraphNodes(Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     radii: components.RadiusBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.RadiusBatch._converter,  # type: ignore[misc]
     )

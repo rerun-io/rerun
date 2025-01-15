@@ -182,7 +182,7 @@ class Boxes3D(Boxes3DExt, Archetype):
         return inst
 
     half_sizes: components.HalfSize3DBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.HalfSize3DBatch._converter,  # type: ignore[misc]
     )
@@ -191,7 +191,7 @@ class Boxes3D(Boxes3DExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     centers: components.PoseTranslation3DBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.PoseTranslation3DBatch._converter,  # type: ignore[misc]
     )
@@ -203,7 +203,7 @@ class Boxes3D(Boxes3DExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     rotation_axis_angles: components.PoseRotationAxisAngleBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.PoseRotationAxisAngleBatch._converter,  # type: ignore[misc]
     )
@@ -215,7 +215,7 @@ class Boxes3D(Boxes3DExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     quaternions: components.PoseRotationQuatBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.PoseRotationQuatBatch._converter,  # type: ignore[misc]
     )
@@ -227,7 +227,7 @@ class Boxes3D(Boxes3DExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     colors: components.ColorBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.ColorBatch._converter,  # type: ignore[misc]
     )
@@ -236,7 +236,7 @@ class Boxes3D(Boxes3DExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     radii: components.RadiusBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.RadiusBatch._converter,  # type: ignore[misc]
     )
@@ -245,7 +245,7 @@ class Boxes3D(Boxes3DExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     fill_mode: components.FillModeBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.FillModeBatch._converter,  # type: ignore[misc]
     )
@@ -254,7 +254,7 @@ class Boxes3D(Boxes3DExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     labels: components.TextBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.TextBatch._converter,  # type: ignore[misc]
     )
@@ -266,7 +266,7 @@ class Boxes3D(Boxes3DExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     show_labels: components.ShowLabelsBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.ShowLabelsBatch._converter,  # type: ignore[misc]
     )
@@ -275,7 +275,7 @@ class Boxes3D(Boxes3DExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     class_ids: components.ClassIdBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.ClassIdBatch._converter,  # type: ignore[misc]
     )

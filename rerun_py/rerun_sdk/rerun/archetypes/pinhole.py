@@ -176,7 +176,7 @@ class Pinhole(PinholeExt, Archetype):
         return inst
 
     image_from_camera: components.PinholeProjectionBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.PinholeProjectionBatch._converter,  # type: ignore[misc]
     )
@@ -185,7 +185,7 @@ class Pinhole(PinholeExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     resolution: components.ResolutionBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.ResolutionBatch._converter,  # type: ignore[misc]
     )
@@ -201,7 +201,7 @@ class Pinhole(PinholeExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     camera_xyz: components.ViewCoordinatesBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.ViewCoordinatesBatch._converter,  # type: ignore[misc]
     )
@@ -236,7 +236,7 @@ class Pinhole(PinholeExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     image_plane_distance: components.ImagePlaneDistanceBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.ImagePlaneDistanceBatch._converter,  # type: ignore[misc]
     )

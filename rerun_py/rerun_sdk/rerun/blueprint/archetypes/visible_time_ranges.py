@@ -86,7 +86,7 @@ class VisibleTimeRanges(VisibleTimeRangesExt, Archetype):
         return inst
 
     ranges: blueprint_components.VisibleTimeRangeBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=blueprint_components.VisibleTimeRangeBatch._converter,  # type: ignore[misc]
     )

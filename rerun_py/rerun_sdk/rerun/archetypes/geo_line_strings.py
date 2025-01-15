@@ -129,7 +129,7 @@ class GeoLineStrings(GeoLineStringsExt, Archetype):
         return inst
 
     line_strings: components.GeoLineStringBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.GeoLineStringBatch._converter,  # type: ignore[misc]
     )
@@ -138,7 +138,7 @@ class GeoLineStrings(GeoLineStringsExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     radii: components.RadiusBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.RadiusBatch._converter,  # type: ignore[misc]
     )
@@ -150,7 +150,7 @@ class GeoLineStrings(GeoLineStringsExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     colors: components.ColorBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.ColorBatch._converter,  # type: ignore[misc]
     )

@@ -161,7 +161,7 @@ class ViewportBlueprint(Archetype):
         return inst
 
     root_container: blueprint_components.RootContainerBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=blueprint_components.RootContainerBatch._converter,  # type: ignore[misc]
     )
@@ -170,7 +170,7 @@ class ViewportBlueprint(Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     maximized: blueprint_components.ViewMaximizedBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=blueprint_components.ViewMaximizedBatch._converter,  # type: ignore[misc]
     )
@@ -179,7 +179,7 @@ class ViewportBlueprint(Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     auto_layout: blueprint_components.AutoLayoutBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=blueprint_components.AutoLayoutBatch._converter,  # type: ignore[misc]
     )
@@ -191,7 +191,7 @@ class ViewportBlueprint(Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     auto_views: blueprint_components.AutoViewsBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=blueprint_components.AutoViewsBatch._converter,  # type: ignore[misc]
     )
@@ -204,7 +204,7 @@ class ViewportBlueprint(Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     past_viewer_recommendations: blueprint_components.ViewerRecommendationHashBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=blueprint_components.ViewerRecommendationHashBatch._converter,  # type: ignore[misc]
     )

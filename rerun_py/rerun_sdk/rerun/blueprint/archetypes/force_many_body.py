@@ -115,7 +115,7 @@ class ForceManyBody(Archetype):
         return inst
 
     enabled: blueprint_components.EnabledBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=blueprint_components.EnabledBatch._converter,  # type: ignore[misc]
     )
@@ -127,7 +127,7 @@ class ForceManyBody(Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     strength: blueprint_components.ForceStrengthBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=blueprint_components.ForceStrengthBatch._converter,  # type: ignore[misc]
     )

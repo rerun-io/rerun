@@ -134,7 +134,7 @@ class ViewContents(Archetype):
         return inst
 
     query: blueprint_components.QueryExpressionBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=blueprint_components.QueryExpressionBatch._converter,  # type: ignore[misc]
     )

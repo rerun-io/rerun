@@ -128,7 +128,7 @@ class GeoPoints(GeoPointsExt, Archetype):
         return inst
 
     positions: components.LatLonBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.LatLonBatch._converter,  # type: ignore[misc]
     )
@@ -137,7 +137,7 @@ class GeoPoints(GeoPointsExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     radii: components.RadiusBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.RadiusBatch._converter,  # type: ignore[misc]
     )
@@ -148,7 +148,7 @@ class GeoPoints(GeoPointsExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     colors: components.ColorBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.ColorBatch._converter,  # type: ignore[misc]
     )
@@ -160,7 +160,7 @@ class GeoPoints(GeoPointsExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     class_ids: components.ClassIdBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.ClassIdBatch._converter,  # type: ignore[misc]
     )

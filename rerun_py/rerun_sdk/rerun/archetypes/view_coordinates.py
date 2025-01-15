@@ -132,7 +132,7 @@ class ViewCoordinates(ViewCoordinatesExt, Archetype):
         return inst
 
     xyz: components.ViewCoordinatesBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.ViewCoordinatesBatch._converter,  # type: ignore[misc]
     )

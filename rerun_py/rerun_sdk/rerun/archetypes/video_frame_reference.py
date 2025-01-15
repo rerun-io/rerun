@@ -184,7 +184,7 @@ class VideoFrameReference(VideoFrameReferenceExt, Archetype):
         return inst
 
     timestamp: components.VideoTimestampBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.VideoTimestampBatch._converter,  # type: ignore[misc]
     )
@@ -200,7 +200,7 @@ class VideoFrameReference(VideoFrameReferenceExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     video_reference: components.EntityPathBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.EntityPathBatch._converter,  # type: ignore[misc]
     )

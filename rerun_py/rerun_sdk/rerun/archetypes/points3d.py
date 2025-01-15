@@ -236,7 +236,7 @@ class Points3D(Points3DExt, Archetype):
         return inst
 
     positions: components.Position3DBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.Position3DBatch._converter,  # type: ignore[misc]
     )
@@ -245,7 +245,7 @@ class Points3D(Points3DExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     radii: components.RadiusBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.RadiusBatch._converter,  # type: ignore[misc]
     )
@@ -254,7 +254,7 @@ class Points3D(Points3DExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     colors: components.ColorBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.ColorBatch._converter,  # type: ignore[misc]
     )
@@ -266,7 +266,7 @@ class Points3D(Points3DExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     labels: components.TextBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.TextBatch._converter,  # type: ignore[misc]
     )
@@ -278,7 +278,7 @@ class Points3D(Points3DExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     show_labels: components.ShowLabelsBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.ShowLabelsBatch._converter,  # type: ignore[misc]
     )
@@ -287,7 +287,7 @@ class Points3D(Points3DExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     class_ids: components.ClassIdBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.ClassIdBatch._converter,  # type: ignore[misc]
     )
@@ -298,7 +298,7 @@ class Points3D(Points3DExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     keypoint_ids: components.KeypointIdBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.KeypointIdBatch._converter,  # type: ignore[misc]
     )

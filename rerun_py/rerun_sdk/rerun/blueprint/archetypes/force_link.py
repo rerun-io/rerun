@@ -121,7 +121,7 @@ class ForceLink(Archetype):
         return inst
 
     enabled: blueprint_components.EnabledBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=blueprint_components.EnabledBatch._converter,  # type: ignore[misc]
     )
@@ -132,7 +132,7 @@ class ForceLink(Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     distance: blueprint_components.ForceDistanceBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=blueprint_components.ForceDistanceBatch._converter,  # type: ignore[misc]
     )
@@ -141,7 +141,7 @@ class ForceLink(Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     iterations: blueprint_components.ForceIterationsBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=blueprint_components.ForceIterationsBatch._converter,  # type: ignore[misc]
     )

@@ -142,7 +142,7 @@ class TensorSliceSelection(Archetype):
         return inst
 
     width: components.TensorWidthDimensionBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.TensorWidthDimensionBatch._converter,  # type: ignore[misc]
     )
@@ -153,7 +153,7 @@ class TensorSliceSelection(Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     height: components.TensorHeightDimensionBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.TensorHeightDimensionBatch._converter,  # type: ignore[misc]
     )
@@ -164,7 +164,7 @@ class TensorSliceSelection(Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     indices: components.TensorDimensionIndexSelectionBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=components.TensorDimensionIndexSelectionBatch._converter,  # type: ignore[misc]
     )
@@ -175,7 +175,7 @@ class TensorSliceSelection(Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     slider: blueprint_components.TensorDimensionIndexSliderBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
         converter=blueprint_components.TensorDimensionIndexSliderBatch._converter,  # type: ignore[misc]
     )
