@@ -71,7 +71,7 @@ pub use self::{
     store_context::StoreContext,
     store_hub::StoreHub,
     tensor::{ImageStats, TensorStats},
-    time_control::{Looping, PlayState, TimeControl, TimeView},
+    time_control::{Looping, PlayState, TimeControl, TimeView, TimelineCallbacks},
     time_drag_value::TimeDragValue,
     typed_entity_collections::{
         ApplicableEntities, IndicatedEntities, PerVisualizer, VisualizableEntities,
