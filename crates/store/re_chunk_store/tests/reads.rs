@@ -33,7 +33,7 @@ fn query_latest_array(
         .into_iter()
         .filter_map(|chunk| {
             chunk
-                .latest_at(query, component_desc.component_name)
+                .latest_at_most_specific_by_component_name(query, component_desc.component_name)
                 .into_unit()
                 .and_then(|chunk| chunk.index(&query.timeline()).map(|index| (index, chunk)))
         })

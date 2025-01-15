@@ -221,10 +221,11 @@ impl Chunk {
         };
 
         if chunk.is_static() {
+            // TODO
             // NOTE: A given component for a given entity can only have one static entry associated
             // with it, and this entry overrides everything else, which means it is functionally
             // equivalent to just running a latest-at query.
-            chunk.latest_at(
+            chunk.latest_at_most_specific_by_component_name(
                 &crate::LatestAtQuery::new(query.timeline(), TimeInt::MAX),
                 component_name,
             )

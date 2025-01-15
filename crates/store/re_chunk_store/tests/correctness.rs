@@ -26,7 +26,7 @@ fn query_latest_component<C: re_types_core::Component>(
         .into_iter()
         .filter_map(|chunk| {
             chunk
-                .latest_at(query, C::name())
+                .latest_at_most_specific_by_component_name(query, C::name())
                 .into_unit()
                 .and_then(|unit| unit.index(&query.timeline()).map(|index| (index, unit)))
         })

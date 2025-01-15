@@ -12,7 +12,8 @@ fn main() -> anyhow::Result<()> {
     let query = LatestAtQuery::new(Timeline::new_sequence("frame"), 4);
 
     // Find all relevant data for a query:
-    let chunk = chunk.latest_at(&query, MyPoint::name());
+    // TODO
+    let chunk = chunk.latest_at_most_specific_by_component_name(&query, MyPoint::name());
     eprintln!("{:?} @ {query:?}:\n{chunk}", MyPoint::name());
 
     // And then slice it as appropriate:
