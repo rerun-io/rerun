@@ -104,6 +104,8 @@ impl ChunkStore {
                     .entry(chunk.entity_path().clone())
                     .or_default()
                     .entry(component_desc.component_name)
+                    .or_default()
+                    .entry(component_desc.clone())
                     .and_modify(|cur_chunk_id| {
                         // NOTE: When attempting to overwrite static data, the chunk with the most
                         // recent data within -- according to RowId -- wins.
@@ -164,7 +166,7 @@ impl ChunkStore {
                     .contains_key(chunk.entity_path()),
                 "This condition cannot fail, we just want to avoid unwrapping",
             );
-            if let Some(per_component) = self.static_chunk_ids_per_entity.get(chunk.entity_path()) {
+            if let Some(per_name) = self.static_chunk_ids_per_entity.get(chunk.entity_path()) {
                 re_tracing::profile_scope!("static dangling checks");
 
                 // At this point, we are in possession of a list of ChunkIds that were at least
@@ -180,8 +182,9 @@ impl ChunkStore {
                 // all the components of a single entity.
 
                 for (chunk_id, chunk_row_id_min) in overwritten_chunk_ids {
-                    let has_been_fully_overwritten = !per_component
+                    let has_been_fully_overwritten = !per_name
                         .values()
+                        .flat_map(|per_desc| per_desc.values())
                         .any(|cur_chunk_id| *cur_chunk_id == chunk_id);
 
                     if has_been_fully_overwritten {
@@ -577,6 +580,7 @@ impl ChunkStore {
                 .remove(entity_path)
                 .unwrap_or_default()
                 .into_values()
+                .flat_map(|per_desc| per_desc.into_values())
                 .collect();
 
             chunk_ids_per_min_row_id.retain(|_row_id, chunk_ids| {

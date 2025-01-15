@@ -259,17 +259,18 @@ pub struct ChunkIdSetPerTime {
     pub(crate) per_end_time: BTreeMap<TimeInt, ChunkIdSet>,
 }
 
-pub type ChunkIdSetPerTimePerComponentName = IntMap<ComponentName, ChunkIdSetPerTime>;
+pub type ChunkIdSetPerTimePerName = IntMap<ComponentName, ChunkIdSetPerTime>;
 
-pub type ChunkIdSetPerTimePerComponentNamePerTimeline =
-    IntMap<Timeline, ChunkIdSetPerTimePerComponentName>;
+pub type ChunkIdSetPerTimePerNamePerTimeline = IntMap<Timeline, ChunkIdSetPerTimePerName>;
 
-pub type ChunkIdSetPerTimePerComponentNamePerTimelinePerEntity =
-    IntMap<EntityPath, ChunkIdSetPerTimePerComponentNamePerTimeline>;
+pub type ChunkIdSetPerTimePerNamePerTimelinePerEntity =
+    IntMap<EntityPath, ChunkIdSetPerTimePerNamePerTimeline>;
 
-pub type ChunkIdPerComponentName = IntMap<ComponentName, ChunkId>;
+pub type ChunkIdPerDescriptor = IntMap<ComponentDescriptor, ChunkId>;
 
-pub type ChunkIdPerComponentNamePerEntity = IntMap<EntityPath, ChunkIdPerComponentName>;
+pub type ChunkIdPerDescriptorPerName = IntMap<ComponentName, ChunkIdPerDescriptor>;
+
+pub type ChunkIdPerDescriptorPerNamePerEntity = IntMap<EntityPath, ChunkIdPerDescriptorPerName>;
 
 pub type ChunkIdSetPerTimePerTimeline = IntMap<Timeline, ChunkIdSetPerTime>;
 
@@ -429,7 +430,7 @@ pub struct ChunkStore {
     /// * [`Self::temporal_chunk_ids_per_entity`].
     /// * [`Self::static_chunk_ids_per_entity`].
     pub(crate) temporal_chunk_ids_per_entity_per_component:
-        ChunkIdSetPerTimePerComponentNamePerTimelinePerEntity,
+        ChunkIdSetPerTimePerNamePerTimelinePerEntity,
 
     /// All temporal [`ChunkId`]s for all entities on all timelines, without the [`ComponentName`] index.
     ///
@@ -448,7 +449,7 @@ pub struct ChunkStore {
     /// Static data unconditionally shadows temporal data at query time.
     ///
     /// Existing temporal will not be removed. Events won't be fired.
-    pub(crate) static_chunk_ids_per_entity: ChunkIdPerComponentNamePerEntity,
+    pub(crate) static_chunk_ids_per_entity: ChunkIdPerDescriptorPerNamePerEntity,
 
     /// Accumulated size statitistics for all static [`Chunk`]s currently present in the store.
     ///

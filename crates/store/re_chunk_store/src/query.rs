@@ -412,6 +412,7 @@ impl ChunkStore {
             .is_some_and(|static_chunk_ids_per_component| {
                 static_chunk_ids_per_component
                     .values()
+                    .flat_map(|per_desc| per_desc.values())
                     .any(|chunk_id| self.chunks_per_chunk_id.contains_key(chunk_id))
             })
     }
@@ -571,7 +572,9 @@ impl ChunkStore {
             .static_chunk_ids_per_entity
             .get(entity_path)
             .and_then(|static_chunks_per_component| {
-                static_chunks_per_component.get(&component_name)
+                static_chunks_per_component
+                    .get(&component_name)
+                    .and_then(|per_desc| per_desc.values().next())
             })
             .and_then(|chunk_id| self.chunks_per_chunk_id.get(chunk_id))
         {
@@ -717,7 +720,9 @@ impl ChunkStore {
             .static_chunk_ids_per_entity
             .get(entity_path)
             .and_then(|static_chunks_per_component| {
-                static_chunks_per_component.get(&component_name)
+                static_chunks_per_component
+                    .get(&component_name)
+                    .and_then(|per_desc| per_desc.values().next())
             })
             .and_then(|chunk_id| self.chunks_per_chunk_id.get(chunk_id))
         {
