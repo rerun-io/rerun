@@ -147,13 +147,7 @@ class ComponentBatchLike(Protocol):
 
 
 class AsComponents(Protocol):
-    """
-    Describes interface for interpreting an object as a bundle of Components.
-
-    Note: the `num_instances()` function is an optional part of this interface. The method does not need to be
-    implemented as it is only used after checking for its existence. (There is unfortunately no way to express this
-    correctly with the Python typing system, see <https://github.com/python/typing/issues/601>).
-    """
+    """Describes interface for interpreting an object as a bundle of Components."""
 
     def as_component_batches(self) -> Iterable[ComponentBatchLike]:
         """
@@ -197,22 +191,6 @@ class Archetype:
         from ._log import IndicatorComponentBatch
 
         return IndicatorComponentBatch(cls.archetype_name())
-
-    def num_instances(self) -> int:
-        """
-        The number of instances that make up the batch.
-
-        Part of the `AsComponents` logging interface.
-        """
-        num_instances = 0
-        for fld in fields(type(self)):
-            if "component" in fld.metadata:
-                try:
-                    num_instances = max(num_instances, len(getattr(self, fld.name)))
-                except TypeError:  # Happens for indicator batches.
-                    num_instances = max(num_instances, 1)
-
-        return num_instances
 
     def as_component_batches(self) -> Iterable[ComponentBatchLike]:
         """

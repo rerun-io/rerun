@@ -172,15 +172,9 @@ def log(
                 f"but got {type(entity)} instead."
             )
 
-    if hasattr(entity, "num_instances"):
-        num_instances = entity.num_instances()
-    else:
-        num_instances = None
-
     log_components(
         entity_path=entity_path,
         components=components,
-        num_instances=num_instances,
         static=static,
         recording=recording,  # NOLINT
     )
@@ -191,7 +185,6 @@ def log_components(
     entity_path: str | list[str],
     components: Iterable[ComponentBatchLike],
     *,
-    num_instances: int | None = None,
     timeless: bool = False,
     static: bool = False,
     recording: RecordingStream | None = None,
@@ -216,11 +209,7 @@ def log_components(
         See <https://www.rerun.io/docs/concepts/entity-path> for more on entity paths.
 
     components:
-        A collection of `ComponentBatchLike` objects that
-
-    num_instances:
-        Optional. The number of instances in each batch. If not provided, the max of all
-        components will be used instead.
+        A collection of `ComponentBatchLike` objects.
 
     timeless:
         Deprecated. Refer to `static` instead.
@@ -262,9 +251,6 @@ def log_components(
 
     descriptors = [comp.component_descriptor() for comp in components]
     arrow_arrays = [comp.as_arrow_array() for comp in components]
-
-    if num_instances is None:
-        num_instances = max(len(arr) for arr in arrow_arrays)
 
     if isinstance(entity_path, list):
         entity_path = bindings.new_entity_path([str(part) for part in entity_path])
