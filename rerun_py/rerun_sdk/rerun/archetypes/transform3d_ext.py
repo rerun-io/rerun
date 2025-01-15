@@ -129,13 +129,13 @@ class Transform3DExt:
 
             if clear:
                 self.__attrs_init__(
-                    translation=translation or [],
-                    rotation_axis_angle=rotation_axis_angle or [],
-                    quaternion=quaternion or [],
-                    scale=scale or [],
-                    mat3x3=mat3x3 or [],
-                    relation=relation or [],
-                    axis_length=axis_length or [],
+                    translation=translation if translation is not None else [],
+                    rotation_axis_angle=rotation_axis_angle if rotation_axis_angle is not None else [],
+                    quaternion=quaternion if quaternion is not None else [],
+                    scale=scale if scale is not None else [],
+                    mat3x3=mat3x3 if mat3x3 is not None else [],
+                    relation=relation if relation is not None else [],
+                    axis_length=axis_length if axis_length is not None else [],
                 )
             else:
                 self.__attrs_init__(
