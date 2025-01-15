@@ -260,12 +260,12 @@ impl PyStorageNodeClient {
     /// Parameters
     /// ----------
     /// id : str
-    ///    The id of the recording to get the schema for.
+    ///     The id of the recording to get the schema for.
     ///
     /// Returns
     /// -------
     /// Schema
-    ///    The schema of the recording.
+    ///     The schema of the recording.
     fn get_recording_schema(&mut self, id: String) -> PyResult<PySchema> {
         self.runtime.block_on(async {
             let request = GetRecordingSchemaRequest {
