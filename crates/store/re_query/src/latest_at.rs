@@ -508,7 +508,7 @@ impl LatestAtResults {
 
     /// Returns the deserialized data for the specified component, assuming a mono-batch.
     ///
-    /// Returns an error if the data cannot be deserialized, or if the underlying batch is not of unit length.
+    /// Logs an error if the data cannot be deserialized, or if the underlying batch is not of unit length.
     #[inline]
     pub fn component_mono<C: Component>(&self) -> Option<C> {
         self.component_mono_with_log_level(re_log::Level::Error)
@@ -516,7 +516,7 @@ impl LatestAtResults {
 
     /// Returns the deserialized data for the specified component, assuming a mono-batch.
     ///
-    /// Returns an error if the data cannot be deserialized, or if the underlying batch is not of unit length.
+    /// Returns none if the data cannot be deserialized, or if the underlying batch is not of unit length.
     #[inline]
     pub fn component_mono_quiet<C: Component>(&self) -> Option<C> {
         self.components

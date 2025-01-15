@@ -7,7 +7,6 @@ use re_types::{
     archetypes::DepthImage,
     components::{
         self, Colormap, DepthMeter, DrawOrder, FillRatio, ImageBuffer, ImageFormat, ValueRange,
-        ViewCoordinates,
     },
     image::ImageKind,
     Component as _,
@@ -190,7 +189,7 @@ impl DepthImageVisualizer {
             * glam::Affine3A::from_mat3(
                 intrinsics
                     .camera_xyz
-                    .unwrap_or(ViewCoordinates::RDF) // TODO(#2641): This should come from archetype
+                    .unwrap_or(re_types::archetypes::Pinhole::DEFAULT_CAMERA_XYZ)
                     .from_rdf(),
             );
 

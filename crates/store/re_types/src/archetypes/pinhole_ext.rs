@@ -1,8 +1,16 @@
-use crate::datatypes::Vec2D;
+use crate::{components::ViewCoordinates, datatypes::Vec2D};
 
 use super::Pinhole;
 
 impl Pinhole {
+    /// Camera orientation used when there's no camera orientation explicitly logged.
+    ///
+    /// - x pointing right
+    /// - y pointing down
+    /// - z pointing into the image plane
+    ///   (this is convenient for reading out a depth image which has typically positive z values)
+    pub const DEFAULT_CAMERA_XYZ: ViewCoordinates = ViewCoordinates::RDF;
+
     /// Creates a pinhole from the camera focal length and resolution, both specified in pixels.
     ///
     /// The focal length is the diagonal of the projection matrix.

@@ -215,6 +215,12 @@ pub trait DataResultQuery {
         latest_at_query: &'a LatestAtQuery,
     ) -> HybridLatestAtResults<'a>;
 
+    fn latest_at_with_blueprint_resolved_data_for_component<'a, C: re_types_core::Component>(
+        &'a self,
+        ctx: &'a ViewContext<'a>,
+        latest_at_query: &'a LatestAtQuery,
+    ) -> HybridLatestAtResults<'a>;
+
     fn query_archetype_with_history<'a, A: re_types_core::Archetype>(
         &'a self,
         ctx: &'a ViewContext<'a>,
@@ -235,14 +241,30 @@ impl DataResultQuery for DataResult {
         ctx: &'a ViewContext<'a>,
         latest_at_query: &'a LatestAtQuery,
     ) -> HybridLatestAtResults<'a> {
-        let query_shadowed_defaults = false;
+        let query_shadowed_components = false;
         latest_at_with_blueprint_resolved_data(
             ctx,
             None,
             latest_at_query,
             self,
             A::all_components().iter().map(|descr| descr.component_name),
-            query_shadowed_defaults,
+            query_shadowed_components,
+        )
+    }
+
+    fn latest_at_with_blueprint_resolved_data_for_component<'a, C: re_types_core::Component>(
+        &'a self,
+        ctx: &'a ViewContext<'a>,
+        latest_at_query: &'a LatestAtQuery,
+    ) -> HybridLatestAtResults<'a> {
+        let query_shadowed_components = false;
+        latest_at_with_blueprint_resolved_data(
+            ctx,
+            None,
+            latest_at_query,
+            self,
+            std::iter::once(C::name()),
+            query_shadowed_components,
         )
     }
 
