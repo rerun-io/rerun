@@ -198,6 +198,7 @@ pub const ATTR_CPP_NO_FIELD_CTORS: &str = "attr.cpp.no_field_ctors";
 pub const ATTR_CPP_RENAME_FIELD: &str = "attr.cpp.rename_field";
 
 pub const ATTR_RUST_ARCHETYPE_EAGER: &str = "attr.rust.archetype_eager";
+pub const ATTR_RUST_ARCHETYPE_NATIVE: &str = "attr.rust.archetype_native";
 pub const ATTR_RUST_CUSTOM_CLAUSE: &str = "attr.rust.custom_clause";
 pub const ATTR_RUST_DERIVE: &str = "attr.rust.derive";
 pub const ATTR_RUST_DERIVE_ONLY: &str = "attr.rust.derive_only";

@@ -17,10 +17,11 @@ namespace rerun.archetypes;
 /// \example archetypes/transform3d_simple title="Variety of 3D transforms" image="https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/1200w.png"
 /// \example archetypes/transform3d_hierarchy title="Transform hierarchy" image="https://static.rerun.io/transform_hierarchy/cb7be7a5a31fcb2efc02ba38e434849248f87554/1200w.png"
 table Transform3D (
+  "attr.rust.archetype_eager",
   "attr.docs.category": "Spatial 3D",
   "attr.docs.view_types": "Spatial3DView, Spatial2DView: if logged above active projection",
   "attr.rerun.log_missing_as_empty", // See https://github.com/rerun-io/rerun/issues/6909
-  "attr.rust.derive": "Copy, PartialEq"
+  "attr.rust.derive": "PartialEq"
 ) {
   /// Translation vector.
   translation: rerun.components.Translation3D ("attr.rerun.component_optional", nullable, order: 1100);

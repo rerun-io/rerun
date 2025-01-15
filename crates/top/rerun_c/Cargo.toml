@@ -35,6 +35,7 @@ test = false
 
 
 [dependencies]
+re_arrow_util.workspace = true
 re_log = { workspace = true, features = ["setup"] }
 re_sdk = { workspace = true, features = ["data_loaders"] }
 re_video.workspace = true

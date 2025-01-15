@@ -5,6 +5,7 @@ use arrow::{
     datatypes::{DataType, Field, Fields},
 };
 
+use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_tuid::Tuid;
 
 use crate::{DeserializationError, Loggable};
@@ -79,7 +80,7 @@ impl Loggable for Tuid {
         // NOTE: Unwrap is safe everywhere below, datatype is checked above.
         // NOTE: We don't even look at the validity, our datatype says we don't care.
 
-        let array = array.as_any().downcast_ref::<StructArray>().unwrap();
+        let array = array.downcast_array_ref::<StructArray>().unwrap();
 
         // TODO(cmc): Can we rely on the fields ordering from the datatype? I would assume not
         // since we generally cannot rely on anything when it comes to arrow…
@@ -99,8 +100,7 @@ impl Loggable for Tuid {
 
         let get_buffer = |field_index: usize| {
             array.columns()[field_index]
-                .as_any()
-                .downcast_ref::<UInt64Array>()
+                .downcast_array_ref::<UInt64Array>()
                 .unwrap()
                 .values()
         };

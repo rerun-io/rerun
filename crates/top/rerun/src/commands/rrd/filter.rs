@@ -1,10 +1,15 @@
 use std::{collections::HashSet, io::IsTerminal};
 
 use anyhow::Context as _;
+use arrow::{
+    array::RecordBatch as ArrowRecordBatch,
+    datatypes::{Field as ArrowField, Schema as ArrowSchema},
+};
 use itertools::Either;
 
 use re_build_info::CrateVersion;
 use re_chunk::{external::crossbeam, TransportChunk};
+use re_sdk::{external::arrow, EntityPath};
 
 use crate::commands::read_rrd_streams_from_file_or_stdin;
 
@@ -106,22 +111,33 @@ impl FilterCommand {
                 Ok(msg) => {
                     let msg = match msg {
                         re_log_types::LogMsg::ArrowMsg(store_id, mut msg) => {
-                            if !should_keep_entity_path(&dropped_entity_paths, &msg.schema) {
+                            if !should_keep_entity_path(&dropped_entity_paths, &msg.batch.schema())
+                            {
                                 None
                             } else {
-                                let (fields, columns): (Vec<_>, Vec<_>) =
-                                    itertools::izip!(msg.schema.fields.iter(), msg.chunk.iter())
-                                        .filter(|(field, _col)| {
-                                            should_keep_timeline(&dropped_timelines, field)
-                                        })
-                                        .map(|(field, col)| (field.clone(), col.clone()))
-                                        .unzip();
+                                let (fields, columns): (Vec<_>, Vec<_>) = itertools::izip!(
+                                    &msg.batch.schema().fields,
+                                    msg.batch.columns()
+                                )
+                                .filter(|(field, _col)| {
+                                    should_keep_timeline(&dropped_timelines, field)
+                                })
+                                .map(|(field, col)| (field.clone(), col.clone()))
+                                .unzip();
 
-                                msg.schema.fields = fields;
-                                msg.chunk =
-                                    re_log_types::external::arrow2::chunk::Chunk::new(columns);
-
-                                Some(re_log_types::LogMsg::ArrowMsg(store_id, msg))
+                                if let Ok(new_batch) = ArrowRecordBatch::try_new(
+                                    ArrowSchema::new_with_metadata(
+                                        fields,
+                                        msg.batch.schema().metadata().clone(),
+                                    )
+                                    .into(),
+                                    columns,
+                                ) {
+                                    msg.batch = new_batch;
+                                    Some(re_log_types::LogMsg::ArrowMsg(store_id, msg))
+                                } else {
+                                    None // Probably failed because we filtered out everything
+                                }
                             }
                         }
 
@@ -150,7 +166,7 @@ impl FilterCommand {
         let rrd_out_size = encoding_handle
             .context("couldn't spawn IO thread")?
             .join()
-            .unwrap()?;
+            .map_err(|err| anyhow::anyhow!("Unknown error: {err:?}"))??; // NOLINT: there is no `Display` for this `err`
 
         let rrds_in_size = rx_size_bytes.recv().ok();
         let size_reduction =
@@ -185,26 +201,21 @@ impl FilterCommand {
 
 // ---
 
-use re_sdk::{
-    external::arrow2::{datatypes::Field as ArrowField, datatypes::Schema as Arrow2Schema},
-    EntityPath,
-};
-
 fn should_keep_timeline(dropped_timelines: &HashSet<&String>, field: &ArrowField) -> bool {
     let is_timeline = field
-        .metadata
+        .metadata()
         .get(TransportChunk::FIELD_METADATA_KEY_KIND)
         .map(|s| s.as_str())
         == Some(TransportChunk::FIELD_METADATA_VALUE_KIND_TIME);
 
-    let is_dropped = dropped_timelines.contains(&field.name);
+    let is_dropped = dropped_timelines.contains(field.name());
 
     !is_timeline || !is_dropped
 }
 
 fn should_keep_entity_path(
     dropped_entity_paths: &HashSet<EntityPath>,
-    schema: &Arrow2Schema,
+    schema: &ArrowSchema,
 ) -> bool {
     let Some(entity_path) = schema
         .metadata

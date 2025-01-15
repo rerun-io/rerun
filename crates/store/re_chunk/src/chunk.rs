@@ -15,6 +15,7 @@ use arrow2::{
 use itertools::{izip, Itertools};
 use nohash_hasher::IntMap;
 
+use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_byte_size::SizeBytes as _;
 use re_log_types::{EntityPath, ResolvedTimeRange, Time, TimeInt, TimePoint, Timeline};
 use re_types_core::{
@@ -81,6 +82,20 @@ impl ChunkComponents {
             .or_default()
             .insert(component_desc, list_array.into())
             .map(|la| la.into())
+    }
+
+    #[inline]
+    pub fn insert_descriptor_arrow2(
+        &mut self,
+        component_desc: ComponentDescriptor,
+        list_array: Arrow2ListArray<i32>,
+    ) -> Option<Arrow2ListArray<i32>> {
+        // TODO(cmc): revert me
+        let component_desc = component_desc.untagged();
+        self.0
+            .entry(component_desc.component_name)
+            .or_default()
+            .insert(component_desc, list_array)
     }
 
     /// Returns all list arrays for the given component name.
@@ -181,7 +196,7 @@ impl FromIterator<(ComponentDescriptor, Arrow2ListArray<i32>)> for ChunkComponen
         let mut this = Self::default();
         {
             for (component_desc, list_array) in iter {
-                this.insert_descriptor(component_desc, list_array.into());
+                this.insert_descriptor_arrow2(component_desc, list_array);
             }
         }
         this
@@ -431,8 +446,7 @@ impl Chunk {
         let row_ids = <RowId as Loggable>::to_arrow(&row_ids)
             // Unwrap: native RowIds cannot fail to serialize.
             .unwrap()
-            .as_any()
-            .downcast_ref::<ArrowStructArray>()
+            .downcast_array_ref::<ArrowStructArray>()
             // Unwrap: RowId schema is known in advance to be a struct array -- always.
             .unwrap()
             .clone();
@@ -487,8 +501,7 @@ impl Chunk {
         let row_ids = <RowId as Loggable>::to_arrow(&row_ids)
             // Unwrap: native RowIds cannot fail to serialize.
             .unwrap()
-            .as_any()
-            .downcast_ref::<ArrowStructArray>()
+            .downcast_array_ref::<ArrowStructArray>()
             // Unwrap: RowId schema is known in advance to be a struct array -- always.
             .unwrap()
             .clone();
@@ -862,8 +875,7 @@ impl Chunk {
             .map_err(|err| ChunkError::Malformed {
                 reason: format!("RowIds failed to serialize: {err}"),
             })?
-            .as_any()
-            .downcast_ref::<ArrowStructArray>()
+            .downcast_array_ref::<ArrowStructArray>()
             // NOTE: impossible, but better safe than sorry.
             .ok_or_else(|| ChunkError::Malformed {
                 reason: "RowIds failed to downcast".to_owned(),
@@ -956,7 +968,7 @@ impl Chunk {
         list_array: Arrow2ListArray<i32>,
     ) -> ChunkResult<()> {
         self.components
-            .insert_descriptor(component_desc, list_array.into());
+            .insert_descriptor_arrow2(component_desc, list_array);
         self.sanity_check()
     }
 
@@ -1117,21 +1129,18 @@ impl TimeColumn {
         }
 
         // Sequence timelines are i64, but time columns are nanoseconds (also as i64).
-        if let Some(times) = array.as_any().downcast_ref::<arrow::array::Int64Array>() {
+        if let Some(times) = array.downcast_array_ref::<arrow::array::Int64Array>() {
             Ok(times.values().clone())
-        } else if let Some(times) = array
-            .as_any()
-            .downcast_ref::<arrow::array::TimestampNanosecondArray>()
+        } else if let Some(times) =
+            array.downcast_array_ref::<arrow::array::TimestampNanosecondArray>()
         {
             Ok(times.values().clone())
-        } else if let Some(times) = array
-            .as_any()
-            .downcast_ref::<arrow::array::Time64NanosecondArray>()
+        } else if let Some(times) =
+            array.downcast_array_ref::<arrow::array::Time64NanosecondArray>()
         {
             Ok(times.values().clone())
-        } else if let Some(times) = array
-            .as_any()
-            .downcast_ref::<arrow::array::DurationNanosecondArray>()
+        } else if let Some(times) =
+            array.downcast_array_ref::<arrow::array::DurationNanosecondArray>()
         {
             Ok(times.values().clone())
         } else {
@@ -1210,13 +1219,10 @@ impl Chunk {
         };
 
         #[allow(clippy::unwrap_used)]
-        let times = times.as_any().downcast_ref::<ArrowUInt64Array>().unwrap(); // sanity checked
+        let times = times.downcast_array_ref::<ArrowUInt64Array>().unwrap(); // sanity checked
 
         #[allow(clippy::unwrap_used)]
-        let counters = counters
-            .as_any()
-            .downcast_ref::<ArrowUInt64Array>()
-            .unwrap(); // sanity checked
+        let counters = counters.downcast_array_ref::<ArrowUInt64Array>().unwrap(); // sanity checked
 
         (times, counters)
     }

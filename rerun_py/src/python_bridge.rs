@@ -6,6 +6,7 @@ use std::io::IsTerminal as _;
 use std::path::PathBuf;
 use std::{borrow::Borrow, collections::HashMap};
 
+use arrow::array::RecordBatch as ArrowRecordBatch;
 use itertools::Itertools;
 use pyo3::{
     exceptions::PyRuntimeError,
@@ -45,9 +46,8 @@ fn all_recordings() -> parking_lot::MutexGuard<'static, HashMap<StoreId, Recordi
     ALL_RECORDINGS.get_or_init(Default::default).lock()
 }
 
-type GarbageChunk = arrow2::chunk::Chunk<Box<dyn arrow2::array::Array>>;
-type GarbageSender = crossbeam::channel::Sender<GarbageChunk>;
-type GarbageReceiver = crossbeam::channel::Receiver<GarbageChunk>;
+type GarbageSender = crossbeam::channel::Sender<ArrowRecordBatch>;
+type GarbageReceiver = crossbeam::channel::Receiver<ArrowRecordBatch>;
 
 /// ## Release Callbacks
 ///

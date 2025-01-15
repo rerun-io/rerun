@@ -4,8 +4,17 @@ pub mod wire;
 
 #[derive(Debug, thiserror::Error)]
 pub enum CodecError {
-    #[error("Arrow serialization error: {0}")]
-    ArrowSerialization(arrow2::error::Error),
+    #[error("Arrow IPC serialization error: {0}")]
+    ArrowSerialization(::arrow::error::ArrowError),
+
+    #[error("Arrow2 IPC serialization error: {0}")]
+    Arrow2Serialization(::arrow2::error::Error),
+
+    #[error("Invalid Chunk: {0}")]
+    InvalidChunk(::arrow::error::ArrowError),
+
+    #[error("Arrow IPC deserialization error: {0}")]
+    ArrowDeserialization(::arrow::error::ArrowError),
 
     #[error("Failed to decode message header {0}")]
     HeaderDecoding(std::io::Error),

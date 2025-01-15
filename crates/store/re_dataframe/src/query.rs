@@ -19,6 +19,7 @@ use arrow2::{
 use itertools::Itertools;
 
 use nohash_hasher::{IntMap, IntSet};
+use re_arrow_util::Arrow2ArrayDowncastRef as _;
 use re_chunk::{
     external::arrow::array::ArrayRef, Chunk, ComponentName, EntityPath, RangeQuery, RowId, TimeInt,
     Timeline, UnitChunkShared,
@@ -261,7 +262,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                                     archetype_name: descr.archetype_name,
                                     archetype_field_name: descr.archetype_field_name,
                                 },
-                                re_chunk::arrow2_util::new_list_array_of_empties(
+                                re_arrow_util::arrow2_util::new_list_array_of_empties(
                                     child_datatype,
                                     chunk.num_rows(),
                                 ),
@@ -373,82 +374,73 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     ) -> Vec<(usize, ColumnDescriptor)> {
         selection
             .iter()
-            .map(|column| {
-                match column {
-                    ColumnSelector::Time(selected_column) => {
-                        let TimeColumnSelector {
-                            timeline: selected_timeline,
-                        } = selected_column;
+            .map(|column| match column {
+                ColumnSelector::Time(selected_column) => {
+                    let TimeColumnSelector {
+                        timeline: selected_timeline,
+                    } = selected_column;
 
-                        view_contents
-                            .iter()
-                            .enumerate()
-                            .filter_map(|(idx, view_column)| match view_column {
-                                ColumnDescriptor::Time(view_descr) => Some((idx, view_descr)),
-                                ColumnDescriptor::Component(_) => None,
-                            })
-                            .find(|(_idx, view_descr)| {
-                                *view_descr.timeline.name() == *selected_timeline
-                            })
-                            .map_or_else(
-                                || {
-                                    (
-                                        usize::MAX,
-                                        ColumnDescriptor::Time(TimeColumnDescriptor {
-                                            // TODO(cmc): I picked a sequence here because I have to pick something.
-                                            // It doesn't matter, only the name will remain in the Arrow schema anyhow.
-                                            timeline: Timeline::new_sequence(*selected_timeline),
-                                            datatype: arrow2::datatypes::DataType::Null,
-                                        }),
-                                    )
-                                },
-                                |(idx, view_descr)| {
-                                    (idx, ColumnDescriptor::Time(view_descr.clone()))
-                                },
-                            )
-                    }
+                    view_contents
+                        .iter()
+                        .enumerate()
+                        .filter_map(|(idx, view_column)| match view_column {
+                            ColumnDescriptor::Time(view_descr) => Some((idx, view_descr)),
+                            ColumnDescriptor::Component(_) => None,
+                        })
+                        .find(|(_idx, view_descr)| *view_descr.name() == *selected_timeline)
+                        .map_or_else(
+                            || {
+                                (
+                                    usize::MAX,
+                                    ColumnDescriptor::Time(TimeColumnDescriptor::new_null(
+                                        *selected_timeline,
+                                    )),
+                                )
+                            },
+                            |(idx, view_descr)| (idx, ColumnDescriptor::Time(view_descr.clone())),
+                        )
+                }
 
-                    ColumnSelector::Component(selected_column) => {
-                        let ComponentColumnSelector {
-                            entity_path: selected_entity_path,
-                            component_name: selected_component_name,
-                        } = selected_column;
+                ColumnSelector::Component(selected_column) => {
+                    let ComponentColumnSelector {
+                        entity_path: selected_entity_path,
+                        component_name: selected_component_name,
+                    } = selected_column;
 
-                        view_contents
-                            .iter()
-                            .enumerate()
-                            .filter_map(|(idx, view_column)| match view_column {
-                                ColumnDescriptor::Component(view_descr) => Some((idx, view_descr)),
-                                ColumnDescriptor::Time(_) => None,
-                            })
-                            .find(|(_idx, view_descr)| {
-                                view_descr.entity_path == *selected_entity_path
-                                    && view_descr.component_name.matches(selected_component_name)
-                            })
-                            .map_or_else(
-                                || {
-                                    (
-                                        usize::MAX,
-                                        ColumnDescriptor::Component(ComponentColumnDescriptor {
-                                            entity_path: selected_entity_path.clone(),
-                                            archetype_name: None,
-                                            archetype_field_name: None,
-                                            component_name: ComponentName::from(
-                                                selected_component_name.clone(),
-                                            ),
-                                            store_datatype: arrow2::datatypes::DataType::Null,
-                                            is_static: false,
-                                            is_indicator: false,
-                                            is_tombstone: false,
-                                            is_semantically_empty: false,
-                                        }),
-                                    )
-                                },
-                                |(idx, view_descr)| {
-                                    (idx, ColumnDescriptor::Component(view_descr.clone()))
-                                },
-                            )
-                    }
+                    view_contents
+                        .iter()
+                        .enumerate()
+                        .filter_map(|(idx, view_column)| match view_column {
+                            ColumnDescriptor::Component(view_descr) => Some((idx, view_descr)),
+                            ColumnDescriptor::Time(_) => None,
+                        })
+                        .find(|(_idx, view_descr)| {
+                            view_descr.entity_path == *selected_entity_path
+                                && view_descr.component_name.matches(selected_component_name)
+                        })
+                        .map_or_else(
+                            || {
+                                (
+                                    usize::MAX,
+                                    ColumnDescriptor::Component(ComponentColumnDescriptor {
+                                        entity_path: selected_entity_path.clone(),
+                                        archetype_name: None,
+                                        archetype_field_name: None,
+                                        component_name: ComponentName::from(
+                                            selected_component_name.clone(),
+                                        ),
+                                        store_datatype: arrow2::datatypes::DataType::Null,
+                                        is_static: false,
+                                        is_indicator: false,
+                                        is_tombstone: false,
+                                        is_semantically_empty: false,
+                                    }),
+                                )
+                            },
+                            |(idx, view_descr)| {
+                                (idx, ColumnDescriptor::Component(view_descr.clone()))
+                            },
+                        )
                 }
             })
             .collect_vec()
@@ -527,8 +519,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
 
             let values = list_array
                 .values()
-                .as_any()
-                .downcast_ref::<Arrow2BooleanArray>()?;
+                .downcast_array2_ref::<Arrow2BooleanArray>()?;
 
             let indices = Arrow2PrimitiveArray::from_vec(
                 values
@@ -1248,14 +1239,10 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             .iter()
             .map(|(view_idx, column)| match column {
                 ColumnDescriptor::Time(descr) => {
-                    max_value_per_index.get(&descr.timeline).map_or_else(
+                    max_value_per_index.get(&descr.timeline()).map_or_else(
                         || arrow2::array::new_null_array(column.datatype(), 1),
                         |(_time, time_sliced)| {
-                            descr
-                                .timeline
-                                .typ()
-                                .make_arrow_array(time_sliced.clone())
-                                .into()
+                            descr.typ().make_arrow_array(time_sliced.clone()).into()
                         },
                     )
                 }
@@ -1281,10 +1268,10 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     /// See [`Self::next_row`] for more information.
     #[inline]
     pub fn next_row_batch(&self) -> Option<RecordBatch> {
-        Some(RecordBatch {
-            schema: self.schema().clone(),
-            data: Arrow2Chunk::new(self.next_row_arrow2()?),
-        })
+        Some(RecordBatch::new(
+            self.schema().clone(),
+            Arrow2Chunk::new(self.next_row_arrow2()?),
+        ))
     }
 
     #[inline]
@@ -1299,10 +1286,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         #[allow(clippy::unwrap_used)]
         let schema = self.state.get().unwrap().arrow_schema.clone();
 
-        Some(RecordBatch {
-            schema,
-            data: Arrow2Chunk::new(row),
-        })
+        Some(RecordBatch::new(schema, Arrow2Chunk::new(row)))
     }
 }
 
@@ -1340,7 +1324,8 @@ mod tests {
     use std::sync::Arc;
 
     use re_chunk::{
-        arrow2_util::concatenate_record_batches, Chunk, ChunkId, RowId, TimePoint, TransportChunk,
+        concat_record_batches::concatenate_record_batches, Chunk, ChunkId, RowId, TimePoint,
+        TransportChunk,
     };
     use re_chunk_store::{
         ChunkStore, ChunkStoreConfig, ChunkStoreHandle, ResolvedTimeRange, TimeInt,
@@ -1413,7 +1398,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
+            let got = format!("{:#?}", dataframe.all_columns_collected());
             let expected = unindent::unindent(
                 "\
                 [
@@ -1448,7 +1433,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
+            let got = format!("{:#?}", dataframe.all_columns_collected());
             let expected = unindent::unindent(
                 "\
                 [
@@ -1495,7 +1480,7 @@ mod tests {
         )?;
         eprintln!("{dataframe}");
 
-        let got = format!("{:#?}", dataframe.data.iter().collect_vec());
+        let got = format!("{:#?}", dataframe.all_columns_collected());
         let expected = unindent::unindent(
             "\
             [
@@ -1541,7 +1526,7 @@ mod tests {
         )?;
         eprintln!("{dataframe}");
 
-        let got = format!("{:#?}", dataframe.data.iter().collect_vec());
+        let got = format!("{:#?}", dataframe.all_columns_collected());
         let expected = unindent::unindent(
             "\
             [
@@ -1593,7 +1578,7 @@ mod tests {
         )?;
         eprintln!("{dataframe}");
 
-        let got = format!("{:#?}", dataframe.data.iter().collect_vec());
+        let got = format!("{:#?}", dataframe.all_columns_collected());
         let expected = unindent::unindent(
             "\
             [
@@ -1648,7 +1633,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
+            let got = format!("{:#?}", dataframe.all_columns_collected());
             let expected = unindent::unindent(
                 "\
                 [
@@ -1691,7 +1676,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
+            let got = format!("{:#?}", dataframe.all_columns_collected());
             let expected = unindent::unindent(
                 "\
                 [
@@ -1745,7 +1730,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
+            let got = format!("{:#?}", dataframe.all_columns_collected());
             let expected = "[]";
 
             similar_asserts::assert_eq!(expected, got);
@@ -1774,7 +1759,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
+            let got = format!("{:#?}", dataframe.all_columns_collected());
             let expected = "[]";
 
             similar_asserts::assert_eq!(expected, got);
@@ -1803,7 +1788,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
+            let got = format!("{:#?}", dataframe.all_columns_collected());
             let expected = unindent::unindent(
                 "\
                 [
@@ -1842,7 +1827,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
+            let got = format!("{:#?}", dataframe.all_columns_collected());
             let expected = unindent::unindent(
                 "\
                 [
@@ -1897,7 +1882,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
+            let got = format!("{:#?}", dataframe.all_columns_collected());
             let expected = "[]";
 
             similar_asserts::assert_eq!(expected, got);
@@ -1937,7 +1922,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
+            let got = format!("{:#?}", dataframe.all_columns_collected());
             let expected = unindent::unindent(
                 "\
                 [
@@ -1987,7 +1972,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
+            let got = format!("{:#?}", dataframe.all_columns_collected());
             let expected = "[]";
 
             similar_asserts::assert_eq!(expected, got);
@@ -2023,7 +2008,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
+            let got = format!("{:#?}", dataframe.all_columns_collected());
             let expected = unindent::unindent(
                 "\
                 [
@@ -2074,7 +2059,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
+            let got = format!("{:#?}", dataframe.all_columns_collected());
             let expected = unindent::unindent(
                 "\
                 [
@@ -2147,7 +2132,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
+            let got = format!("{:#?}", dataframe.all_columns_collected());
             let expected = unindent::unindent(
                 "\
                 [
@@ -2235,7 +2220,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
+            let got = format!("{:#?}", dataframe.all_columns_collected());
             let expected = unindent::unindent(
                 "\
                 [
@@ -2289,7 +2274,7 @@ mod tests {
             )?;
             eprintln!("{dataframe}");
 
-            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
+            let got = format!("{:#?}", dataframe.all_columns_collected());
             let expected = unindent::unindent(
             "\
             [
@@ -2330,7 +2315,7 @@ mod tests {
             // static clear semantics in general are pretty unhinged right now, especially when
             // ranges are involved.
             // It's extremely niche, our time is better spent somewhere else right now.
-            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
+            let got = format!("{:#?}", dataframe.all_columns_collected());
             let expected = unindent::unindent(
             "\
             [
@@ -2390,8 +2375,8 @@ mod tests {
                         &query_handle.batch_iter().take(3).collect_vec(),
                     )?;
 
-                    let expected = format!("{:#?}", expected.data.iter().collect_vec());
-                    let got = format!("{:#?}", got.data.iter().collect_vec());
+                    let expected = format!("{:#?}", expected.all_columns_collected());
+                    let got = format!("{:#?}", got.all_columns_collected());
 
                     similar_asserts::assert_eq!(expected, got);
                 }
@@ -2431,8 +2416,8 @@ mod tests {
                         &query_handle.batch_iter().take(3).collect_vec(),
                     )?;
 
-                    let expected = format!("{:#?}", expected.data.iter().collect_vec());
-                    let got = format!("{:#?}", got.data.iter().collect_vec());
+                    let expected = format!("{:#?}", expected.all_columns_collected());
+                    let got = format!("{:#?}", got.all_columns_collected());
 
                     similar_asserts::assert_eq!(expected, got);
                 }
@@ -2475,8 +2460,8 @@ mod tests {
                         &query_handle.batch_iter().take(3).collect_vec(),
                     )?;
 
-                    let expected = format!("{:#?}", expected.data.iter().collect_vec());
-                    let got = format!("{:#?}", got.data.iter().collect_vec());
+                    let expected = format!("{:#?}", expected.all_columns_collected());
+                    let got = format!("{:#?}", got.all_columns_collected());
 
                     similar_asserts::assert_eq!(expected, got);
                 }
@@ -2513,8 +2498,8 @@ mod tests {
                         &query_handle.batch_iter().take(3).collect_vec(),
                     )?;
 
-                    let expected = format!("{:#?}", expected.data.iter().collect_vec());
-                    let got = format!("{:#?}", got.data.iter().collect_vec());
+                    let expected = format!("{:#?}", expected.all_columns_collected());
+                    let got = format!("{:#?}", got.all_columns_collected());
 
                     similar_asserts::assert_eq!(expected, got);
                 }
@@ -2581,7 +2566,7 @@ mod tests {
                 )?;
                 eprintln!("{dataframe}");
 
-                let got = format!("{:#?}", dataframe.data.iter().collect_vec());
+                let got = format!("{:#?}", dataframe.all_columns_collected());
                 let expected = unindent::unindent(
                     "\
                     [
@@ -2625,7 +2610,7 @@ mod tests {
                 )?;
                 eprintln!("{dataframe}");
 
-                let got = format!("{:#?}", dataframe.data.iter().collect_vec());
+                let got = format!("{:#?}", dataframe.all_columns_collected());
                 let expected = unindent::unindent(
                     "\
                     [

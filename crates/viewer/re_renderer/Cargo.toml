@@ -106,6 +106,8 @@ wasm-bindgen.workspace = true
 
 
 [dev-dependencies]
+re_log = { workspace = true, features = ["setup"] }
+pollster.workspace = true
 unindent.workspace = true
 
 # For build.rs:

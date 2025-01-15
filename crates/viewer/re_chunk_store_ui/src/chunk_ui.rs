@@ -194,24 +194,25 @@ impl ChunkUi {
 
     // Returns true if the user wants to exit the chunk viewer.
     fn chunk_info_ui(&self, ui: &mut egui::Ui) -> bool {
-        let metadata_ui = |ui: &mut egui::Ui, metadata: &BTreeMap<String, String>| {
-            for (key, value) in metadata {
-                ui.list_item_flat_noninteractive(
-                    list_item::PropertyContent::new(key).value_text(value),
-                );
-            }
-        };
+        let metadata_ui =
+            |ui: &mut egui::Ui, metadata: &std::collections::HashMap<String, String>| {
+                for (key, value) in metadata.iter().sorted() {
+                    ui.list_item_flat_noninteractive(
+                        list_item::PropertyContent::new(key).value_text(value),
+                    );
+                }
+            };
 
         let fields_ui = |ui: &mut egui::Ui, transport: &TransportChunk| {
-            for field in &transport.schema.fields {
-                ui.push_id(field.name.clone(), |ui| {
-                    ui.list_item_collapsible_noninteractive_label(&field.name, false, |ui| {
+            for field in &transport.schema_ref().fields {
+                ui.push_id(field.name().clone(), |ui| {
+                    ui.list_item_collapsible_noninteractive_label(field.name(), false, |ui| {
                         ui.list_item_collapsible_noninteractive_label("Data type", false, |ui| {
-                            ui.label(format!("{:#?}", field.data_type));
+                            ui.label(format!("{:#?}", field.data_type()));
                         });
 
                         ui.list_item_collapsible_noninteractive_label("Metadata", false, |ui| {
-                            metadata_ui(ui, &field.metadata);
+                            metadata_ui(ui, field.metadata());
                         });
                     });
                 });
@@ -279,7 +280,7 @@ impl ChunkUi {
                 Ok(transport) => {
                     ui.list_item_collapsible_noninteractive_label("Transport", false, |ui| {
                         ui.list_item_collapsible_noninteractive_label("Metadata", false, |ui| {
-                            metadata_ui(ui, &transport.schema.metadata);
+                            metadata_ui(ui, &transport.schema_ref().metadata);
                         });
                         ui.list_item_collapsible_noninteractive_label("Fields", false, |ui| {
                             fields_ui(ui, &transport);

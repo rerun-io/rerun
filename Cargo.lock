@@ -365,6 +365,7 @@ dependencies = [
  "arrow-buffer",
  "arrow-cast",
  "arrow-data",
+ "arrow-ipc",
  "arrow-ord",
  "arrow-row",
  "arrow-schema",
@@ -455,6 +456,20 @@ checksum = "07884ea216994cdc32a2d5f8274a8bee979cfe90274b83f86f440866ee3132c7"
 dependencies = [
  "planus",
  "serde",
+]
+
+[[package]]
+name = "arrow-ipc"
+version = "53.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0ed91bdeaff5a1c00d28d8f73466bcb64d32bbd7093b5a30156b4b9f4dba3eee"
+dependencies = [
+ "arrow-array",
+ "arrow-buffer",
+ "arrow-cast",
+ "arrow-data",
+ "arrow-schema",
+ "flatbuffers",
 ]
 
 [[package]]
@@ -3885,7 +3900,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4979f22fdb869068da03c9f7528f8297c6fd2606bc3a4affe42e6a823fdb8da4"
 dependencies = [
  "cfg-if",
- "windows-targets 0.52.6",
+ "windows-targets 0.48.5",
 ]
 
 [[package]]
@@ -5203,7 +5218,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c1318b19085f08681016926435853bbf7858f9c082d0999b80550ff5d9abe15"
 dependencies = [
  "bytes",
- "heck 0.5.0",
+ "heck 0.4.1",
  "itertools 0.13.0",
  "log",
  "multimap",
@@ -5569,7 +5584,7 @@ dependencies = [
 [[package]]
 name = "re_arrow2"
 version = "0.18.1"
-source = "git+https://github.com/rerun-io/re_arrow2.git?branch=main#573b5bafd071d09698353d8f0de8d31f3fa59017"
+source = "git+https://github.com/rerun-io/re_arrow2.git?branch=main#61ac48418df229584155c5f669477bedf76d4505"
 dependencies = [
  "ahash",
  "arrow-array",
@@ -5590,7 +5605,20 @@ dependencies = [
  "hashbrown 0.14.5",
  "num-traits",
  "rustc_version",
+ "serde",
+ "serde_derive",
  "simdutf8",
+]
+
+[[package]]
+name = "re_arrow_util"
+version = "0.22.0-alpha.1+dev"
+dependencies = [
+ "arrow",
+ "itertools 0.13.0",
+ "re_arrow2",
+ "re_log",
+ "re_tracing",
 ]
 
 [[package]]
@@ -5675,6 +5703,7 @@ dependencies = [
  "nohash-hasher",
  "rand",
  "re_arrow2",
+ "re_arrow_util",
  "re_byte_size",
  "re_error",
  "re_format",
@@ -5708,6 +5737,7 @@ dependencies = [
  "parking_lot",
  "rand",
  "re_arrow2",
+ "re_arrow_util",
  "re_byte_size",
  "re_chunk",
  "re_format",
@@ -5718,6 +5748,7 @@ dependencies = [
  "re_tracing",
  "re_types",
  "re_types_core",
+ "serde_json",
  "similar-asserts",
  "thiserror 1.0.65",
  "tinyvec",
@@ -5886,6 +5917,7 @@ dependencies = [
  "nohash-hasher",
  "rayon",
  "re_arrow2",
+ "re_arrow_util",
  "re_chunk",
  "re_chunk_store",
  "re_log",
@@ -5980,9 +6012,10 @@ dependencies = [
 name = "re_format_arrow"
 version = "0.22.0-alpha.1+dev"
 dependencies = [
+ "arrow",
  "comfy-table",
  "itertools 0.13.0",
- "re_arrow2",
+ "re_arrow_util",
  "re_tuid",
  "re_types_core",
 ]
@@ -5991,6 +6024,8 @@ dependencies = [
 name = "re_grpc_client"
 version = "0.22.0-alpha.1+dev"
 dependencies = [
+ "arrow",
+ "re_arrow_util",
  "re_chunk",
  "re_error",
  "re_log",
@@ -6057,6 +6092,7 @@ dependencies = [
 name = "re_log_encoding"
 version = "0.22.0-alpha.1+dev"
 dependencies = [
+ "arrow",
  "criterion",
  "ehttp",
  "js-sys",
@@ -6074,6 +6110,7 @@ dependencies = [
  "re_types",
  "rmp-serde",
  "serde_test",
+ "similar-asserts",
  "thiserror 1.0.65",
  "wasm-bindgen",
  "wasm-bindgen-futures",
@@ -6102,6 +6139,7 @@ dependencies = [
  "num-derive",
  "num-traits",
  "re_arrow2",
+ "re_arrow_util",
  "re_build_info",
  "re_byte_size",
  "re_format",
@@ -6205,6 +6243,7 @@ dependencies = [
  "paste",
  "rand",
  "re_arrow2",
+ "re_arrow_util",
  "re_byte_size",
  "re_chunk",
  "re_chunk_store",
@@ -6269,6 +6308,7 @@ dependencies = [
  "ordered-float",
  "parking_lot",
  "pathdiff",
+ "pollster 0.4.0",
  "profiling",
  "re_arrow2",
  "re_build_tools",
@@ -6563,6 +6603,7 @@ dependencies = [
  "nohash-hasher",
  "once_cell",
  "re_arrow2",
+ "re_arrow_util",
  "re_byte_size",
  "re_case",
  "re_error",
@@ -6591,6 +6632,7 @@ dependencies = [
  "once_cell",
  "parking_lot",
  "rand",
+ "re_arrow_util",
  "re_entity_db",
  "re_format",
  "re_log",
@@ -6685,6 +6727,7 @@ dependencies = [
  "egui",
  "egui_table",
  "itertools 0.13.0",
+ "re_arrow_util",
  "re_chunk_store",
  "re_dataframe",
  "re_error",
@@ -7349,6 +7392,7 @@ dependencies = [
  "once_cell",
  "parking_lot",
  "re_arrow2",
+ "re_arrow_util",
  "re_log",
  "re_sdk",
  "re_video",
@@ -7372,6 +7416,7 @@ dependencies = [
  "pyo3-build-config",
  "rand",
  "re_arrow2",
+ "re_arrow_util",
  "re_build_info",
  "re_build_tools",
  "re_chunk",

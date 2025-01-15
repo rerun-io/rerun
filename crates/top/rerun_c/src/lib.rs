@@ -14,11 +14,11 @@ mod video;
 
 use std::ffi::{c_char, c_uchar, CString};
 
-use component_type_registry::COMPONENT_TYPES;
-use once_cell::sync::Lazy;
-
 use arrow::array::ArrayRef as ArrowArrayRef;
 use arrow_utils::arrow_array_from_c_ffi;
+use once_cell::sync::Lazy;
+
+use re_arrow_util::Arrow2ArrayDowncastRef as _;
 use re_sdk::{
     external::nohash_hasher::IntMap,
     log::{Chunk, ChunkId, PendingRow, TimeColumn},
@@ -26,6 +26,8 @@ use re_sdk::{
     ComponentDescriptor, EntityPath, RecordingStream, RecordingStreamBuilder, StoreKind, TimePoint,
     Timeline,
 };
+
+use component_type_registry::COMPONENT_TYPES;
 use recording_streams::{recording_stream, RECORDING_STREAMS};
 
 // ----------------------------------------------------------------------------
@@ -997,8 +999,7 @@ fn rr_recording_stream_send_columns_impl(
 
                 let component_values_untyped = unsafe { arrow_array_from_c_ffi(array, datatype) }?;
                 let component_values = component_values_untyped
-                    .as_any()
-                    .downcast_ref::<arrow2::array::ListArray<i32>>()
+                    .downcast_array2_ref::<arrow2::array::ListArray<i32>>()
                     .ok_or_else(|| {
                         CError::new(
                             CErrorCode::ArrowFfiArrayImportError,

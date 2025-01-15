@@ -166,31 +166,31 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/transform_hierarchy/cb7be7a5a31fcb2efc02ba38e434849248f87554/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, Copy, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub struct Transform3D {
     /// Translation vector.
-    pub translation: Option<crate::components::Translation3D>,
+    pub translation: Option<SerializedComponentBatch>,
 
     /// Rotation via axis + angle.
-    pub rotation_axis_angle: Option<crate::components::RotationAxisAngle>,
+    pub rotation_axis_angle: Option<SerializedComponentBatch>,
 
     /// Rotation via quaternion.
-    pub quaternion: Option<crate::components::RotationQuat>,
+    pub quaternion: Option<SerializedComponentBatch>,
 
     /// Scaling factor.
-    pub scale: Option<crate::components::Scale3D>,
+    pub scale: Option<SerializedComponentBatch>,
 
     /// 3x3 transformation matrix.
-    pub mat3x3: Option<crate::components::TransformMat3x3>,
+    pub mat3x3: Option<SerializedComponentBatch>,
 
     /// Specifies the relation this transform establishes between this entity and its parent.
-    pub relation: Option<crate::components::TransformRelation>,
+    pub relation: Option<SerializedComponentBatch>,
 
     /// Visual length of the 3 axes.
     ///
     /// The length is interpreted in the local coordinate system of the transform.
     /// If the transform is scaled, the axes will be scaled accordingly.
-    pub axis_length: Option<crate::components::AxisLength>,
+    pub axis_length: Option<SerializedComponentBatch>,
 }
 
 impl Transform3D {
@@ -362,72 +362,35 @@ impl ::re_types_core::Archetype for Transform3D {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
         let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
-        let translation = if let Some(array) = arrays_by_descr.get(&Self::descriptor_translation())
-        {
-            <crate::components::Translation3D>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Transform3D#translation")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
-        let rotation_axis_angle =
-            if let Some(array) = arrays_by_descr.get(&Self::descriptor_rotation_axis_angle()) {
-                <crate::components::RotationAxisAngle>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Transform3D#rotation_axis_angle")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-            } else {
-                None
-            };
-        let quaternion = if let Some(array) = arrays_by_descr.get(&Self::descriptor_quaternion()) {
-            <crate::components::RotationQuat>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Transform3D#quaternion")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
-        let scale = if let Some(array) = arrays_by_descr.get(&Self::descriptor_scale()) {
-            <crate::components::Scale3D>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Transform3D#scale")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
-        let mat3x3 = if let Some(array) = arrays_by_descr.get(&Self::descriptor_mat3x3()) {
-            <crate::components::TransformMat3x3>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Transform3D#mat3x3")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
-        let relation = if let Some(array) = arrays_by_descr.get(&Self::descriptor_relation()) {
-            <crate::components::TransformRelation>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Transform3D#relation")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
-        let axis_length = if let Some(array) = arrays_by_descr.get(&Self::descriptor_axis_length())
-        {
-            <crate::components::AxisLength>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Transform3D#axis_length")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
+        let translation = arrays_by_descr
+            .get(&Self::descriptor_translation())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_translation())
+            });
+        let rotation_axis_angle = arrays_by_descr
+            .get(&Self::descriptor_rotation_axis_angle())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_rotation_axis_angle())
+            });
+        let quaternion = arrays_by_descr
+            .get(&Self::descriptor_quaternion())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_quaternion())
+            });
+        let scale = arrays_by_descr
+            .get(&Self::descriptor_scale())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_scale()));
+        let mat3x3 = arrays_by_descr
+            .get(&Self::descriptor_mat3x3())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_mat3x3()));
+        let relation = arrays_by_descr
+            .get(&Self::descriptor_relation())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_relation()));
+        let axis_length = arrays_by_descr
+            .get(&Self::descriptor_axis_length())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_axis_length())
+            });
         Ok(Self {
             translation,
             rotation_axis_angle,
@@ -441,53 +404,18 @@ impl ::re_types_core::Archetype for Transform3D {
 }
 
 impl ::re_types_core::AsComponents for Transform3D {
-    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
-        re_tracing::profile_function!();
+    #[inline]
+    fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
-            (Some(&self.translation as &dyn ComponentBatch)).map(|batch| {
-                ::re_types_core::ComponentBatchCowWithDescriptor {
-                    batch: batch.into(),
-                    descriptor_override: Some(Self::descriptor_translation()),
-                }
-            }),
-            (Some(&self.rotation_axis_angle as &dyn ComponentBatch)).map(|batch| {
-                ::re_types_core::ComponentBatchCowWithDescriptor {
-                    batch: batch.into(),
-                    descriptor_override: Some(Self::descriptor_rotation_axis_angle()),
-                }
-            }),
-            (Some(&self.quaternion as &dyn ComponentBatch)).map(|batch| {
-                ::re_types_core::ComponentBatchCowWithDescriptor {
-                    batch: batch.into(),
-                    descriptor_override: Some(Self::descriptor_quaternion()),
-                }
-            }),
-            (Some(&self.scale as &dyn ComponentBatch)).map(|batch| {
-                ::re_types_core::ComponentBatchCowWithDescriptor {
-                    batch: batch.into(),
-                    descriptor_override: Some(Self::descriptor_scale()),
-                }
-            }),
-            (Some(&self.mat3x3 as &dyn ComponentBatch)).map(|batch| {
-                ::re_types_core::ComponentBatchCowWithDescriptor {
-                    batch: batch.into(),
-                    descriptor_override: Some(Self::descriptor_mat3x3()),
-                }
-            }),
-            (Some(&self.relation as &dyn ComponentBatch)).map(|batch| {
-                ::re_types_core::ComponentBatchCowWithDescriptor {
-                    batch: batch.into(),
-                    descriptor_override: Some(Self::descriptor_relation()),
-                }
-            }),
-            (Some(&self.axis_length as &dyn ComponentBatch)).map(|batch| {
-                ::re_types_core::ComponentBatchCowWithDescriptor {
-                    batch: batch.into(),
-                    descriptor_override: Some(Self::descriptor_axis_length()),
-                }
-            }),
+            Self::indicator().serialized(),
+            self.translation.clone(),
+            self.rotation_axis_angle.clone(),
+            self.quaternion.clone(),
+            self.scale.clone(),
+            self.mat3x3.clone(),
+            self.relation.clone(),
+            self.axis_length.clone(),
         ]
         .into_iter()
         .flatten()
@@ -498,17 +426,45 @@ impl ::re_types_core::AsComponents for Transform3D {
 impl ::re_types_core::ArchetypeReflectionMarker for Transform3D {}
 
 impl Transform3D {
-    /// Create a new `Transform3D` which when logged will clear the values of all components.
+    /// Update only some specific fields of a `Transform3D`.
     #[inline]
-    pub fn clear() -> Self {
+    pub fn update_fields() -> Self {
+        Self::default()
+    }
+
+    /// Clear all the fields of a `Transform3D`.
+    #[inline]
+    pub fn clear_fields() -> Self {
+        use ::re_types_core::Loggable as _;
         Self {
-            translation: None,
-            rotation_axis_angle: None,
-            quaternion: None,
-            scale: None,
-            mat3x3: None,
-            relation: None,
-            axis_length: None,
+            translation: Some(SerializedComponentBatch::new(
+                crate::components::Translation3D::arrow_empty(),
+                Self::descriptor_translation(),
+            )),
+            rotation_axis_angle: Some(SerializedComponentBatch::new(
+                crate::components::RotationAxisAngle::arrow_empty(),
+                Self::descriptor_rotation_axis_angle(),
+            )),
+            quaternion: Some(SerializedComponentBatch::new(
+                crate::components::RotationQuat::arrow_empty(),
+                Self::descriptor_quaternion(),
+            )),
+            scale: Some(SerializedComponentBatch::new(
+                crate::components::Scale3D::arrow_empty(),
+                Self::descriptor_scale(),
+            )),
+            mat3x3: Some(SerializedComponentBatch::new(
+                crate::components::TransformMat3x3::arrow_empty(),
+                Self::descriptor_mat3x3(),
+            )),
+            relation: Some(SerializedComponentBatch::new(
+                crate::components::TransformRelation::arrow_empty(),
+                Self::descriptor_relation(),
+            )),
+            axis_length: Some(SerializedComponentBatch::new(
+                crate::components::AxisLength::arrow_empty(),
+                Self::descriptor_axis_length(),
+            )),
         }
     }
 
@@ -518,7 +474,7 @@ impl Transform3D {
         mut self,
         translation: impl Into<crate::components::Translation3D>,
     ) -> Self {
-        self.translation = Some(translation.into());
+        self.translation = try_serialize_field(Self::descriptor_translation(), [translation]);
         self
     }
 
@@ -528,7 +484,10 @@ impl Transform3D {
         mut self,
         rotation_axis_angle: impl Into<crate::components::RotationAxisAngle>,
     ) -> Self {
-        self.rotation_axis_angle = Some(rotation_axis_angle.into());
+        self.rotation_axis_angle = try_serialize_field(
+            Self::descriptor_rotation_axis_angle(),
+            [rotation_axis_angle],
+        );
         self
     }
 
@@ -538,21 +497,21 @@ impl Transform3D {
         mut self,
         quaternion: impl Into<crate::components::RotationQuat>,
     ) -> Self {
-        self.quaternion = Some(quaternion.into());
+        self.quaternion = try_serialize_field(Self::descriptor_quaternion(), [quaternion]);
         self
     }
 
     /// Scaling factor.
     #[inline]
     pub fn with_scale(mut self, scale: impl Into<crate::components::Scale3D>) -> Self {
-        self.scale = Some(scale.into());
+        self.scale = try_serialize_field(Self::descriptor_scale(), [scale]);
         self
     }
 
     /// 3x3 transformation matrix.
     #[inline]
     pub fn with_mat3x3(mut self, mat3x3: impl Into<crate::components::TransformMat3x3>) -> Self {
-        self.mat3x3 = Some(mat3x3.into());
+        self.mat3x3 = try_serialize_field(Self::descriptor_mat3x3(), [mat3x3]);
         self
     }
 
@@ -562,7 +521,7 @@ impl Transform3D {
         mut self,
         relation: impl Into<crate::components::TransformRelation>,
     ) -> Self {
-        self.relation = Some(relation.into());
+        self.relation = try_serialize_field(Self::descriptor_relation(), [relation]);
         self
     }
 
@@ -575,7 +534,7 @@ impl Transform3D {
         mut self,
         axis_length: impl Into<crate::components::AxisLength>,
     ) -> Self {
-        self.axis_length = Some(axis_length.into());
+        self.axis_length = try_serialize_field(Self::descriptor_axis_length(), [axis_length]);
         self
     }
 }
@@ -590,16 +549,5 @@ impl ::re_byte_size::SizeBytes for Transform3D {
             + self.mat3x3.heap_size_bytes()
             + self.relation.heap_size_bytes()
             + self.axis_length.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <Option<crate::components::Translation3D>>::is_pod()
-            && <Option<crate::components::RotationAxisAngle>>::is_pod()
-            && <Option<crate::components::RotationQuat>>::is_pod()
-            && <Option<crate::components::Scale3D>>::is_pod()
-            && <Option<crate::components::TransformMat3x3>>::is_pod()
-            && <Option<crate::components::TransformRelation>>::is_pod()
-            && <Option<crate::components::AxisLength>>::is_pod()
     }
 }

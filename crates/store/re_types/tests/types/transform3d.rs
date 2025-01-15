@@ -2,59 +2,70 @@ use std::f32::consts::TAU;
 
 use re_types::{
     archetypes::Transform3D,
-    components::{Scale3D, TransformRelation},
-    datatypes::{Angle, Mat3x3, RotationAxisAngle, Vec3D},
-    Archetype as _, AsComponents as _,
+    components::{RotationAxisAngle, Scale3D, TransformMat3x3, TransformRelation, Translation3D},
+    datatypes::Angle,
+    Archetype as _, AsComponents as _, ComponentBatch as _,
 };
 
 #[test]
 fn roundtrip() {
+    let translation_serialized = Translation3D::new(1.0, 2.0, 3.0)
+        .serialized()
+        .map(|batch| batch.with_descriptor_override(Transform3D::descriptor_translation()));
+    let scale_serialized = Scale3D::uniform(42.0)
+        .serialized()
+        .map(|batch| batch.with_descriptor_override(Transform3D::descriptor_scale()));
+
+    let mat3x3_serialized = TransformMat3x3::from([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0])
+        .serialized()
+        .map(|batch| batch.with_descriptor_override(Transform3D::descriptor_mat3x3()));
+    let rotation_axis_angle_serialized =
+        RotationAxisAngle::new([0.2, 0.2, 0.8], Angle::from_radians(0.5 * TAU))
+            .serialized()
+            .map(|batch| {
+                batch.with_descriptor_override(Transform3D::descriptor_rotation_axis_angle())
+            });
+    let relation_child_from_parent_serialized = TransformRelation::ChildFromParent
+        .serialized()
+        .map(|batch| batch.with_descriptor_override(Transform3D::descriptor_relation()));
+    let relation_parent_from_child_serialized = TransformRelation::ParentFromChild
+        .serialized()
+        .map(|batch| batch.with_descriptor_override(Transform3D::descriptor_relation()));
+
     let all_expected = [
-        Transform3D::clear(),
+        Transform3D::clear_fields(),
         Transform3D {
-            translation: Some(Vec3D([1.0, 2.0, 3.0]).into()),
-            scale: Some(Scale3D::uniform(42.0)),
-            relation: Some(TransformRelation::ChildFromParent),
-            ..Transform3D::clear()
+            translation: translation_serialized.clone(),
+            scale: scale_serialized.clone(),
+            relation: relation_child_from_parent_serialized.clone(),
+            ..Transform3D::clear_fields()
         }, //
         Transform3D {
-            translation: Some([1.0, 2.0, 3.0].into()),
-            rotation_axis_angle: Some(
-                RotationAxisAngle {
-                    axis: Vec3D([0.2, 0.2, 0.8]),
-                    angle: Angle::from_radians(0.5 * TAU),
-                }
-                .into(),
-            ),
-            ..Transform3D::clear()
+            translation: translation_serialized.clone(),
+            rotation_axis_angle: rotation_axis_angle_serialized.clone(),
+            ..Transform3D::clear_fields()
         }, //
         Transform3D {
-            translation: Some(Vec3D([1.0, 2.0, 3.0]).into()),
-            rotation_axis_angle: Some(
-                RotationAxisAngle {
-                    axis: Vec3D([0.2, 0.2, 0.8]),
-                    angle: Angle::from_radians(0.5 * TAU),
-                }
-                .into(),
-            ),
-            scale: Some(Scale3D::uniform(42.0)),
-            relation: Some(TransformRelation::ChildFromParent),
-            ..Transform3D::clear()
+            translation: translation_serialized.clone(),
+            rotation_axis_angle: rotation_axis_angle_serialized.clone(),
+            scale: scale_serialized.clone(),
+            relation: relation_child_from_parent_serialized.clone(),
+            ..Transform3D::clear_fields()
         }, //
         Transform3D {
-            translation: Some(Vec3D([1.0, 2.0, 3.0]).into()),
-            relation: Some(TransformRelation::ChildFromParent),
-            ..Transform3D::clear()
+            translation: translation_serialized.clone(),
+            relation: relation_child_from_parent_serialized.clone(),
+            ..Transform3D::clear_fields()
         }, //
         Transform3D {
-            mat3x3: Some(Mat3x3([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0]).into()),
-            relation: Some(TransformRelation::ParentFromChild),
-            ..Transform3D::clear()
+            mat3x3: mat3x3_serialized.clone(),
+            relation: relation_parent_from_child_serialized.clone(),
+            ..Transform3D::clear_fields()
         }, //
     ];
 
     let all_arch = [
-        Transform3D::clear(),
+        Transform3D::clear_fields(),
         Transform3D::from_translation_scale([1.0, 2.0, 3.0], Scale3D::uniform(42.0))
             .with_relation(TransformRelation::ChildFromParent), //
         Transform3D::from_translation_rotation(
