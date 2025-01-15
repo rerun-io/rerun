@@ -131,12 +131,6 @@ pub struct ResolvedPinholeProjection {
     pub view_coordinates: components::ViewCoordinates,
 }
 
-impl ResolvedPinholeProjection {
-    /// View coordinates used when there's no view coordinates explicitly logged.
-    pub const DEFAULT_VIEW_COORDINATES: components::ViewCoordinates =
-        components::ViewCoordinates::RDF;
-}
-
 impl CachedTransformsPerTimeline {
     #[inline]
     pub fn entity_transforms(
@@ -549,10 +543,7 @@ fn query_and_resolve_pinhole_projection_at_entity(
             image_from_camera,
             view_coordinates: entity_db
                 .latest_at_component::<components::ViewCoordinates>(entity_path, query)
-                .map_or(
-                    ResolvedPinholeProjection::DEFAULT_VIEW_COORDINATES,
-                    |(_index, res)| res,
-                ),
+                .map_or(archetypes::Pinhole::DEFAULT_CAMERA_XYZ, |(_index, res)| res),
         })
 }
 
@@ -854,14 +845,14 @@ mod tests {
                 transforms.latest_at_pinhole(&LatestAtQuery::new(timeline, 1)),
                 Some(&ResolvedPinholeProjection {
                     image_from_camera,
-                    view_coordinates: ResolvedPinholeProjection::DEFAULT_VIEW_COORDINATES,
+                    view_coordinates: archetypes::Pinhole::DEFAULT_CAMERA_XYZ,
                 })
             );
             assert_eq!(
                 transforms.latest_at_pinhole(&LatestAtQuery::new(timeline, 2)),
                 Some(&ResolvedPinholeProjection {
                     image_from_camera,
-                    view_coordinates: ResolvedPinholeProjection::DEFAULT_VIEW_COORDINATES,
+                    view_coordinates: archetypes::Pinhole::DEFAULT_CAMERA_XYZ,
                 })
             );
             assert_eq!(

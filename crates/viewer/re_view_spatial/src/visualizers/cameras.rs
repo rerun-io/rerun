@@ -237,7 +237,7 @@ impl VisualizerSystem for CamerasVisualizer {
                     transforms,
                     data_result,
                     &pinhole,
-                    pinhole.camera_xyz.unwrap_or(ViewCoordinates::RDF), // TODO(#2641): This should come from archetype
+                    pinhole.camera_xyz.unwrap_or(Pinhole::DEFAULT_CAMERA_XYZ),
                     entity_highlight,
                 );
             }
@@ -280,4 +280,10 @@ impl TypedComponentFallbackProvider<ImagePlaneDistance> for CamerasVisualizer {
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(CamerasVisualizer => [ImagePlaneDistance]);
+impl TypedComponentFallbackProvider<ViewCoordinates> for CamerasVisualizer {
+    fn fallback_for(&self, _ctx: &QueryContext<'_>) -> ViewCoordinates {
+        Pinhole::DEFAULT_CAMERA_XYZ
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(CamerasVisualizer => [ImagePlaneDistance, ViewCoordinates]);
