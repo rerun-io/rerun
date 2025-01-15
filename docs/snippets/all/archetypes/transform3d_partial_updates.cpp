@@ -8,24 +8,20 @@ float truncated_radians(float deg) {
 }
 
 int main() {
-    const auto rec = rerun::RecordingStream("rerun_example_transform3d_axes");
+    const auto rec = rerun::RecordingStream("rerun_example_transform3d_partial_updates");
     rec.spawn().exit_on_failure();
 
-    auto step = 0;
-
-    rec.set_time_sequence("step", step);
+    // Set up a 3D box.
     rec.log(
         "box",
         rerun::Boxes3D::from_half_sizes({{4.f, 2.f, 1.0f}}).with_fill_mode(rerun::FillMode::Solid),
         rerun::Transform3D().with_axis_length(10.0)
     );
 
+    // Update only the rotation of the box.
     for (int deg = 0; deg <= 45; deg++) {
-        step++;
-        rec.set_time_sequence("step", step);
-
         auto rad = truncated_radians(deg * 4);
-        // TODO(cmc): update_fields
+        // TODO(#8583): update_fields
         rec.log(
             "box",
             rerun::Transform3D().with_rotation_axis_angle(
@@ -34,21 +30,18 @@ int main() {
         );
     }
 
+    // Update only the position of the box.
     for (int t = 0; t <= 45; t++) {
-        step++;
-        rec.set_time_sequence("step", step);
         rec.log(
             "box",
             rerun::Transform3D().with_translation({0.0f, 0.0f, static_cast<float>(t) / 10.0f})
         );
     }
 
+    // Update only the rotation of the box.
     for (int deg = 0; deg <= 45; deg++) {
-        step++;
-        rec.set_time_sequence("step", step);
-
         auto rad = truncated_radians((deg + 45) * 4);
-        // TODO(cmc): update_fields
+        // TODO(#8583): update_fields
         rec.log(
             "box",
             rerun::Transform3D().with_rotation_axis_angle(
@@ -57,8 +50,7 @@ int main() {
         );
     }
 
-    step++;
-    rec.set_time_sequence("step", step);
-    // TODO(cmc): clear_fields
+    // Clear all of the box's attributes, and reset its axis length.
+    // TODO(#8583): clear_fields
     rec.log("box", rerun::Transform3D().with_axis_length(15.0));
 }

@@ -1,11 +1,10 @@
 //! Log different transforms with visualized coordinates axes.
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rec = rerun::RecordingStreamBuilder::new("rerun_example_transform3d_axes").spawn()?;
+    let rec =
+        rerun::RecordingStreamBuilder::new("rerun_example_transform3d_partial_updates").spawn()?;
 
-    let mut step = 0;
-
-    rec.set_time_sequence("step", step);
+    // Set up a 3D box.
     rec.log(
         "box",
         &[
@@ -15,10 +14,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ],
     )?;
 
+    // Update only the rotation of the box.
     for deg in 0..=45 {
-        step += 1;
-        rec.set_time_sequence("step", step);
-
         let rad = truncated_radians((deg * 4) as f32);
         rec.log(
             "box",
@@ -29,19 +26,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         )?;
     }
 
+    // Update only the position of the box.
     for t in 0..=50 {
-        step += 1;
-        rec.set_time_sequence("step", step);
         rec.log(
             "box",
             &rerun::Transform3D::update_fields().with_translation([0.0, 0.0, t as f32 / 10.0]),
         )?;
     }
 
+    // Update only the rotation of the box.
     for deg in 0..=45 {
-        step += 1;
-        rec.set_time_sequence("step", step);
-
         let rad = truncated_radians(((deg + 45) * 4) as f32);
         rec.log(
             "box",
@@ -52,8 +46,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         )?;
     }
 
-    step += 1;
-    rec.set_time_sequence("step", step);
+    // Clear all of the box's attributes, and reset its axis length.
     rec.log(
         "box",
         &rerun::Transform3D::clear_fields().with_axis_length(15.0),

@@ -9,10 +9,7 @@ def truncated_radians(deg: float) -> float:
     return float(int(math.radians(deg) * 1000.0)) / 1000.0
 
 
-rr.init("rerun_example_transform3d_axes", spawn=True)
-
-step = 0
-rr.set_time_sequence("step", step)
+rr.init("rerun_example_transform3d_partial_updates", spawn=True)
 
 rr.log(
     "box",
@@ -21,11 +18,8 @@ rr.log(
 )
 
 for deg in range(46):
-    step += 1
-    rr.set_time_sequence("step", step)
-
     rad = truncated_radians(deg * 4)
-    # TODO(cmc): update_fields
+    # TODO(#8582): update_fields
     rr.log(
         "box",
         rr.Transform3D(
@@ -35,20 +29,15 @@ for deg in range(46):
     )
 
 for t in range(51):
-    step += 1
-    rr.set_time_sequence("step", step)
-    # TODO(cmc): update_fields
+    # TODO(#8582): update_fields
     rr.log(
         "box",
         rr.Transform3D(translation=[0, 0, t / 10.0]),
     )
 
 for deg in range(46):
-    step += 1
-    rr.set_time_sequence("step", step)
-
     rad = truncated_radians((deg + 45) * 4)
-    # TODO(cmc): update_fields
+    # TODO(#8582): update_fields
     rr.log(
         "box",
         rr.Transform3D(
@@ -57,9 +46,7 @@ for deg in range(46):
         ),
     )
 
-step += 1
-rr.set_time_sequence("step", step)
-# TODO(cmc): update_fields(clear=True)
+# TODO(#8582): update_fields(clear=True)
 rr.log(
     "box",
     rr.Transform3D(axis_length=15),
