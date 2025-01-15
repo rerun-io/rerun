@@ -135,7 +135,7 @@ def test_single_line_strip2d() -> None:
     # Regression test for #3643
     # Single linestrip can be passed and is not interpreted as batch of zero sized line strips.
     reference = rr.LineStrips2D([rr.components.LineStrip2D([[0, 0], [1, 1]])])
-    assert len(reference.strips) == 1
+    assert reference.strips is not None and len(reference.strips) == 1
     assert reference == rr.LineStrips2D(rr.components.LineStrip2D([[0, 0], [1, 1]]))
     assert reference == rr.LineStrips2D([[[0, 0], [1, 1]]])
     assert reference == rr.LineStrips2D([[0, 0], [1, 1]])

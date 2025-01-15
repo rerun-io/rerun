@@ -143,8 +143,8 @@ def test_bad_components() -> None:
     with pytest.warns(RerunWarning) as warnings:
         points = rr.Points3D(positions=[1, 2, 3], colors="RED")
         assert len(warnings) == 1
-        assert len(points.positions) == 1
-        assert len(points.colors) == 0  # type: ignore[arg-type]
+        assert points.positions is not None and len(points.positions) == 1
+        assert points.colors is not None and len(points.colors) == 0
 
     rr.set_strict_mode(True)
     with pytest.raises(ValueError):
