@@ -1,10 +1,12 @@
 // Log different transforms with visualized coordinates axes.
 
-#include <cmath>
 #include <rerun.hpp>
 
-float truncated_radians(float deg) {
-    return static_cast<float>(static_cast<int>(deg * M_PI / 180.0f * 1000.0f)) / 1000.0f;
+#define M_PI 3.14159265358979323846
+
+float truncated_radians(int deg) {
+    auto degf = static_cast<float>(deg);
+    return static_cast<float>(static_cast<int>(degf * M_PI / 180.0f * 1000.0f)) / 1000.0f;
 }
 
 int main() {
