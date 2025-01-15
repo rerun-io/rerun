@@ -1,7 +1,15 @@
 ---
 source: crates/store/re_dataframe/src/query.rs
-assertion_line: 1669
-expression: dataframe.all_columns_collected()
+assertion_line: 1675
+expression: dataframe
 snapshot_kind: text
 ---
-[]
+┌───────────────────────────────┬───────────────────────────────┬─────────────────────────────────────────┬─────────────────────────────────────────┬─────────────────────────────────────────┐
+│ frame_nr                      ┆ log_time                      ┆ /this/that:example.MyColor              ┆ /this/that:example.MyLabel              ┆ /this/that:example.MyPoint              │
+│ ---                           ┆ ---                           ┆ ---                                     ┆ ---                                     ┆ ---                                     │
+│ type: "i64"                   ┆ type: "Timestamp(ns)"         ┆ type: "List[u32]"                       ┆ type: "List[Utf8]"                      ┆ type: "List[Struct[2]]"                 │
+│ sorbet.index_name: "frame_nr" ┆ sorbet.index_name: "log_time" ┆ sorbet.path: "/this/that"               ┆ sorbet.is_static: "yes"                 ┆ sorbet.path: "/this/that"               │
+│                               ┆                               ┆ sorbet.semantic_type: "example.MyColor" ┆ sorbet.path: "/this/that"               ┆ sorbet.semantic_type: "example.MyPoint" │
+│                               ┆                               ┆                                         ┆ sorbet.semantic_type: "example.MyLabel" ┆                                         │
+╞═══════════════════════════════╪═══════════════════════════════╪═════════════════════════════════════════╪═════════════════════════════════════════╪═════════════════════════════════════════╡
+└───────────────────────────────┴───────────────────────────────┴─────────────────────────────────────────┴─────────────────────────────────────────┴─────────────────────────────────────────┘
