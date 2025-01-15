@@ -1,5 +1,5 @@
 use crate::{
-    components::{Scale3D, TransformMat3x3, TransformRelation, Translation3D},
+    components::{Scale3D, TransformMat3x3, Translation3D},
     Rotation3D,
 };
 
@@ -20,128 +20,100 @@ impl Transform3D {
         axis_length: None,
     };
 
+    /// Clear all the fields of a `Transform3D`.
+    #[deprecated(since = "0.22.0", note = "Use `Self::clear_fields()` instead.")]
+    pub fn clear() -> Self {
+        Self::clear_fields()
+    }
+
     /// Convenience method that takes any kind of (single) rotation representation and sets it on this transform.
     #[inline]
     pub fn with_rotation(self, rotation: impl Into<Rotation3D>) -> Self {
         match rotation.into() {
-            Rotation3D::Quaternion(quaternion) => Self {
-                quaternion: Some(quaternion),
-                ..self
-            },
-            Rotation3D::AxisAngle(rotation_axis_angle) => Self {
-                rotation_axis_angle: Some(rotation_axis_angle),
-                ..self
-            },
+            Rotation3D::Quaternion(quaternion) => self.with_quaternion(quaternion),
+            Rotation3D::AxisAngle(rotation_axis_angle) => {
+                self.with_rotation_axis_angle(rotation_axis_angle)
+            }
         }
     }
 
-    /// From a translation.
+    /// From a translation, clearing all other fields.
     #[inline]
     pub fn from_translation(translation: impl Into<Translation3D>) -> Self {
-        Self {
-            translation: Some(translation.into()),
-            ..Self::clear()
-        }
+        Self::clear_fields().with_translation(translation)
     }
 
-    /// From a translation.
+    /// From a 3x3 matrix, clearing all other fields.
     #[inline]
     pub fn from_mat3x3(mat3x3: impl Into<TransformMat3x3>) -> Self {
-        Self {
-            mat3x3: Some(mat3x3.into()),
-            ..Self::clear()
-        }
+        Self::clear_fields().with_mat3x3(mat3x3)
     }
 
-    /// From a rotation
+    /// From a rotation, clearing all other fields.
     #[inline]
     pub fn from_rotation(rotation: impl Into<Rotation3D>) -> Self {
-        Self::clear().with_rotation(rotation)
+        Self::clear_fields().with_rotation(rotation)
     }
 
-    /// From a scale
+    /// From a scale, clearing all other fields.
     #[inline]
     pub fn from_scale(scale: impl Into<Scale3D>) -> Self {
-        Self {
-            scale: Some(scale.into()),
-            ..Self::clear()
-        }
+        Self::clear_fields().with_scale(scale)
     }
 
     /// From a translation applied after a rotation, known as a rigid transformation.
+    ///
+    /// Clears all other fields.
     #[inline]
     pub fn from_translation_rotation(
         translation: impl Into<Translation3D>,
         rotation: impl Into<Rotation3D>,
     ) -> Self {
-        Self {
-            translation: Some(translation.into()),
-            ..Self::clear()
-        }
-        .with_rotation(rotation)
+        Self::clear_fields()
+            .with_translation(translation)
+            .with_rotation(rotation)
     }
 
-    /// From a translation applied after a 3x3 matrix.
+    /// From a translation applied after a 3x3 matrix, clearing all other fields.
     #[inline]
     pub fn from_translation_mat3x3(
         translation: impl Into<Translation3D>,
         mat3x3: impl Into<TransformMat3x3>,
     ) -> Self {
-        Self {
-            mat3x3: Some(mat3x3.into()),
-            translation: Some(translation.into()),
-            ..Self::clear()
-        }
+        Self::clear_fields()
+            .with_mat3x3(mat3x3)
+            .with_translation(translation)
     }
 
-    /// From a translation applied after a scale.
+    /// From a translation applied after a scale, clearing all other fields.
     #[inline]
     pub fn from_translation_scale(
         translation: impl Into<Translation3D>,
         scale: impl Into<Scale3D>,
     ) -> Self {
-        Self {
-            scale: Some(scale.into()),
-            translation: Some(translation.into()),
-            ..Self::clear()
-        }
+        Self::clear_fields()
+            .with_scale(scale)
+            .with_translation(translation)
     }
 
-    /// From a translation, applied after a rotation & scale, known as an affine transformation.
+    /// From a translation, applied after a rotation & scale, known as an affine transformation, clearing all other fields.
     #[inline]
     pub fn from_translation_rotation_scale(
         translation: impl Into<Translation3D>,
         rotation: impl Into<Rotation3D>,
         scale: impl Into<Scale3D>,
     ) -> Self {
-        Self {
-            scale: Some(scale.into()),
-            translation: Some(translation.into()),
-            ..Self::clear()
-        }
-        .with_rotation(rotation)
+        Self::clear_fields()
+            .with_scale(scale)
+            .with_translation(translation)
+            .with_rotation(rotation)
     }
 
-    /// From a rotation & scale
+    /// From a rotation & scale, clearing all other fields.
     #[inline]
     pub fn from_rotation_scale(rotation: impl Into<Rotation3D>, scale: impl Into<Scale3D>) -> Self {
-        Self {
-            scale: Some(scale.into()),
-            ..Self::clear()
-        }
-        .with_rotation(rotation)
-    }
-
-    /// Indicate that this transform is from parent to child.
-    ///
-    /// This is the opposite of the default, which is from child to parent.
-    #[allow(clippy::wrong_self_convention)]
-    #[inline]
-    #[deprecated(
-        since = "0.18.0",
-        note = "Use `.with_relation(rerun::TransformRelation::ChildFromParent)` instead."
-    )]
-    pub fn from_parent(self) -> Self {
-        self.with_relation(TransformRelation::ChildFromParent)
+        Self::clear_fields()
+            .with_rotation(rotation)
+            .with_scale(scale)
     }
 }

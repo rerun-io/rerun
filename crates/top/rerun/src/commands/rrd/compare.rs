@@ -126,7 +126,8 @@ fn compute_uber_table(
         "more than one data recording found in rrd file"
     );
 
-    let store = stores.pop().unwrap(); // safe, ensured above
+    #[allow(clippy::unwrap_used)] // safe, ensured above
+    let store = stores.pop().unwrap();
     let engine = store.storage_engine();
 
     Ok((

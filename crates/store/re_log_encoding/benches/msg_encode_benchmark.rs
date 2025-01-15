@@ -7,7 +7,7 @@ compile_error!("msg_encode_benchmark requires 'decoder' and 'encoder' features."
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
-use re_chunk::{Chunk, RowId, TransportChunk};
+use re_chunk::{Chunk, RowId};
 use re_log_types::{
     entity_path,
     example_components::{MyColor, MyPoint},
@@ -73,11 +73,7 @@ fn decode_chunks(messages: &[LogMsg]) -> Vec<Chunk> {
         .iter()
         .map(|log_msg| {
             if let LogMsg::ArrowMsg(_, arrow_msg) = log_msg {
-                Chunk::from_transport(&TransportChunk {
-                    schema: arrow_msg.schema.clone(),
-                    data: arrow_msg.chunk.clone(),
-                })
-                .unwrap()
+                Chunk::from_arrow_msg(arrow_msg).unwrap()
             } else {
                 unreachable!()
             }

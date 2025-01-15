@@ -2,7 +2,7 @@ use itertools::Itertools as _;
 
 use re_entity_db::EntityDb;
 use re_log_types::ApplicationId;
-use re_viewer_context::{SystemCommandSender as _, UiLayout, ViewerContext};
+use re_viewer_context::{UiLayout, ViewerContext};
 
 use crate::item_ui::entity_db_button_ui;
 
@@ -53,52 +53,6 @@ impl crate::DataUi for ApplicationId {
                     entity_db_button_ui(ctx, ui, entity_db, true);
                 }
             });
-        }
-
-        // ---------------------------------------------------------------------
-        // do not show UI code in tooltips
-
-        if ui_layout != UiLayout::Tooltip {
-            ui.add_space(8.0);
-
-            // ---------------------------------------------------------------------
-
-            // Blueprint section.
-            let active_blueprint = ctx.store_context.blueprint;
-            let default_blueprint = ctx.store_context.hub.default_blueprint_for_app(self);
-
-            let button =
-                egui::Button::image_and_text(&re_ui::icons::RESET, "Reset to default blueprint");
-
-            let is_same_as_default = default_blueprint.is_some_and(|default_blueprint| {
-                default_blueprint.latest_row_id() == active_blueprint.latest_row_id()
-            });
-
-            if is_same_as_default {
-                ui.add_enabled(false, button)
-                    .on_disabled_hover_text("No modifications have been made");
-            } else if default_blueprint.is_none() {
-                ui.add_enabled(false, button)
-                    .on_disabled_hover_text("There's no default blueprint");
-            } else {
-                // The active blueprint is different from the default blueprint
-                if ui
-                    .add(button)
-                    .on_hover_text("Reset to the default blueprint for this app")
-                    .clicked()
-                {
-                    ctx.command_sender
-                        .send_system(re_viewer_context::SystemCommand::ClearActiveBlueprint);
-                }
-            }
-
-            if ui.add(egui::Button::image_and_text(
-                &re_ui::icons::RESET,
-                "Reset to heuristic blueprint",
-            )).on_hover_text("Clear both active and default blueprint, and auto-generate a new blueprint based on heuristics").clicked() {
-                ctx.command_sender
-                    .send_system(re_viewer_context::SystemCommand::ClearAndGenerateBlueprint);
-            }
         }
     }
 }

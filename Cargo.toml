@@ -72,6 +72,8 @@ rerun-cli = { path = "crates/top/rerun-cli", version = "=0.22.0-alpha.1", defaul
 
 # crates/utils:
 re_analytics = { path = "crates/utils/re_analytics", version = "=0.22.0-alpha.1", default-features = false }
+re_arrow_util = { path = "crates/utils/re_arrow_util", version = "=0.22.0-alpha.1", default-features = false }
+re_byte_size = { path = "crates/utils/re_byte_size", version = "=0.22.0-alpha.1", default-features = false }
 re_capabilities = { path = "crates/utils/re_capabilities", version = "=0.22.0-alpha.1", default-features = false }
 re_case = { path = "crates/utils/re_case", version = "=0.22.0-alpha.1", default-features = false }
 re_crash_handler = { path = "crates/utils/re_crash_handler", version = "=0.22.0-alpha.1", default-features = false }
@@ -80,7 +82,6 @@ re_format = { path = "crates/utils/re_format", version = "=0.22.0-alpha.1", defa
 re_int_histogram = { path = "crates/utils/re_int_histogram", version = "=0.22.0-alpha.1", default-features = false }
 re_log = { path = "crates/utils/re_log", version = "=0.22.0-alpha.1", default-features = false }
 re_memory = { path = "crates/utils/re_memory", version = "=0.22.0-alpha.1", default-features = false }
-re_byte_size = { path = "crates/utils/re_byte_size", version = "=0.22.0-alpha.1", default-features = false }
 re_smart_channel = { path = "crates/utils/re_smart_channel", version = "=0.22.0-alpha.1", default-features = false }
 re_string_interner = { path = "crates/utils/re_string_interner", version = "=0.22.0-alpha.1", default-features = false }
 re_tracing = { path = "crates/utils/re_tracing", version = "=0.22.0-alpha.1", default-features = false }
@@ -153,7 +154,7 @@ anyhow = { version = "1.0", default-features = false }
 argh = "0.1.12"
 array-init = "2.1"
 arrow = { version = "53.1", default-features = false }
-arrow2 = { package = "re_arrow2", version = "0.18" }
+arrow2 = { package = "re_arrow2", version = "0.18", features = ["arrow"] }
 async-executor = "1.0"
 backtrace = "0.3"
 bincode = "1.3"
@@ -184,7 +185,7 @@ env_logger = { version = "0.10", default-features = false }
 ffmpeg-sidecar = { version = "2.0.2", default-features = false }
 fixed = { version = "1.28", default-features = false }
 fjadra = "0.2.1"
-flatbuffers = "23.0"
+flatbuffers = "24.12.23"
 futures-channel = "0.3"
 futures-util = { version = "0.3", default-features = false }
 getrandom = "0.2"
@@ -555,10 +556,12 @@ significant_drop_tightening = "allow" # An update of parking_lot made this trigg
 
 [patch.crates-io]
 # Try to avoid patching crates! It prevents us from publishing the crates on crates.io.
-# If you do patch always prefer to patch to a commit on the trunk of the upstream repo.
+# If you do patch always prefer to patch to the trunk branch of the upstream repo (i.e. `main`, `master`, …).
 # If that is not possible, patch to a branch that has a PR open on the upstream repo.
-# As a last resport, patch with a commit to our own repository.
-# ALWAYS document what PR the commit hash is part of, or when it was merged into the upstream trunk.
+# As a last resort, patch to a branch on our own repository.
+#
+# Prefer patching with `branch` over `rev` and let `Cargo.lock` handle the commit hash.
+# That makes it easy to upade with `cargo update -p $CRATE`.
 
 ecolor = { git = "https://github.com/emilk/egui.git", rev = "f0d7c74e838b8e8920a22e7515990fbe057ec218" }       # egui master 2025-01-08
 eframe = { git = "https://github.com/emilk/egui.git", rev = "f0d7c74e838b8e8920a22e7515990fbe057ec218" }       # egui master 2025-01-08

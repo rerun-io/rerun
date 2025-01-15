@@ -4,10 +4,9 @@
 #![doc = document_features::document_features!()]
 //!
 
-pub mod arrow2_util;
-pub mod arrow_util;
 mod builder;
 mod chunk;
+pub mod concat_record_batches;
 mod helpers;
 mod id;
 mod iter;

@@ -1,5 +1,7 @@
 //! Function to setup logging in binaries and web apps.
 
+use std::sync::atomic::AtomicIsize;
+
 /// Automatically does the right thing depending on target environment (native vs. web).
 ///
 /// Directs [`log`] calls to stderr on native.
@@ -50,12 +52,10 @@ pub fn setup_logging() {
 
         stderr_logger.parse_filters(&log_filter);
         crate::add_boxed_logger(Box::new(stderr_logger.build())).expect("Failed to install logger");
-
-        if env_var_bool("RERUN_PANIC_ON_WARN") == Some(true) {
-            crate::add_boxed_logger(Box::new(PanicOnWarn {}))
-                .expect("Failed to enable RERUN_PANIC_ON_WARN");
-            crate::info!("RERUN_PANIC_ON_WARN: any warning or error will cause Rerun to panic.");
-        }
+        crate::add_boxed_logger(Box::new(PanicOnWarn {
+            always_enabled: env_var_bool("RERUN_PANIC_ON_WARN") == Some(true),
+        }))
+        .expect("Failed to install panic-on-warn logger");
     }
 
     #[cfg(target_arch = "wasm32")]
@@ -75,6 +75,43 @@ pub fn setup_logging() {
 
 // ----------------------------------------------------------------------------
 
+thread_local! {
+    static PANIC_ON_WARN_SCOPE_DEPTH: AtomicIsize = const { AtomicIsize::new(0) };
+}
+
+/// Scope for enabling panic on warn/error log messages temporariliy on the current thread (!).
+///
+/// Use this in tests to ensure that there's no errors & warnings.
+/// Note that we can't enable this for all threads since threads run in parallel and may not want to set this.
+#[cfg(not(target_arch = "wasm32"))]
+pub struct PanicOnWarnScope {
+    // The panic scope should decrease the same thread-local value, so it musn't be Send or Sync.
+    not_send_sync: std::marker::PhantomData<std::cell::Cell<()>>,
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl PanicOnWarnScope {
+    /// Enable panic on warn & error log messages for as long as this scope is alive.
+    #[expect(clippy::new_without_default)]
+    pub fn new() -> Self {
+        PANIC_ON_WARN_SCOPE_DEPTH.with(|enabled| {
+            enabled.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        });
+        Self {
+            not_send_sync: Default::default(),
+        }
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl Drop for PanicOnWarnScope {
+    fn drop(&mut self) {
+        PANIC_ON_WARN_SCOPE_DEPTH.with(|enabled| {
+            enabled.fetch_sub(1, std::sync::atomic::Ordering::Relaxed);
+        });
+    }
+}
+
 #[cfg(not(target_arch = "wasm32"))]
 fn env_var_bool(name: &str) -> Option<bool> {
     std::env::var(name).ok()
@@ -91,25 +128,34 @@ fn env_var_bool(name: &str) -> Option<bool> {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-struct PanicOnWarn {}
+struct PanicOnWarn {
+    always_enabled: bool,
+}
 
 #[cfg(not(target_arch = "wasm32"))]
 impl log::Log for PanicOnWarn {
     fn enabled(&self, metadata: &log::Metadata<'_>) -> bool {
         match metadata.level() {
-            log::Level::Error | log::Level::Warn => true,
+            log::Level::Error | log::Level::Warn => {
+                self.always_enabled
+                    || PANIC_ON_WARN_SCOPE_DEPTH
+                        .with(|enabled| enabled.load(std::sync::atomic::Ordering::Relaxed) > 0)
+            }
             log::Level::Info | log::Level::Debug | log::Level::Trace => false,
         }
     }
 
     fn log(&self, record: &log::Record<'_>) {
-        let level = match record.level() {
-            log::Level::Error => "error",
-            log::Level::Warn => "warning",
-            log::Level::Info | log::Level::Debug | log::Level::Trace => return,
-        };
-
-        panic!("{level} logged with RERUN_PANIC_ON_WARN: {}", record.args());
+        // `enabled` isn't called automatically by the `log!` macros, so we have to call it here.
+        // (it is only used by `log_enabled!`)
+        if self.enabled(record.metadata()) {
+            let level = match record.level() {
+                log::Level::Error => "error",
+                log::Level::Warn => "warning",
+                log::Level::Info | log::Level::Debug | log::Level::Trace => return,
+            };
+            panic!("{level} logged with RERUN_PANIC_ON_WARN: {}", record.args());
+        }
     }
 
     fn flush(&self) {}

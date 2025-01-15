@@ -9,11 +9,12 @@ fn encode(
     version: re_protos::common::v0::EncoderVersion,
     chunk: &TransportChunk,
 ) -> Result<Vec<u8>, CodecError> {
+    let transport_chunk =
+        arrow::array::RecordBatch::try_from(chunk.clone()).map_err(CodecError::InvalidChunk)?;
     match version {
         re_protos::common::v0::EncoderVersion::V0 => {
             let mut data: Vec<u8> = Vec::new();
-            write_arrow_to_bytes(&mut data, &chunk.schema, &chunk.data)?;
-
+            write_arrow_to_bytes(&mut data, &transport_chunk)?;
             Ok(data)
         }
     }

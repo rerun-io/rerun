@@ -343,7 +343,7 @@ impl LineDrawData {
 
         let line_renderer = ctx.renderer::<LineRenderer>();
 
-        if strips_buffer.is_empty() {
+        if strips_buffer.is_empty() || vertices_buffer.is_empty() {
             return Ok(Self {
                 bind_group_all_lines: None,
                 bind_group_all_lines_outline_mask: None,
@@ -760,5 +760,49 @@ impl Renderer for LineRenderer {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{view_builder::TargetConfiguration, Rgba};
+
+    use super::*;
+
+    // Regression test for https://github.com/rerun-io/rerun/issues/8639
+    #[test]
+    fn empty_strips() {
+        re_log::setup_logging();
+        re_log::PanicOnWarnScope::new();
+
+        RenderContext::new_test().execute_test_frame(|ctx| {
+            let mut view = ViewBuilder::new(ctx, TargetConfiguration::default());
+
+            let empty = LineDrawableBuilder::new(ctx);
+            view.queue_draw(empty.into_draw_data().unwrap());
+
+            // This is the case that triggered
+            // https://github.com/rerun-io/rerun/issues/8639
+            // The others are here for completeness.
+            let mut empty_batch = LineDrawableBuilder::new(ctx);
+            empty_batch
+                .batch("empty batch")
+                .add_strip(std::iter::empty());
+            view.queue_draw(empty_batch.into_draw_data().unwrap());
+
+            let mut empty_batch_between_non_empty = LineDrawableBuilder::new(ctx);
+            empty_batch_between_non_empty
+                .batch("non-empty batch")
+                .add_strip([glam::Vec3::ZERO, glam::Vec3::ZERO].into_iter());
+            empty_batch_between_non_empty
+                .batch("empty batch")
+                .add_strip(std::iter::empty());
+            empty_batch_between_non_empty
+                .batch("non-empty batch")
+                .add_strip([glam::Vec3::ZERO, glam::Vec3::ZERO].into_iter());
+            view.queue_draw(empty_batch_between_non_empty.into_draw_data().unwrap());
+
+            [view.draw(ctx, Rgba::BLACK).unwrap()]
+        });
     }
 }

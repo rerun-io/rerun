@@ -17,6 +17,7 @@ use pyo3::{
     Bound, PyAny, PyResult,
 };
 
+use re_arrow_util::Arrow2ArrayDowncastRef as _;
 use re_chunk::{Chunk, ChunkError, ChunkId, PendingRow, RowId, TimeColumn, TransportChunk};
 use re_log_types::TimePoint;
 use re_sdk::{external::nohash_hasher::IntMap, ComponentDescriptor, EntityPath, Timeline};
@@ -70,7 +71,7 @@ pub fn array_to_rust(
         datatype.clone(),
         true,
     )
-    .with_metadata(metadata);
+    .with_metadata(metadata.into_iter().collect()); // TODO(#3741)
 
     Ok((arr2_array, field))
 }
@@ -161,7 +162,7 @@ pub fn build_chunk_from_components(
         .into_iter()
         .zip(fields)
         .map(|(value, field)| {
-            let batch = if let Some(batch) = value.as_any().downcast_ref::<ListArray<i32>>() {
+            let batch = if let Some(batch) = value.downcast_array2_ref::<ListArray<i32>>() {
                 batch.clone()
             } else {
                 let offsets = Offsets::try_from_lengths(std::iter::repeat(1).take(value.len()))

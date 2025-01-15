@@ -29,6 +29,9 @@ pub struct StoreContext<'a> {
 
     /// The store hub, which keeps track of all the default and active blueprints, among other things.
     pub hub: &'a StoreHub,
+
+    /// Should we enable the heuristics during this frame?
+    pub should_enable_heuristics: bool,
 }
 
 impl StoreContext<'_> {

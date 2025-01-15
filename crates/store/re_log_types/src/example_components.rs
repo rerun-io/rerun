@@ -2,6 +2,7 @@
 
 use std::sync::Arc;
 
+use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_byte_size::SizeBytes;
 use re_types_core::{Component, ComponentDescriptor, DeserializationError, Loggable};
 
@@ -116,8 +117,7 @@ impl Loggable for MyPoint {
         data: &dyn arrow::array::Array,
     ) -> re_types_core::DeserializationResult<Vec<Option<Self>>> {
         let array = data
-            .as_any()
-            .downcast_ref::<arrow::array::StructArray>()
+            .downcast_array_ref::<arrow::array::StructArray>()
             .ok_or(DeserializationError::downcast_error::<
                 arrow::array::StructArray,
             >())?;
@@ -126,14 +126,12 @@ impl Loggable for MyPoint {
         let y_array = array.columns()[1].as_ref();
 
         let xs = x_array
-            .as_any()
-            .downcast_ref::<arrow::array::Float32Array>()
+            .downcast_array_ref::<arrow::array::Float32Array>()
             .ok_or(DeserializationError::downcast_error::<
                 arrow::array::Float32Array,
             >())?;
         let ys = y_array
-            .as_any()
-            .downcast_ref::<arrow::array::Float32Array>()
+            .downcast_array_ref::<arrow::array::Float32Array>()
             .ok_or(DeserializationError::downcast_error::<
                 arrow::array::Float32Array,
             >())?;
@@ -235,8 +233,7 @@ impl Loggable for MyPoint64 {
         data: &dyn arrow::array::Array,
     ) -> re_types_core::DeserializationResult<Vec<Option<Self>>> {
         let array = data
-            .as_any()
-            .downcast_ref::<arrow::array::StructArray>()
+            .downcast_array_ref::<arrow::array::StructArray>()
             .ok_or(DeserializationError::downcast_error::<
                 arrow::array::StructArray,
             >())?;
@@ -245,14 +242,12 @@ impl Loggable for MyPoint64 {
         let y_array = array.columns()[1].as_ref();
 
         let xs = x_array
-            .as_any()
-            .downcast_ref::<arrow::array::Float64Array>()
+            .downcast_array_ref::<arrow::array::Float64Array>()
             .ok_or(DeserializationError::downcast_error::<
                 arrow::array::Float64Array,
             >())?;
         let ys = y_array
-            .as_any()
-            .downcast_ref::<arrow::array::Float64Array>()
+            .downcast_array_ref::<arrow::array::Float64Array>()
             .ok_or(DeserializationError::downcast_error::<
                 arrow::array::Float64Array,
             >())?;

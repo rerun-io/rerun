@@ -20,10 +20,12 @@ all-features = true
 
 
 [dependencies]
-arrow2.workspace = true
-itertools.workspace = true
+re_arrow_util.workspace = true
 re_tuid.workspace = true
 re_types_core.workspace = true # tuid serialization
+
+arrow.workspace = true
+itertools.workspace = true
 
 # native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

@@ -1,7 +1,8 @@
 use arrow2::array::{Array, Utf8Array};
-
 use itertools::Itertools;
 use nohash_hasher::IntMap;
+
+use re_arrow_util::{arrow2_util, Arrow2ArrayDowncastRef as _};
 
 use crate::Chunk;
 
@@ -51,7 +52,7 @@ impl Chunk {
                         .iter()
                         .map(|utf8_array| {
                             utf8_array.map(|array| {
-                                let Some(array) = array.as_any().downcast_ref::<Utf8Array<i32>>()
+                                let Some(array) = array.downcast_array2_ref::<Utf8Array<i32>>()
                                 else {
                                     // Unreachable, just avoiding unwraps.
                                     return array;
@@ -78,8 +79,7 @@ impl Chunk {
                         .map(|a| a.as_deref() as Option<&dyn Array>)
                         .collect_vec();
 
-                    if let Some(list_array_patched) =
-                        crate::arrow2_util::arrays_to_list_array_opt(&arrays)
+                    if let Some(list_array_patched) = arrow2_util::arrays_to_list_array_opt(&arrays)
                     {
                         *list_array = list_array_patched;
                     }
@@ -88,7 +88,7 @@ impl Chunk {
         }
 
         for (desc, list_array) in components_patched {
-            chunk.components.insert_descriptor(desc, list_array.into());
+            chunk.components.insert_descriptor_arrow2(desc, list_array);
         }
 
         chunk

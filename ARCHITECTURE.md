@@ -210,6 +210,7 @@ Update instructions:
 | Crate              | Description                                                                          |
 |--------------------|--------------------------------------------------------------------------------------|
 | re_analytics       | Rerun's analytics SDK                                                                |
+| re_arrow_util      | Helpers for working with arrow                                                       |
 | re_byte_size       | Calculate the heap-allocated size of values at runtime                               |
 | re_capabilities    | Capability tokens                                                                    |
 | re_case            | Case conversions, the way Rerun likes them                                           |
