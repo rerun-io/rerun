@@ -399,9 +399,7 @@ impl WebHandle {
             .find(|t| t.name().as_str() == timeline)?;
 
         let time_ctrl = rec_cfg.time_ctrl.read();
-        time_ctrl
-            .get_time_for_timeline(*timeline)
-            .map(|v| v.as_f64())
+        time_ctrl.time_for_timeline(*timeline).map(|v| v.as_f64())
     }
 
     #[wasm_bindgen]
