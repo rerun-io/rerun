@@ -129,7 +129,7 @@ pub struct ResolvedPinholeProjection {
     ///
     /// This is needed to orient 2D in 3D and 3D in 2D the right way around
     /// (answering questions like which axis is distance to viewer increasing).
-    /// If no view coordinates were logged, this is set to [`Self::DEFAULT_VIEW_COORDINATES`].
+    /// If no view coordinates were logged, this is set to [`archetypes::Pinhole::DEFAULT_CAMERA_XYZ`].
     pub view_coordinates: components::ViewCoordinates,
 }
 
