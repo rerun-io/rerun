@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use ahash::HashMap;
+use glam::Affine3A;
 use itertools::Either;
 use nohash_hasher::{IntMap, IntSet};
 
@@ -100,7 +101,7 @@ pub struct CachedTransformsPerTimeline {
     per_entity: IntMap<EntityPathHash, PerTimelinePerEntityTransforms>,
 }
 
-type PoseTransformMap = BTreeMap<TimeInt, Vec<glam::Affine3A>>;
+type PoseTransformMap = BTreeMap<TimeInt, Vec<Affine3A>>;
 
 /// Maps from time to pinhole projection.
 ///
@@ -113,7 +114,7 @@ type PinholeProjectionMap = BTreeMap<TimeInt, Option<ResolvedPinholeProjection>>
 pub struct PerTimelinePerEntityTransforms {
     timeline: Timeline,
 
-    tree_transforms: BTreeMap<TimeInt, glam::Affine3A>,
+    tree_transforms: BTreeMap<TimeInt, Affine3A>,
 
     // Pose transforms and pinhole projections are typically more rare, which is why we store them as optional boxes.
     pose_transforms: Option<Box<PoseTransformMap>>,
@@ -144,17 +145,17 @@ impl CachedTransformsPerTimeline {
 
 impl PerTimelinePerEntityTransforms {
     #[inline]
-    pub fn latest_at_tree_transform(&self, query: &LatestAtQuery) -> glam::Affine3A {
+    pub fn latest_at_tree_transform(&self, query: &LatestAtQuery) -> Affine3A {
         debug_assert_eq!(query.timeline(), self.timeline);
         self.tree_transforms
             .range(..query.at().inc())
             .next_back()
             .map(|(_time, transform)| *transform)
-            .unwrap_or(glam::Affine3A::IDENTITY)
+            .unwrap_or(Affine3A::IDENTITY)
     }
 
     #[inline]
-    pub fn latest_at_instance_poses(&self, query: &LatestAtQuery) -> &[glam::Affine3A] {
+    pub fn latest_at_instance_poses(&self, query: &LatestAtQuery) -> &[Affine3A] {
         debug_assert_eq!(query.timeline(), self.timeline);
         self.pose_transforms
             .as_ref()
@@ -239,7 +240,7 @@ impl TransformCacheStoreSubscriber {
                             entity_db,
                             &query,
                         )
-                        .unwrap_or(glam::Affine3A::IDENTITY);
+                        .unwrap_or(Affine3A::IDENTITY);
                         // If there's *no* transform, we have to put identity in, otherwise we'd miss clears!
                         entity_entry.tree_transforms.insert(time, transform);
                     }
@@ -323,7 +324,7 @@ impl PerStoreChunkSubscriber for TransformCacheStoreSubscriber {
                 // (we could inject that here, but it's not entirely straight forward).
                 // So instead, we note down that the caches is invalidated for the given entity & times.
 
-                // Any time _after_ the first event in this chunk is no longer valid now.
+                // This invalidates any time _after_ the first event in this chunk.
                 // (e.g. if a rotation is added prior to translations later on,
                 // then the resulting transforms at those translations changes as well for latest-at queries)
                 let mut invalidated_times = Vec::new();
@@ -366,11 +367,16 @@ impl PerStoreChunkSubscriber for TransformCacheStoreSubscriber {
     }
 }
 
+/// Queries all components that are part of pose transforms, returning the transform from child to parent.
+///
+/// If any of the components yields an invalid transform, returns a `glam::Affine3A::ZERO`.
+/// (this effectively disconnects a subtree from the transform hierarchy!)
+// TODO(andreas): There's no way to discover invalid transforms right now.
 fn query_and_resolve_tree_transform_at_entity(
     entity_path: &EntityPath,
     entity_db: &EntityDb,
     query: &LatestAtQuery,
-) -> Option<glam::Affine3A> {
+) -> Option<Affine3A> {
     // TODO(andreas): Filter out the components we're actually interested in?
     let components = archetypes::Transform3D::all_components();
     let component_names = components.iter().map(|descr| descr.component_name);
@@ -379,59 +385,69 @@ fn query_and_resolve_tree_transform_at_entity(
         return None;
     }
 
-    let mut transform = glam::Affine3A::IDENTITY;
+    let mut transform = Affine3A::IDENTITY;
 
-    // Order see `debug_assert_transform_field_order`
+    // The order of the components here is important, and checked by `debug_assert_transform_field_order`
     if let Some(translation) = result.component_instance::<components::Translation3D>(0) {
-        transform = glam::Affine3A::from(translation);
+        transform = Affine3A::from(translation);
     }
     if let Some(axis_angle) = result.component_instance::<components::RotationAxisAngle>(0) {
-        if let Ok(axis_angle) = glam::Affine3A::try_from(axis_angle) {
+        if let Ok(axis_angle) = Affine3A::try_from(axis_angle) {
             transform *= axis_angle;
         } else {
-            // Invalid transform.
-            return None;
+            return Some(Affine3A::ZERO);
         }
     }
     if let Some(quaternion) = result.component_instance::<components::RotationQuat>(0) {
-        if let Ok(quaternion) = glam::Affine3A::try_from(quaternion) {
+        if let Ok(quaternion) = Affine3A::try_from(quaternion) {
             transform *= quaternion;
         } else {
-            // Invalid transform.
-            return None;
+            return Some(Affine3A::ZERO);
         }
     }
     if let Some(scale) = result.component_instance::<components::Scale3D>(0) {
         if scale.x() == 0.0 && scale.y() == 0.0 && scale.z() == 0.0 {
-            // Invalid scale.
-            return None;
+            return Some(Affine3A::ZERO);
         }
-        transform *= glam::Affine3A::from(scale);
+        transform *= Affine3A::from(scale);
     }
     if let Some(mat3x3) = result.component_instance::<components::TransformMat3x3>(0) {
-        let affine_transform = glam::Affine3A::from(mat3x3);
+        let affine_transform = Affine3A::from(mat3x3);
         if affine_transform.matrix3.determinant() == 0.0 {
-            // Invalid transform.
-            return None;
+            return Some(Affine3A::ZERO);
         }
         transform *= affine_transform;
     }
 
-    if result.component_instance::<components::TransformRelation>(0) == Some(components::TransformRelation::ChildFromParent)
-    // TODO(andreas): Should we warn?
-        && transform.matrix3.determinant() != 0.0
+    if result.component_instance::<components::TransformRelation>(0)
+        == Some(components::TransformRelation::ChildFromParent)
     {
-        transform = transform.inverse();
+        let determinant = transform.matrix3.determinant();
+        if determinant != 0.0 && determinant.is_finite() {
+            transform = transform.inverse();
+        } else {
+            // All "regular invalid" transforms should have been caught.
+            // So ending up here means something else went wrong?
+            re_log::warn_once!(
+                "Failed to express child-from-parent transform at {} since it wasn't invertible",
+                entity_path,
+            );
+        }
     }
 
     Some(transform)
 }
 
+/// Queries all components that are part of pose transforms, returning the transform from child to parent.
+///
+/// If any of the components yields an invalid transform, returns a `glam::Affine3A::ZERO` for that instance.
+/// (this effectively ignores the instance for most visualizations!)
+// TODO(andreas): There's no way to discover invalid transforms right now.
 fn query_and_resolve_instance_poses_at_entity(
     entity_path: &EntityPath,
     entity_db: &EntityDb,
     query: &LatestAtQuery,
-) -> Vec<glam::Affine3A> {
+) -> Vec<Affine3A> {
     // TODO(andreas): Filter out the components we're actually interested in?
     let components = archetypes::InstancePoses3D::all_components();
     let component_names = components.iter().map(|descr| descr.component_name);
@@ -499,29 +515,29 @@ fn query_and_resolve_instance_poses_at_entity(
     let mut transforms = Vec::with_capacity(max_num_instances);
     for _ in 0..max_num_instances {
         // We apply these in a specific order - see `debug_assert_transform_field_order`
-        let mut transform = glam::Affine3A::IDENTITY;
+        let mut transform = Affine3A::IDENTITY;
         if let Some(translation) = iter_translation.next() {
-            transform = glam::Affine3A::from(translation);
+            transform = Affine3A::from(translation);
         }
         if let Some(rotation_quat) = iter_rotation_quat.next() {
-            if let Ok(rotation_quat) = glam::Affine3A::try_from(rotation_quat) {
+            if let Ok(rotation_quat) = Affine3A::try_from(rotation_quat) {
                 transform *= rotation_quat;
             } else {
-                transform = glam::Affine3A::ZERO;
+                transform = Affine3A::ZERO;
             }
         }
         if let Some(rotation_axis_angle) = iter_rotation_axis_angle.next() {
-            if let Ok(axis_angle) = glam::Affine3A::try_from(rotation_axis_angle) {
+            if let Ok(axis_angle) = Affine3A::try_from(rotation_axis_angle) {
                 transform *= axis_angle;
             } else {
-                transform = glam::Affine3A::ZERO;
+                transform = Affine3A::ZERO;
             }
         }
         if let Some(scale) = iter_scale.next() {
-            transform *= glam::Affine3A::from(scale);
+            transform *= Affine3A::from(scale);
         }
         if let Some(mat3x3) = iter_mat3x3.next() {
-            transform *= glam::Affine3A::from(mat3x3);
+            transform *= Affine3A::from(mat3x3);
         }
 
         transforms.push(transform);
