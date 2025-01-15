@@ -285,7 +285,6 @@ impl AppState {
 
         // We move the time at the very start of the frame,
         // so that we always show the latest data when we're in "follow" mode.
-
         move_time(&ctx, recording, rx, timeline_callbacks);
 
         // Update the viewport. May spawn new views and handle queued requests (like screenshots).
