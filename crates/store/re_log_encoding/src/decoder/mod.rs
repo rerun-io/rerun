@@ -413,14 +413,14 @@ mod tests {
     };
 
     // TODO(#3741): remove this once we are all in on arrow-rs
-    fn strip_arrow_extensions_from_log_messages(log_msg: Vec<LogMsg>) -> Vec<LogMsg> {
+    pub fn strip_arrow_extensions_from_log_messages(log_msg: Vec<LogMsg>) -> Vec<LogMsg> {
         log_msg
             .into_iter()
             .map(LogMsg::strip_arrow_extension_types)
             .collect()
     }
 
-    fn fake_log_messages() -> Vec<LogMsg> {
+    pub fn fake_log_messages() -> Vec<LogMsg> {
         let store_id = StoreId::random(StoreKind::Blueprint);
 
         let arrow_msg = re_chunk::Chunk::builder("test_entity".into())

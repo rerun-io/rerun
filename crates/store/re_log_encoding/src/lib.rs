@@ -217,23 +217,28 @@ impl MessageHeader {
 
     #[cfg(feature = "decoder")]
     pub fn decode(read: &mut impl std::io::Read) -> Result<Self, decoder::DecodeError> {
-        fn u32_from_le_slice(bytes: &[u8]) -> u32 {
-            u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]])
-        }
-
         let mut buffer = [0_u8; Self::SIZE];
         read.read_exact(&mut buffer)
             .map_err(decoder::DecodeError::Read)?;
 
-        if u32_from_le_slice(&buffer[0..4]) == 0 && u32_from_le_slice(&buffer[4..]) == 0 {
-            Ok(Self::EndOfStream)
+        Ok(Self::from_bytes(&buffer))
+    }
+
+    #[cfg(feature = "decoder")]
+    pub fn from_bytes(data: &[u8]) -> Self {
+        fn u32_from_le_slice(bytes: &[u8]) -> u32 {
+            u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]])
+        }
+
+        if u32_from_le_slice(&data[0..4]) == 0 && u32_from_le_slice(&data[4..]) == 0 {
+            Self::EndOfStream
         } else {
-            let compressed = u32_from_le_slice(&buffer[0..4]);
-            let uncompressed = u32_from_le_slice(&buffer[4..]);
-            Ok(Self::Data {
+            let compressed = u32_from_le_slice(&data[0..4]);
+            let uncompressed = u32_from_le_slice(&data[4..]);
+            Self::Data {
                 compressed_len: compressed,
                 uncompressed_len: uncompressed,
-            })
+            }
         }
     }
 }
