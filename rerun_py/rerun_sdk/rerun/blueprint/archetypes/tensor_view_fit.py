@@ -68,7 +68,7 @@ class TensorViewFit(TensorViewFitExt, Archetype):
         """Clear all the fields of a `TensorViewFit`."""
         inst = cls.__new__(cls)
         inst.__attrs_init__(
-            scaling=[],  # type: ignore[arg-type]
+            scaling=[],
         )
         return inst
 

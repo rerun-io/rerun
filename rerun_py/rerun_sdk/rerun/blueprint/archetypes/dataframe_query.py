@@ -93,11 +93,11 @@ class DataframeQuery(DataframeQueryExt, Archetype):
         """Clear all the fields of a `DataframeQuery`."""
         inst = cls.__new__(cls)
         inst.__attrs_init__(
-            timeline=[],  # type: ignore[arg-type]
-            filter_by_range=[],  # type: ignore[arg-type]
-            filter_is_not_null=[],  # type: ignore[arg-type]
-            apply_latest_at=[],  # type: ignore[arg-type]
-            select=[],  # type: ignore[arg-type]
+            timeline=[],
+            filter_by_range=[],
+            filter_is_not_null=[],
+            apply_latest_at=[],
+            select=[],
         )
         return inst
 

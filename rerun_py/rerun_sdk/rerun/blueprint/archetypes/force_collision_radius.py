@@ -114,9 +114,9 @@ class ForceCollisionRadius(Archetype):
         """Clear all the fields of a `ForceCollisionRadius`."""
         inst = cls.__new__(cls)
         inst.__attrs_init__(
-            enabled=[],  # type: ignore[arg-type]
-            strength=[],  # type: ignore[arg-type]
-            iterations=[],  # type: ignore[arg-type]
+            enabled=[],
+            strength=[],
+            iterations=[],
         )
         return inst
 

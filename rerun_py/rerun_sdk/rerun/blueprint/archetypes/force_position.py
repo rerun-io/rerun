@@ -110,9 +110,9 @@ class ForcePosition(Archetype):
         """Clear all the fields of a `ForcePosition`."""
         inst = cls.__new__(cls)
         inst.__attrs_init__(
-            enabled=[],  # type: ignore[arg-type]
-            strength=[],  # type: ignore[arg-type]
-            position=[],  # type: ignore[arg-type]
+            enabled=[],
+            strength=[],
+            position=[],
         )
         return inst
 

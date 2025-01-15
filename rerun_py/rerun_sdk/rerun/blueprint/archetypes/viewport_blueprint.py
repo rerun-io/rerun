@@ -152,11 +152,11 @@ class ViewportBlueprint(Archetype):
         """Clear all the fields of a `ViewportBlueprint`."""
         inst = cls.__new__(cls)
         inst.__attrs_init__(
-            root_container=[],  # type: ignore[arg-type]
-            maximized=[],  # type: ignore[arg-type]
-            auto_layout=[],  # type: ignore[arg-type]
-            auto_views=[],  # type: ignore[arg-type]
-            past_viewer_recommendations=[],  # type: ignore[arg-type]
+            root_container=[],
+            maximized=[],
+            auto_layout=[],
+            auto_views=[],
+            past_viewer_recommendations=[],
         )
         return inst
 

@@ -178,8 +178,8 @@ class VideoFrameReference(VideoFrameReferenceExt, Archetype):
         """Clear all the fields of a `VideoFrameReference`."""
         inst = cls.__new__(cls)
         inst.__attrs_init__(
-            timestamp=[],  # type: ignore[arg-type]
-            video_reference=[],  # type: ignore[arg-type]
+            timestamp=[],
+            video_reference=[],
         )
         return inst
 

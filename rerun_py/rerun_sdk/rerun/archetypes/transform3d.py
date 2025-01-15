@@ -217,13 +217,13 @@ class Transform3D(Transform3DExt, Archetype):
         """Clear all the fields of a `Transform3D`."""
         inst = cls.__new__(cls)
         inst.__attrs_init__(
-            translation=[],  # type: ignore[arg-type]
-            rotation_axis_angle=[],  # type: ignore[arg-type]
-            quaternion=[],  # type: ignore[arg-type]
-            scale=[],  # type: ignore[arg-type]
-            mat3x3=[],  # type: ignore[arg-type]
-            relation=[],  # type: ignore[arg-type]
-            axis_length=[],  # type: ignore[arg-type]
+            translation=[],
+            rotation_axis_angle=[],
+            quaternion=[],
+            scale=[],
+            mat3x3=[],
+            relation=[],
+            axis_length=[],
         )
         return inst
 

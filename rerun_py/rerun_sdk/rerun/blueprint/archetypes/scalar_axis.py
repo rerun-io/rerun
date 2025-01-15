@@ -97,8 +97,8 @@ class ScalarAxis(Archetype):
         """Clear all the fields of a `ScalarAxis`."""
         inst = cls.__new__(cls)
         inst.__attrs_init__(
-            range=[],  # type: ignore[arg-type]
-            zoom_lock=[],  # type: ignore[arg-type]
+            range=[],
+            zoom_lock=[],
         )
         return inst
 

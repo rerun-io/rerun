@@ -225,13 +225,13 @@ class Points3D(Points3DExt, Archetype):
         """Clear all the fields of a `Points3D`."""
         inst = cls.__new__(cls)
         inst.__attrs_init__(
-            positions=[],  # type: ignore[arg-type]
-            radii=[],  # type: ignore[arg-type]
-            colors=[],  # type: ignore[arg-type]
-            labels=[],  # type: ignore[arg-type]
-            show_labels=[],  # type: ignore[arg-type]
-            class_ids=[],  # type: ignore[arg-type]
-            keypoint_ids=[],  # type: ignore[arg-type]
+            positions=[],
+            radii=[],
+            colors=[],
+            labels=[],
+            show_labels=[],
+            class_ids=[],
+            keypoint_ids=[],
         )
         return inst
 

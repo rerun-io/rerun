@@ -81,7 +81,7 @@ class VisibleTimeRanges(VisibleTimeRangesExt, Archetype):
         """Clear all the fields of a `VisibleTimeRanges`."""
         inst = cls.__new__(cls)
         inst.__attrs_init__(
-            ranges=[],  # type: ignore[arg-type]
+            ranges=[],
         )
         return inst
 

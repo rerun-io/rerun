@@ -2557,7 +2557,7 @@ fn quote_partial_update_methods(reporter: &Reporter, obj: &Object, objects: &Obj
         .iter()
         .map(|field| {
             let field_name = field.snake_case_name();
-            format!("{field_name}=[],  # type: ignore[arg-type]")
+            format!("{field_name}=[],")
         })
         .collect_vec()
         .join("\n                          ");

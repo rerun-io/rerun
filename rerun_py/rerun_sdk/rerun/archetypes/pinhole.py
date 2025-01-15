@@ -168,10 +168,10 @@ class Pinhole(PinholeExt, Archetype):
         """Clear all the fields of a `Pinhole`."""
         inst = cls.__new__(cls)
         inst.__attrs_init__(
-            image_from_camera=[],  # type: ignore[arg-type]
-            resolution=[],  # type: ignore[arg-type]
-            camera_xyz=[],  # type: ignore[arg-type]
-            image_plane_distance=[],  # type: ignore[arg-type]
+            image_from_camera=[],
+            resolution=[],
+            camera_xyz=[],
+            image_plane_distance=[],
         )
         return inst
 

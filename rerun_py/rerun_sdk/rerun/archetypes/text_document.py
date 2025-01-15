@@ -171,8 +171,8 @@ class TextDocument(Archetype):
         """Clear all the fields of a `TextDocument`."""
         inst = cls.__new__(cls)
         inst.__attrs_init__(
-            text=[],  # type: ignore[arg-type]
-            media_type=[],  # type: ignore[arg-type]
+            text=[],
+            media_type=[],
         )
         return inst
 

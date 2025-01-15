@@ -132,10 +132,10 @@ class ViewBlueprint(Archetype):
         """Clear all the fields of a `ViewBlueprint`."""
         inst = cls.__new__(cls)
         inst.__attrs_init__(
-            class_identifier=[],  # type: ignore[arg-type]
-            display_name=[],  # type: ignore[arg-type]
-            space_origin=[],  # type: ignore[arg-type]
-            visible=[],  # type: ignore[arg-type]
+            class_identifier=[],
+            display_name=[],
+            space_origin=[],
+            visible=[],
         )
         return inst
 

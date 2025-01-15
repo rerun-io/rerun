@@ -85,7 +85,7 @@ class PanelBlueprint(Archetype):
         """Clear all the fields of a `PanelBlueprint`."""
         inst = cls.__new__(cls)
         inst.__attrs_init__(
-            state=[],  # type: ignore[arg-type]
+            state=[],
         )
         return inst
 

@@ -89,7 +89,7 @@ class MapBackground(Archetype):
         """Clear all the fields of a `MapBackground`."""
         inst = cls.__new__(cls)
         inst.__attrs_init__(
-            provider=[],  # type: ignore[arg-type]
+            provider=[],
         )
         return inst
 

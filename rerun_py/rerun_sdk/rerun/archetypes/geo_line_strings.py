@@ -122,9 +122,9 @@ class GeoLineStrings(GeoLineStringsExt, Archetype):
         """Clear all the fields of a `GeoLineStrings`."""
         inst = cls.__new__(cls)
         inst.__attrs_init__(
-            line_strings=[],  # type: ignore[arg-type]
-            radii=[],  # type: ignore[arg-type]
-            colors=[],  # type: ignore[arg-type]
+            line_strings=[],
+            radii=[],
+            colors=[],
         )
         return inst
 

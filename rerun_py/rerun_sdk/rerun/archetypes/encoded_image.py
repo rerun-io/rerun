@@ -117,10 +117,10 @@ class EncodedImage(EncodedImageExt, Archetype):
         """Clear all the fields of a `EncodedImage`."""
         inst = cls.__new__(cls)
         inst.__attrs_init__(
-            blob=[],  # type: ignore[arg-type]
-            media_type=[],  # type: ignore[arg-type]
-            opacity=[],  # type: ignore[arg-type]
-            draw_order=[],  # type: ignore[arg-type]
+            blob=[],
+            media_type=[],
+            opacity=[],
+            draw_order=[],
         )
         return inst
 

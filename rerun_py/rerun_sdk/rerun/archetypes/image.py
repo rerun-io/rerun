@@ -154,10 +154,10 @@ class Image(ImageExt, Archetype):
         """Clear all the fields of a `Image`."""
         inst = cls.__new__(cls)
         inst.__attrs_init__(
-            buffer=[],  # type: ignore[arg-type]
-            format=[],  # type: ignore[arg-type]
-            opacity=[],  # type: ignore[arg-type]
-            draw_order=[],  # type: ignore[arg-type]
+            buffer=[],
+            format=[],
+            opacity=[],
+            draw_order=[],
         )
         return inst
 

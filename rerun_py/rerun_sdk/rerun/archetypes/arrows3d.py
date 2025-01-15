@@ -140,13 +140,13 @@ class Arrows3D(Arrows3DExt, Archetype):
         """Clear all the fields of a `Arrows3D`."""
         inst = cls.__new__(cls)
         inst.__attrs_init__(
-            vectors=[],  # type: ignore[arg-type]
-            origins=[],  # type: ignore[arg-type]
-            radii=[],  # type: ignore[arg-type]
-            colors=[],  # type: ignore[arg-type]
-            labels=[],  # type: ignore[arg-type]
-            show_labels=[],  # type: ignore[arg-type]
-            class_ids=[],  # type: ignore[arg-type]
+            vectors=[],
+            origins=[],
+            radii=[],
+            colors=[],
+            labels=[],
+            show_labels=[],
+            class_ids=[],
         )
         return inst
 

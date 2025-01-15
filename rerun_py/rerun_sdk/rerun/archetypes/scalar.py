@@ -121,7 +121,7 @@ class Scalar(Archetype):
         """Clear all the fields of a `Scalar`."""
         inst = cls.__new__(cls)
         inst.__attrs_init__(
-            scalar=[],  # type: ignore[arg-type]
+            scalar=[],
         )
         return inst
 

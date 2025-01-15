@@ -78,8 +78,8 @@ class PlotLegend(PlotLegendExt, Archetype):
         """Clear all the fields of a `PlotLegend`."""
         inst = cls.__new__(cls)
         inst.__attrs_init__(
-            corner=[],  # type: ignore[arg-type]
-            visible=[],  # type: ignore[arg-type]
+            corner=[],
+            visible=[],
         )
         return inst
 

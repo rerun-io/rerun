@@ -121,9 +121,9 @@ class TensorScalarMapping(Archetype):
         """Clear all the fields of a `TensorScalarMapping`."""
         inst = cls.__new__(cls)
         inst.__attrs_init__(
-            mag_filter=[],  # type: ignore[arg-type]
-            colormap=[],  # type: ignore[arg-type]
-            gamma=[],  # type: ignore[arg-type]
+            mag_filter=[],
+            colormap=[],
+            gamma=[],
         )
         return inst
 

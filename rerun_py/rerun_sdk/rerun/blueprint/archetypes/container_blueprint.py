@@ -187,14 +187,14 @@ class ContainerBlueprint(Archetype):
         """Clear all the fields of a `ContainerBlueprint`."""
         inst = cls.__new__(cls)
         inst.__attrs_init__(
-            container_kind=[],  # type: ignore[arg-type]
-            display_name=[],  # type: ignore[arg-type]
-            contents=[],  # type: ignore[arg-type]
-            col_shares=[],  # type: ignore[arg-type]
-            row_shares=[],  # type: ignore[arg-type]
-            active_tab=[],  # type: ignore[arg-type]
-            visible=[],  # type: ignore[arg-type]
-            grid_columns=[],  # type: ignore[arg-type]
+            container_kind=[],
+            display_name=[],
+            contents=[],
+            col_shares=[],
+            row_shares=[],
+            active_tab=[],
+            visible=[],
+            grid_columns=[],
         )
         return inst
 

@@ -79,7 +79,7 @@ class VisualBounds2D(VisualBounds2DExt, Archetype):
         """Clear all the fields of a `VisualBounds2D`."""
         inst = cls.__new__(cls)
         inst.__attrs_init__(
-            range=[],  # type: ignore[arg-type]
+            range=[],
         )
         return inst
 

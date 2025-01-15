@@ -194,15 +194,15 @@ class Mesh3D(Mesh3DExt, Archetype):
         """Clear all the fields of a `Mesh3D`."""
         inst = cls.__new__(cls)
         inst.__attrs_init__(
-            vertex_positions=[],  # type: ignore[arg-type]
-            triangle_indices=[],  # type: ignore[arg-type]
-            vertex_normals=[],  # type: ignore[arg-type]
-            vertex_colors=[],  # type: ignore[arg-type]
-            vertex_texcoords=[],  # type: ignore[arg-type]
-            albedo_factor=[],  # type: ignore[arg-type]
-            albedo_texture_buffer=[],  # type: ignore[arg-type]
-            albedo_texture_format=[],  # type: ignore[arg-type]
-            class_ids=[],  # type: ignore[arg-type]
+            vertex_positions=[],
+            triangle_indices=[],
+            vertex_normals=[],
+            vertex_colors=[],
+            vertex_texcoords=[],
+            albedo_factor=[],
+            albedo_texture_buffer=[],
+            albedo_texture_format=[],
+            class_ids=[],
         )
         return inst
 

@@ -114,9 +114,9 @@ class ForceLink(Archetype):
         """Clear all the fields of a `ForceLink`."""
         inst = cls.__new__(cls)
         inst.__attrs_init__(
-            enabled=[],  # type: ignore[arg-type]
-            distance=[],  # type: ignore[arg-type]
-            iterations=[],  # type: ignore[arg-type]
+            enabled=[],
+            distance=[],
+            iterations=[],
         )
         return inst
 

@@ -156,24 +156,24 @@ class AffixFuzzer4(Archetype):
         """Clear all the fields of a `AffixFuzzer4`."""
         inst = cls.__new__(cls)
         inst.__attrs_init__(
-            fuzz2101=[],  # type: ignore[arg-type]
-            fuzz2102=[],  # type: ignore[arg-type]
-            fuzz2103=[],  # type: ignore[arg-type]
-            fuzz2104=[],  # type: ignore[arg-type]
-            fuzz2105=[],  # type: ignore[arg-type]
-            fuzz2106=[],  # type: ignore[arg-type]
-            fuzz2107=[],  # type: ignore[arg-type]
-            fuzz2108=[],  # type: ignore[arg-type]
-            fuzz2109=[],  # type: ignore[arg-type]
-            fuzz2110=[],  # type: ignore[arg-type]
-            fuzz2111=[],  # type: ignore[arg-type]
-            fuzz2112=[],  # type: ignore[arg-type]
-            fuzz2113=[],  # type: ignore[arg-type]
-            fuzz2114=[],  # type: ignore[arg-type]
-            fuzz2115=[],  # type: ignore[arg-type]
-            fuzz2116=[],  # type: ignore[arg-type]
-            fuzz2117=[],  # type: ignore[arg-type]
-            fuzz2118=[],  # type: ignore[arg-type]
+            fuzz2101=[],
+            fuzz2102=[],
+            fuzz2103=[],
+            fuzz2104=[],
+            fuzz2105=[],
+            fuzz2106=[],
+            fuzz2107=[],
+            fuzz2108=[],
+            fuzz2109=[],
+            fuzz2110=[],
+            fuzz2111=[],
+            fuzz2112=[],
+            fuzz2113=[],
+            fuzz2114=[],
+            fuzz2115=[],
+            fuzz2116=[],
+            fuzz2117=[],
+            fuzz2118=[],
         )
         return inst
 

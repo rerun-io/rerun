@@ -146,11 +146,11 @@ class LineGrid3D(Archetype):
         """Clear all the fields of a `LineGrid3D`."""
         inst = cls.__new__(cls)
         inst.__attrs_init__(
-            visible=[],  # type: ignore[arg-type]
-            spacing=[],  # type: ignore[arg-type]
-            plane=[],  # type: ignore[arg-type]
-            stroke_width=[],  # type: ignore[arg-type]
-            color=[],  # type: ignore[arg-type]
+            visible=[],
+            spacing=[],
+            plane=[],
+            stroke_width=[],
+            color=[],
         )
         return inst
 

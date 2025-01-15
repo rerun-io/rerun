@@ -135,14 +135,14 @@ class Boxes2D(Boxes2DExt, Archetype):
         """Clear all the fields of a `Boxes2D`."""
         inst = cls.__new__(cls)
         inst.__attrs_init__(
-            half_sizes=[],  # type: ignore[arg-type]
-            centers=[],  # type: ignore[arg-type]
-            colors=[],  # type: ignore[arg-type]
-            radii=[],  # type: ignore[arg-type]
-            labels=[],  # type: ignore[arg-type]
-            show_labels=[],  # type: ignore[arg-type]
-            draw_order=[],  # type: ignore[arg-type]
-            class_ids=[],  # type: ignore[arg-type]
+            half_sizes=[],
+            centers=[],
+            colors=[],
+            radii=[],
+            labels=[],
+            show_labels=[],
+            draw_order=[],
+            class_ids=[],
         )
         return inst
 

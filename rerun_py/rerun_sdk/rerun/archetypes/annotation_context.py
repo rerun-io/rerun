@@ -125,7 +125,7 @@ class AnnotationContext(Archetype):
         """Clear all the fields of a `AnnotationContext`."""
         inst = cls.__new__(cls)
         inst.__attrs_init__(
-            context=[],  # type: ignore[arg-type]
+            context=[],
         )
         return inst
 

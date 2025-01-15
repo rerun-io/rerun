@@ -74,8 +74,8 @@ class Background(BackgroundExt, Archetype):
         """Clear all the fields of a `Background`."""
         inst = cls.__new__(cls)
         inst.__attrs_init__(
-            kind=[],  # type: ignore[arg-type]
-            color=[],  # type: ignore[arg-type]
+            kind=[],
+            color=[],
         )
         return inst
 

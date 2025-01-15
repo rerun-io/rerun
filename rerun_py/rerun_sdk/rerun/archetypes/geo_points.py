@@ -120,10 +120,10 @@ class GeoPoints(GeoPointsExt, Archetype):
         """Clear all the fields of a `GeoPoints`."""
         inst = cls.__new__(cls)
         inst.__attrs_init__(
-            positions=[],  # type: ignore[arg-type]
-            radii=[],  # type: ignore[arg-type]
-            colors=[],  # type: ignore[arg-type]
-            class_ids=[],  # type: ignore[arg-type]
+            positions=[],
+            radii=[],
+            colors=[],
+            class_ids=[],
         )
         return inst
 

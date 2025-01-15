@@ -171,8 +171,8 @@ class AssetVideo(AssetVideoExt, Archetype):
         """Clear all the fields of a `AssetVideo`."""
         inst = cls.__new__(cls)
         inst.__attrs_init__(
-            blob=[],  # type: ignore[arg-type]
-            media_type=[],  # type: ignore[arg-type]
+            blob=[],
+            media_type=[],
         )
         return inst
 

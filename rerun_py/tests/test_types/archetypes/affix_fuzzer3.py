@@ -156,24 +156,24 @@ class AffixFuzzer3(Archetype):
         """Clear all the fields of a `AffixFuzzer3`."""
         inst = cls.__new__(cls)
         inst.__attrs_init__(
-            fuzz2001=[],  # type: ignore[arg-type]
-            fuzz2002=[],  # type: ignore[arg-type]
-            fuzz2003=[],  # type: ignore[arg-type]
-            fuzz2004=[],  # type: ignore[arg-type]
-            fuzz2005=[],  # type: ignore[arg-type]
-            fuzz2006=[],  # type: ignore[arg-type]
-            fuzz2007=[],  # type: ignore[arg-type]
-            fuzz2008=[],  # type: ignore[arg-type]
-            fuzz2009=[],  # type: ignore[arg-type]
-            fuzz2010=[],  # type: ignore[arg-type]
-            fuzz2011=[],  # type: ignore[arg-type]
-            fuzz2012=[],  # type: ignore[arg-type]
-            fuzz2013=[],  # type: ignore[arg-type]
-            fuzz2014=[],  # type: ignore[arg-type]
-            fuzz2015=[],  # type: ignore[arg-type]
-            fuzz2016=[],  # type: ignore[arg-type]
-            fuzz2017=[],  # type: ignore[arg-type]
-            fuzz2018=[],  # type: ignore[arg-type]
+            fuzz2001=[],
+            fuzz2002=[],
+            fuzz2003=[],
+            fuzz2004=[],
+            fuzz2005=[],
+            fuzz2006=[],
+            fuzz2007=[],
+            fuzz2008=[],
+            fuzz2009=[],
+            fuzz2010=[],
+            fuzz2011=[],
+            fuzz2012=[],
+            fuzz2013=[],
+            fuzz2014=[],
+            fuzz2015=[],
+            fuzz2016=[],
+            fuzz2017=[],
+            fuzz2018=[],
         )
         return inst
 

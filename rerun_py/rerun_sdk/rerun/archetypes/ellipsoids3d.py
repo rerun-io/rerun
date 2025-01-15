@@ -170,16 +170,16 @@ class Ellipsoids3D(Ellipsoids3DExt, Archetype):
         """Clear all the fields of a `Ellipsoids3D`."""
         inst = cls.__new__(cls)
         inst.__attrs_init__(
-            half_sizes=[],  # type: ignore[arg-type]
-            centers=[],  # type: ignore[arg-type]
-            rotation_axis_angles=[],  # type: ignore[arg-type]
-            quaternions=[],  # type: ignore[arg-type]
-            colors=[],  # type: ignore[arg-type]
-            line_radii=[],  # type: ignore[arg-type]
-            fill_mode=[],  # type: ignore[arg-type]
-            labels=[],  # type: ignore[arg-type]
-            show_labels=[],  # type: ignore[arg-type]
-            class_ids=[],  # type: ignore[arg-type]
+            half_sizes=[],
+            centers=[],
+            rotation_axis_angles=[],
+            quaternions=[],
+            colors=[],
+            line_radii=[],
+            fill_mode=[],
+            labels=[],
+            show_labels=[],
+            class_ids=[],
         )
         return inst
 

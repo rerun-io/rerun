@@ -134,10 +134,10 @@ class TensorSliceSelection(Archetype):
         """Clear all the fields of a `TensorSliceSelection`."""
         inst = cls.__new__(cls)
         inst.__attrs_init__(
-            width=[],  # type: ignore[arg-type]
-            height=[],  # type: ignore[arg-type]
-            indices=[],  # type: ignore[arg-type]
-            slider=[],  # type: ignore[arg-type]
+            width=[],
+            height=[],
+            indices=[],
+            slider=[],
         )
         return inst
 

@@ -165,13 +165,13 @@ class DepthImage(DepthImageExt, Archetype):
         """Clear all the fields of a `DepthImage`."""
         inst = cls.__new__(cls)
         inst.__attrs_init__(
-            buffer=[],  # type: ignore[arg-type]
-            format=[],  # type: ignore[arg-type]
-            meter=[],  # type: ignore[arg-type]
-            colormap=[],  # type: ignore[arg-type]
-            depth_range=[],  # type: ignore[arg-type]
-            point_fill_ratio=[],  # type: ignore[arg-type]
-            draw_order=[],  # type: ignore[arg-type]
+            buffer=[],
+            format=[],
+            meter=[],
+            colormap=[],
+            depth_range=[],
+            point_fill_ratio=[],
+            draw_order=[],
         )
         return inst
 

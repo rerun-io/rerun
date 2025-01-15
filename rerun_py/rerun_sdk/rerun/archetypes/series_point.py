@@ -175,10 +175,10 @@ class SeriesPoint(Archetype):
         """Clear all the fields of a `SeriesPoint`."""
         inst = cls.__new__(cls)
         inst.__attrs_init__(
-            color=[],  # type: ignore[arg-type]
-            marker=[],  # type: ignore[arg-type]
-            name=[],  # type: ignore[arg-type]
-            marker_size=[],  # type: ignore[arg-type]
+            color=[],
+            marker=[],
+            name=[],
+            marker_size=[],
         )
         return inst
 

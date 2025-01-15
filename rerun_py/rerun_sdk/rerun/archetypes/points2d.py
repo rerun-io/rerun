@@ -197,14 +197,14 @@ class Points2D(Points2DExt, Archetype):
         """Clear all the fields of a `Points2D`."""
         inst = cls.__new__(cls)
         inst.__attrs_init__(
-            positions=[],  # type: ignore[arg-type]
-            radii=[],  # type: ignore[arg-type]
-            colors=[],  # type: ignore[arg-type]
-            labels=[],  # type: ignore[arg-type]
-            show_labels=[],  # type: ignore[arg-type]
-            draw_order=[],  # type: ignore[arg-type]
-            class_ids=[],  # type: ignore[arg-type]
-            keypoint_ids=[],  # type: ignore[arg-type]
+            positions=[],
+            radii=[],
+            colors=[],
+            labels=[],
+            show_labels=[],
+            draw_order=[],
+            class_ids=[],
+            keypoint_ids=[],
         )
         return inst
 

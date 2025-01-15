@@ -101,7 +101,7 @@ class Clear(ClearExt, Archetype):
         """Clear all the fields of a `Clear`."""
         inst = cls.__new__(cls)
         inst.__attrs_init__(
-            is_recursive=[],  # type: ignore[arg-type]
+            is_recursive=[],
         )
         return inst
 

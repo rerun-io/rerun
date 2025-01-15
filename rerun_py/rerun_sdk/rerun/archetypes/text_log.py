@@ -140,9 +140,9 @@ class TextLog(Archetype):
         """Clear all the fields of a `TextLog`."""
         inst = cls.__new__(cls)
         inst.__attrs_init__(
-            text=[],  # type: ignore[arg-type]
-            level=[],  # type: ignore[arg-type]
-            color=[],  # type: ignore[arg-type]
+            text=[],
+            level=[],
+            color=[],
         )
         return inst
 

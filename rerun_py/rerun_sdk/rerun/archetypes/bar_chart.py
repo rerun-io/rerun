@@ -117,8 +117,8 @@ class BarChart(BarChartExt, Archetype):
         """Clear all the fields of a `BarChart`."""
         inst = cls.__new__(cls)
         inst.__attrs_init__(
-            values=[],  # type: ignore[arg-type]
-            color=[],  # type: ignore[arg-type]
+            values=[],
+            color=[],
         )
         return inst
 

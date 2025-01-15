@@ -90,7 +90,7 @@ class NearClipPlane(Archetype):
         """Clear all the fields of a `NearClipPlane`."""
         inst = cls.__new__(cls)
         inst.__attrs_init__(
-            near_clip_plane=[],  # type: ignore[arg-type]
+            near_clip_plane=[],
         )
         return inst
 

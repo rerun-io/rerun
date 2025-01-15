@@ -127,8 +127,8 @@ class GraphEdges(Archetype):
         """Clear all the fields of a `GraphEdges`."""
         inst = cls.__new__(cls)
         inst.__attrs_init__(
-            edges=[],  # type: ignore[arg-type]
-            graph_type=[],  # type: ignore[arg-type]
+            edges=[],
+            graph_type=[],
         )
         return inst
 

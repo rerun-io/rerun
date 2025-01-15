@@ -125,9 +125,9 @@ class Asset3D(Asset3DExt, Archetype):
         """Clear all the fields of a `Asset3D`."""
         inst = cls.__new__(cls)
         inst.__attrs_init__(
-            blob=[],  # type: ignore[arg-type]
-            media_type=[],  # type: ignore[arg-type]
-            albedo_factor=[],  # type: ignore[arg-type]
+            blob=[],
+            media_type=[],
+            albedo_factor=[],
         )
         return inst
 

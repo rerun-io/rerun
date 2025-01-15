@@ -114,8 +114,8 @@ class Tensor(TensorExt, Archetype):
         """Clear all the fields of a `Tensor`."""
         inst = cls.__new__(cls)
         inst.__attrs_init__(
-            data=[],  # type: ignore[arg-type]
-            value_range=[],  # type: ignore[arg-type]
+            data=[],
+            value_range=[],
         )
         return inst
 

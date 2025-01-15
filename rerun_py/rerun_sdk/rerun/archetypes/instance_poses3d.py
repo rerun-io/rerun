@@ -177,11 +177,11 @@ class InstancePoses3D(Archetype):
         """Clear all the fields of a `InstancePoses3D`."""
         inst = cls.__new__(cls)
         inst.__attrs_init__(
-            translations=[],  # type: ignore[arg-type]
-            rotation_axis_angles=[],  # type: ignore[arg-type]
-            quaternions=[],  # type: ignore[arg-type]
-            scales=[],  # type: ignore[arg-type]
-            mat3x3=[],  # type: ignore[arg-type]
+            translations=[],
+            rotation_axis_angles=[],
+            quaternions=[],
+            scales=[],
+            mat3x3=[],
         )
         return inst
 

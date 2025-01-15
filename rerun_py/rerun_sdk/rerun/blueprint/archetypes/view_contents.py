@@ -129,7 +129,7 @@ class ViewContents(Archetype):
         """Clear all the fields of a `ViewContents`."""
         inst = cls.__new__(cls)
         inst.__attrs_init__(
-            query=[],  # type: ignore[arg-type]
+            query=[],
         )
         return inst
 

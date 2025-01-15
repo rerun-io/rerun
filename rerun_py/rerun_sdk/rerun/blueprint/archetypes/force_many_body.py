@@ -109,8 +109,8 @@ class ForceManyBody(Archetype):
         """Clear all the fields of a `ForceManyBody`."""
         inst = cls.__new__(cls)
         inst.__attrs_init__(
-            enabled=[],  # type: ignore[arg-type]
-            strength=[],  # type: ignore[arg-type]
+            enabled=[],
+            strength=[],
         )
         return inst
 

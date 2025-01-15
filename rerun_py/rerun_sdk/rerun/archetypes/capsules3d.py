@@ -174,15 +174,15 @@ class Capsules3D(Capsules3DExt, Archetype):
         """Clear all the fields of a `Capsules3D`."""
         inst = cls.__new__(cls)
         inst.__attrs_init__(
-            lengths=[],  # type: ignore[arg-type]
-            radii=[],  # type: ignore[arg-type]
-            translations=[],  # type: ignore[arg-type]
-            rotation_axis_angles=[],  # type: ignore[arg-type]
-            quaternions=[],  # type: ignore[arg-type]
-            colors=[],  # type: ignore[arg-type]
-            labels=[],  # type: ignore[arg-type]
-            show_labels=[],  # type: ignore[arg-type]
-            class_ids=[],  # type: ignore[arg-type]
+            lengths=[],
+            radii=[],
+            translations=[],
+            rotation_axis_angles=[],
+            quaternions=[],
+            colors=[],
+            labels=[],
+            show_labels=[],
+            class_ids=[],
         )
         return inst
 

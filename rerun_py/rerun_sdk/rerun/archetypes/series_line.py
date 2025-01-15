@@ -165,10 +165,10 @@ class SeriesLine(Archetype):
         """Clear all the fields of a `SeriesLine`."""
         inst = cls.__new__(cls)
         inst.__attrs_init__(
-            color=[],  # type: ignore[arg-type]
-            width=[],  # type: ignore[arg-type]
-            name=[],  # type: ignore[arg-type]
-            aggregation_policy=[],  # type: ignore[arg-type]
+            color=[],
+            width=[],
+            name=[],
+            aggregation_policy=[],
         )
         return inst
 

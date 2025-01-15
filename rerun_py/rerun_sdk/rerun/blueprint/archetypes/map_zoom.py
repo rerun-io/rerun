@@ -90,7 +90,7 @@ class MapZoom(Archetype):
         """Clear all the fields of a `MapZoom`."""
         inst = cls.__new__(cls)
         inst.__attrs_init__(
-            zoom=[],  # type: ignore[arg-type]
+            zoom=[],
         )
         return inst
 

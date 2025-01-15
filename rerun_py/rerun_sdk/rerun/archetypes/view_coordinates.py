@@ -127,7 +127,7 @@ class ViewCoordinates(ViewCoordinatesExt, Archetype):
         """Clear all the fields of a `ViewCoordinates`."""
         inst = cls.__new__(cls)
         inst.__attrs_init__(
-            xyz=[],  # type: ignore[arg-type]
+            xyz=[],
         )
         return inst
 

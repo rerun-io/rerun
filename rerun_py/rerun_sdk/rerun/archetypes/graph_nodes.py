@@ -165,12 +165,12 @@ class GraphNodes(Archetype):
         """Clear all the fields of a `GraphNodes`."""
         inst = cls.__new__(cls)
         inst.__attrs_init__(
-            node_ids=[],  # type: ignore[arg-type]
-            positions=[],  # type: ignore[arg-type]
-            colors=[],  # type: ignore[arg-type]
-            labels=[],  # type: ignore[arg-type]
-            show_labels=[],  # type: ignore[arg-type]
-            radii=[],  # type: ignore[arg-type]
+            node_ids=[],
+            positions=[],
+            colors=[],
+            labels=[],
+            show_labels=[],
+            radii=[],
         )
         return inst
 
