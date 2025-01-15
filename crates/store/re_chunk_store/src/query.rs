@@ -574,17 +574,20 @@ impl ChunkStore {
         // Reminder: if a chunk has been indexed for a given component, then it must contain at
         // least one non-null value for that column.
 
-        if let Some(static_chunk) = self
+        let static_chunks = self
             .static_chunk_ids_per_entity
             .get(entity_path)
             .and_then(|static_chunks_per_component| {
-                static_chunks_per_component
-                    .get(&component_name)
-                    .and_then(|per_desc| per_desc.values().next())
+                static_chunks_per_component.get(&component_name)
             })
-            .and_then(|chunk_id| self.chunks_per_chunk_id.get(chunk_id))
-        {
-            return vec![Arc::clone(static_chunk)];
+            .into_iter()
+            .flat_map(|static_chunks_per_desc| static_chunks_per_desc.values())
+            .filter_map(|chunk_id| self.chunks_per_chunk_id.get(chunk_id).cloned())
+            // TODO: are dupes a thing here?
+            .collect_vec();
+
+        if !static_chunks.is_empty() {
+            return static_chunks;
         }
 
         let chunks = self
@@ -594,14 +597,16 @@ impl ChunkStore {
                 temporal_chunk_ids_per_timeline.get(&query.timeline())
             })
             .and_then(|temporal_chunk_ids_per_component| {
-                temporal_chunk_ids_per_component
-                    .get(&component_name)
-                    .and_then(|per_desc| per_desc.values().next())
+                temporal_chunk_ids_per_component.get(&component_name)
             })
-            .and_then(|temporal_chunk_ids_per_time| {
+            .into_iter()
+            .flat_map(|temporal_chunks_per_desc| temporal_chunks_per_desc.values())
+            .filter_map(|temporal_chunk_ids_per_time| {
                 self.latest_at(query, temporal_chunk_ids_per_time)
             })
-            .unwrap_or_default();
+            .flatten()
+            // TODO: are dupes a thing here?
+            .collect_vec();
 
         debug_assert!(
             chunks.iter().map(|chunk| chunk.id()).all_unique(),
