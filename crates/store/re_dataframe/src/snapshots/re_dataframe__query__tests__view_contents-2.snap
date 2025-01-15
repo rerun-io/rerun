@@ -1,0 +1,12 @@
+---
+source: crates/store/re_dataframe/src/query.rs
+assertion_line: 1800
+expression: dataframe.all_columns_collected()
+snapshot_kind: text
+---
+[
+    Int64[30, 40, 50, 70],
+    Timestamp(Nanosecond, None)[None, None, None, None],
+    ListArray[[2], [3], [4], [6]],
+    ListArray[[c], [c], [c], [c]],
+]

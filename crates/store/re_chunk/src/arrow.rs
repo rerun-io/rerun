@@ -13,11 +13,9 @@ impl TransportChunk {
     /// related rust structures that refer to those data buffers.
     pub fn try_to_arrow_record_batch(&self) -> Result<RecordBatch, ArrowError> {
         let columns: Vec<_> = self
-            .all_columns()
-            .map(|(_field, arr2_array)| {
-                let data = arrow2::array::to_data(arr2_array.as_ref());
-                make_array(data)
-            })
+            .columns()
+            .iter()
+            .map(|arr2_array| make_array(arrow2::array::to_data(*arr2_array)))
             .collect();
 
         RecordBatch::try_new(self.schema(), columns)
