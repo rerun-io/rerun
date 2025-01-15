@@ -512,38 +512,37 @@ fn query_and_resolve_instance_poses_at_entity(
     let mut iter_scale = clamped_or_nothing(batch_scale, max_num_instances);
     let mut iter_mat3x3 = clamped_or_nothing(batch_mat3x3, max_num_instances);
 
-    let mut transforms = Vec::with_capacity(max_num_instances);
-    for _ in 0..max_num_instances {
-        // We apply these in a specific order - see `debug_assert_transform_field_order`
-        let mut transform = Affine3A::IDENTITY;
-        if let Some(translation) = iter_translation.next() {
-            transform = Affine3A::from(translation);
-        }
-        if let Some(rotation_quat) = iter_rotation_quat.next() {
-            if let Ok(rotation_quat) = Affine3A::try_from(rotation_quat) {
-                transform *= rotation_quat;
-            } else {
-                transform = Affine3A::ZERO;
+    (0..max_num_instances)
+        .into_iter()
+        .map(|_| {
+            // We apply these in a specific order - see `debug_assert_transform_field_order`
+            let mut transform = Affine3A::IDENTITY;
+            if let Some(translation) = iter_translation.next() {
+                transform = Affine3A::from(translation);
             }
-        }
-        if let Some(rotation_axis_angle) = iter_rotation_axis_angle.next() {
-            if let Ok(axis_angle) = Affine3A::try_from(rotation_axis_angle) {
-                transform *= axis_angle;
-            } else {
-                transform = Affine3A::ZERO;
+            if let Some(rotation_quat) = iter_rotation_quat.next() {
+                if let Ok(rotation_quat) = Affine3A::try_from(rotation_quat) {
+                    transform *= rotation_quat;
+                } else {
+                    transform = Affine3A::ZERO;
+                }
             }
-        }
-        if let Some(scale) = iter_scale.next() {
-            transform *= Affine3A::from(scale);
-        }
-        if let Some(mat3x3) = iter_mat3x3.next() {
-            transform *= Affine3A::from(mat3x3);
-        }
-
-        transforms.push(transform);
-    }
-
-    transforms
+            if let Some(rotation_axis_angle) = iter_rotation_axis_angle.next() {
+                if let Ok(axis_angle) = Affine3A::try_from(rotation_axis_angle) {
+                    transform *= axis_angle;
+                } else {
+                    transform = Affine3A::ZERO;
+                }
+            }
+            if let Some(scale) = iter_scale.next() {
+                transform *= Affine3A::from(scale);
+            }
+            if let Some(mat3x3) = iter_mat3x3.next() {
+                transform *= Affine3A::from(mat3x3);
+            }
+            transform
+        })
+        .collect()
 }
 
 fn query_and_resolve_pinhole_projection_at_entity(
