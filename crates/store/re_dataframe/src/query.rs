@@ -7,9 +7,10 @@ use std::{
 };
 
 use arrow::{
-    array::RecordBatch as ArrowRecordBatch, buffer::ScalarBuffer as ArrowScalarBuffer,
-    datatypes::Fields as ArrowFields, datatypes::Schema as ArrowSchema,
+    array::RecordBatch as ArrowRecordBatch,
+    buffer::ScalarBuffer as ArrowScalarBuffer,
     datatypes::SchemaRef as ArrowSchemaRef,
+    datatypes::{DataType as ArrowDataType, Fields as ArrowFields, Schema as ArrowSchema},
 };
 use arrow2::{
     array::{
@@ -242,13 +243,10 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                 if let Some(clear_chunks) = clear_chunks.get(&descr.entity_path) {
                     chunks.extend(clear_chunks.iter().map(|chunk| {
                         let child_datatype = match &descr.store_datatype {
-                            arrow2::datatypes::DataType::List(field)
-                            | arrow2::datatypes::DataType::LargeList(field) => {
+                            ArrowDataType::List(field) | ArrowDataType::LargeList(field) => {
                                 field.data_type().clone()
                             }
-                            arrow2::datatypes::DataType::Dictionary(_, datatype, _) => {
-                                (**datatype).clone()
-                            }
+                            ArrowDataType::Dictionary(_, datatype) => (**datatype).clone(),
                             datatype => datatype.clone(),
                         };
 
@@ -256,14 +254,14 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                         // Only way this could fail is if the number of rows did not match.
                         #[allow(clippy::unwrap_used)]
                         chunk
-                            .add_component_arrow2(
+                            .add_component(
                                 re_types_core::ComponentDescriptor {
                                     component_name: descr.component_name,
                                     archetype_name: descr.archetype_name,
                                     archetype_field_name: descr.archetype_field_name,
                                 },
-                                re_arrow_util::arrow2_util::new_list_array_of_empties(
-                                    child_datatype,
+                                re_arrow_util::arrow_util::new_list_array_of_empties(
+                                    &child_datatype,
                                     chunk.num_rows(),
                                 ),
                             )
@@ -429,7 +427,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                                         component_name: ComponentName::from(
                                             selected_component_name.clone(),
                                         ),
-                                        store_datatype: arrow2::datatypes::DataType::Null,
+                                        store_datatype: ArrowDataType::Null,
                                         is_static: false,
                                         is_indicator: false,
                                         is_tombstone: false,
@@ -1240,7 +1238,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             .map(|(view_idx, column)| match column {
                 ColumnDescriptor::Time(descr) => {
                     max_value_per_index.get(&descr.timeline()).map_or_else(
-                        || arrow2::array::new_null_array(column.arrow2_datatype(), 1),
+                        || arrow2::array::new_null_array(column.arrow_datatype().into(), 1),
                         |(_time, time_sliced)| {
                             descr.typ().make_arrow_array(time_sliced.clone()).into()
                         },
@@ -1251,7 +1249,9 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                     .get(*view_idx)
                     .cloned()
                     .flatten()
-                    .unwrap_or_else(|| arrow2::array::new_null_array(column.arrow2_datatype(), 1)),
+                    .unwrap_or_else(|| {
+                        arrow2::array::new_null_array(column.arrow_datatype().into(), 1)
+                    }),
             })
             .collect_vec();
 

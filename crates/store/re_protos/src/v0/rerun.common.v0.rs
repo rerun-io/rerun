@@ -191,6 +191,9 @@ pub struct TimeColumnDescriptor {
     #[prost(message, optional, tag = "1")]
     pub timeline: ::core::option::Option<Timeline>,
     /// / The Arrow datatype of the column.
+    /// /
+    /// / Currently this is just the `Display` of the `arrow-rs` `DataType`.
+    /// TODO(emilk): use arrow IPC instead.
     #[prost(string, tag = "2")]
     pub datatype: ::prost::alloc::string::String,
 }
@@ -220,6 +223,9 @@ pub struct ComponentColumnDescriptor {
     #[prost(string, tag = "4")]
     pub component_name: ::prost::alloc::string::String,
     /// / The Arrow datatype of the column.
+    /// /
+    /// / Currently this is just the `Display` of the `arrow-rs` `DataType`.
+    /// / TODO(emilk): use arrow IPC instead.
     #[prost(string, tag = "5")]
     pub datatype: ::prost::alloc::string::String,
     /// / Whether the column is a static column.
