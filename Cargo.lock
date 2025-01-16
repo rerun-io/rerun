@@ -5921,6 +5921,7 @@ dependencies = [
  "re_arrow_util",
  "re_chunk",
  "re_chunk_store",
+ "re_format_arrow",
  "re_log",
  "re_log_encoding",
  "re_log_types",
@@ -7322,6 +7323,7 @@ name = "rerun"
 version = "0.22.0-alpha.1+dev"
 dependencies = [
  "anyhow",
+ "arrow",
  "clap",
  "document-features",
  "env_logger",
@@ -7342,6 +7344,7 @@ dependencies = [
  "re_entity_db",
  "re_error",
  "re_format",
+ "re_format_arrow",
  "re_log",
  "re_log_encoding",
  "re_log_types",

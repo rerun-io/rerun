@@ -30,9 +30,6 @@ serde = [
   "re_types_core/serde",
 ]
 
-## Enable conversion to and from arrow-rs types
-arrow = ["arrow2/arrow"]
-
 
 [dependencies]
 

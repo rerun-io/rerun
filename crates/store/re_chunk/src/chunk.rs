@@ -956,13 +956,29 @@ impl Chunk {
         }
     }
 
-    /// Unconditionally inserts an [`Arrow2ListArray`] as a component column.
+    /// Unconditionally inserts an [`ArrowListArray`] as a component column.
     ///
     /// Removes and replaces the column if it already exists.
     ///
     /// This will fail if the end result is malformed in any way -- see [`Self::sanity_check`].
     #[inline]
     pub fn add_component(
+        &mut self,
+        component_desc: ComponentDescriptor,
+        list_array: ArrowListArray,
+    ) -> ChunkResult<()> {
+        self.components
+            .insert_descriptor(component_desc, list_array);
+        self.sanity_check()
+    }
+
+    /// Unconditionally inserts an [`Arrow2ListArray`] as a component column.
+    ///
+    /// Removes and replaces the column if it already exists.
+    ///
+    /// This will fail if the end result is malformed in any way -- see [`Self::sanity_check`].
+    #[inline]
+    pub fn add_component_arrow2(
         &mut self,
         component_desc: ComponentDescriptor,
         list_array: Arrow2ListArray<i32>,

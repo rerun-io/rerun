@@ -4,6 +4,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::ops::Deref;
 use std::ops::DerefMut;
 
+use arrow::datatypes::Field as ArrowField;
 use arrow2::{
     array::ListArray as ArrowListArray,
     datatypes::{DataType as Arrow2Datatype, Field as Arrow2Field},
@@ -43,7 +44,7 @@ impl ColumnDescriptor {
     }
 
     #[inline]
-    pub fn datatype(&self) -> Arrow2Datatype {
+    pub fn arrow2_datatype(&self) -> Arrow2Datatype {
         match self {
             Self::Time(descr) => descr.datatype.clone(),
             Self::Component(descr) => descr.returned_datatype(),
@@ -51,10 +52,18 @@ impl ColumnDescriptor {
     }
 
     #[inline]
-    pub fn to_arrow_field(&self) -> Arrow2Field {
+    pub fn to_arrow_field(&self) -> ArrowField {
         match self {
             Self::Time(descr) => descr.to_arrow_field(),
             Self::Component(descr) => descr.to_arrow_field(),
+        }
+    }
+
+    #[inline]
+    pub fn to_arrow2_field(&self) -> Arrow2Field {
+        match self {
+            Self::Time(descr) => descr.to_arrow2_field(),
+            Self::Component(descr) => descr.to_arrow2_field(),
         }
     }
 
@@ -150,7 +159,12 @@ impl TimeColumnDescriptor {
     }
 
     #[inline]
-    pub fn to_arrow_field(&self) -> Arrow2Field {
+    pub fn to_arrow_field(&self) -> ArrowField {
+        self.to_arrow2_field().into()
+    }
+
+    #[inline]
+    pub fn to_arrow2_field(&self) -> Arrow2Field {
         let Self { timeline, datatype } = self;
         let nullable = true; // Time column must be nullable since static data doesn't have a time.
         Arrow2Field::new(timeline.name().to_string(), datatype.clone(), nullable)
@@ -351,7 +365,12 @@ impl ComponentColumnDescriptor {
     }
 
     #[inline]
-    pub fn to_arrow_field(&self) -> Arrow2Field {
+    pub fn to_arrow_field(&self) -> ArrowField {
+        self.to_arrow2_field().into()
+    }
+
+    #[inline]
+    pub fn to_arrow2_field(&self) -> Arrow2Field {
         let entity_path = &self.entity_path;
         let descriptor = ComponentDescriptor {
             archetype_name: self.archetype_name,
