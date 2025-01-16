@@ -416,11 +416,25 @@ impl BlueprintTree {
                     } else if node.data_result.tree_prefix_only {
                         true // Keep recursing until we find a projection.
                     } else {
-                        projections.push(node);
-                        false // We found a projection, stop recursing as everything below is now included in the projections.
+                        // We found a projection, but we must check if it is ruled out by the
+                        // filter.
+                        if self.match_data_result(
+                            query_result,
+                            &DataResultNodeOrPath::DataResultNode(node),
+                            view,
+                            true,
+                            filter_matcher,
+                        ) {
+                            projections.push(node);
+                        }
+
+                        // No further recursion needed in this branch, everything below is included
+                        // in the projection (or shouldn't be included if the projection has already
+                        // been filtered out).
+                        false
                     }
                 });
-                //TODO: this must consider the filter as well
+
                 if !projections.is_empty() {
                     ui.list_item().interactive(false).show_flat(
                         ui,
