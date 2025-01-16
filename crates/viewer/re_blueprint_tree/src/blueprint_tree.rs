@@ -5,7 +5,7 @@ use smallvec::SmallVec;
 use re_context_menu::{context_menu_ui_for_item_with_context, SelectionUpdateBehavior};
 use re_data_ui::item_ui::guess_instance_path_icon;
 use re_entity_db::InstancePath;
-use re_log_types::EntityPath;
+use re_log_types::{ApplicationId, EntityPath};
 use re_types::blueprint::components::Visible;
 use re_ui::{
     drag_and_drop::DropTarget, filter_widget, list_item, ContextExt as _, DesignTokens, UiExt as _,
@@ -40,7 +40,14 @@ pub struct BlueprintTree {
     /// We double-buffer this value to deal with ordering constraints.
     next_candidate_drop_parent_container_id: Option<ContainerId>,
 
+    /// State of the entity filter widget.
     filter_state: filter_widget::FilterState,
+
+    /// The store id the filter widget relates to.
+    ///
+    /// Used to invalidate the filter state (aka deactivate it) when the user switches to a
+    /// recording with a different application id.
+    filter_state_app_id: Option<ApplicationId>,
 }
 
 impl BlueprintTree {
@@ -51,6 +58,12 @@ impl BlueprintTree {
         viewport: &ViewportBlueprint,
         ui: &mut egui::Ui,
     ) {
+        // Invalidate the filter widget if the store id has changed.
+        if self.filter_state_app_id.as_ref() != Some(&ctx.store_context.app_id) {
+            self.filter_state = Default::default();
+            self.filter_state_app_id = Some(ctx.store_context.app_id.clone());
+        }
+
         ui.panel_content(|ui| {
             ui.full_span_separator();
             ui.add_space(-1.);
