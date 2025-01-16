@@ -29,6 +29,12 @@ namespace rerun {
         ComponentTypeHandle component_type;
 
       public:
+        /// Creates a new empty component batch with a given descriptor.
+        template <typename T>
+        static Result<ComponentBatch> empty(const ComponentDescriptor& descriptor) {
+            return from_loggable(Collection<T>(), descriptor);
+        }
+
         /// Creates a new component batch from a collection of component instances.
         ///
         /// Automatically registers the component type the first time this type is encountered.

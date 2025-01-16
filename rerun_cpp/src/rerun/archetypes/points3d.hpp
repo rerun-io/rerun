@@ -135,11 +135,11 @@ namespace rerun::archetypes {
     ///     // Interpret raw positions and color data as rerun components and partition them.
     ///     auto indicator_batch = rerun::ComponentColumn::from_indicators<rerun::Points3D>(5);
     ///     auto position_batch = rerun::ComponentColumn::from_loggable_with_lengths(
-    ///         rerun::Collection<rerun::components::Position3D>(std::move(positions)),
+    ///         rerun::Collection<components::Position3D>(std::move(positions)),
     ///         {2, 4, 4, 3, 4}
     ///     );
     ///     auto color_batch = rerun::ComponentColumn::from_loggable(
-    ///         rerun::Collection<rerun::components::Color>(std::move(colors))
+    ///         rerun::Collection<components::Color>(std::move(colors))
     ///     );
     ///
     ///     rec.send_columns(
@@ -191,7 +191,7 @@ namespace rerun::archetypes {
         static constexpr const char IndicatorComponentName[] = "rerun.components.Points3DIndicator";
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+        using IndicatorComponent = components::IndicatorComponent<IndicatorComponentName>;
 
         // TODO: use constants for archetype names and component names.
         static constexpr auto position_descriptor = ComponentDescriptor(
@@ -217,20 +217,52 @@ namespace rerun::archetypes {
         Points3D() = default;
         Points3D(Points3D&& other) = default;
 
-        explicit Points3D(Collection<rerun::components::Position3D> _positions)
+        explicit Points3D(Collection<components::Position3D> _positions)
             : positions(
                   ComponentBatch::from_loggable(_positions, position_descriptor).value_or_throw()
               ) {}
 
+        static Points3D clear_fields() {
+            Points3D points3d;
+            points3d.positions =
+                ComponentBatch::empty<components::Position3D>(position_descriptor).value_or_throw();
+            points3d.radii =
+                ComponentBatch::empty<components::Radius>(radius_descriptor).value_or_throw();
+            points3d.colors =
+                ComponentBatch::empty<components::Color>(color_descriptor).value_or_throw();
+            points3d.labels =
+                ComponentBatch::empty<components::Text>(label_descriptor).value_or_throw();
+            points3d.show_labels =
+                ComponentBatch::empty<components::ShowLabels>(show_labels_descriptor)
+                    .value_or_throw();
+            points3d.class_ids =
+                ComponentBatch::empty<components::ClassId>(class_id_descriptor).value_or_throw();
+            points3d.keypoint_ids =
+                ComponentBatch::empty<components::KeypointId>(keypoint_id_descriptor)
+                    .value_or_throw();
+            return points3d;
+        }
+
+        static Points3D update_fields() {
+            return Points3D();
+        }
+
+        Points3D with_positions(Collection<components::Position3D> _positions) && {
+            positions =
+                ComponentBatch::from_loggable(_positions, position_descriptor).value_or_throw();
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
         /// Optional radii for the points, effectively turning them into circles.
-        Points3D with_radii(Collection<rerun::components::Radius> _radii) && {
+        Points3D with_radii(Collection<components::Radius> _radii) && {
             radii = ComponentBatch::from_loggable(_radii, radius_descriptor).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Optional colors for the points.
-        Points3D with_colors(Collection<rerun::components::Color> _colors) && {
+        Points3D with_colors(Collection<components::Color> _colors) && {
             colors = ComponentBatch::from_loggable(_colors, color_descriptor).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
@@ -240,14 +272,14 @@ namespace rerun::archetypes {
         ///
         /// If there's a single label present, it will be placed at the center of the entity.
         /// Otherwise, each instance will have its own label.
-        Points3D with_labels(Collection<rerun::components::Text> _labels) && {
+        Points3D with_labels(Collection<components::Text> _labels) && {
             labels = ComponentBatch::from_loggable(_labels, label_descriptor).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Optional choice of whether the text labels should be shown by default.
-        Points3D with_show_labels(rerun::components::ShowLabels _show_labels) && {
+        Points3D with_show_labels(components::ShowLabels _show_labels) && {
             show_labels = ComponentBatch::from_loggable(_show_labels, show_labels_descriptor)
                               .value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
@@ -257,7 +289,7 @@ namespace rerun::archetypes {
         /// Optional class Ids for the points.
         ///
         /// The `components::ClassId` provides colors and labels if not specified explicitly.
-        Points3D with_class_ids(Collection<rerun::components::ClassId> _class_ids) && {
+        Points3D with_class_ids(Collection<components::ClassId> _class_ids) && {
             class_ids =
                 ComponentBatch::from_loggable(_class_ids, class_id_descriptor).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
@@ -272,7 +304,7 @@ namespace rerun::archetypes {
         /// with `class_id`).
         /// E.g. the classification might be 'Person' and the keypoints refer to joints on a
         /// detected skeleton.
-        Points3D with_keypoint_ids(Collection<rerun::components::KeypointId> _keypoint_ids) && {
+        Points3D with_keypoint_ids(Collection<components::KeypointId> _keypoint_ids) && {
             keypoint_ids = ComponentBatch::from_loggable(_keypoint_ids, keypoint_id_descriptor)
                                .value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
