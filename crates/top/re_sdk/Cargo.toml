@@ -69,8 +69,6 @@ nohash-hasher.workspace = true
 once_cell.workspace = true
 parking_lot.workspace = true
 thiserror.workspace = true
-tonic.workspace = true
-tokio.workspace = true
 
 # Optional dependencies
 
