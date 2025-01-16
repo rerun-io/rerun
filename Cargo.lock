@@ -5635,6 +5635,7 @@ dependencies = [
 name = "re_blueprint_tree"
 version = "0.22.0-alpha.1+dev"
 dependencies = [
+ "ahash",
  "egui",
  "itertools 0.13.0",
  "re_chunk_store",

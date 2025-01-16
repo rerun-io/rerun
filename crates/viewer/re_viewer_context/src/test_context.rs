@@ -214,7 +214,7 @@ impl TestContext {
         entity_path: EntityPath,
         build_chunk: impl FnOnce(ChunkBuilder) -> ChunkBuilder,
     ) {
-        let mut builder = build_chunk(Chunk::builder(entity_path));
+        let builder = build_chunk(Chunk::builder(entity_path));
         self.recording_store
             .add_chunk(&Arc::new(builder.build().unwrap()))
             .unwrap();
