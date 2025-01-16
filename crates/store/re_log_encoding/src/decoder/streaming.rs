@@ -39,11 +39,7 @@ impl<R: AsyncBufRead + Unpin> StreamingDecoder<R> {
 
     fn peek_file_header(data: &[u8]) -> bool {
         let mut read = std::io::Cursor::new(data);
-        if FileHeader::decode(&mut read).is_err() {
-            return false;
-        }
-
-        true
+        FileHeader::decode(&mut read).is_ok()
     }
 }
 
@@ -238,6 +234,54 @@ mod tests {
         },
         Compression, EncodingOptions, Serializer, VersionPolicy,
     };
+
+    #[tokio::test]
+    async fn test_decoder_handles_corrupted_input_file() {
+        let rrd_version = CrateVersion::LOCAL;
+
+        let messages = fake_log_messages();
+
+        let options = [
+            EncodingOptions {
+                compression: Compression::Off,
+                serializer: Serializer::MsgPack,
+            },
+            EncodingOptions {
+                compression: Compression::LZ4,
+                serializer: Serializer::MsgPack,
+            },
+            EncodingOptions {
+                compression: Compression::Off,
+                serializer: Serializer::Protobuf,
+            },
+            EncodingOptions {
+                compression: Compression::LZ4,
+                serializer: Serializer::Protobuf,
+            },
+        ];
+
+        for options in options {
+            let mut data = vec![];
+            crate::encoder::encode_ref(rrd_version, options, messages.iter().map(Ok), &mut data)
+                .unwrap();
+
+            // We cut the input file by one byte to simulate a corrupted file and check that we don't end up in an infinite loop
+            // waiting for more data when there's to be read.
+            let data = &data[..data.len() - 1];
+
+            let buf_reader = tokio::io::BufReader::new(std::io::Cursor::new(data));
+
+            let decoder = StreamingDecoder::new(VersionPolicy::Error, buf_reader)
+                .await
+                .unwrap();
+
+            let decoded_messages = strip_arrow_extensions_from_log_messages(
+                decoder.collect::<Result<Vec<_>, _>>().await.unwrap(),
+            );
+
+            similar_asserts::assert_eq!(decoded_messages, messages);
+        }
+    }
 
     #[tokio::test]
     async fn test_streaming_decoder() {
