@@ -141,6 +141,7 @@ re_tracing.workspace = true
 re_video.workspace = true
 
 anyhow.workspace = true
+arrow.workspace = true
 document-features.workspace = true
 itertools.workspace = true
 similar-asserts.workspace = true

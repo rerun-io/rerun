@@ -166,6 +166,7 @@ pub const EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE: i32 = 66;
 /// Re-exports of other crates.
 pub mod external {
     pub use anyhow;
+    pub use arrow;
 
     pub use ::re_build_info;
     pub use ::re_entity_db;
