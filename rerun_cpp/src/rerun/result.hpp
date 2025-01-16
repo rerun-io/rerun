@@ -45,19 +45,37 @@ namespace rerun {
             return error.is_err();
         }
 
-#ifdef __cpp_exceptions
         /// Returns the value if status is ok, throws otherwise.
+        ///
+        /// If exceptions are disabled, this will exit the application instead.
+        /// @see error::value_or_exit
         const T& value_or_throw() const& {
             error.throw_on_failure();
             return value;
         }
 
         /// Returns the value if status is ok, throws otherwise.
+        ///
+        /// If exceptions are disabled, this will exit the application instead.
+        /// @see error::value_or_exit
         T value_or_throw() && {
             error.throw_on_failure();
             return std::move(value);
         }
-#endif
+
+        /// Returns the value if status is ok, exits the application otherwise.
+        /// @see error::value_or_throw
+        const T& value_or_exit() const& {
+            error.exit_on_failure();
+            return value;
+        }
+
+        /// Returns the value if status is ok, exits the application otherwise.
+        /// @see error::value_or_throw
+        T value_or_exit() && {
+            error.exit_on_failure();
+            return std::move(value);
+        }
 
       public:
         T value;
