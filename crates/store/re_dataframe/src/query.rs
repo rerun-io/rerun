@@ -1262,6 +1262,9 @@ impl<E: StorageEngineLike> QueryHandle<E> {
 
     /// Calls [`Self::next_row`] and wraps the result in a [`ArrowRecordBatch`].
     ///
+    /// Only use this if you absolutely need a [`RecordBatch`] as this adds a
+    /// some overhead for schema validation.
+    ///
     /// See [`Self::next_row`] for more information.
     #[inline]
     pub fn next_row_batch(&self) -> Option<ArrowRecordBatch> {
