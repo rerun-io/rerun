@@ -20,7 +20,7 @@ By now, explicit blueprints offer a better way to express which views should be 
 
 ### Removed `num_instances` keyword argument to `rr.log_components()`
 
-For historical reasons, the `rr.log_components()` function of the Python SDK accepts an optional, keyword-ony argument `num_instances`.
+For historical reasons, the `rr.log_components()` function of the Python SDK accepts an optional, keyword-only argument `num_instances`.
 It was no longer used for several releases, so we removed it.
 
 **Note**: although `rr.log_components()` is technically a public API, it is undocumented, and we discourage using it.
