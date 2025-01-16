@@ -5637,6 +5637,7 @@ version = "0.22.0-alpha.1+dev"
 dependencies = [
  "egui",
  "itertools 0.13.0",
+ "re_chunk_store",
  "re_context_menu",
  "re_data_ui",
  "re_entity_db",
@@ -5645,6 +5646,7 @@ dependencies = [
  "re_tracing",
  "re_types",
  "re_ui",
+ "re_view_spatial",
  "re_viewer_context",
  "re_viewport_blueprint",
  "smallvec",
