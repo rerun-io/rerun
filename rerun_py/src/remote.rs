@@ -1,4 +1,4 @@
-#![allow(unsafe_op_in_unsafe_fn)]
+#![allow(unsafe_op_in_unsafe_fn)] // False positive due to #[pyfunction] macro
 
 use std::collections::BTreeSet;
 
@@ -8,15 +8,16 @@ use arrow::{
     ffi_stream::ArrowArrayStreamReader,
     pyarrow::PyArrowType,
 };
-// False positive due to #[pyfunction] macro
 use pyo3::{
     exceptions::{PyRuntimeError, PyTypeError, PyValueError},
     prelude::*,
     types::PyDict,
     Bound, PyResult,
 };
+use tokio_stream::StreamExt;
+
 use re_arrow_util::ArrowArrayDowncastRef as _;
-use re_chunk::{Chunk, TransportChunk};
+use re_chunk::Chunk;
 use re_chunk_store::ChunkStore;
 use re_dataframe::{ChunkStoreHandle, QueryExpression, SparseFillStrategy, ViewContentsSelector};
 use re_grpc_client::TonicStatusError;
@@ -32,7 +33,6 @@ use re_protos::{
     TypeConversionError,
 };
 use re_sdk::{ApplicationId, ComponentName, StoreId, StoreKind, Time, Timeline};
-use tokio_stream::StreamExt;
 
 use crate::dataframe::{ComponentLike, PyRecording, PyRecordingHandle, PyRecordingView, PySchema};
 
@@ -321,8 +321,7 @@ impl PyStorageNodeClient {
                         ));
                     }
 
-                    let metadata_tc = TransportChunk::from(metadata);
-                    metadata_tc
+                    metadata
                         .encode()
                         .map_err(|err| PyRuntimeError::new_err(err.to_string()))
                 })
@@ -388,11 +387,9 @@ impl PyStorageNodeClient {
                 ));
             }
 
-            let metadata_tc = TransportChunk::from(metadata);
-
             let request = UpdateCatalogRequest {
                 metadata: Some(
-                    metadata_tc
+                    metadata
                         .encode()
                         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?,
                 ),
