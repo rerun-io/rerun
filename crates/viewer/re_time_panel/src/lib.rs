@@ -752,7 +752,7 @@ impl TimePanel {
         let id = collapse_scope.entity(tree.path.clone()).into();
 
         let is_short_path = tree.path.len() <= 1 && !tree.is_leaf();
-        let default_open = self.filter_state.session_id().is_some() || is_short_path;
+        let default_open = self.filter_state.is_active() || is_short_path;
 
         let list_item::ShowCollapsingResponse {
             item_response: response,
