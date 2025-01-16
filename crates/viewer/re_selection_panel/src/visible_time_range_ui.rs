@@ -61,7 +61,7 @@ fn visible_time_range_ui(
 ) {
     use re_types::Component as _;
 
-    let ranges = ctx
+    let visible_time_ranges = ctx
         .blueprint_db()
         .latest_at(
             ctx.blueprint_query,
@@ -70,12 +70,11 @@ fn visible_time_range_ui(
         )
         .component_batch::<VisibleTimeRange>()
         .unwrap_or_default();
-    let visible_time_ranges = re_types::blueprint::archetypes::VisibleTimeRanges { ranges };
 
     let timeline_name = *ctx.rec_cfg.time_ctrl.read().timeline().name();
     let mut has_individual_range = visible_time_ranges
-        .range_for_timeline(timeline_name.as_str())
-        .is_some();
+        .iter()
+        .any(|range| range.timeline.as_str() == timeline_name.as_str());
 
     let has_individual_range_before = has_individual_range;
     let query_range_before = resolved_query_range.clone();
@@ -112,7 +111,7 @@ fn save_visible_time_ranges(
     has_individual_range: bool,
     query_range: QueryRange,
     property_path: &EntityPath,
-    mut visible_time_ranges: re_types::blueprint::archetypes::VisibleTimeRanges,
+    mut visible_time_range_list: Vec<VisibleTimeRange>,
 ) {
     if has_individual_range {
         let time_range = match query_range {
@@ -125,12 +124,26 @@ fn save_visible_time_ranges(
                 return;
             }
         };
-        visible_time_ranges.set_range_for_timeline(timeline_name, Some(time_range));
+
+        if let Some(existing) = visible_time_range_list
+            .iter_mut()
+            .find(|r| r.timeline.as_str() == timeline_name.as_str())
+        {
+            existing.range = time_range;
+        } else {
+            visible_time_range_list.push(
+                re_types::datatypes::VisibleTimeRange {
+                    timeline: timeline_name.as_str().into(),
+                    range: time_range,
+                }
+                .into(),
+            );
+        }
     } else {
-        visible_time_ranges.set_range_for_timeline(timeline_name, None);
+        visible_time_range_list.retain(|r| r.timeline.as_str() != timeline_name.as_str());
     }
 
-    ctx.save_blueprint_archetype(property_path, &visible_time_ranges);
+    ctx.save_blueprint_component(property_path, &visible_time_range_list);
 }
 
 /// Draws ui for showing and configuring a query range.

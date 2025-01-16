@@ -19,29 +19,29 @@ use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: Specifies a 2D slice of a tensor.
-#[derive(Clone, Debug, Default, Hash, PartialEq, Eq)]
+#[derive(Clone, Debug, Default)]
 pub struct TensorSliceSelection {
     /// Which dimension to map to width.
     ///
     /// If not specified, the height will be determined automatically based on the name and index of the dimension.
-    pub width: Option<crate::components::TensorWidthDimension>,
+    pub width: Option<SerializedComponentBatch>,
 
     /// Which dimension to map to height.
     ///
     /// If not specified, the height will be determined automatically based on the name and index of the dimension.
-    pub height: Option<crate::components::TensorHeightDimension>,
+    pub height: Option<SerializedComponentBatch>,
 
     /// Selected indices for all other dimensions.
     ///
     /// If any of the here listed dimensions is equal to `width` or `height`, it will be ignored.
-    pub indices: Option<Vec<crate::components::TensorDimensionIndexSelection>>,
+    pub indices: Option<SerializedComponentBatch>,
 
     /// Any dimension listed here will have a slider for the index.
     ///
     /// Edits to the sliders will directly manipulate dimensions on the `indices` list.
     /// If any of the here listed dimensions is equal to `width` or `height`, it will be ignored.
     /// If not specified, adds slides for any dimension in `indices`.
-    pub slider: Option<Vec<crate::blueprint::components::TensorDimensionIndexSlider>>,
+    pub slider: Option<SerializedComponentBatch>,
 }
 
 impl TensorSliceSelection {
@@ -178,48 +178,18 @@ impl ::re_types_core::Archetype for TensorSliceSelection {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
         let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
-        let width = if let Some(array) = arrays_by_descr.get(&Self::descriptor_width()) {
-            <crate::components::TensorWidthDimension>::from_arrow_opt(&**array)
-                .with_context("rerun.blueprint.archetypes.TensorSliceSelection#width")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
-        let height = if let Some(array) = arrays_by_descr.get(&Self::descriptor_height()) {
-            <crate::components::TensorHeightDimension>::from_arrow_opt(&**array)
-                .with_context("rerun.blueprint.archetypes.TensorSliceSelection#height")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
-        let indices = if let Some(array) = arrays_by_descr.get(&Self::descriptor_indices()) {
-            Some({
-                <crate::components::TensorDimensionIndexSelection>::from_arrow_opt(&**array)
-                    .with_context("rerun.blueprint.archetypes.TensorSliceSelection#indices")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                    .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.blueprint.archetypes.TensorSliceSelection#indices")?
-            })
-        } else {
-            None
-        };
-        let slider = if let Some(array) = arrays_by_descr.get(&Self::descriptor_slider()) {
-            Some({
-                <crate::blueprint::components::TensorDimensionIndexSlider>::from_arrow_opt(&**array)
-                    .with_context("rerun.blueprint.archetypes.TensorSliceSelection#slider")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                    .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.blueprint.archetypes.TensorSliceSelection#slider")?
-            })
-        } else {
-            None
-        };
+        let width = arrays_by_descr
+            .get(&Self::descriptor_width())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_width()));
+        let height = arrays_by_descr
+            .get(&Self::descriptor_height())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_height()));
+        let indices = arrays_by_descr
+            .get(&Self::descriptor_indices())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_indices()));
+        let slider = arrays_by_descr
+            .get(&Self::descriptor_slider())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_slider()));
         Ok(Self {
             width,
             height,
@@ -230,43 +200,15 @@ impl ::re_types_core::Archetype for TensorSliceSelection {
 }
 
 impl ::re_types_core::AsComponents for TensorSliceSelection {
-    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
-        re_tracing::profile_function!();
+    #[inline]
+    fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
-            (self
-                .width
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_width()),
-            }),
-            (self
-                .height
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_height()),
-            }),
-            (self
-                .indices
-                .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_indices()),
-            }),
-            (self
-                .slider
-                .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_slider()),
-            }),
+            Self::indicator().serialized(),
+            self.width.clone(),
+            self.height.clone(),
+            self.indices.clone(),
+            self.slider.clone(),
         ]
         .into_iter()
         .flatten()
@@ -288,12 +230,42 @@ impl TensorSliceSelection {
         }
     }
 
+    /// Update only some specific fields of a `TensorSliceSelection`.
+    #[inline]
+    pub fn update_fields() -> Self {
+        Self::default()
+    }
+
+    /// Clear all the fields of a `TensorSliceSelection`.
+    #[inline]
+    pub fn clear_fields() -> Self {
+        use ::re_types_core::Loggable as _;
+        Self {
+            width: Some(SerializedComponentBatch::new(
+                crate::components::TensorWidthDimension::arrow_empty(),
+                Self::descriptor_width(),
+            )),
+            height: Some(SerializedComponentBatch::new(
+                crate::components::TensorHeightDimension::arrow_empty(),
+                Self::descriptor_height(),
+            )),
+            indices: Some(SerializedComponentBatch::new(
+                crate::components::TensorDimensionIndexSelection::arrow_empty(),
+                Self::descriptor_indices(),
+            )),
+            slider: Some(SerializedComponentBatch::new(
+                crate::blueprint::components::TensorDimensionIndexSlider::arrow_empty(),
+                Self::descriptor_slider(),
+            )),
+        }
+    }
+
     /// Which dimension to map to width.
     ///
     /// If not specified, the height will be determined automatically based on the name and index of the dimension.
     #[inline]
     pub fn with_width(mut self, width: impl Into<crate::components::TensorWidthDimension>) -> Self {
-        self.width = Some(width.into());
+        self.width = try_serialize_field(Self::descriptor_width(), [width]);
         self
     }
 
@@ -305,7 +277,7 @@ impl TensorSliceSelection {
         mut self,
         height: impl Into<crate::components::TensorHeightDimension>,
     ) -> Self {
-        self.height = Some(height.into());
+        self.height = try_serialize_field(Self::descriptor_height(), [height]);
         self
     }
 
@@ -317,7 +289,7 @@ impl TensorSliceSelection {
         mut self,
         indices: impl IntoIterator<Item = impl Into<crate::components::TensorDimensionIndexSelection>>,
     ) -> Self {
-        self.indices = Some(indices.into_iter().map(Into::into).collect());
+        self.indices = try_serialize_field(Self::descriptor_indices(), indices);
         self
     }
 
@@ -333,7 +305,7 @@ impl TensorSliceSelection {
             Item = impl Into<crate::blueprint::components::TensorDimensionIndexSlider>,
         >,
     ) -> Self {
-        self.slider = Some(slider.into_iter().map(Into::into).collect());
+        self.slider = try_serialize_field(Self::descriptor_slider(), slider);
         self
     }
 }
@@ -345,13 +317,5 @@ impl ::re_byte_size::SizeBytes for TensorSliceSelection {
             + self.height.heap_size_bytes()
             + self.indices.heap_size_bytes()
             + self.slider.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <Option<crate::components::TensorWidthDimension>>::is_pod()
-            && <Option<crate::components::TensorHeightDimension>>::is_pod()
-            && <Option<Vec<crate::components::TensorDimensionIndexSelection>>>::is_pod()
-            && <Option<Vec<crate::blueprint::components::TensorDimensionIndexSlider>>>::is_pod()
     }
 }

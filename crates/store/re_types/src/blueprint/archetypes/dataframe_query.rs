@@ -19,26 +19,26 @@ use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: The query for the dataframe view.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct DataframeQuery {
     /// The timeline for this query.
     ///
     /// If unset, the timeline currently active on the time panel is used.
-    pub timeline: Option<crate::blueprint::components::TimelineName>,
+    pub timeline: Option<SerializedComponentBatch>,
 
     /// If provided, only rows whose timestamp is within this range will be shown.
     ///
     /// Note: will be unset as soon as `timeline` is changed.
-    pub filter_by_range: Option<crate::blueprint::components::FilterByRange>,
+    pub filter_by_range: Option<SerializedComponentBatch>,
 
     /// If provided, only show rows which contains a logged event for the specified component.
-    pub filter_is_not_null: Option<crate::blueprint::components::FilterIsNotNull>,
+    pub filter_is_not_null: Option<SerializedComponentBatch>,
 
     /// Should empty cells be filled with latest-at queries?
-    pub apply_latest_at: Option<crate::blueprint::components::ApplyLatestAt>,
+    pub apply_latest_at: Option<SerializedComponentBatch>,
 
     /// Selected columns. If unset, all columns are selected.
-    pub select: Option<crate::blueprint::components::SelectedColumns>,
+    pub select: Option<SerializedComponentBatch>,
 }
 
 impl DataframeQuery {
@@ -186,54 +186,27 @@ impl ::re_types_core::Archetype for DataframeQuery {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
         let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
-        let timeline = if let Some(array) = arrays_by_descr.get(&Self::descriptor_timeline()) {
-            <crate::blueprint::components::TimelineName>::from_arrow_opt(&**array)
-                .with_context("rerun.blueprint.archetypes.DataframeQuery#timeline")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
-        let filter_by_range =
-            if let Some(array) = arrays_by_descr.get(&Self::descriptor_filter_by_range()) {
-                <crate::blueprint::components::FilterByRange>::from_arrow_opt(&**array)
-                    .with_context("rerun.blueprint.archetypes.DataframeQuery#filter_by_range")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-            } else {
-                None
-            };
-        let filter_is_not_null =
-            if let Some(array) = arrays_by_descr.get(&Self::descriptor_filter_is_not_null()) {
-                <crate::blueprint::components::FilterIsNotNull>::from_arrow_opt(&**array)
-                    .with_context("rerun.blueprint.archetypes.DataframeQuery#filter_is_not_null")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-            } else {
-                None
-            };
-        let apply_latest_at =
-            if let Some(array) = arrays_by_descr.get(&Self::descriptor_apply_latest_at()) {
-                <crate::blueprint::components::ApplyLatestAt>::from_arrow_opt(&**array)
-                    .with_context("rerun.blueprint.archetypes.DataframeQuery#apply_latest_at")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-            } else {
-                None
-            };
-        let select = if let Some(array) = arrays_by_descr.get(&Self::descriptor_select()) {
-            <crate::blueprint::components::SelectedColumns>::from_arrow_opt(&**array)
-                .with_context("rerun.blueprint.archetypes.DataframeQuery#select")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
+        let timeline = arrays_by_descr
+            .get(&Self::descriptor_timeline())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_timeline()));
+        let filter_by_range = arrays_by_descr
+            .get(&Self::descriptor_filter_by_range())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_filter_by_range())
+            });
+        let filter_is_not_null = arrays_by_descr
+            .get(&Self::descriptor_filter_is_not_null())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_filter_is_not_null())
+            });
+        let apply_latest_at = arrays_by_descr
+            .get(&Self::descriptor_apply_latest_at())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_apply_latest_at())
+            });
+        let select = arrays_by_descr
+            .get(&Self::descriptor_select())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_select()));
         Ok(Self {
             timeline,
             filter_by_range,
@@ -245,51 +218,16 @@ impl ::re_types_core::Archetype for DataframeQuery {
 }
 
 impl ::re_types_core::AsComponents for DataframeQuery {
-    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
-        re_tracing::profile_function!();
+    #[inline]
+    fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
-            (self
-                .timeline
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_timeline()),
-            }),
-            (self
-                .filter_by_range
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_filter_by_range()),
-            }),
-            (self
-                .filter_is_not_null
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_filter_is_not_null()),
-            }),
-            (self
-                .apply_latest_at
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_apply_latest_at()),
-            }),
-            (self
-                .select
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_select()),
-            }),
+            Self::indicator().serialized(),
+            self.timeline.clone(),
+            self.filter_by_range.clone(),
+            self.filter_is_not_null.clone(),
+            self.apply_latest_at.clone(),
+            self.select.clone(),
         ]
         .into_iter()
         .flatten()
@@ -312,6 +250,40 @@ impl DataframeQuery {
         }
     }
 
+    /// Update only some specific fields of a `DataframeQuery`.
+    #[inline]
+    pub fn update_fields() -> Self {
+        Self::default()
+    }
+
+    /// Clear all the fields of a `DataframeQuery`.
+    #[inline]
+    pub fn clear_fields() -> Self {
+        use ::re_types_core::Loggable as _;
+        Self {
+            timeline: Some(SerializedComponentBatch::new(
+                crate::blueprint::components::TimelineName::arrow_empty(),
+                Self::descriptor_timeline(),
+            )),
+            filter_by_range: Some(SerializedComponentBatch::new(
+                crate::blueprint::components::FilterByRange::arrow_empty(),
+                Self::descriptor_filter_by_range(),
+            )),
+            filter_is_not_null: Some(SerializedComponentBatch::new(
+                crate::blueprint::components::FilterIsNotNull::arrow_empty(),
+                Self::descriptor_filter_is_not_null(),
+            )),
+            apply_latest_at: Some(SerializedComponentBatch::new(
+                crate::blueprint::components::ApplyLatestAt::arrow_empty(),
+                Self::descriptor_apply_latest_at(),
+            )),
+            select: Some(SerializedComponentBatch::new(
+                crate::blueprint::components::SelectedColumns::arrow_empty(),
+                Self::descriptor_select(),
+            )),
+        }
+    }
+
     /// The timeline for this query.
     ///
     /// If unset, the timeline currently active on the time panel is used.
@@ -320,7 +292,7 @@ impl DataframeQuery {
         mut self,
         timeline: impl Into<crate::blueprint::components::TimelineName>,
     ) -> Self {
-        self.timeline = Some(timeline.into());
+        self.timeline = try_serialize_field(Self::descriptor_timeline(), [timeline]);
         self
     }
 
@@ -332,7 +304,8 @@ impl DataframeQuery {
         mut self,
         filter_by_range: impl Into<crate::blueprint::components::FilterByRange>,
     ) -> Self {
-        self.filter_by_range = Some(filter_by_range.into());
+        self.filter_by_range =
+            try_serialize_field(Self::descriptor_filter_by_range(), [filter_by_range]);
         self
     }
 
@@ -342,7 +315,8 @@ impl DataframeQuery {
         mut self,
         filter_is_not_null: impl Into<crate::blueprint::components::FilterIsNotNull>,
     ) -> Self {
-        self.filter_is_not_null = Some(filter_is_not_null.into());
+        self.filter_is_not_null =
+            try_serialize_field(Self::descriptor_filter_is_not_null(), [filter_is_not_null]);
         self
     }
 
@@ -352,7 +326,8 @@ impl DataframeQuery {
         mut self,
         apply_latest_at: impl Into<crate::blueprint::components::ApplyLatestAt>,
     ) -> Self {
-        self.apply_latest_at = Some(apply_latest_at.into());
+        self.apply_latest_at =
+            try_serialize_field(Self::descriptor_apply_latest_at(), [apply_latest_at]);
         self
     }
 
@@ -362,7 +337,7 @@ impl DataframeQuery {
         mut self,
         select: impl Into<crate::blueprint::components::SelectedColumns>,
     ) -> Self {
-        self.select = Some(select.into());
+        self.select = try_serialize_field(Self::descriptor_select(), [select]);
         self
     }
 }
@@ -375,14 +350,5 @@ impl ::re_byte_size::SizeBytes for DataframeQuery {
             + self.filter_is_not_null.heap_size_bytes()
             + self.apply_latest_at.heap_size_bytes()
             + self.select.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <Option<crate::blueprint::components::TimelineName>>::is_pod()
-            && <Option<crate::blueprint::components::FilterByRange>>::is_pod()
-            && <Option<crate::blueprint::components::FilterIsNotNull>>::is_pod()
-            && <Option<crate::blueprint::components::ApplyLatestAt>>::is_pod()
-            && <Option<crate::blueprint::components::SelectedColumns>>::is_pod()
     }
 }

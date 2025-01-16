@@ -22,7 +22,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Debug, Default)]
 pub struct TensorViewFit {
     /// How the image is scaled to fit the view.
-    pub scaling: Option<crate::blueprint::components::ViewFit>,
+    pub scaling: Option<SerializedComponentBatch>,
 }
 
 impl TensorViewFit {
@@ -118,37 +118,21 @@ impl ::re_types_core::Archetype for TensorViewFit {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
         let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
-        let scaling = if let Some(array) = arrays_by_descr.get(&Self::descriptor_scaling()) {
-            <crate::blueprint::components::ViewFit>::from_arrow_opt(&**array)
-                .with_context("rerun.blueprint.archetypes.TensorViewFit#scaling")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
+        let scaling = arrays_by_descr
+            .get(&Self::descriptor_scaling())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_scaling()));
         Ok(Self { scaling })
     }
 }
 
 impl ::re_types_core::AsComponents for TensorViewFit {
-    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
-        re_tracing::profile_function!();
+    #[inline]
+    fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
-        [
-            Some(Self::indicator()),
-            (self
-                .scaling
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_scaling()),
-            }),
-        ]
-        .into_iter()
-        .flatten()
-        .collect()
+        [Self::indicator().serialized(), self.scaling.clone()]
+            .into_iter()
+            .flatten()
+            .collect()
     }
 }
 
@@ -161,13 +145,31 @@ impl TensorViewFit {
         Self { scaling: None }
     }
 
+    /// Update only some specific fields of a `TensorViewFit`.
+    #[inline]
+    pub fn update_fields() -> Self {
+        Self::default()
+    }
+
+    /// Clear all the fields of a `TensorViewFit`.
+    #[inline]
+    pub fn clear_fields() -> Self {
+        use ::re_types_core::Loggable as _;
+        Self {
+            scaling: Some(SerializedComponentBatch::new(
+                crate::blueprint::components::ViewFit::arrow_empty(),
+                Self::descriptor_scaling(),
+            )),
+        }
+    }
+
     /// How the image is scaled to fit the view.
     #[inline]
     pub fn with_scaling(
         mut self,
         scaling: impl Into<crate::blueprint::components::ViewFit>,
     ) -> Self {
-        self.scaling = Some(scaling.into());
+        self.scaling = try_serialize_field(Self::descriptor_scaling(), [scaling]);
         self
     }
 }
@@ -176,10 +178,5 @@ impl ::re_byte_size::SizeBytes for TensorViewFit {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.scaling.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <Option<crate::blueprint::components::ViewFit>>::is_pod()
     }
 }

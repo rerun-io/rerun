@@ -137,19 +137,10 @@ impl ViewBlueprint {
         // This is a required component. Note that when loading views we crawl the subtree and so
         // cleared empty views paths may exist transiently. The fact that they have an empty class_identifier
         // is the marker that the have been cleared and not an error.
-        let class_identifier = results.component_instance::<blueprint_components::ViewClass>(0)?;
-
-        let blueprint_archetypes::ViewBlueprint {
-            class_identifier,
-            display_name,
-            space_origin,
-            visible,
-        } = blueprint_archetypes::ViewBlueprint {
-            class_identifier,
-            display_name: results.component_instance::<Name>(0),
-            space_origin: results.component_instance::<ViewOrigin>(0),
-            visible: results.component_instance::<Visible>(0),
-        };
+        let class_identifier = results.component_mono::<blueprint_components::ViewClass>()?;
+        let display_name = results.component_mono::<Name>();
+        let space_origin = results.component_mono::<ViewOrigin>();
+        let visible = results.component_mono::<Visible>();
 
         let space_origin = space_origin.map_or_else(EntityPath::root, |origin| origin.0.into());
         let class_identifier: ViewClassIdentifier = class_identifier.0.as_str().into();
@@ -373,12 +364,13 @@ impl ViewBlueprint {
             blueprint_query,
             self.id,
         );
-        let ranges = property.component_array();
+        let ranges = property.component_array::<blueprint_components::VisibleTimeRange>();
 
         let time_range = ranges.ok().flatten().and_then(|ranges| {
-            blueprint_archetypes::VisibleTimeRanges { ranges }
-                .range_for_timeline(active_timeline.name().as_str())
-                .cloned()
+            ranges
+                .iter()
+                .find(|range| range.timeline.as_str() == active_timeline.name().as_str())
+                .map(|range| range.range.clone())
         });
         time_range.map_or_else(
             || {

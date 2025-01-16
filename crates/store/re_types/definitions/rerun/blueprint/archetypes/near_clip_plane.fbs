@@ -2,8 +2,8 @@ namespace rerun.blueprint.archetypes;
 
 /// Controls the distance to the near clip plane in 3D scene units.
 table NearClipPlane (
-    "attr.rerun.scope": "blueprint",
-    "attr.rust.derive": "Copy"
+    "attr.rust.archetype_eager",
+    "attr.rerun.scope": "blueprint"
 ) {
     /// Controls the distance to the near clip plane in 3D scene units.
     ///

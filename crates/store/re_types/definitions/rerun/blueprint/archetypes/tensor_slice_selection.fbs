@@ -2,8 +2,8 @@ namespace rerun.blueprint.archetypes;
 
 /// Specifies a 2D slice of a tensor.
 table TensorSliceSelection (
-    "attr.rerun.scope": "blueprint",
-    "attr.rust.derive": "Default, Hash, PartialEq, Eq"
+    "attr.rust.archetype_eager",
+    "attr.rerun.scope": "blueprint"
 ) {
     /// Which dimension to map to width.
     ///
