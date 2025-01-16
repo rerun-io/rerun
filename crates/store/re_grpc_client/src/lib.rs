@@ -219,7 +219,8 @@ async fn stream_recording_async(
         }));
     }
 
-    let store_info = store_info_from_catalog_chunk(&resp[0], &recording_id)?;
+    let store_info =
+        store_info_from_catalog_chunk(&TransportChunk::from(resp[0].clone()), &recording_id)?;
     let store_id = store_info.store_id.clone();
 
     re_log::debug!("Fetching {recording_id}…");
@@ -256,8 +257,8 @@ async fn stream_recording_async(
 
     re_log::info!("Starting to read...");
     while let Some(result) = resp.next().await {
-        let tc = result.map_err(TonicStatusError)?;
-        let chunk = Chunk::from_transport(&tc)?;
+        let batch = result.map_err(TonicStatusError)?;
+        let chunk = Chunk::from_record_batch(batch)?;
 
         if tx
             .send(LogMsg::ArrowMsg(store_id.clone(), chunk.to_arrow_msg()?))
@@ -399,7 +400,7 @@ async fn stream_catalog_async(
 
     re_log::info!("Starting to read...");
     while let Some(result) = resp.next().await {
-        let input = result.map_err(TonicStatusError)?;
+        let input = TransportChunk::from(result.map_err(TonicStatusError)?);
 
         // Catalog received from the ReDap server isn't suitable for direct conversion to a Rerun Chunk:
         // - conversion expects "data" columns to be ListArrays, hence we need to convert any individual row column data to ListArray
