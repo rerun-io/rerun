@@ -70,6 +70,9 @@ pub mod sink {
         BufferedSink, CallbackSink, LogSink, MemorySink, MemorySinkStorage, TcpSink,
     };
 
+    #[cfg(feature = "grpc")]
+    pub use crate::log_sink::grpc::GrpcSink;
+
     #[cfg(not(target_arch = "wasm32"))]
     pub use re_log_encoding::{FileSink, FileSinkError};
 }

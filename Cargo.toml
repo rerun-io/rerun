@@ -156,6 +156,7 @@ array-init = "2.1"
 arrow = { version = "53.1", default-features = false }
 arrow2 = { package = "re_arrow2", version = "0.18", features = ["arrow"] }
 async-executor = "1.0"
+async-stream = "0.3"
 backtrace = "0.3"
 bincode = "1.3"
 bit-vec = "0.8"

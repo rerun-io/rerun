@@ -367,3 +367,32 @@ impl LogSink for TcpSink {
         self.client.drop_if_disconnected();
     }
 }
+
+#[cfg(feature = "grpc")]
+pub mod grpc {
+    use super::LogSink;
+    use re_log_types::LogMsg;
+
+    pub struct GrpcSink {
+        client: re_grpc_client::message_proxy::Client,
+    }
+
+    impl GrpcSink {
+        #[inline]
+        pub fn new(addr: String) -> Self {
+            Self {
+                client: re_grpc_client::message_proxy::Client::new(addr, Default::default()),
+            }
+        }
+    }
+
+    impl LogSink for GrpcSink {
+        fn send(&self, msg: LogMsg) {
+            self.client.send(msg);
+        }
+
+        fn flush_blocking(&self) {
+            self.client.flush();
+        }
+    }
+}

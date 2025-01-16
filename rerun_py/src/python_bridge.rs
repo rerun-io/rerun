@@ -139,6 +139,8 @@ fn rerun_bindings(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(binary_stream, m)?)?;
     m.add_function(wrap_pyfunction!(connect_tcp, m)?)?;
     m.add_function(wrap_pyfunction!(connect_tcp_blueprint, m)?)?;
+    #[cfg(feature = "remote")]
+    m.add_function(wrap_pyfunction!(connect_grpc, m)?)?;
     m.add_function(wrap_pyfunction!(save, m)?)?;
     m.add_function(wrap_pyfunction!(save_blueprint, m)?)?;
     m.add_function(wrap_pyfunction!(stdout, m)?)?;
@@ -671,6 +673,23 @@ fn connect_tcp_blueprint(
             "Blueprint stream has no store info".to_owned(),
         ))
     }
+}
+
+#[cfg(feature = "remote")]
+#[pyfunction]
+#[pyo3(signature = (addr, recording = None))]
+fn connect_grpc(addr: String, recording: Option<&PyRecordingStream>, py: Python<'_>) {
+    let Some(recording) = get_data_recording(recording) else {
+        return;
+    };
+
+    py.allow_threads(|| {
+        let sink = re_sdk::sink::GrpcSink::new(addr);
+
+        recording.set_sink(Box::new(sink));
+
+        flush_garbage_queue();
+    });
 }
 
 #[pyfunction]
