@@ -133,8 +133,8 @@ impl FilterState {
                         ui.spacing_mut().text_edit_width =
                             (ui.max_rect().width() - 10.0).at_least(0.0);
 
-                        // TODO(ab): ideally _all_ text edit would be styled this way, but we requre egui
-                        // support for that (https://github.com/emilk/egui/issues/3284)
+                        // TODO(ab): ideally _all_ text edits would be styled this way, but we
+                        // require egui support for that (https://github.com/emilk/egui/issues/3284)
                         ui.visuals_mut().widgets.hovered.expansion = 0.0;
                         ui.visuals_mut().widgets.active.expansion = 0.0;
                         ui.visuals_mut().widgets.open.expansion = 0.0;
