@@ -1,12 +1,13 @@
-// Annotation context with two classes, using two labeled classes, of which ones defines a color.
-MsgSender::new("masks") // Applies to all entities below "masks".
-    .with_static(true)
-    .with_component(&[AnnotationContext {
-        class_map: [
+// Annotation context with two classes, using two labeled classes, of which ones defines a
+// color.
+rr.log_static(
+    "masks", // Applies to all entities below "masks".
+    &AnnotationContext(
+        [
             ClassDescription {
                 info: AnnotationInfo {
                     id: 0,
-                    label: Some(Label("Background".into())),
+                    label: Some(Utf8("Background".into())),
                     color: None,
                 },
                 ..Default::default()
@@ -14,43 +15,48 @@ MsgSender::new("masks") // Applies to all entities below "masks".
             ClassDescription {
                 info: AnnotationInfo {
                     id: 0,
-                    label: Some(Label("Person".into())),
-                    color: Some(Color(0xFF000000)),
+                    label: Some(Utf8("Person".into())),
+                    color: Some(Rgba32(0xFF000000)),
                 },
                 ..Default::default()
             },
         ]
         .into_iter()
-        .map(|class| (ClassId(class.info.id), class))
+        .map(|class| ClassDescriptionMapElem {
+            class_id: ClassId(class.info.id),
+            class_description: class,
+        })
         .collect(),
-    }])?
-    .send(rec)?;
+    ),
+)?;
 
 // Annotation context with simple keypoints & keypoint connections.
-MsgSender::new("detections") // Applies to all entities below "detections".
-    .with_static(true)
-    .with_component(&[AnnotationContext {
-        class_map: std::iter::once((
-            ClassId(0),
-            ClassDescription {
-                info: AnnotationInfo {
-                    id: 0,
-                    label: Some(Label("Snake".into())),
-                    color: None,
-                },
-                keypoint_map: (0..10)
-                    .map(|i| AnnotationInfo {
-                        id: i,
-                        label: None,
-                        color: Some(Color::from_rgb(0, (255 / 9 * i) as u8, 0)),
-                    })
-                    .map(|keypoint| (KeypointId(keypoint.id), keypoint))
-                    .collect(),
-                keypoint_connections: (0..9)
-                    .map(|i| (KeypointId(i), KeypointId(i + 1)))
-                    .collect(),
+rr.log_static(
+    "detections", // Applies to all entities below "detections".
+    &AnnotationContext(
+        [ClassDescription {
+            info: AnnotationInfo {
+                id: 0,
+                label: Some(Utf8("Snake".into())),
+                color: None,
             },
-        ))
+            keypoint_annotations: (0..10)
+                .map(|i| AnnotationInfo {
+                    id: i,
+                    label: None,
+                    color: Some(Rgba32::from_rgb(0, (255 / 9 * i) as u8, 0)),
+                })
+                .collect(),
+            keypoint_connections: (0..9)
+                .map(|i| (KeypointId(i), KeypointId(i + 1)))
+                .map(Into::into)
+                .collect(),
+        }]
+        .into_iter()
+        .map(|class| ClassDescriptionMapElem {
+            class_id: ClassId(class.info.id),
+            class_description: class,
+        })
         .collect(),
-    }])?
-    .send(rec)?;
+    ),
+)?;
