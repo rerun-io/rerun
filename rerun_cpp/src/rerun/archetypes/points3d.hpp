@@ -158,24 +158,24 @@ namespace rerun::archetypes {
         std::optional<ComponentBatch> positions;
 
         /// Optional radii for the points, effectively turning them into circles.
-        std::optional<Collection<rerun::components::Radius>> radii;
+        std::optional<ComponentBatch> radii;
 
         /// Optional colors for the points.
-        std::optional<Collection<rerun::components::Color>> colors;
+        std::optional<ComponentBatch> colors;
 
         /// Optional text labels for the points.
         ///
         /// If there's a single label present, it will be placed at the center of the entity.
         /// Otherwise, each instance will have its own label.
-        std::optional<Collection<rerun::components::Text>> labels;
+        std::optional<ComponentBatch> labels;
 
         /// Optional choice of whether the text labels should be shown by default.
-        std::optional<rerun::components::ShowLabels> show_labels;
+        std::optional<ComponentBatch> show_labels;
 
         /// Optional class Ids for the points.
         ///
         /// The `components::ClassId` provides colors and labels if not specified explicitly.
-        std::optional<Collection<rerun::components::ClassId>> class_ids;
+        std::optional<ComponentBatch> class_ids;
 
         /// Optional keypoint IDs for the points, identifying them within a class.
         ///
@@ -185,7 +185,7 @@ namespace rerun::archetypes {
         /// with `class_id`).
         /// E.g. the classification might be 'Person' and the keypoints refer to joints on a
         /// detected skeleton.
-        std::optional<Collection<rerun::components::KeypointId>> keypoint_ids;
+        std::optional<ComponentBatch> keypoint_ids;
 
       public:
         static constexpr const char IndicatorComponentName[] = "rerun.components.Points3DIndicator";
@@ -193,8 +193,24 @@ namespace rerun::archetypes {
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
 
+        // TODO: use constants for archetype names and component names.
         static constexpr auto position_descriptor = ComponentDescriptor(
             "rerun.archetypes.Points3D", "positions", "rerun.components.Position3D"
+        );
+        static constexpr auto radius_descriptor =
+            ComponentDescriptor("rerun.archetypes.Points3D", "radii", "rerun.components.Radius");
+        static constexpr auto color_descriptor =
+            ComponentDescriptor("rerun.archetypes.Points3D", "colors", "rerun.components.Color");
+        static constexpr auto label_descriptor =
+            ComponentDescriptor("rerun.archetypes.Points3D", "labels", "rerun.components.Text");
+        static constexpr auto show_labels_descriptor = ComponentDescriptor(
+            "rerun.archetypes.Points3D", "show_labels", "rerun.components.ShowLabels"
+        );
+        static constexpr auto class_id_descriptor = ComponentDescriptor(
+            "rerun.archetypes.Points3D", "class_ids", "rerun.components.ClassId"
+        );
+        static constexpr auto keypoint_id_descriptor = ComponentDescriptor(
+            "rerun.archetypes.Points3D", "keypoint_ids", "rerun.components.KeypointId"
         );
 
       public:
@@ -208,14 +224,14 @@ namespace rerun::archetypes {
 
         /// Optional radii for the points, effectively turning them into circles.
         Points3D with_radii(Collection<rerun::components::Radius> _radii) && {
-            radii = std::move(_radii);
+            radii = ComponentBatch::from_loggable(_radii, radius_descriptor).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Optional colors for the points.
         Points3D with_colors(Collection<rerun::components::Color> _colors) && {
-            colors = std::move(_colors);
+            colors = ComponentBatch::from_loggable(_colors, color_descriptor).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
@@ -225,14 +241,15 @@ namespace rerun::archetypes {
         /// If there's a single label present, it will be placed at the center of the entity.
         /// Otherwise, each instance will have its own label.
         Points3D with_labels(Collection<rerun::components::Text> _labels) && {
-            labels = std::move(_labels);
+            labels = ComponentBatch::from_loggable(_labels, label_descriptor).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Optional choice of whether the text labels should be shown by default.
         Points3D with_show_labels(rerun::components::ShowLabels _show_labels) && {
-            show_labels = std::move(_show_labels);
+            show_labels = ComponentBatch::from_loggable(_show_labels, show_labels_descriptor)
+                              .value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
@@ -241,7 +258,8 @@ namespace rerun::archetypes {
         ///
         /// The `components::ClassId` provides colors and labels if not specified explicitly.
         Points3D with_class_ids(Collection<rerun::components::ClassId> _class_ids) && {
-            class_ids = std::move(_class_ids);
+            class_ids =
+                ComponentBatch::from_loggable(_class_ids, class_id_descriptor).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
@@ -255,7 +273,8 @@ namespace rerun::archetypes {
         /// E.g. the classification might be 'Person' and the keypoints refer to joints on a
         /// detected skeleton.
         Points3D with_keypoint_ids(Collection<rerun::components::KeypointId> _keypoint_ids) && {
-            keypoint_ids = std::move(_keypoint_ids);
+            keypoint_ids = ComponentBatch::from_loggable(_keypoint_ids, keypoint_id_descriptor)
+                               .value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
