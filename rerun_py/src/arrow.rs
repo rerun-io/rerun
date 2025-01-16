@@ -51,7 +51,7 @@ pub fn descriptor_to_rust(component_descr: &Bound<'_, PyAny>) -> PyResult<Compon
     })
 }
 
-/// Perform conversion between a pyarrow array to arrow2 types.
+/// Perform conversion between a pyarrow array to arrow types.
 ///
 /// `name` is the name of the Rerun component, and the name of the pyarrow `Field` (column name).
 pub fn array_to_rust(
