@@ -5,7 +5,7 @@ use arrow::{
     },
     datatypes::{
         DataType as ArrowDatatype, Field as ArrowField, Fields as ArrowFields,
-        Schema as ArrowSchema, SchemaRef as ArrowSchemaRef, TimeUnit as ArrowTimeUnit,
+        Schema as ArrowSchema, TimeUnit as ArrowTimeUnit,
     },
 };
 use itertools::Itertools;
@@ -39,6 +39,7 @@ pub type ArrowMetadata = std::collections::HashMap<String, String>;
 /// This means we have to be very careful when checking the validity of the data: slipping corrupt
 /// data into the store could silently break all the index search logic (e.g. think of a chunk
 /// claiming to be sorted while it is in fact not).
+// TODO(emilk): remove this, and replace it with a trait extension type for `ArrowRecordBatch`.
 #[derive(Debug, Clone)]
 pub struct TransportChunk {
     batch: ArrowRecordBatch,
@@ -302,21 +303,14 @@ impl TransportChunk {
         }
     }
 
+    /// The size in bytes of the data, once loaded in memory, in chunk-level.
+    ///
+    /// This is stored in the metadata. Returns `None` if that key is not set.
     #[inline]
     pub fn heap_size_bytes(&self) -> Option<u64> {
         self.metadata()
             .get(Self::CHUNK_METADATA_KEY_HEAP_SIZE_BYTES)
             .and_then(|s| s.parse::<u64>().ok())
-    }
-
-    #[inline]
-    pub fn schema(&self) -> ArrowSchemaRef {
-        self.batch.schema()
-    }
-
-    #[inline]
-    pub fn schema_ref(&self) -> &ArrowSchemaRef {
-        self.batch.schema_ref()
     }
 
     #[inline]
@@ -390,12 +384,6 @@ impl TransportChunk {
         self.columns_of_kind(Self::FIELD_METADATA_VALUE_KIND_TIME)
     }
 
-    /// How many columns in total? Includes control, time, and component columns.
-    #[inline]
-    pub fn num_columns(&self) -> usize {
-        self.batch.num_columns()
-    }
-
     #[inline]
     pub fn num_controls(&self) -> usize {
         self.controls().count()
@@ -409,11 +397,6 @@ impl TransportChunk {
     #[inline]
     pub fn num_components(&self) -> usize {
         self.components().count()
-    }
-
-    #[inline]
-    pub fn num_rows(&self) -> usize {
-        self.batch.num_rows()
     }
 }
 
