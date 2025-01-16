@@ -10,8 +10,7 @@ use re_log_types::{EntityPath, ResolvedEntityPathRule, RuleEffect};
 use re_ui::{design_tokens, ContextExt as _, DesignTokens, Icon, UiExt as _};
 use re_viewer_context::{
     icon_for_container_kind, Contents, DragAndDropFeedback, DragAndDropPayload, Item,
-    PublishedViewInfo, SystemExecutionOutput, ViewClassRegistry, ViewId, ViewQuery, ViewStates,
-    ViewerContext,
+    PublishedViewInfo, SystemExecutionOutput, ViewId, ViewQuery, ViewStates, ViewerContext,
 };
 use re_viewport_blueprint::{
     create_entity_add_info, ViewBlueprint, ViewportBlueprint, ViewportCommand,
@@ -295,14 +294,8 @@ impl ViewportUi {
         self.blueprint.spawn_heuristic_views(ctx);
     }
 
-    /// Process any deferred [`ViewportCommand`] and then save to blueprint store (if needed).
-    pub fn save_to_blueprint_store(
-        self,
-        ctx: &ViewerContext<'_>,
-        view_class_registry: &ViewClassRegistry,
-    ) {
-        self.blueprint
-            .save_to_blueprint_store(ctx, view_class_registry);
+    pub fn save_to_blueprint_store(self, ctx: &ViewerContext<'_>) {
+        self.blueprint.save_to_blueprint_store(ctx);
     }
 }
 

@@ -23,7 +23,7 @@ use re_types::{
     blueprint::components::ViewerRecommendationHash, Archetype as _, ViewClassIdentifier,
 };
 use re_viewer_context::{
-    blueprint_id_to_tile_id, ContainerId, Contents, Item, ViewClassRegistry, ViewId, ViewerContext,
+    blueprint_id_to_tile_id, ContainerId, Contents, Item, ViewId, ViewerContext,
 };
 
 use crate::{container::ContainerBlueprint, ViewBlueprint, ViewportCommand, VIEWPORT_PATH};
@@ -890,11 +890,7 @@ impl ViewportBlueprint {
     }
 
     /// Process any deferred [`ViewportCommand`] and then save to blueprint store (if needed).
-    pub fn save_to_blueprint_store(
-        mut self,
-        ctx: &ViewerContext<'_>,
-        view_class_registry: &ViewClassRegistry,
-    ) {
+    pub fn save_to_blueprint_store(mut self, ctx: &ViewerContext<'_>) {
         re_tracing::profile_function!();
 
         let commands: Vec<ViewportCommand> = self.deferred_commands.lock().drain(..).collect();
@@ -910,7 +906,7 @@ impl ViewportBlueprint {
         }
 
         if run_auto_layout {
-            self.tree = super::auto_layout::tree_from_views(view_class_registry, &self.views);
+            self.tree = super::auto_layout::tree_from_views(ctx.view_class_registry, &self.views);
         }
 
         // Simplify before we save the tree.
