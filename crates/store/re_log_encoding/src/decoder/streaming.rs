@@ -17,8 +17,15 @@ pub struct StreamingDecoder<R: AsyncBufRead> {
     version: CrateVersion,
     options: EncodingOptions,
     reader: R,
+    // buffer used for uncompressing data. This is a tiny optimization
+    // to (potentially) avoid allocation for each (compressed) message
+    uncompressed: Vec<u8>,
+    // there are some interesting cases (like corrupted files or concatanated files) where we might
+    // need to know how much unprocessed bytes we have left from the last read
+    bytes_read: usize,
 }
 
+/// `StreamingDecoder` relies on the underlying reader for the wakeup mechanism.
 impl<R: AsyncBufRead + Unpin> StreamingDecoder<R> {
     pub async fn new(version_policy: VersionPolicy, mut reader: R) -> Result<Self, DecodeError> {
         let mut data = [0_u8; FileHeader::SIZE];
@@ -34,6 +41,8 @@ impl<R: AsyncBufRead + Unpin> StreamingDecoder<R> {
             version,
             options,
             reader,
+            uncompressed: Vec::new(),
+            bytes_read: 0,
         })
     }
 
@@ -51,10 +60,20 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
         loop {
-            let serializer = self.options.serializer;
-            let compression = self.options.compression;
+            let Self {
+                options,
+                reader,
+                uncompressed,
+                bytes_read,
+                ..
+            } = &mut *self;
 
-            let buf = match Pin::new(&mut self.reader).poll_fill_buf(cx) {
+            let serializer = options.serializer;
+            let compression = options.compression;
+
+            // poll_fill_buf() implicitly handles the EOF case, so we don't need to check for it
+            let buf = match Pin::new(reader).poll_fill_buf(cx) {
+                std::task::Poll::Ready(Ok([])) => return std::task::Poll::Ready(None),
                 std::task::Poll::Ready(Ok(buf)) => buf,
                 std::task::Poll::Ready(Err(err)) => {
                     return std::task::Poll::Ready(Some(Err(DecodeError::Read(err))));
@@ -62,20 +81,16 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
                 std::task::Poll::Pending => return std::task::Poll::Pending,
             };
 
-            // if we got back an empty buffer or there's less bytes than the file header size (for a potentially
-            // concatenated file), we know we're done
-            if buf.is_empty() {
-                return std::task::Poll::Ready(None);
-            }
-            // Note that message headers are smaller than the file header, but message header + message
-            // is always larger than the file header
-            if buf.len() < FileHeader::SIZE {
-                warn!("we have more bytes in the stream but not enough to read the file header");
+            // no new data to read, but still some unprocessed bytes left
+            // this can happen in the case of a corrupted file
+            if *bytes_read == buf.len() {
+                warn!("we have more bytes in the stream but not enough to process a message");
                 return std::task::Poll::Ready(None);
             }
 
-            let data = &buf[..FileHeader::SIZE];
-            if Self::peek_file_header(data) {
+            // check if this is a start of a new concatenated file
+            if buf.len() >= FileHeader::SIZE && Self::peek_file_header(&buf[..FileHeader::SIZE]) {
+                let data = &buf[..FileHeader::SIZE];
                 // We've found another file header in the middle of the stream, it's time to switch
                 // gears and start over on this new file.
                 match read_options(VersionPolicy::Warn, data) {
@@ -85,6 +100,7 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
 
                         // Consume the bytes we've processed
                         Pin::new(&mut self.reader).consume(FileHeader::SIZE);
+                        self.bytes_read = 0;
 
                         // Continue the loop to process more data
                         continue;
@@ -96,12 +112,12 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
             let (msg, read_bytes) = match serializer {
                 crate::Serializer::MsgPack => {
                     let header_size = super::MessageHeader::SIZE;
-                    if buf.len() < header_size {
-                        // Not enough data to read the header, need to wait for more
-                        return std::task::Poll::Pending;
-                    }
 
-                    // decode the header
+                    if buf.len() < header_size {
+                        self.bytes_read = buf.len();
+                        // Not enough data to read the message, need to wait for more
+                        continue;
+                    }
                     let data = &buf[..header_size];
                     let header = super::MessageHeader::from_bytes(data);
 
@@ -112,14 +128,15 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
                         } => {
                             let uncompressed_len = uncompressed_len as usize;
                             let compressed_len = compressed_len as usize;
-                            let mut uncompressed_data = vec![0_u8; uncompressed_len];
+                            uncompressed.resize(uncompressed.len().max(uncompressed_len), 0);
 
                             // read the data
                             let (data, length) = match compression {
                                 Compression::Off => {
                                     if buf.len() < header_size + uncompressed_len {
+                                        self.bytes_read = buf.len();
                                         // Not enough data to read the message, need to wait for more
-                                        return std::task::Poll::Pending;
+                                        continue;
                                     }
 
                                     (
@@ -130,21 +147,21 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
 
                                 Compression::LZ4 => {
                                     if buf.len() < header_size + compressed_len {
+                                        self.bytes_read = buf.len();
                                         // Not enough data to read the message, need to wait for more
-                                        return std::task::Poll::Pending;
+                                        continue;
                                     }
 
                                     let data = &buf[header_size..header_size + compressed_len];
-                                    if let Err(err) = lz4_flex::block::decompress_into(
-                                        data,
-                                        &mut uncompressed_data,
-                                    ) {
+                                    if let Err(err) =
+                                        lz4_flex::block::decompress_into(data, uncompressed)
+                                    {
                                         return std::task::Poll::Ready(Some(Err(
                                             DecodeError::Lz4(err),
                                         )));
                                     }
 
-                                    (&uncompressed_data[..], compressed_len)
+                                    (&uncompressed[..], compressed_len)
                                 }
                             };
 
@@ -166,18 +183,19 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
                 }
                 crate::Serializer::Protobuf => {
                     let header_size = std::mem::size_of::<file::MessageHeader>();
-                    if buf.len() < header_size {
-                        // Not enough data to read the header, need to wait for more
-                        return std::task::Poll::Pending;
-                    }
 
-                    // decode the header
+                    if buf.len() < header_size {
+                        self.bytes_read = buf.len();
+                        // Not enough data to read the message, need to wait for more
+                        continue;
+                    }
                     let data = &buf[..header_size];
                     let header = file::MessageHeader::from_bytes(data)?;
 
                     if buf.len() < header_size + header.len as usize {
+                        self.bytes_read = buf.len();
                         // Not enough data to read the message, need to wait for more
-                        return std::task::Poll::Pending;
+                        continue;
                     }
 
                     // decode the message
@@ -190,6 +208,7 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
                 }
             };
 
+            // when is msg None? when we've reached the end of the stream
             let Some(mut msg) = msg else {
                 // check if there's another file concatenated
                 if buf.len() < read_bytes + FileHeader::SIZE {
@@ -201,6 +220,11 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
                     re_log::debug!(
                             "Reached end of stream, but it seems we have a concatenated file, continuing"
                         );
+
+                    // Consume the bytes we've processed
+                    Pin::new(&mut self.reader).consume(read_bytes);
+                    self.bytes_read = 0;
+
                     continue;
                 }
 
@@ -214,8 +238,9 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
                 msg.info.store_version = Some(self.version);
             }
 
-            // As a message was fully read, consume the bytes we've processed
+            // Consume the bytes we've processed
             Pin::new(&mut self.reader).consume(read_bytes);
+            self.bytes_read = 0;
 
             return std::task::Poll::Ready(Some(Ok(msg)));
         }
@@ -236,7 +261,7 @@ mod tests {
     };
 
     #[tokio::test]
-    async fn test_decoder_handles_corrupted_input_file() {
+    async fn test_streaming_decoder_handles_corrupted_input_file() {
         let rrd_version = CrateVersion::LOCAL;
 
         let messages = fake_log_messages();
@@ -266,7 +291,7 @@ mod tests {
                 .unwrap();
 
             // We cut the input file by one byte to simulate a corrupted file and check that we don't end up in an infinite loop
-            // waiting for more data when there's to be read.
+            // waiting for more data when there's none to be read.
             let data = &data[..data.len() - 1];
 
             let buf_reader = tokio::io::BufReader::new(std::io::Cursor::new(data));
@@ -284,7 +309,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_streaming_decoder() {
+    async fn test_streaming_decoder_happy_paths() {
         let rrd_version = CrateVersion::LOCAL;
 
         let messages = fake_log_messages();
