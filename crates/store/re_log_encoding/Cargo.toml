@@ -29,6 +29,7 @@ decoder = [
   "re_log_types/serde",
   "dep:tokio",
   "dep:tokio-stream",
+  "dep:bytes",
 ]
 
 ## Enable encoding of log messages to an .rrd file/stream.
@@ -63,6 +64,7 @@ parking_lot.workspace = true
 thiserror.workspace = true
 
 # Optional external dependencies:
+bytes = { workspace = true, optional = true }
 ehttp = { workspace = true, optional = true, features = ["streaming"] }
 lz4_flex = { workspace = true, optional = true }
 rmp-serde = { workspace = true, optional = true }
