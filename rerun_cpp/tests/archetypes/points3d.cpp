@@ -20,7 +20,11 @@ SCENARIO(
                                 .with_keypoint_ids({1, 2});
 
         Points3D from_manual;
-        from_manual.positions = {{1.0, 2.0, 3.0}, {10.0, 20.0, 30.0}};
+        from_manual.positions = rerun::ComponentBatch::from_loggable<rerun::components::Position3D>(
+                                    {{1.0, 2.0, 3.0}, {10.0, 20.0, 30.0}},
+                                    Points3D::position_descriptor
+        )
+                                    .value_or_throw();
         from_manual.radii = {1.0, 10.0};
         from_manual.colors = {{0xAA, 0x00, 0x00, 0xCC}, {0x00, 0xBB, 0x00, 0xDD}};
         from_manual.labels = {"hello", "friend"};

@@ -155,7 +155,7 @@ namespace rerun::archetypes {
     /// ```
     struct Points3D {
         /// All the 3D positions at which the point cloud shows points.
-        Collection<rerun::components::Position3D> positions;
+        std::optional<ComponentBatch> positions;
 
         /// Optional radii for the points, effectively turning them into circles.
         std::optional<Collection<rerun::components::Radius>> radii;
@@ -193,12 +193,18 @@ namespace rerun::archetypes {
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
 
+        static constexpr auto position_descriptor = ComponentDescriptor(
+            "rerun.archetypes.Points3D", "positions", "rerun.components.Position3D"
+        );
+
       public:
         Points3D() = default;
         Points3D(Points3D&& other) = default;
 
         explicit Points3D(Collection<rerun::components::Position3D> _positions)
-            : positions(std::move(_positions)) {}
+            : positions(
+                  ComponentBatch::from_loggable(_positions, position_descriptor).value_or_throw()
+              ) {}
 
         /// Optional radii for the points, effectively turning them into circles.
         Points3D with_radii(Collection<rerun::components::Radius> _radii) && {

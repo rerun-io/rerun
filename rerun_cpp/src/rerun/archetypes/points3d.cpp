@@ -16,18 +16,10 @@ namespace rerun {
         std::vector<ComponentBatch> cells;
         cells.reserve(8);
 
-        {
-            auto result = ComponentBatch::from_loggable(
-                archetype.positions,
-                ComponentDescriptor(
-                    "rerun.archetypes.Points3D",
-                    "positions",
-                    "rerun.components.Position3D"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+        if (archetype.positions.has_value()) {
+            cells.push_back(archetype.positions.value());
         }
+
         if (archetype.radii.has_value()) {
             auto result = ComponentBatch::from_loggable(
                 archetype.radii.value(),
