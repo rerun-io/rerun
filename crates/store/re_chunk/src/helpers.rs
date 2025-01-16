@@ -22,25 +22,12 @@ impl Chunk {
         component_name: &ComponentName,
         row_index: usize,
     ) -> Option<ChunkResult<ArrayRef>> {
-        self.component_batch_raw_arrow2(component_name, row_index)
-            .map(|res| res.map(|array| array.into()))
-    }
-
-    /// Returns the raw data for the specified component.
-    ///
-    /// Returns an error if the row index is out of bounds.
-    #[inline]
-    fn component_batch_raw_arrow2(
-        &self,
-        component_name: &ComponentName,
-        row_index: usize,
-    ) -> Option<ChunkResult<Box<dyn Arrow2Array>>> {
         self.get_first_component(component_name)
             .and_then(|list_array| {
                 if list_array.len() > row_index {
                     list_array
                         .is_valid(row_index)
-                        .then(|| Ok(list_array.value(row_index)))
+                        .then(|| Ok(list_array.value(row_index).into()))
                 } else {
                     Some(Err(crate::ChunkError::IndexOutOfBounds {
                         kind: "row".to_owned(),
