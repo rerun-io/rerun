@@ -6,7 +6,7 @@ use std::ops::DerefMut;
 
 use arrow::datatypes::Field as ArrowField;
 use arrow2::{
-    array::ListArray as ArrowListArray,
+    array::ListArray as Arrow2ListArray,
     datatypes::{DataType as Arrow2Datatype, Field as Arrow2Field},
 };
 use itertools::Itertools;
@@ -206,7 +206,7 @@ pub struct ComponentColumnDescriptor {
     /// The Arrow datatype of the stored column.
     ///
     /// This is the log-time datatype corresponding to how this data is encoded
-    /// in a chunk. Currently this will always be an [`ArrowListArray`], but as
+    /// in a chunk. Currently this will always be an [`Arrow2ListArray`], but as
     /// we introduce mono-type optimization, this might be a native type instead.
     pub store_datatype: Arrow2Datatype,
 
@@ -789,7 +789,7 @@ impl ChunkStore {
                     // NOTE: The data is always a at least a list, whether it's latest-at or range.
                     // It might be wrapped further in e.g. a dict, but at the very least
                     // it's a list.
-                    store_datatype: ArrowListArray::<i32>::default_datatype(datatype.clone()),
+                    store_datatype: Arrow2ListArray::<i32>::default_datatype(datatype.clone()),
                     is_static,
                     is_indicator,
                     is_tombstone,
@@ -888,7 +888,7 @@ impl ChunkStore {
             archetype_name: component_descr.and_then(|descr| descr.archetype_name),
             archetype_field_name: component_descr.and_then(|descr| descr.archetype_field_name),
             component_name,
-            store_datatype: ArrowListArray::<i32>::default_datatype(datatype.clone()),
+            store_datatype: Arrow2ListArray::<i32>::default_datatype(datatype.clone()),
             is_static,
             is_indicator,
             is_tombstone,
