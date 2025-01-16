@@ -5,7 +5,6 @@
 // TODO(#6330): remove unwrap()
 #![allow(clippy::unwrap_used)]
 
-mod auto_layout;
 mod system_execution;
 mod view_highlights;
 mod viewport_ui;
