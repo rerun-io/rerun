@@ -294,7 +294,7 @@ impl DataResultQuery for DataResult {
         &self,
         query_ctx: &'a QueryContext<'a>,
         visualizer_collection: &'a re_viewer_context::VisualizerCollection,
-        component: re_types_core::ComponentName,
+        component_name: re_types_core::ComponentName,
     ) -> ArrayRef {
         // TODO(jleibs): This should be cached somewhere
         for vis in &self.visualizers {
@@ -302,11 +302,21 @@ impl DataResultQuery for DataResult {
                 continue;
             };
 
-            if vis.visualizer_query_info().queried.contains(&component) {
-                return vis.fallback_provider().fallback_for(query_ctx, component);
+            // TODO: I mean, this prob makes no sense... fallback should be at the Component level... maybe?
+            // TODO: I guess fallbacks need to be at descriptor level, but they need to use
+            // fallback semantics (which is confusing, yes).
+            let component_desc = ComponentDescriptor::new(component_name);
+            if vis
+                .visualizer_query_info()
+                .queried
+                .contains(&component_desc)
+            {
+                return vis
+                    .fallback_provider()
+                    .fallback_for(query_ctx, component_name);
             }
         }
 
-        query_ctx.viewer_ctx.placeholder_for(component)
+        query_ctx.viewer_ctx.placeholder_for(component_name)
     }
 }

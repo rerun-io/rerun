@@ -31,7 +31,7 @@ pub struct VisualizerEntitySubscriber {
     indicator_components: IntSet<ComponentDescriptor>,
 
     /// Assigns each required component an index.
-    required_components_indices: IntMap<ComponentName, usize>,
+    required_components_indices: IntMap<ComponentDescriptor, usize>,
 
     per_store_mapping: HashMap<StoreId, VisualizerEntityMapping>,
 
@@ -95,7 +95,7 @@ impl VisualizerEntitySubscriber {
                 .required
                 .into_iter()
                 .enumerate()
-                .map(|(i, name)| (name, i))
+                .map(|(i, desc)| (desc, i))
                 .collect(),
             per_store_mapping: Default::default(),
             applicability_filter: visualizer
@@ -190,10 +190,7 @@ impl ChunkStoreSubscriber for VisualizerEntitySubscriber {
             }
 
             for (component_desc, list_array) in event.diff.chunk.components().iter_flattened() {
-                if let Some(index) = self
-                    .required_components_indices
-                    .get(&component_desc.component_name)
-                {
+                if let Some(index) = self.required_components_indices.get(component_desc) {
                     // The component might be present, but logged completely empty.
                     // That shouldn't count towards filling "having the required component present"!
                     // (Note: This happens frequently now with `Transform3D`'s component which always get logged, thus tripping of the `AxisLengthDetector`!)` )

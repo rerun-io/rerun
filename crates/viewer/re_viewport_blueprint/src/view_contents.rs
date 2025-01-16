@@ -308,7 +308,8 @@ impl ViewContents {
                 let Ok(visualizer) = visualizer_collection.get_by_identifier(*visualizer) else {
                     continue;
                 };
-                components_for_defaults.extend(visualizer.visualizer_query_info().queried.iter());
+                components_for_defaults
+                    .extend(visualizer.visualizer_query_info().queried.iter().cloned());
             }
 
             dbg!();
@@ -537,11 +538,10 @@ impl DataQueryPropertyResolver<'_> {
                 }
 
                 // Figure out relevant visual time range.
-                use re_types::Component as _;
                 let latest_at_results = blueprint.latest_at(
                     blueprint_query,
                     &recursive_override_path,
-                    std::iter::once(blueprint_components::VisibleTimeRange::name()),
+                    std::iter::once(blueprint_archetypes::VisibleTimeRanges::descriptor_ranges()),
                 );
                 let visible_time_ranges =
                     latest_at_results.component_batch::<blueprint_components::VisibleTimeRange>();

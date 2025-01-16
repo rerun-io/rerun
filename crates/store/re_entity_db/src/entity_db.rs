@@ -150,12 +150,12 @@ impl EntityDb {
         &self,
         query: &re_chunk_store::LatestAtQuery,
         entity_path: &EntityPath,
-        component_names: impl IntoIterator<Item = re_types_core::ComponentName>,
+        component_descrs: impl IntoIterator<Item = re_types_core::ComponentDescriptor>,
     ) -> re_query::LatestAtResults {
         self.storage_engine
             .read()
             .cache()
-            .latest_at(query, entity_path, component_names)
+            .latest_at(query, entity_path, component_descrs)
     }
 
     /// Get the latest index and value for a given dense [`re_types_core::Component`].

@@ -131,8 +131,10 @@ impl ViewerContext<'_> {
         self.store_context
             .default_blueprint
             .and_then(|default_blueprint| {
+                // TODO
+                let component_desc = ComponentDescriptor::new(component_name);
                 default_blueprint
-                    .latest_at(self.blueprint_query, entity_path, [component_name])
+                    .latest_at(self.blueprint_query, entity_path, [component_desc])
                     .get(&component_name)
                     .and_then(|default_value| default_value.component_batch_raw(&component_name))
             })
@@ -161,8 +163,10 @@ impl ViewerContext<'_> {
     ) {
         let blueprint = &self.store_context.blueprint;
 
+        // TODO
+        let component_desc = ComponentDescriptor::new(component_name);
         let Some(datatype) = blueprint
-            .latest_at(self.blueprint_query, entity_path, [component_name])
+            .latest_at(self.blueprint_query, entity_path, [component_desc])
             .get(&component_name)
             .and_then(|unit| {
                 unit.component_batch_raw(&component_name)
