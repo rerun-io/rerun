@@ -1327,6 +1327,7 @@ mod tests {
     use re_chunk_store::{
         ChunkStore, ChunkStoreConfig, ChunkStoreHandle, ResolvedTimeRange, TimeInt,
     };
+    use re_format_arrow::format_record_batch;
     use re_log_types::{
         build_frame_nr, build_log_time,
         example_components::{MyColor, MyLabel, MyPoint},
@@ -1399,7 +1400,7 @@ mod tests {
                 query_handle.schema(),
                 &query_handle.batch_iter().collect_vec(),
             )?;
-            eprintln!("{}", TransportChunk::from(dataframe.clone()));
+            eprintln!("{}", format_record_batch(&dataframe.clone()));
 
             assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
         }
@@ -1421,7 +1422,7 @@ mod tests {
                 query_handle.schema(),
                 &query_handle.batch_iter().collect_vec(),
             )?;
-            eprintln!("{}", TransportChunk::from(dataframe.clone()));
+            eprintln!("{}", format_record_batch(&dataframe.clone()));
 
             assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
         }
@@ -1455,7 +1456,7 @@ mod tests {
             query_handle.schema(),
             &query_handle.batch_iter().collect_vec(),
         )?;
-        eprintln!("{}", TransportChunk::from(dataframe.clone()));
+        eprintln!("{}", format_record_batch(&dataframe.clone()));
 
         assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
 
@@ -1488,7 +1489,7 @@ mod tests {
             query_handle.schema(),
             &query_handle.batch_iter().collect_vec(),
         )?;
-        eprintln!("{}", TransportChunk::from(dataframe.clone()));
+        eprintln!("{}", format_record_batch(&dataframe.clone()));
 
         assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
 
@@ -1527,7 +1528,7 @@ mod tests {
             query_handle.schema(),
             &query_handle.batch_iter().collect_vec(),
         )?;
-        eprintln!("{}", TransportChunk::from(dataframe.clone()));
+        eprintln!("{}", format_record_batch(&dataframe.clone()));
 
         assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
 
@@ -1569,7 +1570,7 @@ mod tests {
                 query_handle.schema(),
                 &query_handle.batch_iter().collect_vec(),
             )?;
-            eprintln!("{}", TransportChunk::from(dataframe.clone()));
+            eprintln!("{}", format_record_batch(&dataframe.clone()));
 
             assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
         }
@@ -1599,7 +1600,7 @@ mod tests {
                 query_handle.schema(),
                 &query_handle.batch_iter().collect_vec(),
             )?;
-            eprintln!("{}", TransportChunk::from(dataframe.clone()));
+            eprintln!("{}", format_record_batch(&dataframe.clone()));
 
             assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
         }
@@ -1640,7 +1641,7 @@ mod tests {
                 query_handle.schema(),
                 &query_handle.batch_iter().collect_vec(),
             )?;
-            eprintln!("{}", TransportChunk::from(dataframe.clone()));
+            eprintln!("{}", format_record_batch(&dataframe.clone()));
 
             assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
         }
@@ -1666,7 +1667,7 @@ mod tests {
                 query_handle.schema(),
                 &query_handle.batch_iter().collect_vec(),
             )?;
-            eprintln!("{}", TransportChunk::from(dataframe.clone()));
+            eprintln!("{}", format_record_batch(&dataframe.clone()));
 
             assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
         }
@@ -1692,7 +1693,7 @@ mod tests {
                 query_handle.schema(),
                 &query_handle.batch_iter().collect_vec(),
             )?;
-            eprintln!("{}", TransportChunk::from(dataframe.clone()));
+            eprintln!("{}", format_record_batch(&dataframe.clone()));
 
             assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
         }
@@ -1718,7 +1719,7 @@ mod tests {
                 query_handle.schema(),
                 &query_handle.batch_iter().collect_vec(),
             )?;
-            eprintln!("{}", TransportChunk::from(dataframe.clone()));
+            eprintln!("{}", format_record_batch(&dataframe.clone()));
 
             assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
         }
@@ -1760,7 +1761,7 @@ mod tests {
                 query_handle.schema(),
                 &query_handle.batch_iter().collect_vec(),
             )?;
-            eprintln!("{}", TransportChunk::from(dataframe.clone()));
+            eprintln!("{}", format_record_batch(&dataframe.clone()));
 
             assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
         }
@@ -1797,7 +1798,7 @@ mod tests {
                 query_handle.schema(),
                 &query_handle.batch_iter().collect_vec(),
             )?;
-            eprintln!("{}", TransportChunk::from(dataframe.clone()));
+            eprintln!("{}", format_record_batch(&dataframe.clone()));
 
             assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
         }
@@ -1835,7 +1836,7 @@ mod tests {
                 query_handle.schema(),
                 &query_handle.batch_iter().collect_vec(),
             )?;
-            eprintln!("{}", TransportChunk::from(dataframe.clone()));
+            eprintln!("{}", format_record_batch(&dataframe.clone()));
 
             assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
         }
@@ -1868,7 +1869,7 @@ mod tests {
                 query_handle.schema(),
                 &query_handle.batch_iter().collect_vec(),
             )?;
-            eprintln!("{}", TransportChunk::from(dataframe.clone()));
+            eprintln!("{}", format_record_batch(&dataframe.clone()));
 
             assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
         }
@@ -1908,7 +1909,7 @@ mod tests {
                 query_handle.schema(),
                 &query_handle.batch_iter().collect_vec(),
             )?;
-            eprintln!("{}", TransportChunk::from(dataframe.clone()));
+            eprintln!("{}", format_record_batch(&dataframe.clone()));
 
             assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
         }
@@ -1969,7 +1970,7 @@ mod tests {
                 query_handle.schema(),
                 &query_handle.batch_iter().collect_vec(),
             )?;
-            eprintln!("{}", TransportChunk::from(dataframe.clone()));
+            eprintln!("{}", format_record_batch(&dataframe.clone()));
 
             assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
         }
@@ -2038,7 +2039,7 @@ mod tests {
                 query_handle.schema(),
                 &query_handle.batch_iter().collect_vec(),
             )?;
-            eprintln!("{}", TransportChunk::from(dataframe.clone()));
+            eprintln!("{}", format_record_batch(&dataframe.clone()));
 
             assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
         }
@@ -2078,7 +2079,7 @@ mod tests {
                 query_handle.schema(),
                 &query_handle.batch_iter().collect_vec(),
             )?;
-            eprintln!("{}", TransportChunk::from(dataframe.clone()));
+            eprintln!("{}", format_record_batch(&dataframe.clone()));
 
             assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
         }
@@ -2102,7 +2103,7 @@ mod tests {
                 query_handle.schema(),
                 &query_handle.batch_iter().collect_vec(),
             )?;
-            eprintln!("{}", TransportChunk::from(dataframe.clone()));
+            eprintln!("{}", format_record_batch(&dataframe.clone()));
 
             // TODO(#7650): Those null values for `MyColor` on 10 and 20 look completely insane, but then again
             // static clear semantics in general are pretty unhinged right now, especially when
@@ -2344,7 +2345,7 @@ mod tests {
                         .collect::<Vec<_>>()
                         .await,
                 )?;
-                eprintln!("{}", TransportChunk::from(dataframe.clone()));
+                eprintln!("{}", format_record_batch(&dataframe.clone()));
 
                 assert_snapshot_fixed_width!(
                     "async_barebones_static",
@@ -2378,7 +2379,7 @@ mod tests {
                         .collect::<Vec<_>>()
                         .await,
                 )?;
-                eprintln!("{}", TransportChunk::from(dataframe.clone()));
+                eprintln!("{}", format_record_batch(&dataframe.clone()));
 
                 assert_snapshot_fixed_width!(
                     "async_barebones_temporal",

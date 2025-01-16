@@ -47,13 +47,7 @@ pub struct TransportChunk {
 impl std::fmt::Display for TransportChunk {
     #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        re_format_arrow::format_dataframe(
-            &self.schema_ref().metadata.clone().into_iter().collect(), // HashMap -> BTreeMap
-            &self.schema_ref().fields,
-            self.batch.columns(),
-            f.width(),
-        )
-        .fmt(f)
+        re_format_arrow::format_record_batch_with_width(self, f.width()).fmt(f)
     }
 }
 

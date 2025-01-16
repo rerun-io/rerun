@@ -130,6 +130,7 @@ re_chunk.workspace = true
 re_crash_handler.workspace = true
 re_entity_db.workspace = true
 re_error.workspace = true
+re_format_arrow.workspace = true
 re_format.workspace = true
 re_log_encoding.workspace = true
 re_log_types.workspace = true

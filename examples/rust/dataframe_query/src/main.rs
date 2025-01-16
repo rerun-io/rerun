@@ -5,7 +5,7 @@ use itertools::Itertools;
 use rerun::{
     dataframe::{EntityPathFilter, QueryEngine, QueryExpression, SparseFillStrategy, Timeline},
     external::arrow,
-    log::TransportChunk,
+    external::re_format_arrow::format_record_batch,
     ChunkStoreConfig, StoreKind, VersionPolicy,
 };
 
@@ -68,7 +68,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let record_batches = query_handle.batch_iter().take(10).collect_vec();
 
         let batch = arrow::compute::concat_batches(query_handle.schema(), &record_batches)?;
-        println!("{}", TransportChunk::from(batch));
+        println!("{}", format_record_batch(&batch));
     }
 
     Ok(())

@@ -2,11 +2,11 @@
 
 use itertools::Itertools;
 
-use re_chunk::TransportChunk;
 use re_dataframe::{
     ChunkStoreConfig, EntityPathFilter, QueryEngine, QueryExpression, ResolvedTimeRange,
     SparseFillStrategy, StoreKind, TimeInt, Timeline,
 };
+use re_format_arrow::format_record_batch;
 use re_log_encoding::VersionPolicy;
 
 fn main() -> anyhow::Result<()> {
@@ -71,7 +71,7 @@ fn main() -> anyhow::Result<()> {
         let query_handle = engine.query(query.clone());
         // eprintln!("{:#?}", query_handle.selected_contents());
         for batch in query_handle.into_batch_iter() {
-            eprintln!("{}", TransportChunk::from(batch));
+            eprintln!("{}", format_record_batch(&batch));
         }
     }
 
