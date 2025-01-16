@@ -64,6 +64,7 @@ namespace rerun::archetypes {
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+        static constexpr const char ArchetypeName[] = "rerun.archetypes.GeoPoints";
 
       public: // START of extensions from geo_points_ext.cpp:
         /// Creates a new GeoPoints object based on [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees).

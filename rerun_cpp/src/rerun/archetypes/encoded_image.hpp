@@ -77,6 +77,7 @@ namespace rerun::archetypes {
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+        static constexpr const char ArchetypeName[] = "rerun.archetypes.EncodedImage";
 
       public: // START of extensions from encoded_image_ext.cpp:
         /// Create a new `EncodedImage` from the contents of a file on disk, e.g. a PNG or JPEG.

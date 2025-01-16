@@ -78,6 +78,7 @@ namespace rerun::archetypes {
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+        static constexpr const char ArchetypeName[] = "rerun.archetypes.Asset3D";
 
       public: // START of extensions from asset3d_ext.cpp:
         /// Creates a new `Asset3D` from the file contents at `path`.

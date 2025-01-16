@@ -47,6 +47,7 @@ namespace rerun::blueprint::archetypes {
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+        static constexpr const char ArchetypeName[] = "rerun.blueprint.archetypes.DataframeQuery";
 
       public:
         DataframeQuery() = default;

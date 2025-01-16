@@ -139,6 +139,7 @@ namespace rerun::archetypes {
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+        static constexpr const char ArchetypeName[] = "rerun.archetypes.Ellipsoids3D";
 
       public: // START of extensions from ellipsoids3d_ext.cpp:
         /// Creates new `Ellipsoids3D` that are spheres, with `half_sizes` created from radii.

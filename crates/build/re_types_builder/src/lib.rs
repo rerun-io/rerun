@@ -194,6 +194,7 @@ pub const ATTR_RERUN_EXPERIMENTAL: &str = "attr.rerun.experimental";
 pub const ATTR_PYTHON_ALIASES: &str = "attr.python.aliases";
 pub const ATTR_PYTHON_ARRAY_ALIASES: &str = "attr.python.array_aliases";
 
+pub const ATTR_CPP_ARCHETYPE_EAGER: &str = "attr.cpp.archetype_eager";
 pub const ATTR_CPP_NO_FIELD_CTORS: &str = "attr.cpp.no_field_ctors";
 pub const ATTR_CPP_RENAME_FIELD: &str = "attr.cpp.rename_field";
 
