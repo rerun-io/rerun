@@ -140,10 +140,10 @@ pub struct Query {
     /// Only rows where this column contains non-null data be kept in the final dataset.
     #[prost(message, optional, tag = "9")]
     pub filtered_is_not_null: ::core::option::Option<ComponentColumnSelector>,
-    /// / The specific _columns_ to sample from the final view contents.
-    /// / The order of the samples will be respected in the final result.
+    /// The specific _columns_ to sample from the final view contents.
+    /// The order of the samples will be respected in the final result.
     /// /
-    /// / If unspecified, it means - everything.
+    /// If unspecified, it means - everything.
     #[prost(message, optional, tag = "10")]
     pub column_selection: ::core::option::Option<ColumnSelection>,
     /// Specifies how null values should be filled in the returned dataframe.
@@ -187,12 +187,12 @@ impl ::prost::Name for ColumnDescriptor {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct TimeColumnDescriptor {
-    /// / The timeline this column is associated with.
+    /// The timeline this column is associated with.
     #[prost(message, optional, tag = "1")]
     pub timeline: ::core::option::Option<Timeline>,
-    /// / The Arrow datatype of the column.
+    /// The Arrow datatype of the column.
     /// /
-    /// / Currently this is just the `Display` of the `arrow-rs` `DataType`.
+    /// Currently this is just the `Display` of the `arrow-rs` `DataType`.
     /// TODO(emilk): use arrow IPC instead.
     #[prost(string, tag = "2")]
     pub datatype: ::prost::alloc::string::String,
@@ -207,37 +207,37 @@ impl ::prost::Name for TimeColumnDescriptor {
         "/rerun.common.v0.TimeColumnDescriptor".into()
     }
 }
-/// / Describes a data/component column, such as `Position3D`.
+/// Describes a data/component column, such as `Position3D`.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ComponentColumnDescriptor {
-    /// / The path of the entity.
+    /// The path of the entity.
     #[prost(message, optional, tag = "1")]
     pub entity_path: ::core::option::Option<EntityPath>,
-    /// / Optional name of the `Archetype` associated with this data.
+    /// Optional name of the `Archetype` associated with this data.
     #[prost(string, optional, tag = "2")]
     pub archetype_name: ::core::option::Option<::prost::alloc::string::String>,
-    /// / Optional name of the field within `Archetype` associated with this data.
+    /// Optional name of the field within `Archetype` associated with this data.
     #[prost(string, optional, tag = "3")]
     pub archetype_field_name: ::core::option::Option<::prost::alloc::string::String>,
-    /// / Semantic name associated with this data.
+    /// Semantic name associated with this data.
     #[prost(string, tag = "4")]
     pub component_name: ::prost::alloc::string::String,
-    /// / The Arrow datatype of the column.
+    /// The Arrow datatype of the column.
     /// /
-    /// / Currently this is just the `Display` of the `arrow-rs` `DataType`.
-    /// / TODO(emilk): use arrow IPC instead.
+    /// Currently this is just the `Display` of the `arrow-rs` `DataType`.
+    /// TODO(emilk): use arrow IPC instead.
     #[prost(string, tag = "5")]
     pub datatype: ::prost::alloc::string::String,
-    /// / Whether the column is a static column.
+    /// Whether the column is a static column.
     #[prost(bool, tag = "6")]
     pub is_static: bool,
-    /// / Whether the column is a tombstone column.
+    /// Whether the column is a tombstone column.
     #[prost(bool, tag = "7")]
     pub is_tombstone: bool,
-    /// / Whether the column is an indicator column.
+    /// Whether the column is an indicator column.
     #[prost(bool, tag = "8")]
     pub is_indicator: bool,
-    /// / Whether the column is semantically empty.
+    /// Whether the column is semantically empty.
     #[prost(bool, tag = "9")]
     pub is_semantically_empty: bool,
 }
