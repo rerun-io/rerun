@@ -1,4 +1,5 @@
 use re_log_types::ComponentPath;
+use re_types::ComponentDescriptor;
 use re_ui::UiExt;
 use re_viewer_context::{UiLayout, ViewerContext};
 
@@ -35,10 +36,14 @@ impl DataUi for ComponentPath {
                 }
                 .data_ui(ctx, ui, ui_layout, query, db);
             } else if ctx.recording().tree().subtree(entity_path).is_some() {
-                if engine.store().entity_has_component_on_timeline(
+                // TODO: same issue here, you're looking for a wildcard more than a fallback.
+                // Although in that case maybe the right fix is to patch ComponentPath to have a
+                // descr instead...
+                // TODO: also this should probably be exact I guess?
+                if engine.store().entity_has_exact_component_on_timeline(
                     &query.timeline(),
                     entity_path,
-                    component_name,
+                    &ComponentDescriptor::new(*component_name),
                 ) {
                     ui.label("<unset>");
                 } else {

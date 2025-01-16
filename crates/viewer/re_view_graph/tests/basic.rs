@@ -3,9 +3,10 @@
 use std::sync::Arc;
 
 use egui::Vec2;
+
 use re_chunk_store::{Chunk, RowId};
 use re_entity_db::EntityPath;
-use re_types::{components, Component as _};
+use re_types::{archetypes, components, Component as _};
 use re_view_graph::{GraphView, GraphViewState};
 use re_viewer_context::{test_context::TestContext, ViewClass, ViewClassExt as _, ViewId};
 use re_viewport_blueprint::ViewBlueprint;

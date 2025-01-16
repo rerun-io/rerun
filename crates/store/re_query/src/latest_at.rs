@@ -13,8 +13,8 @@ use re_chunk::{Chunk, RowId, UnitChunkShared};
 use re_chunk_store::{ChunkStore, LatestAtQuery, TimeInt};
 use re_log_types::EntityPath;
 use re_types_core::{
-    components::ClearIsRecursive, external::arrow::array::ArrayRef, Component, ComponentDescriptor,
-    ComponentName,
+    archetypes::Clear, components::ClearIsRecursive, external::arrow::array::ArrayRef, Component,
+    ComponentDescriptor, ComponentName,
 };
 
 use crate::{QueryCache, QueryCacheKey, QueryError};
@@ -39,6 +39,9 @@ fn compare_indices(lhs: (TimeInt, RowId), rhs: (TimeInt, RowId)) -> std::cmp::Or
 }
 
 impl QueryCache {
+    // TODO: wait, that thing already takes descriptors? is this already time to do some kind of
+    // wildcard logic?
+    //
     /// Queries for the given `component_names` using latest-at semantics.
     ///
     /// See [`LatestAtResults`] for more information about how to handle the results.
@@ -48,32 +51,32 @@ impl QueryCache {
         &self,
         query: &LatestAtQuery,
         entity_path: &EntityPath,
+        // TODO: wtf is this a cow though?
         component_descrs: impl IntoIterator<Item = impl Into<Cow<'d, ComponentDescriptor>>>,
     ) -> LatestAtResults {
         // This is called very frequently, don't put a profile scope here.
 
         let store = self.store.read();
 
+        // TODO: the problem is at this point we need to decide which descriptors we're going for,
+        // don't we?
+
         let mut results = LatestAtResults::empty(entity_path.clone(), query.clone());
 
         // NOTE: This pre-filtering is extremely important: going through all these query layers
         // has non-negligible overhead even if the final result ends up being nothing, and our
         // number of queries for a frame grows linearly with the number of entity paths.
-        let component_names = component_descrs.into_iter().filter_map(|component_descr| {
-            let component_descr = component_descr.into();
+        let component_descrs = component_descrs.into_iter().filter_map(|desc| {
+            let desc = desc.into().into_owned();
             store
-                .entity_has_component_on_timeline(
-                    &query.timeline(),
-                    entity_path,
-                    &component_descr.component_name,
-                )
-                .then_some(component_descr.component_name)
+                .entity_has_component_on_timeline(&query.timeline(), entity_path, &desc)
+                .then_some(desc)
         });
 
         // Query-time clears
         // -----------------
         //
-        // We need to find, at query time, whether there exist a `Clear` component that should
+        // We need to find, at query time, whether there exists a `Clear` component that should
         // shadow part or all of the results that we are about to return.
         //
         // This is a two-step process.
@@ -108,7 +111,7 @@ impl QueryCache {
                 let key = QueryCacheKey::new(
                     clear_entity_path.clone(),
                     query.timeline(),
-                    ClearIsRecursive::name(),
+                    Clear::descriptor_is_recursive(),
                 );
 
                 let cache = Arc::clone(
@@ -120,9 +123,12 @@ impl QueryCache {
 
                 let mut cache = cache.write();
                 cache.handle_pending_invalidation();
-                if let Some(cached) =
-                    cache.latest_at(&store, query, &clear_entity_path, ClearIsRecursive::name())
-                {
+                if let Some(cached) = cache.latest_at(
+                    &store,
+                    query,
+                    &clear_entity_path,
+                    &Clear::descriptor_is_recursive(),
+                ) {
                     let found_recursive_clear = cached
                         .component_mono::<ClearIsRecursive>()
                         .and_then(Result::ok)
@@ -152,8 +158,12 @@ impl QueryCache {
             }
         }
 
-        for component_name in component_names {
-            let key = QueryCacheKey::new(entity_path.clone(), query.timeline(), component_name);
+        for component_desc in component_descrs {
+            let key = QueryCacheKey::new(
+                entity_path.clone(),
+                query.timeline(),
+                component_desc.clone(),
+            );
 
             let cache = Arc::clone(
                 self.latest_at_per_cache_key
@@ -164,15 +174,15 @@ impl QueryCache {
 
             let mut cache = cache.write();
             cache.handle_pending_invalidation();
-            if let Some(cached) = cache.latest_at(&store, query, entity_path, component_name) {
+            if let Some(cached) = cache.latest_at(&store, query, entity_path, &component_desc) {
                 // 1. A `Clear` component doesn't shadow its own self.
                 // 2. If a `Clear` component was found with an index greater than or equal to the
                 //    component data, then we know for sure that it should shadow it.
                 if let Some(index) = cached.index(&query.timeline()) {
-                    if component_name == ClearIsRecursive::name()
+                    if component_desc == Clear::descriptor_is_recursive()
                         || compare_indices(index, max_clear_index) == std::cmp::Ordering::Greater
                     {
-                        results.add(component_name, index, cached);
+                        results.add(component_desc.component_name, index, cached);
                     }
                 }
             }
@@ -644,8 +654,131 @@ impl SizeBytes for LatestAtCache {
 }
 
 impl LatestAtCache {
+    // TODO: we shouldnt ever need to use permissive calls on the chunks themselves from here,
+    // since the relevant chunks that were returned are already permissive themselves?
+
+    // TODO: so... does this just work?
     /// Queries cached latest-at data for a single component.
     pub fn latest_at(
+        &mut self,
+        store: &ChunkStore,
+        query: &LatestAtQuery,
+        entity_path: &EntityPath,
+        component_desc: &ComponentDescriptor,
+    ) -> Option<UnitChunkShared> {
+        // Don't do a profile scope here, this can have a lot of overhead when executing many small queries.
+        //re_tracing::profile_scope!("latest_at", format!("{component_name} @ {query:?}"));
+
+        debug_assert_eq!(query.timeline(), self.cache_key.timeline);
+
+        let Self {
+            cache_key: _,
+            per_query_time,
+            pending_invalidations: _,
+        } = self;
+
+        if let Some(cached) = per_query_time.get(&query.at()) {
+            return Some(cached.unit.clone());
+        }
+
+        let ((data_time, _row_id), unit) = store
+            // TODO: so all relevant chunks, including fallbacks
+            .latest_at_relevant_chunks(query, entity_path, component_desc)
+            .into_iter()
+            .filter_map(|chunk| {
+                chunk
+                    // TODO: if we knew the desc that this chunk was returned for, we could do an
+                    // exact query here actually... but then again, do we care?
+                    // TODO: other than that, this should just work indeed
+                    .latest_at(query, component_desc)
+                    .into_unit()
+                    .and_then(|chunk| chunk.index(&query.timeline()).map(|index| (index, chunk)))
+            })
+            .max_by_key(|(index, _chunk)| *index)?;
+
+        let cached = per_query_time
+            .entry(data_time)
+            .or_insert_with(|| LatestAtCachedChunk {
+                unit,
+                is_reference: false,
+            })
+            .clone();
+
+        // NOTE: Queries that return static data are much cheaper to run, and polluting the query-time cache
+        // just to point to the static tables again and again is very wasteful.
+        if query.at() != data_time && !data_time.is_static() {
+            per_query_time
+                .entry(query.at())
+                .or_insert_with(|| LatestAtCachedChunk {
+                    unit: cached.unit.clone(),
+                    is_reference: true,
+                });
+        }
+
+        Some(cached.unit)
+    }
+
+    /// Queries cached latest-at data for a single component.
+    // TODO: so say the exact one is exact aaaaaall the way. then what?
+    pub fn latest_at_exact(
+        &mut self,
+        store: &ChunkStore,
+        query: &LatestAtQuery,
+        entity_path: &EntityPath,
+        component_desc: &ComponentDescriptor,
+    ) -> Option<UnitChunkShared> {
+        // Don't do a profile scope here, this can have a lot of overhead when executing many small queries.
+        //re_tracing::profile_scope!("latest_at", format!("{component_name} @ {query:?}"));
+
+        debug_assert_eq!(query.timeline(), self.cache_key.timeline);
+
+        let Self {
+            cache_key: _,
+            per_query_time,
+            pending_invalidations: _,
+        } = self;
+
+        if let Some(cached) = per_query_time.get(&query.at()) {
+            return Some(cached.unit.clone());
+        }
+
+        let ((data_time, _row_id), unit) = store
+            .latest_at_exact_relevant_chunks(query, entity_path, component_desc)
+            .into_iter()
+            .filter_map(|chunk| {
+                chunk
+                    .latest_at_exact_match(query, component_desc)
+                    .into_unit()
+                    .and_then(|chunk| chunk.index(&query.timeline()).map(|index| (index, chunk)))
+            })
+            .max_by_key(|(index, _chunk)| *index)?;
+
+        let cached = per_query_time
+            .entry(data_time)
+            .or_insert_with(|| LatestAtCachedChunk {
+                unit,
+                is_reference: false,
+            })
+            .clone();
+
+        // NOTE: Queries that return static data are much cheaper to run, and polluting the query-time cache
+        // just to point to the static tables again and again is very wasteful.
+        if query.at() != data_time && !data_time.is_static() {
+            per_query_time
+                .entry(query.at())
+                .or_insert_with(|| LatestAtCachedChunk {
+                    unit: cached.unit.clone(),
+                    is_reference: true,
+                });
+        }
+
+        Some(cached.unit)
+    }
+
+    #[cfg(TODO)]
+    /// Queries cached latest-at data for a single component.
+    // TODO: same deal here, is there ever any reason to make this public?
+    pub fn latest_at_most_specific(
         &mut self,
         store: &ChunkStore,
         query: &LatestAtQuery,
@@ -672,7 +805,7 @@ impl LatestAtCache {
             .into_iter()
             .filter_map(|chunk| {
                 chunk
-                    .latest_at_most_specific_by_component_name(query, component_name)
+                    .latest_at_most_specific(query, component_name)
                     .into_unit()
                     .and_then(|chunk| chunk.index(&query.timeline()).map(|index| (index, chunk)))
             })

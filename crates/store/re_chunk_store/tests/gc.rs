@@ -13,7 +13,7 @@ use re_log_types::{
     example_components::{MyColor, MyIndex, MyPoint},
     EntityPath, ResolvedTimeRange, Time, TimeType, Timeline,
 };
-use re_types::testing::build_some_large_structs;
+use re_types::{testing::build_some_large_structs, ComponentDescriptor};
 use re_types_core::Component as _;
 
 // ---
@@ -26,12 +26,14 @@ fn query_latest_array(
 ) -> Option<(TimeInt, RowId, ArrayRef)> {
     re_tracing::profile_function!();
 
+    let component_desc = ComponentDescriptor::new(component_name);
+
     let ((data_time, row_id), unit) = store
-        .latest_at_relevant_chunks(query, entity_path, component_name)
+        .latest_at_relevant_chunks(query, entity_path, &component_desc)
         .into_iter()
         .filter_map(|chunk| {
             chunk
-                .latest_at_most_specific_by_component_name(query, component_name)
+                .latest_at(query, &component_desc)
                 .into_unit()
                 .and_then(|chunk| chunk.index(&query.timeline()).map(|index| (index, chunk)))
         })

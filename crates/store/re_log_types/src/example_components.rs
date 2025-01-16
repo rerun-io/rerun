@@ -4,15 +4,77 @@ use std::sync::Arc;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_byte_size::SizeBytes;
-use re_types_core::{Component, ComponentDescriptor, DeserializationError, Loggable};
+use re_types_core::{
+    Component, ComponentDescriptor, DeserializationError, Loggable, SerializedComponentBatch,
+};
 
 // ----------------------------------------------------------------------------
 
 #[derive(Debug)]
-pub struct MyPoints;
+pub struct MyPoints {
+    pub points: Option<SerializedComponentBatch>,
+    pub colors: Option<SerializedComponentBatch>,
+    pub labels: Option<SerializedComponentBatch>,
+    pub indices: Option<SerializedComponentBatch>,
+}
 
 impl MyPoints {
     pub const NUM_COMPONENTS: usize = 5;
+}
+
+impl MyPoints {
+    pub fn descriptor_points() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("example.MyPoints".into()),
+            archetype_field_name: Some("points".into()),
+            component_name: MyPoint::name(),
+        }
+    }
+
+    pub fn descriptor_colors() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("example.MyPoints".into()),
+            archetype_field_name: Some("colors".into()),
+            component_name: MyColor::name(),
+        }
+    }
+
+    pub fn descriptor_labels() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("example.MyPoints".into()),
+            archetype_field_name: Some("labels".into()),
+            component_name: MyLabel::name(),
+        }
+    }
+
+    pub fn descriptor_indices() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("example.MyPoints".into()),
+            archetype_field_name: Some("indices".into()),
+            component_name: MyIndex::name(),
+        }
+    }
+
+    pub fn clear_fields() -> Self {
+        Self {
+            points: Some(SerializedComponentBatch::new(
+                MyPoint::arrow_empty(),
+                Self::descriptor_points(),
+            )),
+            colors: Some(SerializedComponentBatch::new(
+                MyColor::arrow_empty(),
+                Self::descriptor_colors(),
+            )),
+            labels: Some(SerializedComponentBatch::new(
+                MyLabel::arrow_empty(),
+                Self::descriptor_labels(),
+            )),
+            indices: Some(SerializedComponentBatch::new(
+                MyIndex::arrow_empty(),
+                Self::descriptor_labels(),
+            )),
+        }
+    }
 }
 
 impl re_types_core::Archetype for MyPoints {

@@ -52,7 +52,7 @@ impl VisualizerSystem for TensorSystem {
                 annotations,
                 &timeline_query,
                 data_result,
-                [TensorData::name(), ValueRange::name()].into_iter(),
+                [TensorData::descriptor(), ValueRange::descriptor()].into_iter(),
                 query_shadowed_defaults,
             );
 

@@ -1,8 +1,7 @@
 use arrow2::array::{Array as Arrow2Array, ListArray as Arrow2ListArray};
 
-use nohash_hasher::IntMap;
 use re_log_types::{TimeInt, Timeline};
-use re_types_core::{ComponentDescriptor, ComponentName};
+use re_types_core::ComponentDescriptor;
 
 use crate::{Chunk, RowId};
 
@@ -59,6 +58,17 @@ impl LatestAtQuery {
 // TODO: reminder that these kinds of collisions are pretty rare anyhow.
 
 impl Chunk {
+    // TODO: now the question is... do we dispatch according to wildcard semantics already?
+
+    // TODO: an enforced exact-match impl would be nice, possibly?
+    // I.e.:
+    // * latest_at: fallback/wildcard semantics (most specific wins, given initial preconditions)
+    // * latest_at_exact_match: no fallback
+    // * latest_at_most_specific: implementation detail of `latest_at`
+
+    // TODO: latest_at is just a happy path of latest_at_most_specific: they should never return
+    // different results for a fully qualified descriptor anyhow.
+
     // TODO: I guess in practice this becomes Chunk::latest_at_most_specific_by_component_name
     // TODO: or rather, this now takes a descriptor...
     //
@@ -76,43 +86,53 @@ impl Chunk {
     /// information by inspecting the data, for examples timestamps on other timelines.
     /// See [`Self::timeline_sliced`] and [`Self::component_sliced`] if you do want to filter this
     /// extra data.
-    pub fn latest_at(&self, query: &LatestAtQuery, component_descr: &ComponentDescriptor) -> Self {
+    pub fn latest_at(&self, query: &LatestAtQuery, component_desc: &ComponentDescriptor) -> Self {
         if self.is_empty() {
             return self.clone();
         }
 
-        re_tracing::profile_function!(format!("{query:?}"));
+        re_tracing::profile_function!(format!("{component_desc} @ {query:?}"));
 
-        // TODO: that's all fine and good, except it's not. We have to run the query for all
-        // possible descriptors matching that name, and then pick the one with the most recent
-        // result.
-        // And then we'll have to do the same thing at the store-level somehow, and I have no idea
-        // wth that's gonna look like.
-        let Some(component_list_array) = self.components.get_by_descriptor(component_descr) else {
+        component_desc
+            .fallbacks(true /* include_self */)
+            .find_map(|desc| {
+                let chunk = self.latest_at_exact_match(query, &desc);
+                (!chunk.is_empty()).then_some(chunk)
+            })
+            .unwrap_or_else(|| self.emptied())
+    }
+
+    // TODO
+    pub fn latest_at_exact_match(
+        &self,
+        query: &LatestAtQuery,
+        component_desc: &ComponentDescriptor,
+    ) -> Self {
+        if self.is_empty() {
+            return self.clone();
+        }
+
+        let Some(component_list_array) = self.components.get_by_descriptor(component_desc) else {
             return self.emptied();
         };
 
         self._latest_at(query, component_list_array)
     }
 
-    // TODO
-    pub fn latest_at_most_specific_by_component_name(
+    #[cfg(TODO)]
+    // TODO: there's never any reason to call this directly, is there? should this be private?
+    fn latest_at_most_specific(
         &self,
         query: &LatestAtQuery,
-        component_name: ComponentName,
+        component_desc: &ComponentDescriptor,
     ) -> Self {
-        if self.is_empty() {
-            return self.clone();
-        }
-
-        re_tracing::profile_function!(format!("{query:?}"));
-
         // First, run the query for all matching descriptors.
         let mut results: IntMap<ComponentDescriptor, ((TimeInt, RowId), Self)> = self
             .components
-            .get(&component_name)
+            .get(&component_desc.component_name)
             .into_iter()
             .flat_map(|per_desc| per_desc.iter())
+            .filter(|(desc, _list_array)| component_desc.encompasses(desc))
             .filter_map(|(desc, list_array)| {
                 let chunk = self._latest_at(query, list_array);
                 // NOTE: It's the only row and the only component anyhow.
@@ -133,6 +153,9 @@ impl Chunk {
                 .unwrap_or_else(|| self.clone());
         }
 
+        // TODO: at this point the results already only contain stuff that matches, so it's only a
+        // matter of most specific now.
+
         // Then, only keep whichever result has the closest index to the queried one.
         //
         // There might be multiple, if we're very unlucky (same component, multiple tags, single row).
@@ -141,7 +164,7 @@ impl Chunk {
         let Some(max_index) = results.values().map(|(index, _chunk)| *index).max() else {
             return self.clone();
         };
-        // TODO: make sure static wins (test it, I guess).
+        // TODO: make sure static wins (test it, I guess). also check what re_query does...
         results.retain(|_desc, (time, _chunk)| *time == max_index);
 
         if results.is_empty() {
@@ -168,7 +191,7 @@ impl Chunk {
             };
             let b = || {
                 results.iter().find_map(|(desc, (_index, chunk))| {
-                    desc.archetype_field_name.is_some().then(|| chunk.clone())
+                    desc.archetype_name.is_some().then(|| chunk.clone())
                 })
             };
             let c = || {
@@ -176,14 +199,9 @@ impl Chunk {
                     desc.archetype_field_name.is_some().then(|| chunk.clone())
                 })
             };
-            let d = || {
-                results.iter().find_map(|(desc, (_index, chunk))| {
-                    desc.archetype_field_name.is_some().then(|| chunk.clone())
-                })
-            };
-            let e = || results.values().map(|(_index, chunk)| chunk.clone()).next();
+            let d = || results.values().map(|(_index, chunk)| chunk.clone()).next();
 
-            a().or_else(b).or_else(c).or_else(d).or_else(e)
+            a().or_else(b).or_else(c).or_else(d)
         };
 
         result.unwrap_or_else(|| self.clone())
@@ -195,12 +213,6 @@ impl Chunk {
         query: &LatestAtQuery,
         component_list_array: &Arrow2ListArray<i32>,
     ) -> Self {
-        if self.is_empty() {
-            return self.clone();
-        }
-
-        re_tracing::profile_function!(format!("{query:?}"));
-
         let mut index = None;
 
         let is_static = self.is_static();

@@ -4,6 +4,7 @@ use re_chunk::EntityPath;
 use re_data_ui::item_ui::{guess_instance_path_icon, guess_query_and_db_for_selected_entity};
 use re_entity_db::InstancePath;
 use re_log_types::ComponentPath;
+use re_types::ComponentDescriptor;
 use re_ui::{
     icons,
     syntax_highlighting::{InstanceInBrackets as InstanceWithBrackets, SyntaxHighlightedBuilder},
@@ -18,9 +19,10 @@ pub fn is_component_static(ctx: &ViewerContext<'_>, component_path: &ComponentPa
         component_name,
     } = component_path;
     let (_query, db) = guess_query_and_db_for_selected_entity(ctx, entity_path);
+    // TODO: same here this is UI so i assume what we want is descriptor + exact?
     db.storage_engine()
         .store()
-        .entity_has_static_component(entity_path, component_name)
+        .entity_has_static_component(entity_path, &ComponentDescriptor::new(*component_name))
 }
 
 #[must_use]

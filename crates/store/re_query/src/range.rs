@@ -38,16 +38,16 @@ impl QueryCache {
         let component_names = component_descrs.into_iter().filter_map(|component_descr| {
             let component_descr = component_descr.into();
             store
-                .entity_has_component_on_timeline(
-                    &query.timeline(),
-                    entity_path,
-                    &component_descr.component_name,
-                )
+                .entity_has_component_on_timeline(&query.timeline(), entity_path, &component_descr)
                 .then_some(component_descr.component_name)
         });
 
         for component_name in component_names {
-            let key = QueryCacheKey::new(entity_path.clone(), query.timeline(), component_name);
+            let key = QueryCacheKey::new(
+                entity_path.clone(),
+                query.timeline(),
+                ComponentDescriptor::new(component_name),
+            );
 
             let cache = Arc::clone(
                 self.range_per_cache_key

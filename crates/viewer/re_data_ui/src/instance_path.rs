@@ -8,7 +8,7 @@ use re_types::{
     archetypes, components,
     datatypes::{ChannelDatatype, ColorModel},
     image::ImageKind,
-    static_assert_struct_has_fields, Archetype, Component, ComponentName,
+    static_assert_struct_has_fields, Archetype, Component, ComponentDescriptor, ComponentName,
 };
 use re_ui::UiExt as _;
 use re_viewer_context::{
@@ -190,10 +190,14 @@ fn component_list_ui(
             }
 
             let component_path = ComponentPath::new(entity_path.clone(), component_name);
+            // TODO: same here this is UI so i assume what we want is descriptor + exact?
             let is_static = db
                 .storage_engine()
                 .store()
-                .entity_has_static_component(entity_path, &component_name);
+                .entity_has_exact_static_component(
+                    entity_path,
+                    &ComponentDescriptor::new(component_name),
+                );
             let icon = if is_static {
                 &re_ui::icons::COMPONENT_STATIC
             } else {

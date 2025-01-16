@@ -29,11 +29,11 @@ fn query_latest_array(
     re_tracing::profile_function!();
 
     let ((data_time, row_id), unit) = store
-        .latest_at_relevant_chunks(query, entity_path, component_desc.component_name)
+        .latest_at_relevant_chunks(query, entity_path, component_desc)
         .into_iter()
         .filter_map(|chunk| {
             chunk
-                .latest_at_most_specific_by_component_name(query, component_desc.component_name)
+                .latest_at(query, component_desc)
                 .into_unit()
                 .and_then(|chunk| chunk.index(&query.timeline()).map(|index| (index, chunk)))
         })

@@ -1,5 +1,5 @@
 use re_log_types::{ResolvedTimeRange, TimeInt, Timeline};
-use re_types_core::ComponentName;
+use re_types_core::{ComponentDescriptor, ComponentName};
 
 use crate::Chunk;
 
@@ -225,9 +225,9 @@ impl Chunk {
             // NOTE: A given component for a given entity can only have one static entry associated
             // with it, and this entry overrides everything else, which means it is functionally
             // equivalent to just running a latest-at query.
-            chunk.latest_at_most_specific_by_component_name(
+            chunk.latest_at(
                 &crate::LatestAtQuery::new(query.timeline(), TimeInt::MAX),
-                component_name,
+                &ComponentDescriptor::new(component_name),
             )
         } else {
             let Some(is_sorted_by_time) = chunk

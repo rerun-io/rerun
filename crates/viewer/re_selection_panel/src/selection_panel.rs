@@ -8,7 +8,7 @@ use re_data_ui::{
 };
 use re_entity_db::{EntityPath, InstancePath};
 use re_log_types::{ComponentPath, EntityPathFilter, ResolvedEntityPathFilter};
-use re_types::blueprint::components::Interactive;
+use re_types::{blueprint::components::Interactive, ComponentDescriptor};
 use re_ui::{
     icons,
     list_item::{self, PropertyContent},
@@ -171,7 +171,11 @@ impl SelectionPanel {
                 let is_static = db
                     .storage_engine()
                     .store()
-                    .entity_has_static_component(entity_path, component_name);
+                    // TODO: descr + exact
+                    .entity_has_exact_static_component(
+                        entity_path,
+                        &ComponentDescriptor::new(*component_name),
+                    );
 
                 ui.list_item_flat_noninteractive(PropertyContent::new("Parent entity").value_fn(
                     |ui, _| {

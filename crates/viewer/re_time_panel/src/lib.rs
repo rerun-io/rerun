@@ -30,6 +30,7 @@ use re_log_types::{
     ResolvedTimeRange, TimeInt, TimeReal, TimeType,
 };
 use re_types::blueprint::components::PanelState;
+use re_types::ComponentDescriptor;
 use re_ui::{filter_widget, list_item, ContextExt as _, DesignTokens, UiExt as _};
 use re_viewer_context::{
     CollapseScope, HoverHighlight, Item, ItemContext, RecordingConfig, TimeControl, TimeView,
@@ -895,9 +896,13 @@ impl TimePanel {
         let store = engine.store();
 
         // If this is an entity:
+        // TODO: hmm yeah this all needs to be full on descriptors
         if let Some(components) = store.all_components_for_entity(&tree.path) {
             for component_name in sorted_component_list_for_ui(components.iter()) {
-                let is_static = store.entity_has_static_component(&tree.path, &component_name);
+                let is_static = store.entity_has_exact_static_component(
+                    &tree.path,
+                    &ComponentDescriptor::new(component_name),
+                );
 
                 let component_path = ComponentPath::new(tree.path.clone(), component_name);
                 let short_component_name = component_path.component_name.short_name();
@@ -905,10 +910,10 @@ impl TimePanel {
                 let timeline = time_ctrl.timeline();
 
                 let component_has_data_in_current_timeline = store
-                    .entity_has_component_on_timeline(
+                    .entity_has_exact_component_on_timeline(
                         time_ctrl.timeline(),
                         &tree.path,
-                        &component_name,
+                        &ComponentDescriptor::new(component_name),
                     );
 
                 let num_static_messages =

@@ -44,7 +44,7 @@ impl std::hash::Hash for ComponentDescriptor {
         let component_name = component_name.hash();
 
         // NOTE: This is a NoHash type, so we must respect the invariant that `write_XX` is only
-        // called one, see <https://docs.rs/nohash-hasher/0.2.0/nohash_hasher/trait.IsEnabled.html>.
+        // called once, see <https://docs.rs/nohash-hasher/0.2.0/nohash_hasher/trait.IsEnabled.html>.
         state.write_u64(archetype_name ^ archetype_field_name ^ component_name);
     }
 }
@@ -114,6 +114,100 @@ impl ComponentDescriptor {
     #[inline]
     pub fn short_name(&self) -> String {
         self.to_any_string(true)
+    }
+
+    // TODO
+    #[inline]
+    pub fn is_fully_qualified(&self) -> bool {
+        let Self {
+            archetype_name,
+            archetype_field_name,
+            component_name: _,
+        } = self;
+        archetype_name.is_some() && archetype_field_name.is_some()
+    }
+
+    // TODO:document fallback semantics
+    #[inline]
+    pub fn fallback(&self) -> Option<Self> {
+        let Self {
+            archetype_name,
+            archetype_field_name,
+            component_name,
+        } = self;
+
+        if archetype_field_name.is_some() {
+            return Some(Self {
+                archetype_name: *archetype_name,
+                archetype_field_name: None,
+                component_name: *component_name,
+            });
+        }
+
+        if archetype_name.is_some() {
+            return Some(Self {
+                archetype_name: None,
+                archetype_field_name: None,
+                component_name: *component_name,
+            });
+        }
+
+        None
+    }
+
+    // TODO: includes self
+    // TODO: document priority order!
+    // TODO: what if we actually computed fallbacks in _both_ directions (i.e. wildcards) during
+    // the transition? well we can't do it here obviously, but at the query layer...
+    #[inline]
+    pub fn fallbacks(&self, include_self: bool) -> impl Iterator<Item = Self> {
+        [
+            include_self.then(|| self.clone()),
+            self.archetype_field_name.is_some().then_some(Self {
+                archetype_name: self.archetype_name,
+                archetype_field_name: None,
+                component_name: self.component_name,
+            }),
+            self.archetype_name.is_some().then_some(Self {
+                archetype_name: None,
+                archetype_field_name: None,
+                component_name: self.component_name,
+            }),
+        ]
+        .into_iter()
+        .flatten()
+    }
+
+    // TODO
+    // TODO: probably don't need this for this round
+    pub fn encompasses(&self, rhs: &Self) -> bool {
+        let Self {
+            archetype_name,
+            archetype_field_name,
+            component_name,
+        } = self;
+
+        let comp_matches = || *component_name == rhs.component_name;
+        let arch_matches = || archetype_name.is_none() || *archetype_name == rhs.archetype_name;
+        let field_matches =
+            || archetype_field_name.is_none() || *archetype_field_name == rhs.archetype_field_name;
+
+        comp_matches() && arch_matches() && field_matches()
+    }
+
+    // TODO
+    // TODO: probably don't need this for this round
+    pub fn find_most_specific<'a, I: Iterator<Item = &'a Self>, F: Fn() -> I>(
+        descrs: F,
+    ) -> Option<&'a Self> {
+        let a = || {
+            descrs()
+                .find(|desc| (desc.archetype_name.is_some() && desc.archetype_field_name.is_some()))
+        };
+        let b = || descrs().find(|desc| desc.archetype_name.is_some());
+        let c = || descrs().find(|desc| desc.archetype_field_name.is_some());
+
+        a().or_else(b).or_else(c)
     }
 }
 

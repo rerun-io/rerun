@@ -1,5 +1,6 @@
 use arrow::array::ArrayRef;
 use nohash_hasher::IntSet;
+use re_types::ComponentDescriptor;
 
 use crate::{
     results_ext::{HybridLatestAtResults, HybridRangeResults},
@@ -73,24 +74,28 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
     _annotations: Option<&'a re_viewer_context::Annotations>,
     latest_at_query: &LatestAtQuery,
     data_result: &'a re_viewer_context::DataResult,
-    component_names: impl IntoIterator<Item = ComponentName>,
+    component_descrs: impl IntoIterator<Item = ComponentDescriptor>,
     query_shadowed_components: bool,
 ) -> HybridLatestAtResults<'a> {
     // This is called very frequently, don't put a profile scope here.
 
-    let mut component_set = component_names.into_iter().collect::<IntSet<_>>();
+    let mut component_set = component_descrs.into_iter().collect::<IntSet<_>>();
 
-    let overrides = query_overrides(ctx.viewer_ctx, data_result, component_set.iter());
+    let overrides = query_overrides(
+        ctx.viewer_ctx,
+        data_result,
+        component_set.iter().map(|desc| &desc.component_name),
+    );
 
     // No need to query for components that have overrides unless opted in!
     if !query_shadowed_components {
-        component_set.retain(|component| !overrides.components.contains_key(component));
+        component_set.retain(|desc| !overrides.components.contains_key(&desc.component_name));
     }
 
     let results = ctx.viewer_ctx.recording_engine().cache().latest_at(
         latest_at_query,
         &data_result.entity_path,
-        component_set.iter().copied(),
+        component_set.iter(),
     );
 
     HybridLatestAtResults {
@@ -108,7 +113,7 @@ pub fn query_archetype_with_history<'a>(
     timeline: &Timeline,
     timeline_cursor: TimeInt,
     query_range: &QueryRange,
-    component_names: impl IntoIterator<Item = ComponentName>,
+    component_descrs: impl IntoIterator<Item = ComponentDescriptor>,
     data_result: &'a re_viewer_context::DataResult,
 ) -> HybridResults<'a> {
     match query_range {
@@ -125,10 +130,11 @@ pub fn query_archetype_with_history<'a>(
                 None,
                 &range_query,
                 data_result,
-                component_names,
+                component_descrs.into_iter().map(|desc| desc.component_name),
             );
             (range_query, results).into()
         }
+
         QueryRange::LatestAt => {
             let latest_query = LatestAtQuery::new(*timeline, timeline_cursor);
             let query_shadowed_defaults = false;
@@ -137,7 +143,7 @@ pub fn query_archetype_with_history<'a>(
                 None,
                 &latest_query,
                 data_result,
-                component_names,
+                component_descrs,
                 query_shadowed_defaults,
             );
             (latest_query, results).into()
@@ -247,7 +253,7 @@ impl DataResultQuery for DataResult {
             None,
             latest_at_query,
             self,
-            A::all_components().iter().map(|descr| descr.component_name),
+            A::all_components().iter().cloned(),
             query_shadowed_components,
         )
     }
@@ -263,7 +269,7 @@ impl DataResultQuery for DataResult {
             None,
             latest_at_query,
             self,
-            std::iter::once(C::name()),
+            std::iter::once(C::descriptor()),
             query_shadowed_components,
         )
     }
@@ -278,7 +284,7 @@ impl DataResultQuery for DataResult {
             &view_query.timeline,
             view_query.latest_at,
             self.query_range(),
-            A::all_components().iter().map(|descr| descr.component_name),
+            A::all_components().iter().cloned(),
             self,
         )
     }

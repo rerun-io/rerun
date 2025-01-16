@@ -84,7 +84,7 @@ fn collect_draw_order_per_visualizer(
             None,
             &latest_at_query,
             data_result,
-            std::iter::once(DrawOrder::name()),
+            std::iter::once(DrawOrder::descriptor()),
             query_shadowed_components,
         )
         .get_mono_with_fallback::<DrawOrder>();

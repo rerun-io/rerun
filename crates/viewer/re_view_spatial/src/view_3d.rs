@@ -280,7 +280,7 @@ impl ViewClass for SpatialView3D {
         ctx.recording().tree().visit_children_recursively(|path| {
             if engine
                 .store()
-                .entity_has_component(path, &ViewCoordinates::name())
+                .entity_has_component(path, &ViewCoordinates::descriptor())
             {
                 indicated_entities.insert(path.clone());
             }

@@ -6,6 +6,7 @@ use itertools::{Either, Itertools};
 
 use re_chunk_store::{ChunkStore, LatestAtQuery, RangeQuery};
 use re_log_types::{ResolvedTimeRange, StoreKind, TimeType, TimeZone, Timeline, TimelineName};
+use re_types::ComponentDescriptor;
 use re_ui::{list_item, UiExt as _};
 use re_viewer_context::ViewerContext;
 
@@ -129,11 +130,15 @@ impl DatastoreUi {
                 query: ChunkListQueryMode::LatestAt(at),
                 ..
             } => Either::Right(
+                // TODO: that one is actually scaring me, do we need wildcards as opposed to
+                // fallbacks in there?
+                // TODO: hmmm nah, I think it's more a case where the parent type needs to have a
+                // descriptor, and then it's all fallbacks.
                 chunk_store
                     .latest_at_relevant_chunks(
                         &LatestAtQuery::new(*timeline, *at),
                         entity_path,
-                        *component_name,
+                        &ComponentDescriptor::new(*component_name),
                     )
                     .into_iter(),
             ),

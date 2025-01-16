@@ -7,24 +7,38 @@ use re_chunk::{Chunk, RowId};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_log_types::{
-    example_components::{MyColor, MyIndex, MyPoint},
+    example_components::{MyColor, MyIndex, MyLabel, MyPoint, MyPoints},
     EntityPath, StoreId, TimeInt, TimePoint, Timeline,
 };
-use re_types_core::{archetypes::Clear, components::ClearIsRecursive, AsComponents};
+use re_types_core::{
+    archetypes::Clear, components::ClearIsRecursive, AsComponents, Component, ComponentDescriptor,
+};
 
 // ---
 
-fn query_latest_component<C: re_types_core::Component>(
+fn query_latest_component<C: Component>(
     db: &EntityDb,
     entity_path: &EntityPath,
     query: &LatestAtQuery,
 ) -> Option<(TimeInt, RowId, C)> {
     re_tracing::profile_function!();
 
+    // TODO
+    let component_desc = match C::name() {
+        name if name == MyPoint::name() => MyPoints::descriptor_points(),
+        name if name == MyColor::name() => MyPoints::descriptor_colors(),
+        name if name == MyLabel::name() => MyPoints::descriptor_labels(),
+        name if name == MyIndex::name() => MyPoints::descriptor_indices(),
+
+        name if name == ClearIsRecursive::name() => Clear::descriptor_is_recursive(),
+
+        name => unreachable!("{name}"),
+    };
+
     let results = db
         .storage_engine()
         .cache()
-        .latest_at(query, entity_path, [C::descriptor()]);
+        .latest_at(query, entity_path, [component_desc]);
 
     let (data_time, row_id) = results.index();
     let data = results.component_mono::<C>()?;

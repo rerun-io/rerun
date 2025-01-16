@@ -12,18 +12,20 @@ use re_chunk_store::{
     ChunkCompactionReport, ChunkStoreDiff, ChunkStoreEvent, ChunkStoreHandle, ChunkStoreSubscriber,
 };
 use re_log_types::{EntityPath, ResolvedTimeRange, StoreId, TimeInt, Timeline};
-use re_types_core::{components::ClearIsRecursive, Component as _, ComponentName};
+use re_types_core::{archetypes::Clear, ComponentDescriptor};
 
 use crate::{LatestAtCache, RangeCache};
 
 // ---
+
+// TODO: making the query cache as a whole descriptor-aware should prob be its own prereq PR
 
 /// Uniquely identifies cached query results in the [`QueryCache`].
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct QueryCacheKey {
     pub entity_path: EntityPath,
     pub timeline: Timeline,
-    pub component_name: ComponentName,
+    pub component_desc: ComponentDescriptor,
 }
 
 impl re_byte_size::SizeBytes for QueryCacheKey {
@@ -32,11 +34,11 @@ impl re_byte_size::SizeBytes for QueryCacheKey {
         let Self {
             entity_path,
             timeline,
-            component_name,
+            component_desc,
         } = self;
         entity_path.heap_size_bytes()
             + timeline.heap_size_bytes()
-            + component_name.heap_size_bytes()
+            + component_desc.heap_size_bytes()
     }
 }
 
@@ -46,10 +48,10 @@ impl std::fmt::Debug for QueryCacheKey {
         let Self {
             entity_path,
             timeline,
-            component_name,
+            component_desc,
         } = self;
         f.write_fmt(format_args!(
-            "{entity_path}:{component_name} on {}",
+            "{entity_path}:{component_desc} on {}",
             timeline.name()
         ))
     }
@@ -60,12 +62,12 @@ impl QueryCacheKey {
     pub fn new(
         entity_path: impl Into<EntityPath>,
         timeline: impl Into<Timeline>,
-        component_name: impl Into<ComponentName>,
+        component_desc: impl Into<ComponentDescriptor>,
     ) -> Self {
         Self {
             entity_path: entity_path.into(),
             timeline: timeline.into(),
-            component_name: component_name.into(),
+            component_desc: component_desc.into(),
         }
     }
 }
@@ -277,7 +279,7 @@ impl ChunkStoreSubscriber for QueryCache {
 
         #[derive(Default, Debug)]
         struct CompactedEvents {
-            static_: HashMap<(EntityPath, ComponentName), BTreeSet<ChunkId>>,
+            static_: HashMap<(EntityPath, ComponentDescriptor), BTreeSet<ChunkId>>,
             temporal_latest_at: HashMap<QueryCacheKey, TimeInt>,
             temporal_range: HashMap<QueryCacheKey, BTreeSet<ChunkId>>,
         }
@@ -309,10 +311,10 @@ impl ChunkStoreSubscriber for QueryCache {
                 re_tracing::profile_scope!("compact events");
 
                 if chunk.is_static() {
-                    for component_name in chunk.component_names() {
+                    for component_desc in chunk.component_descriptors() {
                         let compacted_events = compacted_events
                             .static_
-                            .entry((chunk.entity_path().clone(), component_name))
+                            .entry((chunk.entity_path().clone(), component_desc))
                             .or_default();
 
                         compacted_events.insert(chunk.id());
@@ -332,7 +334,7 @@ impl ChunkStoreSubscriber for QueryCache {
                             let key = QueryCacheKey::new(
                                 chunk.entity_path().clone(),
                                 timeline,
-                                component_name,
+                                component_desc.clone(),
                             );
 
                             // latest-at
@@ -404,19 +406,19 @@ impl ChunkStoreSubscriber for QueryCache {
             // yet another layer of caching indirection.
             // But since this pretty much never happens in practice, let's not go there until we
             // have metrics showing that show we need to.
-            for ((entity_path, component_name), chunk_ids) in compacted_events.static_ {
-                if component_name == ClearIsRecursive::name() {
+            for ((entity_path, component_desc), chunk_ids) in compacted_events.static_ {
+                if component_desc == Clear::descriptor_is_recursive() {
                     might_require_clearing.insert(entity_path.clone());
                 }
 
                 for (key, cache) in caches_latest_at.iter() {
-                    if key.entity_path == entity_path && key.component_name == component_name {
+                    if key.entity_path == entity_path && key.component_desc == component_desc {
                         cache.write().pending_invalidations.insert(TimeInt::STATIC);
                     }
                 }
 
                 for (key, cache) in caches_range.iter() {
-                    if key.entity_path == entity_path && key.component_name == component_name {
+                    if key.entity_path == entity_path && key.component_desc == component_desc {
                         cache
                             .write()
                             .pending_invalidations
@@ -430,7 +432,7 @@ impl ChunkStoreSubscriber for QueryCache {
             re_tracing::profile_scope!("temporal");
 
             for (key, time) in compacted_events.temporal_latest_at {
-                if key.component_name == ClearIsRecursive::name() {
+                if key.component_desc == Clear::descriptor_is_recursive() {
                     might_require_clearing.insert(key.entity_path.clone());
                 }
 

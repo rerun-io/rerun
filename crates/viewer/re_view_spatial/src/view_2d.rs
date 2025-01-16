@@ -3,12 +3,12 @@ use nohash_hasher::{IntMap, IntSet};
 
 use re_entity_db::{EntityDb, EntityTree};
 use re_log_types::EntityPath;
-use re_types::View;
 use re_types::{
     archetypes::{DepthImage, Image},
     blueprint::archetypes::{Background, NearClipPlane, VisualBounds2D},
-    Archetype, ComponentName, ViewClassIdentifier,
+    ViewClassIdentifier,
 };
+use re_types::{ComponentDescriptor, View};
 use re_ui::UiExt as _;
 use re_view::view_property_ui;
 use re_viewer_context::{
@@ -280,14 +280,14 @@ fn count_non_nested_images_with_component(
     entity_bucket: &IntSet<EntityPath>,
     entity_db: &re_entity_db::EntityDb,
     subtree: &EntityTree,
-    component_name: &ComponentName,
+    component_desc: &ComponentDescriptor,
 ) -> usize {
     if image_dimensions.contains_key(&subtree.path) {
         // bool true -> 1
         entity_db
             .storage_engine()
             .store()
-            .entity_has_component(&subtree.path, component_name) as usize
+            .entity_has_component(&subtree.path, component_desc) as usize
     } else if !entity_bucket
         .iter()
         .any(|e| e.is_descendant_of(&subtree.path))
@@ -303,7 +303,7 @@ fn count_non_nested_images_with_component(
                     entity_bucket,
                     entity_db,
                     child,
-                    component_name,
+                    component_desc,
                 )
             })
             .sum()
@@ -367,13 +367,12 @@ fn recommended_views_with_image_splits(
         &mut found_image_dimensions,
     );
 
-    use re_types::ComponentBatch as _;
     let image_count = count_non_nested_images_with_component(
         image_dimensions,
         entities,
         ctx.recording(),
         subtree,
-        &Image::indicator().name(),
+        &Image::descriptor_indicator(),
     );
 
     let depth_count = count_non_nested_images_with_component(
@@ -381,7 +380,7 @@ fn recommended_views_with_image_splits(
         entities,
         ctx.recording(),
         subtree,
-        &DepthImage::indicator().name(),
+        &DepthImage::descriptor_indicator(),
     );
 
     let video_count = count_non_nested_images_with_component(
@@ -389,7 +388,7 @@ fn recommended_views_with_image_splits(
         entities,
         ctx.recording(),
         subtree,
-        &re_types::archetypes::AssetVideo::indicator().name(),
+        &re_types::archetypes::AssetVideo::descriptor_indicator(),
     );
 
     let all_have_same_size = found_image_dimensions.len() <= 1;

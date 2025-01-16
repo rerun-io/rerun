@@ -182,7 +182,11 @@ fn visualizer_components(
         None, // TODO(andreas): Figure out how to deal with annotation context here.
         &store_query,
         data_result,
-        query_info.queried.iter().copied(),
+        // TODO: argh, that can't be good...
+        query_info
+            .queried
+            .iter()
+            .map(|component_name| re_types_core::ComponentDescriptor::new(*component_name)),
         query_shadowed_defaults,
     );
 

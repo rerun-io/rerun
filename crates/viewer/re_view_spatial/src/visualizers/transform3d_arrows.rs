@@ -124,7 +124,7 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
                 None,
                 &latest_at_query,
                 data_result,
-                std::iter::once(AxisLength::name()),
+                std::iter::once(AxisLength::descriptor()),
                 false,
             );
 

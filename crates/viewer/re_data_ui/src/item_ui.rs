@@ -5,6 +5,7 @@
 use re_entity_db::{EntityTree, InstancePath};
 use re_format::format_uint;
 use re_log_types::{ApplicationId, ComponentPath, EntityPath, TimeInt, Timeline};
+use re_types::ComponentDescriptor;
 use re_ui::{icons, list_item, SyntaxHighlighting, UiExt as _};
 use re_viewer_context::{HoverHighlight, Item, UiLayout, ViewId, ViewerContext};
 
@@ -476,10 +477,14 @@ pub fn component_path_button_to(
     db: &re_entity_db::EntityDb,
 ) -> egui::Response {
     let item = Item::ComponentPath(component_path.clone());
-    let is_static = db.storage_engine().store().entity_has_static_component(
-        component_path.entity_path(),
-        component_path.component_name(),
-    );
+    // TODO: same here this is UI so i assume what we want is descriptor + exact?
+    let is_static = db
+        .storage_engine()
+        .store()
+        .entity_has_exact_static_component(
+            component_path.entity_path(),
+            &ComponentDescriptor::new(*component_path.component_name()),
+        );
     let icon = if is_static {
         &icons::COMPONENT_STATIC
     } else {
