@@ -18,9 +18,9 @@ namespace arrow {
 struct rr_component_batch;
 
 namespace rerun {
-    /// Arrow-encoded data of a single batch components for a single entity.
+    /// Arrow-encoded data of a single batch of components together with a component descriptor.
     ///
-    /// Note that this doesn't own `datatype` and `component_name`.
+    /// Component descriptors are registered when first encountered.
     struct ComponentBatch {
         /// Arrow-encoded data of the component instances.
         std::shared_ptr<arrow::Array> array;
