@@ -9,26 +9,15 @@ use re_context_menu::{context_menu_ui_for_item, SelectionUpdateBehavior};
 use re_log_types::{EntityPath, ResolvedEntityPathRule, RuleEffect};
 use re_ui::{design_tokens, ContextExt as _, DesignTokens, Icon, UiExt as _};
 use re_viewer_context::{
-    blueprint_id_to_tile_id, icon_for_container_kind, Contents, DragAndDropFeedback,
-    DragAndDropPayload, Item, PublishedViewInfo, SystemExecutionOutput, ViewClassRegistry, ViewId,
-    ViewQuery, ViewStates, ViewerContext,
+    icon_for_container_kind, Contents, DragAndDropFeedback, DragAndDropPayload, Item,
+    PublishedViewInfo, SystemExecutionOutput, ViewClassRegistry, ViewId, ViewQuery, ViewStates,
+    ViewerContext,
 };
 use re_viewport_blueprint::{
     create_entity_add_info, ViewBlueprint, ViewportBlueprint, ViewportCommand,
 };
 
 use crate::system_execution::{execute_systems_for_all_views, execute_systems_for_view};
-
-fn tree_simplification_options() -> egui_tiles::SimplificationOptions {
-    egui_tiles::SimplificationOptions {
-        prune_empty_tabs: false,
-        all_panes_must_have_tabs: true,
-        prune_empty_containers: false,
-        prune_single_child_tabs: false,
-        prune_single_child_containers: false,
-        join_nested_linear_containers: true,
-    }
-}
 
 // ----------------------------------------------------------------------------
 
@@ -312,252 +301,8 @@ impl ViewportUi {
         ctx: &ViewerContext<'_>,
         view_class_registry: &ViewClassRegistry,
     ) {
-        re_tracing::profile_function!();
-
-        let Self { mut blueprint } = self;
-
-        let commands: Vec<ViewportCommand> = blueprint.deferred_commands.lock().drain(..).collect();
-
-        if commands.is_empty() {
-            return; // No changes this frame - no need to save to blueprint store.
-        }
-
-        let mut run_auto_layout = false;
-
-        for command in commands {
-            apply_viewport_command(ctx, &mut blueprint, command, &mut run_auto_layout);
-        }
-
-        if run_auto_layout {
-            blueprint.tree =
-                super::auto_layout::tree_from_views(view_class_registry, &blueprint.views);
-        }
-
-        // Simplify before we save the tree.
-        // `egui_tiles` also runs a simplifying pass when calling `tree.ui`, but that is too late.
-        // We want the simplified changes saved to the store:
-        blueprint.tree.simplify(&tree_simplification_options());
-
-        // TODO(emilk): consider diffing the tree against the state it was in at the start of the frame,
-        // so that we only save it if it actually changed.
-
-        blueprint.save_tree_as_containers(ctx);
-    }
-}
-
-fn apply_viewport_command(
-    ctx: &ViewerContext<'_>,
-    bp: &mut ViewportBlueprint,
-    command: ViewportCommand,
-    run_auto_layout: &mut bool,
-) {
-    re_log::trace!("Processing viewport command: {command:?}");
-    match command {
-        ViewportCommand::SetTree(new_tree) => {
-            bp.tree = new_tree;
-        }
-
-        ViewportCommand::AddView {
-            view,
-            parent_container,
-            position_in_parent,
-        } => {
-            let view_id = view.id;
-
-            view.save_to_blueprint_store(ctx);
-            bp.views.insert(view_id, view);
-
-            if bp.auto_layout() {
-                // No need to add to the tree - we'll create a new tree from scratch instead.
-                re_log::trace!(
-                    "Running auto-layout after adding a view because auto_layout is turned on"
-                );
-                *run_auto_layout = true;
-            } else {
-                // Add the view to the tree:
-                let parent_id = parent_container.unwrap_or(bp.root_container);
-                re_log::trace!("Adding view {view_id} to parent {parent_id}");
-                let tile_id = bp.tree.tiles.insert_pane(view_id);
-                let container_tile_id = blueprint_id_to_tile_id(&parent_id);
-                if let Some(egui_tiles::Tile::Container(container)) =
-                    bp.tree.tiles.get_mut(container_tile_id)
-                {
-                    re_log::trace!("Inserting new view into root container");
-                    container.add_child(tile_id);
-                    if let Some(position_in_parent) = position_in_parent {
-                        bp.tree.move_tile_to_container(
-                            tile_id,
-                            container_tile_id,
-                            position_in_parent,
-                            true,
-                        );
-                    }
-                } else {
-                    re_log::trace!(
-                        "Parent was not a container (or not found) - will re-run auto-layout"
-                    );
-                    *run_auto_layout = true;
-                }
-            }
-        }
-
-        ViewportCommand::AddContainer {
-            container_kind,
-            parent_container,
-        } => {
-            let parent_id = parent_container.unwrap_or(bp.root_container);
-
-            let tile_id = bp
-                .tree
-                .tiles
-                .insert_container(egui_tiles::Container::new(container_kind, vec![]));
-
-            re_log::trace!("Adding container {container_kind:?} to parent {parent_id}");
-
-            if let Some(egui_tiles::Tile::Container(parent_container)) =
-                bp.tree.tiles.get_mut(blueprint_id_to_tile_id(&parent_id))
-            {
-                re_log::trace!("Inserting new view into container {parent_id:?}");
-                parent_container.add_child(tile_id);
-            } else {
-                re_log::trace!("Parent or root was not a container - will re-run auto-layout");
-                *run_auto_layout = true;
-            }
-        }
-
-        ViewportCommand::SetContainerKind(container_id, container_kind) => {
-            if let Some(egui_tiles::Tile::Container(container)) = bp
-                .tree
-                .tiles
-                .get_mut(blueprint_id_to_tile_id(&container_id))
-            {
-                re_log::trace!("Mutating container {container_id:?} to {container_kind:?}");
-                container.set_kind(container_kind);
-            } else {
-                re_log::trace!("No root found - will re-run auto-layout");
-            }
-        }
-
-        ViewportCommand::FocusTab(view_id) => {
-            let found = bp.tree.make_active(|_, tile| match tile {
-                egui_tiles::Tile::Pane(this_view_id) => *this_view_id == view_id,
-                egui_tiles::Tile::Container(_) => false,
-            });
-            re_log::trace!("Found tab to focus on for view ID {view_id}: {found}");
-        }
-
-        ViewportCommand::RemoveContents(contents) => {
-            let tile_id = contents.as_tile_id();
-
-            for tile in bp.tree.remove_recursively(tile_id) {
-                re_log::trace!("Removing tile {tile_id:?}");
-                match tile {
-                    egui_tiles::Tile::Pane(view_id) => {
-                        re_log::trace!("Removing view {view_id}");
-
-                        // Remove the view from the store
-                        if let Some(view) = bp.views.get(&view_id) {
-                            view.clear(ctx);
-                        }
-
-                        // If the view was maximized, clean it up
-                        if bp.maximized == Some(view_id) {
-                            bp.set_maximized(None, ctx);
-                        }
-
-                        bp.views.remove(&view_id);
-                    }
-                    egui_tiles::Tile::Container(_) => {
-                        // Empty containers (like this one) will be auto-removed by the tree simplification algorithm,
-                        // that will run later because of this tree edit.
-                    }
-                }
-            }
-
-            bp.mark_user_interaction(ctx);
-
-            if Some(tile_id) == bp.tree.root {
-                bp.tree.root = None;
-            }
-        }
-
-        ViewportCommand::SimplifyContainer(container_id, options) => {
-            re_log::trace!("Simplifying tree with options: {options:?}");
-            let tile_id = blueprint_id_to_tile_id(&container_id);
-            bp.tree.simplify_children_of_tile(tile_id, &options);
-        }
-
-        ViewportCommand::MakeAllChildrenSameSize(container_id) => {
-            let tile_id = blueprint_id_to_tile_id(&container_id);
-            if let Some(egui_tiles::Tile::Container(container)) = bp.tree.tiles.get_mut(tile_id) {
-                match container {
-                    egui_tiles::Container::Tabs(_) => {}
-                    egui_tiles::Container::Linear(linear) => {
-                        linear.shares = Default::default();
-                    }
-                    egui_tiles::Container::Grid(grid) => {
-                        grid.col_shares = Default::default();
-                        grid.row_shares = Default::default();
-                    }
-                }
-            }
-        }
-
-        ViewportCommand::MoveContents {
-            contents_to_move,
-            target_container,
-            target_position_in_container,
-        } => {
-            re_log::trace!(
-                "Moving {contents_to_move:?} to container {target_container:?} at pos \
-                        {target_position_in_container}"
-            );
-
-            // TODO(ab): the `rev()` is better preserve ordering when moving a group of items. There
-            // remains some ordering (and possibly insertion point error) edge cases when dragging
-            // multiple item within the same container. This should be addressed by egui_tiles:
-            // https://github.com/rerun-io/egui_tiles/issues/90
-            for contents in contents_to_move.iter().rev() {
-                let contents_tile_id = contents.as_tile_id();
-                let target_container_tile_id = blueprint_id_to_tile_id(&target_container);
-
-                bp.tree.move_tile_to_container(
-                    contents_tile_id,
-                    target_container_tile_id,
-                    target_position_in_container,
-                    true,
-                );
-            }
-        }
-
-        ViewportCommand::MoveContentsToNewContainer {
-            contents_to_move,
-            new_container_kind,
-            target_container,
-            target_position_in_container,
-        } => {
-            let new_container_tile_id = bp
-                .tree
-                .tiles
-                .insert_container(egui_tiles::Container::new(new_container_kind, vec![]));
-
-            let target_container_tile_id = blueprint_id_to_tile_id(&target_container);
-            bp.tree.move_tile_to_container(
-                new_container_tile_id,
-                target_container_tile_id,
-                target_position_in_container,
-                true, // reflow grid if needed
-            );
-
-            for (pos, content) in contents_to_move.into_iter().enumerate() {
-                bp.tree.move_tile_to_container(
-                    content.as_tile_id(),
-                    new_container_tile_id,
-                    pos,
-                    true, // reflow grid if needed
-                );
-            }
-        }
+        self.blueprint
+            .save_to_blueprint_store(ctx, view_class_registry);
     }
 }
 
@@ -877,7 +622,7 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
     ///
     /// These options are applied on every frame by `egui_tiles`.
     fn simplification_options(&self) -> egui_tiles::SimplificationOptions {
-        tree_simplification_options()
+        re_viewport_blueprint::tree_simplification_options()
     }
 
     // Callbacks:
