@@ -136,6 +136,7 @@ pub fn query_archetype_with_history<'a>(
         }
 
         QueryRange::LatestAt => {
+            eprintln!("hello");
             let latest_query = LatestAtQuery::new(*timeline, timeline_cursor);
             let query_shadowed_defaults = false;
             let results = latest_at_with_blueprint_resolved_data(

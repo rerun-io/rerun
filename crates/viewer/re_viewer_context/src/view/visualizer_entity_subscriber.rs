@@ -1,10 +1,10 @@
 use ahash::HashMap;
 use bit_vec::BitVec;
-use nohash_hasher::IntMap;
+use nohash_hasher::{IntMap, IntSet};
 
 use re_chunk_store::{ChunkStoreDiffKind, ChunkStoreEvent, ChunkStoreSubscriber};
 use re_log_types::{EntityPathHash, StoreId};
-use re_types::{ComponentName, ComponentNameSet};
+use re_types::{ComponentDescriptor, ComponentName, ComponentNameSet};
 
 use crate::{
     ApplicableEntities, IdentifiedViewSystem, IndicatedEntities, ViewSystemIdentifier,
@@ -28,7 +28,7 @@ pub struct VisualizerEntitySubscriber {
     visualizer: ViewSystemIdentifier,
 
     /// See [`crate::VisualizerQueryInfo::indicators`]
-    indicator_components: ComponentNameSet,
+    indicator_components: IntSet<ComponentDescriptor>,
 
     /// Assigns each required component an index.
     required_components_indices: IntMap<ComponentName, usize>,
@@ -161,8 +161,13 @@ impl ChunkStoreSubscriber for VisualizerEntitySubscriber {
 
             // Update indicator component tracking:
             if self.indicator_components.is_empty()
-                || self.indicator_components.iter().any(|component_name| {
-                    event.diff.chunk.components().contains_key(component_name)
+                || self.indicator_components.iter().any(|component_desc| {
+                    event
+                        .diff
+                        .chunk
+                        .components()
+                        .get(&component_desc.component_name)
+                        .is_some_and(|per_desc| per_desc.contains_key(component_desc))
                 })
             {
                 store_mapping

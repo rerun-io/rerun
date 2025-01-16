@@ -1,12 +1,15 @@
 use std::collections::BTreeMap;
 
-use re_types::{Archetype, ComponentName, ComponentNameSet};
+use nohash_hasher::IntSet;
+use re_types::{Archetype, ComponentDescriptor, ComponentName, ComponentNameSet};
 
 use crate::{
     ApplicableEntities, ComponentFallbackProvider, IdentifiedViewSystem, ViewContext,
     ViewContextCollection, ViewQuery, ViewSystemExecutionError, ViewSystemIdentifier,
     VisualizableEntities, VisualizableFilterContext, VisualizerAdditionalApplicabilityFilter,
 };
+
+// TODO: nuh-huh
 
 #[derive(Debug, Clone, Default)]
 pub struct SortedComponentNameSet(linked_hash_map::LinkedHashMap<ComponentName, ()>);
@@ -35,10 +38,11 @@ impl FromIterator<ComponentName> for SortedComponentNameSet {
     }
 }
 
+// TODO: surely that's the issue... we need to be querying descriptors, not these names.
 pub struct VisualizerQueryInfo {
     /// These are not required, but if _any_ of these are found, it is a strong indication that this
     /// system should be active (if also the `required_components` are found).
-    pub indicators: ComponentNameSet,
+    pub indicators: IntSet<ComponentDescriptor>,
 
     /// Returns the minimal set of components that the system _requires_ in order to be instantiated.
     ///
@@ -56,7 +60,7 @@ impl VisualizerQueryInfo {
     pub fn from_archetype<T: Archetype>() -> Self {
         use re_types_core::ComponentBatch as _;
         Self {
-            indicators: std::iter::once(T::indicator().name()).collect(),
+            indicators: std::iter::once(T::indicator().descriptor().into_owned()).collect(),
             required: T::required_components()
                 .iter()
                 .map(|descr| descr.component_name)
@@ -70,7 +74,7 @@ impl VisualizerQueryInfo {
 
     pub fn empty() -> Self {
         Self {
-            indicators: ComponentNameSet::new(),
+            indicators: Default::default(),
             required: ComponentNameSet::new(),
             queried: SortedComponentNameSet::default(),
         }

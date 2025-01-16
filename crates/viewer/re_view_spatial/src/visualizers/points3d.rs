@@ -192,6 +192,7 @@ impl VisualizerSystem for Points3DVisualizer {
             re_view::SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
         );
 
+        dbg!();
         use super::entity_iterator::{iter_slices, process_archetype};
         process_archetype::<Self, Points3D, _>(
             ctx,
@@ -200,10 +201,13 @@ impl VisualizerSystem for Points3DVisualizer {
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 
+                dbg!();
                 let Some(all_position_chunks) = results.get_required_chunks(&Position3D::name())
                 else {
+                    unreachable!();
                     return Ok(());
                 };
+                dbg!(&all_position_chunks);
 
                 let num_positions = all_position_chunks
                     .iter()

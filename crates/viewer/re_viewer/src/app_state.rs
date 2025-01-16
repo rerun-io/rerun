@@ -245,6 +245,10 @@ impl AppState {
                             &view.space_origin,
                         );
 
+                    // TODO
+                    // seems legit
+                    // dbg!(&visualizable_entities);
+
                     (
                         view.id,
                         view.contents.execute_query(

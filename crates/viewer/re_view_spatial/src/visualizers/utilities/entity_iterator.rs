@@ -88,6 +88,8 @@ where
     let depth_offsets = view_ctx.get::<EntityDepthOffsets>()?;
     let annotations = view_ctx.get::<AnnotationSceneContext>()?;
 
+    dbg!();
+
     let latest_at = query.latest_at_query();
 
     let system_identifier = System::identifier();
@@ -96,6 +98,7 @@ where
         let Some(transform_info) =
             transforms.transform_info_for_entity(data_result.entity_path.hash())
         else {
+            dbg!();
             continue;
         };
 
@@ -114,6 +117,7 @@ where
             view_class_identifier: view_ctx.view_class_identifier(),
         };
 
+        dbg!();
         let results = data_result.query_archetype_with_history::<A>(ctx, query);
 
         let mut query_ctx = ctx.query_context(data_result, &latest_at);

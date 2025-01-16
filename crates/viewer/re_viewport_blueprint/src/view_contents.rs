@@ -311,6 +311,8 @@ impl ViewContents {
                 components_for_defaults.extend(visualizer.visualizer_query_info().queried.iter());
             }
 
+            dbg!();
+
             ctx.blueprint.latest_at(
                 blueprint_query,
                 &ViewBlueprint::defaults_path(view_id),
