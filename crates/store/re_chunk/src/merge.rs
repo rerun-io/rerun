@@ -1,11 +1,11 @@
 use arrow::array::StructArray as ArrowStructArray;
 use arrow::buffer::ScalarBuffer as ArrowScalarBuffer;
-use arrow2::array::{Array as Arrow2Array, ListArray as Arrow2ListArray};
+use arrow::array::{Array as ArrowArray, ListArray as ArrowListArray};
 use itertools::{izip, Itertools};
 use nohash_hasher::IntMap;
 
 use re_arrow_util::{
-    arrow2_util, arrow_util, Arrow2ArrayDowncastRef as _, ArrowArrayDowncastRef as _,
+    arrow_util, ArrowArrayDowncastRef as _,
 };
 
 use crate::{chunk::ChunkComponents, Chunk, ChunkError, ChunkId, ChunkResult, TimeColumn};
@@ -107,9 +107,9 @@ impl Chunk {
                         ));
 
                         let list_array =
-                            arrow2_util::concat_arrays(&[lhs_list_array, rhs_list_array]).ok()?;
+                            arrow_util::concat_arrays(&[lhs_list_array, rhs_list_array]).ok()?;
                         let list_array = list_array
-                            .downcast_array2_ref::<Arrow2ListArray<i32>>()?
+                            .downcast_array_ref::<ArrowListArray>()?
                             .clone();
 
                         Some((component_desc.clone(), list_array))
@@ -117,7 +117,7 @@ impl Chunk {
                         re_tracing::profile_scope!("pad");
                         Some((
                             component_desc.clone(),
-                            arrow2_util::pad_list_array_back(
+                            arrow_util::pad_list_array_back(
                                 lhs_list_array,
                                 self.num_rows() + rhs.num_rows(),
                             ),
@@ -148,9 +148,9 @@ impl Chunk {
                         ));
 
                         let list_array =
-                            arrow2_util::concat_arrays(&[lhs_list_array, rhs_list_array]).ok()?;
+                            arrow_util::concat_arrays(&[lhs_list_array, rhs_list_array]).ok()?;
                         let list_array = list_array
-                            .downcast_array2_ref::<Arrow2ListArray<i32>>()?
+                            .downcast_array_ref::<ArrowListArray>()?
                             .clone();
 
                         Some((component_desc.clone(), list_array))
@@ -158,7 +158,7 @@ impl Chunk {
                         re_tracing::profile_scope!("pad");
                         Some((
                             component_desc.clone(),
-                            arrow2_util::pad_list_array_front(
+                            arrow_util::pad_list_array_front(
                                 rhs_list_array,
                                 self.num_rows() + rhs.num_rows(),
                             ),
@@ -171,7 +171,7 @@ impl Chunk {
         let components = {
             let mut per_name = ChunkComponents::default();
             for (component_desc, list_array) in components {
-                per_name.insert_descriptor_arrow2(component_desc.clone(), list_array);
+                per_name.insert_descriptor(component_desc.clone(), list_array);
             }
             per_name
         };

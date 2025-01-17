@@ -1,12 +1,11 @@
 use std::sync::Arc;
 
 use arrow::{
-    array::{Array as _, StructArray as ArrowStructArray, UInt64Array as ArrowUInt64Array},
-    buffer::ScalarBuffer as ArrowScalarBuffer,
-};
-use arrow2::{
-    array::{Array as Arrow2Array, ListArray as Arrow2ListArray},
-    offset::Offsets as ArrowOffsets,
+    array::{
+        Array as ArrowArray, ListArray as ArrowListArray, StructArray as ArrowStructArray,
+        UInt64Array as ArrowUInt64Array,
+    },
+    buffer::{OffsetBuffer as ArrowOffsets, ScalarBuffer as ArrowScalarBuffer},
 };
 use itertools::Itertools as _;
 use re_log_types::Timeline;
@@ -270,21 +269,23 @@ impl Chunk {
                     .collect_vec();
                 let sorted_arrays = sorted_arrays
                     .iter()
-                    .map(|array| &**array as &dyn Arrow2Array)
+                    .map(|array| &**array as &dyn ArrowArray)
                     .collect_vec();
 
                 let datatype = original.data_type().clone();
-                #[allow(clippy::unwrap_used)] // yep, these are in fact lengths
                 let offsets =
-                    ArrowOffsets::try_from_lengths(sorted_arrays.iter().map(|array| array.len()))
-                        .unwrap();
+                    ArrowOffsets::from_lengths(sorted_arrays.iter().map(|array| array.len()));
                 #[allow(clippy::unwrap_used)] // these are slices of the same outer array
-                let values = re_arrow_util::arrow2_util::concat_arrays(&sorted_arrays).unwrap();
+                let values = re_arrow_util::arrow_util::concat_arrays(&sorted_arrays).unwrap();
                 let validity = original
-                    .validity()
-                    .map(|validity| swaps.iter().map(|&from| validity.get_bit(from)).collect());
+                    .nulls()
+                    .map(|validity| swaps.iter().map(|&from| validity.is_valid(from)).collect());
 
-                *original = Arrow2ListArray::<i32>::new(datatype, offsets.into(), values, validity);
+                let field = match datatype {
+                    arrow::datatypes::DataType::List(field) => field.clone(),
+                    _ => unreachable!("This is always s list array"),
+                };
+                *original = ArrowListArray::new(field, offsets.into(), values, validity);
             }
         }
 

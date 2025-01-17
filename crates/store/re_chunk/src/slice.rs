@@ -1,11 +1,11 @@
-use arrow::array::ArrayRef as ArrowArrayRef;
-use arrow2::array::{
-    Array as Arrow2Array, BooleanArray as Arrow2BooleanArray, ListArray as Arrow2ListArray,
+use arrow::array::{
+    Array as ArrowArray, ArrayRef as ArrowArrayRef, BooleanArray as ArrowBooleanArray,
+    ListArray as ArrowListArray,
 };
-use itertools::Itertools;
+use itertools::Itertools as _;
 use nohash_hasher::IntSet;
 
-use re_arrow_util::{arrow2_util, arrow_util, Arrow2ArrayDowncastRef as _};
+use re_arrow_util::{arrow_util, ArrowArrayDowncastRef as _};
 use re_log_types::Timeline;
 use re_types_core::{ComponentDescriptor, ComponentName};
 
@@ -114,10 +114,7 @@ impl Chunk {
             components: components
                 .iter_flattened()
                 .map(|(component_desc, list_array)| {
-                    (
-                        component_desc.clone(),
-                        list_array.clone().sliced(index, len),
-                    )
+                    (component_desc.clone(), list_array.clone().slice(index, len))
                 })
                 .collect(),
         };
@@ -358,7 +355,7 @@ impl Chunk {
             return self.clone();
         };
 
-        let Some(validity) = component_list_array.validity() else {
+        let Some(validity) = component_list_array.nulls() else {
             return self.clone();
         };
 
@@ -366,7 +363,7 @@ impl Chunk {
 
         let mask = validity.iter().collect_vec();
         let is_sorted = *is_sorted || (mask.iter().filter(|&&b| b).count() < 2);
-        let validity_filter = Arrow2BooleanArray::from_slice(mask);
+        let validity_filter = ArrowBooleanArray::from(mask);
 
         let mut chunk = Self {
             id: *id,
@@ -381,20 +378,14 @@ impl Chunk {
             components: components
                 .iter_flattened()
                 .map(|(component_desc, list_array)| {
-                    let filtered = arrow2_util::filter_array(list_array, &validity_filter);
+                    let filtered = arrow_util::filter_array(list_array, &validity_filter);
                     let filtered = if component_desc.component_name == component_name_pov {
                         // Make sure we fully remove the validity bitmap for the densified
                         // component.
                         // This will allow further operations on this densified chunk to take some
                         // very optimized paths.
-
-                        #[allow(clippy::unwrap_used)]
-                        filtered
-                            .with_validity(None)
-                            .downcast_array2_ref::<Arrow2ListArray<i32>>()
-                            // Unwrap: cannot possibly fail -- going from a ListArray back to a ListArray.
-                            .unwrap()
-                            .clone()
+                        let (field, offsets, values, _nulls) = filtered.into_parts();
+                        ArrowListArray::new(field, offsets, values, None)
                     } else {
                         filtered
                     };
@@ -461,10 +452,11 @@ impl Chunk {
             components: components
                 .iter_flattened()
                 .map(|(component_desc, list_array)| {
-                    (
-                        component_desc.clone(),
-                        Arrow2ListArray::new_empty(list_array.data_type().clone()),
-                    )
+                    let field = match list_array.data_type() {
+                        arrow::datatypes::DataType::List(field) => field.clone(),
+                        _ => unreachable!("This is always s list array"),
+                    };
+                    (component_desc.clone(), ArrowListArray::new_null(field, 0))
                 })
                 .collect(),
         }
@@ -541,7 +533,7 @@ impl Chunk {
                     i.saturating_sub(1) as i32
                 })
                 .collect_vec();
-            arrow2::array::Int32Array::from_vec(indices)
+            arrow::array::Int32Array::from(indices)
         };
 
         let chunk = Self {
@@ -562,7 +554,7 @@ impl Chunk {
                 .components
                 .iter_flattened()
                 .map(|(component_desc, list_array)| {
-                    let filtered = arrow2_util::take_array(list_array, &indices);
+                    let filtered = arrow_util::take_array(list_array, &indices);
                     (component_desc.clone(), filtered)
                 })
                 .collect(),
@@ -586,12 +578,12 @@ impl Chunk {
     ///
     /// Note: a `filter` kernel _copies_ the data in order to make the resulting arrays contiguous in memory.
     ///
-    /// [filter]: arrow2::compute::filter::filter
+    /// [filter]: arrow::compute::filter::filter
     ///
     /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
     #[must_use]
     #[inline]
-    pub fn filtered(&self, filter: &Arrow2BooleanArray) -> Option<Self> {
+    pub fn filtered(&self, filter: &ArrowBooleanArray) -> Option<Self> {
         let Self {
             id,
             entity_path,
@@ -611,7 +603,7 @@ impl Chunk {
             return Some(self.clone());
         }
 
-        let num_filtered = filter.values_iter().filter(|&b| b).count();
+        let num_filtered = filter.values().iter().filter(|&b| b).count();
         if num_filtered == 0 {
             return Some(self.emptied());
         }
@@ -633,7 +625,7 @@ impl Chunk {
             components: components
                 .iter_flattened()
                 .map(|(component_desc, list_array)| {
-                    let filtered = arrow2_util::filter_array(list_array, filter);
+                    let filtered = arrow_util::filter_array(list_array, filter);
                     (component_desc.clone(), filtered)
                 })
                 .collect(),
@@ -672,12 +664,12 @@ impl Chunk {
     ///
     /// Takes care of up- and down-casting the data back and forth on behalf of the caller.
     ///
-    /// [take]: arrow2::compute::take::take
+    /// [take]: arrow::compute::take::take
     ///
     /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
     #[must_use]
     #[inline]
-    pub fn taken(&self, indices: &arrow2::array::Int32Array) -> Self {
+    pub fn taken(&self, indices: &arrow::array::Int32Array) -> Self {
         let Self {
             id,
             entity_path,
@@ -716,7 +708,7 @@ impl Chunk {
             components: components
                 .iter_flattened()
                 .map(|(component_desc, list_array)| {
-                    let taken = arrow2_util::take_array(list_array, indices);
+                    let taken = arrow_util::take_array(list_array, indices);
                     (component_desc.clone(), taken)
                 })
                 .collect(),
@@ -821,9 +813,9 @@ impl TimeColumn {
 
     /// Runs a [filter] compute kernel on the time data with the specified `mask`.
     ///
-    /// [filter]: arrow2::compute::filter::filter
+    /// [filter]: arrow::compute::filter::filter
     #[inline]
-    pub(crate) fn filtered(&self, filter: &Arrow2BooleanArray) -> Self {
+    pub(crate) fn filtered(&self, filter: &ArrowBooleanArray) -> Self {
         let Self {
             timeline,
             times,
@@ -831,7 +823,7 @@ impl TimeColumn {
             time_range: _,
         } = self;
 
-        let is_sorted = *is_sorted || filter.values_iter().filter(|&b| b).count() < 2;
+        let is_sorted = *is_sorted || filter.values().iter().filter(|&b| b).count() < 2;
 
         // We can know for sure whether the resulting chunk is already sorted (see conditional
         // above), but the reverse is not true.
@@ -866,7 +858,7 @@ impl TimeColumn {
     ///
     /// [take]: arrow::compute::take
     #[inline]
-    pub(crate) fn taken(&self, indices: &arrow2::array::Int32Array) -> Self {
+    pub(crate) fn taken(&self, indices: &arrow::array::Int32Array) -> Self {
         let Self {
             timeline,
             times,
@@ -889,7 +881,7 @@ impl TimeColumn {
 
 #[cfg(test)]
 mod tests {
-    use arrow2::array::PrimitiveArray as Arrow2PrimitiveArray;
+    use arrow::array::PrimitiveArray as ArrowPrimitiveArray;
     use itertools::Itertools;
     use re_log_types::{
         example_components::{MyColor, MyLabel, MyPoint},
@@ -1383,12 +1375,14 @@ mod tests {
 
         // basic
         {
-            let filter = Arrow2BooleanArray::from_slice(
-                (0..chunk.num_rows()).map(|i| i % 2 == 0).collect_vec(),
-            );
+            let filter =
+                ArrowBooleanArray::from((0..chunk.num_rows()).map(|i| i % 2 == 0).collect_vec());
             let got = chunk.filtered(&filter).unwrap();
             eprintln!("got:\n{got}");
-            assert_eq!(filter.values_iter().filter(|&b| b).count(), got.num_rows());
+            assert_eq!(
+                filter.values().iter().filter(|&b| b).count(),
+                got.num_rows()
+            );
 
             let expectations: &[(_, _, Option<&dyn re_types_core::ComponentBatch>)] = &[
                 (row_id1, MyPoint::descriptor(), Some(points1 as _)),
@@ -1414,7 +1408,7 @@ mod tests {
 
         // shorter
         {
-            let filter = Arrow2BooleanArray::from_slice(
+            let filter = ArrowBooleanArray::from(
                 (0..chunk.num_rows() / 2).map(|i| i % 2 == 0).collect_vec(),
             );
             let got = chunk.filtered(&filter);
@@ -1423,7 +1417,7 @@ mod tests {
 
         // longer
         {
-            let filter = Arrow2BooleanArray::from_slice(
+            let filter = ArrowBooleanArray::from(
                 (0..chunk.num_rows() * 2).map(|i| i % 2 == 0).collect_vec(),
             );
             let got = chunk.filtered(&filter);
@@ -1435,6 +1429,8 @@ mod tests {
 
     #[test]
     fn taken() -> anyhow::Result<()> {
+        use arrow::array::Int32Array as ArrowInt32Array;
+
         let entity_path = "my/entity";
 
         let row_id1 = RowId::new();
@@ -1528,7 +1524,7 @@ mod tests {
 
         // basic
         {
-            let indices = Arrow2PrimitiveArray::<i32>::from_vec(
+            let indices = ArrowInt32Array::from(
                 (0..chunk.num_rows() as i32)
                     .filter(|i| i % 2 == 0)
                     .collect_vec(),
@@ -1561,7 +1557,7 @@ mod tests {
 
         // repeated
         {
-            let indices = Arrow2PrimitiveArray::<i32>::from_vec(
+            let indices = ArrowInt32Array::from(
                 std::iter::repeat(2i32)
                     .take(chunk.num_rows() * 2)
                     .collect_vec(),

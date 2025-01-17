@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use arrow::array::ArrayRef as ArrowArrayRef;
-use arrow2::array::Array as _;
+use arrow::array::Array as _;
 
 use re_log_types::{TimeInt, Timeline};
 use re_types_core::{Component, ComponentName};
@@ -246,9 +246,9 @@ impl UnitChunkShared {
             })
             .map(|list_array| {
                 let array = list_array.value(0);
-                array.validity().map_or_else(
+                array.nulls().map_or_else(
                     || array.len(),
-                    |validity| validity.len() - validity.unset_bits(),
+                    |validity| validity.len() - validity.null_count(),
                 )
             })
             .max()

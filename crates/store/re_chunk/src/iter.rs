@@ -1,20 +1,20 @@
 use std::sync::Arc;
 
-use arrow2::{
+use arrow::{
     array::{
-        Array as Arrow2Array, BooleanArray as Arrow2BooleanArray,
-        FixedSizeListArray as Arrow2FixedSizeListArray, ListArray as Arrow2ListArray,
-        PrimitiveArray as Arrow2PrimitiveArray, StructArray as Arrow2StructArray,
-        Utf8Array as Arrow2Utf8Array,
+        Array as ArrowArray, ArrowPrimitiveType, BooleanArray as ArrowBooleanArray,
+        FixedSizeListArray as ArrowFixedSizeListArray, ListArray as ArrowListArray,
+        PrimitiveArray as ArrowPrimitiveArray, StringArray as ArrowStringArray,
+        StructArray as ArrowStructArray,
     },
-    bitmap::Bitmap as Arrow2Bitmap,
-    Either,
+    buffer::{BooleanBuffer as ArrowBooleanBuffer, ScalarBuffer as ArrowScalarBuffer},
+    datatypes::ArrowNativeType,
 };
-use itertools::{izip, Itertools};
+use itertools::{izip, Either, Itertools};
 
-use re_arrow_util::Arrow2ArrayDowncastRef as _;
+use re_arrow_util::{arrow_util::offsets_lengths, ArrowArrayDowncastRef as _};
 use re_log_types::{TimeInt, TimePoint, Timeline};
-use re_types_core::{ArrowBuffer, ArrowString, Component, ComponentName};
+use re_types_core::{ArrowString, Component, ComponentName};
 
 use crate::{Chunk, RowId, TimeColumn};
 
@@ -72,11 +72,11 @@ impl Chunk {
         if self.is_static() {
             let indices = izip!(std::iter::repeat(TimeInt::STATIC), self.row_ids());
 
-            if let Some(validity) = list_array.validity() {
+            if let Some(validity) = list_array.nulls() {
                 Either::Right(Either::Left(Either::Left(
                     indices
                         .enumerate()
-                        .filter_map(|(i, o)| validity.get_bit(i).then_some(o)),
+                        .filter_map(|(i, o)| validity.is_valid(i).then_some(o)),
                 )))
             } else {
                 Either::Right(Either::Left(Either::Right(indices)))
@@ -88,11 +88,11 @@ impl Chunk {
 
             let indices = izip!(time_column.times(), self.row_ids());
 
-            if let Some(validity) = list_array.validity() {
+            if let Some(validity) = list_array.nulls() {
                 Either::Right(Either::Right(Either::Left(
                     indices
                         .enumerate()
-                        .filter_map(|(i, o)| validity.get_bit(i).then_some(o)),
+                        .filter_map(|(i, o)| validity.is_valid(i).then_some(o)),
                 )))
             } else {
                 Either::Right(Either::Right(Either::Right(indices)))
@@ -135,7 +135,7 @@ impl Chunk {
             return Either::Left(std::iter::empty());
         };
 
-        if let Some(validity) = list_array.validity() {
+        if let Some(validity) = list_array.nulls() {
             let mut timelines = self
                 .timelines
                 .values()
@@ -145,7 +145,7 @@ impl Chunk {
                         time_column
                             .times()
                             .enumerate()
-                            .filter(|(i, _)| validity.get_bit(*i))
+                            .filter(|(i, _)| validity.is_valid(*i))
                             .map(|(_, time)| time),
                     )
                 })
@@ -189,13 +189,13 @@ impl Chunk {
         };
 
         let offsets = list_array.offsets().iter().map(|idx| *idx as usize);
-        let lengths = list_array.offsets().lengths();
+        let lengths = offsets_lengths(list_array.offsets());
 
-        if let Some(validity) = list_array.validity() {
+        if let Some(validity) = list_array.nulls() {
             Either::Right(Either::Left(
                 izip!(offsets, lengths)
                     .enumerate()
-                    .filter_map(|(i, o)| validity.get_bit(i).then_some(o)),
+                    .filter_map(|(i, o)| validity.is_valid(i).then_some(o)),
             ))
         } else {
             Either::Right(Either::Right(izip!(offsets, lengths)))
@@ -249,9 +249,7 @@ impl Chunk {
             return Either::Left(std::iter::empty());
         };
 
-        let Some(struct_array) = list_array
-            .values()
-            .downcast_array2_ref::<Arrow2StructArray>()
+        let Some(struct_array) = list_array.values().downcast_array_ref::<ArrowStructArray>()
         else {
             if cfg!(debug_assertions) {
                 panic!("downcast failed for {component_name}, data discarded");
@@ -265,7 +263,7 @@ impl Chunk {
             .fields()
             .iter()
             .enumerate()
-            .find_map(|(i, field)| (field.name == field_name).then_some(i))
+            .find_map(|(i, field)| (field.name() == field_name).then_some(i))
         else {
             if cfg!(debug_assertions) {
                 panic!("field {field_name} not found for {component_name}, data discarded");
@@ -277,20 +275,20 @@ impl Chunk {
             return Either::Left(std::iter::empty());
         };
 
-        let Some(array) = struct_array.values().get(field_idx) else {
+        if field_idx >= struct_array.num_columns() {
             if cfg!(debug_assertions) {
                 panic!("field {field_name} not found for {component_name}, data discarded");
             } else {
                 re_log::error_once!(
                     "field {field_name} not found for {component_name}, data discarded"
                 );
+                return Either::Left(std::iter::empty());
             }
-            return Either::Left(std::iter::empty());
-        };
+        }
 
         Either::Right(S::slice(
             component_name,
-            &**array,
+            struct_array.column(field_idx),
             self.iter_component_offsets(&component_name),
         ))
     }
@@ -306,18 +304,22 @@ pub trait ChunkComponentSlicer {
 
     fn slice<'a>(
         component_name: ComponentName,
-        array: &'a dyn Arrow2Array,
+        array: &'a dyn ArrowArray,
         component_offsets: impl Iterator<Item = (usize, usize)> + 'a,
     ) -> impl Iterator<Item = Self::Item<'a>> + 'a;
 }
 
 /// The actual implementation of `impl_native_type!`, so that we don't have to work in a macro.
-fn slice_as_native<'a, T: arrow2::types::NativeType + arrow::datatypes::ArrowNativeType>(
+fn slice_as_native<'a, P, T>(
     component_name: ComponentName,
-    array: &'a dyn Arrow2Array,
+    array: &'a dyn ArrowArray,
     component_offsets: impl Iterator<Item = (usize, usize)> + 'a,
-) -> impl Iterator<Item = &'a [T]> + 'a {
-    let Some(values) = array.downcast_array2_ref::<Arrow2PrimitiveArray<T>>() else {
+) -> impl Iterator<Item = &'a [T]> + 'a
+where
+    P: ArrowPrimitiveType<Native = T>,
+    T: ArrowNativeType,
+{
+    let Some(values) = array.downcast_array_ref::<ArrowPrimitiveArray<P>>() else {
         if cfg!(debug_assertions) {
             panic!("downcast failed for {component_name}, data discarded");
         } else {
@@ -325,7 +327,7 @@ fn slice_as_native<'a, T: arrow2::types::NativeType + arrow::datatypes::ArrowNat
         }
         return Either::Left(std::iter::empty());
     };
-    let values = values.values().as_slice();
+    let values = values.values().as_ref();
 
     // NOTE: No need for validity checks here, `iter_offsets` already takes care of that.
     Either::Right(component_offsets.map(move |(idx, len)| &values[idx..idx + len]))
@@ -333,48 +335,51 @@ fn slice_as_native<'a, T: arrow2::types::NativeType + arrow::datatypes::ArrowNat
 
 // We use a macro instead of a blanket impl because this violates orphan rules.
 macro_rules! impl_native_type {
-    ($type:ty) => {
-        impl ChunkComponentSlicer for $type {
-            type Item<'a> = &'a [$type];
+    ($arrow_primitive_type:ty, $native_type:ty) => {
+        impl ChunkComponentSlicer for $native_type {
+            type Item<'a> = &'a [$native_type];
 
             fn slice<'a>(
                 component_name: ComponentName,
-                array: &'a dyn Arrow2Array,
+                array: &'a dyn ArrowArray,
                 component_offsets: impl Iterator<Item = (usize, usize)> + 'a,
             ) -> impl Iterator<Item = Self::Item<'a>> + 'a {
-                slice_as_native(component_name, array, component_offsets)
+                slice_as_native::<$arrow_primitive_type, $native_type>(
+                    component_name,
+                    array,
+                    component_offsets,
+                )
             }
         }
     };
 }
 
-impl_native_type!(u8);
-impl_native_type!(u16);
-impl_native_type!(u32);
-impl_native_type!(u64);
-impl_native_type!(i8);
-impl_native_type!(i16);
-impl_native_type!(i32);
-impl_native_type!(i64);
-impl_native_type!(f32);
-impl_native_type!(f64);
-impl_native_type!(i128);
+impl_native_type!(arrow::array::types::UInt8Type, u8);
+impl_native_type!(arrow::array::types::UInt16Type, u16);
+impl_native_type!(arrow::array::types::UInt32Type, u32);
+impl_native_type!(arrow::array::types::UInt64Type, u64);
+// impl_native_type!(arrow::array::types::UInt128Type, u128);
+impl_native_type!(arrow::array::types::Int8Type, i8);
+impl_native_type!(arrow::array::types::Int16Type, i16);
+impl_native_type!(arrow::array::types::Int32Type, i32);
+impl_native_type!(arrow::array::types::Int64Type, i64);
+// impl_native_type!(arrow::array::types::Int128Type, i128);
+impl_native_type!(arrow::array::types::Float16Type, half::f16);
+impl_native_type!(arrow::array::types::Float32Type, f32);
+impl_native_type!(arrow::array::types::Float64Type, f64);
 
 /// The actual implementation of `impl_array_native_type!`, so that we don't have to work in a macro.
-fn slice_as_array_native<
-    'a,
-    const N: usize,
-    T: arrow2::types::NativeType + arrow::datatypes::ArrowNativeType,
->(
+fn slice_as_array_native<'a, const N: usize, P, T>(
     component_name: ComponentName,
-    array: &'a dyn Arrow2Array,
+    array: &'a dyn ArrowArray,
     component_offsets: impl Iterator<Item = (usize, usize)> + 'a,
 ) -> impl Iterator<Item = &'a [[T; N]]> + 'a
 where
     [T; N]: bytemuck::Pod,
+    P: ArrowPrimitiveType<Native = T>,
+    T: ArrowNativeType + bytemuck::Pod,
 {
-    let Some(fixed_size_list_array) = array.downcast_array2_ref::<Arrow2FixedSizeListArray>()
-    else {
+    let Some(fixed_size_list_array) = array.downcast_array_ref::<ArrowFixedSizeListArray>() else {
         if cfg!(debug_assertions) {
             panic!("downcast failed for {component_name}, data discarded");
         } else {
@@ -385,7 +390,7 @@ where
 
     let Some(values) = fixed_size_list_array
         .values()
-        .downcast_array2_ref::<Arrow2PrimitiveArray<T>>()
+        .downcast_array_ref::<ArrowPrimitiveArray<P>>()
     else {
         if cfg!(debug_assertions) {
             panic!("downcast failed for {component_name}, data discarded");
@@ -395,8 +400,8 @@ where
         return Either::Left(std::iter::empty());
     };
 
-    let size = fixed_size_list_array.size();
-    let values = values.values().as_slice();
+    let size = fixed_size_list_array.len();
+    let values = values.values().as_ref();
 
     // NOTE: No need for validity checks here, `component_offsets` already takes care of that.
     Either::Right(
@@ -408,43 +413,53 @@ where
 
 // We use a macro instead of a blanket impl because this violates orphan rules.
 macro_rules! impl_array_native_type {
-    ($type:ty) => {
-        impl<const N: usize> ChunkComponentSlicer for [$type; N]
+    ($arrow_primitive_type:ty, $native_type:ty) => {
+        impl<const N: usize> ChunkComponentSlicer for [$native_type; N]
         where
-            [$type; N]: bytemuck::Pod,
+            [$native_type; N]: bytemuck::Pod,
         {
-            type Item<'a> = &'a [[$type; N]];
+            type Item<'a> = &'a [[$native_type; N]];
 
             fn slice<'a>(
                 component_name: ComponentName,
-                array: &'a dyn Arrow2Array,
+                array: &'a dyn ArrowArray,
                 component_offsets: impl Iterator<Item = (usize, usize)> + 'a,
             ) -> impl Iterator<Item = Self::Item<'a>> + 'a {
-                slice_as_array_native(component_name, array, component_offsets)
+                slice_as_array_native::<N, $arrow_primitive_type, $native_type>(
+                    component_name,
+                    array,
+                    component_offsets,
+                )
             }
         }
     };
 }
 
-impl_array_native_type!(u8);
-impl_array_native_type!(u16);
-impl_array_native_type!(u32);
-impl_array_native_type!(u64);
-impl_array_native_type!(i8);
-impl_array_native_type!(i16);
-impl_array_native_type!(i32);
-impl_array_native_type!(i64);
-impl_array_native_type!(f32);
-impl_array_native_type!(f64);
-impl_array_native_type!(i128);
+impl_array_native_type!(arrow::array::types::UInt8Type, u8);
+impl_array_native_type!(arrow::array::types::UInt16Type, u16);
+impl_array_native_type!(arrow::array::types::UInt32Type, u32);
+impl_array_native_type!(arrow::array::types::UInt64Type, u64);
+// impl_array_native_type!(arrow::array::types::UInt128Type, u128);
+impl_array_native_type!(arrow::array::types::Int8Type, i8);
+impl_array_native_type!(arrow::array::types::Int16Type, i16);
+impl_array_native_type!(arrow::array::types::Int32Type, i32);
+impl_array_native_type!(arrow::array::types::Int64Type, i64);
+// impl_array_native_type!(arrow::array::types::Int128Type, i128);
+impl_array_native_type!(arrow::array::types::Float16Type, half::f16);
+impl_array_native_type!(arrow::array::types::Float32Type, f32);
+impl_array_native_type!(arrow::array::types::Float64Type, f64);
 
 /// The actual implementation of `impl_buffer_native_type!`, so that we don't have to work in a macro.
-fn slice_as_buffer_native<'a, T: arrow2::types::NativeType + arrow::datatypes::ArrowNativeType>(
+fn slice_as_buffer_native<'a, P, T>(
     component_name: ComponentName,
-    array: &'a dyn Arrow2Array,
+    array: &'a dyn ArrowArray,
     component_offsets: impl Iterator<Item = (usize, usize)> + 'a,
-) -> impl Iterator<Item = Vec<ArrowBuffer<T>>> + 'a {
-    let Some(inner_list_array) = array.downcast_array2_ref::<Arrow2ListArray<i32>>() else {
+) -> impl Iterator<Item = Vec<ArrowScalarBuffer<T>>> + 'a
+where
+    P: ArrowPrimitiveType<Native = T>,
+    T: ArrowNativeType,
+{
+    let Some(inner_list_array) = array.downcast_array_ref::<ArrowListArray>() else {
         if cfg!(debug_assertions) {
             panic!("downcast failed for {component_name}, data discarded");
         } else {
@@ -455,7 +470,7 @@ fn slice_as_buffer_native<'a, T: arrow2::types::NativeType + arrow::datatypes::A
 
     let Some(values) = inner_list_array
         .values()
-        .downcast_array2_ref::<Arrow2PrimitiveArray<T>>()
+        .downcast_array_ref::<ArrowPrimitiveArray<P>>()
     else {
         if cfg!(debug_assertions) {
             panic!("downcast failed for {component_name}, data discarded");
@@ -467,62 +482,66 @@ fn slice_as_buffer_native<'a, T: arrow2::types::NativeType + arrow::datatypes::A
 
     let values = values.values();
     let offsets = inner_list_array.offsets();
-    let lengths = inner_list_array.offsets().lengths().collect_vec();
+    let lengths = offsets_lengths(inner_list_array.offsets()).collect_vec();
 
     // NOTE: No need for validity checks here, `component_offsets` already takes care of that.
     Either::Right(component_offsets.map(move |(idx, len)| {
-        let offsets = &offsets.as_slice()[idx..idx + len];
-        let lengths = &lengths.as_slice()[idx..idx + len];
+        let offsets = &offsets[idx..idx + len];
+        let lengths = &lengths[idx..idx + len];
         izip!(offsets, lengths)
             // NOTE: Not an actual clone, just a refbump of the underlying buffer.
-            .map(|(&idx, &len)| values.clone().sliced(idx as _, len).into())
+            .map(|(&idx, &len)| values.clone().slice(idx as _, len).into())
             .collect_vec()
     }))
 }
 
 // We use a macro instead of a blanket impl because this violates orphan rules.
 macro_rules! impl_buffer_native_type {
-    ($type:ty) => {
-        impl ChunkComponentSlicer for &[$type] {
-            type Item<'a> = Vec<ArrowBuffer<$type>>;
+    ($primitive_type:ty, $native_type:ty) => {
+        impl ChunkComponentSlicer for &[$native_type] {
+            type Item<'a> = Vec<ArrowScalarBuffer<$native_type>>;
 
             fn slice<'a>(
                 component_name: ComponentName,
-                array: &'a dyn Arrow2Array,
+                array: &'a dyn ArrowArray,
                 component_offsets: impl Iterator<Item = (usize, usize)> + 'a,
             ) -> impl Iterator<Item = Self::Item<'a>> + 'a {
-                slice_as_buffer_native(component_name, array, component_offsets)
+                slice_as_buffer_native::<$primitive_type, $native_type>(
+                    component_name,
+                    array,
+                    component_offsets,
+                )
             }
         }
     };
 }
 
-impl_buffer_native_type!(u8);
-impl_buffer_native_type!(u16);
-impl_buffer_native_type!(u32);
-impl_buffer_native_type!(u64);
-impl_buffer_native_type!(i8);
-impl_buffer_native_type!(i16);
-impl_buffer_native_type!(i32);
-impl_buffer_native_type!(i64);
-impl_buffer_native_type!(f32);
-impl_buffer_native_type!(f64);
-impl_buffer_native_type!(i128);
+impl_buffer_native_type!(arrow::array::types::UInt8Type, u8);
+impl_buffer_native_type!(arrow::array::types::UInt16Type, u16);
+impl_buffer_native_type!(arrow::array::types::UInt32Type, u32);
+impl_buffer_native_type!(arrow::array::types::UInt64Type, u64);
+// impl_buffer_native_type!(arrow::array::types::UInt128Type, u128);
+impl_buffer_native_type!(arrow::array::types::Int8Type, i8);
+impl_buffer_native_type!(arrow::array::types::Int16Type, i16);
+impl_buffer_native_type!(arrow::array::types::Int32Type, i32);
+impl_buffer_native_type!(arrow::array::types::Int64Type, i64);
+// impl_buffer_native_type!(arrow::array::types::Int128Type, i128);
+impl_buffer_native_type!(arrow::array::types::Float16Type, half::f16);
+impl_buffer_native_type!(arrow::array::types::Float32Type, f32);
+impl_buffer_native_type!(arrow::array::types::Float64Type, f64);
 
 /// The actual implementation of `impl_array_list_native_type!`, so that we don't have to work in a macro.
-fn slice_as_array_list_native<
-    'a,
-    const N: usize,
-    T: arrow2::types::NativeType + arrow::datatypes::ArrowNativeType,
->(
+fn slice_as_array_list_native<'a, const N: usize, P, T>(
     component_name: ComponentName,
-    array: &'a dyn Arrow2Array,
+    array: &'a dyn ArrowArray,
     component_offsets: impl Iterator<Item = (usize, usize)> + 'a,
 ) -> impl Iterator<Item = Vec<&'a [[T; N]]>> + 'a
 where
     [T; N]: bytemuck::Pod,
+    P: ArrowPrimitiveType<Native = T>,
+    T: ArrowNativeType + bytemuck::Pod,
 {
-    let Some(inner_list_array) = array.downcast_array2_ref::<Arrow2ListArray<i32>>() else {
+    let Some(inner_list_array) = array.downcast_array_ref::<ArrowListArray>() else {
         if cfg!(debug_assertions) {
             panic!("downcast failed for {component_name}, data discarded");
         } else {
@@ -532,11 +551,11 @@ where
     };
 
     let inner_offsets = inner_list_array.offsets();
-    let inner_lengths = inner_list_array.offsets().lengths().collect_vec();
+    let inner_lengths = offsets_lengths(inner_list_array.offsets()).collect_vec();
 
     let Some(fixed_size_list_array) = inner_list_array
         .values()
-        .downcast_array2_ref::<Arrow2FixedSizeListArray>()
+        .downcast_array_ref::<ArrowFixedSizeListArray>()
     else {
         if cfg!(debug_assertions) {
             panic!("downcast failed for {component_name}, data discarded");
@@ -548,7 +567,7 @@ where
 
     let Some(values) = fixed_size_list_array
         .values()
-        .downcast_array2_ref::<Arrow2PrimitiveArray<T>>()
+        .downcast_array_ref::<ArrowPrimitiveArray<P>>()
     else {
         if cfg!(debug_assertions) {
             panic!("downcast failed for {component_name}, data discarded");
@@ -558,13 +577,13 @@ where
         return Either::Left(std::iter::empty());
     };
 
-    let size = fixed_size_list_array.size();
+    let size = fixed_size_list_array.len();
     let values = values.values();
 
     // NOTE: No need for validity checks here, `iter_offsets` already takes care of that.
     Either::Right(component_offsets.map(move |(idx, len)| {
-        let inner_offsets = &inner_offsets.as_slice()[idx..idx + len];
-        let inner_lengths = &inner_lengths.as_slice()[idx..idx + len];
+        let inner_offsets = &inner_offsets[idx..idx + len];
+        let inner_lengths = &inner_lengths[idx..idx + len];
         izip!(inner_offsets, inner_lengths)
             .map(|(&idx, &len)| {
                 let idx = idx as usize;
@@ -576,45 +595,51 @@ where
 
 // We use a macro instead of a blanket impl because this violates orphan rules.
 macro_rules! impl_array_list_native_type {
-    ($type:ty) => {
-        impl<const N: usize> ChunkComponentSlicer for &[[$type; N]]
+    ($primitive_type:ty, $native_type:ty) => {
+        impl<const N: usize> ChunkComponentSlicer for &[[$native_type; N]]
         where
-            [$type; N]: bytemuck::Pod,
+            [$native_type; N]: bytemuck::Pod,
         {
-            type Item<'a> = Vec<&'a [[$type; N]]>;
+            type Item<'a> = Vec<&'a [[$native_type; N]]>;
 
             fn slice<'a>(
                 component_name: ComponentName,
-                array: &'a dyn Arrow2Array,
+                array: &'a dyn ArrowArray,
                 component_offsets: impl Iterator<Item = (usize, usize)> + 'a,
             ) -> impl Iterator<Item = Self::Item<'a>> + 'a {
-                slice_as_array_list_native(component_name, array, component_offsets)
+                slice_as_array_list_native::<N, $primitive_type, $native_type>(
+                    component_name,
+                    array,
+                    component_offsets,
+                )
             }
         }
     };
 }
 
-impl_array_list_native_type!(u8);
-impl_array_list_native_type!(u16);
-impl_array_list_native_type!(u32);
-impl_array_list_native_type!(u64);
-impl_array_list_native_type!(i8);
-impl_array_list_native_type!(i16);
-impl_array_list_native_type!(i32);
-impl_array_list_native_type!(i64);
-impl_array_list_native_type!(f32);
-impl_array_list_native_type!(f64);
-impl_array_list_native_type!(i128);
+impl_array_list_native_type!(arrow::array::types::UInt8Type, u8);
+impl_array_list_native_type!(arrow::array::types::UInt16Type, u16);
+impl_array_list_native_type!(arrow::array::types::UInt32Type, u32);
+impl_array_list_native_type!(arrow::array::types::UInt64Type, u64);
+// impl_array_list_native_type!(arrow::array::types::UInt128Type, u128);
+impl_array_list_native_type!(arrow::array::types::Int8Type, i8);
+impl_array_list_native_type!(arrow::array::types::Int16Type, i16);
+impl_array_list_native_type!(arrow::array::types::Int32Type, i32);
+impl_array_list_native_type!(arrow::array::types::Int64Type, i64);
+// impl_array_list_native_type!(arrow::array::types::Int128Type, i128);
+impl_array_list_native_type!(arrow::array::types::Float16Type, half::f16);
+impl_array_list_native_type!(arrow::array::types::Float32Type, f32);
+impl_array_list_native_type!(arrow::array::types::Float64Type, f64);
 
 impl ChunkComponentSlicer for String {
     type Item<'a> = Vec<ArrowString>;
 
     fn slice<'a>(
         component_name: ComponentName,
-        array: &'a dyn Arrow2Array,
+        array: &'a dyn ArrowArray,
         component_offsets: impl Iterator<Item = (usize, usize)> + 'a,
     ) -> impl Iterator<Item = Vec<ArrowString>> + 'a {
-        let Some(utf8_array) = array.downcast_array2_ref::<Arrow2Utf8Array<i32>>() else {
+        let Some(utf8_array) = array.downcast_array_ref::<ArrowStringArray>() else {
             if cfg!(debug_assertions) {
                 panic!("downcast failed for {component_name}, data discarded");
             } else {
@@ -623,30 +648,30 @@ impl ChunkComponentSlicer for String {
             return Either::Left(std::iter::empty());
         };
 
-        let values = utf8_array.values();
-        let offsets = utf8_array.offsets();
-        let lengths = utf8_array.offsets().lengths().collect_vec();
+        let values = utf8_array.values().clone();
+        let offsets = utf8_array.offsets().clone();
+        let lengths = offsets_lengths(utf8_array.offsets()).collect_vec();
 
         // NOTE: No need for validity checks here, `component_offsets` already takes care of that.
         Either::Right(component_offsets.map(move |(idx, len)| {
-            let offsets = &offsets.as_slice()[idx..idx + len];
-            let lengths = &lengths.as_slice()[idx..idx + len];
+            let offsets = &offsets[idx..idx + len];
+            let lengths = &lengths[idx..idx + len];
             izip!(offsets, lengths)
-                .map(|(&idx, &len)| ArrowString::from(values.clone().sliced(idx as _, len)))
+                .map(|(&idx, &len)| ArrowString::from(values.slice_with_length(idx as _, len)))
                 .collect_vec()
         }))
     }
 }
 
 impl ChunkComponentSlicer for bool {
-    type Item<'a> = Arrow2Bitmap;
+    type Item<'a> = ArrowBooleanBuffer;
 
     fn slice<'a>(
         component_name: ComponentName,
-        array: &'a dyn Arrow2Array,
+        array: &'a dyn ArrowArray,
         component_offsets: impl Iterator<Item = (usize, usize)> + 'a,
     ) -> impl Iterator<Item = Self::Item<'a>> + 'a {
-        let Some(values) = array.downcast_array2_ref::<Arrow2BooleanArray>() else {
+        let Some(values) = array.downcast_array_ref::<ArrowBooleanArray>() else {
             if cfg!(debug_assertions) {
                 panic!("downcast failed for {component_name}, data discarded");
             } else {
@@ -657,7 +682,7 @@ impl ChunkComponentSlicer for bool {
         let values = values.values().clone();
 
         // NOTE: No need for validity checks here, `component_offsets` already takes care of that.
-        Either::Right(component_offsets.map(move |(idx, len)| values.clone().sliced(idx, len)))
+        Either::Right(component_offsets.map(move |(idx, len)| values.clone().slice(idx, len)))
     }
 }
 
