@@ -71,7 +71,7 @@ pub fn arrays_to_list_array_opt(arrays: &[Option<&dyn Array>]) -> Option<ListArr
 }
 
 /// An empty array of the given datatype.
-// TODO: replace with `arrow::array::new_empty_array`
+// TODO(#3741): replace with `arrow::array::new_empty_array`
 pub fn new_empty_array(datatype: &DataType) -> ArrayRef {
     let capacity = 0;
     arrow::array::make_builder(datatype, capacity).finish()

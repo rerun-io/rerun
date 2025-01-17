@@ -574,7 +574,7 @@ impl Chunk {
     ///
     /// Note: a `filter` kernel _copies_ the data in order to make the resulting arrays contiguous in memory.
     ///
-    /// [filter]: arrow::compute::filter::filter
+    /// [filter]: arrow::compute::kernels::filter
     ///
     /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
     #[must_use]
@@ -660,7 +660,7 @@ impl Chunk {
     ///
     /// Takes care of up- and down-casting the data back and forth on behalf of the caller.
     ///
-    /// [take]: arrow::compute::take::take
+    /// [take]: arrow::compute::kernels::take
     ///
     /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
     #[must_use]
@@ -809,7 +809,7 @@ impl TimeColumn {
 
     /// Runs a [filter] compute kernel on the time data with the specified `mask`.
     ///
-    /// [filter]: arrow::compute::filter::filter
+    /// [filter]: arrow::compute::kernels::filter
     #[inline]
     pub(crate) fn filtered(&self, filter: &ArrowBooleanArray) -> Self {
         let Self {

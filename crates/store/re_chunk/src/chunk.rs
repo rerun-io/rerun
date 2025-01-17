@@ -295,7 +295,7 @@ impl Chunk {
             && *components == rhs.components
     }
 
-    // TODO: remove
+    // Only used for tests atm
     pub fn are_equal(&self, other: &Self) -> bool {
         let Self {
             id,
