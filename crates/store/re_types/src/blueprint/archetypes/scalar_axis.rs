@@ -24,10 +24,10 @@ pub struct ScalarAxis {
     /// The range of the axis.
     ///
     /// If unset, the range well be automatically determined based on the queried data.
-    pub range: Option<crate::components::Range1D>,
+    pub range: Option<SerializedComponentBatch>,
 
     /// If enabled, the Y axis range will remain locked to the specified range when zooming.
-    pub zoom_lock: Option<crate::blueprint::components::LockRangeDuringZoom>,
+    pub zoom_lock: Option<SerializedComponentBatch>,
 }
 
 impl ScalarAxis {
@@ -139,50 +139,26 @@ impl ::re_types_core::Archetype for ScalarAxis {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
         let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
-        let range = if let Some(array) = arrays_by_descr.get(&Self::descriptor_range()) {
-            <crate::components::Range1D>::from_arrow_opt(&**array)
-                .with_context("rerun.blueprint.archetypes.ScalarAxis#range")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
-        let zoom_lock = if let Some(array) = arrays_by_descr.get(&Self::descriptor_zoom_lock()) {
-            <crate::blueprint::components::LockRangeDuringZoom>::from_arrow_opt(&**array)
-                .with_context("rerun.blueprint.archetypes.ScalarAxis#zoom_lock")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
+        let range = arrays_by_descr
+            .get(&Self::descriptor_range())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_range()));
+        let zoom_lock = arrays_by_descr
+            .get(&Self::descriptor_zoom_lock())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_zoom_lock())
+            });
         Ok(Self { range, zoom_lock })
     }
 }
 
 impl ::re_types_core::AsComponents for ScalarAxis {
-    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
-        re_tracing::profile_function!();
+    #[inline]
+    fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
-            (self
-                .range
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_range()),
-            }),
-            (self
-                .zoom_lock
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_zoom_lock()),
-            }),
+            Self::indicator().serialized(),
+            self.range.clone(),
+            self.zoom_lock.clone(),
         ]
         .into_iter()
         .flatten()
@@ -202,12 +178,34 @@ impl ScalarAxis {
         }
     }
 
+    /// Update only some specific fields of a `ScalarAxis`.
+    #[inline]
+    pub fn update_fields() -> Self {
+        Self::default()
+    }
+
+    /// Clear all the fields of a `ScalarAxis`.
+    #[inline]
+    pub fn clear_fields() -> Self {
+        use ::re_types_core::Loggable as _;
+        Self {
+            range: Some(SerializedComponentBatch::new(
+                crate::components::Range1D::arrow_empty(),
+                Self::descriptor_range(),
+            )),
+            zoom_lock: Some(SerializedComponentBatch::new(
+                crate::blueprint::components::LockRangeDuringZoom::arrow_empty(),
+                Self::descriptor_zoom_lock(),
+            )),
+        }
+    }
+
     /// The range of the axis.
     ///
     /// If unset, the range well be automatically determined based on the queried data.
     #[inline]
     pub fn with_range(mut self, range: impl Into<crate::components::Range1D>) -> Self {
-        self.range = Some(range.into());
+        self.range = try_serialize_field(Self::descriptor_range(), [range]);
         self
     }
 
@@ -217,7 +215,7 @@ impl ScalarAxis {
         mut self,
         zoom_lock: impl Into<crate::blueprint::components::LockRangeDuringZoom>,
     ) -> Self {
-        self.zoom_lock = Some(zoom_lock.into());
+        self.zoom_lock = try_serialize_field(Self::descriptor_zoom_lock(), [zoom_lock]);
         self
     }
 }
@@ -226,11 +224,5 @@ impl ::re_byte_size::SizeBytes for ScalarAxis {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.range.heap_size_bytes() + self.zoom_lock.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <Option<crate::components::Range1D>>::is_pod()
-            && <Option<crate::blueprint::components::LockRangeDuringZoom>>::is_pod()
     }
 }

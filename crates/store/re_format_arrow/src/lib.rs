@@ -212,7 +212,25 @@ fn trim_name(name: &str) -> &str {
         .trim_start_matches("rerun.")
 }
 
-pub fn format_dataframe(
+/// Nicely format this record batch in a way that fits the terminal.
+pub fn format_record_batch(batch: &arrow::array::RecordBatch) -> Table {
+    format_record_batch_with_width(batch, None)
+}
+
+/// Nicely format this record batch, either with the given fixed width, or with the terminal width (`None`).
+pub fn format_record_batch_with_width(
+    batch: &arrow::array::RecordBatch,
+    width: Option<usize>,
+) -> Table {
+    format_dataframe(
+        &batch.schema_ref().metadata.clone().into_iter().collect(), // HashMap -> BTreeMap
+        &batch.schema_ref().fields,
+        batch.columns(),
+        width,
+    )
+}
+
+fn format_dataframe(
     metadata: &Metadata,
     fields: &Fields,
     columns: &[ArrayRef],

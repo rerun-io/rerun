@@ -22,7 +22,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Debug, Default)]
 pub struct PanelBlueprint {
     /// Current state of the panels.
-    pub state: Option<crate::blueprint::components::PanelState>,
+    pub state: Option<SerializedComponentBatch>,
 }
 
 impl PanelBlueprint {
@@ -118,37 +118,21 @@ impl ::re_types_core::Archetype for PanelBlueprint {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
         let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
-        let state = if let Some(array) = arrays_by_descr.get(&Self::descriptor_state()) {
-            <crate::blueprint::components::PanelState>::from_arrow_opt(&**array)
-                .with_context("rerun.blueprint.archetypes.PanelBlueprint#state")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
+        let state = arrays_by_descr
+            .get(&Self::descriptor_state())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_state()));
         Ok(Self { state })
     }
 }
 
 impl ::re_types_core::AsComponents for PanelBlueprint {
-    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
-        re_tracing::profile_function!();
+    #[inline]
+    fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
-        [
-            Some(Self::indicator()),
-            (self
-                .state
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_state()),
-            }),
-        ]
-        .into_iter()
-        .flatten()
-        .collect()
+        [Self::indicator().serialized(), self.state.clone()]
+            .into_iter()
+            .flatten()
+            .collect()
     }
 }
 
@@ -161,13 +145,31 @@ impl PanelBlueprint {
         Self { state: None }
     }
 
+    /// Update only some specific fields of a `PanelBlueprint`.
+    #[inline]
+    pub fn update_fields() -> Self {
+        Self::default()
+    }
+
+    /// Clear all the fields of a `PanelBlueprint`.
+    #[inline]
+    pub fn clear_fields() -> Self {
+        use ::re_types_core::Loggable as _;
+        Self {
+            state: Some(SerializedComponentBatch::new(
+                crate::blueprint::components::PanelState::arrow_empty(),
+                Self::descriptor_state(),
+            )),
+        }
+    }
+
     /// Current state of the panels.
     #[inline]
     pub fn with_state(
         mut self,
         state: impl Into<crate::blueprint::components::PanelState>,
     ) -> Self {
-        self.state = Some(state.into());
+        self.state = try_serialize_field(Self::descriptor_state(), [state]);
         self
     }
 }
@@ -176,10 +178,5 @@ impl ::re_byte_size::SizeBytes for PanelBlueprint {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.state.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <Option<crate::blueprint::components::PanelState>>::is_pod()
     }
 }

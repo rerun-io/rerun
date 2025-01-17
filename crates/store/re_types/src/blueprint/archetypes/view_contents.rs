@@ -61,7 +61,7 @@ pub struct ViewContents {
     /// The `QueryExpression` that populates the contents for the view.
     ///
     /// They determine which entities are part of the view.
-    pub query: Vec<crate::blueprint::components::QueryExpression>,
+    pub query: Option<SerializedComponentBatch>,
 }
 
 impl ViewContents {
@@ -157,38 +157,21 @@ impl ::re_types_core::Archetype for ViewContents {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
         let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
-        let query = {
-            let array = arrays_by_descr
-                .get(&Self::descriptor_query())
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.blueprint.archetypes.ViewContents#query")?;
-            <crate::blueprint::components::QueryExpression>::from_arrow_opt(&**array)
-                .with_context("rerun.blueprint.archetypes.ViewContents#query")?
-                .into_iter()
-                .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                .collect::<DeserializationResult<Vec<_>>>()
-                .with_context("rerun.blueprint.archetypes.ViewContents#query")?
-        };
+        let query = arrays_by_descr
+            .get(&Self::descriptor_query())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_query()));
         Ok(Self { query })
     }
 }
 
 impl ::re_types_core::AsComponents for ViewContents {
-    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
-        re_tracing::profile_function!();
+    #[inline]
+    fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
-        [
-            Some(Self::indicator()),
-            (Some(&self.query as &dyn ComponentBatch)).map(|batch| {
-                ::re_types_core::ComponentBatchCowWithDescriptor {
-                    batch: batch.into(),
-                    descriptor_override: Some(Self::descriptor_query()),
-                }
-            }),
-        ]
-        .into_iter()
-        .flatten()
-        .collect()
+        [Self::indicator().serialized(), self.query.clone()]
+            .into_iter()
+            .flatten()
+            .collect()
     }
 }
 
@@ -201,8 +184,38 @@ impl ViewContents {
         query: impl IntoIterator<Item = impl Into<crate::blueprint::components::QueryExpression>>,
     ) -> Self {
         Self {
-            query: query.into_iter().map(Into::into).collect(),
+            query: try_serialize_field(Self::descriptor_query(), query),
         }
+    }
+
+    /// Update only some specific fields of a `ViewContents`.
+    #[inline]
+    pub fn update_fields() -> Self {
+        Self::default()
+    }
+
+    /// Clear all the fields of a `ViewContents`.
+    #[inline]
+    pub fn clear_fields() -> Self {
+        use ::re_types_core::Loggable as _;
+        Self {
+            query: Some(SerializedComponentBatch::new(
+                crate::blueprint::components::QueryExpression::arrow_empty(),
+                Self::descriptor_query(),
+            )),
+        }
+    }
+
+    /// The `QueryExpression` that populates the contents for the view.
+    ///
+    /// They determine which entities are part of the view.
+    #[inline]
+    pub fn with_query(
+        mut self,
+        query: impl IntoIterator<Item = impl Into<crate::blueprint::components::QueryExpression>>,
+    ) -> Self {
+        self.query = try_serialize_field(Self::descriptor_query(), query);
+        self
     }
 }
 
@@ -210,10 +223,5 @@ impl ::re_byte_size::SizeBytes for ViewContents {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.query.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <Vec<crate::blueprint::components::QueryExpression>>::is_pod()
     }
 }

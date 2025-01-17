@@ -19,20 +19,20 @@ use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: Resolves collisions between the bounding circles, according to the radius of the nodes.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct ForceCollisionRadius {
     /// Whether the collision force is enabled.
     ///
     /// The collision force resolves collisions between nodes based on the bounding circle defined by their radius.
-    pub enabled: Option<crate::blueprint::components::Enabled>,
+    pub enabled: Option<SerializedComponentBatch>,
 
     /// The strength of the force.
-    pub strength: Option<crate::blueprint::components::ForceStrength>,
+    pub strength: Option<SerializedComponentBatch>,
 
     /// Specifies how often this force should be applied per iteration.
     ///
     /// Increasing this parameter can lead to better results at the cost of longer computation time.
-    pub iterations: Option<crate::blueprint::components::ForceIterations>,
+    pub iterations: Option<SerializedComponentBatch>,
 }
 
 impl ForceCollisionRadius {
@@ -157,33 +157,17 @@ impl ::re_types_core::Archetype for ForceCollisionRadius {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
         let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
-        let enabled = if let Some(array) = arrays_by_descr.get(&Self::descriptor_enabled()) {
-            <crate::blueprint::components::Enabled>::from_arrow_opt(&**array)
-                .with_context("rerun.blueprint.archetypes.ForceCollisionRadius#enabled")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
-        let strength = if let Some(array) = arrays_by_descr.get(&Self::descriptor_strength()) {
-            <crate::blueprint::components::ForceStrength>::from_arrow_opt(&**array)
-                .with_context("rerun.blueprint.archetypes.ForceCollisionRadius#strength")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
-        let iterations = if let Some(array) = arrays_by_descr.get(&Self::descriptor_iterations()) {
-            <crate::blueprint::components::ForceIterations>::from_arrow_opt(&**array)
-                .with_context("rerun.blueprint.archetypes.ForceCollisionRadius#iterations")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
+        let enabled = arrays_by_descr
+            .get(&Self::descriptor_enabled())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_enabled()));
+        let strength = arrays_by_descr
+            .get(&Self::descriptor_strength())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_strength()));
+        let iterations = arrays_by_descr
+            .get(&Self::descriptor_iterations())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_iterations())
+            });
         Ok(Self {
             enabled,
             strength,
@@ -193,35 +177,14 @@ impl ::re_types_core::Archetype for ForceCollisionRadius {
 }
 
 impl ::re_types_core::AsComponents for ForceCollisionRadius {
-    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
-        re_tracing::profile_function!();
+    #[inline]
+    fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
-            (self
-                .enabled
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_enabled()),
-            }),
-            (self
-                .strength
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_strength()),
-            }),
-            (self
-                .iterations
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_iterations()),
-            }),
+            Self::indicator().serialized(),
+            self.enabled.clone(),
+            self.strength.clone(),
+            self.iterations.clone(),
         ]
         .into_iter()
         .flatten()
@@ -242,6 +205,32 @@ impl ForceCollisionRadius {
         }
     }
 
+    /// Update only some specific fields of a `ForceCollisionRadius`.
+    #[inline]
+    pub fn update_fields() -> Self {
+        Self::default()
+    }
+
+    /// Clear all the fields of a `ForceCollisionRadius`.
+    #[inline]
+    pub fn clear_fields() -> Self {
+        use ::re_types_core::Loggable as _;
+        Self {
+            enabled: Some(SerializedComponentBatch::new(
+                crate::blueprint::components::Enabled::arrow_empty(),
+                Self::descriptor_enabled(),
+            )),
+            strength: Some(SerializedComponentBatch::new(
+                crate::blueprint::components::ForceStrength::arrow_empty(),
+                Self::descriptor_strength(),
+            )),
+            iterations: Some(SerializedComponentBatch::new(
+                crate::blueprint::components::ForceIterations::arrow_empty(),
+                Self::descriptor_iterations(),
+            )),
+        }
+    }
+
     /// Whether the collision force is enabled.
     ///
     /// The collision force resolves collisions between nodes based on the bounding circle defined by their radius.
@@ -250,7 +239,7 @@ impl ForceCollisionRadius {
         mut self,
         enabled: impl Into<crate::blueprint::components::Enabled>,
     ) -> Self {
-        self.enabled = Some(enabled.into());
+        self.enabled = try_serialize_field(Self::descriptor_enabled(), [enabled]);
         self
     }
 
@@ -260,7 +249,7 @@ impl ForceCollisionRadius {
         mut self,
         strength: impl Into<crate::blueprint::components::ForceStrength>,
     ) -> Self {
-        self.strength = Some(strength.into());
+        self.strength = try_serialize_field(Self::descriptor_strength(), [strength]);
         self
     }
 
@@ -272,7 +261,7 @@ impl ForceCollisionRadius {
         mut self,
         iterations: impl Into<crate::blueprint::components::ForceIterations>,
     ) -> Self {
-        self.iterations = Some(iterations.into());
+        self.iterations = try_serialize_field(Self::descriptor_iterations(), [iterations]);
         self
     }
 }
@@ -283,12 +272,5 @@ impl ::re_byte_size::SizeBytes for ForceCollisionRadius {
         self.enabled.heap_size_bytes()
             + self.strength.heap_size_bytes()
             + self.iterations.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <Option<crate::blueprint::components::Enabled>>::is_pod()
-            && <Option<crate::blueprint::components::ForceStrength>>::is_pod()
-            && <Option<crate::blueprint::components::ForceIterations>>::is_pod()
     }
 }

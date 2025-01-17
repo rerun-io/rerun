@@ -5605,8 +5605,6 @@ dependencies = [
  "hashbrown 0.14.5",
  "num-traits",
  "rustc_version",
- "serde",
- "serde_derive",
  "simdutf8",
 ]
 
@@ -5748,7 +5746,6 @@ dependencies = [
  "re_tracing",
  "re_types",
  "re_types_core",
- "serde_json",
  "similar-asserts",
  "thiserror 1.0.65",
  "tinyvec",
@@ -5921,6 +5918,7 @@ dependencies = [
  "re_arrow_util",
  "re_chunk",
  "re_chunk_store",
+ "re_format_arrow",
  "re_log",
  "re_log_encoding",
  "re_log_types",
@@ -6233,6 +6231,7 @@ version = "0.22.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "anyhow",
+ "arrow",
  "backtrace",
  "bytemuck",
  "criterion",
@@ -7066,7 +7065,6 @@ dependencies = [
  "ahash",
  "egui",
  "egui_tiles",
- "itertools 0.13.0",
  "nohash-hasher",
  "rayon",
  "re_context_menu",
@@ -7322,6 +7320,7 @@ name = "rerun"
 version = "0.22.0-alpha.1+dev"
 dependencies = [
  "anyhow",
+ "arrow",
  "clap",
  "document-features",
  "env_logger",
@@ -7342,6 +7341,7 @@ dependencies = [
  "re_entity_db",
  "re_error",
  "re_format",
+ "re_format_arrow",
  "re_log",
  "re_log_encoding",
  "re_log_types",
@@ -7416,7 +7416,6 @@ dependencies = [
  "pyo3",
  "pyo3-build-config",
  "rand",
- "re_arrow2",
  "re_arrow_util",
  "re_build_info",
  "re_build_tools",

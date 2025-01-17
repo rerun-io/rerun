@@ -5,7 +5,7 @@ use re_data_ui::tensor_summary_ui_grid_contents;
 use re_log_types::EntityPath;
 use re_types::{
     blueprint::{
-        archetypes::{TensorScalarMapping, TensorSliceSelection, TensorViewFit},
+        archetypes::{TensorScalarMapping, TensorViewFit},
         components::ViewFit,
     },
     components::{Colormap, GammaCorrection, MagnificationFilter, TensorDimensionIndexSelection},
@@ -23,7 +23,7 @@ use re_viewer_context::{
 use re_viewport_blueprint::ViewProperty;
 
 use crate::{
-    dimension_mapping::load_tensor_slice_selection_and_make_valid,
+    dimension_mapping::TensorSliceSelection,
     tensor_dimension_mapper::dimension_mapping_ui,
     visualizer_system::{TensorSystem, TensorVisualization},
     TensorDimension,
@@ -147,12 +147,10 @@ Note: select the view to configure which dimensions are shown."
 
         // TODO(#6075): Listitemify
         if let Some(TensorVisualization { tensor, .. }) = &state.tensor {
-            let slice_property = ViewProperty::from_archetype::<TensorSliceSelection>(
-                ctx.blueprint_db(),
-                ctx.blueprint_query,
-                view_id,
-            );
-            let slice_selection = load_tensor_slice_selection_and_make_valid(
+            let slice_property = ViewProperty::from_archetype::<
+                re_types::blueprint::archetypes::TensorSliceSelection,
+            >(ctx.blueprint_db(), ctx.blueprint_query, view_id);
+            let slice_selection = TensorSliceSelection::load_and_make_valid(
                 &slice_property,
                 &TensorDimension::from_tensor_data(tensor),
             )?;
@@ -246,12 +244,10 @@ impl TensorView {
     ) -> Result<(), ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        let slice_property = ViewProperty::from_archetype::<TensorSliceSelection>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query,
-            view_id,
-        );
-        let slice_selection = load_tensor_slice_selection_and_make_valid(
+        let slice_property = ViewProperty::from_archetype::<
+            re_types::blueprint::archetypes::TensorSliceSelection,
+        >(ctx.blueprint_db(), ctx.blueprint_query, view_id);
+        let slice_selection = TensorSliceSelection::load_and_make_valid(
             &slice_property,
             &TensorDimension::from_tensor_data(tensor),
         )?;
@@ -425,9 +421,6 @@ pub fn selected_tensor_slice<'a, T: Copy>(
         indices,
         slider: _,
     } = slice_selection;
-
-    let empty_indices = Vec::new();
-    let indices = indices.as_ref().unwrap_or(&empty_indices);
 
     let (dwidth, dheight) = if let (Some(width), Some(height)) = (width, height) {
         (width.dimension, height.dimension)
@@ -628,7 +621,7 @@ fn selectors_ui(
     };
 
     let mut changed_indices = false;
-    let mut indices = slice_selection.indices.clone().unwrap_or_default();
+    let mut indices = slice_selection.indices.clone();
 
     for index_slider in slider {
         let dim = &shape[index_slider.dimension as usize];

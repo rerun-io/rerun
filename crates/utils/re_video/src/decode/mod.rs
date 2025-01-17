@@ -337,7 +337,7 @@ pub enum PixelFormat {
     Yuv {
         layout: YuvPixelLayout,
         range: YuvRange,
-        // TODO(andreas): color primaries should also apply to RGB data,
+        // TODO(andreas): Color primaries should also apply to RGB data,
         // but for now we just always assume RGB to be BT.709 ~= sRGB.
         coefficients: YuvMatrixCoefficients,
         // Note that we don't handle chroma sample location at all so far.

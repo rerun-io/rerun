@@ -32,7 +32,7 @@ pub struct VisibleTimeRanges {
     /// The time ranges to show for each timeline unless specified otherwise on a per-entity basis.
     ///
     /// If a timeline is specified more than once, the first entry will be used.
-    pub ranges: Vec<crate::blueprint::components::VisibleTimeRange>,
+    pub ranges: Option<SerializedComponentBatch>,
 }
 
 impl VisibleTimeRanges {
@@ -128,38 +128,21 @@ impl ::re_types_core::Archetype for VisibleTimeRanges {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
         let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
-        let ranges = {
-            let array = arrays_by_descr
-                .get(&Self::descriptor_ranges())
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.blueprint.archetypes.VisibleTimeRanges#ranges")?;
-            <crate::blueprint::components::VisibleTimeRange>::from_arrow_opt(&**array)
-                .with_context("rerun.blueprint.archetypes.VisibleTimeRanges#ranges")?
-                .into_iter()
-                .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                .collect::<DeserializationResult<Vec<_>>>()
-                .with_context("rerun.blueprint.archetypes.VisibleTimeRanges#ranges")?
-        };
+        let ranges = arrays_by_descr
+            .get(&Self::descriptor_ranges())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_ranges()));
         Ok(Self { ranges })
     }
 }
 
 impl ::re_types_core::AsComponents for VisibleTimeRanges {
-    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
-        re_tracing::profile_function!();
+    #[inline]
+    fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
-        [
-            Some(Self::indicator()),
-            (Some(&self.ranges as &dyn ComponentBatch)).map(|batch| {
-                ::re_types_core::ComponentBatchCowWithDescriptor {
-                    batch: batch.into(),
-                    descriptor_override: Some(Self::descriptor_ranges()),
-                }
-            }),
-        ]
-        .into_iter()
-        .flatten()
-        .collect()
+        [Self::indicator().serialized(), self.ranges.clone()]
+            .into_iter()
+            .flatten()
+            .collect()
     }
 }
 
@@ -172,8 +155,38 @@ impl VisibleTimeRanges {
         ranges: impl IntoIterator<Item = impl Into<crate::blueprint::components::VisibleTimeRange>>,
     ) -> Self {
         Self {
-            ranges: ranges.into_iter().map(Into::into).collect(),
+            ranges: try_serialize_field(Self::descriptor_ranges(), ranges),
         }
+    }
+
+    /// Update only some specific fields of a `VisibleTimeRanges`.
+    #[inline]
+    pub fn update_fields() -> Self {
+        Self::default()
+    }
+
+    /// Clear all the fields of a `VisibleTimeRanges`.
+    #[inline]
+    pub fn clear_fields() -> Self {
+        use ::re_types_core::Loggable as _;
+        Self {
+            ranges: Some(SerializedComponentBatch::new(
+                crate::blueprint::components::VisibleTimeRange::arrow_empty(),
+                Self::descriptor_ranges(),
+            )),
+        }
+    }
+
+    /// The time ranges to show for each timeline unless specified otherwise on a per-entity basis.
+    ///
+    /// If a timeline is specified more than once, the first entry will be used.
+    #[inline]
+    pub fn with_ranges(
+        mut self,
+        ranges: impl IntoIterator<Item = impl Into<crate::blueprint::components::VisibleTimeRange>>,
+    ) -> Self {
+        self.ranges = try_serialize_field(Self::descriptor_ranges(), ranges);
+        self
     }
 }
 
@@ -181,10 +194,5 @@ impl ::re_byte_size::SizeBytes for VisibleTimeRanges {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.ranges.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <Vec<crate::blueprint::components::VisibleTimeRange>>::is_pod()
     }
 }

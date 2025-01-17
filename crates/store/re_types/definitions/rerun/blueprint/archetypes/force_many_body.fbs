@@ -4,6 +4,7 @@ namespace rerun.blueprint.archetypes;
 ///
 /// If `strength` is smaller than 0, it pushes nodes apart, if it is larger than 0 it pulls them together.
 struct ForceManyBody (
+    "attr.rust.archetype_eager",
     "attr.rerun.scope": "blueprint"
 ) {
     /// Whether the many body force is enabled.

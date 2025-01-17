@@ -6,7 +6,6 @@
 
 mod builder;
 mod chunk;
-pub mod concat_record_batches;
 mod helpers;
 mod id;
 mod iter;
@@ -20,9 +19,6 @@ mod transport;
 
 #[cfg(not(target_arch = "wasm32"))]
 mod batcher;
-
-#[cfg(feature = "arrow")]
-mod arrow;
 
 pub use self::builder::{ChunkBuilder, TimeColumnBuilder};
 pub use self::chunk::{

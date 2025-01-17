@@ -19,13 +19,13 @@ use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: The description of a single view.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct ViewBlueprint {
     /// The class of the view.
-    pub class_identifier: crate::blueprint::components::ViewClass,
+    pub class_identifier: Option<SerializedComponentBatch>,
 
     /// The name of the view.
-    pub display_name: Option<crate::components::Name>,
+    pub display_name: Option<SerializedComponentBatch>,
 
     /// The "anchor point" of this view.
     ///
@@ -34,12 +34,12 @@ pub struct ViewBlueprint {
     /// The transform at this path forms the reference point for all scene->world transforms in this view.
     /// I.e. the position of this entity path in space forms the origin of the coordinate system in this view.
     /// Furthermore, this is the primary indicator for heuristics on what entities we show in this view.
-    pub space_origin: Option<crate::blueprint::components::ViewOrigin>,
+    pub space_origin: Option<SerializedComponentBatch>,
 
     /// Whether this view is visible.
     ///
     /// Defaults to true if not specified.
-    pub visible: Option<crate::blueprint::components::Visible>,
+    pub visible: Option<SerializedComponentBatch>,
 }
 
 impl ViewBlueprint {
@@ -174,48 +174,24 @@ impl ::re_types_core::Archetype for ViewBlueprint {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
         let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
-        let class_identifier = {
-            let array = arrays_by_descr
-                .get(&Self::descriptor_class_identifier())
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.blueprint.archetypes.ViewBlueprint#class_identifier")?;
-            <crate::blueprint::components::ViewClass>::from_arrow_opt(&**array)
-                .with_context("rerun.blueprint.archetypes.ViewBlueprint#class_identifier")?
-                .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.blueprint.archetypes.ViewBlueprint#class_identifier")?
-        };
-        let display_name =
-            if let Some(array) = arrays_by_descr.get(&Self::descriptor_display_name()) {
-                <crate::components::Name>::from_arrow_opt(&**array)
-                    .with_context("rerun.blueprint.archetypes.ViewBlueprint#display_name")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-            } else {
-                None
-            };
-        let space_origin =
-            if let Some(array) = arrays_by_descr.get(&Self::descriptor_space_origin()) {
-                <crate::blueprint::components::ViewOrigin>::from_arrow_opt(&**array)
-                    .with_context("rerun.blueprint.archetypes.ViewBlueprint#space_origin")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-            } else {
-                None
-            };
-        let visible = if let Some(array) = arrays_by_descr.get(&Self::descriptor_visible()) {
-            <crate::blueprint::components::Visible>::from_arrow_opt(&**array)
-                .with_context("rerun.blueprint.archetypes.ViewBlueprint#visible")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
+        let class_identifier = arrays_by_descr
+            .get(&Self::descriptor_class_identifier())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_class_identifier())
+            });
+        let display_name = arrays_by_descr
+            .get(&Self::descriptor_display_name())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_display_name())
+            });
+        let space_origin = arrays_by_descr
+            .get(&Self::descriptor_space_origin())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_space_origin())
+            });
+        let visible = arrays_by_descr
+            .get(&Self::descriptor_visible())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_visible()));
         Ok(Self {
             class_identifier,
             display_name,
@@ -226,41 +202,15 @@ impl ::re_types_core::Archetype for ViewBlueprint {
 }
 
 impl ::re_types_core::AsComponents for ViewBlueprint {
-    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
-        re_tracing::profile_function!();
+    #[inline]
+    fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
-            (Some(&self.class_identifier as &dyn ComponentBatch)).map(|batch| {
-                ::re_types_core::ComponentBatchCowWithDescriptor {
-                    batch: batch.into(),
-                    descriptor_override: Some(Self::descriptor_class_identifier()),
-                }
-            }),
-            (self
-                .display_name
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_display_name()),
-            }),
-            (self
-                .space_origin
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_space_origin()),
-            }),
-            (self
-                .visible
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_visible()),
-            }),
+            Self::indicator().serialized(),
+            self.class_identifier.clone(),
+            self.display_name.clone(),
+            self.space_origin.clone(),
+            self.visible.clone(),
         ]
         .into_iter()
         .flatten()
@@ -275,17 +225,61 @@ impl ViewBlueprint {
     #[inline]
     pub fn new(class_identifier: impl Into<crate::blueprint::components::ViewClass>) -> Self {
         Self {
-            class_identifier: class_identifier.into(),
+            class_identifier: try_serialize_field(
+                Self::descriptor_class_identifier(),
+                [class_identifier],
+            ),
             display_name: None,
             space_origin: None,
             visible: None,
         }
     }
 
+    /// Update only some specific fields of a `ViewBlueprint`.
+    #[inline]
+    pub fn update_fields() -> Self {
+        Self::default()
+    }
+
+    /// Clear all the fields of a `ViewBlueprint`.
+    #[inline]
+    pub fn clear_fields() -> Self {
+        use ::re_types_core::Loggable as _;
+        Self {
+            class_identifier: Some(SerializedComponentBatch::new(
+                crate::blueprint::components::ViewClass::arrow_empty(),
+                Self::descriptor_class_identifier(),
+            )),
+            display_name: Some(SerializedComponentBatch::new(
+                crate::components::Name::arrow_empty(),
+                Self::descriptor_display_name(),
+            )),
+            space_origin: Some(SerializedComponentBatch::new(
+                crate::blueprint::components::ViewOrigin::arrow_empty(),
+                Self::descriptor_space_origin(),
+            )),
+            visible: Some(SerializedComponentBatch::new(
+                crate::blueprint::components::Visible::arrow_empty(),
+                Self::descriptor_visible(),
+            )),
+        }
+    }
+
+    /// The class of the view.
+    #[inline]
+    pub fn with_class_identifier(
+        mut self,
+        class_identifier: impl Into<crate::blueprint::components::ViewClass>,
+    ) -> Self {
+        self.class_identifier =
+            try_serialize_field(Self::descriptor_class_identifier(), [class_identifier]);
+        self
+    }
+
     /// The name of the view.
     #[inline]
     pub fn with_display_name(mut self, display_name: impl Into<crate::components::Name>) -> Self {
-        self.display_name = Some(display_name.into());
+        self.display_name = try_serialize_field(Self::descriptor_display_name(), [display_name]);
         self
     }
 
@@ -301,7 +295,7 @@ impl ViewBlueprint {
         mut self,
         space_origin: impl Into<crate::blueprint::components::ViewOrigin>,
     ) -> Self {
-        self.space_origin = Some(space_origin.into());
+        self.space_origin = try_serialize_field(Self::descriptor_space_origin(), [space_origin]);
         self
     }
 
@@ -313,7 +307,7 @@ impl ViewBlueprint {
         mut self,
         visible: impl Into<crate::blueprint::components::Visible>,
     ) -> Self {
-        self.visible = Some(visible.into());
+        self.visible = try_serialize_field(Self::descriptor_visible(), [visible]);
         self
     }
 }
@@ -325,13 +319,5 @@ impl ::re_byte_size::SizeBytes for ViewBlueprint {
             + self.display_name.heap_size_bytes()
             + self.space_origin.heap_size_bytes()
             + self.visible.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::blueprint::components::ViewClass>::is_pod()
-            && <Option<crate::components::Name>>::is_pod()
-            && <Option<crate::blueprint::components::ViewOrigin>>::is_pod()
-            && <Option<crate::blueprint::components::Visible>>::is_pod()
     }
 }

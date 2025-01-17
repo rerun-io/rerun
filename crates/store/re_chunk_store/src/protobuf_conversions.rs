@@ -270,9 +270,7 @@ impl TryFrom<crate::ColumnDescriptor> for re_protos::common::v0::ColumnDescripto
                             timeline: Some(re_protos::common::v0::Timeline {
                                 name: time_descriptor.timeline.name().to_string(),
                             }),
-                            datatype: serde_json::to_string(&time_descriptor.datatype).map_err(
-                                |err| invalid_field!(Self, "time column descriptor", err),
-                            )?,
+                            datatype: time_descriptor.datatype.to_string(), // TODO(emilk): use arrow IPC instead
                         },
                     ),
                 ),
@@ -289,10 +287,7 @@ impl TryFrom<crate::ColumnDescriptor> for re_protos::common::v0::ColumnDescripto
                                 .archetype_field_name
                                 .map(|afn| afn.to_string()),
                             component_name: component_descriptor.component_name.to_string(),
-                            datatype: serde_json::to_string(&component_descriptor.store_datatype)
-                                .map_err(|err| {
-                                invalid_field!(Self, "component column descriptor", err)
-                            })?,
+                            datatype: component_descriptor.store_datatype.to_string(), // TODO(emilk): use arrow IPC instead
                             is_static: component_descriptor.is_static,
                             is_tombstone: component_descriptor.is_tombstone,
                             is_semantically_empty: component_descriptor.is_semantically_empty,
@@ -325,7 +320,7 @@ impl TryFrom<re_protos::common::v0::ColumnDescriptor> for crate::ColumnDescripto
                         "timeline",
                     ))?
                     .into(),
-                datatype: serde_json::from_str(&time_descriptor.datatype).map_err(|err| {
+                datatype: time_descriptor.datatype.parse().map_err(|err| {
                     invalid_field!(
                         re_protos::common::v0::ColumnDescriptor,
                         "time column descriptor",
@@ -346,15 +341,13 @@ impl TryFrom<re_protos::common::v0::ColumnDescriptor> for crate::ColumnDescripto
                 archetype_name: component_descriptor.archetype_name.map(Into::into),
                 archetype_field_name: component_descriptor.archetype_field_name.map(Into::into),
                 component_name: component_descriptor.component_name.into(),
-                store_datatype: serde_json::from_str(&component_descriptor.datatype).map_err(
-                    |err| {
-                        invalid_field!(
-                            re_protos::common::v0::ColumnDescriptor,
-                            "component column descriptor",
-                            err
-                        )
-                    },
-                )?,
+                store_datatype: component_descriptor.datatype.parse().map_err(|err| {
+                    invalid_field!(
+                        re_protos::common::v0::ColumnDescriptor,
+                        "component column descriptor",
+                        err
+                    )
+                })?,
                 is_static: component_descriptor.is_static,
                 is_tombstone: component_descriptor.is_tombstone,
                 is_semantically_empty: component_descriptor.is_semantically_empty,
@@ -447,8 +440,8 @@ mod tests {
     fn test_time_column_descriptor_conversion() {
         let time_descriptor = crate::TimeColumnDescriptor {
             timeline: crate::Timeline::log_time(),
-            datatype: arrow2::datatypes::DataType::Timestamp(
-                arrow2::datatypes::TimeUnit::Nanosecond,
+            datatype: arrow::datatypes::DataType::Timestamp(
+                arrow::datatypes::TimeUnit::Nanosecond,
                 None,
             ),
         };
@@ -472,7 +465,7 @@ mod tests {
             archetype_name: Some("archetype".to_owned().into()),
             archetype_field_name: Some("field".to_owned().into()),
             component_name: re_chunk::ComponentName::new("component"),
-            store_datatype: arrow2::datatypes::DataType::Int64,
+            store_datatype: arrow::datatypes::DataType::Int64,
             is_static: true,
             is_tombstone: false,
             is_semantically_empty: false,
