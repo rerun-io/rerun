@@ -1,4 +1,4 @@
-//! Log extra values with a Points2D.
+//! Log extra values with a `Points2D`.
 
 use std::sync::Arc;
 
