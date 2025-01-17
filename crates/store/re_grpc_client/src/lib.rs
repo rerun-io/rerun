@@ -281,7 +281,6 @@ pub fn store_info_from_catalog_chunk(
 ) -> Result<StoreInfo, StreamError> {
     let store_id = StoreId::from_string(StoreKind::Recording, recording_id.to_owned());
 
-    println!("TC: {tc:?}");
     let (_field, data) = tc
         .components()
         .find(|(f, _)| f.name() == CATALOG_APP_ID_FIELD_NAME)
