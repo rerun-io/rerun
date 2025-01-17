@@ -6764,7 +6764,6 @@ version = "0.22.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "egui",
- "egui_kittest",
  "fjadra",
  "itertools 0.13.0",
  "nohash-hasher",
