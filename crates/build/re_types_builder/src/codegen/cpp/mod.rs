@@ -706,6 +706,16 @@ impl QuotedObject {
                 obj.deprecation_notice().is_some() || has_any_deprecated_fields,
             );
 
+        let default_ctors = if eager_serialization {
+            // By not defining anything, we get all of copy/move constructors/assignment automatically.
+            quote! {}
+        } else {
+            quote! {
+                #type_ident() = default;
+                #type_ident(#type_ident&& other) = default;
+            }
+        };
+
         // TODO: docstring for name
         let hpp = quote! {
             #hpp_includes
@@ -731,8 +741,7 @@ impl QuotedObject {
                     #hpp_type_extensions
 
                 public:
-                    #type_ident() = default;
-                    #type_ident(#type_ident&& other) = default;
+                    #default_ctors
                     #NEWLINE_TOKEN
                     #NEWLINE_TOKEN
                     #(#methods_hpp)*

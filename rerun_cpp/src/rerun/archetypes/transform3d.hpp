@@ -152,28 +152,28 @@ namespace rerun::archetypes {
     /// ```
     struct Transform3D {
         /// Translation vector.
-        std::optional<rerun::components::Translation3D> translation;
+        std::optional<ComponentBatch> translation;
 
         /// Rotation via axis + angle.
-        std::optional<rerun::components::RotationAxisAngle> rotation_axis_angle;
+        std::optional<ComponentBatch> rotation_axis_angle;
 
         /// Rotation via quaternion.
-        std::optional<rerun::components::RotationQuat> quaternion;
+        std::optional<ComponentBatch> quaternion;
 
         /// Scaling factor.
-        std::optional<rerun::components::Scale3D> scale;
+        std::optional<ComponentBatch> scale;
 
         /// 3x3 transformation matrix.
-        std::optional<rerun::components::TransformMat3x3> mat3x3;
+        std::optional<ComponentBatch> mat3x3;
 
         /// Specifies the relation this transform establishes between this entity and its parent.
-        std::optional<rerun::components::TransformRelation> relation;
+        std::optional<ComponentBatch> relation;
 
         /// Visual length of the 3 axes.
         ///
         /// The length is interpreted in the local coordinate system of the transform.
         /// If the transform is scaled, the axes will be scaled accordingly.
-        std::optional<rerun::components::AxisLength> axis_length;
+        std::optional<ComponentBatch> axis_length;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -182,6 +182,33 @@ namespace rerun::archetypes {
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
         static constexpr const char ArchetypeName[] = "rerun.archetypes.Transform3D";
+        static constexpr auto Descriptor_translation = ComponentDescriptor(
+            ArchetypeName, "translation",
+            Loggable<rerun::components::Translation3D>::Descriptor.component_name
+        );
+        static constexpr auto Descriptor_rotation_axis_angle = ComponentDescriptor(
+            ArchetypeName, "rotation_axis_angle",
+            Loggable<rerun::components::RotationAxisAngle>::Descriptor.component_name
+        );
+        static constexpr auto Descriptor_quaternion = ComponentDescriptor(
+            ArchetypeName, "quaternion",
+            Loggable<rerun::components::RotationQuat>::Descriptor.component_name
+        );
+        static constexpr auto Descriptor_scale = ComponentDescriptor(
+            ArchetypeName, "scale", Loggable<rerun::components::Scale3D>::Descriptor.component_name
+        );
+        static constexpr auto Descriptor_mat3x3 = ComponentDescriptor(
+            ArchetypeName, "mat3x3",
+            Loggable<rerun::components::TransformMat3x3>::Descriptor.component_name
+        );
+        static constexpr auto Descriptor_relation = ComponentDescriptor(
+            ArchetypeName, "relation",
+            Loggable<rerun::components::TransformRelation>::Descriptor.component_name
+        );
+        static constexpr auto Descriptor_axis_length = ComponentDescriptor(
+            ArchetypeName, "axis_length",
+            Loggable<rerun::components::AxisLength>::Descriptor.component_name
+        );
 
       public: // START of extensions from transform3d_ext.cpp:
         /// Identity transformation.
@@ -216,10 +243,11 @@ namespace rerun::archetypes {
         Transform3D(
             const components::Translation3D& translation_,
             const components::TransformMat3x3& mat3x3_, bool from_parent = false
-        )
-            : translation(translation_), mat3x3(mat3x3_) {
+        ) {
+            *this = std::move(*this).with_translation(translation_).with_mat3x3(mat3x3_);
             if (from_parent) {
-                relation = components::TransformRelation::ChildFromParent;
+                *this =
+                    std::move(*this).with_relation(components::TransformRelation::ChildFromParent);
             }
         }
 
@@ -250,10 +278,11 @@ namespace rerun::archetypes {
         ///
         /// \param translation_ \çopydoc Transform3D::translation
         /// \param from_parent If true, the transform relation to `TransformRelation::ChildFromParent`.
-        Transform3D(const components::Translation3D& translation_, bool from_parent = false)
-            : translation(translation_) {
+        Transform3D(const components::Translation3D& translation_, bool from_parent = false) {
+            *this = std::move(*this).with_translation(translation_);
             if (from_parent) {
-                relation = components::TransformRelation::ChildFromParent;
+                *this =
+                    std::move(*this).with_relation(components::TransformRelation::ChildFromParent);
             }
         }
 
@@ -271,7 +300,8 @@ namespace rerun::archetypes {
         Transform3D(const components::TransformMat3x3& mat3x3_, bool from_parent = false)
             : mat3x3(mat3x3_) {
             if (from_parent) {
-                relation = components::TransformRelation::ChildFromParent;
+                *this =
+                    std::move(*this).with_relation(components::TransformRelation::ChildFromParent);
             }
         }
 
@@ -305,10 +335,11 @@ namespace rerun::archetypes {
         Transform3D(
             const components::Translation3D& translation_, const Rotation3D& rotation,
             const components::Scale3D& scale_, bool from_parent = false
-        )
-            : translation(translation_), scale(scale_) {
+        ) {
+            *this = std::move(*this).with_translation(translation_).with_scale(scale_);
             if (from_parent) {
-                relation = components::TransformRelation::ChildFromParent;
+                *this =
+                    std::move(*this).with_relation(components::TransformRelation::ChildFromParent);
             }
             set_rotation(rotation);
         }
@@ -361,10 +392,11 @@ namespace rerun::archetypes {
         Transform3D(
             const components::Translation3D& translation_, const Rotation3D& rotation,
             bool from_parent = false
-        )
-            : translation(translation_) {
+        ) {
+            *this = std::move(*this).with_translation(translation_);
             if (from_parent) {
-                relation = components::TransformRelation::ChildFromParent;
+                *this =
+                    std::move(*this).with_relation(components::TransformRelation::ChildFromParent);
             }
             set_rotation(rotation);
         }
@@ -387,10 +419,11 @@ namespace rerun::archetypes {
         Transform3D(
             const components::Translation3D& translation_, const components::Scale3D& scale_,
             bool from_parent = false
-        )
-            : translation(translation_), scale(scale_) {
+        ) {
+            *this = std::move(*this).with_translation(translation_).with_scale(scale_);
             if (from_parent) {
-                relation = components::TransformRelation::ChildFromParent;
+                *this =
+                    std::move(*this).with_relation(components::TransformRelation::ChildFromParent);
             }
         }
 
@@ -425,10 +458,11 @@ namespace rerun::archetypes {
         /// \param from_parent If true, the transform relation to `TransformRelation::ChildFromParent`.
         Transform3D(
             const Rotation3D& rotation, const components::Scale3D& scale_, bool from_parent = false
-        )
-            : scale(scale_) {
+        ) {
+            *this = std::move(*this).with_scale(scale_);
             if (from_parent) {
-                relation = components::TransformRelation::ChildFromParent;
+                *this =
+                    std::move(*this).with_relation(components::TransformRelation::ChildFromParent);
             }
             set_rotation(rotation);
         }
@@ -468,7 +502,8 @@ namespace rerun::archetypes {
         /// \param from_parent If true, the transform relation to `TransformRelation::ChildFromParent`.
         Transform3D(const Rotation3D& rotation, bool from_parent = false) {
             if (from_parent) {
-                relation = components::TransformRelation::ChildFromParent;
+                *this =
+                    std::move(*this).with_relation(components::TransformRelation::ChildFromParent);
             }
             set_rotation(rotation);
         }
@@ -486,7 +521,8 @@ namespace rerun::archetypes {
         /// \param from_parent \copydoc Transform3D::scale
         Transform3D(const components::Scale3D& scale_, bool from_parent = false) : scale(scale_) {
             if (from_parent) {
-                relation = components::TransformRelation::ChildFromParent;
+                *this =
+                    std::move(*this).with_relation(components::TransformRelation::ChildFromParent);
             }
         }
 
@@ -508,60 +544,69 @@ namespace rerun::archetypes {
         /// Set the rotation component of the transform using the `rerun::Rotation3D` utility.
         void set_rotation(const Rotation3D& rotation) {
             if (rotation.axis_angle.has_value()) {
-                RR_WITH_MAYBE_UNINITIALIZED_DISABLED(rotation_axis_angle =
-                                                         rotation.axis_angle.value();)
+                *this = std::move(*this).with_rotation_axis_angle(rotation.axis_angle.value());
             }
             if (rotation.quaternion.has_value()) {
-                RR_WITH_MAYBE_UNINITIALIZED_DISABLED(quaternion = rotation.quaternion.value();)
+                *this = std::move(*this).with_quaternion(rotation.quaternion.value());
             }
         }
 
         // END of extensions from transform3d_ext.cpp, start of generated code:
 
       public:
-        Transform3D() = default;
-        Transform3D(Transform3D&& other) = default;
+        /// Update only some specific fields of a `Transform3D`.
+        static Transform3D update_fields() {
+            return Transform3D();
+        }
+
+        /// Clear all the fields of a `Transform3D`.
+        static Transform3D clear_fields();
 
         /// Translation vector.
-        Transform3D with_translation(rerun::components::Translation3D _translation) && {
-            translation = std::move(_translation);
+        Transform3D with_translation(const rerun::components::Translation3D& _translation) && {
+            translation = ComponentBatch::from_loggable(_translation, Descriptor_translation)
+                              .value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Rotation via axis + angle.
         Transform3D with_rotation_axis_angle(
-            rerun::components::RotationAxisAngle _rotation_axis_angle
+            const rerun::components::RotationAxisAngle& _rotation_axis_angle
         ) && {
-            rotation_axis_angle = std::move(_rotation_axis_angle);
+            rotation_axis_angle =
+                ComponentBatch::from_loggable(_rotation_axis_angle, Descriptor_rotation_axis_angle)
+                    .value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Rotation via quaternion.
-        Transform3D with_quaternion(rerun::components::RotationQuat _quaternion) && {
-            quaternion = std::move(_quaternion);
+        Transform3D with_quaternion(const rerun::components::RotationQuat& _quaternion) && {
+            quaternion =
+                ComponentBatch::from_loggable(_quaternion, Descriptor_quaternion).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Scaling factor.
-        Transform3D with_scale(rerun::components::Scale3D _scale) && {
-            scale = std::move(_scale);
+        Transform3D with_scale(const rerun::components::Scale3D& _scale) && {
+            scale = ComponentBatch::from_loggable(_scale, Descriptor_scale).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// 3x3 transformation matrix.
-        Transform3D with_mat3x3(rerun::components::TransformMat3x3 _mat3x3) && {
-            mat3x3 = std::move(_mat3x3);
+        Transform3D with_mat3x3(const rerun::components::TransformMat3x3& _mat3x3) && {
+            mat3x3 = ComponentBatch::from_loggable(_mat3x3, Descriptor_mat3x3).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Specifies the relation this transform establishes between this entity and its parent.
-        Transform3D with_relation(rerun::components::TransformRelation _relation) && {
-            relation = std::move(_relation);
+        Transform3D with_relation(const rerun::components::TransformRelation& _relation) && {
+            relation =
+                ComponentBatch::from_loggable(_relation, Descriptor_relation).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
@@ -570,8 +615,9 @@ namespace rerun::archetypes {
         ///
         /// The length is interpreted in the local coordinate system of the transform.
         /// If the transform is scaled, the axes will be scaled accordingly.
-        Transform3D with_axis_length(rerun::components::AxisLength _axis_length) && {
-            axis_length = std::move(_axis_length);
+        Transform3D with_axis_length(const rerun::components::AxisLength& _axis_length) && {
+            axis_length = ComponentBatch::from_loggable(_axis_length, Descriptor_axis_length)
+                              .value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

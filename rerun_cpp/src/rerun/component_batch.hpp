@@ -29,6 +29,12 @@ namespace rerun {
         ComponentTypeHandle component_type;
 
       public:
+        ComponentBatch() = default;
+        ComponentBatch(ComponentBatch&& other) = default;
+        ComponentBatch(const ComponentBatch& other) = default;
+        ComponentBatch& operator=(ComponentBatch&& other) = default;
+        ComponentBatch& operator=(const ComponentBatch& other) = default;
+
         /// Creates a new empty component batch with a given descriptor.
         template <typename T>
         static Result<ComponentBatch> empty(const ComponentDescriptor& descriptor) {
