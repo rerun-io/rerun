@@ -105,6 +105,9 @@ namespace rerun::archetypes {
       public:
         Tensor() = default;
         Tensor(Tensor&& other) = default;
+        Tensor(const Tensor& other) = default;
+        Tensor& operator=(const Tensor& other) = default;
+        Tensor& operator=(Tensor&& other) = default;
 
         explicit Tensor(rerun::components::TensorData _data) : data(std::move(_data)) {}
 

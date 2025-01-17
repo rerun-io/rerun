@@ -62,6 +62,9 @@ namespace rerun::blueprint::archetypes {
       public:
         ViewportBlueprint() = default;
         ViewportBlueprint(ViewportBlueprint&& other) = default;
+        ViewportBlueprint(const ViewportBlueprint& other) = default;
+        ViewportBlueprint& operator=(const ViewportBlueprint& other) = default;
+        ViewportBlueprint& operator=(ViewportBlueprint&& other) = default;
 
         /// The layout of the views
         ViewportBlueprint with_root_container(

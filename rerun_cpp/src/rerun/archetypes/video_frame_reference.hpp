@@ -144,6 +144,9 @@ namespace rerun::archetypes {
       public:
         VideoFrameReference() = default;
         VideoFrameReference(VideoFrameReference&& other) = default;
+        VideoFrameReference(const VideoFrameReference& other) = default;
+        VideoFrameReference& operator=(const VideoFrameReference& other) = default;
+        VideoFrameReference& operator=(VideoFrameReference&& other) = default;
 
         explicit VideoFrameReference(rerun::components::VideoTimestamp _timestamp)
             : timestamp(std::move(_timestamp)) {}

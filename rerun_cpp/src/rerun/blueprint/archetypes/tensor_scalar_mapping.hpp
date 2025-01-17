@@ -49,6 +49,9 @@ namespace rerun::blueprint::archetypes {
       public:
         TensorScalarMapping() = default;
         TensorScalarMapping(TensorScalarMapping&& other) = default;
+        TensorScalarMapping(const TensorScalarMapping& other) = default;
+        TensorScalarMapping& operator=(const TensorScalarMapping& other) = default;
+        TensorScalarMapping& operator=(TensorScalarMapping&& other) = default;
 
         /// Filter used when zooming in on the tensor.
         ///

@@ -79,6 +79,9 @@ namespace rerun::archetypes {
       public:
         GeoPoints() = default;
         GeoPoints(GeoPoints&& other) = default;
+        GeoPoints(const GeoPoints& other) = default;
+        GeoPoints& operator=(const GeoPoints& other) = default;
+        GeoPoints& operator=(GeoPoints&& other) = default;
 
         explicit GeoPoints(Collection<rerun::components::LatLon> _positions)
             : positions(std::move(_positions)) {}

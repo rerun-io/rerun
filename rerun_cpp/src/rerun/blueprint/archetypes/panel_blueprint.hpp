@@ -32,6 +32,9 @@ namespace rerun::blueprint::archetypes {
       public:
         PanelBlueprint() = default;
         PanelBlueprint(PanelBlueprint&& other) = default;
+        PanelBlueprint(const PanelBlueprint& other) = default;
+        PanelBlueprint& operator=(const PanelBlueprint& other) = default;
+        PanelBlueprint& operator=(PanelBlueprint&& other) = default;
 
         /// Current state of the panels.
         PanelBlueprint with_state(rerun::blueprint::components::PanelState _state) && {

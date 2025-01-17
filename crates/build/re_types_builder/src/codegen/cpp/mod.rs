@@ -706,17 +706,13 @@ impl QuotedObject {
                 obj.deprecation_notice().is_some() || has_any_deprecated_fields,
             );
 
-        let default_ctors = if eager_serialization {
-            // By not defining anything, we get all of copy/move constructors/assignment automatically.
-            quote! {}
-        } else {
-            quote! {
-                #type_ident() = default;
-                #type_ident(#type_ident&& other) = default;
-            }
-        };
-
         // TODO: docstring for name
+        // Note that we run into "rule of five": https://en.cppreference.com/w/cpp/language/rule_of_three
+        // * we have to manually opt-in to default ctor because we (most of the time) have a user defined constructor
+        //   -> this means that there's no non-move constructors/assignments
+        // * we really want to make sure that the object is movable, therefore creating a move ctor
+        //   -> this means that there's no implicit move assignment.
+        // Therefore, we have to define all five move/copy  constructors/assignments.
         let hpp = quote! {
             #hpp_includes
 
@@ -741,7 +737,12 @@ impl QuotedObject {
                     #hpp_type_extensions
 
                 public:
-                    #default_ctors
+                    #type_ident() = default;
+                    #type_ident(#type_ident&& other) = default;
+                    #type_ident(const #type_ident& other) = default;
+                    #type_ident& operator=(const #type_ident& other) = default;
+                    #type_ident& operator=(#type_ident&& other) = default;
+
                     #NEWLINE_TOKEN
                     #NEWLINE_TOKEN
                     #(#methods_hpp)*

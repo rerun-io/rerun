@@ -32,6 +32,9 @@ namespace rerun::blueprint::archetypes {
       public:
         MapBackground() = default;
         MapBackground(MapBackground&& other) = default;
+        MapBackground(const MapBackground& other) = default;
+        MapBackground& operator=(const MapBackground& other) = default;
+        MapBackground& operator=(MapBackground&& other) = default;
 
         explicit MapBackground(rerun::blueprint::components::MapProvider _provider)
             : provider(std::move(_provider)) {}

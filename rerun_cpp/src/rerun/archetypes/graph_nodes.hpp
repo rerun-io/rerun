@@ -76,6 +76,9 @@ namespace rerun::archetypes {
       public:
         GraphNodes() = default;
         GraphNodes(GraphNodes&& other) = default;
+        GraphNodes(const GraphNodes& other) = default;
+        GraphNodes& operator=(const GraphNodes& other) = default;
+        GraphNodes& operator=(GraphNodes&& other) = default;
 
         explicit GraphNodes(Collection<rerun::components::GraphNode> _node_ids)
             : node_ids(std::move(_node_ids)) {}

@@ -59,6 +59,9 @@ namespace rerun::archetypes {
       public:
         Scalar() = default;
         Scalar(Scalar&& other) = default;
+        Scalar(const Scalar& other) = default;
+        Scalar& operator=(const Scalar& other) = default;
+        Scalar& operator=(Scalar&& other) = default;
 
         explicit Scalar(rerun::components::Scalar _scalar) : scalar(std::move(_scalar)) {}
     };

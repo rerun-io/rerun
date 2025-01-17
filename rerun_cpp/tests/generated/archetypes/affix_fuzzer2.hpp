@@ -82,6 +82,9 @@ namespace rerun::archetypes {
       public:
         AffixFuzzer2() = default;
         AffixFuzzer2(AffixFuzzer2&& other) = default;
+        AffixFuzzer2(const AffixFuzzer2& other) = default;
+        AffixFuzzer2& operator=(const AffixFuzzer2& other) = default;
+        AffixFuzzer2& operator=(AffixFuzzer2&& other) = default;
 
         explicit AffixFuzzer2(
             Collection<rerun::components::AffixFuzzer1> _fuzz1101,

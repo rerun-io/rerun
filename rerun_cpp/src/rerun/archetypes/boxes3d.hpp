@@ -173,6 +173,9 @@ namespace rerun::archetypes {
       public:
         Boxes3D() = default;
         Boxes3D(Boxes3D&& other) = default;
+        Boxes3D(const Boxes3D& other) = default;
+        Boxes3D& operator=(const Boxes3D& other) = default;
+        Boxes3D& operator=(Boxes3D&& other) = default;
 
         /// Optional center positions of the boxes.
         ///

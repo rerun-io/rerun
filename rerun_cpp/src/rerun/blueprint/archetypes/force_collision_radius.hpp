@@ -45,6 +45,9 @@ namespace rerun::blueprint::archetypes {
       public:
         ForceCollisionRadius() = default;
         ForceCollisionRadius(ForceCollisionRadius&& other) = default;
+        ForceCollisionRadius(const ForceCollisionRadius& other) = default;
+        ForceCollisionRadius& operator=(const ForceCollisionRadius& other) = default;
+        ForceCollisionRadius& operator=(ForceCollisionRadius&& other) = default;
 
         /// Whether the collision force is enabled.
         ///

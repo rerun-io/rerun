@@ -103,6 +103,9 @@ namespace rerun::archetypes {
       public:
         Clear() = default;
         Clear(Clear&& other) = default;
+        Clear(const Clear& other) = default;
+        Clear& operator=(const Clear& other) = default;
+        Clear& operator=(Clear&& other) = default;
 
         explicit Clear(rerun::components::ClearIsRecursive _is_recursive)
             : is_recursive(std::move(_is_recursive)) {}

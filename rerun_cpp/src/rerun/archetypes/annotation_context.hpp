@@ -77,6 +77,9 @@ namespace rerun::archetypes {
       public:
         AnnotationContext() = default;
         AnnotationContext(AnnotationContext&& other) = default;
+        AnnotationContext(const AnnotationContext& other) = default;
+        AnnotationContext& operator=(const AnnotationContext& other) = default;
+        AnnotationContext& operator=(AnnotationContext&& other) = default;
 
         explicit AnnotationContext(rerun::components::AnnotationContext _context)
             : context(std::move(_context)) {}

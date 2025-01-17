@@ -100,6 +100,9 @@ namespace rerun::archetypes {
       public:
         TextLog() = default;
         TextLog(TextLog&& other) = default;
+        TextLog(const TextLog& other) = default;
+        TextLog& operator=(const TextLog& other) = default;
+        TextLog& operator=(TextLog&& other) = default;
 
         explicit TextLog(rerun::components::Text _text) : text(std::move(_text)) {}
 

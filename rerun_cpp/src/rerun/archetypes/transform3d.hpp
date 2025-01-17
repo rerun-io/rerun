@@ -297,8 +297,8 @@ namespace rerun::archetypes {
         ///
         /// \param mat3x3_ \copydoc Transform3D::mat3x3
         /// \param from_parent If true, the transform relation to `TransformRelation::ChildFromParent`.
-        Transform3D(const components::TransformMat3x3& mat3x3_, bool from_parent = false)
-            : mat3x3(mat3x3_) {
+        Transform3D(const components::TransformMat3x3& mat3x3_, bool from_parent = false) {
+            *this = std::move(*this).with_mat3x3(mat3x3_);
             if (from_parent) {
                 *this =
                     std::move(*this).with_relation(components::TransformRelation::ChildFromParent);
@@ -519,7 +519,8 @@ namespace rerun::archetypes {
         ///
         /// \param scale_ If true, the transform relation to `TransformRelation::ChildFromParent`.
         /// \param from_parent \copydoc Transform3D::scale
-        Transform3D(const components::Scale3D& scale_, bool from_parent = false) : scale(scale_) {
+        Transform3D(const components::Scale3D& scale_, bool from_parent = false) {
+            *this = std::move(*this).with_scale(scale_);
             if (from_parent) {
                 *this =
                     std::move(*this).with_relation(components::TransformRelation::ChildFromParent);
@@ -554,6 +555,12 @@ namespace rerun::archetypes {
         // END of extensions from transform3d_ext.cpp, start of generated code:
 
       public:
+        Transform3D() = default;
+        Transform3D(Transform3D&& other) = default;
+        Transform3D(const Transform3D& other) = default;
+        Transform3D& operator=(const Transform3D& other) = default;
+        Transform3D& operator=(Transform3D&& other) = default;
+
         /// Update only some specific fields of a `Transform3D`.
         static Transform3D update_fields() {
             return Transform3D();

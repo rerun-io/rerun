@@ -166,6 +166,9 @@ namespace rerun::archetypes {
       public:
         BarChart() = default;
         BarChart(BarChart&& other) = default;
+        BarChart(const BarChart& other) = default;
+        BarChart& operator=(const BarChart& other) = default;
+        BarChart& operator=(BarChart&& other) = default;
 
         explicit BarChart(rerun::components::TensorData _values) : values(std::move(_values)) {}
 

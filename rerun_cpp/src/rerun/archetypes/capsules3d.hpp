@@ -151,6 +151,9 @@ namespace rerun::archetypes {
       public:
         Capsules3D() = default;
         Capsules3D(Capsules3D&& other) = default;
+        Capsules3D(const Capsules3D& other) = default;
+        Capsules3D& operator=(const Capsules3D& other) = default;
+        Capsules3D& operator=(Capsules3D&& other) = default;
 
         /// Optional translations of the capsules.
         ///

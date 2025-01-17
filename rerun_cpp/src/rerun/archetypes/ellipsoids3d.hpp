@@ -178,6 +178,9 @@ namespace rerun::archetypes {
       public:
         Ellipsoids3D() = default;
         Ellipsoids3D(Ellipsoids3D&& other) = default;
+        Ellipsoids3D(const Ellipsoids3D& other) = default;
+        Ellipsoids3D& operator=(const Ellipsoids3D& other) = default;
+        Ellipsoids3D& operator=(Ellipsoids3D&& other) = default;
 
         /// Optional center positions of the ellipsoids.
         ///

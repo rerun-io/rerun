@@ -299,6 +299,9 @@ namespace rerun::archetypes {
       public:
         Image() = default;
         Image(Image&& other) = default;
+        Image(const Image& other) = default;
+        Image& operator=(const Image& other) = default;
+        Image& operator=(Image&& other) = default;
 
         /// Opacity of the image, useful for layering several images.
         ///

@@ -42,6 +42,9 @@ namespace rerun::blueprint::archetypes {
       public:
         ForcePosition() = default;
         ForcePosition(ForcePosition&& other) = default;
+        ForcePosition(const ForcePosition& other) = default;
+        ForcePosition& operator=(const ForcePosition& other) = default;
+        ForcePosition& operator=(ForcePosition&& other) = default;
 
         /// Whether the position force is enabled.
         ///

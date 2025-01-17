@@ -32,6 +32,9 @@ namespace rerun::blueprint::archetypes {
       public:
         MapZoom() = default;
         MapZoom(MapZoom&& other) = default;
+        MapZoom(const MapZoom& other) = default;
+        MapZoom& operator=(const MapZoom& other) = default;
+        MapZoom& operator=(MapZoom&& other) = default;
 
         explicit MapZoom(rerun::blueprint::components::ZoomLevel _zoom) : zoom(std::move(_zoom)) {}
     };

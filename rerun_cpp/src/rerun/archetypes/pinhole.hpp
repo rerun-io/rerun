@@ -189,6 +189,9 @@ namespace rerun::archetypes {
       public:
         Pinhole() = default;
         Pinhole(Pinhole&& other) = default;
+        Pinhole(const Pinhole& other) = default;
+        Pinhole& operator=(const Pinhole& other) = default;
+        Pinhole& operator=(Pinhole&& other) = default;
 
         explicit Pinhole(rerun::components::PinholeProjection _image_from_camera)
             : image_from_camera(std::move(_image_from_camera)) {}

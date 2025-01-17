@@ -92,6 +92,9 @@ namespace rerun::archetypes {
       public:
         SeriesLine() = default;
         SeriesLine(SeriesLine&& other) = default;
+        SeriesLine(const SeriesLine& other) = default;
+        SeriesLine& operator=(const SeriesLine& other) = default;
+        SeriesLine& operator=(SeriesLine&& other) = default;
 
         /// Color for the corresponding series.
         SeriesLine with_color(rerun::components::Color _color) && {

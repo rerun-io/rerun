@@ -77,6 +77,9 @@ namespace rerun::blueprint::archetypes {
       public:
         ContainerBlueprint() = default;
         ContainerBlueprint(ContainerBlueprint&& other) = default;
+        ContainerBlueprint(const ContainerBlueprint& other) = default;
+        ContainerBlueprint& operator=(const ContainerBlueprint& other) = default;
+        ContainerBlueprint& operator=(ContainerBlueprint&& other) = default;
 
         explicit ContainerBlueprint(rerun::blueprint::components::ContainerKind _container_kind)
             : container_kind(std::move(_container_kind)) {}

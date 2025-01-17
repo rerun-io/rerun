@@ -64,6 +64,9 @@ namespace rerun::archetypes {
       public:
         GraphEdges() = default;
         GraphEdges(GraphEdges&& other) = default;
+        GraphEdges(const GraphEdges& other) = default;
+        GraphEdges& operator=(const GraphEdges& other) = default;
+        GraphEdges& operator=(GraphEdges&& other) = default;
 
         explicit GraphEdges(Collection<rerun::components::GraphEdge> _edges)
             : edges(std::move(_edges)) {}

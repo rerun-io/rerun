@@ -108,6 +108,9 @@ namespace rerun::archetypes {
       public:
         Asset3D() = default;
         Asset3D(Asset3D&& other) = default;
+        Asset3D(const Asset3D& other) = default;
+        Asset3D& operator=(const Asset3D& other) = default;
+        Asset3D& operator=(Asset3D&& other) = default;
 
         explicit Asset3D(rerun::components::Blob _blob) : blob(std::move(_blob)) {}
 

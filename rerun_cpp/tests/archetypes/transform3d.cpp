@@ -5,7 +5,9 @@
 #include <rerun/archetypes/transform3d.hpp>
 
 namespace rrd = rerun::datatypes;
+namespace rrc = rerun::components;
 using namespace rerun::archetypes;
+using ComponentBatch = rerun::ComponentBatch;
 
 #define TEST_TAG "[transform3d][archetypes]"
 
@@ -40,7 +42,11 @@ SCENARIO(
     GIVEN("Transform3D from translation") {
         auto utility = Transform3D::from_translation({1.0f, 2.0f, 3.0f});
 
-        manual.translation = rerun::components::Translation3D(1.0f, 2.0f, 3.0f);
+        manual.translation = ComponentBatch::from_loggable<rrc::Translation3D>(
+                                 {1.0f, 2.0f, 3.0f},
+                                 Transform3D::Descriptor_translation
+        )
+                                 .value_or_throw();
 
         test_compare_archetype_serialization(manual, utility);
     }
@@ -50,13 +56,21 @@ SCENARIO(
 
         AND_GIVEN("matrix as initializer list") {
             auto utility = Transform3D::from_mat3x3(MATRIX_ILIST);
-            manual.mat3x3 = rrd::Mat3x3(MATRIX_ILIST);
+            manual.mat3x3 = ComponentBatch::from_loggable(
+                                rrc::TransformMat3x3(MATRIX_ILIST),
+                                Transform3D::Descriptor_mat3x3
+            )
+                                .value_or_throw();
 
             test_compare_archetype_serialization(manual, utility);
         }
         AND_GIVEN("matrix as column vectors") {
             auto utility = Transform3D::from_mat3x3(columns);
-            manual.mat3x3 = rrd::Mat3x3(columns);
+            manual.mat3x3 = ComponentBatch::from_loggable(
+                                rrc::TransformMat3x3(columns),
+                                Transform3D::Descriptor_mat3x3
+            )
+                                .value_or_throw();
 
             test_compare_archetype_serialization(manual, utility);
         }
@@ -65,23 +79,39 @@ SCENARIO(
     GIVEN("Transform3D from scale") {
         auto utility = Transform3D::from_scale({3.0f, 2.0f, 1.0f});
 
-        manual.scale = rerun::components::Scale3D(3.0f, 2.0f, 1.0f);
+        manual.scale = ComponentBatch::from_loggable(
+                           rrc::Scale3D(3.0f, 2.0f, 1.0f),
+                           Transform3D::Descriptor_scale
+        )
+                           .value_or_throw();
 
         test_compare_archetype_serialization(manual, utility);
     }
 
     GIVEN("Transform3D from translation & 3x3 matrix") {
-        manual.translation = rerun::components::Translation3D(1.0f, 2.0f, 3.0f);
+        manual.translation = ComponentBatch::from_loggable(
+                                 rrc::Translation3D(1.0f, 2.0f, 3.0f),
+                                 Transform3D::Descriptor_translation
+        )
+                                 .value_or_throw();
 
         AND_GIVEN("matrix as initializer list") {
             auto utility = Transform3D::from_translation_mat3x3({1.0f, 2.0f, 3.0f}, MATRIX_ILIST);
-            manual.mat3x3 = rrd::Mat3x3(MATRIX_ILIST);
+            manual.mat3x3 = ComponentBatch::from_loggable(
+                                rrc::TransformMat3x3(MATRIX_ILIST),
+                                Transform3D::Descriptor_mat3x3
+            )
+                                .value_or_throw();
 
             test_compare_archetype_serialization(manual, utility);
         }
         AND_GIVEN("matrix as column vectors") {
             auto utility = Transform3D::from_translation_mat3x3({1.0f, 2.0f, 3.0f}, columns);
-            manual.mat3x3 = rrd::Mat3x3(columns);
+            manual.mat3x3 = ComponentBatch::from_loggable(
+                                rrc::TransformMat3x3(columns),
+                                Transform3D::Descriptor_mat3x3
+            )
+                                .value_or_throw();
 
             test_compare_archetype_serialization(manual, utility);
         }
@@ -90,8 +120,16 @@ SCENARIO(
     GIVEN("Transform3D from translation & scale") {
         auto utility = Transform3D::from_translation_scale({1.0f, 2.0f, 3.0f}, {3.0f, 2.0f, 1.0f});
 
-        manual.translation = rerun::components::Translation3D(1.0f, 2.0f, 3.0f);
-        manual.scale = rerun::components::Scale3D(3.0f, 2.0f, 1.0f);
+        manual.translation = ComponentBatch::from_loggable(
+                                 rrc::Translation3D(1.0f, 2.0f, 3.0f),
+                                 Transform3D::Descriptor_translation
+        )
+                                 .value_or_throw();
+        manual.scale = ComponentBatch::from_loggable(
+                           rrc::Scale3D(3.0f, 2.0f, 1.0f),
+                           Transform3D::Descriptor_scale
+        )
+                           .value_or_throw();
 
         test_compare_archetype_serialization(manual, utility);
     }
@@ -103,9 +141,21 @@ SCENARIO(
             {3.0f, 2.0f, 1.0f}
         );
 
-        manual.translation = rerun::components::Translation3D(1.0f, 2.0f, 3.0f);
-        manual.quaternion = quaternion;
-        manual.scale = rerun::components::Scale3D(3.0f, 2.0f, 1.0f);
+        manual.translation = ComponentBatch::from_loggable(
+                                 rrc::Translation3D(1.0f, 2.0f, 3.0f),
+                                 Transform3D::Descriptor_translation
+        )
+                                 .value_or_throw();
+        manual.quaternion = ComponentBatch::from_loggable(
+                                rrc::RotationQuat(quaternion),
+                                Transform3D::Descriptor_quaternion
+        )
+                                .value_or_throw();
+        manual.scale = ComponentBatch::from_loggable(
+                           rrc::Scale3D(3.0f, 2.0f, 1.0f),
+                           Transform3D::Descriptor_scale
+        )
+                           .value_or_throw();
 
         test_compare_archetype_serialization(manual, utility);
     }
@@ -117,9 +167,21 @@ SCENARIO(
             {3.0f, 2.0f, 1.0f}
         );
 
-        manual.translation = rerun::components::Translation3D(1.0f, 2.0f, 3.0f);
-        manual.rotation_axis_angle = axis_angle;
-        manual.scale = rerun::components::Scale3D(3.0f, 2.0f, 1.0f);
+        manual.translation = ComponentBatch::from_loggable(
+                                 rrc::Translation3D(1.0f, 2.0f, 3.0f),
+                                 Transform3D::Descriptor_translation
+        )
+                                 .value_or_throw();
+        manual.rotation_axis_angle = ComponentBatch::from_loggable(
+                                         rrc::RotationAxisAngle(axis_angle),
+                                         Transform3D::Descriptor_rotation_axis_angle
+        )
+                                         .value_or_throw();
+        manual.scale = ComponentBatch::from_loggable(
+                           rrc::Scale3D(3.0f, 2.0f, 1.0f),
+                           Transform3D::Descriptor_scale
+        )
+                           .value_or_throw();
 
         test_compare_archetype_serialization(manual, utility);
     }
@@ -127,8 +189,16 @@ SCENARIO(
     GIVEN("Transform3D from rotation (quaternion) & scale") {
         auto utility = Transform3D::from_rotation_scale(quaternion, {3.0f, 2.0f, 1.0f});
 
-        manual.quaternion = quaternion;
-        manual.scale = rerun::components::Scale3D(3.0f, 2.0f, 1.0f);
+        manual.quaternion = ComponentBatch::from_loggable(
+                                rrc::RotationQuat(quaternion),
+                                Transform3D::Descriptor_quaternion
+        )
+                                .value_or_throw();
+        manual.scale = ComponentBatch::from_loggable(
+                           rrc::Scale3D(3.0f, 2.0f, 1.0f),
+                           Transform3D::Descriptor_scale
+        )
+                           .value_or_throw();
 
         test_compare_archetype_serialization(manual, utility);
     }
@@ -136,28 +206,47 @@ SCENARIO(
     GIVEN("Transform3D from rotation (axis angle) & scale") {
         auto utility = Transform3D::from_rotation_scale(axis_angle, {3.0f, 2.0f, 1.0f});
 
-        manual.rotation_axis_angle = axis_angle;
-        manual.scale = rerun::components::Scale3D(3.0f, 2.0f, 1.0f);
+        manual.rotation_axis_angle = ComponentBatch::from_loggable(
+                                         rrc::RotationAxisAngle(axis_angle),
+                                         Transform3D::Descriptor_rotation_axis_angle
+        )
+                                         .value_or_throw();
+        manual.scale = ComponentBatch::from_loggable(
+                           rrc::Scale3D(3.0f, 2.0f, 1.0f),
+                           Transform3D::Descriptor_scale
+        )
+                           .value_or_throw();
 
         test_compare_archetype_serialization(manual, utility);
     }
 
     GIVEN("Transform3D from rotation (quaternion)") {
         auto utility = Transform3D::from_rotation(quaternion);
-        manual.quaternion = quaternion;
+        manual.quaternion = ComponentBatch::from_loggable(
+                                rrc::RotationQuat(quaternion),
+                                Transform3D::Descriptor_quaternion
+        )
+                                .value_or_throw();
         test_compare_archetype_serialization(manual, utility);
     }
 
     GIVEN("Transform3D from rotation (axis angle)") {
         auto utility = Transform3D::from_rotation(axis_angle);
-        manual.rotation_axis_angle = axis_angle;
+        manual.rotation_axis_angle = ComponentBatch::from_loggable(
+                                         rrc::RotationAxisAngle(axis_angle),
+                                         Transform3D::Descriptor_rotation_axis_angle
+        )
+                                         .value_or_throw();
         test_compare_archetype_serialization(manual, utility);
     }
 
     GIVEN("A custom relation") {
-        auto utility =
-            Transform3D().with_relation(rerun::components::TransformRelation::ChildFromParent);
-        manual.relation = rerun::components::TransformRelation::ChildFromParent;
+        auto utility = Transform3D().with_relation(rrc::TransformRelation::ChildFromParent);
+        manual.relation = ComponentBatch::from_loggable(
+                              rrc::TransformRelation::ChildFromParent,
+                              Transform3D::Descriptor_relation
+        )
+                              .value_or_throw();
 
         test_compare_archetype_serialization(manual, utility);
     }

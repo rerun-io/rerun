@@ -74,6 +74,9 @@ namespace rerun::archetypes {
       public:
         GeoLineStrings() = default;
         GeoLineStrings(GeoLineStrings&& other) = default;
+        GeoLineStrings(const GeoLineStrings& other) = default;
+        GeoLineStrings& operator=(const GeoLineStrings& other) = default;
+        GeoLineStrings& operator=(GeoLineStrings&& other) = default;
 
         explicit GeoLineStrings(Collection<rerun::components::GeoLineString> _line_strings)
             : line_strings(std::move(_line_strings)) {}

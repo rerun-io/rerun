@@ -43,6 +43,9 @@ namespace rerun::blueprint::archetypes {
       public:
         ForceManyBody() = default;
         ForceManyBody(ForceManyBody&& other) = default;
+        ForceManyBody(const ForceManyBody& other) = default;
+        ForceManyBody& operator=(const ForceManyBody& other) = default;
+        ForceManyBody& operator=(ForceManyBody&& other) = default;
 
         /// Whether the many body force is enabled.
         ///

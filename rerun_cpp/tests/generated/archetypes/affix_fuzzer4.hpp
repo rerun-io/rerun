@@ -81,6 +81,9 @@ namespace rerun::archetypes {
       public:
         AffixFuzzer4() = default;
         AffixFuzzer4(AffixFuzzer4&& other) = default;
+        AffixFuzzer4(const AffixFuzzer4& other) = default;
+        AffixFuzzer4& operator=(const AffixFuzzer4& other) = default;
+        AffixFuzzer4& operator=(AffixFuzzer4&& other) = default;
 
         AffixFuzzer4 with_fuzz2101(Collection<rerun::components::AffixFuzzer1> _fuzz2101) && {
             fuzz2101 = std::move(_fuzz2101);

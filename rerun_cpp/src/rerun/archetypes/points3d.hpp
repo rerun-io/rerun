@@ -220,6 +220,12 @@ namespace rerun::archetypes {
         );
 
       public:
+        Points3D() = default;
+        Points3D(Points3D&& other) = default;
+        Points3D(const Points3D& other) = default;
+        Points3D& operator=(const Points3D& other) = default;
+        Points3D& operator=(Points3D&& other) = default;
+
         explicit Points3D(Collection<rerun::components::Position3D> _positions)
             : positions(ComponentBatch::from_loggable(std::move(_positions), Descriptor_positions)
                             .value_or_throw()) {}

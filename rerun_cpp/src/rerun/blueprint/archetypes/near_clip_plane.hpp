@@ -32,6 +32,9 @@ namespace rerun::blueprint::archetypes {
       public:
         NearClipPlane() = default;
         NearClipPlane(NearClipPlane&& other) = default;
+        NearClipPlane(const NearClipPlane& other) = default;
+        NearClipPlane& operator=(const NearClipPlane& other) = default;
+        NearClipPlane& operator=(NearClipPlane&& other) = default;
 
         explicit NearClipPlane(rerun::blueprint::components::NearClipPlane _near_clip_plane)
             : near_clip_plane(std::move(_near_clip_plane)) {}

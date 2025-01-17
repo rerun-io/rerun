@@ -40,6 +40,9 @@ namespace rerun::blueprint::archetypes {
       public:
         PlotLegend() = default;
         PlotLegend(PlotLegend&& other) = default;
+        PlotLegend(const PlotLegend& other) = default;
+        PlotLegend& operator=(const PlotLegend& other) = default;
+        PlotLegend& operator=(PlotLegend&& other) = default;
 
         /// To what corner the legend is aligned.
         ///

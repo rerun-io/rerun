@@ -154,6 +154,9 @@ namespace rerun::archetypes {
       public:
         Mesh3D() = default;
         Mesh3D(Mesh3D&& other) = default;
+        Mesh3D(const Mesh3D& other) = default;
+        Mesh3D& operator=(const Mesh3D& other) = default;
+        Mesh3D& operator=(Mesh3D&& other) = default;
 
         explicit Mesh3D(Collection<rerun::components::Position3D> _vertex_positions)
             : vertex_positions(std::move(_vertex_positions)) {}

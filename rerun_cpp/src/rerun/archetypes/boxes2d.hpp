@@ -133,6 +133,9 @@ namespace rerun::archetypes {
       public:
         Boxes2D() = default;
         Boxes2D(Boxes2D&& other) = default;
+        Boxes2D(const Boxes2D& other) = default;
+        Boxes2D& operator=(const Boxes2D& other) = default;
+        Boxes2D& operator=(Boxes2D&& other) = default;
 
         /// Optional center positions of the boxes.
         Boxes2D with_centers(Collection<rerun::components::Position2D> _centers) && {

@@ -41,6 +41,9 @@ namespace rerun::blueprint::archetypes {
       public:
         VisibleTimeRanges() = default;
         VisibleTimeRanges(VisibleTimeRanges&& other) = default;
+        VisibleTimeRanges(const VisibleTimeRanges& other) = default;
+        VisibleTimeRanges& operator=(const VisibleTimeRanges& other) = default;
+        VisibleTimeRanges& operator=(VisibleTimeRanges&& other) = default;
 
         explicit VisibleTimeRanges(
             Collection<rerun::blueprint::components::VisibleTimeRange> _ranges

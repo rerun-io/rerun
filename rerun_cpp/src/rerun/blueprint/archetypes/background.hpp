@@ -36,6 +36,9 @@ namespace rerun::blueprint::archetypes {
       public:
         Background() = default;
         Background(Background&& other) = default;
+        Background(const Background& other) = default;
+        Background& operator=(const Background& other) = default;
+        Background& operator=(Background&& other) = default;
 
         explicit Background(rerun::blueprint::components::BackgroundKind _kind)
             : kind(std::move(_kind)) {}

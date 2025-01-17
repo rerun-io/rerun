@@ -162,6 +162,9 @@ namespace rerun::archetypes {
       public:
         SegmentationImage() = default;
         SegmentationImage(SegmentationImage&& other) = default;
+        SegmentationImage(const SegmentationImage& other) = default;
+        SegmentationImage& operator=(const SegmentationImage& other) = default;
+        SegmentationImage& operator=(SegmentationImage&& other) = default;
 
         /// Opacity of the image, useful for layering the segmentation image on top of another image.
         ///

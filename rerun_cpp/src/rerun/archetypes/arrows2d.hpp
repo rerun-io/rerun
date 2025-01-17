@@ -104,6 +104,9 @@ namespace rerun::archetypes {
       public:
         Arrows2D() = default;
         Arrows2D(Arrows2D&& other) = default;
+        Arrows2D(const Arrows2D& other) = default;
+        Arrows2D& operator=(const Arrows2D& other) = default;
+        Arrows2D& operator=(Arrows2D&& other) = default;
 
         /// All the origin (base) positions for each arrow in the batch.
         ///

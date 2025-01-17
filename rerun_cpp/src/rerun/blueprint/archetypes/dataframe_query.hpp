@@ -52,6 +52,9 @@ namespace rerun::blueprint::archetypes {
       public:
         DataframeQuery() = default;
         DataframeQuery(DataframeQuery&& other) = default;
+        DataframeQuery(const DataframeQuery& other) = default;
+        DataframeQuery& operator=(const DataframeQuery& other) = default;
+        DataframeQuery& operator=(DataframeQuery&& other) = default;
 
         /// The timeline for this query.
         ///

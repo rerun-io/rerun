@@ -38,6 +38,9 @@ namespace rerun::blueprint::archetypes {
       public:
         VisualBounds2D() = default;
         VisualBounds2D(VisualBounds2D&& other) = default;
+        VisualBounds2D(const VisualBounds2D& other) = default;
+        VisualBounds2D& operator=(const VisualBounds2D& other) = default;
+        VisualBounds2D& operator=(VisualBounds2D&& other) = default;
 
         explicit VisualBounds2D(rerun::blueprint::components::VisualBounds2D _range)
             : range(std::move(_range)) {}

@@ -32,6 +32,9 @@ namespace rerun::blueprint::archetypes {
       public:
         TensorViewFit() = default;
         TensorViewFit(TensorViewFit&& other) = default;
+        TensorViewFit(const TensorViewFit& other) = default;
+        TensorViewFit& operator=(const TensorViewFit& other) = default;
+        TensorViewFit& operator=(TensorViewFit&& other) = default;
 
         /// How the image is scaled to fit the view.
         TensorViewFit with_scaling(rerun::blueprint::components::ViewFit _scaling) && {

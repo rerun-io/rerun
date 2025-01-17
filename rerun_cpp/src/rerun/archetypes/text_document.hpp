@@ -98,6 +98,9 @@ namespace rerun::archetypes {
       public:
         TextDocument() = default;
         TextDocument(TextDocument&& other) = default;
+        TextDocument(const TextDocument& other) = default;
+        TextDocument& operator=(const TextDocument& other) = default;
+        TextDocument& operator=(TextDocument&& other) = default;
 
         explicit TextDocument(rerun::components::Text _text) : text(std::move(_text)) {}
 

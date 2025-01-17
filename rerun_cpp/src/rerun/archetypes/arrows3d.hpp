@@ -115,6 +115,9 @@ namespace rerun::archetypes {
       public:
         Arrows3D() = default;
         Arrows3D(Arrows3D&& other) = default;
+        Arrows3D(const Arrows3D& other) = default;
+        Arrows3D& operator=(const Arrows3D& other) = default;
+        Arrows3D& operator=(Arrows3D&& other) = default;
 
         /// All the origin (base) positions for each arrow in the batch.
         ///

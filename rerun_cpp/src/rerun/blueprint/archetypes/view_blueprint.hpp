@@ -52,6 +52,9 @@ namespace rerun::blueprint::archetypes {
       public:
         ViewBlueprint() = default;
         ViewBlueprint(ViewBlueprint&& other) = default;
+        ViewBlueprint(const ViewBlueprint& other) = default;
+        ViewBlueprint& operator=(const ViewBlueprint& other) = default;
+        ViewBlueprint& operator=(ViewBlueprint&& other) = default;
 
         explicit ViewBlueprint(rerun::blueprint::components::ViewClass _class_identifier)
             : class_identifier(std::move(_class_identifier)) {}

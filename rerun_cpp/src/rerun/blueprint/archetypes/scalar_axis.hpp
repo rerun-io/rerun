@@ -38,6 +38,9 @@ namespace rerun::blueprint::archetypes {
       public:
         ScalarAxis() = default;
         ScalarAxis(ScalarAxis&& other) = default;
+        ScalarAxis(const ScalarAxis& other) = default;
+        ScalarAxis& operator=(const ScalarAxis& other) = default;
+        ScalarAxis& operator=(ScalarAxis&& other) = default;
 
         /// The range of the axis.
         ///

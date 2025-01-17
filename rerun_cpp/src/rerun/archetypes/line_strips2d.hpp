@@ -126,6 +126,9 @@ namespace rerun::archetypes {
       public:
         LineStrips2D() = default;
         LineStrips2D(LineStrips2D&& other) = default;
+        LineStrips2D(const LineStrips2D& other) = default;
+        LineStrips2D& operator=(const LineStrips2D& other) = default;
+        LineStrips2D& operator=(LineStrips2D&& other) = default;
 
         explicit LineStrips2D(Collection<rerun::components::LineStrip2D> _strips)
             : strips(std::move(_strips)) {}

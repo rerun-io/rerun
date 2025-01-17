@@ -96,6 +96,9 @@ namespace rerun::archetypes {
       public:
         SeriesPoint() = default;
         SeriesPoint(SeriesPoint&& other) = default;
+        SeriesPoint(const SeriesPoint& other) = default;
+        SeriesPoint& operator=(const SeriesPoint& other) = default;
+        SeriesPoint& operator=(SeriesPoint&& other) = default;
 
         /// Color for the corresponding series.
         SeriesPoint with_color(rerun::components::Color _color) && {

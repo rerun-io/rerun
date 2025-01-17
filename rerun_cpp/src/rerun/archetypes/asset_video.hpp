@@ -169,6 +169,9 @@ namespace rerun::archetypes {
       public:
         AssetVideo() = default;
         AssetVideo(AssetVideo&& other) = default;
+        AssetVideo(const AssetVideo& other) = default;
+        AssetVideo& operator=(const AssetVideo& other) = default;
+        AssetVideo& operator=(AssetVideo&& other) = default;
 
         explicit AssetVideo(rerun::components::Blob _blob) : blob(std::move(_blob)) {}
 

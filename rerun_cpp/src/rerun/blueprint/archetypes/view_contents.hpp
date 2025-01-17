@@ -69,6 +69,9 @@ namespace rerun::blueprint::archetypes {
       public:
         ViewContents() = default;
         ViewContents(ViewContents&& other) = default;
+        ViewContents(const ViewContents& other) = default;
+        ViewContents& operator=(const ViewContents& other) = default;
+        ViewContents& operator=(ViewContents&& other) = default;
 
         explicit ViewContents(Collection<rerun::blueprint::components::QueryExpression> _query)
             : query(std::move(_query)) {}

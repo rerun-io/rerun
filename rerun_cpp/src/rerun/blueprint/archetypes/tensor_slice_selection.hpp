@@ -55,6 +55,9 @@ namespace rerun::blueprint::archetypes {
       public:
         TensorSliceSelection() = default;
         TensorSliceSelection(TensorSliceSelection&& other) = default;
+        TensorSliceSelection(const TensorSliceSelection& other) = default;
+        TensorSliceSelection& operator=(const TensorSliceSelection& other) = default;
+        TensorSliceSelection& operator=(TensorSliceSelection&& other) = default;
 
         /// Which dimension to map to width.
         ///

@@ -153,6 +153,9 @@ namespace rerun::archetypes {
       public:
         Points2D() = default;
         Points2D(Points2D&& other) = default;
+        Points2D(const Points2D& other) = default;
+        Points2D& operator=(const Points2D& other) = default;
+        Points2D& operator=(Points2D&& other) = default;
 
         explicit Points2D(Collection<rerun::components::Position2D> _positions)
             : positions(std::move(_positions)) {}

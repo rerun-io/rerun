@@ -60,6 +60,9 @@ namespace rerun::blueprint::archetypes {
       public:
         LineGrid3D() = default;
         LineGrid3D(LineGrid3D&& other) = default;
+        LineGrid3D(const LineGrid3D& other) = default;
+        LineGrid3D& operator=(const LineGrid3D& other) = default;
+        LineGrid3D& operator=(LineGrid3D&& other) = default;
 
         /// Whether the grid is visible.
         ///

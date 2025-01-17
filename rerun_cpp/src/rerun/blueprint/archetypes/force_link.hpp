@@ -44,6 +44,9 @@ namespace rerun::blueprint::archetypes {
       public:
         ForceLink() = default;
         ForceLink(ForceLink&& other) = default;
+        ForceLink(const ForceLink& other) = default;
+        ForceLink& operator=(const ForceLink& other) = default;
+        ForceLink& operator=(ForceLink&& other) = default;
 
         /// Whether the link force is enabled.
         ///

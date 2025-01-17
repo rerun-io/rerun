@@ -38,6 +38,9 @@ namespace rerun::blueprint::archetypes {
       public:
         ForceCenter() = default;
         ForceCenter(ForceCenter&& other) = default;
+        ForceCenter(const ForceCenter& other) = default;
+        ForceCenter& operator=(const ForceCenter& other) = default;
+        ForceCenter& operator=(ForceCenter&& other) = default;
 
         /// Whether the center force is enabled.
         ///

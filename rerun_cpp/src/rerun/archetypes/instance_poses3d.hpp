@@ -103,6 +103,9 @@ namespace rerun::archetypes {
       public:
         InstancePoses3D() = default;
         InstancePoses3D(InstancePoses3D&& other) = default;
+        InstancePoses3D(const InstancePoses3D& other) = default;
+        InstancePoses3D& operator=(const InstancePoses3D& other) = default;
+        InstancePoses3D& operator=(InstancePoses3D&& other) = default;
 
         /// Translation vectors.
         InstancePoses3D with_translations(

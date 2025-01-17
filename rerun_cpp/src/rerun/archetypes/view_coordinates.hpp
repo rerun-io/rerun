@@ -314,6 +314,9 @@ namespace rerun::archetypes {
       public:
         ViewCoordinates() = default;
         ViewCoordinates(ViewCoordinates&& other) = default;
+        ViewCoordinates(const ViewCoordinates& other) = default;
+        ViewCoordinates& operator=(const ViewCoordinates& other) = default;
+        ViewCoordinates& operator=(ViewCoordinates&& other) = default;
 
         explicit ViewCoordinates(rerun::components::ViewCoordinates _xyz) : xyz(std::move(_xyz)) {}
     };

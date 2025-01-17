@@ -102,6 +102,9 @@ namespace rerun::archetypes {
       public:
         EncodedImage() = default;
         EncodedImage(EncodedImage&& other) = default;
+        EncodedImage(const EncodedImage& other) = default;
+        EncodedImage& operator=(const EncodedImage& other) = default;
+        EncodedImage& operator=(EncodedImage&& other) = default;
 
         /// The Media Type of the asset.
         ///
