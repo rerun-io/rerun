@@ -76,7 +76,8 @@ jobs:
 
   no-codegen-changes:
     name: Check if running codegen would produce any changes
-    runs-on: ubuntu-latest-16-cores
+    # TODO(andreas): setup-vulkan doesn't work on 24.4 right now due to missing .so
+    runs-on: ubuntu-22.04-large
     steps:
       # Note: We explicitly don't override `ref` here. We need to see if changes would be made
       # in a context where we have merged with main. Otherwise we might miss changes such as one

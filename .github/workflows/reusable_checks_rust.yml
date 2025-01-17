@@ -53,7 +53,7 @@ jobs:
   rs-lints:
     name: Rust lints (fmt, check, clippy, tests, doc)
     # TODO(andreas): setup-vulkan doesn't work on 24.4 right now due to missing .so
-    runs-on: ubuntu-22.04-16core
+    runs-on: ubuntu-22.04-large
     steps:
       - uses: actions/checkout@v4
         with:
