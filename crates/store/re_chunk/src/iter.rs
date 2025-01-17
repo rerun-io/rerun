@@ -490,7 +490,7 @@ where
         let lengths = &lengths[idx..idx + len];
         izip!(offsets, lengths)
             // NOTE: Not an actual clone, just a refbump of the underlying buffer.
-            .map(|(&idx, &len)| values.clone().slice(idx as _, len).into())
+            .map(|(&idx, &len)| values.clone().slice(idx as _, len))
             .collect_vec()
     }))
 }

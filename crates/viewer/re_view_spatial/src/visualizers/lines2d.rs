@@ -235,7 +235,9 @@ impl VisualizerSystem for Lines2DVisualizer {
                             labels: labels.unwrap_or_default(),
                             class_ids: class_ids
                                 .map_or(&[], |class_ids| bytemuck::cast_slice(class_ids)),
-                            show_labels: show_labels.unwrap_or_default().get(0).map(Into::into),
+                            show_labels: show_labels
+                                .map(|b| !b.is_empty() && b.value(0))
+                                .map(Into::into),
                         }
                     },
                 );

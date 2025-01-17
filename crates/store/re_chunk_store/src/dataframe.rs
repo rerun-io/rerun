@@ -861,7 +861,7 @@ impl ChunkStore {
             archetype_name: component_descr.and_then(|descr| descr.archetype_name),
             archetype_field_name: component_descr.and_then(|descr| descr.archetype_field_name),
             component_name,
-            store_datatype: datatype.into(),
+            store_datatype: datatype,
             is_static,
             is_indicator,
             is_tombstone,

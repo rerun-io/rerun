@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use arrow::array::ArrayRef as ArrowArrayRef;
 use arrow::array::Array as _;
+use arrow::array::ArrayRef as ArrowArrayRef;
 
 use re_log_types::{TimeInt, Timeline};
 use re_types_core::{Component, ComponentName};
@@ -27,7 +27,7 @@ impl Chunk {
                 if list_array.len() > row_index {
                     list_array
                         .is_valid(row_index)
-                        .then(|| Ok(list_array.value(row_index).into()))
+                        .then(|| Ok(list_array.value(row_index)))
                 } else {
                     Some(Err(crate::ChunkError::IndexOutOfBounds {
                         kind: "row".to_owned(),
@@ -267,7 +267,6 @@ impl UnitChunkShared {
         debug_assert!(self.num_rows() == 1);
         self.get_first_component(component_name)
             .and_then(|list_array| list_array.is_valid(0).then(|| list_array.value(0)))
-            .map(|array| array.into())
     }
 
     /// Returns the deserialized data for the specified component.

@@ -49,15 +49,11 @@ impl Chunk {
             let found_it =
                 times.get(index) == Some(&row_id_time_ns) && incs.get(index) == Some(&row_id_inc);
 
-            (found_it && list_array.is_valid(index)).then(|| list_array.value(index).into())
+            (found_it && list_array.is_valid(index)).then(|| list_array.value(index))
         } else {
             self.row_ids()
                 .find_position(|id| *id == row_id)
-                .and_then(|(index, _)| {
-                    list_array
-                        .is_valid(index)
-                        .then(|| list_array.value(index).into())
-                })
+                .and_then(|(index, _)| list_array.is_valid(index).then(|| list_array.value(index)))
         }
     }
 
@@ -370,7 +366,7 @@ impl Chunk {
             entity_path: entity_path.clone(),
             heap_size_bytes: Default::default(),
             is_sorted,
-            row_ids: arrow_util::filter_array(row_ids, &validity_filter.clone().into()),
+            row_ids: arrow_util::filter_array(row_ids, &validity_filter),
             timelines: timelines
                 .iter()
                 .map(|(&timeline, time_column)| (timeline, time_column.filtered(&validity_filter)))
@@ -617,7 +613,7 @@ impl Chunk {
             entity_path: entity_path.clone(),
             heap_size_bytes: Default::default(),
             is_sorted,
-            row_ids: arrow_util::filter_array(row_ids, &filter.clone().into()),
+            row_ids: arrow_util::filter_array(row_ids, filter),
             timelines: timelines
                 .iter()
                 .map(|(&timeline, time_column)| (timeline, time_column.filtered(filter)))
@@ -845,12 +841,9 @@ impl TimeColumn {
         Self::new(
             is_sorted_opt,
             *timeline,
-            arrow_util::filter_array(
-                &arrow::array::Int64Array::new(times.clone(), None),
-                &filter.clone().into(),
-            )
-            .into_parts()
-            .1,
+            arrow_util::filter_array(&arrow::array::Int64Array::new(times.clone(), None), filter)
+                .into_parts()
+                .1,
         )
     }
 
@@ -881,7 +874,6 @@ impl TimeColumn {
 
 #[cfg(test)]
 mod tests {
-    use arrow::array::PrimitiveArray as ArrowPrimitiveArray;
     use itertools::Itertools;
     use re_log_types::{
         example_components::{MyColor, MyLabel, MyPoint},

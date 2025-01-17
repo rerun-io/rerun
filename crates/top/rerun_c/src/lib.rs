@@ -14,11 +14,11 @@ mod video;
 
 use std::ffi::{c_char, c_uchar, CString};
 
-use arrow::array::ArrayRef as ArrowArrayRef;
+use arrow::array::{ArrayRef as ArrowArrayRef, ListArray as ArrowListArray};
 use arrow_utils::arrow_array_from_c_ffi;
 use once_cell::sync::Lazy;
 
-use re_arrow_util::Arrow2ArrayDowncastRef as _;
+use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_sdk::{
     external::nohash_hasher::IntMap,
     log::{Chunk, ChunkId, PendingRow, TimeColumn},
@@ -823,7 +823,7 @@ fn rr_recording_stream_log_impl(
             let component_type = component_type_registry.get(*component_type)?;
             let datatype = component_type.datatype.clone();
             let values = unsafe { arrow_array_from_c_ffi(array, datatype) }?;
-            components.insert(component_type.descriptor.clone(), values.into());
+            components.insert(component_type.descriptor.clone(), values);
         }
     }
 
@@ -983,7 +983,7 @@ fn rr_recording_stream_send_columns_impl(
         })
         .collect::<Result<_, CError>>()?;
 
-    let components: IntMap<ComponentDescriptor, arrow2::array::ListArray<i32>> = {
+    let components: IntMap<ComponentDescriptor, ArrowListArray> = {
         let component_type_registry = COMPONENT_TYPES.read();
         component_columns
             .iter()
@@ -999,7 +999,7 @@ fn rr_recording_stream_send_columns_impl(
 
                 let component_values_untyped = unsafe { arrow_array_from_c_ffi(array, datatype) }?;
                 let component_values = component_values_untyped
-                    .downcast_array2_ref::<arrow2::array::ListArray<i32>>()
+                    .downcast_array_ref::<ArrowListArray>()
                     .ok_or_else(|| {
                         CError::new(
                             CErrorCode::ArrowFfiArrayImportError,

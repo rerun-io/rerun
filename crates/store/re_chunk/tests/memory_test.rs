@@ -56,9 +56,8 @@ fn memory_use<R>(run: impl Fn() -> R) -> (R, usize) {
 
 use arrow::{
     array::{
-        Array as ArrowArray, ArrayRef as ArrowArrayRef, BooleanArray as ArrowBooleanArray,
-        Int32Array as ArrowInt32Array, Int64Array as ArrowInt64Array, ListArray as ArrowListArray,
-        PrimitiveArray as ArrowPrimitiveArray,
+        Array as ArrowArray, BooleanArray as ArrowBooleanArray, Int32Array as ArrowInt32Array,
+        Int64Array as ArrowInt64Array, ListArray as ArrowListArray,
     },
     buffer::OffsetBuffer as ArrowOffsetBuffer,
     datatypes::Field as ArrowField,
@@ -171,8 +170,7 @@ fn filter_does_allocate() {
                     ArrowField::new("item", scalars.data_type().clone(), false).into(),
                     ArrowOffsetBuffer::from_lengths(
                         std::iter::repeat(NUM_SCALARS as usize / 10).take(10),
-                    )
-                    .into(),
+                    ),
                     as_array_ref(scalars),
                     None,
                 )
@@ -229,8 +227,7 @@ fn filter_empty_or_full_is_noop() {
                     ArrowField::new("item", scalars.data_type().clone(), false).into(),
                     ArrowOffsetBuffer::from_lengths(
                         std::iter::repeat(NUM_SCALARS as usize / 10).take(10),
-                    )
-                    .into(),
+                    ),
                     as_array_ref(scalars),
                     None,
                 )
@@ -297,8 +294,7 @@ fn take_does_not_allocate() {
                     ArrowField::new("item", scalars.data_type().clone(), false).into(),
                     ArrowOffsetBuffer::from_lengths(
                         std::iter::repeat(NUM_SCALARS as usize / 10).take(10),
-                    )
-                    .into(),
+                    ),
                     as_array_ref(scalars),
                     None,
                 )
@@ -358,8 +354,7 @@ fn take_empty_or_full_is_noop() {
                     ArrowField::new("item", scalars.data_type().clone(), false).into(),
                     ArrowOffsetBuffer::from_lengths(
                         std::iter::repeat(NUM_SCALARS as usize / 10).take(10),
-                    )
-                    .into(),
+                    ),
                     as_array_ref(scalars),
                     None,
                 )

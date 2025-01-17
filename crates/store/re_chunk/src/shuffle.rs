@@ -285,7 +285,7 @@ impl Chunk {
                     arrow::datatypes::DataType::List(field) => field.clone(),
                     _ => unreachable!("This is always s list array"),
                 };
-                *original = ArrowListArray::new(field, offsets.into(), values, validity);
+                *original = ArrowListArray::new(field, offsets, values, validity);
             }
         }
 

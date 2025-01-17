@@ -6,7 +6,6 @@ use crate::{
 };
 
 use arrow::array::ListArray as ArrowListArray;
-use arrow2::array::ListArray as Arrow2ListArray;
 
 #[allow(unused_imports)] // used in docstrings
 use crate::Archetype;

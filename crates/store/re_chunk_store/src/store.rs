@@ -640,9 +640,7 @@ impl ChunkStore {
     /// Lookup the _latest_ arrow [`ArrowDataType`] used by a specific [`re_types_core::Component`].
     #[inline]
     pub fn lookup_datatype(&self, component_name: &ComponentName) -> Option<ArrowDataType> {
-        self.type_registry
-            .get(component_name)
-            .map(|dt| dt.clone().into())
+        self.type_registry.get(component_name).cloned()
     }
 
     /// Lookup the [`ColumnMetadata`] for a specific [`EntityPath`] and [`re_types_core::Component`].

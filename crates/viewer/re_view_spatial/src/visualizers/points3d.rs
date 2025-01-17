@@ -256,7 +256,8 @@ impl VisualizerSystem for Points3DVisualizer {
                                 .map_or(&[], |class_ids| bytemuck::cast_slice(class_ids)),
                             keypoint_ids: keypoint_ids
                                 .map_or(&[], |keypoint_ids| bytemuck::cast_slice(keypoint_ids)),
-                            show_labels: show_labels.unwrap_or_default().get(0).map(Into::into),
+                            show_labels: show_labels.map(|b| !b.is_empty() && b.value(0))
+                                .map(Into::into),
                         }
                     },
                 );
