@@ -11,22 +11,22 @@ use itertools::Itertools as _;
 ///
 /// This is shorter, but also better: it means we don't accidentally downcast
 /// an arrow2 array to an arrow1 array, or vice versa.
-pub trait ArrowArrayDowncastRef {
+pub trait ArrowArrayDowncastRef<'a>: 'a {
     /// Downcast an arrow array to another array, without having to go via `Any`.
     ///
     /// This is shorter, but also better: it means we don't accidentally downcast
     /// an arrow2 array to an arrow1 array, or vice versa.
-    fn downcast_array_ref<T: Array + 'static>(&self) -> Option<&T>;
+    fn downcast_array_ref<T: Array + 'static>(self) -> Option<&'a T>;
 }
 
-impl<'a> ArrowArrayDowncastRef for &'a dyn Array {
-    fn downcast_array_ref<T: Array + 'static>(&self) -> Option<&'a T> {
+impl<'a> ArrowArrayDowncastRef<'a> for &'a dyn Array {
+    fn downcast_array_ref<T: Array + 'static>(self) -> Option<&'a T> {
         self.as_any().downcast_ref()
     }
 }
 
-impl ArrowArrayDowncastRef for ArrayRef {
-    fn downcast_array_ref<T: Array + 'static>(&self) -> Option<&T> {
+impl<'a> ArrowArrayDowncastRef<'a> for &'a ArrayRef {
+    fn downcast_array_ref<T: Array + 'static>(self) -> Option<&'a T> {
         self.as_any().downcast_ref()
     }
 }
