@@ -48,6 +48,7 @@ impl<R: AsyncBufRead + Unpin> StreamingDecoder<R> {
         })
     }
 
+    /// Returns true if `data` can be successfully decoded into a `FileHeader`.
     fn peek_file_header(data: &[u8]) -> bool {
         let mut read = std::io::Cursor::new(data);
         FileHeader::decode(&mut read).is_ok()
