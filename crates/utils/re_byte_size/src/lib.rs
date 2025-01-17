@@ -1,6 +1,5 @@
 //! Calculate the heap-allocated size of values at runtime.
 
-mod arrow2_sizes;
 mod arrow_sizes;
 mod primitive_sizes;
 mod smallvec_sizes;

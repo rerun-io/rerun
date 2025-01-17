@@ -5664,7 +5664,6 @@ version = "0.22.0-alpha.1+dev"
 dependencies = [
  "arrow",
  "half",
- "re_arrow2",
  "smallvec",
 ]
 
