@@ -1,12 +1,10 @@
 use arrow::array::StructArray as ArrowStructArray;
-use arrow::buffer::ScalarBuffer as ArrowScalarBuffer;
 use arrow::array::{Array as ArrowArray, ListArray as ArrowListArray};
+use arrow::buffer::ScalarBuffer as ArrowScalarBuffer;
 use itertools::{izip, Itertools};
 use nohash_hasher::IntMap;
 
-use re_arrow_util::{
-    arrow_util, ArrowArrayDowncastRef as _,
-};
+use re_arrow_util::{arrow_util, ArrowArrayDowncastRef as _};
 
 use crate::{chunk::ChunkComponents, Chunk, ChunkError, ChunkId, ChunkResult, TimeColumn};
 
@@ -108,9 +106,7 @@ impl Chunk {
 
                         let list_array =
                             arrow_util::concat_arrays(&[lhs_list_array, rhs_list_array]).ok()?;
-                        let list_array = list_array
-                            .downcast_array_ref::<ArrowListArray>()?
-                            .clone();
+                        let list_array = list_array.downcast_array_ref::<ArrowListArray>()?.clone();
 
                         Some((component_desc.clone(), list_array))
                     } else {
@@ -149,9 +145,7 @@ impl Chunk {
 
                         let list_array =
                             arrow_util::concat_arrays(&[lhs_list_array, rhs_list_array]).ok()?;
-                        let list_array = list_array
-                            .downcast_array_ref::<ArrowListArray>()?
-                            .clone();
+                        let list_array = list_array.downcast_array_ref::<ArrowListArray>()?.clone();
 
                         Some((component_desc.clone(), list_array))
                     } else {

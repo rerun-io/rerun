@@ -5734,7 +5734,6 @@ dependencies = [
  "once_cell",
  "parking_lot",
  "rand",
- "re_arrow2",
  "re_arrow_util",
  "re_byte_size",
  "re_chunk",
