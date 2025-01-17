@@ -2,7 +2,7 @@ use std::{collections::BTreeSet, sync::Arc};
 
 use ahash::HashMap;
 use arrow::{
-    array::{Array as _, ListArray as ArrowListArray},
+    array::Array as _,
     datatypes::{DataType as ArrowDatatype, Field as ArrowField},
 };
 use itertools::Itertools as _;

@@ -5,7 +5,7 @@ use arrow::array::{
 use itertools::Itertools as _;
 use nohash_hasher::IntSet;
 
-use re_arrow_util::{arrow_util, ArrowArrayDowncastRef as _};
+use re_arrow_util::arrow_util;
 use re_log_types::Timeline;
 use re_types_core::{ComponentDescriptor, ComponentName};
 
