@@ -118,6 +118,7 @@ namespace rerun::archetypes {
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+        /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.Capsules3D";
 
       public: // START of extensions from capsules3d_ext.cpp:

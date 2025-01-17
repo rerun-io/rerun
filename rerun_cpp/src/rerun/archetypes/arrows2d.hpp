@@ -89,6 +89,7 @@ namespace rerun::archetypes {
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+        /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.Arrows2D";
 
       public: // START of extensions from arrows2d_ext.cpp:

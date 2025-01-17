@@ -538,15 +538,17 @@ impl QuotedObject {
             obj.fields
                 .iter()
                 .map(|obj_field| {
-                    // TODO: doc comment
+                    let field_name = field_name(obj_field);
+                    let comment = quote_doc_comment(&format!("`ComponentDescriptor` for the `{field_name}` field."));
                     let constant_name = archetype_component_descriptor_constant_ident(obj_field);
                     let field_type = obj_field.typ.fqname();
                     let field_type = quote_fqname_as_type_path(
                         &mut hpp_includes,
                         field_type.expect("Component field must have a non trivial type"),
                     );
-                    let field_name = field_name(obj_field);
                     quote! {
+                        #NEWLINE_TOKEN
+                        #comment
                         static constexpr auto #constant_name = ComponentDescriptor(
                             ArchetypeName, #field_name, Loggable<#field_type>::Descriptor.component_name
                         );
@@ -690,6 +692,8 @@ impl QuotedObject {
             format!("{}Indicator", obj.fqname).replace("archetypes", "components");
         let doc_hide_comment = quote_hide_from_docs();
         let deprecation_notice = quote_deprecation_notice(obj);
+        let name_doc_string =
+            quote_doc_comment("The name of the archetype as used in `ComponentDescriptor`s.");
 
         // Note that GCC doesn't like using deprecated fields even if the archetype itself is deprecated.
         // In that case we're just being generous with the ignore warnings, making it finegrained is hard and not really worth it anyways.
@@ -706,7 +710,6 @@ impl QuotedObject {
                 obj.deprecation_notice().is_some() || has_any_deprecated_fields,
             );
 
-        // TODO: docstring for name
         // Note that we run into "rule of five": https://en.cppreference.com/w/cpp/language/rule_of_three
         // * we have to manually opt-in to default ctor because we (most of the time) have a user defined constructor
         //   -> this means that there's no non-move constructors/assignments
@@ -730,8 +733,11 @@ impl QuotedObject {
                     #indicator_comment
                     using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
 
+                    #NEWLINE_TOKEN
+                    #name_doc_string
                     static constexpr const char ArchetypeName[] = #archetype_name;
 
+                    #NEWLINE_TOKEN
                     #(#descriptor_constants)*
 
                     #hpp_type_extensions

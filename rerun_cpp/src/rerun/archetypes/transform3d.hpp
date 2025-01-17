@@ -181,30 +181,39 @@ namespace rerun::archetypes {
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+        /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.Transform3D";
+
+        /// `ComponentDescriptor` for the `translation` field.
         static constexpr auto Descriptor_translation = ComponentDescriptor(
             ArchetypeName, "translation",
             Loggable<rerun::components::Translation3D>::Descriptor.component_name
         );
+        /// `ComponentDescriptor` for the `rotation_axis_angle` field.
         static constexpr auto Descriptor_rotation_axis_angle = ComponentDescriptor(
             ArchetypeName, "rotation_axis_angle",
             Loggable<rerun::components::RotationAxisAngle>::Descriptor.component_name
         );
+        /// `ComponentDescriptor` for the `quaternion` field.
         static constexpr auto Descriptor_quaternion = ComponentDescriptor(
             ArchetypeName, "quaternion",
             Loggable<rerun::components::RotationQuat>::Descriptor.component_name
         );
+        /// `ComponentDescriptor` for the `scale` field.
         static constexpr auto Descriptor_scale = ComponentDescriptor(
             ArchetypeName, "scale", Loggable<rerun::components::Scale3D>::Descriptor.component_name
         );
+        /// `ComponentDescriptor` for the `mat3x3` field.
         static constexpr auto Descriptor_mat3x3 = ComponentDescriptor(
             ArchetypeName, "mat3x3",
             Loggable<rerun::components::TransformMat3x3>::Descriptor.component_name
         );
+        /// `ComponentDescriptor` for the `relation` field.
         static constexpr auto Descriptor_relation = ComponentDescriptor(
             ArchetypeName, "relation",
             Loggable<rerun::components::TransformRelation>::Descriptor.component_name
         );
+        /// `ComponentDescriptor` for the `axis_length` field.
         static constexpr auto Descriptor_axis_length = ComponentDescriptor(
             ArchetypeName, "axis_length",
             Loggable<rerun::components::AxisLength>::Descriptor.component_name
