@@ -1,8 +1,8 @@
-use std::sync::Arc;
+use std::{collections::BTreeSet, sync::Arc};
 
 use arrow::array::ArrayRef;
-
 use itertools::Itertools;
+
 use re_chunk::{Chunk, ChunkId, RowId, TimePoint};
 use re_chunk_store::{
     ChunkStore, ChunkStoreConfig, LatestAtQuery, RangeQuery, ResolvedTimeRange, TimeInt,
@@ -14,7 +14,7 @@ use re_log_types::{
 };
 use re_types::{
     testing::{build_some_large_structs, LargeStruct},
-    ComponentDescriptor, ComponentNameSet,
+    ComponentDescriptor,
 };
 use re_types_core::Component as _;
 
@@ -60,15 +60,14 @@ fn all_components() -> anyhow::Result<()> {
 
             let component_names = store.all_components_on_timeline_sorted(&timeline, entity_path);
 
-            let expected_component_names = expected.map(|expected| {
-                let expected: ComponentNameSet =
-                    expected.iter().map(|desc| desc.component_name).collect();
+            let expected_component_descs = expected.map(|expected| {
+                let expected: BTreeSet<ComponentDescriptor> = expected.iter().cloned().collect();
                 expected
             });
 
             assert_eq!(
-                expected_component_names, component_names,
-                "expected to find {expected_component_names:?}, found {component_names:?} instead\n{store}",
+                expected_component_descs, component_names,
+                "expected to find {expected_component_descs:?}, found {component_names:?} instead\n{store}",
             );
         };
 

@@ -896,15 +896,12 @@ impl TimePanel {
         let store = engine.store();
 
         // If this is an entity:
-        // TODO: hmm yeah this all needs to be full on descriptors
-        if let Some(components) = store.all_components_for_entity(&tree.path) {
-            for component_name in sorted_component_list_for_ui(components.iter()) {
-                let is_static = store.entity_has_exact_static_component(
-                    &tree.path,
-                    &ComponentDescriptor::new(component_name),
-                );
+        if let Some(component_descs) = store.all_components_for_entity(&tree.path) {
+            for component_desc in sorted_component_list_for_ui(component_descs.iter().cloned()) {
+                let is_static =
+                    store.entity_has_exact_static_component(&tree.path, &component_desc);
 
-                let component_path = ComponentPath::new(tree.path.clone(), component_name);
+                let component_path = ComponentPath::new(tree.path.clone(), component_desc);
                 let short_component_name = component_path.component_name.short_name();
                 let item = TimePanelItem::component_path(component_path.clone());
                 let timeline = time_ctrl.timeline();
@@ -913,15 +910,15 @@ impl TimePanel {
                     .entity_has_exact_component_on_timeline(
                         time_ctrl.timeline(),
                         &tree.path,
-                        &ComponentDescriptor::new(component_name),
+                        &component_desc,
                     );
 
-                let num_static_messages =
-                    store.num_static_events_for_component(&tree.path, component_name);
+                let num_static_messages = store
+                    .num_static_events_for_component(&tree.path, component_desc.component_name);
                 let num_temporal_messages = store.num_temporal_events_for_component_on_timeline(
                     time_ctrl.timeline(),
                     &tree.path,
-                    component_name,
+                    component_desc.component_name,
                 );
                 let total_num_messages = num_static_messages + num_temporal_messages;
 

@@ -34,7 +34,7 @@ impl DataUi for InstancePath {
             instance,
         } = self;
 
-        let component = if ctx.recording().is_known_entity(entity_path) {
+        let component_descs = if ctx.recording().is_known_entity(entity_path) {
             // We are looking at an entity in the recording
             ctx.recording_engine()
                 .store()
@@ -49,7 +49,7 @@ impl DataUi for InstancePath {
             ui.error_label(format!("Unknown entity: {entity_path:?}"));
             return;
         };
-        let Some(components) = component else {
+        let Some(component_descs) = component_descs else {
             // This is fine - e.g. we're looking at `/world` and the user has only logged to `/world/car`.
             ui_layout.label(
                 ui,
@@ -61,13 +61,13 @@ impl DataUi for InstancePath {
             return;
         };
 
-        let components = crate::sorted_component_list_for_ui(&components);
-        let indicator_count = components
+        let component_descs = crate::sorted_component_list_for_ui(component_descs);
+        let indicator_count = component_descs
             .iter()
             .filter(|c| c.is_indicator_component())
             .count();
 
-        let mut components = latest_at(db, query, entity_path, &components);
+        let mut components = latest_at(db, query, entity_path, &component_descs);
 
         if components.is_empty() {
             ui_layout.label(
@@ -134,21 +134,21 @@ fn latest_at(
     db: &re_entity_db::EntityDb,
     query: &re_chunk_store::LatestAtQuery,
     entity_path: &re_log_types::EntityPath,
-    components: &[ComponentName],
+    component_descs: &[ComponentDescriptor],
 ) -> Vec<(ComponentName, UnitChunkShared)> {
-    let components: Vec<(ComponentName, UnitChunkShared)> = components
+    let components: Vec<(ComponentName, UnitChunkShared)> = component_descs
         .iter()
-        .filter_map(|&component_name| {
+        .filter_map(|component_desc| {
             let mut results =
                 db.storage_engine()
                     .cache()
-                    .latest_at(query, entity_path, [component_name]);
+                    .latest_at(query, entity_path, [component_desc]);
 
             // We ignore components that are unset at this point in time
             results
                 .components
-                .remove(&component_name)
-                .map(|unit| (component_name, unit))
+                .remove(&component_desc.component_name)
+                .map(|unit| (component_desc.component_name, unit))
         })
         .collect();
     components

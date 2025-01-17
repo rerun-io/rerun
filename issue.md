@@ -166,5 +166,20 @@ Now, what about range queries?
 Here's how to communicate about `fallback` vs. `wildcard`:
 * `fallback` is when you're looking for something very specific, and don't mind getting something less specific in return.
   * E.g. `latest_at("Points3D:Color#colors")` returning a `Color`.
+  * Closed on both ends.
+  * Is what makes sense in 99% of cases: you know exactly what you want, but you're ready to give the system some margin of operation.
+    * E.g. any visualizer.
+  * Very efficient, both semantically and computationally.
 * `wildcard` is when you're looking for something very broad, and don't mind getting something much more specific in return.
   * E.g. `latest_at("*:Color#*")` returning a `Points3D:Color#colors`.
+  * Open on both ends (!).
+  * Is very very rarely what you want: most frequent use case is generic systems.
+    * E.g. operating on `ShowLabels`, regardless of the surrounding context (i.e. archetype).
+    * You could also imagine e.g. component-level fallbacks, which are the fallbacks of descriptor-level fallbacks.
+  * Very costly, both semantically and computationally.
+    * Double openness makes everything hard.
+    * Computational cost is no joke (remember the massive perf boost just by fixing hashing -- this is much bigger than that)
+
+Corollary:
+* A function taking `ComponentName` as a parameter is automatically suspicious (and likely problematic).
+* 99.9% of things need to be descriptor driven (that number is 0% today :)).

@@ -1,8 +1,8 @@
 use std::ops::RangeInclusive;
 
-use re_chunk_store::external::re_chunk::ComponentName;
 use re_chunk_store::ChunkStore;
 use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt, TimeType, TimeZone, Timeline};
+use re_types::ComponentDescriptor;
 use re_ui::UiExt;
 use re_viewer_context::TimeDragValue;
 
@@ -22,7 +22,7 @@ pub(crate) enum ChunkListMode {
     Query {
         timeline: Timeline,
         entity_path: EntityPath,
-        component_name: ComponentName,
+        component_desc: ComponentDescriptor,
         query: ChunkListQueryMode,
     },
 }
@@ -47,8 +47,8 @@ impl ChunkListMode {
             Self::Query { entity_path, .. } => entity_path.clone(),
         };
         let current_component = match self {
-            Self::All => all_components.first().copied()?,
-            Self::Query { component_name, .. } => *component_name,
+            Self::All => all_components.first().cloned()?,
+            Self::Query { component_desc, .. } => component_desc.clone(),
         };
 
         ui.horizontal(|ui| {
@@ -78,7 +78,7 @@ impl ChunkListMode {
                     *self = Self::Query {
                         timeline: current_timeline,
                         entity_path: current_entity.clone(),
-                        component_name: current_component,
+                        component_desc: current_component.clone(),
                         query: ChunkListQueryMode::LatestAt(TimeInt::MAX),
                     };
                 }
@@ -101,14 +101,14 @@ impl ChunkListMode {
                         timeline: current_timeline,
                         query: ChunkListQueryMode::Range(ResolvedTimeRange::EVERYTHING),
                         entity_path: current_entity.clone(),
-                        component_name: current_component,
+                        component_desc: current_component.clone(),
                     };
                 }
             });
 
             let Self::Query {
                 timeline: query_timeline,
-                component_name: query_component,
+                component_desc: query_component,
                 entity_path: query_entity,
                 query,
             } = self
@@ -146,9 +146,9 @@ impl ChunkListMode {
                     .selected_text(current_component.short_name())
                     .height(500.0)
                     .show_ui(ui, |ui| {
-                        for component_name in all_components {
-                            if ui.button(component_name.short_name()).clicked() {
-                                *query_component = component_name;
+                        for component_desc in all_components {
+                            if ui.button(component_desc.short_name()).clicked() {
+                                *query_component = component_desc;
                             }
                         }
                     });

@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use arrow::array::{Array, ArrayRef};
 
-use crate::{ArchetypeName, ComponentName};
+use crate::{ArchetypeName, ComponentDescriptor, ComponentName};
 
 /// A trait for code-generated enums.
 pub trait Enum:
@@ -290,4 +290,7 @@ pub struct ArchetypeFieldReflection {
 
     /// Is this a required component?
     pub is_required: bool,
+
+    // TODO
+    pub descriptor: ComponentDescriptor,
 }

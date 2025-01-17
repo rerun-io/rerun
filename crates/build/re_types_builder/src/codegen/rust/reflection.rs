@@ -179,6 +179,7 @@ fn generate_archetype_reflection(reporter: &Reporter, objects: &Objects) -> Toke
             let Some(component_name) = field.typ.fqname() else {
                 panic!("archetype field must be an object/union or an array/vector of such")
             };
+            let archetype_name = &obj.fqname;
             let name = &field.name;
             let display_name = re_case::to_human_case(&field.name);
             let docstring_md = doc_as_lines(
@@ -192,15 +193,25 @@ fn generate_archetype_reflection(reporter: &Reporter, objects: &Objects) -> Toke
             )
             .join("\n");
             let required = field.attrs.has(ATTR_RERUN_COMPONENT_REQUIRED);
+            // TODO: this should really use the builder pattern so that it doesn't break when
+            // descriptors inevitably get added more fields.
+            let descriptor = quote!(::re_types_core::ComponentDescriptor {
+                archetype_name: Some(#archetype_name.into()),
+                archetype_field_name: Some(#archetype_name.into()),
+                component_name: #component_name.into(),
+            });
 
-            quote! {
+            quote! {{
+                // NOTE: Declare the docstring independently so that rustfmt doesn't choke.
+                let docstring_md = #docstring_md;
                 ArchetypeFieldReflection {
                     name: #name,
                     display_name: #display_name,
                     component_name: #component_name.into(),
-                    docstring_md: #docstring_md,
+                    docstring_md,
                     is_required: #required,
-                }
+                    descriptor: #descriptor,
+                }}
             }
         });
 

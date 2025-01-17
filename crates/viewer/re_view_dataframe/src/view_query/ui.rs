@@ -171,7 +171,7 @@ impl Query {
         // Filter component
         //
 
-        let all_components = ctx
+        let all_component_descs = ctx
             .recording_engine()
             .store()
             .all_components_on_timeline_sorted(timeline, &filter_entity)
@@ -182,10 +182,11 @@ impl Query {
         // - for the matching archetypes, take all required components
         // - keep those that are actually present
         let suggested_components = || {
-            all_components
+            all_component_descs
                 .iter()
-                .filter_map(|c| {
-                    c.indicator_component_archetype()
+                .filter_map(|desc| {
+                    desc.component_name
+                        .indicator_component_archetype()
                         .and_then(|archetype_short_name| {
                             ctx.reflection
                                 .archetype_reflection_from_short_name(&archetype_short_name)
@@ -196,13 +197,17 @@ impl Query {
                         .required_fields()
                         .map(|field| field.component_name)
                 })
-                .filter(|c| all_components.contains(c))
+                .filter(|c| all_component_descs.contains(c))
                 .collect::<ComponentNameSet>()
         };
 
         // If the currently saved component, we auto-switch it to a reasonable one.
         let mut filter_component = filter_component
-            .and_then(|component| all_components.contains(&component).then_some(component))
+            .and_then(|component| {
+                all_component_descs
+                    .contains(&component)
+                    .then_some(component)
+            })
             .or_else(|| suggested_components().first().copied())
             .unwrap_or_else(|| ComponentName::from("-"));
 
@@ -231,7 +236,7 @@ impl Query {
                     egui::ComboBox::new("pov_component", "")
                         .selected_text(filter_component.short_name())
                         .show_ui(ui, |ui| {
-                            for component in all_components {
+                            for component in all_component_descs {
                                 let label = component.short_name();
                                 ui.selectable_value(&mut filter_component, component, label);
                             }

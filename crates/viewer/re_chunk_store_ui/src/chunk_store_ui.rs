@@ -6,7 +6,6 @@ use itertools::{Either, Itertools};
 
 use re_chunk_store::{ChunkStore, LatestAtQuery, RangeQuery};
 use re_log_types::{ResolvedTimeRange, StoreKind, TimeType, TimeZone, Timeline, TimelineName};
-use re_types::ComponentDescriptor;
 use re_ui::{list_item, UiExt as _};
 use re_viewer_context::ViewerContext;
 
@@ -126,7 +125,7 @@ impl DatastoreUi {
             ChunkListMode::Query {
                 timeline,
                 entity_path,
-                component_name,
+                component_desc,
                 query: ChunkListQueryMode::LatestAt(at),
                 ..
             } => Either::Right(
@@ -138,14 +137,14 @@ impl DatastoreUi {
                     .latest_at_relevant_chunks(
                         &LatestAtQuery::new(*timeline, *at),
                         entity_path,
-                        &ComponentDescriptor::new(*component_name),
+                        component_desc,
                     )
                     .into_iter(),
             ),
             ChunkListMode::Query {
                 timeline,
                 entity_path,
-                component_name,
+                component_desc,
                 query: ChunkListQueryMode::Range(range),
                 ..
             } => Either::Right(
@@ -153,7 +152,7 @@ impl DatastoreUi {
                     .range_relevant_chunks(
                         &RangeQuery::new(*timeline, *range),
                         entity_path,
-                        *component_name,
+                        component_desc.component_name,
                     )
                     .into_iter(),
             ),

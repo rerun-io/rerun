@@ -118,6 +118,12 @@ impl ComponentDescriptor {
 
     // TODO
     #[inline]
+    pub fn is_indicator_component(&self) -> bool {
+        self.component_name.is_indicator_component()
+    }
+
+    // TODO
+    #[inline]
     pub fn is_fully_qualified(&self) -> bool {
         let Self {
             archetype_name,

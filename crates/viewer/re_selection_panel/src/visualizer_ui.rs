@@ -182,17 +182,13 @@ fn visualizer_components(
         None, // TODO(andreas): Figure out how to deal with annotation context here.
         &store_query,
         data_result,
-        // TODO: argh, that can't be good...
-        query_info
-            .queried
-            .iter()
-            .map(|component_name| re_types_core::ComponentDescriptor::new(*component_name)),
+        query_info.queried.iter().cloned(),
         query_shadowed_defaults,
     );
 
     // TODO(andreas): Should we show required components in a special way?
-    for component_name in sorted_component_list_for_ui(query_info.queried.iter()) {
-        if component_name.is_indicator_component() {
+    for component_desc in sorted_component_list_for_ui(query_info.queried.iter().cloned()) {
+        if component_desc.is_indicator_component() {
             continue;
         }
 
@@ -200,18 +196,20 @@ fn visualizer_components(
 
         // Query all the sources for our value.
         // (technically we only need to query those that are shown, but rolling this out makes things easier).
-        let result_override = query_result.overrides.get(&component_name);
-        let raw_override = non_empty_component_batch_raw(result_override, &component_name);
+        let result_override = query_result.overrides.get(&component_desc.component_name);
+        let raw_override =
+            non_empty_component_batch_raw(result_override, &component_desc.component_name);
 
-        let result_store = query_result.results.get(&component_name);
-        let raw_store = non_empty_component_batch_raw(result_store, &component_name);
+        let result_store = query_result.results.get(&component_desc.component_name);
+        let raw_store = non_empty_component_batch_raw(result_store, &component_desc.component_name);
 
-        let result_default = query_result.defaults.get(&component_name);
-        let raw_default = non_empty_component_batch_raw(result_default, &component_name);
+        let result_default = query_result.defaults.get(&component_desc.component_name);
+        let raw_default =
+            non_empty_component_batch_raw(result_default, &component_desc.component_name);
 
         let raw_fallback = visualizer
             .fallback_provider()
-            .fallback_for(&query_ctx, component_name);
+            .fallback_for(&query_ctx, component_desc.component_name);
 
         // Determine where the final value comes from.
         // Putting this into an enum makes it easier to reason about the next steps.
@@ -238,7 +236,8 @@ fn visualizer_components(
                     ui,
                     raw_current_value.as_ref()                    ,
                     override_path,
-                    component_name,
+                    // TODO
+                    component_desc.component_name,
                     multiline,
                 )
             {
@@ -275,7 +274,7 @@ fn visualizer_components(
                             &store_query,
                             ctx.recording(),
                             &data_result.entity_path,
-                            component_name,
+                            component_desc.component_name,
                             current_value_row_id,
                             raw_current_value.as_ref(),
                         );
@@ -284,7 +283,7 @@ fn visualizer_components(
                 };
 
                 re_data_ui::ComponentPathLatestAtResults {
-                    component_path: ComponentPath::new(entity_path, component_name),
+                    component_path: ComponentPath::new(entity_path, component_desc.component_name),
                     unit: latest_at_unit,
                 }
                 .data_ui(ctx.viewer_ctx, ui, UiLayout::List, query, db);
@@ -304,7 +303,7 @@ fn visualizer_components(
                         ui,
                         "Override",
                         override_path,
-                        component_name,
+                        component_desc.component_name,
                         *row_id,
                         raw_override.as_ref(),
                     )
@@ -320,7 +319,7 @@ fn visualizer_components(
                             re_data_ui::ComponentPathLatestAtResults {
                                 component_path: ComponentPath::new(
                                     data_result.entity_path.clone(),
-                                    component_name,
+                                    component_desc.component_name,
                                 ),
                                 unit,
                             }
@@ -345,7 +344,7 @@ fn visualizer_components(
                         ui,
                         "Default",
                         &ViewBlueprint::defaults_path(ctx.view_id),
-                        component_name,
+                        component_desc.component_name,
                         *row_id,
                         raw_default.as_ref(),
                     )
@@ -368,7 +367,7 @@ fn visualizer_components(
                                 &store_query,
                                 ctx.recording(),
                                 &data_result.entity_path,
-                                component_name,
+                                component_desc.component_name,
                                 None,
                                 raw_fallback.as_ref(),
                             );
@@ -388,16 +387,16 @@ fn visualizer_components(
             .interactive(false)
             .show_hierarchical_with_children(
                 ui,
-                ui.make_persistent_id(component_name),
+                ui.make_persistent_id(component_desc.to_string()),
                 default_open,
-                list_item::PropertyContent::new(component_name.short_name())
+                list_item::PropertyContent::new(component_desc.short_name())
                     .value_fn(value_fn)
                     .show_only_when_collapsed(false)
                     .menu_button(&re_ui::icons::MORE, |ui: &mut egui::Ui| {
                         menu_more(
                             ctx,
                             ui,
-                            component_name,
+                            component_desc.component_name,
                             override_path,
                             &raw_override.clone().map(|(_, raw_override)| raw_override),
                             raw_default.clone().map(|(_, raw_override)| raw_override),
@@ -409,7 +408,11 @@ fn visualizer_components(
             )
             .item_response
             .on_hover_ui(|ui| {
-                component_name.data_ui_recording(ctx.viewer_ctx, ui, UiLayout::Tooltip);
+                component_desc.component_name.data_ui_recording(
+                    ctx.viewer_ctx,
+                    ui,
+                    UiLayout::Tooltip,
+                );
             });
     }
 }

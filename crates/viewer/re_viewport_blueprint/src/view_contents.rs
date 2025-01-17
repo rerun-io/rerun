@@ -485,7 +485,7 @@ impl DataQueryPropertyResolver<'_> {
                 if let Some(recursive_override_subtree) =
                     blueprint.tree().subtree(&recursive_override_path)
                 {
-                    for component_name in blueprint_engine
+                    for component_desc in blueprint_engine
                         .store()
                         .all_components_for_entity(&recursive_override_subtree.path)
                         .unwrap_or_default()
@@ -493,12 +493,12 @@ impl DataQueryPropertyResolver<'_> {
                         if let Some(component_data) = blueprint
                             .storage_engine()
                             .cache()
-                            .latest_at(blueprint_query, &recursive_override_path, [component_name])
-                            .component_batch_raw(&component_name)
+                            .latest_at(blueprint_query, &recursive_override_path, [&component_desc])
+                            .component_batch_raw(&component_desc.component_name)
                         {
                             if !component_data.is_empty() {
                                 recursive_property_overrides.to_mut().insert(
-                                    component_name,
+                                    component_desc.component_name,
                                     OverridePath::blueprint_path(recursive_override_path.clone()),
                                 );
                             }
@@ -516,7 +516,7 @@ impl DataQueryPropertyResolver<'_> {
                 if let Some(individual_override_subtree) =
                     blueprint.tree().subtree(&individual_override_path)
                 {
-                    for component_name in blueprint_engine
+                    for component_desc in blueprint_engine
                         .store()
                         .all_components_for_entity(&individual_override_subtree.path)
                         .unwrap_or_default()
@@ -524,12 +524,16 @@ impl DataQueryPropertyResolver<'_> {
                         if let Some(component_data) = blueprint
                             .storage_engine()
                             .cache()
-                            .latest_at(blueprint_query, &individual_override_path, [component_name])
-                            .component_batch_raw(&component_name)
+                            .latest_at(
+                                blueprint_query,
+                                &individual_override_path,
+                                [&component_desc],
+                            )
+                            .component_batch_raw(&component_desc.component_name)
                         {
                             if !component_data.is_empty() {
                                 resolved_component_overrides.insert(
-                                    component_name,
+                                    component_desc.component_name,
                                     OverridePath::blueprint_path(individual_override_path.clone()),
                                 );
                             }

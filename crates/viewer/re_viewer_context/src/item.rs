@@ -195,7 +195,7 @@ pub fn resolve_mono_instance_path(
         let engine = entity_db.storage_engine();
 
         // NOTE: While we normally frown upon direct queries to the datastore, `all_components` is fine.
-        let Some(component_names) = engine
+        let Some(component_descs) = engine
             .store()
             .all_components_on_timeline(&query.timeline(), &instance.entity_path)
         else {
@@ -203,15 +203,11 @@ pub fn resolve_mono_instance_path(
             return re_entity_db::InstancePath::entity_all(instance.entity_path.clone());
         };
 
-        for component_name in component_names {
+        for component_desc in component_descs {
             if let Some(array) = engine
                 .cache()
-                .latest_at(
-                    query,
-                    &instance.entity_path,
-                    [ComponentDescriptor::new(component_name)],
-                )
-                .component_batch_raw(&component_name)
+                .latest_at(query, &instance.entity_path, [&component_desc])
+                .component_batch_raw(&component_desc.component_name)
             {
                 if array.len() > 1 {
                     return instance.clone();
