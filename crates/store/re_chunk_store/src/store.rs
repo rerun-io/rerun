@@ -646,15 +646,6 @@ impl ChunkStore {
             .map(|dt| dt.clone().into())
     }
 
-    /// Lookup the _latest_ arrow [`Arrow2DataType`] used by a specific [`re_types_core::Component`].
-    #[inline]
-    pub fn lookup_datatype_arrow2(
-        &self,
-        component_name: &ComponentName,
-    ) -> Option<&Arrow2DataType> {
-        self.type_registry.get(component_name)
-    }
-
     /// Lookup the [`ColumnMetadata`] for a specific [`EntityPath`] and [`re_types_core::Component`].
     pub fn lookup_column_metadata(
         &self,
