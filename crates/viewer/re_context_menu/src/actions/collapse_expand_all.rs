@@ -136,7 +136,7 @@ impl ContextMenuAction for CollapseExpandAllAction {
             | None => (ctx.viewer_context.recording(), CollapseScope::StreamsTree),
         };
 
-        collapse_expand_instance_path(&ctx.viewer_context, db, instance_path, scope, self.open());
+        collapse_expand_instance_path(ctx.viewer_context, db, instance_path, scope, self.open());
     }
 }
 
