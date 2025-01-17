@@ -1,10 +1,7 @@
 use std::{collections::BTreeSet, sync::Arc};
 
 use ahash::HashMap;
-use arrow::{
-    array::Array as _,
-    datatypes::{DataType as ArrowDatatype, Field as ArrowField},
-};
+use arrow::array::Array as _;
 use itertools::Itertools as _;
 
 use re_byte_size::SizeBytes;
@@ -375,9 +372,7 @@ impl ChunkStore {
         for (component_descr, list_array) in chunk.components().iter_flattened() {
             self.type_registry.insert(
                 component_descr.component_name,
-                ArrowDatatype::List(
-                    ArrowField::new("item", list_array.data_type().clone(), true).into(),
-                ),
+                list_array.data_type().clone(),
             );
 
             let column_metadata_state = self

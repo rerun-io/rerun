@@ -5,10 +5,7 @@ use std::{
     ops::{Deref, DerefMut},
 };
 
-use arrow::{
-    array::ListArray as ArrowListArray,
-    datatypes::{DataType as ArrowDatatype, Field as ArrowField},
-};
+use arrow::datatypes::{DataType as ArrowDatatype, Field as ArrowField};
 use itertools::Itertools;
 
 use re_chunk::TimelineName;
@@ -766,9 +763,7 @@ impl ChunkStore {
                     // NOTE: The data is always a at least a list, whether it's latest-at or range.
                     // It might be wrapped further in e.g. a dict, but at the very least
                     // it's a list.
-                    store_datatype: ArrowListArray::DATA_TYPE_CONSTRUCTOR(
-                        ArrowField::new("item", datatype.clone(), true).into(),
-                    ),
+                    store_datatype: datatype.clone(),
                     is_static,
                     is_indicator,
                     is_tombstone,
@@ -866,9 +861,7 @@ impl ChunkStore {
             archetype_name: component_descr.and_then(|descr| descr.archetype_name),
             archetype_field_name: component_descr.and_then(|descr| descr.archetype_field_name),
             component_name,
-            store_datatype: ArrowListArray::DATA_TYPE_CONSTRUCTOR(
-                ArrowField::new("item", datatype, true).into(),
-            ),
+            store_datatype: datatype.into(),
             is_static,
             is_indicator,
             is_tombstone,
