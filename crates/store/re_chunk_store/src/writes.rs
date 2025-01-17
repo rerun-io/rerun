@@ -370,10 +370,8 @@ impl ChunkStore {
             .push(chunk.id());
 
         for (component_descr, list_array) in chunk.components().iter_flattened() {
-            self.type_registry.insert(
-                component_descr.component_name,
-                list_array.data_type().clone(),
-            );
+            self.type_registry
+                .insert(component_descr.component_name, list_array.value_type());
 
             let column_metadata_state = self
                 .per_column_metadata
