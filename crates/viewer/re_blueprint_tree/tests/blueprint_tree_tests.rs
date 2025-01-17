@@ -3,12 +3,9 @@ use egui::Vec2;
 use re_blueprint_tree::BlueprintTree;
 use re_chunk_store::external::re_chunk::ChunkBuilder;
 use re_chunk_store::RowId;
-use re_entity_db::external::re_chunk_store::LatestAtQuery;
 use re_log_types::build_frame_nr;
 use re_types::archetypes::Points3D;
-use re_viewer_context::{
-    blueprint_timeline, test_context::TestContext, RecommendedView, ViewClass,
-};
+use re_viewer_context::{test_context::TestContext, RecommendedView, ViewClass};
 use re_viewport_blueprint::{
     test_context_ext::TestContextExt as _, ViewBlueprint, ViewportBlueprint,
 };
@@ -101,10 +98,8 @@ fn setup_filter_test(query: Option<&str>) -> (TestContext, BlueprintTree) {
     // application id. This way, the blueprint panel will not discard the filter state we set up
     // when it's run for the snapshot.
     test_context.run_in_egui_central_panel(|ctx, ui| {
-        let blueprint = ViewportBlueprint::try_from_db(
-            ctx.store_context.blueprint,
-            &LatestAtQuery::latest(blueprint_timeline()),
-        );
+        let blueprint =
+            ViewportBlueprint::try_from_db(ctx.store_context.blueprint, ctx.blueprint_query);
 
         blueprint_tree.show(ctx, &blueprint, ui);
     });
@@ -136,7 +131,7 @@ fn run_blueprint_panel_and_save_snapshot(
             test_context.run(&ui.ctx().clone(), |viewer_ctx| {
                 let blueprint = ViewportBlueprint::try_from_db(
                     viewer_ctx.store_context.blueprint,
-                    &LatestAtQuery::latest(blueprint_timeline()),
+                    viewer_ctx.blueprint_query,
                 );
 
                 blueprint_tree.show(viewer_ctx, &blueprint, ui);
