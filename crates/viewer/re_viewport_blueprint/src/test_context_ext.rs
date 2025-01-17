@@ -63,7 +63,9 @@ impl TestContextExt for TestContext {
                 self.run(egui_ctx, |ctx| {
                     viewport_blueprint.visit_contents(&mut |contents, _| {
                         if let Contents::View(view_id) = contents {
-                            let view_blueprint = viewport_blueprint.view(view_id).unwrap();
+                            let view_blueprint = viewport_blueprint
+                                .view(view_id)
+                                .expect("view is known to exist");
                             let class_identifier = view_blueprint.class_identifier();
 
                             let data_query_result = {
@@ -90,7 +92,7 @@ impl TestContextExt for TestContext {
                         }
 
                         true
-                    })
+                    });
                 });
 
                 self.query_results = query_results;

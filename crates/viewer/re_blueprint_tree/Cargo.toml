@@ -41,4 +41,4 @@ re_viewport_blueprint = { workspace = true, features = ["testing"] }
 re_chunk_store.workspace = true
 re_view_spatial.workspace = true
 
-ahash.workspace = true
+egui_kittest.workspace = true

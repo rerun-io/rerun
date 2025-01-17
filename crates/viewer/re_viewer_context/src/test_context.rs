@@ -208,7 +208,9 @@ impl TestContext {
         self.selection_state.on_frame_start(|_| true, None);
     }
 
-    //TODO: docstrinc
+    /// Log an entity to the recording store.
+    ///
+    /// The provided closure should add content using the [`ChunkBuilder`] passed as argument.
     pub fn log_entity(
         &mut self,
         entity_path: EntityPath,
@@ -216,13 +218,17 @@ impl TestContext {
     ) {
         let builder = build_chunk(Chunk::builder(entity_path));
         self.recording_store
-            .add_chunk(&Arc::new(builder.build().unwrap()))
-            .unwrap();
+            .add_chunk(&Arc::new(
+                builder.build().expect("chunk should be successfully built"),
+            ))
+            .expect("chunk should be successfully added");
     }
 
-    //TODO::docstring
+    /// Register a view class.
     pub fn register_view_class<T: ViewClass + Default + 'static>(&mut self) {
-        self.view_class_registry.add_class::<T>().unwrap()
+        self.view_class_registry
+            .add_class::<T>()
+            .expect("registering a class should succeed");
     }
 
     /// Run the provided closure with a [`ViewerContext`] produced by the [`Self`].

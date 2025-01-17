@@ -13,16 +13,15 @@ use re_viewport_blueprint::{
     test_context_ext::TestContextExt as _, ViewBlueprint, ViewportBlueprint,
 };
 
-/// Basic blueprint panel test
 #[test]
 fn basic_blueprint_panel_should_match_snapshot() {
     let mut test_context = TestContext::default();
 
     test_context.register_view_class::<re_view_spatial::SpatialView3D>();
 
-    test_context.log_entity("/entity/0".into(), add_point_to_chunk_builder);
-    test_context.log_entity("/entity/1".into(), add_point_to_chunk_builder);
-    test_context.log_entity("/entity/2".into(), add_point_to_chunk_builder);
+    test_context.log_entity("/entity0".into(), add_point_to_chunk_builder);
+    test_context.log_entity("/entity1".into(), add_point_to_chunk_builder);
+    test_context.log_entity("/entity2".into(), add_point_to_chunk_builder);
 
     test_context.setup_viewport_blueprint(|_, blueprint| {
         blueprint.add_views(
@@ -36,7 +35,85 @@ fn basic_blueprint_panel_should_match_snapshot() {
     });
 
     let blueprint_tree = BlueprintTree::default();
-    run_blueprint_panel_and_save_snapshot(test_context, blueprint_tree, "basic_blueprint_panel")
+    run_blueprint_panel_and_save_snapshot(test_context, blueprint_tree, "basic_blueprint_panel");
+}
+
+#[test]
+fn blueprint_panel_filter_active_inside_origin_should_match_snapshot() {
+    let (test_context, blueprint_tree) = setup_filter_test(Some("left"));
+
+    run_blueprint_panel_and_save_snapshot(
+        test_context,
+        blueprint_tree,
+        "blueprint_panel_filter_active_inside_origin",
+    );
+}
+
+#[test]
+fn blueprint_panel_filter_active_outside_origin_should_match_snapshot() {
+    let (test_context, blueprint_tree) = setup_filter_test(Some("out"));
+
+    run_blueprint_panel_and_save_snapshot(
+        test_context,
+        blueprint_tree,
+        "blueprint_panel_filter_active_outside_origin",
+    );
+}
+
+#[test]
+fn blueprint_panel_filter_active_above_origin_should_match_snapshot() {
+    let (test_context, blueprint_tree) = setup_filter_test(Some("path"));
+
+    run_blueprint_panel_and_save_snapshot(
+        test_context,
+        blueprint_tree,
+        "blueprint_panel_filter_active_above_origin",
+    );
+}
+
+// ---
+
+fn setup_filter_test(query: Option<&str>) -> (TestContext, BlueprintTree) {
+    let mut test_context = TestContext::default();
+    test_context.register_view_class::<re_view_spatial::SpatialView3D>();
+
+    test_context.log_entity("/path/to/left".into(), add_point_to_chunk_builder);
+    test_context.log_entity("/path/to/right".into(), add_point_to_chunk_builder);
+    test_context.log_entity("/path/is/outside".into(), add_point_to_chunk_builder);
+
+    test_context.setup_viewport_blueprint(|_, blueprint| {
+        blueprint.add_views(
+            std::iter::once(ViewBlueprint::new(
+                re_view_spatial::SpatialView3D::identifier(),
+                RecommendedView {
+                    origin: "/path/to".into(),
+                    query_filter: "+ /**".try_into().expect("valid entity path filter"),
+                },
+            )),
+            None,
+            None,
+        );
+    });
+
+    let mut blueprint_tree = BlueprintTree::default();
+
+    // This trick here is to run the blueprint panel for a frame, such that it registers the current
+    // application id. This way, the blueprint panel will not discard the filter state we set up
+    // when it's run for the snapshot.
+    test_context.run_in_egui_central_panel(|ctx, ui| {
+        let blueprint = ViewportBlueprint::try_from_db(
+            ctx.store_context.blueprint,
+            &LatestAtQuery::latest(blueprint_timeline()),
+        );
+
+        blueprint_tree.show(ctx, &blueprint, ui);
+    });
+
+    if let Some(query) = query {
+        blueprint_tree.activate_filter(query);
+    }
+
+    (test_context, blueprint_tree)
 }
 
 fn add_point_to_chunk_builder(builder: ChunkBuilder) -> ChunkBuilder {
