@@ -91,13 +91,16 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
                         return std::task::Poll::Ready(None);
                     }
                 }
+
                 std::task::Poll::Ready(Ok(buf)) => {
                     unprocessed_bytes.extend_from_slice(buf);
                     buf_length = buf.len();
                 }
+
                 std::task::Poll::Ready(Err(err)) => {
                     return std::task::Poll::Ready(Some(Err(DecodeError::Read(err))));
                 }
+
                 std::task::Poll::Pending => return std::task::Poll::Pending,
             };
 
@@ -197,9 +200,11 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
                                 }
                             }
                         }
+
                         super::MessageHeader::EndOfStream => return std::task::Poll::Ready(None),
                     }
                 }
+
                 crate::Serializer::Protobuf => {
                     let header_size = std::mem::size_of::<file::MessageHeader>();
                     if unprocessed_bytes.len() < header_size {
