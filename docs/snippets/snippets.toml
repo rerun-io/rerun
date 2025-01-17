@@ -127,11 +127,6 @@
   "rust",
   "py",
 ]
-"tutorials/annotation-context" = [ # Not a complete example
-  "cpp",
-  "rust",
-  "py",
-]
 "tutorials/any_values" = [ # Not yet implemented
   "cpp",
 ]

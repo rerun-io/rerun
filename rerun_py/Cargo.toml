@@ -76,7 +76,6 @@ re_ws_comms = { workspace = true, optional = true }
 
 
 arrow = { workspace = true, features = ["pyarrow"] }
-arrow2 = { workspace = true, features = ["io_ipc", "io_print", "arrow"] }
 crossbeam.workspace = true
 document-features.workspace = true
 itertools.workspace = true

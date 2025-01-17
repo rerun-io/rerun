@@ -25,7 +25,8 @@ use re_protos::{
     common::v0::RecordingId,
     remote_store::v0::{
         storage_node_client::StorageNodeClient, CatalogFilter, FetchRecordingRequest,
-        QueryCatalogRequest,
+        QueryCatalogRequest, CATALOG_APP_ID_FIELD_NAME, CATALOG_ID_FIELD_NAME,
+        CATALOG_START_TIME_FIELD_NAME,
     },
 };
 use re_types::{
@@ -286,27 +287,33 @@ pub fn store_info_from_catalog_chunk(
 
     let (_field, data) = tc
         .components()
-        .find(|(f, _)| f.name() == "application_id")
+        .find(|(f, _)| f.name() == CATALOG_APP_ID_FIELD_NAME)
         .ok_or(StreamError::ChunkError(re_chunk::ChunkError::Malformed {
-            reason: "no application_id field found".to_owned(),
+            reason: "no {CATALOG_APP_ID_FIELD_NAME} field found".to_owned(),
         }))?;
     let app_id = data
         .downcast_array_ref::<arrow::array::StringArray>()
         .ok_or(StreamError::ChunkError(re_chunk::ChunkError::Malformed {
-            reason: format!("application_id must be a utf8 array: {:?}", tc.schema_ref()),
+            reason: format!(
+                "{CATALOG_APP_ID_FIELD_NAME} must be a utf8 array: {:?}",
+                tc.schema_ref()
+            ),
         }))?
         .value(0);
 
     let (_field, data) = tc
         .components()
-        .find(|(f, _)| f.name() == "start_time")
+        .find(|(f, _)| f.name() == CATALOG_START_TIME_FIELD_NAME)
         .ok_or(StreamError::ChunkError(re_chunk::ChunkError::Malformed {
-            reason: "no start_time field found".to_owned(),
+            reason: "no {CATALOG_START_TIME_FIELD_NAME}} field found".to_owned(),
         }))?;
     let start_time = data
-        .downcast_array_ref::<arrow::array::Int64Array>()
+        .downcast_array_ref::<arrow::array::TimestampNanosecondArray>()
         .ok_or(StreamError::ChunkError(re_chunk::ChunkError::Malformed {
-            reason: format!("start_time must be an int64 array: {:?}", tc.schema_ref()),
+            reason: format!(
+                "{CATALOG_START_TIME_FIELD_NAME} must be a Timestamp array: {:?}",
+                tc.schema_ref()
+            ),
         }))?
         .value(0);
 
@@ -488,7 +495,7 @@ async fn stream_catalog_async(
             )))?;
 
         let recording_uri_arrays: Vec<ArrowArrayRef> = chunk
-            .iter_slices::<String>("id".into())
+            .iter_slices::<String>(CATALOG_ID_FIELD_NAME.into())
             .map(|id| {
                 let rec_id = &id[0]; // each component batch is of length 1 i.e. single 'id' value
 

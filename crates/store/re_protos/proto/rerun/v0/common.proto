@@ -92,10 +92,10 @@ message Query {
     // Only rows where this column contains non-null data be kept in the final dataset.
     ComponentColumnSelector filtered_is_not_null = 9;
 
-    /// The specific _columns_ to sample from the final view contents.
-    /// The order of the samples will be respected in the final result.
+    // The specific _columns_ to sample from the final view contents.
+    // The order of the samples will be respected in the final result.
     ///
-    /// If unspecified, it means - everything.
+    // If unspecified, it means - everything.
     ColumnSelection column_selection = 10;
 
     // Specifies how null values should be filled in the returned dataframe.
@@ -110,31 +110,37 @@ message ColumnDescriptor {
 }
 
 message TimeColumnDescriptor {
-    /// The timeline this column is associated with.
+    // The timeline this column is associated with.
     Timeline timeline = 1;
-    /// The Arrow datatype of the column.
+    // The Arrow datatype of the column.
+    ///
+    // Currently this is just the `Display` of the `arrow-rs` `DataType`.
+    // TODO(emilk): use arrow IPC instead.
     string datatype = 2;
 }
 
-/// Describes a data/component column, such as `Position3D`.
+// Describes a data/component column, such as `Position3D`.
 message ComponentColumnDescriptor {
-    /// The path of the entity.
+    // The path of the entity.
     EntityPath entity_path = 1;
-    /// Optional name of the `Archetype` associated with this data.
+    // Optional name of the `Archetype` associated with this data.
     optional string archetype_name = 2;
-    /// Optional name of the field within `Archetype` associated with this data.
+    // Optional name of the field within `Archetype` associated with this data.
     optional string archetype_field_name = 3;
-    /// Semantic name associated with this data.
+    // Semantic name associated with this data.
     string component_name = 4;
-    /// The Arrow datatype of the column.
+    // The Arrow datatype of the column.
+    ///
+    // Currently this is just the `Display` of the `arrow-rs` `DataType`.
+    // TODO(emilk): use arrow IPC instead.
     string datatype = 5;
-    /// Whether the column is a static column.
+    // Whether the column is a static column.
     bool is_static = 6;
-    /// Whether the column is a tombstone column.
+    // Whether the column is a tombstone column.
     bool is_tombstone = 7;
-    /// Whether the column is an indicator column.
+    // Whether the column is an indicator column.
     bool is_indicator = 8;
-    /// Whether the column is semantically empty.
+    // Whether the column is semantically empty.
     bool is_semantically_empty = 9;
 }
 
