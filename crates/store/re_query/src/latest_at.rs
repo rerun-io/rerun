@@ -4,7 +4,7 @@ use std::{
     sync::Arc,
 };
 
-use arrow2::array::Array as Arrow2Array;
+use arrow::array::ArrayRef as ArrowArrayRef;
 use nohash_hasher::IntMap;
 use parking_lot::RwLock;
 
@@ -321,17 +321,6 @@ impl LatestAtResults {
             .component_batch_raw(component_name)
     }
 
-    /// Returns the raw data for the specified component.
-    #[inline]
-    pub fn component_batch_raw_arrow2(
-        &self,
-        component_name: &ComponentName,
-    ) -> Option<Box<dyn Arrow2Array>> {
-        self.components
-            .get(component_name)
-            .and_then(|unit| unit.component_batch_raw_arrow2(component_name))
-    }
-
     /// Returns the deserialized data for the specified component.
     ///
     /// Logs at the specified `log_level` if the data cannot be deserialized.
@@ -372,7 +361,7 @@ impl LatestAtResults {
         log_level: re_log::Level,
         component_name: &ComponentName,
         instance_index: usize,
-    ) -> Option<Box<dyn Arrow2Array>> {
+    ) -> Option<ArrowArrayRef> {
         self.components.get(component_name).and_then(|unit| {
             self.ok_or_log_err(
                 log_level,
@@ -390,7 +379,7 @@ impl LatestAtResults {
         &self,
         component_name: &ComponentName,
         instance_index: usize,
-    ) -> Option<Box<dyn Arrow2Array>> {
+    ) -> Option<ArrowArrayRef> {
         self.component_instance_raw_with_log_level(
             re_log::Level::Error,
             component_name,
@@ -404,7 +393,7 @@ impl LatestAtResults {
         &self,
         component_name: &ComponentName,
         instance_index: usize,
-    ) -> Option<Box<dyn Arrow2Array>> {
+    ) -> Option<ArrowArrayRef> {
         self.components.get(component_name).and_then(|unit| {
             unit.component_instance_raw(component_name, instance_index)?
                 .ok()
@@ -458,7 +447,7 @@ impl LatestAtResults {
         &self,
         log_level: re_log::Level,
         component_name: &ComponentName,
-    ) -> Option<Box<dyn Arrow2Array>> {
+    ) -> Option<ArrowArrayRef> {
         self.components.get(component_name).and_then(|unit| {
             self.ok_or_log_err(
                 log_level,
@@ -472,10 +461,7 @@ impl LatestAtResults {
     ///
     /// Returns an error if the underlying batch is not of unit length.
     #[inline]
-    pub fn component_mono_raw(
-        &self,
-        component_name: &ComponentName,
-    ) -> Option<Box<dyn Arrow2Array>> {
+    pub fn component_mono_raw(&self, component_name: &ComponentName) -> Option<ArrowArrayRef> {
         self.component_mono_raw_with_log_level(re_log::Level::Error, component_name)
     }
 
@@ -486,7 +472,7 @@ impl LatestAtResults {
     pub fn component_mono_raw_quiet(
         &self,
         component_name: &ComponentName,
-    ) -> Option<Box<dyn Arrow2Array>> {
+    ) -> Option<ArrowArrayRef> {
         self.components
             .get(component_name)
             .and_then(|unit| unit.component_mono_raw(component_name)?.ok())

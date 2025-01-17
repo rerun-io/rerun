@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
 use anyhow::Context;
-use arrow2::array::PrimitiveArray as Arrow2PrimitiveArray;
+use arrow::array::UInt32Array as ArrowUInt32Array;
 use itertools::Itertools;
 
-use re_arrow_util::Arrow2ArrayDowncastRef as _;
+use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::{Chunk, RowId};
 use re_chunk_store::{ChunkStore, ChunkStoreHandle, LatestAtQuery};
 use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
@@ -75,16 +75,12 @@ fn main() -> anyhow::Result<()> {
         // data directly:
         let colors = colors
             .context("missing")?
-            .component_batch_raw_arrow2(&MyColor::name())
+            .component_batch_raw(&MyColor::name())
             .context("invalid")?;
         let colors = colors
-            .downcast_array2_ref::<Arrow2PrimitiveArray<u32>>()
+            .downcast_array_ref::<ArrowUInt32Array>()
             .context("invalid")?;
-        let colors = colors
-            .values()
-            .as_slice()
-            .iter()
-            .map(|&color| MyColor(color));
+        let colors = colors.values().iter().map(|&color| MyColor(color));
 
         // And finally apply your instance-level joining logic, if any:
         let color_default_fn = || MyColor(0xFF00FFFF);

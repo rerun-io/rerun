@@ -5605,8 +5605,6 @@ dependencies = [
  "hashbrown 0.14.5",
  "num-traits",
  "rustc_version",
- "serde",
- "serde_derive",
  "simdutf8",
 ]
 
@@ -5748,7 +5746,6 @@ dependencies = [
  "re_tracing",
  "re_types",
  "re_types_core",
- "serde_json",
  "similar-asserts",
  "thiserror 1.0.65",
  "tinyvec",
@@ -6237,6 +6234,7 @@ version = "0.22.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "anyhow",
+ "arrow",
  "backtrace",
  "bytemuck",
  "criterion",
@@ -7421,7 +7419,6 @@ dependencies = [
  "pyo3",
  "pyo3-build-config",
  "rand",
- "re_arrow2",
  "re_arrow_util",
  "re_build_info",
  "re_build_tools",

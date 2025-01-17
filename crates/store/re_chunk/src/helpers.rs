@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use arrow::array::ArrayRef;
-use arrow2::array::Array as Arrow2Array;
+use arrow::array::ArrayRef as ArrowArrayRef;
+use arrow2::array::Array as _;
 
 use re_log_types::{TimeInt, Timeline};
 use re_types_core::{Component, ComponentName};
@@ -21,26 +21,13 @@ impl Chunk {
         &self,
         component_name: &ComponentName,
         row_index: usize,
-    ) -> Option<ChunkResult<ArrayRef>> {
-        self.component_batch_raw_arrow2(component_name, row_index)
-            .map(|res| res.map(|array| array.into()))
-    }
-
-    /// Returns the raw data for the specified component.
-    ///
-    /// Returns an error if the row index is out of bounds.
-    #[inline]
-    fn component_batch_raw_arrow2(
-        &self,
-        component_name: &ComponentName,
-        row_index: usize,
-    ) -> Option<ChunkResult<Box<dyn Arrow2Array>>> {
+    ) -> Option<ChunkResult<ArrowArrayRef>> {
         self.get_first_component(component_name)
             .and_then(|list_array| {
                 if list_array.len() > row_index {
                     list_array
                         .is_valid(row_index)
-                        .then(|| Ok(list_array.value(row_index)))
+                        .then(|| Ok(list_array.value(row_index).into()))
                 } else {
                     Some(Err(crate::ChunkError::IndexOutOfBounds {
                         kind: "row".to_owned(),
@@ -78,7 +65,7 @@ impl Chunk {
         component_name: &ComponentName,
         row_index: usize,
         instance_index: usize,
-    ) -> Option<ChunkResult<ArrayRef>> {
+    ) -> Option<ChunkResult<ArrowArrayRef>> {
         let res = self.component_batch_raw(component_name, row_index)?;
 
         let array = match res {
@@ -131,7 +118,7 @@ impl Chunk {
         &self,
         component_name: &ComponentName,
         row_index: usize,
-    ) -> Option<ChunkResult<ArrayRef>> {
+    ) -> Option<ChunkResult<ArrowArrayRef>> {
         let res = self.component_batch_raw(component_name, row_index)?;
 
         let array = match res {
@@ -276,20 +263,11 @@ impl UnitChunkShared {
 
     /// Returns the raw data for the specified component.
     #[inline]
-    pub fn component_batch_raw(&self, component_name: &ComponentName) -> Option<ArrayRef> {
-        self.component_batch_raw_arrow2(component_name)
-            .map(|array| array.into())
-    }
-
-    /// Returns the raw data for the specified component.
-    #[inline]
-    pub fn component_batch_raw_arrow2(
-        &self,
-        component_name: &ComponentName,
-    ) -> Option<Box<dyn Arrow2Array>> {
+    pub fn component_batch_raw(&self, component_name: &ComponentName) -> Option<ArrowArrayRef> {
         debug_assert!(self.num_rows() == 1);
         self.get_first_component(component_name)
             .and_then(|list_array| list_array.is_valid(0).then(|| list_array.value(0)))
+            .map(|array| array.into())
     }
 
     /// Returns the deserialized data for the specified component.
@@ -311,10 +289,10 @@ impl UnitChunkShared {
         &self,
         component_name: &ComponentName,
         instance_index: usize,
-    ) -> Option<ChunkResult<Box<dyn Arrow2Array>>> {
-        let array = self.component_batch_raw_arrow2(component_name)?;
+    ) -> Option<ChunkResult<ArrowArrayRef>> {
+        let array = self.component_batch_raw(component_name)?;
         if array.len() > instance_index {
-            Some(Ok(array.sliced(instance_index, 1)))
+            Some(Ok(array.slice(instance_index, 1)))
         } else {
             Some(Err(crate::ChunkError::IndexOutOfBounds {
                 kind: "instance".to_owned(),
@@ -335,7 +313,7 @@ impl UnitChunkShared {
         let res = self.component_instance_raw(&C::name(), instance_index)?;
 
         let array = match res {
-            Ok(array) => ArrayRef::from(array),
+            Ok(array) => array,
             Err(err) => return Some(Err(err)),
         };
 
@@ -354,10 +332,10 @@ impl UnitChunkShared {
     pub fn component_mono_raw(
         &self,
         component_name: &ComponentName,
-    ) -> Option<ChunkResult<Box<dyn Arrow2Array>>> {
-        let array = self.component_batch_raw_arrow2(component_name)?;
+    ) -> Option<ChunkResult<ArrowArrayRef>> {
+        let array = self.component_batch_raw(component_name)?;
         if array.len() == 1 {
-            Some(Ok(array.sliced(0, 1)))
+            Some(Ok(array.slice(0, 1)))
         } else {
             Some(Err(crate::ChunkError::IndexOutOfBounds {
                 kind: "mono".to_owned(),
@@ -375,7 +353,7 @@ impl UnitChunkShared {
         let res = self.component_mono_raw(&C::name())?;
 
         let array = match res {
-            Ok(array) => ArrayRef::from(array),
+            Ok(array) => array,
             Err(err) => return Some(Err(err)),
         };
 
