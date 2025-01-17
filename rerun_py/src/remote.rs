@@ -130,7 +130,10 @@ impl PyStorageNodeClient {
                     ));
                 }
 
-                re_grpc_client::store_info_from_catalog_chunk(&resp[0], id)
+                re_grpc_client::store_info_from_catalog_chunk(
+                    &re_chunk::TransportChunk::from(resp[0].clone()),
+                    id,
+                )
             })
             .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
@@ -173,7 +176,7 @@ impl PyStorageNodeClient {
                 .unwrap_or_else(|| ArrowSchema::empty().into());
 
             Ok(RecordBatchIterator::new(
-                batches.into_iter().map(|tc| Ok(tc.into())),
+                batches.into_iter().map(Ok),
                 schema,
             ))
         });
@@ -234,10 +237,7 @@ impl PyStorageNodeClient {
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
             let record_batches: Vec<Result<RecordBatch, arrow::error::ArrowError>> =
-                transport_chunks
-                    .into_iter()
-                    .map(|tc| Ok(tc.into()))
-                    .collect();
+                transport_chunks.into_iter().map(Ok).collect();
 
             // TODO(jleibs): surfacing this schema is awkward. This should be more explicit in
             // the gRPC APIs somehow.
@@ -346,9 +346,7 @@ impl PyStorageNodeClient {
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
             let recording_id = metadata
-                .fields_and_columns()
-                .find(|(field, _data)| field.name() == "rerun_recording_id")
-                .map(|(_field, data)| data)
+                .column_by_name("rerun_recording_id")
                 .ok_or(PyRuntimeError::new_err("No rerun_recording_id"))?
                 .downcast_array_ref::<arrow::array::StringArray>()
                 .ok_or(PyRuntimeError::new_err("Recording Id is not a string"))?
@@ -480,13 +478,13 @@ impl PyStorageNodeClient {
 
             while let Some(result) = resp.next().await {
                 let response = result.map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
-                let tc = match response.decode() {
+                let batch = match response.decode() {
                     Ok(tc) => tc,
                     Err(err) => {
                         return Err(PyRuntimeError::new_err(err.to_string()));
                     }
                 };
-                let chunk = Chunk::from_transport(&tc)
+                let chunk = Chunk::from_record_batch(batch)
                     .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
                 store

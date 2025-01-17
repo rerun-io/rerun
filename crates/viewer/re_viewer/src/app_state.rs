@@ -529,7 +529,7 @@ impl AppState {
         drag_and_drop_manager.payload_cursor_ui(ctx.egui_ctx);
 
         // Process deferred layout operations and apply updates back to blueprint:
-        viewport_ui.save_to_blueprint_store(&ctx, view_class_registry);
+        viewport_ui.save_to_blueprint_store(&ctx);
 
         if WATERMARK {
             ui.ctx().paint_watermark();

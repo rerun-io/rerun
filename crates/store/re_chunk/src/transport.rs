@@ -356,16 +356,6 @@ impl TransportChunk {
         })
     }
 
-    #[inline]
-    pub fn fields_and_columns(&self) -> impl Iterator<Item = (&ArrowField, &ArrowArrayRef)> + '_ {
-        self.fields().iter().enumerate().filter_map(|(i, field)| {
-            self.batch
-                .columns()
-                .get(i)
-                .map(|column| (field.as_ref(), column))
-        })
-    }
-
     /// Iterates all control columns present in this chunk.
     #[inline]
     pub fn controls(&self) -> impl Iterator<Item = (&ArrowField, &ArrowArrayRef)> {
