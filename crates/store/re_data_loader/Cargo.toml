@@ -36,9 +36,9 @@ re_types = { workspace = true, features = ["image", "video"] }
 ahash.workspace = true
 anyhow.workspace = true
 arrow.workspace = true
-arrow2.workspace = true
 crossbeam.workspace = true
 image.workspace = true
+itertools.workspace = true
 notify.workspace = true
 once_cell.workspace = true
 parking_lot.workspace = true
