@@ -9,14 +9,12 @@ use re_types::{
     Archetype, Component as _, ComponentNameSet,
 };
 use re_view::DataResultQuery as _;
-use re_viewer_context::{
-    DataResultNode, DataResultTree, IdentifiedViewSystem, ViewContext, ViewContextSystem,
-};
+use re_viewer_context::{DataResultTree, IdentifiedViewSystem, ViewContext, ViewContextSystem};
 use vec1::smallvec_v1::SmallVec1;
 
 use crate::{
     transform_cache::{
-        CachedTransformsPerTimeline, ResolvedPinholeProjection, TransformCacheStoreSubscriber,
+        CachedTransformsForTimeline, ResolvedPinholeProjection, TransformCacheStoreSubscriber,
     },
     visualizers::image_view_coordinates,
 };
@@ -203,18 +201,7 @@ impl ViewContextSystem for TransformTreeContext {
         let time_query = ctx.current_query();
 
         TransformCacheStoreSubscriber::access(&ctx.recording().store_id(), |cache| {
-            let Some(transforms_per_timeline) = cache.transforms_per_timeline(query.timeline)
-            else {
-                // No transforms on this timeline at all. In other words, everything is identity!
-                query_result.tree.visit(&mut |node: &DataResultNode| {
-                    self.transform_per_entity.insert(
-                        node.data_result.entity_path.hash(),
-                        TransformInfo::default(),
-                    );
-                    true
-                });
-                return;
-            };
+            let transforms = cache.transforms_for_timeline(query.timeline);
 
             // Child transforms of this space
             {
@@ -227,7 +214,7 @@ impl ViewContextSystem for TransformTreeContext {
                     &time_query,
                     // Ignore potential pinhole camera at the root of the view, since it is regarded as being "above" this root.
                     TransformInfo::default(),
-                    transforms_per_timeline,
+                    transforms,
                 );
             }
 
@@ -237,7 +224,7 @@ impl ViewContextSystem for TransformTreeContext {
                 data_result_tree,
                 current_tree,
                 &time_query,
-                transforms_per_timeline,
+                transforms,
             );
         }); // Note that this can return None if no event has happened for this timeline yet.
     }
@@ -255,7 +242,7 @@ impl TransformTreeContext {
         data_result_tree: &DataResultTree,
         mut current_tree: &'a EntityTree,
         time_query: &LatestAtQuery,
-        transforms_per_timeline: &CachedTransformsPerTimeline,
+        transforms: &CachedTransformsForTimeline,
     ) {
         re_tracing::profile_function!();
 
@@ -280,7 +267,7 @@ impl TransformTreeContext {
                 // and the fact that there is no meaningful image plane distance for 3D->2D views.
                 |_| 500.0,
                 &mut None, // Don't care about pinhole encounters.
-                transforms_per_timeline,
+                transforms,
             );
             let new_transform = transform_info_for_upward_propagation(
                 reference_from_ancestor,
@@ -296,7 +283,7 @@ impl TransformTreeContext {
                 parent_tree,
                 time_query,
                 new_transform,
-                transforms_per_timeline,
+                transforms,
             );
 
             current_tree = parent_tree;
@@ -311,7 +298,7 @@ impl TransformTreeContext {
         subtree: &EntityTree,
         query: &LatestAtQuery,
         transform: TransformInfo,
-        transforms_per_timeline: &CachedTransformsPerTimeline,
+        transforms_for_timeline: &CachedTransformsForTimeline,
     ) {
         let twod_in_threed_info = transform.twod_in_threed_info.clone();
         let reference_from_parent = transform.reference_from_entity;
@@ -339,7 +326,7 @@ impl TransformTreeContext {
                 query,
                 lookup_image_plane,
                 &mut encountered_pinhole,
-                transforms_per_timeline,
+                transforms_for_timeline,
             );
             let new_transform = transform_info_for_downward_propagation(
                 child_path,
@@ -354,7 +341,7 @@ impl TransformTreeContext {
                 child_tree,
                 query,
                 new_transform,
-                transforms_per_timeline,
+                transforms_for_timeline,
             );
         }
     }
@@ -605,11 +592,11 @@ fn transforms_at<'a>(
     query: &LatestAtQuery,
     pinhole_image_plane_distance: impl Fn(&EntityPath) -> f32,
     encountered_pinhole: &mut Option<EntityPath>,
-    transforms_per_timeline: &'a CachedTransformsPerTimeline,
+    transforms_for_timeline: &'a CachedTransformsForTimeline,
 ) -> TransformsAtEntity<'a> {
     // This is called very frequently, don't put a profile scope here.
 
-    let Some(entity_transforms) = transforms_per_timeline.entity_transforms(entity_path.hash())
+    let Some(entity_transforms) = transforms_for_timeline.entity_transforms(entity_path.hash())
     else {
         return TransformsAtEntity::default();
     };
