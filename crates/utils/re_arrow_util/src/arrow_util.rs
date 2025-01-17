@@ -38,6 +38,13 @@ pub fn into_arrow_ref(array: impl Array + 'static) -> ArrayRef {
     std::sync::Arc::new(array)
 }
 
+/// Returns an iterator with the lengths of the offsets
+pub fn offsets_lengths(
+    offsets: &arrow::buffer::OffsetBuffer<i32>,
+) -> impl Iterator<Item = usize> + '_ {
+    offsets.windows(2).map(|w| (w[1] - w[0]) as usize)
+}
+
 /// Returns true if the given `list_array` is semantically empty.
 ///
 /// Semantic emptiness is defined as either one of these:
