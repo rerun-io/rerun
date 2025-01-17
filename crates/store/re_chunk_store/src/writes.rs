@@ -1,7 +1,10 @@
 use std::{collections::BTreeSet, sync::Arc};
 
 use ahash::HashMap;
-use arrow2::array::{Array as _, ListArray as Arrow2ListArray};
+use arrow::{
+    array::{Array as _, ListArray as ArrowListArray},
+    datatypes::{DataType as ArrowDatatype, Field as ArrowField},
+};
 use itertools::Itertools as _;
 
 use re_byte_size::SizeBytes;
@@ -87,7 +90,7 @@ impl ChunkStore {
 
             for (component_desc, list_array) in chunk.components().iter_flattened() {
                 let is_empty = list_array
-                    .validity()
+                    .nulls()
                     .is_some_and(|validity| validity.is_empty());
                 if is_empty {
                     continue;
@@ -372,7 +375,9 @@ impl ChunkStore {
         for (component_descr, list_array) in chunk.components().iter_flattened() {
             self.type_registry.insert(
                 component_descr.component_name,
-                Arrow2ListArray::<i32>::get_child_type(list_array.data_type()).clone(),
+                ArrowDatatype::List(
+                    ArrowField::new("item", list_array.data_type().clone(), true).into(),
+                ),
             );
 
             let column_metadata_state = self
@@ -387,7 +392,7 @@ impl ChunkStore {
                 });
             {
                 let is_semantically_empty =
-                    re_arrow_util::arrow2_util::is_list_array_semantically_empty(list_array);
+                    re_arrow_util::arrow_util::is_list_array_semantically_empty(list_array);
 
                 column_metadata_state.is_semantically_empty &= is_semantically_empty;
             }

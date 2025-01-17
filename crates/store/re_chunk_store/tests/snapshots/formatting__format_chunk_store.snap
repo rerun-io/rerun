@@ -1,15 +1,13 @@
 ---
 source: crates/store/re_chunk_store/tests/formatting.rs
-assertion_line: 45
 expression: "format!(\"{:200}\", store)"
-snapshot_kind: text
 ---
 ChunkStore {
     id: test_id
     config: ChunkStoreConfig { enable_changelog: true, chunk_max_bytes: 393216, chunk_max_rows: 4096, chunk_max_rows_if_unsorted: 1024 }
     stats: {
         num_chunks: 1
-        total_size_bytes: 1.3 KiB
+        total_size_bytes: 1.8 KiB
         num_rows: 1
         num_events: 2
     }
@@ -17,7 +15,7 @@ ChunkStore {
         ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
         │ CHUNK METADATA:                                                                                                              │
         │ * entity_path: "/this/that"                                                                                                  │
-        │ * heap_size_bytes: "1134"                                                                                                    │
+        │ * heap_size_bytes: "1676"                                                                                                    │
         │ * id: "661EFDF2E3B19F7C045F15"                                                                                               │
         │ * is_sorted: ""                                                                                                              │
         ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤

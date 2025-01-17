@@ -3,7 +3,6 @@ use std::sync::atomic::AtomicU64;
 use std::sync::Arc;
 
 use arrow::datatypes::DataType as ArrowDataType;
-use arrow2::datatypes::DataType as Arrow2DataType;
 use nohash_hasher::IntMap;
 
 use re_chunk::{Chunk, ChunkId, RowId};
@@ -408,7 +407,7 @@ pub struct ChunkStore {
     //
     // TODO(cmc): this would become fairly problematic in a world where each chunk can use a
     // different datatype for a given component.
-    pub(crate) type_registry: IntMap<ComponentName, Arrow2DataType>,
+    pub(crate) type_registry: IntMap<ComponentName, ArrowDataType>,
 
     pub(crate) per_column_metadata:
         IntMap<EntityPath, IntMap<ComponentName, IntMap<ComponentDescriptor, ColumnMetadataState>>>,

@@ -1,5 +1,5 @@
 //! The Rerun chunk store, implemented on top of [Apache Arrow](https://arrow.apache.org/)
-//! using the [`arrow2`] crate.
+//! using the [`arrow`] crate.
 //!
 //! This crate is an in-memory time series database for Rerun log data.
 //! It is indexed by Entity path, component, timeline, and time.
@@ -57,7 +57,6 @@ pub use re_log_types::{ResolvedTimeRange, TimeInt, TimeType, Timeline};
 
 pub mod external {
     pub use arrow;
-    pub use arrow2;
 
     pub use re_chunk;
 }
