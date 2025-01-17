@@ -400,7 +400,7 @@ where
         return Either::Left(std::iter::empty());
     };
 
-    let size = fixed_size_list_array.len();
+    let size = fixed_size_list_array.value_length() as usize;
     let values = values.values().as_ref();
 
     // NOTE: No need for validity checks here, `component_offsets` already takes care of that.
@@ -577,7 +577,7 @@ where
         return Either::Left(std::iter::empty());
     };
 
-    let size = fixed_size_list_array.len();
+    let size = fixed_size_list_array.value_length() as usize;
     let values = values.values();
 
     // NOTE: No need for validity checks here, `iter_offsets` already takes care of that.
