@@ -282,12 +282,11 @@ pub fn store_info_from_catalog_chunk(
 ) -> Result<StoreInfo, StreamError> {
     let store_id = StoreId::from_string(StoreKind::Recording, recording_id.to_owned());
 
-    println!("TC: {tc:?}");
     let (_field, data) = tc
         .components()
         .find(|(f, _)| f.name() == CATALOG_APP_ID_FIELD_NAME)
         .ok_or(StreamError::ChunkError(re_chunk::ChunkError::Malformed {
-            reason: "no {APP_ID_FIELD_NAME} field found".to_owned(),
+            reason: "no {CATALOG_APP_ID_FIELD_NAME} field found".to_owned(),
         }))?;
     let app_id = data
         .downcast_array_ref::<arrow::array::StringArray>()
@@ -303,7 +302,7 @@ pub fn store_info_from_catalog_chunk(
         .components()
         .find(|(f, _)| f.name() == CATALOG_START_TIME_FIELD_NAME)
         .ok_or(StreamError::ChunkError(re_chunk::ChunkError::Malformed {
-            reason: "no {START_TIME_FIELD}} field found".to_owned(),
+            reason: "no {CATALOG_START_TIME_FIELD_NAME}} field found".to_owned(),
         }))?;
     let start_time = data
         .downcast_array_ref::<arrow::array::TimestampNanosecondArray>()
