@@ -86,7 +86,7 @@ message StoreInfo {
     // Unique ID of the recording.
     rerun.common.v0.StoreId store_id = 2;
 
-    /// True if the recording is one of the official Rerun examples.
+    // True if the recording is one of the official Rerun examples.
     bool is_official_example = 3;
 
     // When the recording started.

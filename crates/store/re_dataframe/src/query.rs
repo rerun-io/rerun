@@ -7,9 +7,12 @@ use std::{
 };
 
 use arrow::{
-    array::RecordBatch as ArrowRecordBatch, buffer::ScalarBuffer as ArrowScalarBuffer,
-    datatypes::Fields as ArrowFields, datatypes::Schema as ArrowSchema,
-    datatypes::SchemaRef as ArrowSchemaRef,
+    array::{ArrayRef as ArrowArrayRef, RecordBatch as ArrowRecordBatch},
+    buffer::ScalarBuffer as ArrowScalarBuffer,
+    datatypes::{
+        DataType as ArrowDataType, Fields as ArrowFields, Schema as ArrowSchema,
+        SchemaRef as ArrowSchemaRef,
+    },
 };
 use arrow2::{
     array::{
@@ -242,13 +245,10 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                 if let Some(clear_chunks) = clear_chunks.get(&descr.entity_path) {
                     chunks.extend(clear_chunks.iter().map(|chunk| {
                         let child_datatype = match &descr.store_datatype {
-                            arrow2::datatypes::DataType::List(field)
-                            | arrow2::datatypes::DataType::LargeList(field) => {
+                            ArrowDataType::List(field) | ArrowDataType::LargeList(field) => {
                                 field.data_type().clone()
                             }
-                            arrow2::datatypes::DataType::Dictionary(_, datatype, _) => {
-                                (**datatype).clone()
-                            }
+                            ArrowDataType::Dictionary(_, datatype) => (**datatype).clone(),
                             datatype => datatype.clone(),
                         };
 
@@ -256,14 +256,14 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                         // Only way this could fail is if the number of rows did not match.
                         #[allow(clippy::unwrap_used)]
                         chunk
-                            .add_component_arrow2(
+                            .add_component(
                                 re_types_core::ComponentDescriptor {
                                     component_name: descr.component_name,
                                     archetype_name: descr.archetype_name,
                                     archetype_field_name: descr.archetype_field_name,
                                 },
-                                re_arrow_util::arrow2_util::new_list_array_of_empties(
-                                    child_datatype,
+                                re_arrow_util::arrow_util::new_list_array_of_empties(
+                                    &child_datatype,
                                     chunk.num_rows(),
                                 ),
                             )
@@ -429,7 +429,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                                         component_name: ComponentName::from(
                                             selected_component_name.clone(),
                                         ),
-                                        store_datatype: arrow2::datatypes::DataType::Null,
+                                        store_datatype: ArrowDataType::Null,
                                         is_static: false,
                                         is_indicator: false,
                                         is_tombstone: false,
@@ -794,39 +794,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     #[inline]
     pub fn next_row(&self) -> Option<Vec<ArrayRef>> {
         self.engine
-            .with(|store, cache| self._next_row_arrow2(store, cache))
-            .map(|vec| vec.into_iter().map(|a| a.into()).collect())
-    }
-
-    /// Returns the next row's worth of data.
-    ///
-    /// The returned vector of Arrow arrays strictly follows the schema specified by [`Self::schema`].
-    /// Columns that do not yield any data will still be present in the results, filled with null values.
-    ///
-    /// Each cell in the result corresponds to the latest _locally_ known value at that particular point in
-    /// the index, for each respective `ColumnDescriptor`.
-    /// See [`QueryExpression::sparse_fill_strategy`] to go beyond local resolution.
-    ///
-    /// Example:
-    /// ```ignore
-    /// while let Some(row) = query_handle.next_row() {
-    ///     // …
-    /// }
-    /// ```
-    ///
-    /// ## Pagination
-    ///
-    /// Use [`Self::seek_to_row`]:
-    /// ```ignore
-    /// query_handle.seek_to_row(42);
-    /// for row in query_handle.into_iter().take(len) {
-    ///     // …
-    /// }
-    /// ```
-    #[inline]
-    fn next_row_arrow2(&self) -> Option<Vec<Box<dyn Arrow2Array>>> {
-        self.engine
-            .with(|store, cache| self._next_row_arrow2(store, cache))
+            .with(|store, cache| self._next_row(store, cache))
     }
 
     /// Asynchronously returns the next row's worth of data.
@@ -845,15 +813,13 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     /// }
     /// ```
     #[cfg(not(target_arch = "wasm32"))]
-    pub fn next_row_async_arrow2(
-        &self,
-    ) -> impl std::future::Future<Output = Option<Vec<Box<dyn Arrow2Array>>>>
+    pub fn next_row_async(&self) -> impl std::future::Future<Output = Option<Vec<ArrayRef>>>
     where
         E: 'static + Send + Clone,
     {
         let res: Option<Option<_>> = self
             .engine
-            .try_with(|store, cache| self._next_row_arrow2(store, cache));
+            .try_with(|store, cache| self._next_row(store, cache));
 
         let engine = self.engine.clone();
         std::future::poll_fn(move |cx| {
@@ -883,11 +849,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         })
     }
 
-    pub fn _next_row_arrow2(
-        &self,
-        store: &ChunkStore,
-        cache: &QueryCache,
-    ) -> Option<Vec<Box<dyn Arrow2Array>>> {
+    pub fn _next_row(&self, store: &ChunkStore, cache: &QueryCache) -> Option<Vec<ArrowArrayRef>> {
         re_tracing::profile_function!();
 
         /// Temporary state used to resolve the streaming join for the current iteration.
@@ -1240,10 +1202,8 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             .map(|(view_idx, column)| match column {
                 ColumnDescriptor::Time(descr) => {
                     max_value_per_index.get(&descr.timeline()).map_or_else(
-                        || arrow2::array::new_null_array(column.arrow2_datatype(), 1),
-                        |(_time, time_sliced)| {
-                            descr.typ().make_arrow_array(time_sliced.clone()).into()
-                        },
+                        || arrow::array::new_null_array(&column.arrow_datatype(), 1),
+                        |(_time, time_sliced)| descr.typ().make_arrow_array(time_sliced.clone()),
                     )
                 }
 
@@ -1251,7 +1211,8 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                     .get(*view_idx)
                     .cloned()
                     .flatten()
-                    .unwrap_or_else(|| arrow2::array::new_null_array(column.arrow2_datatype(), 1)),
+                    .map(|a| a.into())
+                    .unwrap_or_else(|| arrow::array::new_null_array(&column.arrow_datatype(), 1)),
             })
             .collect_vec();
 
@@ -1278,28 +1239,27 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     where
         E: 'static + Send + Clone,
     {
-        let row = self.next_row_async_arrow2().await?;
+        let row = self.next_row_async().await?;
 
         // If we managed to get a row, then the state must be initialized already.
         #[allow(clippy::unwrap_used)]
         let schema = self.state.get().unwrap().arrow_schema.clone();
 
-        // TODO(#3741): remove the collect
-        ArrowRecordBatch::try_new(schema, row.into_iter().map(|a| a.into()).collect()).ok()
+        ArrowRecordBatch::try_new(schema, row).ok()
     }
 }
 
 impl<E: StorageEngineLike> QueryHandle<E> {
     /// Returns an iterator backed by [`Self::next_row`].
     #[allow(clippy::should_implement_trait)] // we need an anonymous closure, this won't work
-    pub fn iter(&self) -> impl Iterator<Item = Vec<Box<dyn Arrow2Array>>> + '_ {
-        std::iter::from_fn(move || self.next_row_arrow2())
+    pub fn iter(&self) -> impl Iterator<Item = Vec<ArrowArrayRef>> + '_ {
+        std::iter::from_fn(move || self.next_row())
     }
 
     /// Returns an iterator backed by [`Self::next_row`].
     #[allow(clippy::should_implement_trait)] // we need an anonymous closure, this won't work
-    pub fn into_iter(self) -> impl Iterator<Item = Vec<Box<dyn Arrow2Array>>> {
-        std::iter::from_fn(move || self.next_row_arrow2())
+    pub fn into_iter(self) -> impl Iterator<Item = Vec<ArrowArrayRef>> {
+        std::iter::from_fn(move || self.next_row())
     }
 
     /// Returns an iterator backed by [`Self::next_row_batch`].
