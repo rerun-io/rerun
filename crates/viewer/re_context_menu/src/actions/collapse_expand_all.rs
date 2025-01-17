@@ -1,7 +1,15 @@
+//! Context menu action to expand and collapse various trees in the UI.
+//!
+//! Note: the actual collapse/expand logic is in [`crate::collapse_expand`].
+
 use re_entity_db::InstancePath;
 use re_log_types::StoreKind;
-use re_viewer_context::{CollapseScope, ContainerId, Contents, Item, ItemContext, ViewId};
+use re_viewer_context::{CollapseScope, ContainerId, Item, ItemContext, ViewId};
 
+use crate::collapse_expand::{
+    collapse_expand_container, collapse_expand_data_result, collapse_expand_instance_path,
+    collapse_expand_view,
+};
 use crate::{ContextMenuAction, ContextMenuContext};
 
 /// Collapse or expand all items in the selection.
@@ -52,25 +60,19 @@ impl ContextMenuAction for CollapseExpandAllAction {
     fn process_container(&self, ctx: &ContextMenuContext<'_>, container_id: &ContainerId) {
         let scope = blueprint_collapse_scope(ctx, &Item::Container(*container_id));
 
-        ctx.viewport_blueprint
-            .visit_contents_in_container(container_id, &mut |contents, _| {
-                match contents {
-                    Contents::Container(container_id) => scope
-                        .container(*container_id)
-                        .set_open(&ctx.egui_context, self.open()),
-
-                    // IMPORTANT: don't call process_view() here, or the scope information would be lost
-                    Contents::View(view_id) => self.process_view_impl(ctx, view_id, scope),
-                }
-
-                true
-            });
+        collapse_expand_container(
+            ctx.viewer_context,
+            ctx.viewport_blueprint,
+            container_id,
+            scope,
+            self.open(),
+        );
     }
 
     fn process_view(&self, ctx: &ContextMenuContext<'_>, view_id: &ViewId) {
         let scope = blueprint_collapse_scope(ctx, &Item::View(*view_id));
 
-        self.process_view_impl(ctx, view_id, scope);
+        collapse_expand_view(ctx.viewer_context, view_id, scope, self.open());
     }
 
     fn process_data_result(
@@ -82,7 +84,13 @@ impl ContextMenuAction for CollapseExpandAllAction {
         let scope =
             blueprint_collapse_scope(ctx, &Item::DataResult(*view_id, instance_path.clone()));
 
-        self.process_data_result_impl(ctx, view_id, instance_path, scope);
+        collapse_expand_data_result(
+            ctx.viewer_context,
+            view_id,
+            instance_path,
+            scope,
+            self.open(),
+        );
     }
 
     fn process_instance_path(&self, ctx: &ContextMenuContext<'_>, instance_path: &InstancePath) {
@@ -128,15 +136,7 @@ impl ContextMenuAction for CollapseExpandAllAction {
             | None => (ctx.viewer_context.recording(), CollapseScope::StreamsTree),
         };
 
-        let Some(subtree) = db.tree().subtree(&instance_path.entity_path) else {
-            return;
-        };
-
-        subtree.visit_children_recursively(|entity_path| {
-            scope
-                .entity(entity_path.clone())
-                .set_open(&ctx.egui_context, self.open());
-        });
+        collapse_expand_instance_path(&ctx.viewer_context, db, instance_path, scope, self.open());
     }
 }
 
@@ -146,53 +146,6 @@ impl CollapseExpandAllAction {
             Self::CollapseAll => false,
             Self::ExpandAll => true,
         }
-    }
-
-    fn process_view_impl(
-        &self,
-        ctx: &ContextMenuContext<'_>,
-        view_id: &ViewId,
-        scope: CollapseScope,
-    ) {
-        scope
-            .view(*view_id)
-            .set_open(&ctx.egui_context, self.open());
-
-        let query_result = ctx.viewer_context.lookup_query_result(*view_id);
-        let result_tree = &query_result.tree;
-        if let Some(root_node) = result_tree.root_node() {
-            self.process_data_result_impl(
-                ctx,
-                view_id,
-                &InstancePath::entity_all(root_node.data_result.entity_path.clone()),
-                scope,
-            );
-        }
-    }
-
-    fn process_data_result_impl(
-        &self,
-        ctx: &ContextMenuContext<'_>,
-        view_id: &ViewId,
-        instance_path: &InstancePath,
-        scope: CollapseScope,
-    ) {
-        //TODO(ab): here we should in principle walk the DataResult tree instead of the entity tree
-        // but the current API isn't super ergonomic.
-        let Some(subtree) = ctx
-            .viewer_context
-            .recording()
-            .tree()
-            .subtree(&instance_path.entity_path)
-        else {
-            return;
-        };
-
-        subtree.visit_children_recursively(|entity_path| {
-            scope
-                .data_result(*view_id, entity_path.clone())
-                .set_open(&ctx.egui_context, self.open());
-        });
     }
 }
 
