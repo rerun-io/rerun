@@ -134,11 +134,18 @@ def connect_tcp(
         recording=recording.to_native() if recording is not None else None,
     )
 
+
+_is_connect_grpc_available = hasattr(bindings, "connect_grpc")
+
+
 def connect_grpc(
     addr: str | None = None,
     *,
     recording: RecordingStream | None = None,
 ) -> None:
+    if not _is_connect_grpc_available:
+        raise NotImplementedError("`rerun_sdk` was compiled without `remote` feature, connect_grpc is not available")
+
     if not is_recording_enabled(recording):
         logging.warning("Rerun is disabled - connect() call ignored")
         return
@@ -153,6 +160,7 @@ def connect_grpc(
         addr=addr,
         recording=recording.to_native() if recording is not None else None,
     )
+
 
 def save(
     path: str | pathlib.Path, default_blueprint: BlueprintLike | None = None, recording: RecordingStream | None = None
