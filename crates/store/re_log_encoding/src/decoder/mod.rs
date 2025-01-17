@@ -179,7 +179,6 @@ impl<R: std::io::Read> Decoder<R> {
     /// See also:
     /// * [`Decoder::new_concatenated`]
     pub fn new(version_policy: VersionPolicy, mut read: R) -> Result<Self, DecodeError> {
-        println!("DECODER NEW");
         re_tracing::profile_function!();
 
         let mut data = [0_u8; FileHeader::SIZE];
@@ -217,7 +216,6 @@ impl<R: std::io::Read> Decoder<R> {
         version_policy: VersionPolicy,
         mut read: std::io::BufReader<R>,
     ) -> Result<Self, DecodeError> {
-        println!("STUPID LOG WORKS");
         re_tracing::profile_function!();
 
         let mut data = [0_u8; FileHeader::SIZE];
@@ -279,7 +277,6 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
         re_tracing::profile_function!();
 
         if self.peek_file_header() {
-            println!("CONCAT");
             // We've found another file header in the middle of the stream, it's time to switch
             // gears and start over on this new file.
 
@@ -386,7 +383,6 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
                 re_log::debug!(
                     "Reached end of stream, but it seems we have a concatenated file, continuing"
                 );
-                println!("CONCAT STREAM");
                 return self.next();
             }
 
@@ -533,8 +529,6 @@ mod tests {
         ];
 
         for options in options {
-            println!("{options:?}");
-
             let mut data = vec![];
 
             // write "2 files" i.e. 2 streams that end with end-of-stream marker
