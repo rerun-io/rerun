@@ -4,12 +4,14 @@
 #pragma once
 
 #include "../collection.hpp"
+#include "../compiler_utils.hpp"
 #include "../component_batch.hpp"
 #include "../components/annotation_context.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -64,7 +66,7 @@ namespace rerun::archetypes {
     /// ```
     struct AnnotationContext {
         /// List of class descriptions, mapping class indices to class names, colors etc.
-        rerun::components::AnnotationContext context;
+        std::optional<ComponentBatch> context;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -75,6 +77,12 @@ namespace rerun::archetypes {
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.AnnotationContext";
 
+        /// `ComponentDescriptor` for the `context` field.
+        static constexpr auto Descriptor_context = ComponentDescriptor(
+            ArchetypeName, "context",
+            Loggable<rerun::components::AnnotationContext>::Descriptor.component_name
+        );
+
       public:
         AnnotationContext() = default;
         AnnotationContext(AnnotationContext&& other) = default;
@@ -83,7 +91,23 @@ namespace rerun::archetypes {
         AnnotationContext& operator=(AnnotationContext&& other) = default;
 
         explicit AnnotationContext(rerun::components::AnnotationContext _context)
-            : context(std::move(_context)) {}
+            : context(ComponentBatch::from_loggable(std::move(_context), Descriptor_context)
+                          .value_or_throw()) {}
+
+        /// Update only some specific fields of a `AnnotationContext`.
+        static AnnotationContext update_fields() {
+            return AnnotationContext();
+        }
+
+        /// Clear all the fields of a `AnnotationContext`.
+        static AnnotationContext clear_fields();
+
+        /// List of class descriptions, mapping class indices to class names, colors etc.
+        AnnotationContext with_context(const rerun::components::AnnotationContext& _context) && {
+            context = ComponentBatch::from_loggable(_context, Descriptor_context).value_or_throw();
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
     };
 
 } // namespace rerun::archetypes
