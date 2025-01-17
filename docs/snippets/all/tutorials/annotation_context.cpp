@@ -1,7 +1,5 @@
 #include <rerun.hpp>
 
-// Hi Antoine!
-
 int main() {
     const auto rec = rerun::RecordingStream("rerun_example_annotation_context_connections");
     rec.spawn().exit_on_failure();
