@@ -134,7 +134,6 @@
 ]
 "tutorials/any_values" = [ # Not yet implemented
   "cpp",
-  "rust",
 ]
 "tutorials/custom-application-id" = [ # Not a complete examples
   "cpp",
@@ -151,7 +150,9 @@
   "rust",
   "py",
 ]
-"tutorials/extra_values" = ["cpp", "rust"] # Missing examples
+"tutorials/extra_values" = [ # Missing examples
+  "cpp",
+]
 "tutorials/log-file" = [ # Not a complete examples
   "cpp",
   "rust",
