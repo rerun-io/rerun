@@ -373,13 +373,21 @@ pub mod grpc {
     use super::LogSink;
     use re_log_types::LogMsg;
 
+    /// Stream log messages to an in-memory storage node.
     pub struct GrpcSink {
         client: re_grpc_client::message_proxy::Client,
     }
 
     impl GrpcSink {
+        /// Connect to the in-memory storage node over HTTP.
+        ///
+        /// ### Example
+        ///
+        /// ```no_run
+        /// GrpcSink::new("http://127.0.0.1:9434");
+        /// ```
         #[inline]
-        pub fn new(addr: String) -> Self {
+        pub fn new(addr: impl Into<String>) -> Self {
             Self {
                 client: re_grpc_client::message_proxy::Client::new(addr, Default::default()),
             }
