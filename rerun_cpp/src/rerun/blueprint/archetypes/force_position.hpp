@@ -23,13 +23,13 @@ namespace rerun::blueprint::archetypes {
         /// Whether the position force is enabled.
         ///
         /// The position force pulls nodes towards a specific position, similar to gravity.
-        std::optional<rerun::blueprint::components::Enabled> enabled;
+        std::optional<ComponentBatch> enabled;
 
         /// The strength of the force.
-        std::optional<rerun::blueprint::components::ForceStrength> strength;
+        std::optional<ComponentBatch> strength;
 
         /// The position where the nodes should be pulled towards.
-        std::optional<rerun::components::Position2D> position;
+        std::optional<ComponentBatch> position;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -40,6 +40,22 @@ namespace rerun::blueprint::archetypes {
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.blueprint.archetypes.ForcePosition";
 
+        /// `ComponentDescriptor` for the `enabled` field.
+        static constexpr auto Descriptor_enabled = ComponentDescriptor(
+            ArchetypeName, "enabled",
+            Loggable<rerun::blueprint::components::Enabled>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `strength` field.
+        static constexpr auto Descriptor_strength = ComponentDescriptor(
+            ArchetypeName, "strength",
+            Loggable<rerun::blueprint::components::ForceStrength>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `position` field.
+        static constexpr auto Descriptor_position = ComponentDescriptor(
+            ArchetypeName, "position",
+            Loggable<rerun::components::Position2D>::Descriptor.component_name
+        );
+
       public:
         ForcePosition() = default;
         ForcePosition(ForcePosition&& other) = default;
@@ -47,25 +63,36 @@ namespace rerun::blueprint::archetypes {
         ForcePosition& operator=(const ForcePosition& other) = default;
         ForcePosition& operator=(ForcePosition&& other) = default;
 
+        /// Update only some specific fields of a `ForcePosition`.
+        static ForcePosition update_fields() {
+            return ForcePosition();
+        }
+
+        /// Clear all the fields of a `ForcePosition`.
+        static ForcePosition clear_fields();
+
         /// Whether the position force is enabled.
         ///
         /// The position force pulls nodes towards a specific position, similar to gravity.
-        ForcePosition with_enabled(rerun::blueprint::components::Enabled _enabled) && {
-            enabled = std::move(_enabled);
+        ForcePosition with_enabled(const rerun::blueprint::components::Enabled& _enabled) && {
+            enabled = ComponentBatch::from_loggable(_enabled, Descriptor_enabled).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// The strength of the force.
-        ForcePosition with_strength(rerun::blueprint::components::ForceStrength _strength) && {
-            strength = std::move(_strength);
+        ForcePosition with_strength(const rerun::blueprint::components::ForceStrength& _strength
+        ) && {
+            strength =
+                ComponentBatch::from_loggable(_strength, Descriptor_strength).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// The position where the nodes should be pulled towards.
-        ForcePosition with_position(rerun::components::Position2D _position) && {
-            position = std::move(_position);
+        ForcePosition with_position(const rerun::components::Position2D& _position) && {
+            position =
+                ComponentBatch::from_loggable(_position, Descriptor_position).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

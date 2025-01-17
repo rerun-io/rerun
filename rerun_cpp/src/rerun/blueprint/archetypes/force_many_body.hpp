@@ -25,12 +25,12 @@ namespace rerun::blueprint::archetypes {
         ///
         /// The many body force is applied on each pair of nodes in a way that ressembles an electrical charge. If the
         /// strength is smaller than 0, it pushes nodes apart; if it is larger than 0, it pulls them together.
-        std::optional<rerun::blueprint::components::Enabled> enabled;
+        std::optional<ComponentBatch> enabled;
 
         /// The strength of the force.
         ///
         /// If `strength` is smaller than 0, it pushes nodes apart, if it is larger than 0 it pulls them together.
-        std::optional<rerun::blueprint::components::ForceStrength> strength;
+        std::optional<ComponentBatch> strength;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -41,6 +41,17 @@ namespace rerun::blueprint::archetypes {
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.blueprint.archetypes.ForceManyBody";
 
+        /// `ComponentDescriptor` for the `enabled` field.
+        static constexpr auto Descriptor_enabled = ComponentDescriptor(
+            ArchetypeName, "enabled",
+            Loggable<rerun::blueprint::components::Enabled>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `strength` field.
+        static constexpr auto Descriptor_strength = ComponentDescriptor(
+            ArchetypeName, "strength",
+            Loggable<rerun::blueprint::components::ForceStrength>::Descriptor.component_name
+        );
+
       public:
         ForceManyBody() = default;
         ForceManyBody(ForceManyBody&& other) = default;
@@ -48,12 +59,20 @@ namespace rerun::blueprint::archetypes {
         ForceManyBody& operator=(const ForceManyBody& other) = default;
         ForceManyBody& operator=(ForceManyBody&& other) = default;
 
+        /// Update only some specific fields of a `ForceManyBody`.
+        static ForceManyBody update_fields() {
+            return ForceManyBody();
+        }
+
+        /// Clear all the fields of a `ForceManyBody`.
+        static ForceManyBody clear_fields();
+
         /// Whether the many body force is enabled.
         ///
         /// The many body force is applied on each pair of nodes in a way that ressembles an electrical charge. If the
         /// strength is smaller than 0, it pushes nodes apart; if it is larger than 0, it pulls them together.
-        ForceManyBody with_enabled(rerun::blueprint::components::Enabled _enabled) && {
-            enabled = std::move(_enabled);
+        ForceManyBody with_enabled(const rerun::blueprint::components::Enabled& _enabled) && {
+            enabled = ComponentBatch::from_loggable(_enabled, Descriptor_enabled).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
@@ -61,8 +80,10 @@ namespace rerun::blueprint::archetypes {
         /// The strength of the force.
         ///
         /// If `strength` is smaller than 0, it pushes nodes apart, if it is larger than 0 it pulls them together.
-        ForceManyBody with_strength(rerun::blueprint::components::ForceStrength _strength) && {
-            strength = std::move(_strength);
+        ForceManyBody with_strength(const rerun::blueprint::components::ForceStrength& _strength
+        ) && {
+            strength =
+                ComponentBatch::from_loggable(_strength, Descriptor_strength).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

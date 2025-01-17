@@ -19,7 +19,7 @@ namespace rerun::blueprint::archetypes {
     /// **Archetype**: Configures how a selected tensor slice is shown on screen.
     struct TensorViewFit {
         /// How the image is scaled to fit the view.
-        std::optional<rerun::blueprint::components::ViewFit> scaling;
+        std::optional<ComponentBatch> scaling;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -30,6 +30,12 @@ namespace rerun::blueprint::archetypes {
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.blueprint.archetypes.TensorViewFit";
 
+        /// `ComponentDescriptor` for the `scaling` field.
+        static constexpr auto Descriptor_scaling = ComponentDescriptor(
+            ArchetypeName, "scaling",
+            Loggable<rerun::blueprint::components::ViewFit>::Descriptor.component_name
+        );
+
       public:
         TensorViewFit() = default;
         TensorViewFit(TensorViewFit&& other) = default;
@@ -37,9 +43,17 @@ namespace rerun::blueprint::archetypes {
         TensorViewFit& operator=(const TensorViewFit& other) = default;
         TensorViewFit& operator=(TensorViewFit&& other) = default;
 
+        /// Update only some specific fields of a `TensorViewFit`.
+        static TensorViewFit update_fields() {
+            return TensorViewFit();
+        }
+
+        /// Clear all the fields of a `TensorViewFit`.
+        static TensorViewFit clear_fields();
+
         /// How the image is scaled to fit the view.
-        TensorViewFit with_scaling(rerun::blueprint::components::ViewFit _scaling) && {
-            scaling = std::move(_scaling);
+        TensorViewFit with_scaling(const rerun::blueprint::components::ViewFit& _scaling) && {
+            scaling = ComponentBatch::from_loggable(_scaling, Descriptor_scaling).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

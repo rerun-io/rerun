@@ -22,10 +22,10 @@ namespace rerun::blueprint::archetypes {
         /// The range of the axis.
         ///
         /// If unset, the range well be automatically determined based on the queried data.
-        std::optional<rerun::components::Range1D> range;
+        std::optional<ComponentBatch> range;
 
         /// If enabled, the Y axis range will remain locked to the specified range when zooming.
-        std::optional<rerun::blueprint::components::LockRangeDuringZoom> zoom_lock;
+        std::optional<ComponentBatch> zoom_lock;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -36,6 +36,16 @@ namespace rerun::blueprint::archetypes {
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.blueprint.archetypes.ScalarAxis";
 
+        /// `ComponentDescriptor` for the `range` field.
+        static constexpr auto Descriptor_range = ComponentDescriptor(
+            ArchetypeName, "range", Loggable<rerun::components::Range1D>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `zoom_lock` field.
+        static constexpr auto Descriptor_zoom_lock = ComponentDescriptor(
+            ArchetypeName, "zoom_lock",
+            Loggable<rerun::blueprint::components::LockRangeDuringZoom>::Descriptor.component_name
+        );
+
       public:
         ScalarAxis() = default;
         ScalarAxis(ScalarAxis&& other) = default;
@@ -43,18 +53,29 @@ namespace rerun::blueprint::archetypes {
         ScalarAxis& operator=(const ScalarAxis& other) = default;
         ScalarAxis& operator=(ScalarAxis&& other) = default;
 
+        /// Update only some specific fields of a `ScalarAxis`.
+        static ScalarAxis update_fields() {
+            return ScalarAxis();
+        }
+
+        /// Clear all the fields of a `ScalarAxis`.
+        static ScalarAxis clear_fields();
+
         /// The range of the axis.
         ///
         /// If unset, the range well be automatically determined based on the queried data.
-        ScalarAxis with_range(rerun::components::Range1D _range) && {
-            range = std::move(_range);
+        ScalarAxis with_range(const rerun::components::Range1D& _range) && {
+            range = ComponentBatch::from_loggable(_range, Descriptor_range).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// If enabled, the Y axis range will remain locked to the specified range when zooming.
-        ScalarAxis with_zoom_lock(rerun::blueprint::components::LockRangeDuringZoom _zoom_lock) && {
-            zoom_lock = std::move(_zoom_lock);
+        ScalarAxis with_zoom_lock(
+            const rerun::blueprint::components::LockRangeDuringZoom& _zoom_lock
+        ) && {
+            zoom_lock =
+                ComponentBatch::from_loggable(_zoom_lock, Descriptor_zoom_lock).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

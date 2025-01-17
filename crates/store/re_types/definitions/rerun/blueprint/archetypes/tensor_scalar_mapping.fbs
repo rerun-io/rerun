@@ -2,6 +2,7 @@ namespace rerun.blueprint.archetypes;
 
 /// Configures how tensor scalars are mapped to color.
 table TensorScalarMapping (
+    "attr.cpp.archetype_eager",
     "attr.rust.archetype_eager",
     "attr.rerun.scope": "blueprint",
     "attr.rust.derive": "Default"

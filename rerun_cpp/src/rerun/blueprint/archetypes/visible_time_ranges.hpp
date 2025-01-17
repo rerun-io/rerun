@@ -5,11 +5,13 @@
 
 #include "../../blueprint/components/visible_time_range.hpp"
 #include "../../collection.hpp"
+#include "../../compiler_utils.hpp"
 #include "../../component_batch.hpp"
 #include "../../indicator_component.hpp"
 #include "../../result.hpp"
 
 #include <cstdint>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -27,7 +29,7 @@ namespace rerun::blueprint::archetypes {
         /// The time ranges to show for each timeline unless specified otherwise on a per-entity basis.
         ///
         /// If a timeline is specified more than once, the first entry will be used.
-        Collection<rerun::blueprint::components::VisibleTimeRange> ranges;
+        std::optional<ComponentBatch> ranges;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -39,6 +41,12 @@ namespace rerun::blueprint::archetypes {
         static constexpr const char ArchetypeName[] =
             "rerun.blueprint.archetypes.VisibleTimeRanges";
 
+        /// `ComponentDescriptor` for the `ranges` field.
+        static constexpr auto Descriptor_ranges = ComponentDescriptor(
+            ArchetypeName, "ranges",
+            Loggable<rerun::blueprint::components::VisibleTimeRange>::Descriptor.component_name
+        );
+
       public:
         VisibleTimeRanges() = default;
         VisibleTimeRanges(VisibleTimeRanges&& other) = default;
@@ -49,7 +57,27 @@ namespace rerun::blueprint::archetypes {
         explicit VisibleTimeRanges(
             Collection<rerun::blueprint::components::VisibleTimeRange> _ranges
         )
-            : ranges(std::move(_ranges)) {}
+            : ranges(ComponentBatch::from_loggable(std::move(_ranges), Descriptor_ranges)
+                         .value_or_throw()) {}
+
+        /// Update only some specific fields of a `VisibleTimeRanges`.
+        static VisibleTimeRanges update_fields() {
+            return VisibleTimeRanges();
+        }
+
+        /// Clear all the fields of a `VisibleTimeRanges`.
+        static VisibleTimeRanges clear_fields();
+
+        /// The time ranges to show for each timeline unless specified otherwise on a per-entity basis.
+        ///
+        /// If a timeline is specified more than once, the first entry will be used.
+        VisibleTimeRanges with_ranges(
+            const Collection<rerun::blueprint::components::VisibleTimeRange>& _ranges
+        ) && {
+            ranges = ComponentBatch::from_loggable(_ranges, Descriptor_ranges).value_or_throw();
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
     };
 
 } // namespace rerun::blueprint::archetypes

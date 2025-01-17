@@ -5,6 +5,7 @@ namespace rerun.blueprint.archetypes;
 
 /// Configuration for the scalar axis of a plot.
 table ScalarAxis (
+    "attr.cpp.archetype_eager",
     "attr.rust.archetype_eager",
     "attr.rerun.scope": "blueprint",
     "attr.rust.derive": "Default"

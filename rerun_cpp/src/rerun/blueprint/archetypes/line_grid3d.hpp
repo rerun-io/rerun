@@ -25,29 +25,29 @@ namespace rerun::blueprint::archetypes {
         /// Whether the grid is visible.
         ///
         /// Defaults to true.
-        std::optional<rerun::blueprint::components::Visible> visible;
+        std::optional<ComponentBatch> visible;
 
         /// Space between grid lines spacing of one line to the next in scene units.
         ///
         /// As you zoom out, successively only every tenth line is shown.
         /// This controls the closest zoom level.
-        std::optional<rerun::blueprint::components::GridSpacing> spacing;
+        std::optional<ComponentBatch> spacing;
 
         /// In what plane the grid is drawn.
         ///
         /// Defaults to whatever plane is determined as the plane at zero units up/down as defined by `components::ViewCoordinates` if present.
-        std::optional<rerun::components::Plane3D> plane;
+        std::optional<ComponentBatch> plane;
 
         /// How thick the lines should be in ui units.
         ///
         /// Default is 1.0 ui unit.
-        std::optional<rerun::components::StrokeWidth> stroke_width;
+        std::optional<ComponentBatch> stroke_width;
 
         /// Color used for the grid.
         ///
         /// Transparency via alpha channel is supported.
         /// Defaults to a slightly transparent light gray.
-        std::optional<rerun::components::Color> color;
+        std::optional<ComponentBatch> color;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -58,6 +58,30 @@ namespace rerun::blueprint::archetypes {
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.blueprint.archetypes.LineGrid3D";
 
+        /// `ComponentDescriptor` for the `visible` field.
+        static constexpr auto Descriptor_visible = ComponentDescriptor(
+            ArchetypeName, "visible",
+            Loggable<rerun::blueprint::components::Visible>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `spacing` field.
+        static constexpr auto Descriptor_spacing = ComponentDescriptor(
+            ArchetypeName, "spacing",
+            Loggable<rerun::blueprint::components::GridSpacing>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `plane` field.
+        static constexpr auto Descriptor_plane = ComponentDescriptor(
+            ArchetypeName, "plane", Loggable<rerun::components::Plane3D>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `stroke_width` field.
+        static constexpr auto Descriptor_stroke_width = ComponentDescriptor(
+            ArchetypeName, "stroke_width",
+            Loggable<rerun::components::StrokeWidth>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `color` field.
+        static constexpr auto Descriptor_color = ComponentDescriptor(
+            ArchetypeName, "color", Loggable<rerun::components::Color>::Descriptor.component_name
+        );
+
       public:
         LineGrid3D() = default;
         LineGrid3D(LineGrid3D&& other) = default;
@@ -65,11 +89,19 @@ namespace rerun::blueprint::archetypes {
         LineGrid3D& operator=(const LineGrid3D& other) = default;
         LineGrid3D& operator=(LineGrid3D&& other) = default;
 
+        /// Update only some specific fields of a `LineGrid3D`.
+        static LineGrid3D update_fields() {
+            return LineGrid3D();
+        }
+
+        /// Clear all the fields of a `LineGrid3D`.
+        static LineGrid3D clear_fields();
+
         /// Whether the grid is visible.
         ///
         /// Defaults to true.
-        LineGrid3D with_visible(rerun::blueprint::components::Visible _visible) && {
-            visible = std::move(_visible);
+        LineGrid3D with_visible(const rerun::blueprint::components::Visible& _visible) && {
+            visible = ComponentBatch::from_loggable(_visible, Descriptor_visible).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
@@ -78,8 +110,8 @@ namespace rerun::blueprint::archetypes {
         ///
         /// As you zoom out, successively only every tenth line is shown.
         /// This controls the closest zoom level.
-        LineGrid3D with_spacing(rerun::blueprint::components::GridSpacing _spacing) && {
-            spacing = std::move(_spacing);
+        LineGrid3D with_spacing(const rerun::blueprint::components::GridSpacing& _spacing) && {
+            spacing = ComponentBatch::from_loggable(_spacing, Descriptor_spacing).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
@@ -87,8 +119,8 @@ namespace rerun::blueprint::archetypes {
         /// In what plane the grid is drawn.
         ///
         /// Defaults to whatever plane is determined as the plane at zero units up/down as defined by `components::ViewCoordinates` if present.
-        LineGrid3D with_plane(rerun::components::Plane3D _plane) && {
-            plane = std::move(_plane);
+        LineGrid3D with_plane(const rerun::components::Plane3D& _plane) && {
+            plane = ComponentBatch::from_loggable(_plane, Descriptor_plane).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
@@ -96,8 +128,9 @@ namespace rerun::blueprint::archetypes {
         /// How thick the lines should be in ui units.
         ///
         /// Default is 1.0 ui unit.
-        LineGrid3D with_stroke_width(rerun::components::StrokeWidth _stroke_width) && {
-            stroke_width = std::move(_stroke_width);
+        LineGrid3D with_stroke_width(const rerun::components::StrokeWidth& _stroke_width) && {
+            stroke_width = ComponentBatch::from_loggable(_stroke_width, Descriptor_stroke_width)
+                               .value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
@@ -106,8 +139,8 @@ namespace rerun::blueprint::archetypes {
         ///
         /// Transparency via alpha channel is supported.
         /// Defaults to a slightly transparent light gray.
-        LineGrid3D with_color(rerun::components::Color _color) && {
-            color = std::move(_color);
+        LineGrid3D with_color(const rerun::components::Color& _color) && {
+            color = ComponentBatch::from_loggable(_color, Descriptor_color).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

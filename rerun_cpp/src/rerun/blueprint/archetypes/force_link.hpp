@@ -23,15 +23,15 @@ namespace rerun::blueprint::archetypes {
         /// Whether the link force is enabled.
         ///
         /// The link force aims to achieve a target distance between two nodes that are connected by one ore more edges.
-        std::optional<rerun::blueprint::components::Enabled> enabled;
+        std::optional<ComponentBatch> enabled;
 
         /// The target distance between two nodes.
-        std::optional<rerun::blueprint::components::ForceDistance> distance;
+        std::optional<ComponentBatch> distance;
 
         /// Specifies how often this force should be applied per iteration.
         ///
         /// Increasing this parameter can lead to better results at the cost of longer computation time.
-        std::optional<rerun::blueprint::components::ForceIterations> iterations;
+        std::optional<ComponentBatch> iterations;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -42,6 +42,22 @@ namespace rerun::blueprint::archetypes {
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.blueprint.archetypes.ForceLink";
 
+        /// `ComponentDescriptor` for the `enabled` field.
+        static constexpr auto Descriptor_enabled = ComponentDescriptor(
+            ArchetypeName, "enabled",
+            Loggable<rerun::blueprint::components::Enabled>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `distance` field.
+        static constexpr auto Descriptor_distance = ComponentDescriptor(
+            ArchetypeName, "distance",
+            Loggable<rerun::blueprint::components::ForceDistance>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `iterations` field.
+        static constexpr auto Descriptor_iterations = ComponentDescriptor(
+            ArchetypeName, "iterations",
+            Loggable<rerun::blueprint::components::ForceIterations>::Descriptor.component_name
+        );
+
       public:
         ForceLink() = default;
         ForceLink(ForceLink&& other) = default;
@@ -49,18 +65,27 @@ namespace rerun::blueprint::archetypes {
         ForceLink& operator=(const ForceLink& other) = default;
         ForceLink& operator=(ForceLink&& other) = default;
 
+        /// Update only some specific fields of a `ForceLink`.
+        static ForceLink update_fields() {
+            return ForceLink();
+        }
+
+        /// Clear all the fields of a `ForceLink`.
+        static ForceLink clear_fields();
+
         /// Whether the link force is enabled.
         ///
         /// The link force aims to achieve a target distance between two nodes that are connected by one ore more edges.
-        ForceLink with_enabled(rerun::blueprint::components::Enabled _enabled) && {
-            enabled = std::move(_enabled);
+        ForceLink with_enabled(const rerun::blueprint::components::Enabled& _enabled) && {
+            enabled = ComponentBatch::from_loggable(_enabled, Descriptor_enabled).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// The target distance between two nodes.
-        ForceLink with_distance(rerun::blueprint::components::ForceDistance _distance) && {
-            distance = std::move(_distance);
+        ForceLink with_distance(const rerun::blueprint::components::ForceDistance& _distance) && {
+            distance =
+                ComponentBatch::from_loggable(_distance, Descriptor_distance).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
@@ -68,8 +93,10 @@ namespace rerun::blueprint::archetypes {
         /// Specifies how often this force should be applied per iteration.
         ///
         /// Increasing this parameter can lead to better results at the cost of longer computation time.
-        ForceLink with_iterations(rerun::blueprint::components::ForceIterations _iterations) && {
-            iterations = std::move(_iterations);
+        ForceLink with_iterations(const rerun::blueprint::components::ForceIterations& _iterations
+        ) && {
+            iterations =
+                ComponentBatch::from_loggable(_iterations, Descriptor_iterations).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

@@ -5,7 +5,18 @@
 
 #include "../../collection_adapter_builtins.hpp"
 
-namespace rerun::blueprint::archetypes {}
+namespace rerun::blueprint::archetypes {
+    ForceManyBody ForceManyBody::clear_fields() {
+        auto archetype = ForceManyBody();
+        archetype.enabled =
+            ComponentBatch::empty<rerun::blueprint::components::Enabled>(Descriptor_enabled)
+                .value_or_throw();
+        archetype.strength =
+            ComponentBatch::empty<rerun::blueprint::components::ForceStrength>(Descriptor_strength)
+                .value_or_throw();
+        return archetype;
+    }
+} // namespace rerun::blueprint::archetypes
 
 namespace rerun {
 
@@ -18,28 +29,10 @@ namespace rerun {
         cells.reserve(3);
 
         if (archetype.enabled.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.enabled.value(),
-                ComponentDescriptor(
-                    "rerun.blueprint.archetypes.ForceManyBody",
-                    "enabled",
-                    "rerun.blueprint.components.Enabled"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.enabled.value());
         }
         if (archetype.strength.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.strength.value(),
-                ComponentDescriptor(
-                    "rerun.blueprint.archetypes.ForceManyBody",
-                    "strength",
-                    "rerun.blueprint.components.ForceStrength"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.strength.value());
         }
         {
             auto indicator = ForceManyBody::IndicatorComponent();

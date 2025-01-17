@@ -5,11 +5,13 @@
 
 #include "../../blueprint/components/visual_bounds2d.hpp"
 #include "../../collection.hpp"
+#include "../../compiler_utils.hpp"
 #include "../../component_batch.hpp"
 #include "../../indicator_component.hpp"
 #include "../../result.hpp"
 
 #include <cstdint>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -25,7 +27,7 @@ namespace rerun::blueprint::archetypes {
         /// Controls the visible range of a 2D view.
         ///
         /// Use this to control pan & zoom of the view.
-        rerun::blueprint::components::VisualBounds2D range;
+        std::optional<ComponentBatch> range;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -36,6 +38,12 @@ namespace rerun::blueprint::archetypes {
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.blueprint.archetypes.VisualBounds2D";
 
+        /// `ComponentDescriptor` for the `range` field.
+        static constexpr auto Descriptor_range = ComponentDescriptor(
+            ArchetypeName, "range",
+            Loggable<rerun::blueprint::components::VisualBounds2D>::Descriptor.component_name
+        );
+
       public:
         VisualBounds2D() = default;
         VisualBounds2D(VisualBounds2D&& other) = default;
@@ -44,7 +52,25 @@ namespace rerun::blueprint::archetypes {
         VisualBounds2D& operator=(VisualBounds2D&& other) = default;
 
         explicit VisualBounds2D(rerun::blueprint::components::VisualBounds2D _range)
-            : range(std::move(_range)) {}
+            : range(ComponentBatch::from_loggable(std::move(_range), Descriptor_range)
+                        .value_or_throw()) {}
+
+        /// Update only some specific fields of a `VisualBounds2D`.
+        static VisualBounds2D update_fields() {
+            return VisualBounds2D();
+        }
+
+        /// Clear all the fields of a `VisualBounds2D`.
+        static VisualBounds2D clear_fields();
+
+        /// Controls the visible range of a 2D view.
+        ///
+        /// Use this to control pan & zoom of the view.
+        VisualBounds2D with_range(const rerun::blueprint::components::VisualBounds2D& _range) && {
+            range = ComponentBatch::from_loggable(_range, Descriptor_range).value_or_throw();
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
     };
 
 } // namespace rerun::blueprint::archetypes

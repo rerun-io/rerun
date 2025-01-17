@@ -5,11 +5,13 @@
 
 #include "../../blueprint/components/zoom_level.hpp"
 #include "../../collection.hpp"
+#include "../../compiler_utils.hpp"
 #include "../../component_batch.hpp"
 #include "../../indicator_component.hpp"
 #include "../../result.hpp"
 
 #include <cstdint>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -19,7 +21,7 @@ namespace rerun::blueprint::archetypes {
         /// Zoom level for the map.
         ///
         /// Zoom level follow the [`OpenStreetMap` definition](https://wiki.openstreetmap.org/wiki/Zoom_levels).
-        rerun::blueprint::components::ZoomLevel zoom;
+        std::optional<ComponentBatch> zoom;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -30,6 +32,12 @@ namespace rerun::blueprint::archetypes {
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.blueprint.archetypes.MapZoom";
 
+        /// `ComponentDescriptor` for the `zoom` field.
+        static constexpr auto Descriptor_zoom = ComponentDescriptor(
+            ArchetypeName, "zoom",
+            Loggable<rerun::blueprint::components::ZoomLevel>::Descriptor.component_name
+        );
+
       public:
         MapZoom() = default;
         MapZoom(MapZoom&& other) = default;
@@ -37,7 +45,26 @@ namespace rerun::blueprint::archetypes {
         MapZoom& operator=(const MapZoom& other) = default;
         MapZoom& operator=(MapZoom&& other) = default;
 
-        explicit MapZoom(rerun::blueprint::components::ZoomLevel _zoom) : zoom(std::move(_zoom)) {}
+        explicit MapZoom(rerun::blueprint::components::ZoomLevel _zoom)
+            : zoom(ComponentBatch::from_loggable(std::move(_zoom), Descriptor_zoom).value_or_throw()
+              ) {}
+
+        /// Update only some specific fields of a `MapZoom`.
+        static MapZoom update_fields() {
+            return MapZoom();
+        }
+
+        /// Clear all the fields of a `MapZoom`.
+        static MapZoom clear_fields();
+
+        /// Zoom level for the map.
+        ///
+        /// Zoom level follow the [`OpenStreetMap` definition](https://wiki.openstreetmap.org/wiki/Zoom_levels).
+        MapZoom with_zoom(const rerun::blueprint::components::ZoomLevel& _zoom) && {
+            zoom = ComponentBatch::from_loggable(_zoom, Descriptor_zoom).value_or_throw();
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
     };
 
 } // namespace rerun::blueprint::archetypes

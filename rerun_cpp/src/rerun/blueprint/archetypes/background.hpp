@@ -20,10 +20,10 @@ namespace rerun::blueprint::archetypes {
     /// **Archetype**: Configuration for the background of a view.
     struct Background {
         /// The type of the background.
-        rerun::blueprint::components::BackgroundKind kind;
+        std::optional<ComponentBatch> kind;
 
         /// Color used for the solid background type.
-        std::optional<rerun::components::Color> color;
+        std::optional<ComponentBatch> color;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -34,6 +34,16 @@ namespace rerun::blueprint::archetypes {
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.blueprint.archetypes.Background";
 
+        /// `ComponentDescriptor` for the `kind` field.
+        static constexpr auto Descriptor_kind = ComponentDescriptor(
+            ArchetypeName, "kind",
+            Loggable<rerun::blueprint::components::BackgroundKind>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `color` field.
+        static constexpr auto Descriptor_color = ComponentDescriptor(
+            ArchetypeName, "color", Loggable<rerun::components::Color>::Descriptor.component_name
+        );
+
       public:
         Background() = default;
         Background(Background&& other) = default;
@@ -42,11 +52,27 @@ namespace rerun::blueprint::archetypes {
         Background& operator=(Background&& other) = default;
 
         explicit Background(rerun::blueprint::components::BackgroundKind _kind)
-            : kind(std::move(_kind)) {}
+            : kind(ComponentBatch::from_loggable(std::move(_kind), Descriptor_kind).value_or_throw()
+              ) {}
+
+        /// Update only some specific fields of a `Background`.
+        static Background update_fields() {
+            return Background();
+        }
+
+        /// Clear all the fields of a `Background`.
+        static Background clear_fields();
+
+        /// The type of the background.
+        Background with_kind(const rerun::blueprint::components::BackgroundKind& _kind) && {
+            kind = ComponentBatch::from_loggable(_kind, Descriptor_kind).value_or_throw();
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
 
         /// Color used for the solid background type.
-        Background with_color(rerun::components::Color _color) && {
-            color = std::move(_color);
+        Background with_color(const rerun::components::Color& _color) && {
+            color = ComponentBatch::from_loggable(_color, Descriptor_color).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

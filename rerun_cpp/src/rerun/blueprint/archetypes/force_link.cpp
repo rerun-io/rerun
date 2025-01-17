@@ -5,7 +5,22 @@
 
 #include "../../collection_adapter_builtins.hpp"
 
-namespace rerun::blueprint::archetypes {}
+namespace rerun::blueprint::archetypes {
+    ForceLink ForceLink::clear_fields() {
+        auto archetype = ForceLink();
+        archetype.enabled =
+            ComponentBatch::empty<rerun::blueprint::components::Enabled>(Descriptor_enabled)
+                .value_or_throw();
+        archetype.distance =
+            ComponentBatch::empty<rerun::blueprint::components::ForceDistance>(Descriptor_distance)
+                .value_or_throw();
+        archetype.iterations = ComponentBatch::empty<rerun::blueprint::components::ForceIterations>(
+                                   Descriptor_iterations
+        )
+                                   .value_or_throw();
+        return archetype;
+    }
+} // namespace rerun::blueprint::archetypes
 
 namespace rerun {
 
@@ -17,40 +32,13 @@ namespace rerun {
         cells.reserve(4);
 
         if (archetype.enabled.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.enabled.value(),
-                ComponentDescriptor(
-                    "rerun.blueprint.archetypes.ForceLink",
-                    "enabled",
-                    "rerun.blueprint.components.Enabled"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.enabled.value());
         }
         if (archetype.distance.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.distance.value(),
-                ComponentDescriptor(
-                    "rerun.blueprint.archetypes.ForceLink",
-                    "distance",
-                    "rerun.blueprint.components.ForceDistance"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.distance.value());
         }
         if (archetype.iterations.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.iterations.value(),
-                ComponentDescriptor(
-                    "rerun.blueprint.archetypes.ForceLink",
-                    "iterations",
-                    "rerun.blueprint.components.ForceIterations"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.iterations.value());
         }
         {
             auto indicator = ForceLink::IndicatorComponent();
