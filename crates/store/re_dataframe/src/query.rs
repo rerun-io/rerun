@@ -8,7 +8,7 @@ use std::{
 
 use arrow::{
     array::{
-        Array as ArrowArray, ArrayRef as ArrowArrayRef, BooleanArray as ArrowBooleanArray,
+        ArrayRef as ArrowArrayRef, BooleanArray as ArrowBooleanArray,
         PrimitiveArray as ArrowPrimitiveArray, RecordBatch as ArrowRecordBatch,
     },
     buffer::ScalarBuffer as ArrowScalarBuffer,
@@ -1226,7 +1226,21 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     #[inline]
     pub fn next_row_batch(&self) -> Option<ArrowRecordBatch> {
         let row = self.next_row()?;
-        ArrowRecordBatch::try_new(self.schema().clone(), row).ok()
+        match ArrowRecordBatch::try_new_with_options(
+            self.schema().clone(),
+            row,
+            &arrow::array::RecordBatchOptions::new().with_row_count(Some(1)),
+        ) {
+            Ok(batch) => Some(batch),
+            Err(err) => {
+                if cfg!(debug_assertions) {
+                    panic!("Failed to create record batch: {err}");
+                } else {
+                    re_log::error_once!("Failed to create record batch: {err}");
+                    None
+                }
+            }
+        }
     }
 
     #[inline]
