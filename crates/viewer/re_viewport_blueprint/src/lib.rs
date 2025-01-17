@@ -2,6 +2,7 @@
 //!
 //! This crate provides blueprint (i.e. description) for how to render the viewport.
 
+mod auto_layout;
 mod container;
 mod entity_add_info;
 pub mod ui;
@@ -17,7 +18,7 @@ use re_viewer_context::ViewerContext;
 pub use view::ViewBlueprint;
 pub use view_contents::ViewContents;
 pub use view_properties::{entity_path_for_view_property, ViewProperty, ViewPropertyQueryError};
-pub use viewport_blueprint::ViewportBlueprint;
+pub use viewport_blueprint::{tree_simplification_options, ViewportBlueprint};
 pub use viewport_command::ViewportCommand;
 
 /// The entity path of the viewport blueprint in the blueprint store.

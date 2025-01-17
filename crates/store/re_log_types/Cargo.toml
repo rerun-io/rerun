@@ -58,7 +58,11 @@ re_types_core.workspace = true
 ahash.workspace = true
 anyhow.workspace = true
 arrow = { workspace = true, features = ["ipc"] }
-arrow2 = { workspace = true, features = ["io_print", "compute_concatenate"] }
+arrow2 = { workspace = true, features = [
+  "arrow",
+  "io_print",
+  "compute_concatenate",
+] }
 backtrace.workspace = true
 bytemuck.workspace = true
 clean-path.workspace = true
