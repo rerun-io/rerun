@@ -40,10 +40,10 @@ pub enum ChunkError {
         index: usize,
     },
 
-    #[error(transparent)]
+    #[error("Serialization: {0}")]
     Serialization(#[from] SerializationError),
 
-    #[error(transparent)]
+    #[error("Deserialization: {0}")]
     Deserialization(#[from] DeserializationError),
 }
 
