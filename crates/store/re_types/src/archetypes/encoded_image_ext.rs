@@ -1,5 +1,3 @@
-use crate::components::Blob;
-
 use super::EncodedImage;
 
 impl EncodedImage {
@@ -20,14 +18,16 @@ impl EncodedImage {
     ///
     /// [`Self::media_type`] will be guessed from the bytes.
     pub fn from_file_contents(bytes: Vec<u8>) -> Self {
-        #[allow(clippy::unnecessary_struct_initialization)]
-        Self {
-            #[cfg(feature = "image")]
-            media_type: image::guess_format(&bytes)
+        #[cfg(feature = "image")]
+        {
+            if let Some(media_type) = image::guess_format(&bytes)
                 .ok()
-                .map(|format| crate::components::MediaType::from(format.to_mime_type())),
-
-            ..Self::new(Blob::from(bytes))
+                .map(|format| crate::components::MediaType::from(format.to_mime_type()))
+            {
+                return Self::new(bytes).with_media_type(media_type);
+            }
         }
+
+        Self::new(bytes)
     }
 }

@@ -51,15 +51,15 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/graph_directed/ca29a37b65e1e0b6482251dce401982a0bc568fa/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub struct GraphEdges {
     /// A list of node tuples.
-    pub edges: Vec<crate::components::GraphEdge>,
+    pub edges: Option<SerializedComponentBatch>,
 
     /// Specifies if the graph is directed or undirected.
     ///
     /// If no [`components::GraphType`][crate::components::GraphType] is provided, the graph is assumed to be undirected.
-    pub graph_type: Option<crate::components::GraphType>,
+    pub graph_type: Option<SerializedComponentBatch>,
 }
 
 impl GraphEdges {
@@ -171,51 +171,26 @@ impl ::re_types_core::Archetype for GraphEdges {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
         let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
-        let edges = {
-            let array = arrays_by_descr
-                .get(&Self::descriptor_edges())
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.GraphEdges#edges")?;
-            <crate::components::GraphEdge>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.GraphEdges#edges")?
-                .into_iter()
-                .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                .collect::<DeserializationResult<Vec<_>>>()
-                .with_context("rerun.archetypes.GraphEdges#edges")?
-        };
-        let graph_type = if let Some(array) = arrays_by_descr.get(&Self::descriptor_graph_type()) {
-            <crate::components::GraphType>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.GraphEdges#graph_type")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
+        let edges = arrays_by_descr
+            .get(&Self::descriptor_edges())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_edges()));
+        let graph_type = arrays_by_descr
+            .get(&Self::descriptor_graph_type())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_graph_type())
+            });
         Ok(Self { edges, graph_type })
     }
 }
 
 impl ::re_types_core::AsComponents for GraphEdges {
-    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
-        re_tracing::profile_function!();
+    #[inline]
+    fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
-            (Some(&self.edges as &dyn ComponentBatch)).map(|batch| {
-                ::re_types_core::ComponentBatchCowWithDescriptor {
-                    batch: batch.into(),
-                    descriptor_override: Some(Self::descriptor_edges()),
-                }
-            }),
-            (self
-                .graph_type
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_graph_type()),
-            }),
+            Self::indicator().serialized(),
+            self.edges.clone(),
+            self.graph_type.clone(),
         ]
         .into_iter()
         .flatten()
@@ -230,9 +205,41 @@ impl GraphEdges {
     #[inline]
     pub fn new(edges: impl IntoIterator<Item = impl Into<crate::components::GraphEdge>>) -> Self {
         Self {
-            edges: edges.into_iter().map(Into::into).collect(),
+            edges: try_serialize_field(Self::descriptor_edges(), edges),
             graph_type: None,
         }
+    }
+
+    /// Update only some specific fields of a `GraphEdges`.
+    #[inline]
+    pub fn update_fields() -> Self {
+        Self::default()
+    }
+
+    /// Clear all the fields of a `GraphEdges`.
+    #[inline]
+    pub fn clear_fields() -> Self {
+        use ::re_types_core::Loggable as _;
+        Self {
+            edges: Some(SerializedComponentBatch::new(
+                crate::components::GraphEdge::arrow_empty(),
+                Self::descriptor_edges(),
+            )),
+            graph_type: Some(SerializedComponentBatch::new(
+                crate::components::GraphType::arrow_empty(),
+                Self::descriptor_graph_type(),
+            )),
+        }
+    }
+
+    /// A list of node tuples.
+    #[inline]
+    pub fn with_edges(
+        mut self,
+        edges: impl IntoIterator<Item = impl Into<crate::components::GraphEdge>>,
+    ) -> Self {
+        self.edges = try_serialize_field(Self::descriptor_edges(), edges);
+        self
     }
 
     /// Specifies if the graph is directed or undirected.
@@ -240,7 +247,7 @@ impl GraphEdges {
     /// If no [`components::GraphType`][crate::components::GraphType] is provided, the graph is assumed to be undirected.
     #[inline]
     pub fn with_graph_type(mut self, graph_type: impl Into<crate::components::GraphType>) -> Self {
-        self.graph_type = Some(graph_type.into());
+        self.graph_type = try_serialize_field(Self::descriptor_graph_type(), [graph_type]);
         self
     }
 }
@@ -249,11 +256,5 @@ impl ::re_byte_size::SizeBytes for GraphEdges {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.edges.heap_size_bytes() + self.graph_type.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <Vec<crate::components::GraphEdge>>::is_pod()
-            && <Option<crate::components::GraphType>>::is_pod()
     }
 }

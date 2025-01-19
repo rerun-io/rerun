@@ -1,13 +1,17 @@
-use re_types::{archetypes::Clear, Archetype as _, AsComponents as _};
+use re_types::{archetypes::Clear, Archetype as _, AsComponents as _, ComponentBatch as _};
 
 #[test]
 fn roundtrip() {
     let all_expected = [
         Clear {
-            is_recursive: true.into(),
-        }, //
+            is_recursive: re_types::components::ClearIsRecursive(true.into())
+                .serialized()
+                .map(|batch| batch.with_descriptor_override(Clear::descriptor_is_recursive())),
+        },
         Clear {
-            is_recursive: false.into(),
+            is_recursive: re_types::components::ClearIsRecursive(false.into())
+                .serialized()
+                .map(|batch| batch.with_descriptor_override(Clear::descriptor_is_recursive())),
         },
     ];
 

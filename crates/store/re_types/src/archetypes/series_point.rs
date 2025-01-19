@@ -71,21 +71,21 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/series_point_style/82207a705da6c086b28ce161db1db9e8b12258b7/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct SeriesPoint {
     /// Color for the corresponding series.
-    pub color: Option<crate::components::Color>,
+    pub color: Option<SerializedComponentBatch>,
 
     /// What shape to use to represent the point
-    pub marker: Option<crate::components::MarkerShape>,
+    pub marker: Option<SerializedComponentBatch>,
 
     /// Display name of the series.
     ///
     /// Used in the legend.
-    pub name: Option<crate::components::Name>,
+    pub name: Option<SerializedComponentBatch>,
 
     /// Size of the marker.
-    pub marker_size: Option<crate::components::MarkerSize>,
+    pub marker_size: Option<SerializedComponentBatch>,
 }
 
 impl SeriesPoint {
@@ -221,43 +221,20 @@ impl ::re_types_core::Archetype for SeriesPoint {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
         let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
-        let color = if let Some(array) = arrays_by_descr.get(&Self::descriptor_color()) {
-            <crate::components::Color>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.SeriesPoint#color")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
-        let marker = if let Some(array) = arrays_by_descr.get(&Self::descriptor_marker()) {
-            <crate::components::MarkerShape>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.SeriesPoint#marker")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
-        let name = if let Some(array) = arrays_by_descr.get(&Self::descriptor_name()) {
-            <crate::components::Name>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.SeriesPoint#name")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
-        let marker_size = if let Some(array) = arrays_by_descr.get(&Self::descriptor_marker_size())
-        {
-            <crate::components::MarkerSize>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.SeriesPoint#marker_size")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
+        let color = arrays_by_descr
+            .get(&Self::descriptor_color())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_color()));
+        let marker = arrays_by_descr
+            .get(&Self::descriptor_marker())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_marker()));
+        let name = arrays_by_descr
+            .get(&Self::descriptor_name())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_name()));
+        let marker_size = arrays_by_descr
+            .get(&Self::descriptor_marker_size())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_marker_size())
+            });
         Ok(Self {
             color,
             marker,
@@ -268,41 +245,15 @@ impl ::re_types_core::Archetype for SeriesPoint {
 }
 
 impl ::re_types_core::AsComponents for SeriesPoint {
-    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
-        re_tracing::profile_function!();
+    #[inline]
+    fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
-            (self
-                .color
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_color()),
-            }),
-            (self
-                .marker
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_marker()),
-            }),
-            (self.name.as_ref().map(|comp| (comp as &dyn ComponentBatch))).map(|batch| {
-                ::re_types_core::ComponentBatchCowWithDescriptor {
-                    batch: batch.into(),
-                    descriptor_override: Some(Self::descriptor_name()),
-                }
-            }),
-            (self
-                .marker_size
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_marker_size()),
-            }),
+            Self::indicator().serialized(),
+            self.color.clone(),
+            self.marker.clone(),
+            self.name.clone(),
+            self.marker_size.clone(),
         ]
         .into_iter()
         .flatten()
@@ -324,17 +275,47 @@ impl SeriesPoint {
         }
     }
 
+    /// Update only some specific fields of a `SeriesPoint`.
+    #[inline]
+    pub fn update_fields() -> Self {
+        Self::default()
+    }
+
+    /// Clear all the fields of a `SeriesPoint`.
+    #[inline]
+    pub fn clear_fields() -> Self {
+        use ::re_types_core::Loggable as _;
+        Self {
+            color: Some(SerializedComponentBatch::new(
+                crate::components::Color::arrow_empty(),
+                Self::descriptor_color(),
+            )),
+            marker: Some(SerializedComponentBatch::new(
+                crate::components::MarkerShape::arrow_empty(),
+                Self::descriptor_marker(),
+            )),
+            name: Some(SerializedComponentBatch::new(
+                crate::components::Name::arrow_empty(),
+                Self::descriptor_name(),
+            )),
+            marker_size: Some(SerializedComponentBatch::new(
+                crate::components::MarkerSize::arrow_empty(),
+                Self::descriptor_marker_size(),
+            )),
+        }
+    }
+
     /// Color for the corresponding series.
     #[inline]
     pub fn with_color(mut self, color: impl Into<crate::components::Color>) -> Self {
-        self.color = Some(color.into());
+        self.color = try_serialize_field(Self::descriptor_color(), [color]);
         self
     }
 
     /// What shape to use to represent the point
     #[inline]
     pub fn with_marker(mut self, marker: impl Into<crate::components::MarkerShape>) -> Self {
-        self.marker = Some(marker.into());
+        self.marker = try_serialize_field(Self::descriptor_marker(), [marker]);
         self
     }
 
@@ -343,7 +324,7 @@ impl SeriesPoint {
     /// Used in the legend.
     #[inline]
     pub fn with_name(mut self, name: impl Into<crate::components::Name>) -> Self {
-        self.name = Some(name.into());
+        self.name = try_serialize_field(Self::descriptor_name(), [name]);
         self
     }
 
@@ -353,7 +334,7 @@ impl SeriesPoint {
         mut self,
         marker_size: impl Into<crate::components::MarkerSize>,
     ) -> Self {
-        self.marker_size = Some(marker_size.into());
+        self.marker_size = try_serialize_field(Self::descriptor_marker_size(), [marker_size]);
         self
     }
 }
@@ -365,13 +346,5 @@ impl ::re_byte_size::SizeBytes for SeriesPoint {
             + self.marker.heap_size_bytes()
             + self.name.heap_size_bytes()
             + self.marker_size.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <Option<crate::components::Color>>::is_pod()
-            && <Option<crate::components::MarkerShape>>::is_pod()
-            && <Option<crate::components::Name>>::is_pod()
-            && <Option<crate::components::MarkerSize>>::is_pod()
     }
 }

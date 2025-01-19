@@ -34,15 +34,7 @@ impl DepthImage {
 
         let image_format = ImageFormat::depth([width as u32, height as u32], datatype);
 
-        Ok(Self {
-            buffer: blob.into(),
-            format: image_format,
-            draw_order: None,
-            meter: None,
-            colormap: None,
-            point_fill_ratio: None,
-            depth_range: None,
-        })
+        Ok(Self::new(blob, image_format))
     }
 
     /// Construct a depth image from a byte buffer given its resolution, and data type.
@@ -62,15 +54,7 @@ impl DepthImage {
             );
         }
 
-        Self {
-            buffer,
-            format: image_format,
-            meter: None,
-            colormap: None,
-            depth_range: None,
-            point_fill_ratio: None,
-            draw_order: None,
-        }
+        Self::new(buffer, image_format)
     }
 
     /// From an 16-bit grayscale image.

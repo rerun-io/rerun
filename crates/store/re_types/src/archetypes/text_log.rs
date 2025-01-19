@@ -58,18 +58,18 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/text_log_integration/9737d0c986325802a9885499d6fcc773b1736488/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub struct TextLog {
     /// The body of the message.
-    pub text: crate::components::Text,
+    pub text: Option<SerializedComponentBatch>,
 
     /// The verbosity level of the message.
     ///
     /// This can be used to filter the log messages in the Rerun Viewer.
-    pub level: Option<crate::components::TextLogLevel>,
+    pub level: Option<SerializedComponentBatch>,
 
     /// Optional color to use for the log line in the Rerun Viewer.
-    pub color: Option<crate::components::Color>,
+    pub color: Option<SerializedComponentBatch>,
 }
 
 impl TextLog {
@@ -187,69 +187,28 @@ impl ::re_types_core::Archetype for TextLog {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
         let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
-        let text = {
-            let array = arrays_by_descr
-                .get(&Self::descriptor_text())
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.TextLog#text")?;
-            <crate::components::Text>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.TextLog#text")?
-                .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.TextLog#text")?
-        };
-        let level = if let Some(array) = arrays_by_descr.get(&Self::descriptor_level()) {
-            <crate::components::TextLogLevel>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.TextLog#level")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
-        let color = if let Some(array) = arrays_by_descr.get(&Self::descriptor_color()) {
-            <crate::components::Color>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.TextLog#color")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
+        let text = arrays_by_descr
+            .get(&Self::descriptor_text())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_text()));
+        let level = arrays_by_descr
+            .get(&Self::descriptor_level())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_level()));
+        let color = arrays_by_descr
+            .get(&Self::descriptor_color())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_color()));
         Ok(Self { text, level, color })
     }
 }
 
 impl ::re_types_core::AsComponents for TextLog {
-    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
-        re_tracing::profile_function!();
+    #[inline]
+    fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
-            (Some(&self.text as &dyn ComponentBatch)).map(|batch| {
-                ::re_types_core::ComponentBatchCowWithDescriptor {
-                    batch: batch.into(),
-                    descriptor_override: Some(Self::descriptor_text()),
-                }
-            }),
-            (self
-                .level
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_level()),
-            }),
-            (self
-                .color
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_color()),
-            }),
+            Self::indicator().serialized(),
+            self.text.clone(),
+            self.level.clone(),
+            self.color.clone(),
         ]
         .into_iter()
         .flatten()
@@ -264,10 +223,43 @@ impl TextLog {
     #[inline]
     pub fn new(text: impl Into<crate::components::Text>) -> Self {
         Self {
-            text: text.into(),
+            text: try_serialize_field(Self::descriptor_text(), [text]),
             level: None,
             color: None,
         }
+    }
+
+    /// Update only some specific fields of a `TextLog`.
+    #[inline]
+    pub fn update_fields() -> Self {
+        Self::default()
+    }
+
+    /// Clear all the fields of a `TextLog`.
+    #[inline]
+    pub fn clear_fields() -> Self {
+        use ::re_types_core::Loggable as _;
+        Self {
+            text: Some(SerializedComponentBatch::new(
+                crate::components::Text::arrow_empty(),
+                Self::descriptor_text(),
+            )),
+            level: Some(SerializedComponentBatch::new(
+                crate::components::TextLogLevel::arrow_empty(),
+                Self::descriptor_level(),
+            )),
+            color: Some(SerializedComponentBatch::new(
+                crate::components::Color::arrow_empty(),
+                Self::descriptor_color(),
+            )),
+        }
+    }
+
+    /// The body of the message.
+    #[inline]
+    pub fn with_text(mut self, text: impl Into<crate::components::Text>) -> Self {
+        self.text = try_serialize_field(Self::descriptor_text(), [text]);
+        self
     }
 
     /// The verbosity level of the message.
@@ -275,14 +267,14 @@ impl TextLog {
     /// This can be used to filter the log messages in the Rerun Viewer.
     #[inline]
     pub fn with_level(mut self, level: impl Into<crate::components::TextLogLevel>) -> Self {
-        self.level = Some(level.into());
+        self.level = try_serialize_field(Self::descriptor_level(), [level]);
         self
     }
 
     /// Optional color to use for the log line in the Rerun Viewer.
     #[inline]
     pub fn with_color(mut self, color: impl Into<crate::components::Color>) -> Self {
-        self.color = Some(color.into());
+        self.color = try_serialize_field(Self::descriptor_color(), [color]);
         self
     }
 }
@@ -291,12 +283,5 @@ impl ::re_byte_size::SizeBytes for TextLog {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.text.heap_size_bytes() + self.level.heap_size_bytes() + self.color.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::components::Text>::is_pod()
-            && <Option<crate::components::TextLogLevel>>::is_pod()
-            && <Option<crate::components::Color>>::is_pod()
     }
 }

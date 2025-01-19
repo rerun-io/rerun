@@ -87,10 +87,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/textdocument/babda19558ee32ed8d730495b595aee7a5e2c174/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub struct TextDocument {
     /// Contents of the text document.
-    pub text: crate::components::Text,
+    pub text: Option<SerializedComponentBatch>,
 
     /// The Media Type of the text.
     ///
@@ -99,7 +99,7 @@ pub struct TextDocument {
     /// * `text/markdown`
     ///
     /// If omitted, `text/plain` is assumed.
-    pub media_type: Option<crate::components::MediaType>,
+    pub media_type: Option<SerializedComponentBatch>,
 }
 
 impl TextDocument {
@@ -206,52 +206,26 @@ impl ::re_types_core::Archetype for TextDocument {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
         let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
-        let text = {
-            let array = arrays_by_descr
-                .get(&Self::descriptor_text())
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.TextDocument#text")?;
-            <crate::components::Text>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.TextDocument#text")?
-                .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.TextDocument#text")?
-        };
-        let media_type = if let Some(array) = arrays_by_descr.get(&Self::descriptor_media_type()) {
-            <crate::components::MediaType>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.TextDocument#media_type")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
+        let text = arrays_by_descr
+            .get(&Self::descriptor_text())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_text()));
+        let media_type = arrays_by_descr
+            .get(&Self::descriptor_media_type())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_media_type())
+            });
         Ok(Self { text, media_type })
     }
 }
 
 impl ::re_types_core::AsComponents for TextDocument {
-    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
-        re_tracing::profile_function!();
+    #[inline]
+    fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
-            (Some(&self.text as &dyn ComponentBatch)).map(|batch| {
-                ::re_types_core::ComponentBatchCowWithDescriptor {
-                    batch: batch.into(),
-                    descriptor_override: Some(Self::descriptor_text()),
-                }
-            }),
-            (self
-                .media_type
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_media_type()),
-            }),
+            Self::indicator().serialized(),
+            self.text.clone(),
+            self.media_type.clone(),
         ]
         .into_iter()
         .flatten()
@@ -266,9 +240,38 @@ impl TextDocument {
     #[inline]
     pub fn new(text: impl Into<crate::components::Text>) -> Self {
         Self {
-            text: text.into(),
+            text: try_serialize_field(Self::descriptor_text(), [text]),
             media_type: None,
         }
+    }
+
+    /// Update only some specific fields of a `TextDocument`.
+    #[inline]
+    pub fn update_fields() -> Self {
+        Self::default()
+    }
+
+    /// Clear all the fields of a `TextDocument`.
+    #[inline]
+    pub fn clear_fields() -> Self {
+        use ::re_types_core::Loggable as _;
+        Self {
+            text: Some(SerializedComponentBatch::new(
+                crate::components::Text::arrow_empty(),
+                Self::descriptor_text(),
+            )),
+            media_type: Some(SerializedComponentBatch::new(
+                crate::components::MediaType::arrow_empty(),
+                Self::descriptor_media_type(),
+            )),
+        }
+    }
+
+    /// Contents of the text document.
+    #[inline]
+    pub fn with_text(mut self, text: impl Into<crate::components::Text>) -> Self {
+        self.text = try_serialize_field(Self::descriptor_text(), [text]);
+        self
     }
 
     /// The Media Type of the text.
@@ -280,7 +283,7 @@ impl TextDocument {
     /// If omitted, `text/plain` is assumed.
     #[inline]
     pub fn with_media_type(mut self, media_type: impl Into<crate::components::MediaType>) -> Self {
-        self.media_type = Some(media_type.into());
+        self.media_type = try_serialize_field(Self::descriptor_media_type(), [media_type]);
         self
     }
 }
@@ -289,10 +292,5 @@ impl ::re_byte_size::SizeBytes for TextDocument {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.text.heap_size_bytes() + self.media_type.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::components::Text>::is_pod() && <Option<crate::components::MediaType>>::is_pod()
     }
 }

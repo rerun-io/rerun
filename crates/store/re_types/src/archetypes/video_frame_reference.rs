@@ -122,7 +122,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/video_manual_frames/9f41c00f84a98cc3f26875fba7c1d2fa2bad7151/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct VideoFrameReference {
     /// References the closest video frame to this timestamp.
     ///
@@ -132,7 +132,7 @@ pub struct VideoFrameReference {
     /// Timestamps are relative to the start of the video, i.e. a timestamp of 0 always corresponds to the first frame.
     /// This is oftentimes equivalent to presentation timestamps (known as PTS), but in the presence of B-frames
     /// (bidirectionally predicted frames) there may be an offset on the first presentation timestamp in the video.
-    pub timestamp: crate::components::VideoTimestamp,
+    pub timestamp: Option<SerializedComponentBatch>,
 
     /// Optional reference to an entity with a [`archetypes::AssetVideo`][crate::archetypes::AssetVideo].
     ///
@@ -143,7 +143,7 @@ pub struct VideoFrameReference {
     /// For a series of video frame references, it is recommended to specify this path only once
     /// at the beginning of the series and then rely on latest-at query semantics to
     /// keep the video reference active.
-    pub video_reference: Option<crate::components::EntityPath>,
+    pub video_reference: Option<SerializedComponentBatch>,
 }
 
 impl VideoFrameReference {
@@ -251,29 +251,16 @@ impl ::re_types_core::Archetype for VideoFrameReference {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
         let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
-        let timestamp = {
-            let array = arrays_by_descr
-                .get(&Self::descriptor_timestamp())
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.VideoFrameReference#timestamp")?;
-            <crate::components::VideoTimestamp>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.VideoFrameReference#timestamp")?
-                .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.VideoFrameReference#timestamp")?
-        };
-        let video_reference =
-            if let Some(array) = arrays_by_descr.get(&Self::descriptor_video_reference()) {
-                <crate::components::EntityPath>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.VideoFrameReference#video_reference")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-            } else {
-                None
-            };
+        let timestamp = arrays_by_descr
+            .get(&Self::descriptor_timestamp())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_timestamp())
+            });
+        let video_reference = arrays_by_descr
+            .get(&Self::descriptor_video_reference())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_video_reference())
+            });
         Ok(Self {
             timestamp,
             video_reference,
@@ -282,25 +269,13 @@ impl ::re_types_core::Archetype for VideoFrameReference {
 }
 
 impl ::re_types_core::AsComponents for VideoFrameReference {
-    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
-        re_tracing::profile_function!();
+    #[inline]
+    fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
-            (Some(&self.timestamp as &dyn ComponentBatch)).map(|batch| {
-                ::re_types_core::ComponentBatchCowWithDescriptor {
-                    batch: batch.into(),
-                    descriptor_override: Some(Self::descriptor_timestamp()),
-                }
-            }),
-            (self
-                .video_reference
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_video_reference()),
-            }),
+            Self::indicator().serialized(),
+            self.timestamp.clone(),
+            self.video_reference.clone(),
         ]
         .into_iter()
         .flatten()
@@ -315,9 +290,48 @@ impl VideoFrameReference {
     #[inline]
     pub fn new(timestamp: impl Into<crate::components::VideoTimestamp>) -> Self {
         Self {
-            timestamp: timestamp.into(),
+            timestamp: try_serialize_field(Self::descriptor_timestamp(), [timestamp]),
             video_reference: None,
         }
+    }
+
+    /// Update only some specific fields of a `VideoFrameReference`.
+    #[inline]
+    pub fn update_fields() -> Self {
+        Self::default()
+    }
+
+    /// Clear all the fields of a `VideoFrameReference`.
+    #[inline]
+    pub fn clear_fields() -> Self {
+        use ::re_types_core::Loggable as _;
+        Self {
+            timestamp: Some(SerializedComponentBatch::new(
+                crate::components::VideoTimestamp::arrow_empty(),
+                Self::descriptor_timestamp(),
+            )),
+            video_reference: Some(SerializedComponentBatch::new(
+                crate::components::EntityPath::arrow_empty(),
+                Self::descriptor_video_reference(),
+            )),
+        }
+    }
+
+    /// References the closest video frame to this timestamp.
+    ///
+    /// Note that this uses the closest video frame instead of the latest at this timestamp
+    /// in order to be more forgiving of rounding errors for inprecise timestamp types.
+    ///
+    /// Timestamps are relative to the start of the video, i.e. a timestamp of 0 always corresponds to the first frame.
+    /// This is oftentimes equivalent to presentation timestamps (known as PTS), but in the presence of B-frames
+    /// (bidirectionally predicted frames) there may be an offset on the first presentation timestamp in the video.
+    #[inline]
+    pub fn with_timestamp(
+        mut self,
+        timestamp: impl Into<crate::components::VideoTimestamp>,
+    ) -> Self {
+        self.timestamp = try_serialize_field(Self::descriptor_timestamp(), [timestamp]);
+        self
     }
 
     /// Optional reference to an entity with a [`archetypes::AssetVideo`][crate::archetypes::AssetVideo].
@@ -334,7 +348,8 @@ impl VideoFrameReference {
         mut self,
         video_reference: impl Into<crate::components::EntityPath>,
     ) -> Self {
-        self.video_reference = Some(video_reference.into());
+        self.video_reference =
+            try_serialize_field(Self::descriptor_video_reference(), [video_reference]);
         self
     }
 }
@@ -343,11 +358,5 @@ impl ::re_byte_size::SizeBytes for VideoFrameReference {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.timestamp.heap_size_bytes() + self.video_reference.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::components::VideoTimestamp>::is_pod()
-            && <Option<crate::components::EntityPath>>::is_pod()
     }
 }

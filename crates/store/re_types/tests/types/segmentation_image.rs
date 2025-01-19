@@ -1,22 +1,27 @@
 use re_types::{
     archetypes::SegmentationImage,
-    datatypes::{ChannelDatatype, ImageFormat},
-    Archetype as _, AsComponents as _,
+    components::{ImageBuffer, ImageFormat},
+    datatypes::{self, ChannelDatatype},
+    Archetype as _, AsComponents as _, ComponentBatch as _,
 };
 
 #[test]
 fn segmentation_image_roundtrip() {
-    let format_expected = ImageFormat {
+    let format_expected = ImageFormat(datatypes::ImageFormat {
         width: 3,
         height: 2,
         pixel_format: None,
         channel_datatype: Some(ChannelDatatype::U8),
         color_model: None,
-    };
+    });
 
     let all_expected = [SegmentationImage {
-        buffer: vec![1, 2, 3, 4, 5, 6].into(),
-        format: format_expected.into(),
+        buffer: ImageBuffer::from(vec![1, 2, 3, 4, 5, 6])
+            .serialized()
+            .map(|batch| batch.with_descriptor_override(SegmentationImage::descriptor_buffer())),
+        format: format_expected
+            .serialized()
+            .map(|batch| batch.with_descriptor_override(SegmentationImage::descriptor_format())),
         draw_order: None,
         opacity: None,
     }];

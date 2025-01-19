@@ -79,50 +79,50 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/elliopsoid3d_simple/bd5d46e61b80ae44792b52ee07d750a7137002ea/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub struct Ellipsoids3D {
     /// For each ellipsoid, half of its size on its three axes.
     ///
     /// If all components are equal, then it is a sphere with that radius.
-    pub half_sizes: Vec<crate::components::HalfSize3D>,
+    pub half_sizes: Option<SerializedComponentBatch>,
 
     /// Optional center positions of the ellipsoids.
     ///
     /// If not specified, the centers will be at (0, 0, 0).
     /// Note that this uses a [`components::PoseTranslation3D`][crate::components::PoseTranslation3D] which is also used by [`archetypes::InstancePoses3D`][crate::archetypes::InstancePoses3D].
-    pub centers: Option<Vec<crate::components::PoseTranslation3D>>,
+    pub centers: Option<SerializedComponentBatch>,
 
     /// Rotations via axis + angle.
     ///
     /// If no rotation is specified, the axes of the ellipsoid align with the axes of the local coordinate system.
     /// Note that this uses a [`components::PoseRotationAxisAngle`][crate::components::PoseRotationAxisAngle] which is also used by [`archetypes::InstancePoses3D`][crate::archetypes::InstancePoses3D].
-    pub rotation_axis_angles: Option<Vec<crate::components::PoseRotationAxisAngle>>,
+    pub rotation_axis_angles: Option<SerializedComponentBatch>,
 
     /// Rotations via quaternion.
     ///
     /// If no rotation is specified, the axes of the ellipsoid align with the axes of the local coordinate system.
     /// Note that this uses a [`components::PoseRotationQuat`][crate::components::PoseRotationQuat] which is also used by [`archetypes::InstancePoses3D`][crate::archetypes::InstancePoses3D].
-    pub quaternions: Option<Vec<crate::components::PoseRotationQuat>>,
+    pub quaternions: Option<SerializedComponentBatch>,
 
     /// Optional colors for the ellipsoids.
-    pub colors: Option<Vec<crate::components::Color>>,
+    pub colors: Option<SerializedComponentBatch>,
 
     /// Optional radii for the lines used when the ellipsoid is rendered as a wireframe.
-    pub line_radii: Option<Vec<crate::components::Radius>>,
+    pub line_radii: Option<SerializedComponentBatch>,
 
     /// Optionally choose whether the ellipsoids are drawn with lines or solid.
-    pub fill_mode: Option<crate::components::FillMode>,
+    pub fill_mode: Option<SerializedComponentBatch>,
 
     /// Optional text labels for the ellipsoids.
-    pub labels: Option<Vec<crate::components::Text>>,
+    pub labels: Option<SerializedComponentBatch>,
 
     /// Optional choice of whether the text labels should be shown by default.
-    pub show_labels: Option<crate::components::ShowLabels>,
+    pub show_labels: Option<SerializedComponentBatch>,
 
     /// Optional class ID for the ellipsoids.
     ///
     /// The class ID provides colors and labels if not specified explicitly.
-    pub class_ids: Option<Vec<crate::components::ClassId>>,
+    pub class_ids: Option<SerializedComponentBatch>,
 }
 
 impl Ellipsoids3D {
@@ -333,123 +333,53 @@ impl ::re_types_core::Archetype for Ellipsoids3D {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
         let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
-        let half_sizes = {
-            let array = arrays_by_descr
-                .get(&Self::descriptor_half_sizes())
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.Ellipsoids3D#half_sizes")?;
-            <crate::components::HalfSize3D>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Ellipsoids3D#half_sizes")?
-                .into_iter()
-                .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                .collect::<DeserializationResult<Vec<_>>>()
-                .with_context("rerun.archetypes.Ellipsoids3D#half_sizes")?
-        };
-        let centers = if let Some(array) = arrays_by_descr.get(&Self::descriptor_centers()) {
-            Some({
-                <crate::components::PoseTranslation3D>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Ellipsoids3D#centers")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                    .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.Ellipsoids3D#centers")?
-            })
-        } else {
-            None
-        };
-        let rotation_axis_angles =
-            if let Some(array) = arrays_by_descr.get(&Self::descriptor_rotation_axis_angles()) {
-                Some({
-                    <crate::components::PoseRotationAxisAngle>::from_arrow_opt(&**array)
-                        .with_context("rerun.archetypes.Ellipsoids3D#rotation_axis_angles")?
-                        .into_iter()
-                        .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                        .collect::<DeserializationResult<Vec<_>>>()
-                        .with_context("rerun.archetypes.Ellipsoids3D#rotation_axis_angles")?
-                })
-            } else {
-                None
-            };
-        let quaternions = if let Some(array) = arrays_by_descr.get(&Self::descriptor_quaternions())
-        {
-            Some({
-                <crate::components::PoseRotationQuat>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Ellipsoids3D#quaternions")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                    .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.Ellipsoids3D#quaternions")?
-            })
-        } else {
-            None
-        };
-        let colors = if let Some(array) = arrays_by_descr.get(&Self::descriptor_colors()) {
-            Some({
-                <crate::components::Color>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Ellipsoids3D#colors")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                    .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.Ellipsoids3D#colors")?
-            })
-        } else {
-            None
-        };
-        let line_radii = if let Some(array) = arrays_by_descr.get(&Self::descriptor_line_radii()) {
-            Some({
-                <crate::components::Radius>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Ellipsoids3D#line_radii")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                    .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.Ellipsoids3D#line_radii")?
-            })
-        } else {
-            None
-        };
-        let fill_mode = if let Some(array) = arrays_by_descr.get(&Self::descriptor_fill_mode()) {
-            <crate::components::FillMode>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Ellipsoids3D#fill_mode")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
-        let labels = if let Some(array) = arrays_by_descr.get(&Self::descriptor_labels()) {
-            Some({
-                <crate::components::Text>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Ellipsoids3D#labels")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                    .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.Ellipsoids3D#labels")?
-            })
-        } else {
-            None
-        };
-        let show_labels = if let Some(array) = arrays_by_descr.get(&Self::descriptor_show_labels())
-        {
-            <crate::components::ShowLabels>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Ellipsoids3D#show_labels")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
-        let class_ids = if let Some(array) = arrays_by_descr.get(&Self::descriptor_class_ids()) {
-            Some({
-                <crate::components::ClassId>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Ellipsoids3D#class_ids")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                    .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.Ellipsoids3D#class_ids")?
-            })
-        } else {
-            None
-        };
+        let half_sizes = arrays_by_descr
+            .get(&Self::descriptor_half_sizes())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_half_sizes())
+            });
+        let centers = arrays_by_descr
+            .get(&Self::descriptor_centers())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_centers()));
+        let rotation_axis_angles = arrays_by_descr
+            .get(&Self::descriptor_rotation_axis_angles())
+            .map(|array| {
+                SerializedComponentBatch::new(
+                    array.clone(),
+                    Self::descriptor_rotation_axis_angles(),
+                )
+            });
+        let quaternions = arrays_by_descr
+            .get(&Self::descriptor_quaternions())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_quaternions())
+            });
+        let colors = arrays_by_descr
+            .get(&Self::descriptor_colors())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_colors()));
+        let line_radii = arrays_by_descr
+            .get(&Self::descriptor_line_radii())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_line_radii())
+            });
+        let fill_mode = arrays_by_descr
+            .get(&Self::descriptor_fill_mode())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_fill_mode())
+            });
+        let labels = arrays_by_descr
+            .get(&Self::descriptor_labels())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_labels()));
+        let show_labels = arrays_by_descr
+            .get(&Self::descriptor_show_labels())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_show_labels())
+            });
+        let class_ids = arrays_by_descr
+            .get(&Self::descriptor_class_ids())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_class_ids())
+            });
         Ok(Self {
             half_sizes,
             centers,
@@ -466,89 +396,21 @@ impl ::re_types_core::Archetype for Ellipsoids3D {
 }
 
 impl ::re_types_core::AsComponents for Ellipsoids3D {
-    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
-        re_tracing::profile_function!();
+    #[inline]
+    fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
-            (Some(&self.half_sizes as &dyn ComponentBatch)).map(|batch| {
-                ::re_types_core::ComponentBatchCowWithDescriptor {
-                    batch: batch.into(),
-                    descriptor_override: Some(Self::descriptor_half_sizes()),
-                }
-            }),
-            (self
-                .centers
-                .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_centers()),
-            }),
-            (self
-                .rotation_axis_angles
-                .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_rotation_axis_angles()),
-            }),
-            (self
-                .quaternions
-                .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_quaternions()),
-            }),
-            (self
-                .colors
-                .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_colors()),
-            }),
-            (self
-                .line_radii
-                .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_line_radii()),
-            }),
-            (self
-                .fill_mode
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_fill_mode()),
-            }),
-            (self
-                .labels
-                .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_labels()),
-            }),
-            (self
-                .show_labels
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_show_labels()),
-            }),
-            (self
-                .class_ids
-                .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_class_ids()),
-            }),
+            Self::indicator().serialized(),
+            self.half_sizes.clone(),
+            self.centers.clone(),
+            self.rotation_axis_angles.clone(),
+            self.quaternions.clone(),
+            self.colors.clone(),
+            self.line_radii.clone(),
+            self.fill_mode.clone(),
+            self.labels.clone(),
+            self.show_labels.clone(),
+            self.class_ids.clone(),
         ]
         .into_iter()
         .flatten()
@@ -565,7 +427,7 @@ impl Ellipsoids3D {
         half_sizes: impl IntoIterator<Item = impl Into<crate::components::HalfSize3D>>,
     ) -> Self {
         Self {
-            half_sizes: half_sizes.into_iter().map(Into::into).collect(),
+            half_sizes: try_serialize_field(Self::descriptor_half_sizes(), half_sizes),
             centers: None,
             rotation_axis_angles: None,
             quaternions: None,
@@ -578,6 +440,72 @@ impl Ellipsoids3D {
         }
     }
 
+    /// Update only some specific fields of a `Ellipsoids3D`.
+    #[inline]
+    pub fn update_fields() -> Self {
+        Self::default()
+    }
+
+    /// Clear all the fields of a `Ellipsoids3D`.
+    #[inline]
+    pub fn clear_fields() -> Self {
+        use ::re_types_core::Loggable as _;
+        Self {
+            half_sizes: Some(SerializedComponentBatch::new(
+                crate::components::HalfSize3D::arrow_empty(),
+                Self::descriptor_half_sizes(),
+            )),
+            centers: Some(SerializedComponentBatch::new(
+                crate::components::PoseTranslation3D::arrow_empty(),
+                Self::descriptor_centers(),
+            )),
+            rotation_axis_angles: Some(SerializedComponentBatch::new(
+                crate::components::PoseRotationAxisAngle::arrow_empty(),
+                Self::descriptor_rotation_axis_angles(),
+            )),
+            quaternions: Some(SerializedComponentBatch::new(
+                crate::components::PoseRotationQuat::arrow_empty(),
+                Self::descriptor_quaternions(),
+            )),
+            colors: Some(SerializedComponentBatch::new(
+                crate::components::Color::arrow_empty(),
+                Self::descriptor_colors(),
+            )),
+            line_radii: Some(SerializedComponentBatch::new(
+                crate::components::Radius::arrow_empty(),
+                Self::descriptor_line_radii(),
+            )),
+            fill_mode: Some(SerializedComponentBatch::new(
+                crate::components::FillMode::arrow_empty(),
+                Self::descriptor_fill_mode(),
+            )),
+            labels: Some(SerializedComponentBatch::new(
+                crate::components::Text::arrow_empty(),
+                Self::descriptor_labels(),
+            )),
+            show_labels: Some(SerializedComponentBatch::new(
+                crate::components::ShowLabels::arrow_empty(),
+                Self::descriptor_show_labels(),
+            )),
+            class_ids: Some(SerializedComponentBatch::new(
+                crate::components::ClassId::arrow_empty(),
+                Self::descriptor_class_ids(),
+            )),
+        }
+    }
+
+    /// For each ellipsoid, half of its size on its three axes.
+    ///
+    /// If all components are equal, then it is a sphere with that radius.
+    #[inline]
+    pub fn with_half_sizes(
+        mut self,
+        half_sizes: impl IntoIterator<Item = impl Into<crate::components::HalfSize3D>>,
+    ) -> Self {
+        self.half_sizes = try_serialize_field(Self::descriptor_half_sizes(), half_sizes);
+        self
+    }
+
     /// Optional center positions of the ellipsoids.
     ///
     /// If not specified, the centers will be at (0, 0, 0).
@@ -587,7 +515,7 @@ impl Ellipsoids3D {
         mut self,
         centers: impl IntoIterator<Item = impl Into<crate::components::PoseTranslation3D>>,
     ) -> Self {
-        self.centers = Some(centers.into_iter().map(Into::into).collect());
+        self.centers = try_serialize_field(Self::descriptor_centers(), centers);
         self
     }
 
@@ -602,8 +530,10 @@ impl Ellipsoids3D {
             Item = impl Into<crate::components::PoseRotationAxisAngle>,
         >,
     ) -> Self {
-        self.rotation_axis_angles =
-            Some(rotation_axis_angles.into_iter().map(Into::into).collect());
+        self.rotation_axis_angles = try_serialize_field(
+            Self::descriptor_rotation_axis_angles(),
+            rotation_axis_angles,
+        );
         self
     }
 
@@ -616,7 +546,7 @@ impl Ellipsoids3D {
         mut self,
         quaternions: impl IntoIterator<Item = impl Into<crate::components::PoseRotationQuat>>,
     ) -> Self {
-        self.quaternions = Some(quaternions.into_iter().map(Into::into).collect());
+        self.quaternions = try_serialize_field(Self::descriptor_quaternions(), quaternions);
         self
     }
 
@@ -626,7 +556,7 @@ impl Ellipsoids3D {
         mut self,
         colors: impl IntoIterator<Item = impl Into<crate::components::Color>>,
     ) -> Self {
-        self.colors = Some(colors.into_iter().map(Into::into).collect());
+        self.colors = try_serialize_field(Self::descriptor_colors(), colors);
         self
     }
 
@@ -636,14 +566,14 @@ impl Ellipsoids3D {
         mut self,
         line_radii: impl IntoIterator<Item = impl Into<crate::components::Radius>>,
     ) -> Self {
-        self.line_radii = Some(line_radii.into_iter().map(Into::into).collect());
+        self.line_radii = try_serialize_field(Self::descriptor_line_radii(), line_radii);
         self
     }
 
     /// Optionally choose whether the ellipsoids are drawn with lines or solid.
     #[inline]
     pub fn with_fill_mode(mut self, fill_mode: impl Into<crate::components::FillMode>) -> Self {
-        self.fill_mode = Some(fill_mode.into());
+        self.fill_mode = try_serialize_field(Self::descriptor_fill_mode(), [fill_mode]);
         self
     }
 
@@ -653,7 +583,7 @@ impl Ellipsoids3D {
         mut self,
         labels: impl IntoIterator<Item = impl Into<crate::components::Text>>,
     ) -> Self {
-        self.labels = Some(labels.into_iter().map(Into::into).collect());
+        self.labels = try_serialize_field(Self::descriptor_labels(), labels);
         self
     }
 
@@ -663,7 +593,7 @@ impl Ellipsoids3D {
         mut self,
         show_labels: impl Into<crate::components::ShowLabels>,
     ) -> Self {
-        self.show_labels = Some(show_labels.into());
+        self.show_labels = try_serialize_field(Self::descriptor_show_labels(), [show_labels]);
         self
     }
 
@@ -675,7 +605,7 @@ impl Ellipsoids3D {
         mut self,
         class_ids: impl IntoIterator<Item = impl Into<crate::components::ClassId>>,
     ) -> Self {
-        self.class_ids = Some(class_ids.into_iter().map(Into::into).collect());
+        self.class_ids = try_serialize_field(Self::descriptor_class_ids(), class_ids);
         self
     }
 }
@@ -693,19 +623,5 @@ impl ::re_byte_size::SizeBytes for Ellipsoids3D {
             + self.labels.heap_size_bytes()
             + self.show_labels.heap_size_bytes()
             + self.class_ids.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <Vec<crate::components::HalfSize3D>>::is_pod()
-            && <Option<Vec<crate::components::PoseTranslation3D>>>::is_pod()
-            && <Option<Vec<crate::components::PoseRotationAxisAngle>>>::is_pod()
-            && <Option<Vec<crate::components::PoseRotationQuat>>>::is_pod()
-            && <Option<Vec<crate::components::Color>>>::is_pod()
-            && <Option<Vec<crate::components::Radius>>>::is_pod()
-            && <Option<crate::components::FillMode>>::is_pod()
-            && <Option<Vec<crate::components::Text>>>::is_pod()
-            && <Option<crate::components::ShowLabels>>::is_pod()
-            && <Option<Vec<crate::components::ClassId>>>::is_pod()
     }
 }
