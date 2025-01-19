@@ -41,7 +41,7 @@ NOTE: `.rrd` files do not yet guarantee any backwards or forwards compatibility.
 ### Apache Arrow
 [Apache Arrow](https://arrow.apache.org/) is a language-independent columnar memory format for arbitrary data. We use it to encode the log data when transmitting it over the network or storing it in an `.rrd` file. We also use it in our in-RAM data store, [`re_chunk_store`](crates/store/re_chunk_store/README.md).
 
-In Rust, we use the [`arrow2` crate](https://crates.io/crates/arrow2).
+In Rust, we use the [`arrow` crate](https://crates.io/crates/arrow).
 
 ### `wgpu`
 The Rerun Viewer uses the [`wgpu`](https://github.com/gfx-rs/wgpu) graphics API. It provides a high-performance abstraction over Vulkan, Metal, D3D12, D3D11, OpenGLES, WebGL and [WebGPU](https://en.wikipedia.org/wiki/WebGPU). This lets us write the same code graphics code for native as for web.
