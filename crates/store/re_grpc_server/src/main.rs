@@ -1,4 +1,3 @@
-
 use re_grpc_server::MessageProxy;
 use re_memory::MemoryLimit;
 use re_protos::sdk_comms::v0::message_proxy_server::MessageProxyServer;
