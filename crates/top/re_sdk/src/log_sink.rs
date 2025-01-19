@@ -371,11 +371,12 @@ impl LogSink for TcpSink {
 #[cfg(feature = "grpc")]
 pub mod grpc {
     use super::LogSink;
+    use re_grpc_client::message_proxy::write::Client;
     use re_log_types::LogMsg;
 
     /// Stream log messages to an in-memory storage node.
     pub struct GrpcSink {
-        client: re_grpc_client::message_proxy::Client,
+        client: Client,
     }
 
     impl GrpcSink {
@@ -389,7 +390,7 @@ pub mod grpc {
         #[inline]
         pub fn new(addr: impl Into<String>) -> Self {
             Self {
-                client: re_grpc_client::message_proxy::Client::new(addr, Default::default()),
+                client: Client::new(addr, Default::default()),
             }
         }
     }

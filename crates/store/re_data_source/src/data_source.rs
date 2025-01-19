@@ -35,6 +35,10 @@ pub enum DataSource {
     /// over `rerun://` gRPC interface.
     #[cfg(feature = "grpc")]
     RerunGrpcUrl { url: String },
+
+    /// A stream of messages over gRPC.
+    #[cfg(feature = "grpc")]
+    MessageProxy { url: String },
 }
 
 impl DataSource {
@@ -95,6 +99,11 @@ impl DataSource {
             return Self::RerunGrpcUrl { url: uri };
         }
 
+        #[cfg(feature = "grpc")]
+        if uri.starts_with("temp://") {
+            return Self::MessageProxy { url: uri };
+        }
+
         if uri.starts_with("file://") || path.exists() {
             Self::FilePath(file_source, path)
         } else if uri.starts_with("http://")
@@ -138,6 +147,8 @@ impl DataSource {
             Self::Stdin => None,
             #[cfg(feature = "grpc")]
             Self::RerunGrpcUrl { .. } => None, // TODO(jleibs): This needs to come from the server.
+            #[cfg(feature = "grpc")]
+            Self::MessageProxy { .. } => None,
         }
     }
 
@@ -248,6 +259,11 @@ impl DataSource {
             #[cfg(feature = "grpc")]
             Self::RerunGrpcUrl { url } => {
                 re_grpc_client::stream_from_redap(url, on_msg).map_err(|err| err.into())
+            }
+
+            #[cfg(feature = "grpc")]
+            Self::MessageProxy { url } => {
+                re_grpc_client::message_proxy::stream(url, on_msg).map_err(|err| err.into())
             }
         }
     }
