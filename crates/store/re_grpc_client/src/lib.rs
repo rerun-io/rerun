@@ -1,6 +1,5 @@
 //! Communications with an Rerun Data Platform gRPC server.
 
-#[cfg(not(target_arch = "wasm32"))]
 pub mod message_proxy;
 
 use std::{collections::HashMap, error::Error, sync::Arc};
