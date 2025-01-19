@@ -26,7 +26,7 @@ pub trait LoggableBatch {
     // counterproductive, the whole point of this is to allow for heterogeneous collections!
     // type Loggable: Loggable;
 
-    /// Serializes the batch into an Arrow2 array.
+    /// Serializes the batch into an Arrow array.
     fn to_arrow(&self) -> SerializationResult<arrow::array::ArrayRef>;
 }
 
@@ -249,36 +249,6 @@ impl From<&SerializedComponentBatch> for arrow::datatypes::Field {
         Self::new(
             batch.descriptor.component_name.to_string(),
             batch.array.data_type().clone(),
-            false,
-        )
-        .with_metadata(
-            [
-                batch.descriptor.archetype_name.map(|name| {
-                    (
-                        FIELD_METADATA_KEY_ARCHETYPE_NAME.to_owned(),
-                        name.to_string(),
-                    )
-                }),
-                batch.descriptor.archetype_field_name.map(|name| {
-                    (
-                        FIELD_METADATA_KEY_ARCHETYPE_FIELD_NAME.to_owned(),
-                        name.to_string(),
-                    )
-                }),
-            ]
-            .into_iter()
-            .flatten()
-            .collect(),
-        )
-    }
-}
-
-impl From<&SerializedComponentBatch> for arrow2::datatypes::Field {
-    #[inline]
-    fn from(batch: &SerializedComponentBatch) -> Self {
-        Self::new(
-            batch.descriptor.component_name.to_string(),
-            batch.array.data_type().clone().into(),
             false,
         )
         .with_metadata(

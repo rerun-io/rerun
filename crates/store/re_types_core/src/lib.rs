@@ -92,7 +92,6 @@ pub mod macros {
 pub mod external {
     pub use anyhow;
     pub use arrow;
-    pub use arrow2;
     pub use re_tuid;
 }
 
