@@ -42,14 +42,9 @@ pub trait ComponentBatch: LoggableBatch {
         let array = self.to_arrow()?;
         let offsets =
             arrow::buffer::OffsetBuffer::from_lengths(std::iter::repeat(1).take(array.len()));
-        let field = match array.data_type() {
-            arrow::datatypes::DataType::List(field) => field.clone(),
-            _ => unreachable!(
-                "{} should always be a list array",
-                self.descriptor().full_name()
-            ),
-        };
-        ArrowListArray::try_new(field, offsets, array, None).map_err(|err| err.into())
+        let nullable = true;
+        let field = arrow::datatypes::Field::new("item", array.data_type().clone(), nullable);
+        ArrowListArray::try_new(field.into(), offsets, array, None).map_err(|err| err.into())
     }
 
     /// Returns the complete [`ComponentDescriptor`] for this [`ComponentBatch`].
