@@ -132,7 +132,7 @@ fn concat_single_is_noop() {
         re_format::format_bytes(total_size_bytes as _),
     );
 
-    // assert!(concatenated_size_bytes < 100); // TODO(#3741): when we have shrink_to_fit
+    assert!(concatenated_size_bytes < 128);
     assert!(unconcatenated_size_bytes as f64 >= total_size_bytes as f64 * 0.95);
     assert!(unconcatenated_size_bytes as f64 <= total_size_bytes as f64 * 1.05);
 
