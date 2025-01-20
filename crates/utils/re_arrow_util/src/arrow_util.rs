@@ -36,7 +36,16 @@ pub fn into_arrow_ref(array: impl Array + 'static) -> ArrayRef {
 pub fn offsets_lengths(
     offsets: &arrow::buffer::OffsetBuffer<i32>,
 ) -> impl Iterator<Item = usize> + '_ {
-    offsets.windows(2).map(|w| (w[1] - w[0]) as usize)
+    // TODO(emilk): remove when we update to Arrow 54 (which has an API for this)
+    offsets.windows(2).map(|w| {
+        let start = w[0];
+        let end = w[1];
+        debug_assert!(
+            start <= end && 0 <= start,
+            "Bad arrow offset buffer: {start}, {end}"
+        );
+        end.saturating_sub(end).max(0) as usize
+    })
 }
 
 /// Returns true if the given `list_array` is semantically empty.
