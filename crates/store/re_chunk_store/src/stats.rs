@@ -1,4 +1,4 @@
-use std::sync::{atomic::Ordering, Arc};
+use std::sync::Arc;
 
 use re_byte_size::SizeBytes;
 use re_chunk::{Chunk, ComponentName, EntityPath, Timeline};
@@ -216,8 +216,6 @@ impl ChunkStore {
     pub fn entity_stats_static(&self, entity_path: &EntityPath) -> ChunkStoreChunkStats {
         re_tracing::profile_function!();
 
-        self.query_id.fetch_add(1, Ordering::Relaxed);
-
         self.static_chunk_ids_per_entity.get(entity_path).map_or(
             ChunkStoreChunkStats::default(),
             |static_chunks_per_component| {
@@ -242,8 +240,6 @@ impl ChunkStore {
         timeline: &Timeline,
     ) -> ChunkStoreChunkStats {
         re_tracing::profile_function!();
-
-        self.query_id.fetch_add(1, Ordering::Relaxed);
 
         self.temporal_chunk_ids_per_entity
             .get(entity_path)
@@ -277,8 +273,6 @@ impl ChunkStore {
     ) -> u64 {
         re_tracing::profile_function!();
 
-        self.query_id.fetch_add(1, Ordering::Relaxed);
-
         self.static_chunk_ids_per_entity
             .get(entity_path)
             .and_then(|static_chunks_per_component| {
@@ -299,8 +293,6 @@ impl ChunkStore {
         component_name: ComponentName,
     ) -> u64 {
         re_tracing::profile_function!();
-
-        self.query_id.fetch_add(1, Ordering::Relaxed);
 
         self.temporal_chunk_ids_per_entity_per_component
             .get(entity_path)

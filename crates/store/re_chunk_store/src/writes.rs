@@ -566,7 +566,6 @@ impl ChunkStore {
             static_chunk_ids_per_entity,
             static_chunks_stats,
             insert_id: _,
-            query_id: _,
             gc_id: _,
             event_id,
         } = self;
