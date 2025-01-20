@@ -63,7 +63,6 @@ impl ChunkStore {
         // * Etc.
         if self.id.kind == re_log_types::StoreKind::Blueprint {
             let patched = chunk.patched_for_blueprint_021_compat();
-            let patched = patched.clone_as_untagged();
             chunk = Arc::new(patched);
         }
 
