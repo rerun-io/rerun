@@ -627,6 +627,7 @@ fn quote_arrow_field_serializer(
                     );
 
                     // Offsets is always non-empty. The last element is the total length of buffer we need.
+                    // We want this capacity in order to allocate exactly as much memory as we need.
                     #[allow(clippy::unwrap_used)]
                     let capacity = offsets.last().copied().unwrap() as usize;
 
@@ -645,6 +646,7 @@ fn quote_arrow_field_serializer(
                     );
 
                     // Offsets is always non-empty. The last element is the total length of buffer we need.
+                    // We want this capacity in order to allocate exactly as much memory as we need.
                     #[allow(clippy::unwrap_used)]
                     let capacity = offsets.last().copied().unwrap() as usize;
 
