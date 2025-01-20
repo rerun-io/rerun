@@ -288,14 +288,16 @@ pub fn filter_array<A: Array + Clone + 'static>(array: &A, filter: &BooleanArray
 
     #[allow(clippy::disallowed_methods)] // that's the whole point
     #[allow(clippy::unwrap_used)]
-    arrow::compute::filter(array, filter)
+    let mut array = arrow::compute::filter(array, filter)
         // Unwrap: this literally cannot fail.
         .unwrap()
         .as_any()
         .downcast_ref::<A>()
         // Unwrap: that's initial type that we got.
         .unwrap()
-        .clone()
+        .clone();
+    array.shrink_to_fit(); // VERY IMPORTANT! https://github.com/rerun-io/rerun/issues/7222
+    array
 }
 
 /// Applies a [take] kernel to the given `array`.
@@ -351,12 +353,14 @@ where
 
     #[allow(clippy::disallowed_methods)] // that's the whole point
     #[allow(clippy::unwrap_used)]
-    arrow::compute::take(array, indices, Default::default())
+    let mut array = arrow::compute::take(array, indices, Default::default())
         // Unwrap: this literally cannot fail.
         .unwrap()
         .as_any()
         .downcast_ref::<A>()
         // Unwrap: that's initial type that we got.
         .unwrap()
-        .clone()
+        .clone();
+    array.shrink_to_fit(); // VERY IMPORTANT! https://github.com/rerun-io/rerun/issues/7222
+    array
 }
