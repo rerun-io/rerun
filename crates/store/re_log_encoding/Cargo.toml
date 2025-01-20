@@ -23,7 +23,14 @@ all-features = true
 default = []
 
 ## Enable loading data from an .rrd file.
-decoder = ["dep:rmp-serde", "dep:lz4_flex", "re_log_types/serde"]
+decoder = [
+  "re_log_types/serde",
+  "dep:bytes",
+  "dep:lz4_flex",
+  "dep:rmp-serde",
+  "dep:tokio",
+  "dep:tokio-stream",
+]
 
 ## Enable encoding of log messages to an .rrd file/stream.
 encoder = ["dep:rmp-serde", "dep:lz4_flex", "re_log_types/serde"]
@@ -57,9 +64,12 @@ parking_lot.workspace = true
 thiserror.workspace = true
 
 # Optional external dependencies:
+bytes = { workspace = true, optional = true }
 ehttp = { workspace = true, optional = true, features = ["streaming"] }
 lz4_flex = { workspace = true, optional = true }
 rmp-serde = { workspace = true, optional = true }
+tokio = { workspace = true, optional = true, features = ["io-util"] }
+tokio-stream = { workspace = true, optional = true }
 web-time = { workspace = true, optional = true }
 
 # Web dependencies:
