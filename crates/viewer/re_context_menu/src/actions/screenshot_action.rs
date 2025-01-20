@@ -33,7 +33,7 @@ impl ContextMenuAction for ScreenshotAction {
             return false;
         };
 
-        ctx.egui_context.memory_mut(|mem| {
+        ctx.egui_context().memory_mut(|mem| {
             mem.caches
                 .cache::<ViewRectPublisher>()
                 .get(view_id)
@@ -49,7 +49,7 @@ impl ContextMenuAction for ScreenshotAction {
     }
 
     fn process_view(&self, ctx: &ContextMenuContext<'_>, view_id: &ViewId) {
-        let Some(view_info) = ctx.egui_context.memory_mut(|mem| {
+        let Some(view_info) = ctx.egui_context().memory_mut(|mem| {
             mem.caches
                 .cache::<ViewRectPublisher>()
                 .get(view_id)
@@ -72,11 +72,11 @@ impl ContextMenuAction for ScreenshotAction {
             Self::SaveScreenshot => ScreenshotTarget::SaveToDisk,
         };
 
-        ctx.egui_context
+        ctx.egui_context()
             .send_viewport_cmd(egui::ViewportCommand::Screenshot(egui::UserData::new(
                 re_viewer_context::ScreenshotInfo {
                     ui_rect: Some(rect),
-                    pixels_per_point: ctx.egui_context.pixels_per_point(),
+                    pixels_per_point: ctx.egui_context().pixels_per_point(),
                     name,
                     target,
                 },
