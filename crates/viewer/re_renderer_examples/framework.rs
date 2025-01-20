@@ -113,7 +113,7 @@ impl<E: Example + 'static> Application<E> {
         // Run without validation layers, they can be annoying on shader reload depending on the backend.
         instance_desc.flags.remove(wgpu::InstanceFlags::VALIDATION);
 
-        let instance = wgpu::Instance::new(instance_desc);
+        let instance = wgpu::Instance::new(&instance_desc);
         let surface = instance.create_surface(window.clone()).unwrap();
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
@@ -137,8 +137,6 @@ impl<E: Example + 'static> Application<E> {
             )
             .await
             .context("failed to create device")?;
-        let device = Arc::new(device);
-        let queue = Arc::new(queue);
 
         let output_format_color =
             preferred_framebuffer_format(&surface.get_capabilities(&adapter).formats);

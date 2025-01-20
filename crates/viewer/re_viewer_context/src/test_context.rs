@@ -149,20 +149,20 @@ fn create_egui_renderstate() -> egui_wgpu::RenderState {
 
 /// Instance & adapter
 struct SharedWgpuResources {
-    instance: Arc<wgpu::Instance>,
-    adapter: Arc<wgpu::Adapter>,
-    device: Arc<wgpu::Device>,
+    instance: wgpu::Instance,
+    adapter: wgpu::Adapter,
+    device: wgpu::Device,
 
     // Sharing the queue across parallel running tests should work fine in theory - it's obviously threadsafe.
     // Note though that this becomes an odd sync point that is shared with all tests that put in work here.
-    queue: Arc<wgpu::Queue>,
+    queue: wgpu::Queue,
 }
 
 static SHARED_WGPU_RENDERER_SETUP: Lazy<SharedWgpuResources> =
     Lazy::new(init_shared_renderer_setup);
 
 fn init_shared_renderer_setup() -> SharedWgpuResources {
-    let instance = wgpu::Instance::new(re_renderer::config::testing_instance_descriptor());
+    let instance = wgpu::Instance::new(&re_renderer::config::testing_instance_descriptor());
     let adapter = re_renderer::config::select_testing_adapter(&instance);
     let device_caps = re_renderer::config::DeviceCaps::from_adapter(&adapter)
         .expect("Failed to determine device capabilities");
@@ -171,10 +171,10 @@ fn init_shared_renderer_setup() -> SharedWgpuResources {
             .expect("Failed to request device.");
 
     SharedWgpuResources {
-        instance: Arc::new(instance),
-        adapter: Arc::new(adapter),
-        device: Arc::new(device),
-        queue: Arc::new(queue),
+        instance,
+        adapter,
+        device,
+        queue,
     }
 }
 

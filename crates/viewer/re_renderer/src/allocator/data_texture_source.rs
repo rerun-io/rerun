@@ -381,7 +381,7 @@ impl<'a, T: Pod + Send + Sync> DataTextureSource<'a, T> {
 
             buffer.copy_to_texture2d(
                 encoder.get(),
-                wgpu::ImageCopyTexture {
+                wgpu::TexelCopyTextureInfo {
                     texture: &data_texture.texture,
                     mip_level: 0,
                     origin: wgpu::Origin3d {

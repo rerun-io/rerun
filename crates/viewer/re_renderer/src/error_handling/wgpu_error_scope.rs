@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 /// Wgpu device error scope for all filters that auto closes when exiting the scope unless it was already closed.
 ///
 /// The expectation is that the scope is manually closed, but this construct is useful to not accidentally
@@ -7,11 +5,11 @@ use std::sync::Arc;
 /// Opens scopes for all error types.
 pub struct WgpuErrorScope {
     open: bool,
-    device: Arc<wgpu::Device>,
+    device: wgpu::Device,
 }
 
 impl WgpuErrorScope {
-    pub fn start(device: &Arc<wgpu::Device>) -> Self {
+    pub fn start(device: &wgpu::Device) -> Self {
         device.push_error_scope(wgpu::ErrorFilter::Validation);
         device.push_error_scope(wgpu::ErrorFilter::OutOfMemory);
         device.push_error_scope(wgpu::ErrorFilter::Internal);

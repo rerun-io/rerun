@@ -44,7 +44,7 @@ impl GpuReadbackBuffer {
     pub fn read_texture2d(
         &mut self,
         encoder: &mut wgpu::CommandEncoder,
-        source: wgpu::ImageCopyTexture<'_>,
+        source: wgpu::TexelCopyTextureInfo<'_>,
         copy_extents: wgpu::Extent3d,
     ) -> Result<(), GpuReadbackError> {
         self.read_multiple_texture2d(encoder, &[(source, copy_extents)])
@@ -63,7 +63,7 @@ impl GpuReadbackBuffer {
     pub fn read_multiple_texture2d(
         &mut self,
         encoder: &mut wgpu::CommandEncoder,
-        sources_and_extents: &[(wgpu::ImageCopyTexture<'_>, wgpu::Extent3d)],
+        sources_and_extents: &[(wgpu::TexelCopyTextureInfo<'_>, wgpu::Extent3d)],
     ) -> Result<(), GpuReadbackError> {
         for (source, copy_extents) in sources_and_extents {
             let src_texture = source.texture;
@@ -91,9 +91,9 @@ impl GpuReadbackBuffer {
 
             encoder.copy_texture_to_buffer(
                 *source,
-                wgpu::ImageCopyBuffer {
+                wgpu::TexelCopyBufferInfo {
                     buffer: &self.chunk_buffer,
-                    layout: wgpu::ImageDataLayout {
+                    layout: wgpu::TexelCopyBufferLayout {
                         offset: start_offset,
                         bytes_per_row: Some(buffer_info.bytes_per_row_padded),
                         rows_per_image: None,
