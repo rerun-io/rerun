@@ -20,9 +20,9 @@ impl TestContextExt for TestContext {
     /// closure, and saving it back to the blueprint store. The closure should call the appropriate
     /// methods of [`ViewportBlueprint`] to inspect and/or create views and containers as required.
     ///
-    /// Each time [`setup_viewport_blueprint`] is called, it entirely recomputes the "query
-    /// results", i.e., the [`re_viewer_context::DataResult`]s that each view contains, based on the
-    /// current content of the recording store.
+    /// Each time [`TestContextExt::setup_viewport_blueprint`] is called, it entirely recomputes the
+    /// "query results", i.e., the [`re_viewer_context::DataResult`]s that each view contains, based
+    /// on the current content of the recording store.
     ///
     /// Important pre-requisite:
     /// - The view classes used by view must be already registered (see
