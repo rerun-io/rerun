@@ -338,6 +338,13 @@ pub fn draw_graph(
     // For now we compute the entity rectangles on the fly.
     let mut current_rect = egui::Rect::NOTHING;
 
+    for (_, geometries) in layout.edges() {
+        for geometry in geometries {
+            let response = draw_edge(ui, geometry, geometry.target_arrow);
+            current_rect = current_rect.union(response.rect);
+        }
+    }
+
     for node in graph.nodes() {
         let center = layout.get_node(&node.id()).unwrap_or(Rect::ZERO).center();
 
@@ -389,13 +396,6 @@ pub fn draw_graph(
         };
 
         current_rect = current_rect.union(response.rect);
-    }
-
-    for (_, geometries) in layout.edges() {
-        for geometry in geometries {
-            let response = draw_edge(ui, geometry, geometry.target_arrow);
-            current_rect = current_rect.union(response.rect);
-        }
     }
 
     // We only show entity rects if there are multiple entities.
