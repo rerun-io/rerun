@@ -458,9 +458,6 @@ pub struct ChunkStore {
     /// Monotonically increasing ID for insertions.
     pub(crate) insert_id: u64,
 
-    /// Monotonically increasing ID for queries.
-    pub(crate) query_id: AtomicU64,
-
     /// Monotonically increasing ID for GCs.
     pub(crate) gc_id: u64,
 
@@ -487,7 +484,6 @@ impl Clone for ChunkStore {
             static_chunk_ids_per_entity: self.static_chunk_ids_per_entity.clone(),
             static_chunks_stats: self.static_chunks_stats,
             insert_id: Default::default(),
-            query_id: Default::default(),
             gc_id: Default::default(),
             event_id: Default::default(),
         }
@@ -510,7 +506,6 @@ impl std::fmt::Display for ChunkStore {
             static_chunk_ids_per_entity: _,
             static_chunks_stats,
             insert_id: _,
-            query_id: _,
             gc_id: _,
             event_id: _,
         } = self;
@@ -572,7 +567,6 @@ impl ChunkStore {
             static_chunk_ids_per_entity: Default::default(),
             static_chunks_stats: Default::default(),
             insert_id: 0,
-            query_id: AtomicU64::new(0),
             gc_id: 0,
             event_id: AtomicU64::new(0),
         }
