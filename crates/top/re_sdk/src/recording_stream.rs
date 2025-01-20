@@ -5,20 +5,22 @@ use std::sync::{atomic::AtomicI64, Arc};
 
 use ahash::HashMap;
 use crossbeam::channel::{Receiver, Sender};
-use itertools::Either;
+use itertools::{Either, Itertools};
 use nohash_hasher::IntMap;
 use parking_lot::Mutex;
 
 use re_chunk::{
-    Chunk, ChunkBatcher, ChunkBatcherConfig, ChunkBatcherError, ChunkComponents, ChunkError,
-    ChunkId, PendingRow, RowId, TimeColumn,
+    Arrow2Array, Chunk, ChunkBatcher, ChunkBatcherConfig, ChunkBatcherError, ChunkComponents,
+    ChunkError, ChunkId, PendingRow, RowId, TimeColumn,
 };
 use re_log_types::{
     ApplicationId, ArrowRecordBatchReleaseCallback, BlueprintActivationCommand, EntityPath, LogMsg,
     StoreId, StoreInfo, StoreKind, StoreSource, Time, TimeInt, TimePoint, TimeType, Timeline,
     TimelineName,
 };
-use re_types_core::{AsComponents, SerializationError};
+use re_types_core::{
+    AsComponents, SerializationError, SerializedComponentBatch, SerializedComponentColumn,
+};
 
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
@@ -1022,6 +1024,44 @@ impl RecordingStream {
             .collect();
 
         let components: ChunkComponents = components?.into_iter().collect();
+
+        let chunk = Chunk::from_auto_row_ids(id, ent_path.into(), timelines, components)?;
+
+        self.send_chunk(chunk);
+
+        Ok(())
+    }
+
+    // TODO: alternative is for this to take a SerializedComponentColumn...
+    // TODO
+    // TODO: i guess we can just add partitioning to SerializedComponentBatch, like we do in python/c++?
+    // TODO: keep the result no matter what
+    #[inline]
+    pub fn send_columns_v2(
+        &self,
+        ent_path: impl Into<EntityPath>,
+        timelines: impl IntoIterator<Item = TimeColumn>,
+        columns: impl IntoIterator<Item = SerializedComponentColumn>,
+    ) -> RecordingStreamResult<()> {
+        let id = ChunkId::new();
+
+        let timelines = timelines
+            .into_iter()
+            .map(|timeline| (*timeline.timeline(), timeline))
+            .collect::<IntMap<_, _>>();
+
+        // TODO: also the python one seems to automatically insert indicators, somehow... maybe we
+        // should do so here too.
+        // Nevermind, that's dataframe related shenanigans.
+
+        let components: ChunkComponents = columns
+            .into_iter()
+            .map(|column| {
+                let list_array: re_chunk::external::arrow2::array::ListArray<i32> =
+                    column.list_array.into();
+                (column.descriptor, list_array)
+            })
+            .collect();
 
         let chunk = Chunk::from_auto_row_ids(id, ent_path.into(), timelines, components)?;
 

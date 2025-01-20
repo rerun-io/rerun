@@ -42,6 +42,7 @@ fn assert_loggablebatch_object_safe() {
 
 /// A [`ComponentBatch`] represents an array's worth of [`Component`] instances.
 pub trait ComponentBatch: LoggableBatch {
+    // TODO: well this kinda suck.
     /// Serializes the batch into an Arrow list array with a single component per list.
     fn to_arrow_list_array(&self) -> SerializationResult<Arrow2ListArray<i32>> {
         let array = self.to_arrow2()?;
@@ -231,6 +232,55 @@ impl SerializedComponentBatch {
             .descriptor
             .or_with_archetype_field_name(archetype_field_name);
         self
+    }
+
+    // TODO: well this kinda suck.
+    /// Serializes the batch into an Arrow list array with a single component per list.
+    pub fn to_arrow_list_array(&self) -> SerializationResult<Arrow2ListArray<i32>> {
+        let array: Box<dyn arrow2::array::Array> = self.array.clone().into();
+        let offsets =
+            arrow2::offset::Offsets::try_from_lengths(std::iter::repeat(1).take(array.len()))?;
+        let data_type = Arrow2ListArray::<i32>::default_datatype(array.data_type().clone());
+        Arrow2ListArray::<i32>::try_new(data_type, offsets.into(), array.to_boxed(), None)
+            .map_err(|err| err.into())
+    }
+
+    #[inline]
+    pub fn partitioned(
+        self,
+        lengths: impl IntoIterator<Item = usize>,
+    ) -> SerializedComponentColumn {
+        SerializedComponentColumn::new(self, lengths)
+    }
+}
+
+// TODO
+pub struct SerializedComponentColumn {
+    pub list_array: arrow::array::ListArray,
+
+    // TODO(cmc): Maybe Cow<> this one if it grows bigger. Or intern descriptors altogether, most likely.
+    pub descriptor: ComponentDescriptor,
+}
+
+impl SerializedComponentColumn {
+    pub fn new(batch: SerializedComponentBatch, lengths: impl IntoIterator<Item = usize>) -> Self {
+        // TODO: what do we do about the panic though...
+        let list_array = {
+            let offsets = arrow::buffer::OffsetBuffer::from_lengths(lengths);
+            let nullable = true;
+            arrow::array::ListArray::new(
+                arrow::datatypes::Field::new_list_field(batch.array.data_type().clone(), nullable)
+                    .into(),
+                offsets,
+                batch.array,
+                None,
+            )
+        };
+
+        Self {
+            list_array,
+            descriptor: batch.descriptor,
+        }
     }
 }
 
