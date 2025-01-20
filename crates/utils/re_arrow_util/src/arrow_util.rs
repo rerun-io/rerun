@@ -44,7 +44,7 @@ pub fn offsets_lengths(
             start <= end && 0 <= start,
             "Bad arrow offset buffer: {start}, {end}"
         );
-        end.saturating_sub(end).max(0) as usize
+        end.saturating_sub(start).max(0) as usize
     })
 }
 
