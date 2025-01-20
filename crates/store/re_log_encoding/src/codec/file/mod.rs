@@ -51,8 +51,18 @@ impl MessageHeader {
         Self::from_bytes(&buf)
     }
 
+    /// Decode a message header from a byte buffer. Input buffer must be exactly 16 bytes long.
+    /// TODO(zehiko) this should be public, we need to shuffle things around to ensure that #8726
     #[cfg(feature = "decoder")]
     pub fn from_bytes(buf: &[u8]) -> Result<Self, crate::decoder::DecodeError> {
+        if buf.len() != 16 {
+            return Err(crate::decoder::DecodeError::Codec(
+                crate::codec::CodecError::HeaderDecoding(std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    "invalid header length",
+                )),
+            ));
+        }
         #[allow(clippy::unwrap_used)] // cannot fail
         let kind = u64::from_le_bytes(buf[0..8].try_into().unwrap());
         let kind = match kind {

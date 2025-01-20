@@ -18,12 +18,12 @@ pub struct StreamingDecoder<R: AsyncBufRead> {
     version: CrateVersion,
     options: EncodingOptions,
     reader: R,
-    // buffer used for uncompressing data. This is a tiny optimization
-    // to (potentially) avoid allocation for each (compressed) message
+    /// buffer used for uncompressing data. This is a tiny optimization
+    /// to (potentially) avoid allocation for each (compressed) message
     uncompressed: Vec<u8>,
-    // internal buffer for unprocessed bytes
+    /// internal buffer for unprocessed bytes
     unprocessed_bytes: BytesMut,
-    // flag to indicate if we're expecting more data to be read.
+    /// flag to indicate if we're expecting more data to be read.
     expect_more_data: bool,
 }
 
@@ -56,7 +56,7 @@ impl<R: AsyncBufRead + Unpin> StreamingDecoder<R> {
 }
 
 /// `StreamingDecoder` relies on the underlying reader for the wakeup mechanism.
-/// The fact that we can have concatanated file or corrupted file pushes us to keep
+/// The fact that we can have concatanated file or corrupted file ( / input stream) pushes us to keep
 /// the state of the decoder in the struct itself (through `unprocessed_bytes` and `expect_more_data`).
 impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
     type Item = Result<LogMsg, DecodeError>;
@@ -137,7 +137,7 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
                         continue;
                     }
                     let data = &unprocessed_bytes[..header_size];
-                    let header = super::MessageHeader::from_bytes(data);
+                    let header = super::MessageHeader::from_bytes(data)?;
 
                     match header {
                         super::MessageHeader::Data {

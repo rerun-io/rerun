@@ -24,12 +24,12 @@ default = []
 
 ## Enable loading data from an .rrd file.
 decoder = [
-  "dep:rmp-serde",
-  "dep:lz4_flex",
   "re_log_types/serde",
+  "dep:bytes",
+  "dep:lz4_flex",
+  "dep:rmp-serde",
   "dep:tokio",
   "dep:tokio-stream",
-  "dep:bytes",
 ]
 
 ## Enable encoding of log messages to an .rrd file/stream.

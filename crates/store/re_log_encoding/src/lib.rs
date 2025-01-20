@@ -221,24 +221,33 @@ impl MessageHeader {
         read.read_exact(&mut buffer)
             .map_err(decoder::DecodeError::Read)?;
 
-        Ok(Self::from_bytes(&buffer))
+        Self::from_bytes(&buffer)
     }
 
+    /// Decode a message header from a byte buffer. Input buffer must be exactly 8 bytes long.
     #[cfg(feature = "decoder")]
-    pub fn from_bytes(data: &[u8]) -> Self {
+    pub fn from_bytes(data: &[u8]) -> Result<Self, decoder::DecodeError> {
+        if data.len() != 8 {
+            return Err(decoder::DecodeError::Codec(
+                codec::CodecError::HeaderDecoding(std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    "invalid header length",
+                )),
+            ));
+        }
         fn u32_from_le_slice(bytes: &[u8]) -> u32 {
             u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]])
         }
 
         if u32_from_le_slice(&data[0..4]) == 0 && u32_from_le_slice(&data[4..]) == 0 {
-            Self::EndOfStream
+            Ok(Self::EndOfStream)
         } else {
             let compressed = u32_from_le_slice(&data[0..4]);
             let uncompressed = u32_from_le_slice(&data[4..]);
-            Self::Data {
+            Ok(Self::Data {
                 compressed_len: compressed,
                 uncompressed_len: uncompressed,
-            }
+            })
         }
     }
 }
