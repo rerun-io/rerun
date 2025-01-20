@@ -20,7 +20,6 @@ pub fn collapse_expand_container(
                 .container(*container_id)
                 .set_open(ctx.egui_ctx, expand),
 
-            // IMPORTANT: don't call process_view() here, or the scope information would be lost
             Contents::View(view_id) => collapse_expand_view(ctx, view_id, scope, expand),
         }
 
