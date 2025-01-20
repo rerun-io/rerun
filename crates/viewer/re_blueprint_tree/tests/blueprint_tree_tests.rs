@@ -5,7 +5,7 @@ use re_chunk_store::external::re_chunk::ChunkBuilder;
 use re_chunk_store::RowId;
 use re_log_types::build_frame_nr;
 use re_types::archetypes::Points3D;
-use re_viewer_context::{test_context::TestContext, RecommendedView, ViewClass};
+use re_viewer_context::{test_context::TestContext, CollapseScope, RecommendedView, ViewClass};
 use re_viewport_blueprint::{
     test_context_ext::TestContextExt as _, ViewBlueprint, ViewportBlueprint,
 };
@@ -34,6 +34,69 @@ fn basic_blueprint_panel_should_match_snapshot() {
     let blueprint_tree = BlueprintTree::default();
     run_blueprint_panel_and_save_snapshot(test_context, blueprint_tree, "basic_blueprint_panel");
 }
+
+// ---
+
+#[test]
+fn collapse_expand_all_blueprint_panel_should_match_snapshot() {
+    for (snapshot_name, should_expand) in &[
+        ("expand_all_blueprint_panel", true),
+        ("collapse_all_blueprint_panel", false),
+    ] {
+        let mut test_context = TestContext::default();
+
+        test_context.register_view_class::<re_view_spatial::SpatialView3D>();
+
+        test_context.log_entity("/path/to/entity0".into(), add_point_to_chunk_builder);
+        test_context.log_entity("/path/to/entity1".into(), add_point_to_chunk_builder);
+        test_context.log_entity("/another/way/to/entity2".into(), add_point_to_chunk_builder);
+
+        let view_id = test_context.setup_viewport_blueprint(|_ctx, blueprint| {
+            let view = ViewBlueprint::new(
+                re_view_spatial::SpatialView3D::identifier(),
+                RecommendedView::root(),
+            );
+
+            let view_id = view.id;
+            blueprint.add_views(std::iter::once(view), None, None);
+
+            // TODO(ab): add containers in the hierarchy (requires work on the container API,
+            // currently very cumbersome to use for testing purposes).
+
+            view_id
+        });
+
+        let mut blueprint_tree = BlueprintTree::default();
+
+        let mut harness = test_context
+            .setup_kittest_for_rendering()
+            .with_size(Vec2::new(400.0, 800.0))
+            .build_ui(|ui| {
+                test_context.run(&ui.ctx().clone(), |viewer_ctx| {
+                    re_context_menu::collapse_expand::collapse_expand_view(
+                        viewer_ctx,
+                        &view_id,
+                        CollapseScope::BlueprintTree,
+                        *should_expand,
+                    );
+
+                    let blueprint = ViewportBlueprint::try_from_db(
+                        viewer_ctx.store_context.blueprint,
+                        viewer_ctx.blueprint_query,
+                    );
+
+                    blueprint_tree.show(viewer_ctx, &blueprint, ui);
+                });
+
+                test_context.handle_system_commands();
+            });
+
+        harness.run();
+        harness.snapshot(snapshot_name);
+    }
+}
+
+// ---
 
 #[test]
 fn blueprint_panel_filter_active_inside_origin_should_match_snapshot() {
@@ -67,8 +130,6 @@ fn blueprint_panel_filter_active_above_origin_should_match_snapshot() {
         "blueprint_panel_filter_active_above_origin",
     );
 }
-
-// ---
 
 fn setup_filter_test(query: Option<&str>) -> (TestContext, BlueprintTree) {
     let mut test_context = TestContext::default();
@@ -110,6 +171,8 @@ fn setup_filter_test(query: Option<&str>) -> (TestContext, BlueprintTree) {
 
     (test_context, blueprint_tree)
 }
+
+// ---
 
 fn add_point_to_chunk_builder(builder: ChunkBuilder) -> ChunkBuilder {
     builder.with_archetype(

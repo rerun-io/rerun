@@ -55,7 +55,7 @@ pub fn coincident_nodes() {
         .add_chunk(&Arc::new(builder.build().unwrap()))
         .unwrap();
 
-    run_graph_view_and_save_snapshot(&mut test_context, name, Vec2::new(100.0, 100.0)).unwrap();
+    run_graph_view_and_save_snapshot(&mut test_context, name, Vec2::new(100.0, 100.0));
 }
 
 #[test]
@@ -119,14 +119,10 @@ pub fn self_and_multi_edges() {
         .add_chunk(&Arc::new(builder.build().unwrap()))
         .unwrap();
 
-    run_graph_view_and_save_snapshot(&mut test_context, name, Vec2::new(400.0, 400.0)).unwrap();
+    run_graph_view_and_save_snapshot(&mut test_context, name, Vec2::new(400.0, 400.0));
 }
 
-fn run_graph_view_and_save_snapshot(
-    test_context: &mut TestContext,
-    name: &str,
-    size: Vec2,
-) -> Result<(), Box<dyn std::error::Error>> {
+fn run_graph_view_and_save_snapshot(test_context: &mut TestContext, name: &str, size: Vec2) {
     let view_id = test_context.setup_viewport_blueprint(|_, blueprint| {
         let view_blueprint = ViewBlueprint::new(
             re_view_graph::GraphView::identifier(),
@@ -180,6 +176,4 @@ fn run_graph_view_and_save_snapshot(
 
     harness.run();
     harness.snapshot(name);
-
-    Ok(())
 }
