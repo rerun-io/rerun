@@ -3755,6 +3755,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "jsonwebtoken"
+version = "9.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b9ae10193d25051e74945f1ea2d0b42e03cc3b890f7e4cc5faa44997d808193f"
+dependencies = [
+ "base64 0.21.7",
+ "js-sys",
+ "ring",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "khronos-egl"
 version = "6.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5619,6 +5632,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_auth"
+version = "0.22.0-alpha.1+dev"
+dependencies = [
+ "base64 0.22.1",
+ "jsonwebtoken",
+ "rand",
+ "re_log",
+ "serde",
+ "thiserror 1.0.65",
+ "tonic",
+]
+
+[[package]]
 name = "re_blueprint_tree"
 version = "0.22.0-alpha.1+dev"
 dependencies = [
@@ -6090,6 +6116,7 @@ name = "re_log_encoding"
 version = "0.22.0-alpha.1+dev"
 dependencies = [
  "arrow",
+ "bytes",
  "criterion",
  "ehttp",
  "js-sys",
@@ -6109,6 +6136,8 @@ dependencies = [
  "serde_test",
  "similar-asserts",
  "thiserror 1.0.65",
+ "tokio",
+ "tokio-stream",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",

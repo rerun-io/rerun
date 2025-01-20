@@ -1,12 +1,19 @@
 use re_types::{
     archetypes::TextDocument, components::MediaType, Archetype as _, AsComponents as _,
+    ComponentBatch as _,
 };
 
 #[test]
 fn roundtrip() {
+    use re_types::components::Text;
+
     let expected = TextDocument {
-        text: "This is the contents of the text document.".into(),
-        media_type: Some(MediaType::markdown()),
+        text: Text::from("This is the contents of the text document.")
+            .serialized()
+            .map(|batch| batch.with_descriptor_override(TextDocument::descriptor_text())),
+        media_type: MediaType::markdown()
+            .serialized()
+            .map(|batch| batch.with_descriptor_override(TextDocument::descriptor_media_type())),
     };
 
     let arch = TextDocument::new("This is the contents of the text document.")

@@ -62,14 +62,15 @@ impl ArrowString {
         std::str::from_utf8(self.0.as_ref()).unwrap_or("INVALID UTF-8")
     }
 
+    /// The raw UTF8 bytes.
     #[inline]
-    pub fn into_arrow_buffer(self) -> arrow::buffer::Buffer {
-        self.0
+    pub fn as_bytes(&self) -> &[u8] {
+        self.0.as_slice()
     }
 
     #[inline]
-    pub fn into_arrow2_buffer(self) -> arrow2::buffer::Buffer<u8> {
-        self.0.into()
+    pub fn into_arrow_buffer(self) -> arrow::buffer::Buffer {
+        self.0
     }
 }
 

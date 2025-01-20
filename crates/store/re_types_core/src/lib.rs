@@ -97,8 +97,7 @@ pub mod external {
 
 /// Useful macro for statically asserting that a `struct` contains some specific fields.
 ///
-/// In particular, this is useful to statcially check that an archetype
-/// has a specific component.
+/// For asserting that an archetype has a specific component use `re_log_types::debug_assert_archetype_has_components`
 ///
 ///  ```
 /// # #[macro_use] extern crate re_types_core;

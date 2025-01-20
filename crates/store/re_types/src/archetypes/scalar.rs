@@ -53,10 +53,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/scalar_simple/8bcc92f56268739f8cd24d60d1fe72a655f62a46/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub struct Scalar {
     /// The scalar value to log.
-    pub scalar: crate::components::Scalar,
+    pub scalar: Option<SerializedComponentBatch>,
 }
 
 impl Scalar {
@@ -147,39 +147,21 @@ impl ::re_types_core::Archetype for Scalar {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
         let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
-        let scalar = {
-            let array = arrays_by_descr
-                .get(&Self::descriptor_scalar())
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.Scalar#scalar")?;
-            <crate::components::Scalar>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Scalar#scalar")?
-                .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.Scalar#scalar")?
-        };
+        let scalar = arrays_by_descr
+            .get(&Self::descriptor_scalar())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_scalar()));
         Ok(Self { scalar })
     }
 }
 
 impl ::re_types_core::AsComponents for Scalar {
-    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
-        re_tracing::profile_function!();
+    #[inline]
+    fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
-        [
-            Some(Self::indicator()),
-            (Some(&self.scalar as &dyn ComponentBatch)).map(|batch| {
-                ::re_types_core::ComponentBatchCowWithDescriptor {
-                    batch: batch.into(),
-                    descriptor_override: Some(Self::descriptor_scalar()),
-                }
-            }),
-        ]
-        .into_iter()
-        .flatten()
-        .collect()
+        [Self::indicator().serialized(), self.scalar.clone()]
+            .into_iter()
+            .flatten()
+            .collect()
     }
 }
 
@@ -190,8 +172,33 @@ impl Scalar {
     #[inline]
     pub fn new(scalar: impl Into<crate::components::Scalar>) -> Self {
         Self {
-            scalar: scalar.into(),
+            scalar: try_serialize_field(Self::descriptor_scalar(), [scalar]),
         }
+    }
+
+    /// Update only some specific fields of a `Scalar`.
+    #[inline]
+    pub fn update_fields() -> Self {
+        Self::default()
+    }
+
+    /// Clear all the fields of a `Scalar`.
+    #[inline]
+    pub fn clear_fields() -> Self {
+        use ::re_types_core::Loggable as _;
+        Self {
+            scalar: Some(SerializedComponentBatch::new(
+                crate::components::Scalar::arrow_empty(),
+                Self::descriptor_scalar(),
+            )),
+        }
+    }
+
+    /// The scalar value to log.
+    #[inline]
+    pub fn with_scalar(mut self, scalar: impl Into<crate::components::Scalar>) -> Self {
+        self.scalar = try_serialize_field(Self::descriptor_scalar(), [scalar]);
+        self
     }
 }
 
@@ -199,10 +206,5 @@ impl ::re_byte_size::SizeBytes for Scalar {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.scalar.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::components::Scalar>::is_pod()
     }
 }

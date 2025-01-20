@@ -193,10 +193,14 @@ impl ::re_types_core::Loggable for TensorData {
                                     let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
                                         names_inner_data.iter().map(|datum| datum.len()),
                                     );
-                                    let inner_data: arrow::buffer::Buffer = names_inner_data
-                                        .into_iter()
-                                        .flat_map(|s| s.into_arrow2_buffer())
-                                        .collect();
+                                    #[allow(clippy::unwrap_used)]
+                                    let capacity = offsets.last().copied().unwrap() as usize;
+                                    let mut buffer_builder =
+                                        arrow::array::builder::BufferBuilder::<u8>::new(capacity);
+                                    for data in &names_inner_data {
+                                        buffer_builder.append_slice(data.as_bytes());
+                                    }
+                                    let inner_data: arrow::buffer::Buffer = buffer_builder.finish();
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     as_array_ref(unsafe {
                                         StringArray::new_unchecked(

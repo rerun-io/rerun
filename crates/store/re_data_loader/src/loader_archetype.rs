@@ -5,7 +5,7 @@ use re_log_types::{EntityPath, TimeInt, TimePoint};
 use re_types::archetypes::{AssetVideo, VideoFrameReference};
 use re_types::components::VideoTimestamp;
 use re_types::Archetype;
-use re_types::{components::MediaType, ComponentBatch};
+use re_types::ComponentBatch;
 
 use crate::{DataLoader, DataLoaderError, LoadedData};
 
@@ -162,7 +162,7 @@ fn load_image(
             let mut arch = re_types::archetypes::EncodedImage::from_file_contents(contents);
 
             if let Ok(format) = image::ImageFormat::from_path(filepath) {
-                arch.media_type = Some(MediaType::from(format.to_mime_type()));
+                arch = arch.with_media_type(format.to_mime_type());
             }
 
             Chunk::builder(entity_path)
