@@ -255,7 +255,7 @@ mod doclink_translation {
 
                 if tokens
                     .peek()
-                    .map_or(false, |next_token| next_token.starts_with('('))
+                    .is_some_and(|next_token| next_token.starts_with('('))
                 {
                     // We are at the `)[` boundary of a markdown link, e.g. "[Rerun](https://rerun.io)",
                     // so this is not a rerun doclink after all.

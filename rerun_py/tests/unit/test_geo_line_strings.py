@@ -108,7 +108,7 @@ def test_geo_line_strings_single_line() -> None:
     # Regression test for #3643
     # Single line string can be passed and is not interpreted as a batch of zero-sized line strings.
     reference = rr.GeoLineStrings(lat_lon=[rr.components.GeoLineString(lat_lon=[[0, 0], [1, 1]])])
-    assert len(reference.line_strings) == 1
+    assert reference.line_strings is not None and len(reference.line_strings) == 1
     assert reference == rr.GeoLineStrings(lat_lon=rr.components.GeoLineString(lat_lon=[[0, 0], [1, 1]]))
     assert reference == rr.GeoLineStrings(lat_lon=[[[0, 0], [1, 1]]])
     assert reference == rr.GeoLineStrings(lat_lon=[[0, 0], [1, 1]])

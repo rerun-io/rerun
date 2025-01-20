@@ -49,14 +49,25 @@ impl BlueprintTree {
         ui: &mut egui::Ui,
     ) {
         ui.panel_content(|ui| {
-            ui.panel_title_bar_with_buttons(
-                "Blueprint",
-                Some("The blueprint is where you can configure the Rerun Viewer"),
-                |ui| {
-                    self.add_new_view_button_ui(ctx, viewport, ui);
-                    reset_blueprint_button_ui(ctx, ui);
-                },
-            );
+            ui.full_span_separator();
+            ui.add_space(-1.);
+
+            ui.list_item_scope("blueprint_section_title", |ui| {
+                ui.list_item_flat_noninteractive(
+                    list_item::CustomContent::new(|ui, _| {
+                        ui.strong("Blueprint").on_hover_text(
+                            "The blueprint is where you can configure the Rerun Viewer",
+                        );
+                    })
+                    .menu_button(&re_ui::icons::MORE, |ui| {
+                        add_new_view_or_container_menu_button(ctx, viewport, ui);
+                        set_blueprint_to_default_menu_buttons(ctx, ui);
+                        set_blueprint_to_auto_menu_button(ctx, viewport, ui);
+                    }),
+                );
+            });
+
+            ui.full_span_separator();
         });
 
         // This call is excluded from `panel_content` because it has a ScrollArea, which should not be
@@ -468,7 +479,7 @@ impl BlueprintTree {
         let is_item_hovered =
             ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
 
-        let visible = data_result_node.map_or(false, |n| n.data_result.is_visible(ctx));
+        let visible = data_result_node.is_some_and(|n| n.data_result.is_visible(ctx));
         let empty_origin = entity_path == &view.space_origin && data_result_node.is_none();
 
         let item_label = if entity_path.is_root() {
@@ -530,7 +541,7 @@ impl BlueprintTree {
         }
 
         // If there's any children on the data result nodes, show them, otherwise we're good with this list item as is.
-        let has_children = data_result_node.map_or(false, |n| !n.children.is_empty());
+        let has_children = data_result_node.is_some_and(|n| !n.children.is_empty());
         let response = if let (true, Some(node)) = (has_children, data_result_node) {
             // Don't default open projections.
             let default_open = entity_path.starts_with(&view.space_origin)
@@ -600,32 +611,6 @@ impl BlueprintTree {
         );
         self.scroll_to_me_if_needed(ui, &item, &response);
         ctx.handle_select_hover_drag_interactions(&response, item, true);
-    }
-
-    /// Add a button to trigger the addition of a new view or container.
-    #[allow(clippy::unused_self)]
-    fn add_new_view_button_ui(
-        &self,
-        ctx: &ViewerContext<'_>,
-        viewport: &ViewportBlueprint,
-        ui: &mut egui::Ui,
-    ) {
-        if ui
-            .small_icon_button(&re_ui::icons::ADD)
-            .on_hover_text("Add a new view or container")
-            .clicked()
-        {
-            // If a single container is selected, we use it as target. Otherwise, we target the
-            // root container.
-            let target_container_id =
-                if let Some(Item::Container(container_id)) = ctx.selection().single_item() {
-                    *container_id
-                } else {
-                    viewport.root_container
-                };
-
-            show_add_view_or_container_modal(target_container_id);
-        }
     }
 
     // ----------------------------------------------------------------------------
@@ -868,7 +853,35 @@ impl BlueprintTree {
 
 // ----------------------------------------------------------------------------
 
-fn reset_blueprint_button_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
+/// Add a button to trigger the addition of a new view or container.
+fn add_new_view_or_container_menu_button(
+    ctx: &ViewerContext<'_>,
+    viewport: &ViewportBlueprint,
+    ui: &mut egui::Ui,
+) {
+    if ui
+        .add(egui::Button::image_and_text(
+            &re_ui::icons::ADD,
+            "Add view or container…",
+        ))
+        .clicked()
+    {
+        ui.close_menu();
+
+        // If a single container is selected, we use it as target. Otherwise, we target the
+        // root container.
+        let target_container_id =
+            if let Some(Item::Container(container_id)) = ctx.selection().single_item() {
+                *container_id
+            } else {
+                viewport.root_container
+            };
+
+        show_add_view_or_container_modal(target_container_id);
+    }
+}
+
+fn set_blueprint_to_default_menu_buttons(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
     let default_blueprint_id = ctx
         .store_context
         .hub
@@ -876,35 +889,58 @@ fn reset_blueprint_button_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
 
     let default_blueprint = default_blueprint_id.and_then(|id| ctx.store_context.bundle.get(id));
 
-    let mut disabled_reason = None;
-
-    if let Some(default_blueprint) = default_blueprint {
-        let active_is_clone_of_default = Some(default_blueprint.store_id()).as_ref()
-            == ctx.store_context.blueprint.cloned_from();
-        let last_modified_at_the_same_time =
-            default_blueprint.latest_row_id() == ctx.store_context.blueprint.latest_row_id();
-        if active_is_clone_of_default && last_modified_at_the_same_time {
-            disabled_reason = Some("No modifications have been made");
+    let disabled_reason = match default_blueprint {
+        None => Some("No default blueprint is set for this app"),
+        Some(default_blueprint) => {
+            let active_is_clone_of_default = Some(default_blueprint.store_id()).as_ref()
+                == ctx.store_context.blueprint.cloned_from();
+            let last_modified_at_the_same_time =
+                default_blueprint.latest_row_id() == ctx.store_context.blueprint.latest_row_id();
+            if active_is_clone_of_default && last_modified_at_the_same_time {
+                Some("No modifications have been made")
+            } else {
+                None // it is valid to reset to default
+            }
         }
-    }
+    };
 
     let enabled = disabled_reason.is_none();
-    let response = ui.add_enabled(enabled, ui.small_icon_button_widget(&re_ui::icons::RESET));
+    let mut response = ui
+        .add_enabled(
+            enabled,
+            egui::Button::image_and_text(&re_ui::icons::RESET, "Reset to default blueprint"),
+        )
+        .on_hover_text("Reset to the default blueprint for this app");
 
-    let response = if let Some(disabled_reason) = disabled_reason {
-        response.on_disabled_hover_text(disabled_reason)
-    } else {
-        let hover_text = if default_blueprint_id.is_some() {
-            "Reset to the default blueprint for this app"
-        } else {
-            "Re-populate viewport with automatically chosen views"
-        };
-        response.on_hover_text(hover_text)
+    if let Some(disabled_reason) = disabled_reason {
+        response = response.on_disabled_hover_text(disabled_reason);
     };
 
     if response.clicked() {
+        ui.close_menu();
         ctx.command_sender
             .send_system(re_viewer_context::SystemCommand::ClearActiveBlueprint);
+    }
+}
+
+fn set_blueprint_to_auto_menu_button(
+    ctx: &ViewerContext<'_>,
+    viewport: &ViewportBlueprint,
+    ui: &mut egui::Ui,
+) {
+    let enabled = !viewport.auto_layout() || !viewport.auto_views();
+
+    if ui
+        .add_enabled(
+            enabled,
+            egui::Button::image_and_text(&re_ui::icons::RESET, "Reset to heuristic blueprint"),
+        )
+        .on_hover_text("Re-populate viewport with automatically chosen views")
+        .clicked()
+    {
+        ui.close_menu();
+        ctx.command_sender
+            .send_system(re_viewer_context::SystemCommand::ClearActiveBlueprintAndEnableHeuristics);
     }
 }
 

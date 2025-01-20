@@ -25,11 +25,13 @@ impl TextDocument {
         contents: Vec<u8>,
         media_type: Option<impl Into<MediaType>>,
     ) -> anyhow::Result<Self> {
-        let media_type = media_type.map(Into::into);
-        let media_type = MediaType::or_guess_from_data(media_type, &contents);
-        Ok(Self {
-            text: String::from_utf8(contents)?.into(),
-            media_type,
+        let media_type = MediaType::or_guess_from_data(media_type.map(Into::into), &contents);
+        let result = Self::new(String::from_utf8(contents)?);
+
+        Ok(if let Some(media_type) = media_type {
+            result.with_media_type(media_type)
+        } else {
+            result
         })
     }
 

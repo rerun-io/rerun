@@ -140,10 +140,10 @@ pub struct Query {
     /// Only rows where this column contains non-null data be kept in the final dataset.
     #[prost(message, optional, tag = "9")]
     pub filtered_is_not_null: ::core::option::Option<ComponentColumnSelector>,
-    /// / The specific _columns_ to sample from the final view contents.
-    /// / The order of the samples will be respected in the final result.
+    /// The specific _columns_ to sample from the final view contents.
+    /// The order of the samples will be respected in the final result.
     /// /
-    /// / If unspecified, it means - everything.
+    /// If unspecified, it means - everything.
     #[prost(message, optional, tag = "10")]
     pub column_selection: ::core::option::Option<ColumnSelection>,
     /// Specifies how null values should be filled in the returned dataframe.
@@ -158,6 +158,97 @@ impl ::prost::Name for Query {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.common.v0.Query".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ColumnDescriptor {
+    #[prost(oneof = "column_descriptor::DescriptorType", tags = "1, 2")]
+    pub descriptor_type: ::core::option::Option<column_descriptor::DescriptorType>,
+}
+/// Nested message and enum types in `ColumnDescriptor`.
+pub mod column_descriptor {
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum DescriptorType {
+        #[prost(message, tag = "1")]
+        TimeColumn(super::TimeColumnDescriptor),
+        #[prost(message, tag = "2")]
+        ComponentColumn(super::ComponentColumnDescriptor),
+    }
+}
+impl ::prost::Name for ColumnDescriptor {
+    const NAME: &'static str = "ColumnDescriptor";
+    const PACKAGE: &'static str = "rerun.common.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v0.ColumnDescriptor".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v0.ColumnDescriptor".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct TimeColumnDescriptor {
+    /// The timeline this column is associated with.
+    #[prost(message, optional, tag = "1")]
+    pub timeline: ::core::option::Option<Timeline>,
+    /// The Arrow datatype of the column.
+    /// /
+    /// Currently this is just the `Display` of the `arrow-rs` `DataType`.
+    /// TODO(emilk): use arrow IPC instead.
+    #[prost(string, tag = "2")]
+    pub datatype: ::prost::alloc::string::String,
+}
+impl ::prost::Name for TimeColumnDescriptor {
+    const NAME: &'static str = "TimeColumnDescriptor";
+    const PACKAGE: &'static str = "rerun.common.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v0.TimeColumnDescriptor".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v0.TimeColumnDescriptor".into()
+    }
+}
+/// Describes a data/component column, such as `Position3D`.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ComponentColumnDescriptor {
+    /// The path of the entity.
+    #[prost(message, optional, tag = "1")]
+    pub entity_path: ::core::option::Option<EntityPath>,
+    /// Optional name of the `Archetype` associated with this data.
+    #[prost(string, optional, tag = "2")]
+    pub archetype_name: ::core::option::Option<::prost::alloc::string::String>,
+    /// Optional name of the field within `Archetype` associated with this data.
+    #[prost(string, optional, tag = "3")]
+    pub archetype_field_name: ::core::option::Option<::prost::alloc::string::String>,
+    /// Semantic name associated with this data.
+    #[prost(string, tag = "4")]
+    pub component_name: ::prost::alloc::string::String,
+    /// The Arrow datatype of the column.
+    /// /
+    /// Currently this is just the `Display` of the `arrow-rs` `DataType`.
+    /// TODO(emilk): use arrow IPC instead.
+    #[prost(string, tag = "5")]
+    pub datatype: ::prost::alloc::string::String,
+    /// Whether the column is a static column.
+    #[prost(bool, tag = "6")]
+    pub is_static: bool,
+    /// Whether the column is a tombstone column.
+    #[prost(bool, tag = "7")]
+    pub is_tombstone: bool,
+    /// Whether the column is an indicator column.
+    #[prost(bool, tag = "8")]
+    pub is_indicator: bool,
+    /// Whether the column is semantically empty.
+    #[prost(bool, tag = "9")]
+    pub is_semantically_empty: bool,
+}
+impl ::prost::Name for ComponentColumnDescriptor {
+    const NAME: &'static str = "ComponentColumnDescriptor";
+    const PACKAGE: &'static str = "rerun.common.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v0.ComponentColumnDescriptor".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v0.ComponentColumnDescriptor".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]

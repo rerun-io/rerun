@@ -34,10 +34,11 @@ arrow = ["dep:arrow"]
 
 
 [dependencies]
-re_entity_db.workspace = true # syntax-highlighting for InstancePath. TODO(emilk): move InstancePath
+re_arrow_util.workspace = true
+re_entity_db.workspace = true  # syntax-highlighting for InstancePath. TODO(emilk): move InstancePath
 re_format.workspace = true
 re_log.workspace = true
-re_log_types.workspace = true # syntax-highlighting for EntityPath
+re_log_types.workspace = true  # syntax-highlighting for EntityPath
 re_tracing.workspace = true
 
 eframe = { workspace = true, default-features = false, features = ["wgpu"] }
@@ -45,10 +46,10 @@ egui_commonmark = { workspace = true, features = ["pulldown_cmark"] }
 egui_extras.workspace = true
 egui_tiles.workspace = true
 egui.workspace = true
+getrandom.workspace = true
 itertools.workspace = true
 once_cell.workspace = true
 parking_lot.workspace = true
-rand.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 smallvec.workspace = true
@@ -70,4 +71,5 @@ time = { workspace = true, features = [
 
 [dev-dependencies]
 egui_kittest.workspace = true
+rand.workspace = true
 re_types.workspace = true

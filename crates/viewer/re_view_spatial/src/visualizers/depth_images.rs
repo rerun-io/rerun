@@ -7,7 +7,6 @@ use re_types::{
     archetypes::DepthImage,
     components::{
         self, Colormap, DepthMeter, DrawOrder, FillRatio, ImageBuffer, ImageFormat, ValueRange,
-        ViewCoordinates,
     },
     image::ImageKind,
     Component as _,
@@ -190,7 +189,7 @@ impl DepthImageVisualizer {
             * glam::Affine3A::from_mat3(
                 intrinsics
                     .camera_xyz
-                    .unwrap_or(ViewCoordinates::RDF) // TODO(#2641): This should come from archetype
+                    .unwrap_or(re_types::archetypes::Pinhole::DEFAULT_CAMERA_XYZ)
                     .from_rdf(),
             );
 
@@ -407,7 +406,7 @@ impl TypedComponentFallbackProvider<DepthMeter> for DepthImageVisualizer {
         let is_integer_tensor = ctx
             .recording()
             .latest_at_component::<components::TensorData>(ctx.target_entity_path, ctx.query)
-            .map_or(false, |(_index, tensor)| tensor.dtype().is_integer());
+            .is_some_and(|(_index, tensor)| tensor.dtype().is_integer());
 
         if is_integer_tensor { 1000.0 } else { 1.0 }.into()
     }

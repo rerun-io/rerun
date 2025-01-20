@@ -8,11 +8,38 @@ use arrow2::{
     datatypes::DataType as Arrow2Datatype,
     offset::Offsets as ArrowOffsets,
 };
-use itertools::Itertools;
+use itertools::Itertools as _;
 
-use crate::TransportChunk;
+// ---------------------------------------------------------------------------------
 
-// ---
+/// Downcast an arrow array to another array, without having to go via `Any`.
+///
+/// This is shorter, but also better: it means we don't accidentally downcast
+/// an arrow2 array to an arrow1 array, or vice versa.
+pub trait Arrow2ArrayDowncastRef {
+    /// Downcast an arrow array to another array, without having to go via `Any`.
+    ///
+    /// This is shorter, but also better: it means we don't accidentally downcast
+    /// an arrow2 array to an arrow1 array, or vice versa.
+    fn downcast_array2_ref<T: Arrow2Array + 'static>(&self) -> Option<&T>;
+}
+
+impl Arrow2ArrayDowncastRef for dyn Arrow2Array {
+    fn downcast_array2_ref<T: Arrow2Array + 'static>(&self) -> Option<&T> {
+        self.as_any().downcast_ref()
+    }
+}
+
+impl<A> Arrow2ArrayDowncastRef for A
+where
+    A: Arrow2Array,
+{
+    fn downcast_array2_ref<T: Arrow2Array + 'static>(&self) -> Option<&T> {
+        self.as_any().downcast_ref()
+    }
+}
+
+// ---------------------------------------------------------------------------------
 
 /// Returns true if the given `list_array` is semantically empty.
 ///
@@ -25,7 +52,7 @@ pub fn is_list_array_semantically_empty(list_array: &ArrowListArray<i32>) -> boo
     let is_all_nulls = || {
         list_array
             .validity()
-            .map_or(false, |bitmap| bitmap.unset_bits() == list_array.len())
+            .is_some_and(|bitmap| bitmap.unset_bits() == list_array.len())
     };
 
     let is_all_empties = || list_array.offsets().lengths().all(|len| len == 0);
@@ -192,7 +219,7 @@ pub fn sparse_list_array_to_dense_list_array(
 
     let is_empty = list_array
         .validity()
-        .map_or(false, |validity| validity.is_empty());
+        .is_some_and(|validity| validity.is_empty());
     if is_empty {
         return list_array.clone();
     }
@@ -434,39 +461,4 @@ pub fn take_array<A: Arrow2Array + Clone, O: arrow2::types::Index>(
         // Unwrap: that's initial type that we got.
         .unwrap()
         .clone()
-}
-
-// ---
-
-use arrow2::{chunk::Chunk as Arrow2Chunk, datatypes::Schema as Arrow2Schema};
-
-/// Concatenate multiple [`TransportChunk`]s into one.
-///
-/// This is a temporary method that we use while waiting to migrate towards `arrow-rs`.
-/// * `arrow2` doesn't have a `RecordBatch` type, therefore we emulate that using our `TransportChunk`s.
-/// * `arrow-rs` does have one, and it natively supports concatenation.
-pub fn concatenate_record_batches(
-    schema: Arrow2Schema,
-    batches: &[TransportChunk],
-) -> anyhow::Result<TransportChunk> {
-    assert!(batches.iter().map(|batch| &batch.schema).all_equal());
-
-    let mut arrays = Vec::new();
-
-    if !batches.is_empty() {
-        for (i, _field) in schema.fields.iter().enumerate() {
-            let array = concat_arrays(
-                &batches
-                    .iter()
-                    .map(|batch| &*batch.data[i] as &dyn Arrow2Array)
-                    .collect_vec(),
-            )?;
-            arrays.push(array);
-        }
-    }
-
-    Ok(TransportChunk {
-        schema,
-        data: Arrow2Chunk::new(arrays),
-    })
 }

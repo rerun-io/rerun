@@ -7,10 +7,11 @@ from __future__ import annotations
 
 from attrs import define, field
 
-from .. import components
+from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
 )
+from ..error_utils import catch_and_log_exceptions
 from .geo_points_ext import GeoPointsExt
 
 __all__ = ["GeoPoints"]
@@ -55,10 +56,10 @@ class GeoPoints(GeoPointsExt, Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            positions=None,  # type: ignore[arg-type]
-            radii=None,  # type: ignore[arg-type]
-            colors=None,  # type: ignore[arg-type]
-            class_ids=None,  # type: ignore[arg-type]
+            positions=None,
+            radii=None,
+            colors=None,
+            class_ids=None,
         )
 
     @classmethod
@@ -68,18 +69,84 @@ class GeoPoints(GeoPointsExt, Archetype):
         inst.__attrs_clear__()
         return inst
 
-    positions: components.LatLonBatch = field(
-        metadata={"component": "required"},
-        converter=components.LatLonBatch._required,  # type: ignore[misc]
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        positions: datatypes.DVec2DArrayLike | None = None,
+        radii: datatypes.Float32ArrayLike | None = None,
+        colors: datatypes.Rgba32ArrayLike | None = None,
+        class_ids: datatypes.ClassIdArrayLike | None = None,
+    ) -> GeoPoints:
+        """
+        Update only some specific fields of a `GeoPoints`.
+
+        Parameters
+        ----------
+        clear:
+            If true, all unspecified fields will be explicitly cleared.
+        positions:
+            The [EPSG:4326](https://epsg.io/4326) coordinates for the points (North/East-positive degrees).
+        radii:
+            Optional radii for the points, effectively turning them into circles.
+
+            *Note*: scene units radiii are interpreted as meters.
+        colors:
+            Optional colors for the points.
+
+            The colors are interpreted as RGB or RGBA in sRGB gamma-space,
+            As either 0-1 floats or 0-255 integers, with separate alpha.
+        class_ids:
+            Optional class Ids for the points.
+
+            The [`components.ClassId`][rerun.components.ClassId] provides colors if not specified explicitly.
+
+        """
+
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            kwargs = {
+                "positions": positions,
+                "radii": radii,
+                "colors": colors,
+                "class_ids": class_ids,
+            }
+
+            if clear:
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+            inst.__attrs_init__(**kwargs)
+            return inst
+
+        inst.__attrs_clear__()
+        return inst
+
+    @classmethod
+    def clear_fields(cls) -> GeoPoints:
+        """Clear all the fields of a `GeoPoints`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            positions=[],
+            radii=[],
+            colors=[],
+            class_ids=[],
+        )
+        return inst
+
+    positions: components.LatLonBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.LatLonBatch._converter,  # type: ignore[misc]
     )
     # The [EPSG:4326](https://epsg.io/4326) coordinates for the points (North/East-positive degrees).
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     radii: components.RadiusBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.RadiusBatch._optional,  # type: ignore[misc]
+        converter=components.RadiusBatch._converter,  # type: ignore[misc]
     )
     # Optional radii for the points, effectively turning them into circles.
     #
@@ -88,9 +155,9 @@ class GeoPoints(GeoPointsExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     colors: components.ColorBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.ColorBatch._optional,  # type: ignore[misc]
+        converter=components.ColorBatch._converter,  # type: ignore[misc]
     )
     # Optional colors for the points.
     #
@@ -100,9 +167,9 @@ class GeoPoints(GeoPointsExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     class_ids: components.ClassIdBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.ClassIdBatch._optional,  # type: ignore[misc]
+        converter=components.ClassIdBatch._converter,  # type: ignore[misc]
     )
     # Optional class Ids for the points.
     #

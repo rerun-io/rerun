@@ -507,7 +507,7 @@ fn quote_arrow_field_deserializer(
 
     // If the inner object is an enum, then dispatch to its deserializer.
     if let DataType::Extension(fqname, _, _) = datatype {
-        if objects.get(fqname).map_or(false, |obj| obj.is_enum()) {
+        if objects.get(fqname).is_some_and(|obj| obj.is_enum()) {
             let fqname_use = quote_fqname_as_type_path(fqname);
             return quote!(#fqname_use::from_arrow_opt(#data_src).with_context(#obj_field_fqname)?.into_iter());
         }
@@ -912,7 +912,7 @@ fn quote_iterator_transparency(
     } else {
         None
     };
-    let inner_is_arrow_transparent = inner_obj.map_or(false, |obj| obj.datatype.is_none());
+    let inner_is_arrow_transparent = inner_obj.is_some_and(|obj| obj.datatype.is_none());
 
     if inner_is_arrow_transparent {
         let inner_obj = inner_obj.as_ref().unwrap();

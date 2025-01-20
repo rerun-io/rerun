@@ -6,6 +6,7 @@ use std::io::IsTerminal as _;
 use std::path::PathBuf;
 use std::{borrow::Borrow, collections::HashMap};
 
+use arrow::array::RecordBatch as ArrowRecordBatch;
 use itertools::Itertools;
 use pyo3::{
     exceptions::PyRuntimeError,
@@ -45,9 +46,8 @@ fn all_recordings() -> parking_lot::MutexGuard<'static, HashMap<StoreId, Recordi
     ALL_RECORDINGS.get_or_init(Default::default).lock()
 }
 
-type GarbageChunk = arrow2::chunk::Chunk<Box<dyn arrow2::array::Array>>;
-type GarbageSender = crossbeam::channel::Sender<GarbageChunk>;
-type GarbageReceiver = crossbeam::channel::Receiver<GarbageChunk>;
+type GarbageSender = crossbeam::channel::Sender<ArrowRecordBatch>;
+type GarbageReceiver = crossbeam::channel::Receiver<ArrowRecordBatch>;
 
 /// ## Release Callbacks
 ///
@@ -206,7 +206,7 @@ fn new_recording(
 ) -> PyResult<PyRecordingStream> {
     // The sentinel file we use to identify the official examples directory.
     const SENTINEL_FILENAME: &str = ".rerun_examples";
-    let is_official_example = application_path.map_or(false, |mut path| {
+    let is_official_example = application_path.is_some_and(|mut path| {
         // more than 4 layers would be really pushing it
         for _ in 0..4 {
             path.pop(); // first iteration is always a file path in our examples
@@ -545,7 +545,7 @@ fn set_thread_local_blueprint_recording(
 #[pyfunction]
 #[pyo3(signature = (recording=None))]
 fn is_enabled(recording: Option<&PyRecordingStream>) -> bool {
-    get_data_recording(recording).map_or(false, |rec| rec.is_enabled())
+    get_data_recording(recording).is_some_and(|rec| rec.is_enabled())
 }
 
 /// Helper for forwarding the blueprint memory-sink representation to a given sink
@@ -1136,9 +1136,9 @@ fn log_arrow_msg(
 /// ------
 /// entity_path: `str`
 ///     The entity path to log the chunk to.
-/// timelines: `Dict[str, Arrow2PrimitiveArray<i64>]`
+/// timelines: `Dict[str, arrow::Int64Array]`
 ///     A dictionary mapping timeline names to their values.
-/// components: `Dict[str, ArrowListArray<i32>]`
+/// components: `Dict[str, arrow::ListArray]`
 ///     A dictionary mapping component names to their values.
 #[pyfunction]
 #[pyo3(signature = (

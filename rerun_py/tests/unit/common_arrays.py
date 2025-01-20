@@ -102,7 +102,7 @@ def dvec2ds_expected(obj: Any, type_: Any | None = None) -> Any:
 
     expected = none_empty_or_value(obj, [[1.0, 2.0], [3.0, 4.0]])
 
-    return type_._optional(expected)
+    return type_._converter(expected)
 
 
 vec2ds_arrays: list[Vec2DArrayLike] = [
@@ -141,7 +141,7 @@ def vec2ds_expected(obj: Any, type_: Any | None = None) -> Any:
 
     expected = none_empty_or_value(obj, [[1.0, 2.0], [3.0, 4.0]])
 
-    return type_._optional(expected)
+    return type_._converter(expected)
 
 
 vec3ds_arrays: list[Vec3DArrayLike] = [
@@ -180,7 +180,7 @@ def vec3ds_expected(obj: Any, type_: Any | None = None) -> Any:
 
     expected = none_empty_or_value(obj, [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
 
-    return type_._optional(expected)
+    return type_._converter(expected)
 
 
 vec4ds_arrays: list[Vec4DArrayLike] = [
@@ -219,7 +219,7 @@ def vec4ds_expected(obj: Any, type_: Any | None = None) -> Any:
 
     expected = none_empty_or_value(obj, [[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0]])
 
-    return type_._optional(expected)
+    return type_._converter(expected)
 
 
 uvec3ds_arrays: list[UVec3DArrayLike] = [
@@ -254,7 +254,7 @@ def uvec3ds_expected(obj: Any, type_: Any | None = None) -> Any:
 
     expected = none_empty_or_value(obj, [[1, 2, 3], [4, 5, 6]])
 
-    return type_._optional(expected)
+    return type_._converter(expected)
 
 
 quaternions_arrays: list[QuaternionArrayLike] = [
@@ -274,13 +274,13 @@ quaternions_arrays: list[QuaternionArrayLike] = [
 
 def quaternions_expected(rotations: QuaternionArrayLike, type_: Any) -> Any:
     if rotations is None:
-        return type_._optional(None)
+        return type_._converter(None)
     elif hasattr(rotations, "__len__") and len(rotations) == 0:  # type: ignore[arg-type]
-        return type_._optional(rotations)
+        return type_._converter(rotations)
     elif isinstance(rotations, Quaternion):
-        return type_._optional(Quaternion(xyzw=[1, 2, 3, 4]))
+        return type_._converter(Quaternion(xyzw=[1, 2, 3, 4]))
     else:  # sequence of Rotation3DLike
-        return type_._optional([Quaternion(xyzw=[1, 2, 3, 4])] * 2)
+        return type_._converter([Quaternion(xyzw=[1, 2, 3, 4])] * 2)
 
 
 rotation_axis_angle_arrays: list[RotationAxisAngleArrayLike] = [
@@ -299,15 +299,15 @@ rotation_axis_angle_arrays: list[RotationAxisAngleArrayLike] = [
 
 def expected_rotation_axis_angles(rotations: RotationAxisAngleArrayLike, type_: Any) -> Any:
     if rotations is None:
-        return type_._optional(None)
+        return type_._converter(None)
     elif hasattr(rotations, "__len__") and len(rotations) == 0:
-        return type_._optional(rotations)
+        return type_._converter(rotations)
     elif isinstance(rotations, RotationAxisAngle):
-        return type_._optional(RotationAxisAngle([1, 2, 3], 4))
+        return type_._converter(RotationAxisAngle([1, 2, 3], 4))
     elif isinstance(rotations, Quaternion):
-        return type_._optional(Quaternion(xyzw=[1, 2, 3, 4]))
+        return type_._converter(Quaternion(xyzw=[1, 2, 3, 4]))
     else:  # sequence of Rotation3DLike
-        return type_._optional([RotationAxisAngle([1, 2, 3], 4)] * 2)
+        return type_._converter([RotationAxisAngle([1, 2, 3], 4)] * 2)
 
 
 radii_arrays: list[Float32ArrayLike | None] = [
@@ -329,7 +329,7 @@ radii_arrays: list[Float32ArrayLike | None] = [
 def radii_expected(obj: Any) -> Any:
     expected = none_empty_or_value(obj, [1, 10])
 
-    return RadiusBatch._optional(expected)
+    return RadiusBatch._converter(expected)
 
 
 colors_arrays: list[Rgba32ArrayLike | None] = [
@@ -441,7 +441,7 @@ colors_arrays: list[Rgba32ArrayLike | None] = [
 
 def colors_expected(obj: Any) -> Any:
     expected = none_empty_or_value(obj, [0xAA0000CC, 0x00BB00DD])
-    return ColorBatch._optional(expected)
+    return ColorBatch._converter(expected)
 
 
 labels_arrays: list[Utf8ArrayLike | None] = [
@@ -459,7 +459,7 @@ labels_arrays: list[Utf8ArrayLike | None] = [
 
 def labels_expected(obj: Any) -> Any:
     expected = none_empty_or_value(obj, ["hello", "friend"])
-    return TextBatch._optional(expected)
+    return TextBatch._converter(expected)
 
 
 draw_orders: list[Float32ArrayLike | None] = [
@@ -473,7 +473,7 @@ draw_orders: list[Float32ArrayLike | None] = [
 
 def draw_order_expected(obj: Any) -> Any:
     expected = none_empty_or_value(obj, [300])
-    return DrawOrderBatch._optional(expected)
+    return DrawOrderBatch._converter(expected)
 
 
 class_ids_arrays = [
@@ -498,7 +498,7 @@ class_ids_arrays = [
 
 def class_ids_expected(obj: Any) -> Any:
     expected = none_empty_or_value(obj, [126, 127])
-    return ClassIdBatch._optional(expected)
+    return ClassIdBatch._converter(expected)
 
 
 keypoint_ids_arrays = [
@@ -523,7 +523,7 @@ keypoint_ids_arrays = [
 
 def keypoint_ids_expected(obj: Any) -> Any:
     expected = none_empty_or_value(obj, [2, 3])
-    return KeypointIdBatch._optional(expected)
+    return KeypointIdBatch._converter(expected)
 
 
 uuid_bytes0 = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]

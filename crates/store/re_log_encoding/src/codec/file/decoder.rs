@@ -27,7 +27,7 @@ pub(crate) fn decode(data: &mut impl std::io::Read) -> Result<(u64, Option<LogMs
                 return Err(DecodeError::Codec(CodecError::UnsupportedEncoding));
             }
 
-            let (schema, chunk) = decode_arrow(
+            let batch = decode_arrow(
                 &arrow_msg.payload,
                 arrow_msg.uncompressed_size as usize,
                 arrow_msg.compression().into(),
@@ -38,10 +38,7 @@ pub(crate) fn decode(data: &mut impl std::io::Read) -> Result<(u64, Option<LogMs
                 .ok_or_else(|| missing_field!(re_protos::log_msg::v0::ArrowMsg, "store_id"))?
                 .into();
 
-            let chunk = re_chunk::Chunk::from_transport(&re_chunk::TransportChunk {
-                schema,
-                data: chunk,
-            })?;
+            let chunk = re_chunk::Chunk::from_record_batch(batch)?;
 
             Some(LogMsg::ArrowMsg(store_id, chunk.to_arrow_msg()?))
         }

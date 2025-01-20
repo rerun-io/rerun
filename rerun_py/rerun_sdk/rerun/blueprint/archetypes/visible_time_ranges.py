@@ -7,10 +7,12 @@ from __future__ import annotations
 
 from attrs import define, field
 
+from ... import datatypes
 from ..._baseclasses import (
     Archetype,
 )
 from ...blueprint import components as blueprint_components
+from ...error_utils import catch_and_log_exceptions
 from .visible_time_ranges_ext import VisibleTimeRangesExt
 
 __all__ = ["VisibleTimeRanges"]
@@ -35,7 +37,7 @@ class VisibleTimeRanges(VisibleTimeRangesExt, Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            ranges=None,  # type: ignore[arg-type]
+            ranges=None,
         )
 
     @classmethod
@@ -45,9 +47,55 @@ class VisibleTimeRanges(VisibleTimeRangesExt, Archetype):
         inst.__attrs_clear__()
         return inst
 
-    ranges: blueprint_components.VisibleTimeRangeBatch = field(
-        metadata={"component": "required"},
-        converter=blueprint_components.VisibleTimeRangeBatch._required,  # type: ignore[misc]
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        ranges: datatypes.VisibleTimeRangeArrayLike | None = None,
+    ) -> VisibleTimeRanges:
+        """
+        Update only some specific fields of a `VisibleTimeRanges`.
+
+        Parameters
+        ----------
+        clear:
+            If true, all unspecified fields will be explicitly cleared.
+        ranges:
+            The time ranges to show for each timeline unless specified otherwise on a per-entity basis.
+
+            If a timeline is specified more than once, the first entry will be used.
+
+        """
+
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            kwargs = {
+                "ranges": ranges,
+            }
+
+            if clear:
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+            inst.__attrs_init__(**kwargs)
+            return inst
+
+        inst.__attrs_clear__()
+        return inst
+
+    @classmethod
+    def clear_fields(cls) -> VisibleTimeRanges:
+        """Clear all the fields of a `VisibleTimeRanges`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            ranges=[],
+        )
+        return inst
+
+    ranges: blueprint_components.VisibleTimeRangeBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=blueprint_components.VisibleTimeRangeBatch._converter,  # type: ignore[misc]
     )
     # The time ranges to show for each timeline unless specified otherwise on a per-entity basis.
     #

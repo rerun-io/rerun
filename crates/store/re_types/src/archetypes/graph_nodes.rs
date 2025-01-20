@@ -12,9 +12,9 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 
-use ::re_types_core::external::arrow;
+use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
@@ -49,114 +49,126 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/graph_directed/ca29a37b65e1e0b6482251dce401982a0bc568fa/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub struct GraphNodes {
     /// A list of node IDs.
-    pub node_ids: Vec<crate::components::GraphNode>,
+    pub node_ids: Option<SerializedComponentBatch>,
 
     /// Optional center positions of the nodes.
-    pub positions: Option<Vec<crate::components::Position2D>>,
+    pub positions: Option<SerializedComponentBatch>,
 
     /// Optional colors for the boxes.
-    pub colors: Option<Vec<crate::components::Color>>,
+    pub colors: Option<SerializedComponentBatch>,
 
     /// Optional text labels for the node.
-    pub labels: Option<Vec<crate::components::Text>>,
+    pub labels: Option<SerializedComponentBatch>,
 
     /// Optional choice of whether the text labels should be shown by default.
-    pub show_labels: Option<crate::components::ShowLabels>,
+    pub show_labels: Option<SerializedComponentBatch>,
 
     /// Optional radii for nodes.
-    pub radii: Option<Vec<crate::components::Radius>>,
+    pub radii: Option<SerializedComponentBatch>,
 }
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
+impl GraphNodes {
+    /// Returns the [`ComponentDescriptor`] for [`Self::node_ids`].
+    #[inline]
+    pub fn descriptor_node_ids() -> ComponentDescriptor {
+        ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.GraphNodes".into()),
             component_name: "rerun.components.GraphNode".into(),
             archetype_field_name: Some("node_ids".into()),
-        }]
-    });
+        }
+    }
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
+    /// Returns the [`ComponentDescriptor`] for [`Self::positions`].
+    #[inline]
+    pub fn descriptor_positions() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.GraphNodes".into()),
+            component_name: "rerun.components.Position2D".into(),
+            archetype_field_name: Some("positions".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::colors`].
+    #[inline]
+    pub fn descriptor_colors() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.GraphNodes".into()),
+            component_name: "rerun.components.Color".into(),
+            archetype_field_name: Some("colors".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::labels`].
+    #[inline]
+    pub fn descriptor_labels() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.GraphNodes".into()),
+            component_name: "rerun.components.Text".into(),
+            archetype_field_name: Some("labels".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::show_labels`].
+    #[inline]
+    pub fn descriptor_show_labels() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.GraphNodes".into()),
+            component_name: "rerun.components.ShowLabels".into(),
+            archetype_field_name: Some("show_labels".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::radii`].
+    #[inline]
+    pub fn descriptor_radii() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.GraphNodes".into()),
+            component_name: "rerun.components.Radius".into(),
+            archetype_field_name: Some("radii".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
+    #[inline]
+    pub fn descriptor_indicator() -> ComponentDescriptor {
+        ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.GraphNodes".into()),
             component_name: "rerun.components.GraphNodesIndicator".into(),
             archetype_field_name: None,
-        }]
-    });
+        }
+    }
+}
+
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [GraphNodes::descriptor_node_ids()]);
+
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [GraphNodes::descriptor_indicator()]);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.GraphNodes".into()),
-                component_name: "rerun.components.Position2D".into(),
-                archetype_field_name: Some("positions".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.GraphNodes".into()),
-                component_name: "rerun.components.Color".into(),
-                archetype_field_name: Some("colors".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.GraphNodes".into()),
-                component_name: "rerun.components.Text".into(),
-                archetype_field_name: Some("labels".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.GraphNodes".into()),
-                component_name: "rerun.components.ShowLabels".into(),
-                archetype_field_name: Some("show_labels".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.GraphNodes".into()),
-                component_name: "rerun.components.Radius".into(),
-                archetype_field_name: Some("radii".into()),
-            },
+            GraphNodes::descriptor_positions(),
+            GraphNodes::descriptor_colors(),
+            GraphNodes::descriptor_labels(),
+            GraphNodes::descriptor_show_labels(),
+            GraphNodes::descriptor_radii(),
         ]
     });
 
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 7usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.GraphNodes".into()),
-                component_name: "rerun.components.GraphNode".into(),
-                archetype_field_name: Some("node_ids".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.GraphNodes".into()),
-                component_name: "rerun.components.GraphNodesIndicator".into(),
-                archetype_field_name: None,
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.GraphNodes".into()),
-                component_name: "rerun.components.Position2D".into(),
-                archetype_field_name: Some("positions".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.GraphNodes".into()),
-                component_name: "rerun.components.Color".into(),
-                archetype_field_name: Some("colors".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.GraphNodes".into()),
-                component_name: "rerun.components.Text".into(),
-                archetype_field_name: Some("labels".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.GraphNodes".into()),
-                component_name: "rerun.components.ShowLabels".into(),
-                archetype_field_name: Some("show_labels".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.GraphNodes".into()),
-                component_name: "rerun.components.Radius".into(),
-                archetype_field_name: Some("radii".into()),
-            },
+            GraphNodes::descriptor_node_ids(),
+            GraphNodes::descriptor_indicator(),
+            GraphNodes::descriptor_positions(),
+            GraphNodes::descriptor_colors(),
+            GraphNodes::descriptor_labels(),
+            GraphNodes::descriptor_show_labels(),
+            GraphNodes::descriptor_radii(),
         ]
     });
 
@@ -209,83 +221,33 @@ impl ::re_types_core::Archetype for GraphNodes {
 
     #[inline]
     fn from_arrow_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, arrow::array::ArrayRef)>,
+        arrow_data: impl IntoIterator<Item = (ComponentDescriptor, arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(name, array)| (name.full_name(), array))
-            .collect();
-        let node_ids = {
-            let array = arrays_by_name
-                .get("rerun.components.GraphNode")
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.GraphNodes#node_ids")?;
-            <crate::components::GraphNode>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.GraphNodes#node_ids")?
-                .into_iter()
-                .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                .collect::<DeserializationResult<Vec<_>>>()
-                .with_context("rerun.archetypes.GraphNodes#node_ids")?
-        };
-        let positions = if let Some(array) = arrays_by_name.get("rerun.components.Position2D") {
-            Some({
-                <crate::components::Position2D>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.GraphNodes#positions")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                    .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.GraphNodes#positions")?
-            })
-        } else {
-            None
-        };
-        let colors = if let Some(array) = arrays_by_name.get("rerun.components.Color") {
-            Some({
-                <crate::components::Color>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.GraphNodes#colors")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                    .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.GraphNodes#colors")?
-            })
-        } else {
-            None
-        };
-        let labels = if let Some(array) = arrays_by_name.get("rerun.components.Text") {
-            Some({
-                <crate::components::Text>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.GraphNodes#labels")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                    .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.GraphNodes#labels")?
-            })
-        } else {
-            None
-        };
-        let show_labels = if let Some(array) = arrays_by_name.get("rerun.components.ShowLabels") {
-            <crate::components::ShowLabels>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.GraphNodes#show_labels")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
-        let radii = if let Some(array) = arrays_by_name.get("rerun.components.Radius") {
-            Some({
-                <crate::components::Radius>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.GraphNodes#radii")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                    .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.GraphNodes#radii")?
-            })
-        } else {
-            None
-        };
+        let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
+        let node_ids = arrays_by_descr
+            .get(&Self::descriptor_node_ids())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_node_ids()));
+        let positions = arrays_by_descr
+            .get(&Self::descriptor_positions())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_positions())
+            });
+        let colors = arrays_by_descr
+            .get(&Self::descriptor_colors())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_colors()));
+        let labels = arrays_by_descr
+            .get(&Self::descriptor_labels())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_labels()));
+        let show_labels = arrays_by_descr
+            .get(&Self::descriptor_show_labels())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_show_labels())
+            });
+        let radii = arrays_by_descr
+            .get(&Self::descriptor_radii())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_radii()));
         Ok(Self {
             node_ids,
             positions,
@@ -298,81 +260,17 @@ impl ::re_types_core::Archetype for GraphNodes {
 }
 
 impl ::re_types_core::AsComponents for GraphNodes {
-    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
-        re_tracing::profile_function!();
+    #[inline]
+    fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
-            (Some(&self.node_ids as &dyn ComponentBatch)).map(|batch| {
-                ::re_types_core::ComponentBatchCowWithDescriptor {
-                    batch: batch.into(),
-                    descriptor_override: Some(ComponentDescriptor {
-                        archetype_name: Some("rerun.archetypes.GraphNodes".into()),
-                        archetype_field_name: Some(("node_ids").into()),
-                        component_name: ("rerun.components.GraphNode").into(),
-                    }),
-                }
-            }),
-            (self
-                .positions
-                .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.GraphNodes".into()),
-                    archetype_field_name: Some(("positions").into()),
-                    component_name: ("rerun.components.Position2D").into(),
-                }),
-            }),
-            (self
-                .colors
-                .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.GraphNodes".into()),
-                    archetype_field_name: Some(("colors").into()),
-                    component_name: ("rerun.components.Color").into(),
-                }),
-            }),
-            (self
-                .labels
-                .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.GraphNodes".into()),
-                    archetype_field_name: Some(("labels").into()),
-                    component_name: ("rerun.components.Text").into(),
-                }),
-            }),
-            (self
-                .show_labels
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.GraphNodes".into()),
-                    archetype_field_name: Some(("show_labels").into()),
-                    component_name: ("rerun.components.ShowLabels").into(),
-                }),
-            }),
-            (self
-                .radii
-                .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.GraphNodes".into()),
-                    archetype_field_name: Some(("radii").into()),
-                    component_name: ("rerun.components.Radius").into(),
-                }),
-            }),
+            Self::indicator().serialized(),
+            self.node_ids.clone(),
+            self.positions.clone(),
+            self.colors.clone(),
+            self.labels.clone(),
+            self.show_labels.clone(),
+            self.radii.clone(),
         ]
         .into_iter()
         .flatten()
@@ -389,7 +287,7 @@ impl GraphNodes {
         node_ids: impl IntoIterator<Item = impl Into<crate::components::GraphNode>>,
     ) -> Self {
         Self {
-            node_ids: node_ids.into_iter().map(Into::into).collect(),
+            node_ids: try_serialize_field(Self::descriptor_node_ids(), node_ids),
             positions: None,
             colors: None,
             labels: None,
@@ -398,13 +296,61 @@ impl GraphNodes {
         }
     }
 
+    /// Update only some specific fields of a `GraphNodes`.
+    #[inline]
+    pub fn update_fields() -> Self {
+        Self::default()
+    }
+
+    /// Clear all the fields of a `GraphNodes`.
+    #[inline]
+    pub fn clear_fields() -> Self {
+        use ::re_types_core::Loggable as _;
+        Self {
+            node_ids: Some(SerializedComponentBatch::new(
+                crate::components::GraphNode::arrow_empty(),
+                Self::descriptor_node_ids(),
+            )),
+            positions: Some(SerializedComponentBatch::new(
+                crate::components::Position2D::arrow_empty(),
+                Self::descriptor_positions(),
+            )),
+            colors: Some(SerializedComponentBatch::new(
+                crate::components::Color::arrow_empty(),
+                Self::descriptor_colors(),
+            )),
+            labels: Some(SerializedComponentBatch::new(
+                crate::components::Text::arrow_empty(),
+                Self::descriptor_labels(),
+            )),
+            show_labels: Some(SerializedComponentBatch::new(
+                crate::components::ShowLabels::arrow_empty(),
+                Self::descriptor_show_labels(),
+            )),
+            radii: Some(SerializedComponentBatch::new(
+                crate::components::Radius::arrow_empty(),
+                Self::descriptor_radii(),
+            )),
+        }
+    }
+
+    /// A list of node IDs.
+    #[inline]
+    pub fn with_node_ids(
+        mut self,
+        node_ids: impl IntoIterator<Item = impl Into<crate::components::GraphNode>>,
+    ) -> Self {
+        self.node_ids = try_serialize_field(Self::descriptor_node_ids(), node_ids);
+        self
+    }
+
     /// Optional center positions of the nodes.
     #[inline]
     pub fn with_positions(
         mut self,
         positions: impl IntoIterator<Item = impl Into<crate::components::Position2D>>,
     ) -> Self {
-        self.positions = Some(positions.into_iter().map(Into::into).collect());
+        self.positions = try_serialize_field(Self::descriptor_positions(), positions);
         self
     }
 
@@ -414,7 +360,7 @@ impl GraphNodes {
         mut self,
         colors: impl IntoIterator<Item = impl Into<crate::components::Color>>,
     ) -> Self {
-        self.colors = Some(colors.into_iter().map(Into::into).collect());
+        self.colors = try_serialize_field(Self::descriptor_colors(), colors);
         self
     }
 
@@ -424,7 +370,7 @@ impl GraphNodes {
         mut self,
         labels: impl IntoIterator<Item = impl Into<crate::components::Text>>,
     ) -> Self {
-        self.labels = Some(labels.into_iter().map(Into::into).collect());
+        self.labels = try_serialize_field(Self::descriptor_labels(), labels);
         self
     }
 
@@ -434,7 +380,7 @@ impl GraphNodes {
         mut self,
         show_labels: impl Into<crate::components::ShowLabels>,
     ) -> Self {
-        self.show_labels = Some(show_labels.into());
+        self.show_labels = try_serialize_field(Self::descriptor_show_labels(), [show_labels]);
         self
     }
 
@@ -444,7 +390,7 @@ impl GraphNodes {
         mut self,
         radii: impl IntoIterator<Item = impl Into<crate::components::Radius>>,
     ) -> Self {
-        self.radii = Some(radii.into_iter().map(Into::into).collect());
+        self.radii = try_serialize_field(Self::descriptor_radii(), radii);
         self
     }
 }
@@ -458,15 +404,5 @@ impl ::re_byte_size::SizeBytes for GraphNodes {
             + self.labels.heap_size_bytes()
             + self.show_labels.heap_size_bytes()
             + self.radii.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <Vec<crate::components::GraphNode>>::is_pod()
-            && <Option<Vec<crate::components::Position2D>>>::is_pod()
-            && <Option<Vec<crate::components::Color>>>::is_pod()
-            && <Option<Vec<crate::components::Text>>>::is_pod()
-            && <Option<crate::components::ShowLabels>>::is_pod()
-            && <Option<Vec<crate::components::Radius>>>::is_pod()
     }
 }

@@ -76,7 +76,7 @@ impl ContainerBlueprint {
         // is the marker that the have been cleared and not an error.
         let container_kind = results.component_instance::<ContainerKind>(0)?;
 
-        let blueprint_archetypes::ContainerBlueprint {
+        let blueprint_archetypes::NativeContainerBlueprint {
             container_kind,
             display_name,
             contents,
@@ -85,7 +85,7 @@ impl ContainerBlueprint {
             active_tab,
             visible,
             grid_columns,
-        } = blueprint_archetypes::ContainerBlueprint {
+        } = blueprint_archetypes::NativeContainerBlueprint {
             container_kind,
             display_name: results.component_instance(0),
             contents: results.component_batch(),

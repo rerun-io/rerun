@@ -19,7 +19,6 @@ mod proc_mesh;
 mod scene_bounding_boxes;
 mod space_camera_3d;
 mod spatial_topology;
-mod transform_component_tracker;
 mod ui;
 mod ui_2d;
 mod ui_3d;
@@ -28,6 +27,8 @@ mod view_2d_properties;
 mod view_3d;
 mod view_3d_properties;
 mod visualizers;
+
+mod transform_cache;
 
 pub use view_2d::SpatialView2D;
 pub use view_3d::SpatialView3D;
@@ -39,6 +40,7 @@ pub(crate) use pickable_textured_rect::{PickableRectSourceData, PickableTextured
 use re_view::DataResultQuery as _;
 use re_viewer_context::{ImageDecodeCache, ViewContext, ViewerContext};
 
+use re_log_types::debug_assert_archetype_has_components;
 use re_renderer::RenderContext;
 use re_types::{
     archetypes,
@@ -63,7 +65,7 @@ fn resolution_of_image_at(
 ) -> Option<Resolution> {
     // First check assumptions:
     static_assert_struct_has_fields!(archetypes::Image, format: components::ImageFormat);
-    static_assert_struct_has_fields!(archetypes::EncodedImage, blob: components::Blob);
+    debug_assert_archetype_has_components!(archetypes::EncodedImage, blob: components::Blob);
 
     let db = ctx.recording();
 

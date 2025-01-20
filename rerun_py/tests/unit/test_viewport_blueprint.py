@@ -76,10 +76,10 @@ def test_viewport_blueprint() -> None:
         )
         print(f"{arch}\n")
 
-        assert arch.root_container == RootContainerBatch._optional(none_empty_or_value(root_container, uuid_bytes0))
-        assert arch.maximized == ViewMaximizedBatch._optional(none_empty_or_value(maximized, uuid_bytes1))
-        assert arch.auto_layout == AutoLayoutBatch._optional(none_empty_or_value(auto_layout, True))
-        assert arch.auto_views == AutoViewsBatch._optional(none_empty_or_value(auto_views, False))
-        assert arch.past_viewer_recommendations == ViewerRecommendationHashBatch._optional(
+        assert arch.root_container == RootContainerBatch._converter(none_empty_or_value(root_container, uuid_bytes0))
+        assert arch.maximized == ViewMaximizedBatch._converter(none_empty_or_value(maximized, uuid_bytes1))
+        assert arch.auto_layout == AutoLayoutBatch._converter(none_empty_or_value(auto_layout, True))
+        assert arch.auto_views == AutoViewsBatch._converter(none_empty_or_value(auto_views, False))
+        assert arch.past_viewer_recommendations == ViewerRecommendationHashBatch._converter(
             none_empty_or_value(past_viewer_recommendations, [123, 321])
         )

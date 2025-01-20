@@ -12,6 +12,7 @@ use arrow2::{
 };
 use itertools::{izip, Itertools};
 
+use re_arrow_util::Arrow2ArrayDowncastRef as _;
 use re_log_types::{TimeInt, TimePoint, Timeline};
 use re_types_core::{ArrowBuffer, ArrowString, Component, ComponentName};
 
@@ -250,8 +251,7 @@ impl Chunk {
 
         let Some(struct_array) = list_array
             .values()
-            .as_any()
-            .downcast_ref::<Arrow2StructArray>()
+            .downcast_array2_ref::<Arrow2StructArray>()
         else {
             if cfg!(debug_assertions) {
                 panic!("downcast failed for {component_name}, data discarded");
@@ -317,7 +317,7 @@ fn slice_as_native<'a, T: arrow2::types::NativeType + arrow::datatypes::ArrowNat
     array: &'a dyn Arrow2Array,
     component_offsets: impl Iterator<Item = (usize, usize)> + 'a,
 ) -> impl Iterator<Item = &'a [T]> + 'a {
-    let Some(values) = array.as_any().downcast_ref::<Arrow2PrimitiveArray<T>>() else {
+    let Some(values) = array.downcast_array2_ref::<Arrow2PrimitiveArray<T>>() else {
         if cfg!(debug_assertions) {
             panic!("downcast failed for {component_name}, data discarded");
         } else {
@@ -373,7 +373,7 @@ fn slice_as_array_native<
 where
     [T; N]: bytemuck::Pod,
 {
-    let Some(fixed_size_list_array) = array.as_any().downcast_ref::<Arrow2FixedSizeListArray>()
+    let Some(fixed_size_list_array) = array.downcast_array2_ref::<Arrow2FixedSizeListArray>()
     else {
         if cfg!(debug_assertions) {
             panic!("downcast failed for {component_name}, data discarded");
@@ -385,8 +385,7 @@ where
 
     let Some(values) = fixed_size_list_array
         .values()
-        .as_any()
-        .downcast_ref::<Arrow2PrimitiveArray<T>>()
+        .downcast_array2_ref::<Arrow2PrimitiveArray<T>>()
     else {
         if cfg!(debug_assertions) {
             panic!("downcast failed for {component_name}, data discarded");
@@ -445,7 +444,7 @@ fn slice_as_buffer_native<'a, T: arrow2::types::NativeType + arrow::datatypes::A
     array: &'a dyn Arrow2Array,
     component_offsets: impl Iterator<Item = (usize, usize)> + 'a,
 ) -> impl Iterator<Item = Vec<ArrowBuffer<T>>> + 'a {
-    let Some(inner_list_array) = array.as_any().downcast_ref::<Arrow2ListArray<i32>>() else {
+    let Some(inner_list_array) = array.downcast_array2_ref::<Arrow2ListArray<i32>>() else {
         if cfg!(debug_assertions) {
             panic!("downcast failed for {component_name}, data discarded");
         } else {
@@ -456,8 +455,7 @@ fn slice_as_buffer_native<'a, T: arrow2::types::NativeType + arrow::datatypes::A
 
     let Some(values) = inner_list_array
         .values()
-        .as_any()
-        .downcast_ref::<Arrow2PrimitiveArray<T>>()
+        .downcast_array2_ref::<Arrow2PrimitiveArray<T>>()
     else {
         if cfg!(debug_assertions) {
             panic!("downcast failed for {component_name}, data discarded");
@@ -524,7 +522,7 @@ fn slice_as_array_list_native<
 where
     [T; N]: bytemuck::Pod,
 {
-    let Some(inner_list_array) = array.as_any().downcast_ref::<Arrow2ListArray<i32>>() else {
+    let Some(inner_list_array) = array.downcast_array2_ref::<Arrow2ListArray<i32>>() else {
         if cfg!(debug_assertions) {
             panic!("downcast failed for {component_name}, data discarded");
         } else {
@@ -538,8 +536,7 @@ where
 
     let Some(fixed_size_list_array) = inner_list_array
         .values()
-        .as_any()
-        .downcast_ref::<Arrow2FixedSizeListArray>()
+        .downcast_array2_ref::<Arrow2FixedSizeListArray>()
     else {
         if cfg!(debug_assertions) {
             panic!("downcast failed for {component_name}, data discarded");
@@ -551,8 +548,7 @@ where
 
     let Some(values) = fixed_size_list_array
         .values()
-        .as_any()
-        .downcast_ref::<Arrow2PrimitiveArray<T>>()
+        .downcast_array2_ref::<Arrow2PrimitiveArray<T>>()
     else {
         if cfg!(debug_assertions) {
             panic!("downcast failed for {component_name}, data discarded");
@@ -618,7 +614,7 @@ impl ChunkComponentSlicer for String {
         array: &'a dyn Arrow2Array,
         component_offsets: impl Iterator<Item = (usize, usize)> + 'a,
     ) -> impl Iterator<Item = Vec<ArrowString>> + 'a {
-        let Some(utf8_array) = array.as_any().downcast_ref::<Arrow2Utf8Array<i32>>() else {
+        let Some(utf8_array) = array.downcast_array2_ref::<Arrow2Utf8Array<i32>>() else {
             if cfg!(debug_assertions) {
                 panic!("downcast failed for {component_name}, data discarded");
             } else {
@@ -650,7 +646,7 @@ impl ChunkComponentSlicer for bool {
         array: &'a dyn Arrow2Array,
         component_offsets: impl Iterator<Item = (usize, usize)> + 'a,
     ) -> impl Iterator<Item = Self::Item<'a>> + 'a {
-        let Some(values) = array.as_any().downcast_ref::<Arrow2BooleanArray>() else {
+        let Some(values) = array.downcast_array2_ref::<Arrow2BooleanArray>() else {
             if cfg!(debug_assertions) {
                 panic!("downcast failed for {component_name}, data discarded");
             } else {
@@ -683,8 +679,8 @@ impl Iterator for ChunkIndicesIter {
 
         let row_id = {
             let (times, incs) = self.chunk.row_ids_raw();
-            let times = times.values().as_slice();
-            let incs = incs.values().as_slice();
+            let times = times.values();
+            let incs = incs.values();
 
             let time = *times.get(i)?;
             let inc = *incs.get(i)?;

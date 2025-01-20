@@ -7,10 +7,11 @@ from __future__ import annotations
 
 from attrs import define, field
 
-from .. import components
+from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
 )
+from ..error_utils import catch_and_log_exceptions
 from .clear_ext import ClearExt
 
 __all__ = ["Clear"]
@@ -68,7 +69,7 @@ class Clear(ClearExt, Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            is_recursive=None,  # type: ignore[arg-type]
+            is_recursive=None,
         )
 
     @classmethod
@@ -78,9 +79,43 @@ class Clear(ClearExt, Archetype):
         inst.__attrs_clear__()
         return inst
 
-    is_recursive: components.ClearIsRecursiveBatch = field(
-        metadata={"component": "required"},
-        converter=components.ClearIsRecursiveBatch._required,  # type: ignore[misc]
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        is_recursive: datatypes.BoolLike | None = None,
+    ) -> Clear:
+        """Update only some specific fields of a `Clear`."""
+
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            kwargs = {
+                "is_recursive": is_recursive,
+            }
+
+            if clear:
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+            inst.__attrs_init__(**kwargs)
+            return inst
+
+        inst.__attrs_clear__()
+        return inst
+
+    @classmethod
+    def clear_fields(cls) -> Clear:
+        """Clear all the fields of a `Clear`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            is_recursive=[],
+        )
+        return inst
+
+    is_recursive: components.ClearIsRecursiveBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.ClearIsRecursiveBatch._converter,  # type: ignore[misc]
     )
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__  # type: ignore[assignment]

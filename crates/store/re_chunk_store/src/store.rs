@@ -6,7 +6,7 @@ use arrow::datatypes::DataType as ArrowDataType;
 use arrow2::datatypes::DataType as Arrow2DataType;
 use nohash_hasher::IntMap;
 
-use re_chunk::{Chunk, ChunkId, RowId, TransportChunk};
+use re_chunk::{Chunk, ChunkId, RowId};
 use re_log_types::{EntityPath, StoreId, StoreInfo, TimeInt, Timeline};
 use re_types_core::{ComponentDescriptor, ComponentName};
 
@@ -530,7 +530,12 @@ impl std::fmt::Display for ChunkStore {
         f.write_str(&indent::indent_all_by(4, "chunks: [\n"))?;
         for chunk_id in chunk_id_per_min_row_id.values().flatten() {
             if let Some(chunk) = chunks_per_chunk_id.get(chunk_id) {
-                f.write_str(&indent::indent_all_by(8, format!("{chunk}\n")))?;
+                if let Some(width) = f.width() {
+                    let chunk_width = width.saturating_sub(8);
+                    f.write_str(&indent::indent_all_by(8, format!("{chunk:chunk_width$}\n")))?;
+                } else {
+                    f.write_str(&indent::indent_all_by(8, format!("{chunk}\n")))?;
+                }
             } else {
                 f.write_str(&indent::indent_all_by(8, "<not_found>\n"))?;
             }
@@ -641,15 +646,6 @@ impl ChunkStore {
             .map(|dt| dt.clone().into())
     }
 
-    /// Lookup the _latest_ arrow [`Arrow2DataType`] used by a specific [`re_types_core::Component`].
-    #[inline]
-    pub fn lookup_datatype_arrow2(
-        &self,
-        component_name: &ComponentName,
-    ) -> Option<&Arrow2DataType> {
-        self.type_registry.get(component_name)
-    }
-
     /// Lookup the [`ColumnMetadata`] for a specific [`EntityPath`] and [`re_types_core::Component`].
     pub fn lookup_column_metadata(
         &self,
@@ -671,9 +667,7 @@ impl ChunkStore {
         let is_static = self
             .static_chunk_ids_per_entity
             .get(entity_path)
-            .map_or(false, |per_component| {
-                per_component.get(component_name).is_some()
-            });
+            .is_some_and(|per_component| per_component.get(component_name).is_some());
 
         let is_indicator = component_name.is_indicator_component();
 
@@ -736,12 +730,7 @@ impl ChunkStore {
                         anyhow::bail!("unknown store ID: {store_id}");
                     };
 
-                    let transport = TransportChunk {
-                        schema: msg.schema.clone(),
-                        data: msg.chunk.clone(),
-                    };
-
-                    let chunk = Chunk::from_transport(&transport)
+                    let chunk = Chunk::from_arrow_msg(&msg)
                         .with_context(|| format!("couldn't decode chunk {path_to_rrd:?}"))?;
 
                     store
@@ -789,12 +778,7 @@ impl ChunkStore {
                         anyhow::bail!("unknown store ID: {store_id}");
                     };
 
-                    let transport = TransportChunk {
-                        schema: msg.schema.clone(),
-                        data: msg.chunk.clone(),
-                    };
-
-                    let chunk = Chunk::from_transport(&transport)
+                    let chunk = Chunk::from_arrow_msg(&msg)
                         .with_context(|| "couldn't decode chunk".to_owned())?;
 
                     store

@@ -125,7 +125,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/markupsafe-3.0.1-py311h2dc5d0c_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/meilisearch-1.5.1-he8a937b_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/multidict-6.1.0-py311h2dc5d0c_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/mypy-1.8.0-py311h459d7ec_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/mypy-1.14.1-py311h9ecbd09_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/mypy_extensions-1.0.0-pyha770c72_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/nasm-2.16.03-h4bc722e_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/ncurses-6.5-he02047a_1.conda
@@ -353,7 +353,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/lz4-c-1.9.4-hd600fc2_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/markupsafe-3.0.1-py311ha09ea12_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/multidict-6.1.0-py311h58d527c_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/mypy-1.8.0-py311hcd402e7_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/mypy-1.14.1-py311ha879c10_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/mypy_extensions-1.0.0-pyha770c72_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/nasm-2.16.03-h68df207_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/ncurses-6.5-hcccb83c_1.conda
@@ -570,7 +570,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-64/lz4-c-1.9.4-hf0c8a7f_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/markupsafe-3.0.1-py311ha971863_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/multidict-6.1.0-py311h1cc1194_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-64/mypy-1.8.0-py311he705e18_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-64/mypy-1.14.1-py311h4d7f069_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/mypy_extensions-1.0.0-pyha770c72_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/nasm-2.16.03-hfdf4475_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/ncurses-6.5-hf036a51_1.conda
@@ -786,7 +786,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/markupsafe-3.0.1-py311h0ecf0c1_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/meilisearch-1.5.1-h5ef7bb8_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/multidict-6.1.0-py311h30e7462_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/mypy-1.8.0-py311h05b510d_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/mypy-1.14.1-py311h917b07b_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/mypy_extensions-1.0.0-pyha770c72_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/nasm-2.16.03-h99b78c6_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/ncurses-6.5-h7bae524_1.conda
@@ -973,7 +973,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/mkl-2024.1.0-h66d3029_694.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/msys2-conda-epoch-20160418-1.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/win-64/multidict-6.1.0-py311h5082efb_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/mypy-1.8.0-py311ha68e1ae_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/win-64/mypy-1.14.1-py311he736701_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/mypy_extensions-1.0.0-pyha770c72_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/nasm-2.16.03-hfd05255_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/ninja-1.11.1-h91493d7_0.conda
@@ -1194,7 +1194,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/maturin-1.5.1-py311h63ff55d_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/meilisearch-1.5.1-he8a937b_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/multidict-6.1.0-py311h2dc5d0c_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/mypy-1.8.0-py311h459d7ec_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/mypy-1.14.1-py311h9ecbd09_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/mypy_extensions-1.0.0-pyha770c72_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/nasm-2.16.03-h4bc722e_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/ncurses-6.5-he02047a_1.conda
@@ -1406,7 +1406,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/markupsafe-3.0.1-py311ha09ea12_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/maturin-1.5.1-py311h06e5ef9_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/multidict-6.1.0-py311h58d527c_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/mypy-1.8.0-py311hcd402e7_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/mypy-1.14.1-py311ha879c10_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/mypy_extensions-1.0.0-pyha770c72_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/nasm-2.16.03-h68df207_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/ncurses-6.5-hcccb83c_1.conda
@@ -1607,7 +1607,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-64/markupsafe-3.0.1-py311ha971863_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/maturin-1.5.1-py311h24bb903_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/multidict-6.1.0-py311h1cc1194_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-64/mypy-1.8.0-py311he705e18_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-64/mypy-1.14.1-py311h4d7f069_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/mypy_extensions-1.0.0-pyha770c72_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/nasm-2.16.03-hfdf4475_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/ncurses-6.5-hf036a51_1.conda
@@ -1806,7 +1806,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/maturin-1.5.1-py311h71175c2_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/meilisearch-1.5.1-h5ef7bb8_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/multidict-6.1.0-py311h30e7462_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/mypy-1.8.0-py311h05b510d_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/mypy-1.14.1-py311h917b07b_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/mypy_extensions-1.0.0-pyha770c72_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/nasm-2.16.03-h99b78c6_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/ncurses-6.5-h7bae524_1.conda
@@ -1993,7 +1993,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/mkl-2024.1.0-h66d3029_694.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/msys2-conda-epoch-20160418-1.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/win-64/multidict-6.1.0-py311h5082efb_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/mypy-1.8.0-py311ha68e1ae_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/win-64/mypy-1.14.1-py311he736701_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/mypy_extensions-1.0.0-pyha770c72_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/nasm-2.16.03-hfd05255_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/ninja-1.11.1-h91493d7_0.conda
@@ -6121,7 +6121,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/maturin-1.5.1-py311h63ff55d_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/meilisearch-1.5.1-he8a937b_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/multidict-6.1.0-py311h2dc5d0c_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/mypy-1.8.0-py311h459d7ec_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/mypy-1.14.1-py311h9ecbd09_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/mypy_extensions-1.0.0-pyha770c72_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/mysql-common-9.0.1-h266115a_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/mysql-libs-9.0.1-he0572af_1.conda
@@ -6466,7 +6466,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/markupsafe-3.0.1-py311ha09ea12_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/maturin-1.5.1-py311h06e5ef9_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/multidict-6.1.0-py311h58d527c_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/mypy-1.8.0-py311hcd402e7_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/mypy-1.14.1-py311ha879c10_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/mypy_extensions-1.0.0-pyha770c72_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/nasm-2.16.03-h68df207_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/ncurses-6.5-hcccb83c_1.conda
@@ -6765,7 +6765,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-64/markupsafe-3.0.1-py311ha971863_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/maturin-1.5.1-py311h24bb903_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/multidict-6.1.0-py311h1cc1194_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-64/mypy-1.8.0-py311he705e18_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-64/mypy-1.14.1-py311h4d7f069_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/mypy_extensions-1.0.0-pyha770c72_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/nasm-2.16.03-hfdf4475_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/ncurses-6.5-hf036a51_1.conda
@@ -7050,7 +7050,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/maturin-1.5.1-py311h71175c2_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/meilisearch-1.5.1-h5ef7bb8_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/multidict-6.1.0-py311h30e7462_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/mypy-1.8.0-py311h05b510d_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/mypy-1.14.1-py311h917b07b_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/mypy_extensions-1.0.0-pyha770c72_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/nasm-2.16.03-h99b78c6_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/ncurses-6.5-h7bae524_1.conda
@@ -7322,7 +7322,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/mkl-2024.1.0-h66d3029_694.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/msys2-conda-epoch-20160418-1.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/win-64/multidict-6.1.0-py311h5082efb_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/mypy-1.8.0-py311ha68e1ae_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/win-64/mypy-1.14.1-py311he736701_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/mypy_extensions-1.0.0-pyha770c72_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/nasm-2.16.03-hfd05255_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/ninja-1.11.1-h91493d7_0.conda
@@ -7577,7 +7577,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/markupsafe-3.0.1-py311h2dc5d0c_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/meilisearch-1.5.1-he8a937b_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/multidict-6.1.0-py311h2dc5d0c_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/mypy-1.8.0-py311h459d7ec_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/mypy-1.14.1-py311h9ecbd09_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/mypy_extensions-1.0.0-pyha770c72_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/nasm-2.16.03-h4bc722e_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/ncurses-6.5-he02047a_1.conda
@@ -7815,7 +7815,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/lz4-c-1.9.4-hd600fc2_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/markupsafe-3.0.1-py311ha09ea12_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/multidict-6.1.0-py311h58d527c_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/mypy-1.8.0-py311hcd402e7_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/mypy-1.14.1-py311ha879c10_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/mypy_extensions-1.0.0-pyha770c72_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/nasm-2.16.03-h68df207_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/ncurses-6.5-hcccb83c_1.conda
@@ -8042,7 +8042,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-64/lz4-c-1.9.4-hf0c8a7f_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/markupsafe-3.0.1-py311ha971863_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/multidict-6.1.0-py311h1cc1194_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-64/mypy-1.8.0-py311he705e18_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-64/mypy-1.14.1-py311h4d7f069_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/mypy_extensions-1.0.0-pyha770c72_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/nasm-2.16.03-hfdf4475_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/ncurses-6.5-hf036a51_1.conda
@@ -8267,7 +8267,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/markupsafe-3.0.1-py311h0ecf0c1_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/meilisearch-1.5.1-h5ef7bb8_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/multidict-6.1.0-py311h30e7462_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/mypy-1.8.0-py311h05b510d_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/mypy-1.14.1-py311h917b07b_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/mypy_extensions-1.0.0-pyha770c72_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/nasm-2.16.03-h99b78c6_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/ncurses-6.5-h7bae524_1.conda
@@ -8480,7 +8480,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/mkl-2024.1.0-h66d3029_694.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/msys2-conda-epoch-20160418-1.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/win-64/multidict-6.1.0-py311h5082efb_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/mypy-1.8.0-py311ha68e1ae_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/win-64/mypy-1.14.1-py311he736701_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/mypy_extensions-1.0.0-pyha770c72_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/nasm-2.16.03-hfd05255_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/ninja-1.11.1-h91493d7_0.conda
@@ -8814,7 +8814,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/maturin-1.5.1-py311h63ff55d_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/meilisearch-1.5.1-he8a937b_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/multidict-6.1.0-py311h2dc5d0c_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/mypy-1.8.0-py311h459d7ec_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/mypy-1.14.1-py311h9ecbd09_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/mypy_extensions-1.0.0-pyha770c72_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/mysql-common-9.0.1-h266115a_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/mysql-libs-9.0.1-he0572af_1.conda
@@ -9356,7 +9356,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/markupsafe-3.0.1-py311ha09ea12_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/maturin-1.5.1-py311h06e5ef9_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/multidict-6.1.0-py311h58d527c_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/mypy-1.8.0-py311hcd402e7_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/mypy-1.14.1-py311ha879c10_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/mypy_extensions-1.0.0-pyha770c72_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/nasm-2.16.03-h68df207_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/ncurses-6.5-hcccb83c_1.conda
@@ -9841,7 +9841,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-64/markupsafe-3.0.1-py311ha971863_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/maturin-1.5.1-py311h24bb903_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/multidict-6.1.0-py311h1cc1194_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-64/mypy-1.8.0-py311he705e18_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-64/mypy-1.14.1-py311h4d7f069_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/mypy_extensions-1.0.0-pyha770c72_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/nasm-2.16.03-hfdf4475_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/ncurses-6.5-hf036a51_1.conda
@@ -10321,7 +10321,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/maturin-1.5.1-py311h71175c2_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/meilisearch-1.5.1-h5ef7bb8_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/multidict-6.1.0-py311h30e7462_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/mypy-1.8.0-py311h05b510d_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/mypy-1.14.1-py311h917b07b_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/mypy_extensions-1.0.0-pyha770c72_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/nasm-2.16.03-h99b78c6_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/ncurses-6.5-h7bae524_1.conda
@@ -10771,7 +10771,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/mkl-2024.1.0-h66d3029_694.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/msys2-conda-epoch-20160418-1.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/win-64/multidict-6.1.0-py311h5082efb_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/mypy-1.8.0-py311ha68e1ae_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/win-64/mypy-1.14.1-py311he736701_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/mypy_extensions-1.0.0-pyha770c72_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/nasm-2.16.03-hfd05255_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/ninja-1.11.1-h91493d7_0.conda
@@ -11296,7 +11296,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/maturin-1.5.1-py311h63ff55d_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/meilisearch-1.5.1-he8a937b_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/multidict-6.1.0-py311h2dc5d0c_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/mypy-1.8.0-py311h459d7ec_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/mypy-1.14.1-py311h9ecbd09_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/mypy_extensions-1.0.0-pyha770c72_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/mysql-common-9.0.1-h266115a_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/mysql-libs-9.0.1-he0572af_1.conda
@@ -11661,7 +11661,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/markupsafe-3.0.1-py311ha09ea12_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/maturin-1.5.1-py311h06e5ef9_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/multidict-6.1.0-py311h58d527c_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/mypy-1.8.0-py311hcd402e7_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/mypy-1.14.1-py311ha879c10_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/mypy_extensions-1.0.0-pyha770c72_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/nasm-2.16.03-h68df207_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/ncurses-6.5-hcccb83c_1.conda
@@ -11980,7 +11980,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-64/markupsafe-3.0.1-py311ha971863_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/maturin-1.5.1-py311h24bb903_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/multidict-6.1.0-py311h1cc1194_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-64/mypy-1.8.0-py311he705e18_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-64/mypy-1.14.1-py311h4d7f069_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/mypy_extensions-1.0.0-pyha770c72_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/nasm-2.16.03-hfdf4475_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/ncurses-6.5-hf036a51_1.conda
@@ -12286,7 +12286,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/maturin-1.5.1-py311h71175c2_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/meilisearch-1.5.1-h5ef7bb8_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/multidict-6.1.0-py311h30e7462_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/mypy-1.8.0-py311h05b510d_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/mypy-1.14.1-py311h917b07b_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/mypy_extensions-1.0.0-pyha770c72_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/nasm-2.16.03-h99b78c6_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/ncurses-6.5-h7bae524_1.conda
@@ -12562,7 +12562,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/mkl-2024.1.0-h66d3029_694.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/msys2-conda-epoch-20160418-1.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/win-64/multidict-6.1.0-py311h5082efb_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/mypy-1.8.0-py311ha68e1ae_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/win-64/mypy-1.14.1-py311he736701_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/mypy_extensions-1.0.0-pyha770c72_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/nasm-2.16.03-hfd05255_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/ninja-1.11.1-h91493d7_0.conda
@@ -26010,73 +26010,84 @@ packages:
   - numpy
   - rerun-sdk
   editable: true
-- conda: https://conda.anaconda.org/conda-forge/linux-64/mypy-1.8.0-py311h459d7ec_0.conda
-  sha256: 943c43f2d68a6d4e8fa8a3a4e62538e090f5f0afe551f50092ea024850f5cccb
-  md5: 93b7b2391a045cea0d97772f550f1d77
+- conda: https://conda.anaconda.org/conda-forge/linux-64/mypy-1.14.1-py311h9ecbd09_0.conda
+  sha256: 583282ca209e9dc9f91e28bb4d47bbf31456c2d437a4b4bdc3b1684b916b6264
+  md5: 2bf2e229fee8e7649a7567dc61156437
   depends:
-  - libgcc-ng >=12
+  - __glibc >=2.17,<3.0.a0
+  - libgcc >=13
   - mypy_extensions >=1.0.0
   - psutil >=4.0
   - python >=3.11,<3.12.0a0
   - python_abi 3.11.* *_cp311
   - typing_extensions >=4.1.0
+  arch: x86_64
+  platform: linux
   license: MIT
   license_family: MIT
   purls:
   - pkg:pypi/mypy?source=hash-mapping
-  size: 17719191
-  timestamp: 1703185056003
-- conda: https://conda.anaconda.org/conda-forge/linux-aarch64/mypy-1.8.0-py311hcd402e7_0.conda
-  sha256: 2a1d84dc94a02ed3cae2fad6dfea0fab4a9504649c1a009d1fff7bfbd9d48e57
-  md5: 22b4d0e0a591e6dba331d95f8a702517
+  size: 18730461
+  timestamp: 1735601000085
+- conda: https://conda.anaconda.org/conda-forge/linux-aarch64/mypy-1.14.1-py311ha879c10_0.conda
+  sha256: dc6f8258ebb3539b6ab27b5a78a1d2339b99a19c6396d29ffa3286664b0d671d
+  md5: e9e333fbbbc7571fb70f8e47edafdddd
   depends:
-  - libgcc-ng >=12
-  - mypy_extensions >=1.0.0
-  - psutil >=4.0
-  - python >=3.11,<3.12.0a0
-  - python >=3.11,<3.12.0a0 *_cpython
-  - python_abi 3.11.* *_cp311
-  - typing_extensions >=4.1.0
-  license: MIT
-  license_family: MIT
-  purls:
-  - pkg:pypi/mypy?source=hash-mapping
-  size: 15129179
-  timestamp: 1703185374507
-- conda: https://conda.anaconda.org/conda-forge/osx-64/mypy-1.8.0-py311he705e18_0.conda
-  sha256: affdf64692efcf05888cc42fc2c4159fe5bade7d610847b5610e5b2cc621cd3a
-  md5: c32cbc41e84a67f1b30b3f157b46996b
-  depends:
-  - mypy_extensions >=1.0.0
-  - psutil >=4.0
-  - python >=3.11,<3.12.0a0
-  - python_abi 3.11.* *_cp311
-  - typing_extensions >=4.1.0
-  license: MIT
-  license_family: MIT
-  purls:
-  - pkg:pypi/mypy?source=hash-mapping
-  size: 11969071
-  timestamp: 1703184938293
-- conda: https://conda.anaconda.org/conda-forge/osx-arm64/mypy-1.8.0-py311h05b510d_0.conda
-  sha256: e31c811f99b842020350f9df6c6e4b5e2bf07353fee3cc0029c655e8980d9431
-  md5: 93010b2e72e263002f6c60dc1c1f7e1d
-  depends:
+  - libgcc >=13
   - mypy_extensions >=1.0.0
   - psutil >=4.0
   - python >=3.11,<3.12.0a0
   - python >=3.11,<3.12.0a0 *_cpython
   - python_abi 3.11.* *_cp311
   - typing_extensions >=4.1.0
+  arch: aarch64
+  platform: linux
   license: MIT
   license_family: MIT
   purls:
   - pkg:pypi/mypy?source=hash-mapping
-  size: 9655583
-  timestamp: 1703185105616
-- conda: https://conda.anaconda.org/conda-forge/win-64/mypy-1.8.0-py311ha68e1ae_0.conda
-  sha256: cebfab3f247a752be06e945a3a2a1281195d6917fa09906a9618dbc7b2cf734e
-  md5: 9a949cc91276bf313755857a11ce1ec3
+  size: 16065092
+  timestamp: 1735600817630
+- conda: https://conda.anaconda.org/conda-forge/osx-64/mypy-1.14.1-py311h4d7f069_0.conda
+  sha256: 5b5043cb2eeec8d0821130bf0e7ef62df44cbcff7220dca7e8497382f39f40b1
+  md5: 285e86076c2a98bb57c7080a11095c69
+  depends:
+  - __osx >=10.13
+  - mypy_extensions >=1.0.0
+  - psutil >=4.0
+  - python >=3.11,<3.12.0a0
+  - python_abi 3.11.* *_cp311
+  - typing_extensions >=4.1.0
+  arch: x86_64
+  platform: osx
+  license: MIT
+  license_family: MIT
+  purls:
+  - pkg:pypi/mypy?source=hash-mapping
+  size: 12710578
+  timestamp: 1735600553201
+- conda: https://conda.anaconda.org/conda-forge/osx-arm64/mypy-1.14.1-py311h917b07b_0.conda
+  sha256: 0d891fd3d73ddcece659e62b765ddd6023b1296d69943481dc9910107071307a
+  md5: c09549d23170ecaabfa4a8162b5d4f10
+  depends:
+  - __osx >=11.0
+  - mypy_extensions >=1.0.0
+  - psutil >=4.0
+  - python >=3.11,<3.12.0a0
+  - python >=3.11,<3.12.0a0 *_cpython
+  - python_abi 3.11.* *_cp311
+  - typing_extensions >=4.1.0
+  arch: arm64
+  platform: osx
+  license: MIT
+  license_family: MIT
+  purls:
+  - pkg:pypi/mypy?source=hash-mapping
+  size: 10180870
+  timestamp: 1735600589567
+- conda: https://conda.anaconda.org/conda-forge/win-64/mypy-1.14.1-py311he736701_0.conda
+  sha256: 12a90fb2507dd5c56a0e846bf828fe8b3197aa79ec8d655934d455d20101a640
+  md5: a3f3aebd6fbdbdec85098e24d14f89aa
   depends:
   - mypy_extensions >=1.0.0
   - psutil >=4.0
@@ -26086,12 +26097,14 @@ packages:
   - ucrt >=10.0.20348.0
   - vc >=14.2,<15
   - vc14_runtime >=14.29.30139
+  arch: x86_64
+  platform: win
   license: MIT
   license_family: MIT
   purls:
   - pkg:pypi/mypy?source=hash-mapping
-  size: 9963457
-  timestamp: 1703184979309
+  size: 10553025
+  timestamp: 1735600107955
 - pypi: https://files.pythonhosted.org/packages/2a/e2/5d3f6ada4297caebe1a2add3b126fe800c96f56dbe5d1988a2cbe0b267aa/mypy_extensions-1.0.0-py3-none-any.whl
   name: mypy-extensions
   version: 1.0.0

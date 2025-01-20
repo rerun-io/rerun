@@ -12,9 +12,9 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 
-use ::re_types_core::external::arrow;
+use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
@@ -87,10 +87,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/textdocument/babda19558ee32ed8d730495b595aee7a5e2c174/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub struct TextDocument {
     /// Contents of the text document.
-    pub text: crate::components::Text,
+    pub text: Option<SerializedComponentBatch>,
 
     /// The Media Type of the text.
     ///
@@ -99,54 +99,56 @@ pub struct TextDocument {
     /// * `text/markdown`
     ///
     /// If omitted, `text/plain` is assumed.
-    pub media_type: Option<crate::components::MediaType>,
+    pub media_type: Option<SerializedComponentBatch>,
 }
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
+impl TextDocument {
+    /// Returns the [`ComponentDescriptor`] for [`Self::text`].
+    #[inline]
+    pub fn descriptor_text() -> ComponentDescriptor {
+        ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.TextDocument".into()),
             component_name: "rerun.components.Text".into(),
             archetype_field_name: Some("text".into()),
-        }]
-    });
+        }
+    }
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.TextDocument".into()),
-            component_name: "rerun.components.TextDocumentIndicator".into(),
-            archetype_field_name: None,
-        }]
-    });
-
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
+    /// Returns the [`ComponentDescriptor`] for [`Self::media_type`].
+    #[inline]
+    pub fn descriptor_media_type() -> ComponentDescriptor {
+        ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.TextDocument".into()),
             component_name: "rerun.components.MediaType".into(),
             archetype_field_name: Some("media_type".into()),
-        }]
-    });
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
+    #[inline]
+    pub fn descriptor_indicator() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.TextDocument".into()),
+            component_name: "rerun.components.TextDocumentIndicator".into(),
+            archetype_field_name: None,
+        }
+    }
+}
+
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [TextDocument::descriptor_text()]);
+
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [TextDocument::descriptor_indicator()]);
+
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [TextDocument::descriptor_media_type()]);
 
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.TextDocument".into()),
-                component_name: "rerun.components.Text".into(),
-                archetype_field_name: Some("text".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.TextDocument".into()),
-                component_name: "rerun.components.TextDocumentIndicator".into(),
-                archetype_field_name: None,
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.TextDocument".into()),
-                component_name: "rerun.components.MediaType".into(),
-                archetype_field_name: Some("media_type".into()),
-            },
+            TextDocument::descriptor_text(),
+            TextDocument::descriptor_indicator(),
+            TextDocument::descriptor_media_type(),
         ]
     });
 
@@ -199,68 +201,31 @@ impl ::re_types_core::Archetype for TextDocument {
 
     #[inline]
     fn from_arrow_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, arrow::array::ArrayRef)>,
+        arrow_data: impl IntoIterator<Item = (ComponentDescriptor, arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(name, array)| (name.full_name(), array))
-            .collect();
-        let text = {
-            let array = arrays_by_name
-                .get("rerun.components.Text")
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.TextDocument#text")?;
-            <crate::components::Text>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.TextDocument#text")?
-                .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.TextDocument#text")?
-        };
-        let media_type = if let Some(array) = arrays_by_name.get("rerun.components.MediaType") {
-            <crate::components::MediaType>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.TextDocument#media_type")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
+        let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
+        let text = arrays_by_descr
+            .get(&Self::descriptor_text())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_text()));
+        let media_type = arrays_by_descr
+            .get(&Self::descriptor_media_type())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_media_type())
+            });
         Ok(Self { text, media_type })
     }
 }
 
 impl ::re_types_core::AsComponents for TextDocument {
-    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
-        re_tracing::profile_function!();
+    #[inline]
+    fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
-            (Some(&self.text as &dyn ComponentBatch)).map(|batch| {
-                ::re_types_core::ComponentBatchCowWithDescriptor {
-                    batch: batch.into(),
-                    descriptor_override: Some(ComponentDescriptor {
-                        archetype_name: Some("rerun.archetypes.TextDocument".into()),
-                        archetype_field_name: Some(("text").into()),
-                        component_name: ("rerun.components.Text").into(),
-                    }),
-                }
-            }),
-            (self
-                .media_type
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.TextDocument".into()),
-                    archetype_field_name: Some(("media_type").into()),
-                    component_name: ("rerun.components.MediaType").into(),
-                }),
-            }),
+            Self::indicator().serialized(),
+            self.text.clone(),
+            self.media_type.clone(),
         ]
         .into_iter()
         .flatten()
@@ -275,9 +240,38 @@ impl TextDocument {
     #[inline]
     pub fn new(text: impl Into<crate::components::Text>) -> Self {
         Self {
-            text: text.into(),
+            text: try_serialize_field(Self::descriptor_text(), [text]),
             media_type: None,
         }
+    }
+
+    /// Update only some specific fields of a `TextDocument`.
+    #[inline]
+    pub fn update_fields() -> Self {
+        Self::default()
+    }
+
+    /// Clear all the fields of a `TextDocument`.
+    #[inline]
+    pub fn clear_fields() -> Self {
+        use ::re_types_core::Loggable as _;
+        Self {
+            text: Some(SerializedComponentBatch::new(
+                crate::components::Text::arrow_empty(),
+                Self::descriptor_text(),
+            )),
+            media_type: Some(SerializedComponentBatch::new(
+                crate::components::MediaType::arrow_empty(),
+                Self::descriptor_media_type(),
+            )),
+        }
+    }
+
+    /// Contents of the text document.
+    #[inline]
+    pub fn with_text(mut self, text: impl Into<crate::components::Text>) -> Self {
+        self.text = try_serialize_field(Self::descriptor_text(), [text]);
+        self
     }
 
     /// The Media Type of the text.
@@ -289,7 +283,7 @@ impl TextDocument {
     /// If omitted, `text/plain` is assumed.
     #[inline]
     pub fn with_media_type(mut self, media_type: impl Into<crate::components::MediaType>) -> Self {
-        self.media_type = Some(media_type.into());
+        self.media_type = try_serialize_field(Self::descriptor_media_type(), [media_type]);
         self
     }
 }
@@ -298,10 +292,5 @@ impl ::re_byte_size::SizeBytes for TextDocument {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.text.heap_size_bytes() + self.media_type.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::components::Text>::is_pod() && <Option<crate::components::MediaType>>::is_pod()
     }
 }

@@ -12,85 +12,93 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 
-use ::re_types_core::external::arrow;
+use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: Aims to achieve a target distance between two nodes that are connected by an edge.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct ForceLink {
     /// Whether the link force is enabled.
     ///
     /// The link force aims to achieve a target distance between two nodes that are connected by one ore more edges.
-    pub enabled: Option<crate::blueprint::components::Enabled>,
+    pub enabled: Option<SerializedComponentBatch>,
 
     /// The target distance between two nodes.
-    pub distance: Option<crate::blueprint::components::ForceDistance>,
+    pub distance: Option<SerializedComponentBatch>,
 
     /// Specifies how often this force should be applied per iteration.
     ///
     /// Increasing this parameter can lead to better results at the cost of longer computation time.
-    pub iterations: Option<crate::blueprint::components::ForceIterations>,
+    pub iterations: Option<SerializedComponentBatch>,
+}
+
+impl ForceLink {
+    /// Returns the [`ComponentDescriptor`] for [`Self::enabled`].
+    #[inline]
+    pub fn descriptor_enabled() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ForceLink".into()),
+            component_name: "rerun.blueprint.components.Enabled".into(),
+            archetype_field_name: Some("enabled".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::distance`].
+    #[inline]
+    pub fn descriptor_distance() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ForceLink".into()),
+            component_name: "rerun.blueprint.components.ForceDistance".into(),
+            archetype_field_name: Some("distance".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::iterations`].
+    #[inline]
+    pub fn descriptor_iterations() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ForceLink".into()),
+            component_name: "rerun.blueprint.components.ForceIterations".into(),
+            archetype_field_name: Some("iterations".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
+    #[inline]
+    pub fn descriptor_indicator() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ForceLink".into()),
+            component_name: "rerun.blueprint.components.ForceLinkIndicator".into(),
+            archetype_field_name: None,
+        }
+    }
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ForceLink".into()),
-            component_name: "rerun.blueprint.components.ForceLinkIndicator".into(),
-            archetype_field_name: None,
-        }]
-    });
+    once_cell::sync::Lazy::new(|| [ForceLink::descriptor_indicator()]);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ForceLink".into()),
-                component_name: "rerun.blueprint.components.Enabled".into(),
-                archetype_field_name: Some("enabled".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ForceLink".into()),
-                component_name: "rerun.blueprint.components.ForceDistance".into(),
-                archetype_field_name: Some("distance".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ForceLink".into()),
-                component_name: "rerun.blueprint.components.ForceIterations".into(),
-                archetype_field_name: Some("iterations".into()),
-            },
+            ForceLink::descriptor_enabled(),
+            ForceLink::descriptor_distance(),
+            ForceLink::descriptor_iterations(),
         ]
     });
 
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ForceLink".into()),
-                component_name: "rerun.blueprint.components.ForceLinkIndicator".into(),
-                archetype_field_name: None,
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ForceLink".into()),
-                component_name: "rerun.blueprint.components.Enabled".into(),
-                archetype_field_name: Some("enabled".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ForceLink".into()),
-                component_name: "rerun.blueprint.components.ForceDistance".into(),
-                archetype_field_name: Some("distance".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ForceLink".into()),
-                component_name: "rerun.blueprint.components.ForceIterations".into(),
-                archetype_field_name: Some("iterations".into()),
-            },
+            ForceLink::descriptor_indicator(),
+            ForceLink::descriptor_enabled(),
+            ForceLink::descriptor_distance(),
+            ForceLink::descriptor_iterations(),
         ]
     });
 
@@ -143,44 +151,22 @@ impl ::re_types_core::Archetype for ForceLink {
 
     #[inline]
     fn from_arrow_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, arrow::array::ArrayRef)>,
+        arrow_data: impl IntoIterator<Item = (ComponentDescriptor, arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(name, array)| (name.full_name(), array))
-            .collect();
-        let enabled = if let Some(array) = arrays_by_name.get("rerun.blueprint.components.Enabled")
-        {
-            <crate::blueprint::components::Enabled>::from_arrow_opt(&**array)
-                .with_context("rerun.blueprint.archetypes.ForceLink#enabled")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
-        let distance =
-            if let Some(array) = arrays_by_name.get("rerun.blueprint.components.ForceDistance") {
-                <crate::blueprint::components::ForceDistance>::from_arrow_opt(&**array)
-                    .with_context("rerun.blueprint.archetypes.ForceLink#distance")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-            } else {
-                None
-            };
-        let iterations =
-            if let Some(array) = arrays_by_name.get("rerun.blueprint.components.ForceIterations") {
-                <crate::blueprint::components::ForceIterations>::from_arrow_opt(&**array)
-                    .with_context("rerun.blueprint.archetypes.ForceLink#iterations")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-            } else {
-                None
-            };
+        let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
+        let enabled = arrays_by_descr
+            .get(&Self::descriptor_enabled())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_enabled()));
+        let distance = arrays_by_descr
+            .get(&Self::descriptor_distance())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_distance()));
+        let iterations = arrays_by_descr
+            .get(&Self::descriptor_iterations())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_iterations())
+            });
         Ok(Self {
             enabled,
             distance,
@@ -190,47 +176,14 @@ impl ::re_types_core::Archetype for ForceLink {
 }
 
 impl ::re_types_core::AsComponents for ForceLink {
-    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
-        re_tracing::profile_function!();
+    #[inline]
+    fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
-            (self
-                .enabled
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.blueprint.archetypes.ForceLink".into()),
-                    archetype_field_name: Some(("enabled").into()),
-                    component_name: ("rerun.blueprint.components.Enabled").into(),
-                }),
-            }),
-            (self
-                .distance
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.blueprint.archetypes.ForceLink".into()),
-                    archetype_field_name: Some(("distance").into()),
-                    component_name: ("rerun.blueprint.components.ForceDistance").into(),
-                }),
-            }),
-            (self
-                .iterations
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.blueprint.archetypes.ForceLink".into()),
-                    archetype_field_name: Some(("iterations").into()),
-                    component_name: ("rerun.blueprint.components.ForceIterations").into(),
-                }),
-            }),
+            Self::indicator().serialized(),
+            self.enabled.clone(),
+            self.distance.clone(),
+            self.iterations.clone(),
         ]
         .into_iter()
         .flatten()
@@ -251,6 +204,32 @@ impl ForceLink {
         }
     }
 
+    /// Update only some specific fields of a `ForceLink`.
+    #[inline]
+    pub fn update_fields() -> Self {
+        Self::default()
+    }
+
+    /// Clear all the fields of a `ForceLink`.
+    #[inline]
+    pub fn clear_fields() -> Self {
+        use ::re_types_core::Loggable as _;
+        Self {
+            enabled: Some(SerializedComponentBatch::new(
+                crate::blueprint::components::Enabled::arrow_empty(),
+                Self::descriptor_enabled(),
+            )),
+            distance: Some(SerializedComponentBatch::new(
+                crate::blueprint::components::ForceDistance::arrow_empty(),
+                Self::descriptor_distance(),
+            )),
+            iterations: Some(SerializedComponentBatch::new(
+                crate::blueprint::components::ForceIterations::arrow_empty(),
+                Self::descriptor_iterations(),
+            )),
+        }
+    }
+
     /// Whether the link force is enabled.
     ///
     /// The link force aims to achieve a target distance between two nodes that are connected by one ore more edges.
@@ -259,7 +238,7 @@ impl ForceLink {
         mut self,
         enabled: impl Into<crate::blueprint::components::Enabled>,
     ) -> Self {
-        self.enabled = Some(enabled.into());
+        self.enabled = try_serialize_field(Self::descriptor_enabled(), [enabled]);
         self
     }
 
@@ -269,7 +248,7 @@ impl ForceLink {
         mut self,
         distance: impl Into<crate::blueprint::components::ForceDistance>,
     ) -> Self {
-        self.distance = Some(distance.into());
+        self.distance = try_serialize_field(Self::descriptor_distance(), [distance]);
         self
     }
 
@@ -281,7 +260,7 @@ impl ForceLink {
         mut self,
         iterations: impl Into<crate::blueprint::components::ForceIterations>,
     ) -> Self {
-        self.iterations = Some(iterations.into());
+        self.iterations = try_serialize_field(Self::descriptor_iterations(), [iterations]);
         self
     }
 }
@@ -292,12 +271,5 @@ impl ::re_byte_size::SizeBytes for ForceLink {
         self.enabled.heap_size_bytes()
             + self.distance.heap_size_bytes()
             + self.iterations.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <Option<crate::blueprint::components::Enabled>>::is_pod()
-            && <Option<crate::blueprint::components::ForceDistance>>::is_pod()
-            && <Option<crate::blueprint::components::ForceIterations>>::is_pod()
     }
 }

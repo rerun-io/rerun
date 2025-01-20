@@ -1,28 +1,36 @@
-use arrow2::{
+use arrow::{
     array::{
-        Array as Arrow2Array, ListArray, PrimitiveArray as Arrow2PrimitiveArray,
-        StructArray as Arrow2StructArray,
+        Array as ArrowArray, ArrayRef as ArrowArrayRef, ListArray as ArrowListArray,
+        RecordBatch as ArrowRecordBatch, StructArray as ArrowStructArray,
     },
-    chunk::Chunk as Arrow2Chunk,
     datatypes::{
-        DataType as Arrow2Datatype, Field as ArrowField, Metadata as Arrow2Metadata,
-        Schema as Arrow2Schema, TimeUnit as ArrowTimeUnit,
+        DataType as ArrowDatatype, Field as ArrowField, Fields as ArrowFields,
+        Schema as ArrowSchema, TimeUnit as ArrowTimeUnit,
     },
 };
 use itertools::Itertools;
 use nohash_hasher::IntMap;
+use tap::Tap as _;
 
+use re_arrow_util::{arrow_util::into_arrow_ref, ArrowArrayDowncastRef as _};
 use re_byte_size::SizeBytes as _;
 use re_log_types::{EntityPath, Timeline};
-use re_types_core::{Component as _, ComponentDescriptor, Loggable as _};
+use re_types_core::{
+    arrow_helpers::as_array_ref, Component as _, ComponentDescriptor, Loggable as _,
+};
 
 use crate::{chunk::ChunkComponents, Chunk, ChunkError, ChunkId, ChunkResult, RowId, TimeColumn};
+
+pub type ArrowMetadata = std::collections::HashMap<String, String>;
 
 // ---
 
 /// A [`Chunk`] that is ready for transport. Obtained by calling [`Chunk::to_transport`].
 ///
-/// Implemented as an Arrow dataframe: a schema and a batch.
+/// It contains a schema with a matching number of columns, all of the same length.
+///
+/// This is just a wrapper around an [`ArrowRecordBatch`], with some helper functions on top.
+/// It can be converted to and from [`ArrowRecordBatch`] without overhead.
 ///
 /// Use the `Display` implementation to dump the chunk as a nicely formatted table.
 ///
@@ -31,71 +39,90 @@ use crate::{chunk::ChunkComponents, Chunk, ChunkError, ChunkId, ChunkResult, Row
 /// This means we have to be very careful when checking the validity of the data: slipping corrupt
 /// data into the store could silently break all the index search logic (e.g. think of a chunk
 /// claiming to be sorted while it is in fact not).
+// TODO(emilk): remove this, and replace it with a trait extension type for `ArrowRecordBatch`.
 #[derive(Debug, Clone)]
 pub struct TransportChunk {
-    /// The schema of the dataframe, and all chunk-level and field-level metadata.
-    ///
-    /// Take a look at the `TransportChunk::CHUNK_METADATA_*` and `TransportChunk::FIELD_METADATA_*`
-    /// constants for more information about available metadata.
-    pub schema: Arrow2Schema,
-
-    /// All the control, time and component data.
-    pub data: Arrow2Chunk<Box<dyn Arrow2Array>>,
+    batch: ArrowRecordBatch,
 }
 
 impl std::fmt::Display for TransportChunk {
     #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        re_format_arrow::format_dataframe(
-            &self.schema.metadata,
-            &self.schema.fields,
-            self.data.iter().map(|list_array| &**list_array),
-        )
-        .fmt(f)
+        re_format_arrow::format_record_batch_with_width(self, f.width()).fmt(f)
+    }
+}
+
+impl AsRef<ArrowRecordBatch> for TransportChunk {
+    #[inline]
+    fn as_ref(&self) -> &ArrowRecordBatch {
+        &self.batch
+    }
+}
+
+impl std::ops::Deref for TransportChunk {
+    type Target = ArrowRecordBatch;
+
+    #[inline]
+    fn deref(&self) -> &ArrowRecordBatch {
+        &self.batch
+    }
+}
+
+impl From<ArrowRecordBatch> for TransportChunk {
+    #[inline]
+    fn from(batch: ArrowRecordBatch) -> Self {
+        Self { batch }
+    }
+}
+
+impl From<TransportChunk> for ArrowRecordBatch {
+    #[inline]
+    fn from(chunk: TransportChunk) -> Self {
+        chunk.batch
     }
 }
 
 // TODO(#6572): Relying on Arrow's native schema metadata feature is bound to fail, we need to
 // switch to something more powerful asap.
 impl TransportChunk {
-    /// The key used to identify a Rerun [`ChunkId`] in chunk-level [`Arrow2Schema`] metadata.
+    /// The key used to identify a Rerun [`ChunkId`] in chunk-level [`ArrowSchema`] metadata.
     pub const CHUNK_METADATA_KEY_ID: &'static str = "rerun.id";
 
-    /// The key used to identify a Rerun [`EntityPath`] in chunk-level [`Arrow2Schema`] metadata.
+    /// The key used to identify a Rerun [`EntityPath`] in chunk-level [`ArrowSchema`] metadata.
     pub const CHUNK_METADATA_KEY_ENTITY_PATH: &'static str = "rerun.entity_path";
 
     /// The key used to identify the size in bytes of the data, once loaded in memory, in chunk-level
-    /// [`Arrow2Schema`] metadata.
+    /// [`ArrowSchema`] metadata.
     pub const CHUNK_METADATA_KEY_HEAP_SIZE_BYTES: &'static str = "rerun.heap_size_bytes";
 
-    /// The marker used to identify whether a chunk is sorted in chunk-level [`Arrow2Schema`] metadata.
+    /// The marker used to identify whether a chunk is sorted in chunk-level [`ArrowSchema`] metadata.
     ///
     /// The associated value is irrelevant -- if this marker is present, then it is true.
     ///
     /// Chunks are ascendingly sorted by their `RowId` column.
     pub const CHUNK_METADATA_MARKER_IS_SORTED_BY_ROW_ID: &'static str = "rerun.is_sorted";
 
-    /// The key used to identify the kind of a Rerun column in field-level [`Arrow2Schema`] metadata.
+    /// The key used to identify the kind of a Rerun column in field-level [`ArrowSchema`] metadata.
     ///
     /// That is: control columns (e.g. `row_id`), time columns or component columns.
     pub const FIELD_METADATA_KEY_KIND: &'static str = "rerun.kind";
 
-    /// The value used to identify a Rerun time column in field-level [`Arrow2Schema`] metadata.
+    /// The value used to identify a Rerun time column in field-level [`ArrowSchema`] metadata.
     pub const FIELD_METADATA_VALUE_KIND_TIME: &'static str = "time";
 
-    /// The value used to identify a Rerun control column in field-level [`Arrow2Schema`] metadata.
+    /// The value used to identify a Rerun control column in field-level [`ArrowSchema`] metadata.
     pub const FIELD_METADATA_VALUE_KIND_CONTROL: &'static str = "control";
 
-    /// The value used to identify a Rerun data column in field-level [`Arrow2Schema`] metadata.
+    /// The value used to identify a Rerun data column in field-level [`ArrowSchema`] metadata.
     pub const FIELD_METADATA_VALUE_KIND_DATA: &'static str = "data";
 
-    /// The key used to identify the [`crate::ArchetypeName`] in field-level [`Arrow2Schema`] metadata.
+    /// The key used to identify the [`crate::ArchetypeName`] in field-level [`ArrowSchema`] metadata.
     pub const FIELD_METADATA_KEY_ARCHETYPE_NAME: &'static str = "rerun.archetype_name";
 
-    /// The key used to identify the [`crate::ArchetypeFieldName`] in field-level [`Arrow2Schema`] metadata.
+    /// The key used to identify the [`crate::ArchetypeFieldName`] in field-level [`ArrowSchema`] metadata.
     pub const FIELD_METADATA_KEY_ARCHETYPE_FIELD_NAME: &'static str = "rerun.archetype_field_name";
 
-    /// The marker used to identify whether a column is sorted in field-level [`Arrow2Schema`] metadata.
+    /// The marker used to identify whether a column is sorted in field-level [`ArrowSchema`] metadata.
     ///
     /// The associated value is irrelevant -- if this marker is present, then it is true.
     ///
@@ -105,9 +132,9 @@ impl TransportChunk {
     pub const FIELD_METADATA_MARKER_IS_SORTED_BY_TIME: &'static str =
         Self::CHUNK_METADATA_MARKER_IS_SORTED_BY_ROW_ID;
 
-    /// Returns the appropriate chunk-level [`Arrow2Schema`] metadata for a Rerun [`ChunkId`].
+    /// Returns the appropriate chunk-level [`ArrowSchema`] metadata for a Rerun [`ChunkId`].
     #[inline]
-    pub fn chunk_metadata_id(id: ChunkId) -> Arrow2Metadata {
+    pub fn chunk_metadata_id(id: ChunkId) -> ArrowMetadata {
         [
             (
                 Self::CHUNK_METADATA_KEY_ID.to_owned(),
@@ -117,9 +144,9 @@ impl TransportChunk {
         .into()
     }
 
-    /// Returns the appropriate chunk-level [`Arrow2Schema`] metadata for the in-memory size in bytes.
+    /// Returns the appropriate chunk-level [`ArrowSchema`] metadata for the in-memory size in bytes.
     #[inline]
-    pub fn chunk_metadata_heap_size_bytes(heap_size_bytes: u64) -> Arrow2Metadata {
+    pub fn chunk_metadata_heap_size_bytes(heap_size_bytes: u64) -> ArrowMetadata {
         [
             (
                 Self::CHUNK_METADATA_KEY_HEAP_SIZE_BYTES.to_owned(),
@@ -129,9 +156,9 @@ impl TransportChunk {
         .into()
     }
 
-    /// Returns the appropriate chunk-level [`Arrow2Schema`] metadata for a Rerun [`EntityPath`].
+    /// Returns the appropriate chunk-level [`ArrowSchema`] metadata for a Rerun [`EntityPath`].
     #[inline]
-    pub fn chunk_metadata_entity_path(entity_path: &EntityPath) -> Arrow2Metadata {
+    pub fn chunk_metadata_entity_path(entity_path: &EntityPath) -> ArrowMetadata {
         [
             (
                 Self::CHUNK_METADATA_KEY_ENTITY_PATH.to_owned(),
@@ -141,9 +168,9 @@ impl TransportChunk {
         .into()
     }
 
-    /// Returns the appropriate chunk-level [`Arrow2Schema`] metadata for an `IS_SORTED` marker.
+    /// Returns the appropriate chunk-level [`ArrowSchema`] metadata for an `IS_SORTED` marker.
     #[inline]
-    pub fn chunk_metadata_is_sorted() -> Arrow2Metadata {
+    pub fn chunk_metadata_is_sorted() -> ArrowMetadata {
         [
             (
                 Self::CHUNK_METADATA_MARKER_IS_SORTED_BY_ROW_ID.to_owned(),
@@ -153,9 +180,9 @@ impl TransportChunk {
         .into()
     }
 
-    /// Returns the appropriate field-level [`Arrow2Schema`] metadata for a Rerun time column.
+    /// Returns the appropriate field-level [`ArrowSchema`] metadata for a Rerun time column.
     #[inline]
-    pub fn field_metadata_time_column() -> Arrow2Metadata {
+    pub fn field_metadata_time_column() -> ArrowMetadata {
         [
             (
                 Self::FIELD_METADATA_KEY_KIND.to_owned(),
@@ -165,9 +192,9 @@ impl TransportChunk {
         .into()
     }
 
-    /// Returns the appropriate field-level [`Arrow2Schema`] metadata for a Rerun control column.
+    /// Returns the appropriate field-level [`ArrowSchema`] metadata for a Rerun control column.
     #[inline]
-    pub fn field_metadata_control_column() -> Arrow2Metadata {
+    pub fn field_metadata_control_column() -> ArrowMetadata {
         [
             (
                 Self::FIELD_METADATA_KEY_KIND.to_owned(),
@@ -177,9 +204,9 @@ impl TransportChunk {
         .into()
     }
 
-    /// Returns the appropriate field-level [`Arrow2Schema`] metadata for a Rerun data column.
+    /// Returns the appropriate field-level [`ArrowSchema`] metadata for a Rerun data column.
     #[inline]
-    pub fn field_metadata_data_column() -> Arrow2Metadata {
+    pub fn field_metadata_data_column() -> ArrowMetadata {
         [
             (
                 Self::FIELD_METADATA_KEY_KIND.to_owned(),
@@ -189,9 +216,9 @@ impl TransportChunk {
         .into()
     }
 
-    /// Returns the appropriate field-level [`Arrow2Schema`] metadata for an `IS_SORTED` marker.
+    /// Returns the appropriate field-level [`ArrowSchema`] metadata for an `IS_SORTED` marker.
     #[inline]
-    pub fn field_metadata_is_sorted() -> Arrow2Metadata {
+    pub fn field_metadata_is_sorted() -> ArrowMetadata {
         [
             (
                 Self::FIELD_METADATA_MARKER_IS_SORTED_BY_TIME.to_owned(),
@@ -204,7 +231,7 @@ impl TransportChunk {
     #[inline]
     pub fn field_metadata_component_descriptor(
         component_desc: &ComponentDescriptor,
-    ) -> Arrow2Metadata {
+    ) -> ArrowMetadata {
         component_desc
             .archetype_name
             .iter()
@@ -230,13 +257,13 @@ impl TransportChunk {
     pub fn component_descriptor_from_field(field: &ArrowField) -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: field
-                .metadata
+                .metadata()
                 .get(Self::FIELD_METADATA_KEY_ARCHETYPE_NAME)
                 .cloned()
                 .map(Into::into),
-            component_name: field.name.clone().into(),
+            component_name: field.name().clone().into(),
             archetype_field_name: field
-                .metadata
+                .metadata()
                 .get(Self::FIELD_METADATA_KEY_ARCHETYPE_FIELD_NAME)
                 .cloned()
                 .map(Into::into),
@@ -247,17 +274,14 @@ impl TransportChunk {
 impl TransportChunk {
     #[inline]
     pub fn id(&self) -> ChunkResult<ChunkId> {
-        if let Some(id) = self.schema.metadata.get(Self::CHUNK_METADATA_KEY_ID) {
+        if let Some(id) = self.metadata().get(Self::CHUNK_METADATA_KEY_ID) {
             let id = u128::from_str_radix(id, 16).map_err(|err| ChunkError::Malformed {
                 reason: format!("cannot deserialize chunk id: {err}"),
             })?;
             Ok(ChunkId::from_u128(id))
         } else {
             Err(crate::ChunkError::Malformed {
-                reason: format!(
-                    "chunk id missing from metadata ({:?})",
-                    self.schema.metadata
-                ),
+                reason: format!("chunk id missing from metadata ({:?})", self.metadata()),
             })
         }
     }
@@ -265,7 +289,7 @@ impl TransportChunk {
     #[inline]
     pub fn entity_path(&self) -> ChunkResult<EntityPath> {
         match self
-            .schema
+            .schema_ref()
             .metadata
             .get(Self::CHUNK_METADATA_KEY_ENTITY_PATH)
         {
@@ -273,18 +297,29 @@ impl TransportChunk {
             None => Err(crate::ChunkError::Malformed {
                 reason: format!(
                     "entity path missing from metadata ({:?})",
-                    self.schema.metadata
+                    self.schema_ref().metadata
                 ),
             }),
         }
     }
 
+    /// The size in bytes of the data, once loaded in memory, in chunk-level.
+    ///
+    /// This is stored in the metadata. Returns `None` if that key is not set.
     #[inline]
     pub fn heap_size_bytes(&self) -> Option<u64> {
-        self.schema
-            .metadata
+        self.metadata()
             .get(Self::CHUNK_METADATA_KEY_HEAP_SIZE_BYTES)
             .and_then(|s| s.parse::<u64>().ok())
+    }
+
+    #[inline]
+    pub fn fields(&self) -> &ArrowFields {
+        &self.schema_ref().fields
+    }
+
+    pub fn metadata(&self) -> &std::collections::HashMap<String, String> {
+        &self.batch.schema_ref().metadata
     }
 
     /// Looks in the chunk metadata for the `IS_SORTED` marker.
@@ -293,8 +328,7 @@ impl TransportChunk {
     /// This is fine, although wasteful.
     #[inline]
     pub fn is_sorted(&self) -> bool {
-        self.schema
-            .metadata
+        self.metadata()
             .contains_key(Self::CHUNK_METADATA_MARKER_IS_SORTED_BY_ROW_ID)
     }
 
@@ -305,53 +339,39 @@ impl TransportChunk {
     /// * [`Self::FIELD_METADATA_VALUE_KIND_CONTROL`]
     /// * [`Self::FIELD_METADATA_VALUE_KIND_DATA`]
     #[inline]
-    pub fn columns<'a>(
+    fn columns_of_kind<'a>(
         &'a self,
         kind: &'a str,
-    ) -> impl Iterator<Item = (&'a ArrowField, &'a Box<dyn Arrow2Array>)> + 'a {
-        self.schema
-            .fields
-            .iter()
-            .enumerate()
-            .filter_map(|(i, field)| {
-                let actual_kind = field.metadata.get(Self::FIELD_METADATA_KEY_KIND);
-                (actual_kind.map(|s| s.as_str()) == Some(kind))
-                    .then(|| self.data.columns().get(i).map(|column| (field, column)))
-                    .flatten()
-            })
-    }
-
-    #[inline]
-    pub fn all_columns(&self) -> impl Iterator<Item = (&ArrowField, &Box<dyn Arrow2Array>)> + '_ {
-        self.schema
-            .fields
-            .iter()
-            .enumerate()
-            .filter_map(|(i, field)| self.data.columns().get(i).map(|column| (field, column)))
+    ) -> impl Iterator<Item = (&'a ArrowField, &'a ArrowArrayRef)> + 'a {
+        self.fields().iter().enumerate().filter_map(|(i, field)| {
+            let actual_kind = field.metadata().get(Self::FIELD_METADATA_KEY_KIND);
+            (actual_kind.map(|s| s.as_str()) == Some(kind))
+                .then(|| {
+                    self.batch
+                        .columns()
+                        .get(i)
+                        .map(|column| (field.as_ref(), column))
+                })
+                .flatten()
+        })
     }
 
     /// Iterates all control columns present in this chunk.
     #[inline]
-    pub fn controls(&self) -> impl Iterator<Item = (&ArrowField, &Box<dyn Arrow2Array>)> {
-        self.columns(Self::FIELD_METADATA_VALUE_KIND_CONTROL)
+    pub fn controls(&self) -> impl Iterator<Item = (&ArrowField, &ArrowArrayRef)> {
+        self.columns_of_kind(Self::FIELD_METADATA_VALUE_KIND_CONTROL)
     }
 
     /// Iterates all data columns present in this chunk.
     #[inline]
-    pub fn components(&self) -> impl Iterator<Item = (&ArrowField, &Box<dyn Arrow2Array>)> {
-        self.columns(Self::FIELD_METADATA_VALUE_KIND_DATA)
+    pub fn components(&self) -> impl Iterator<Item = (&ArrowField, &ArrowArrayRef)> {
+        self.columns_of_kind(Self::FIELD_METADATA_VALUE_KIND_DATA)
     }
 
     /// Iterates all timeline columns present in this chunk.
     #[inline]
-    pub fn timelines(&self) -> impl Iterator<Item = (&ArrowField, &Box<dyn Arrow2Array>)> {
-        self.columns(Self::FIELD_METADATA_VALUE_KIND_TIME)
-    }
-
-    /// How many columns in total? Includes control, time, and component columns.
-    #[inline]
-    pub fn num_columns(&self) -> usize {
-        self.data.columns().len()
+    pub fn timelines(&self) -> impl Iterator<Item = (&ArrowField, &ArrowArrayRef)> {
+        self.columns_of_kind(Self::FIELD_METADATA_VALUE_KIND_TIME)
     }
 
     #[inline]
@@ -368,18 +388,13 @@ impl TransportChunk {
     pub fn num_components(&self) -> usize {
         self.components().count()
     }
-
-    #[inline]
-    pub fn num_rows(&self) -> usize {
-        self.data.len()
-    }
 }
 
 impl Chunk {
     /// Prepare the [`Chunk`] for transport.
     ///
     /// It is probably a good idea to sort the chunk first.
-    pub fn to_transport(&self) -> ChunkResult<TransportChunk> {
+    pub fn to_record_batch(&self) -> ChunkResult<ArrowRecordBatch> {
         self.sanity_check()?;
 
         re_tracing::profile_function!(format!(
@@ -398,31 +413,25 @@ impl Chunk {
             components,
         } = self;
 
-        let mut schema = Arrow2Schema::default();
-        let mut columns = Vec::with_capacity(1 /* row_ids */ + timelines.len() + components.len());
+        let mut fields: Vec<ArrowField> = vec![];
+        let mut metadata = std::collections::HashMap::default();
+        let mut columns: Vec<ArrowArrayRef> =
+            Vec::with_capacity(1 /* row_ids */ + timelines.len() + components.len());
 
         // Chunk-level metadata
         {
             re_tracing::profile_scope!("metadata");
 
-            schema
-                .metadata
-                .extend(TransportChunk::chunk_metadata_id(*id));
+            metadata.extend(TransportChunk::chunk_metadata_id(*id));
 
-            schema
-                .metadata
-                .extend(TransportChunk::chunk_metadata_entity_path(entity_path));
+            metadata.extend(TransportChunk::chunk_metadata_entity_path(entity_path));
 
-            schema
-                .metadata
-                .extend(TransportChunk::chunk_metadata_heap_size_bytes(
-                    self.heap_size_bytes(),
-                ));
+            metadata.extend(TransportChunk::chunk_metadata_heap_size_bytes(
+                self.heap_size_bytes(),
+            ));
 
             if *is_sorted {
-                schema
-                    .metadata
-                    .extend(TransportChunk::chunk_metadata_is_sorted());
+                metadata.extend(TransportChunk::chunk_metadata_is_sorted());
             }
         }
 
@@ -430,15 +439,23 @@ impl Chunk {
         {
             re_tracing::profile_scope!("row ids");
 
-            schema.fields.push(
+            fields.push(
                 ArrowField::new(
                     RowId::descriptor().to_string(),
-                    row_ids.data_type().clone(),
+                    RowId::arrow_datatype().clone(),
                     false,
                 )
-                .with_metadata(TransportChunk::field_metadata_control_column()),
+                .with_metadata(
+                    TransportChunk::field_metadata_control_column().tap_mut(|metadata| {
+                        // This ensures the RowId/Tuid is formatted correctly
+                        metadata.insert(
+                            "ARROW:extension:name".to_owned(),
+                            re_tuid::Tuid::ARROW_EXTENSION_NAME.to_owned(),
+                        );
+                    }),
+                ),
             );
-            columns.push(row_ids.clone().boxed());
+            columns.push(into_arrow_ref(row_ids.clone()));
         }
 
         // Timelines
@@ -450,34 +467,33 @@ impl Chunk {
                 .map(|(timeline, info)| {
                     let TimeColumn {
                         timeline: _,
-                        times,
+                        times: _,
                         is_sorted,
                         time_range: _,
                     } = info;
 
-                    let field = ArrowField::new(
-                        timeline.name().to_string(),
-                        times.data_type().clone(),
-                        false, // timelines within a single chunk are always dense
-                    )
-                    .with_metadata({
-                        let mut metadata = TransportChunk::field_metadata_time_column();
-                        if *is_sorted {
-                            metadata.extend(TransportChunk::field_metadata_is_sorted());
-                        }
-                        metadata
-                    });
+                    let nullable = false; // timelines within a single chunk are always dense
+                    let field =
+                        ArrowField::new(timeline.name().to_string(), timeline.datatype(), nullable)
+                            .with_metadata({
+                                let mut metadata = TransportChunk::field_metadata_time_column();
+                                if *is_sorted {
+                                    metadata.extend(TransportChunk::field_metadata_is_sorted());
+                                }
+                                metadata
+                            });
 
-                    let times = times.clone().boxed() /* cheap */;
+                    let times = info.times_array();
 
                     (field, times)
                 })
                 .collect_vec();
 
-            timelines.sort_by(|(field1, _times1), (field2, _times2)| field1.name.cmp(&field2.name));
+            timelines
+                .sort_by(|(field1, _times1), (field2, _times2)| field1.name().cmp(field2.name()));
 
             for (field, times) in timelines {
-                schema.fields.push(field);
+                fields.push(field);
                 columns.push(times);
             }
         }
@@ -490,6 +506,8 @@ impl Chunk {
                 .values()
                 .flat_map(|per_desc| per_desc.iter())
                 .map(|(component_desc, list_array)| {
+                    let list_array = ArrowListArray::from(list_array.clone());
+
                     let field = ArrowField::new(
                         component_desc.component_name.to_string(),
                         list_array.data_type().clone(),
@@ -503,24 +521,34 @@ impl Chunk {
                         metadata
                     });
 
-                    let data = list_array.clone().boxed();
-
-                    (field, data)
+                    (field, as_array_ref(list_array))
                 })
                 .collect_vec();
 
-            components.sort_by(|(field1, _data1), (field2, _data2)| field1.name.cmp(&field2.name));
+            components
+                .sort_by(|(field1, _data1), (field2, _data2)| field1.name().cmp(field2.name()));
 
             for (field, data) in components {
-                schema.fields.push(field);
+                fields.push(field);
                 columns.push(data);
             }
         }
 
-        Ok(TransportChunk {
-            schema,
-            data: Arrow2Chunk::new(columns),
-        })
+        let schema = ArrowSchema::new_with_metadata(fields, metadata);
+
+        Ok(ArrowRecordBatch::try_new(schema.into(), columns)?)
+    }
+
+    /// Prepare the [`Chunk`] for transport.
+    ///
+    /// It is probably a good idea to sort the chunk first.
+    pub fn to_transport(&self) -> ChunkResult<TransportChunk> {
+        let record_batch = self.to_record_batch()?;
+        Ok(TransportChunk::from(record_batch))
+    }
+
+    pub fn from_record_batch(batch: ArrowRecordBatch) -> ChunkResult<Self> {
+        Self::from_transport(&TransportChunk::from(batch))
     }
 
     pub fn from_transport(transport: &TransportChunk) -> ChunkResult<Self> {
@@ -546,20 +574,19 @@ impl Chunk {
 
             let Some(row_ids) = transport.controls().find_map(|(field, column)| {
                 // TODO(cmc): disgusting, but good enough for now.
-                (field.name == RowId::descriptor().component_name.as_str()).then_some(column)
+                (field.name() == RowId::descriptor().component_name.as_str()).then_some(column)
             }) else {
                 return Err(ChunkError::Malformed {
-                    reason: format!("missing row_id column ({:?})", transport.schema),
+                    reason: format!("missing row_id column ({:?})", transport.schema_ref()),
                 });
             };
 
-            row_ids
-                .as_any()
-                .downcast_ref::<Arrow2StructArray>()
+            ArrowArrayRef::from(row_ids.clone())
+                .downcast_array_ref::<ArrowStructArray>()
                 .ok_or_else(|| ChunkError::Malformed {
                     reason: format!(
                         "RowId data has the wrong datatype: expected {:?} but got {:?} instead",
-                        RowId::arrow2_datatype(),
+                        RowId::arrow_datatype(),
                         *row_ids.data_type(),
                     ),
                 })?
@@ -574,57 +601,38 @@ impl Chunk {
 
             for (field, column) in transport.timelines() {
                 // See also [`Timeline::datatype`]
-                let timeline = match column.data_type().to_logical_type() {
-                    Arrow2Datatype::Int64 => Timeline::new_sequence(field.name.as_str()),
-                    Arrow2Datatype::Timestamp(ArrowTimeUnit::Nanosecond, None) => {
-                        Timeline::new_temporal(field.name.as_str())
+                let timeline = match column.data_type() {
+                    ArrowDatatype::Int64 => Timeline::new_sequence(field.name().as_str()),
+                    ArrowDatatype::Timestamp(ArrowTimeUnit::Nanosecond, None) => {
+                        Timeline::new_temporal(field.name().as_str())
                     }
                     _ => {
                         return Err(ChunkError::Malformed {
                             reason: format!(
                                 "time column '{}' is not deserializable ({:?})",
-                                field.name,
+                                field.name(),
                                 column.data_type()
                             ),
                         });
                     }
                 };
 
-                let times = column
-                    .as_any()
-                    .downcast_ref::<Arrow2PrimitiveArray<i64>>()
-                    .ok_or_else(|| ChunkError::Malformed {
-                        reason: format!(
-                            "time column '{}' is not deserializable ({:?})",
-                            field.name,
-                            column.data_type()
-                        ),
-                    })?;
-
-                if times.validity().is_some() {
-                    return Err(ChunkError::Malformed {
-                        reason: format!(
-                            "time column '{}' must be dense ({:?})",
-                            field.name,
-                            column.data_type()
-                        ),
-                    });
-                }
+                let times = TimeColumn::read_array(&ArrowArrayRef::from(column.clone())).map_err(
+                    |err| ChunkError::Malformed {
+                        reason: format!("Bad time column '{}': {err}", field.name()),
+                    },
+                )?;
 
                 let is_sorted = field
-                    .metadata
+                    .metadata()
                     .contains_key(TransportChunk::FIELD_METADATA_MARKER_IS_SORTED_BY_TIME);
 
-                let time_column = TimeColumn::new(
-                    is_sorted.then_some(true),
-                    timeline,
-                    times.clone(), /* cheap */
-                );
+                let time_column = TimeColumn::new(is_sorted.then_some(true), timeline, times);
                 if timelines.insert(timeline, time_column).is_some() {
                     return Err(ChunkError::Malformed {
                         reason: format!(
                             "time column '{}' was specified more than once",
-                            field.name,
+                            field.name(),
                         ),
                     });
                 }
@@ -639,8 +647,7 @@ impl Chunk {
 
             for (field, column) in transport.components() {
                 let column = column
-                    .as_any()
-                    .downcast_ref::<ListArray<i32>>()
+                    .downcast_array_ref::<ArrowListArray>()
                     .ok_or_else(|| ChunkError::Malformed {
                         reason: format!(
                             "The outer array in a chunked component batch must be a sparse list, got {:?}",
@@ -651,13 +658,13 @@ impl Chunk {
                 let component_desc = TransportChunk::component_descriptor_from_field(field);
 
                 if components
-                    .insert_descriptor(component_desc, column.clone().into())
+                    .insert_descriptor(component_desc, column.clone())
                     .is_some()
                 {
                     return Err(ChunkError::Malformed {
                         reason: format!(
                             "component column '{}' was specified more than once",
-                            field.name,
+                            field.name(),
                         ),
                     });
                 }
@@ -689,15 +696,11 @@ impl Chunk {
         let re_log_types::ArrowMsg {
             chunk_id: _,
             timepoint_max: _,
-            schema,
-            chunk,
+            batch,
             on_release: _,
         } = msg;
 
-        Self::from_transport(&TransportChunk {
-            schema: schema.clone(),
-            data: chunk.clone(),
-        })
+        Self::from_record_batch(batch.clone())
     }
 
     #[inline]
@@ -709,8 +712,7 @@ impl Chunk {
         Ok(re_log_types::ArrowMsg {
             chunk_id: re_tuid::Tuid::from_u128(self.id().as_u128()),
             timepoint_max: self.timepoint_max(),
-            schema: transport.schema,
-            chunk: transport.data,
+            batch: transport.into(),
             on_release: None,
         })
     }
@@ -719,12 +721,12 @@ impl Chunk {
 #[cfg(test)]
 mod tests {
     use nohash_hasher::IntMap;
+
+    use re_arrow_util::arrow2_util;
     use re_log_types::{
         example_components::{MyColor, MyPoint},
         Timeline,
     };
-
-    use crate::arrow2_util;
 
     use super::*;
 
@@ -735,11 +737,7 @@ mod tests {
         let timeline1 = Timeline::new_temporal("log_time");
         let timelines1 = std::iter::once((
             timeline1,
-            TimeColumn::new(
-                Some(true),
-                timeline1,
-                Arrow2PrimitiveArray::<i64>::from_vec(vec![42, 43, 44, 45]),
-            ),
+            TimeColumn::new(Some(true), timeline1, vec![42, 43, 44, 45].into()),
         ))
         .collect();
 
@@ -803,15 +801,7 @@ mod tests {
 
             for _ in 0..3 {
                 let chunk_in_transport = chunk_before.to_transport()?;
-                #[cfg(feature = "arrow")]
-                let chunk_after = {
-                    let chunk_in_record_batch = chunk_in_transport.try_to_arrow_record_batch()?;
-                    let chunk_roundtrip =
-                        TransportChunk::from_arrow_record_batch(&chunk_in_record_batch);
-                    Chunk::from_transport(&chunk_roundtrip)?
-                };
-                #[cfg(not(feature = "arrow"))]
-                let chunk_after = { Chunk::from_transport(&chunk_in_transport)? };
+                let chunk_after = Chunk::from_record_batch(chunk_in_transport.clone().into())?;
 
                 assert_eq!(
                     chunk_in_transport.entity_path()?,
@@ -862,12 +852,7 @@ mod tests {
                 eprintln!("{chunk_in_transport}");
                 eprintln!("{chunk_after}");
 
-                #[cfg(not(feature = "arrow"))]
-                {
-                    // This will fail when round-tripping all the way to record-batch
-                    // the below check should always pass regardless.
-                    assert_eq!(chunk_before, chunk_after);
-                }
+                assert_eq!(chunk_before, chunk_after);
 
                 assert!(chunk_before.are_equal_ignoring_extension_types(&chunk_after));
 

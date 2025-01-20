@@ -181,3 +181,36 @@ impl ComponentDescriptor {
         self
     }
 }
+
+// ---
+
+// TODO(cmc): This is far from ideal and feels very hackish, but for now the priority is getting
+// all things related to tags up and running so we can gather learnings.
+// This is only used on the archetype deserialization path, which isn't ever used outside of tests anyway.
+
+// TODO(cmc): we really shouldn't be duplicating these.
+
+/// The key used to identify the [`crate::ArchetypeName`] in field-level metadata.
+const FIELD_METADATA_KEY_ARCHETYPE_NAME: &str = "rerun.archetype_name";
+
+/// The key used to identify the [`crate::ArchetypeFieldName`] in field-level metadata.
+const FIELD_METADATA_KEY_ARCHETYPE_FIELD_NAME: &str = "rerun.archetype_field_name";
+
+impl From<arrow::datatypes::Field> for ComponentDescriptor {
+    #[inline]
+    fn from(field: arrow::datatypes::Field) -> Self {
+        let md = field.metadata();
+
+        Self {
+            archetype_name: md
+                .get(FIELD_METADATA_KEY_ARCHETYPE_NAME)
+                .cloned()
+                .map(Into::into),
+            archetype_field_name: md
+                .get(FIELD_METADATA_KEY_ARCHETYPE_FIELD_NAME)
+                .cloned()
+                .map(Into::into),
+            component_name: field.name().clone().into(),
+        }
+    }
+}

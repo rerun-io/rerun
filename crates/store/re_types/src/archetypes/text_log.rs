@@ -12,9 +12,9 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 
-use ::re_types_core::external::arrow;
+use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
@@ -58,77 +58,78 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/text_log_integration/9737d0c986325802a9885499d6fcc773b1736488/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub struct TextLog {
     /// The body of the message.
-    pub text: crate::components::Text,
+    pub text: Option<SerializedComponentBatch>,
 
     /// The verbosity level of the message.
     ///
     /// This can be used to filter the log messages in the Rerun Viewer.
-    pub level: Option<crate::components::TextLogLevel>,
+    pub level: Option<SerializedComponentBatch>,
 
     /// Optional color to use for the log line in the Rerun Viewer.
-    pub color: Option<crate::components::Color>,
+    pub color: Option<SerializedComponentBatch>,
 }
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
+impl TextLog {
+    /// Returns the [`ComponentDescriptor`] for [`Self::text`].
+    #[inline]
+    pub fn descriptor_text() -> ComponentDescriptor {
+        ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.TextLog".into()),
             component_name: "rerun.components.Text".into(),
             archetype_field_name: Some("text".into()),
-        }]
-    });
+        }
+    }
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.TextLog".into()),
-                component_name: "rerun.components.TextLogLevel".into(),
-                archetype_field_name: Some("level".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.TextLog".into()),
-                component_name: "rerun.components.TextLogIndicator".into(),
-                archetype_field_name: None,
-            },
-        ]
-    });
+    /// Returns the [`ComponentDescriptor`] for [`Self::level`].
+    #[inline]
+    pub fn descriptor_level() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.TextLog".into()),
+            component_name: "rerun.components.TextLogLevel".into(),
+            archetype_field_name: Some("level".into()),
+        }
+    }
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
+    /// Returns the [`ComponentDescriptor`] for [`Self::color`].
+    #[inline]
+    pub fn descriptor_color() -> ComponentDescriptor {
+        ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.TextLog".into()),
             component_name: "rerun.components.Color".into(),
             archetype_field_name: Some("color".into()),
-        }]
-    });
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
+    #[inline]
+    pub fn descriptor_indicator() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.TextLog".into()),
+            component_name: "rerun.components.TextLogIndicator".into(),
+            archetype_field_name: None,
+        }
+    }
+}
+
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [TextLog::descriptor_text()]);
+
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
+    once_cell::sync::Lazy::new(|| [TextLog::descriptor_level(), TextLog::descriptor_indicator()]);
+
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [TextLog::descriptor_color()]);
 
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.TextLog".into()),
-                component_name: "rerun.components.Text".into(),
-                archetype_field_name: Some("text".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.TextLog".into()),
-                component_name: "rerun.components.TextLogLevel".into(),
-                archetype_field_name: Some("level".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.TextLog".into()),
-                component_name: "rerun.components.TextLogIndicator".into(),
-                archetype_field_name: None,
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.TextLog".into()),
-                component_name: "rerun.components.Color".into(),
-                archetype_field_name: Some("color".into()),
-            },
+            TextLog::descriptor_text(),
+            TextLog::descriptor_level(),
+            TextLog::descriptor_indicator(),
+            TextLog::descriptor_color(),
         ]
     });
 
@@ -181,89 +182,33 @@ impl ::re_types_core::Archetype for TextLog {
 
     #[inline]
     fn from_arrow_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, arrow::array::ArrayRef)>,
+        arrow_data: impl IntoIterator<Item = (ComponentDescriptor, arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(name, array)| (name.full_name(), array))
-            .collect();
-        let text = {
-            let array = arrays_by_name
-                .get("rerun.components.Text")
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.TextLog#text")?;
-            <crate::components::Text>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.TextLog#text")?
-                .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.TextLog#text")?
-        };
-        let level = if let Some(array) = arrays_by_name.get("rerun.components.TextLogLevel") {
-            <crate::components::TextLogLevel>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.TextLog#level")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
-        let color = if let Some(array) = arrays_by_name.get("rerun.components.Color") {
-            <crate::components::Color>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.TextLog#color")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
+        let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
+        let text = arrays_by_descr
+            .get(&Self::descriptor_text())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_text()));
+        let level = arrays_by_descr
+            .get(&Self::descriptor_level())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_level()));
+        let color = arrays_by_descr
+            .get(&Self::descriptor_color())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_color()));
         Ok(Self { text, level, color })
     }
 }
 
 impl ::re_types_core::AsComponents for TextLog {
-    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
-        re_tracing::profile_function!();
+    #[inline]
+    fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
-            (Some(&self.text as &dyn ComponentBatch)).map(|batch| {
-                ::re_types_core::ComponentBatchCowWithDescriptor {
-                    batch: batch.into(),
-                    descriptor_override: Some(ComponentDescriptor {
-                        archetype_name: Some("rerun.archetypes.TextLog".into()),
-                        archetype_field_name: Some(("text").into()),
-                        component_name: ("rerun.components.Text").into(),
-                    }),
-                }
-            }),
-            (self
-                .level
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.TextLog".into()),
-                    archetype_field_name: Some(("level").into()),
-                    component_name: ("rerun.components.TextLogLevel").into(),
-                }),
-            }),
-            (self
-                .color
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.TextLog".into()),
-                    archetype_field_name: Some(("color").into()),
-                    component_name: ("rerun.components.Color").into(),
-                }),
-            }),
+            Self::indicator().serialized(),
+            self.text.clone(),
+            self.level.clone(),
+            self.color.clone(),
         ]
         .into_iter()
         .flatten()
@@ -278,10 +223,43 @@ impl TextLog {
     #[inline]
     pub fn new(text: impl Into<crate::components::Text>) -> Self {
         Self {
-            text: text.into(),
+            text: try_serialize_field(Self::descriptor_text(), [text]),
             level: None,
             color: None,
         }
+    }
+
+    /// Update only some specific fields of a `TextLog`.
+    #[inline]
+    pub fn update_fields() -> Self {
+        Self::default()
+    }
+
+    /// Clear all the fields of a `TextLog`.
+    #[inline]
+    pub fn clear_fields() -> Self {
+        use ::re_types_core::Loggable as _;
+        Self {
+            text: Some(SerializedComponentBatch::new(
+                crate::components::Text::arrow_empty(),
+                Self::descriptor_text(),
+            )),
+            level: Some(SerializedComponentBatch::new(
+                crate::components::TextLogLevel::arrow_empty(),
+                Self::descriptor_level(),
+            )),
+            color: Some(SerializedComponentBatch::new(
+                crate::components::Color::arrow_empty(),
+                Self::descriptor_color(),
+            )),
+        }
+    }
+
+    /// The body of the message.
+    #[inline]
+    pub fn with_text(mut self, text: impl Into<crate::components::Text>) -> Self {
+        self.text = try_serialize_field(Self::descriptor_text(), [text]);
+        self
     }
 
     /// The verbosity level of the message.
@@ -289,14 +267,14 @@ impl TextLog {
     /// This can be used to filter the log messages in the Rerun Viewer.
     #[inline]
     pub fn with_level(mut self, level: impl Into<crate::components::TextLogLevel>) -> Self {
-        self.level = Some(level.into());
+        self.level = try_serialize_field(Self::descriptor_level(), [level]);
         self
     }
 
     /// Optional color to use for the log line in the Rerun Viewer.
     #[inline]
     pub fn with_color(mut self, color: impl Into<crate::components::Color>) -> Self {
-        self.color = Some(color.into());
+        self.color = try_serialize_field(Self::descriptor_color(), [color]);
         self
     }
 }
@@ -305,12 +283,5 @@ impl ::re_byte_size::SizeBytes for TextLog {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.text.heap_size_bytes() + self.level.heap_size_bytes() + self.color.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::components::Text>::is_pod()
-            && <Option<crate::components::TextLogLevel>>::is_pod()
-            && <Option<crate::components::Color>>::is_pod()
     }
 }

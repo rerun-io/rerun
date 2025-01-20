@@ -47,8 +47,8 @@ class ScalarAxis(Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            range=None,  # type: ignore[arg-type]
-            zoom_lock=None,  # type: ignore[arg-type]
+            range=None,
+            zoom_lock=None,
         )
 
     @classmethod
@@ -58,10 +58,60 @@ class ScalarAxis(Archetype):
         inst.__attrs_clear__()
         return inst
 
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        range: datatypes.Range1DLike | None = None,
+        zoom_lock: datatypes.BoolLike | None = None,
+    ) -> ScalarAxis:
+        """
+        Update only some specific fields of a `ScalarAxis`.
+
+        Parameters
+        ----------
+        clear:
+            If true, all unspecified fields will be explicitly cleared.
+        range:
+            The range of the axis.
+
+            If unset, the range well be automatically determined based on the queried data.
+        zoom_lock:
+            If enabled, the Y axis range will remain locked to the specified range when zooming.
+
+        """
+
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            kwargs = {
+                "range": range,
+                "zoom_lock": zoom_lock,
+            }
+
+            if clear:
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+            inst.__attrs_init__(**kwargs)
+            return inst
+
+        inst.__attrs_clear__()
+        return inst
+
+    @classmethod
+    def clear_fields(cls) -> ScalarAxis:
+        """Clear all the fields of a `ScalarAxis`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            range=[],
+            zoom_lock=[],
+        )
+        return inst
+
     range: components.Range1DBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.Range1DBatch._optional,  # type: ignore[misc]
+        converter=components.Range1DBatch._converter,  # type: ignore[misc]
     )
     # The range of the axis.
     #
@@ -70,9 +120,9 @@ class ScalarAxis(Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     zoom_lock: blueprint_components.LockRangeDuringZoomBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=blueprint_components.LockRangeDuringZoomBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.LockRangeDuringZoomBatch._converter,  # type: ignore[misc]
     )
     # If enabled, the Y axis range will remain locked to the specified range when zooming.
     #

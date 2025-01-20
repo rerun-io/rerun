@@ -3,9 +3,40 @@ use arrow::{
     buffer::{NullBuffer, OffsetBuffer},
     datatypes::{DataType, Field},
 };
-use itertools::Itertools;
+use itertools::Itertools as _;
 
-// ---
+// ---------------------------------------------------------------------------------
+
+/// Downcast an arrow array to another array, without having to go via `Any`.
+///
+/// This is shorter, but also better: it means we don't accidentally downcast
+/// an arrow2 array to an arrow1 array, or vice versa.
+pub trait ArrowArrayDowncastRef {
+    /// Downcast an arrow array to another array, without having to go via `Any`.
+    ///
+    /// This is shorter, but also better: it means we don't accidentally downcast
+    /// an arrow2 array to an arrow1 array, or vice versa.
+    fn downcast_array_ref<T: Array + 'static>(&self) -> Option<&T>;
+}
+
+impl ArrowArrayDowncastRef for &dyn Array {
+    fn downcast_array_ref<T: Array + 'static>(&self) -> Option<&T> {
+        self.as_any().downcast_ref()
+    }
+}
+
+impl ArrowArrayDowncastRef for ArrayRef {
+    fn downcast_array_ref<T: Array + 'static>(&self) -> Option<&T> {
+        self.as_any().downcast_ref()
+    }
+}
+
+// ---------------------------------------------------------------------------------
+
+#[inline]
+pub fn into_arrow_ref(array: impl Array + 'static) -> ArrayRef {
+    std::sync::Arc::new(array)
+}
 
 /// Returns true if the given `list_array` is semantically empty.
 ///
@@ -86,7 +117,7 @@ pub fn sparse_list_array_to_dense_list_array(list_array: &ListArray) -> ListArra
         return list_array.clone();
     }
 
-    let is_empty = list_array.nulls().map_or(false, |nulls| nulls.is_empty());
+    let is_empty = list_array.nulls().is_some_and(|nulls| nulls.is_empty());
     if is_empty {
         return list_array.clone();
     }
@@ -285,7 +316,7 @@ where
     );
 
     if indices.len() == array.len() {
-        let indices = indices.values().as_ref();
+        let indices = indices.values();
 
         let starts_at_zero = || indices[0] == O::Native::ZERO;
         let is_consecutive = || {

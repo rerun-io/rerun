@@ -82,6 +82,13 @@ pub struct StartupOptions {
     /// This also can be changed in the viewer's option menu.
     pub video_decoder_hw_acceleration: Option<re_video::decode::DecodeHardwareAcceleration>,
 
+    /// Interaction between JS and timeline.
+    ///
+    /// This field isn't used directly, but is propagated to all recording configs
+    /// when they are created.
+    #[cfg(target_arch = "wasm32")]
+    pub timeline_options: Option<crate::web::TimelineOptions>,
+
     /// Fullscreen is handled by JS on web.
     ///
     /// This holds some callbacks which we use to communicate
@@ -130,6 +137,9 @@ impl Default for StartupOptions {
             expect_data_soon: None,
             force_wgpu_backend: None,
             video_decoder_hw_acceleration: None,
+
+            #[cfg(target_arch = "wasm32")]
+            timeline_options: Default::default(),
 
             #[cfg(target_arch = "wasm32")]
             fullscreen_options: Default::default(),
@@ -220,6 +230,12 @@ pub struct App {
     pub(crate) panel_state_overrides: PanelStateOverrides,
 
     reflection: re_types_core::reflection::Reflection,
+
+    /// Interaction between JS and timeline.
+    ///
+    /// This field isn't used directly, but is propagated to all recording configs
+    /// when they are created.
+    pub timeline_callbacks: Option<re_viewer_context::TimelineCallbacks>,
 }
 
 impl App {
@@ -325,6 +341,46 @@ impl App {
             Default::default()
         });
 
+        #[cfg(target_arch = "wasm32")]
+        let timeline_callbacks = {
+            use crate::web_tools::string_from_js_value;
+            use std::rc::Rc;
+            use wasm_bindgen::JsValue;
+
+            startup_options.timeline_options.clone().map(|opts| {
+                re_viewer_context::TimelineCallbacks {
+                    on_timelinechange: Rc::new(move |timeline, time| {
+                        if let Err(err) = opts.on_timelinechange.call2(
+                            &JsValue::from_str(timeline.name().as_str()),
+                            &JsValue::from_f64(time.as_f64()),
+                        ) {
+                            re_log::error!("{}", string_from_js_value(err));
+                        };
+                    }),
+                    on_timeupdate: Rc::new(move |time| {
+                        if let Err(err) =
+                            opts.on_timeupdate.call1(&JsValue::from_f64(time.as_f64()))
+                        {
+                            re_log::error!("{}", string_from_js_value(err));
+                        }
+                    }),
+                    on_play: Rc::new(move || {
+                        if let Err(err) = opts.on_play.call0() {
+                            re_log::error!("{}", string_from_js_value(err));
+                        }
+                    }),
+                    on_pause: Rc::new(move || {
+                        if let Err(err) = opts.on_pause.call0() {
+                            re_log::error!("{}", string_from_js_value(err));
+                        }
+                    }),
+                }
+            })
+        };
+
+        #[cfg(not(target_arch = "wasm32"))]
+        let timeline_callbacks = None;
+
         Self {
             main_thread_token,
             build_info,
@@ -374,6 +430,8 @@ impl App {
             panel_state_overrides,
 
             reflection,
+
+            timeline_callbacks,
         }
     }
 
@@ -524,12 +582,10 @@ impl App {
             }
 
             SystemCommand::ResetViewer => self.reset_viewer(store_hub, egui_ctx),
-            SystemCommand::ClearAndGenerateBlueprint => {
+            SystemCommand::ClearActiveBlueprintAndEnableHeuristics => {
                 re_log::debug!("Clear and generate new blueprint");
-                // By clearing the default blueprint and the active blueprint
-                // it will be re-generated based on the default auto behavior.
-                store_hub.clear_default_blueprint();
-                store_hub.clear_active_blueprint();
+                store_hub.clear_active_blueprint_and_generate();
+                egui_ctx.request_repaint(); // Many changes take a frame delay to show up.
             }
             SystemCommand::ClearActiveBlueprint => {
                 // By clearing the blueprint the default blueprint will be restored
@@ -779,9 +835,9 @@ impl App {
             }
 
             UICommand::ResetViewer => self.command_sender.send_system(SystemCommand::ResetViewer),
-            UICommand::ClearAndGenerateBlueprint => {
+            UICommand::ClearActiveBlueprintAndEnableHeuristics => {
                 self.command_sender
-                    .send_system(SystemCommand::ClearAndGenerateBlueprint);
+                    .send_system(SystemCommand::ClearActiveBlueprintAndEnableHeuristics);
             }
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -1128,6 +1184,7 @@ impl App {
                                 opacity: self.welcome_screen_opacity(egui_ctx),
                             },
                             is_history_enabled,
+                            self.timeline_callbacks.as_ref(),
                         );
                         render_ctx.before_submit();
                     }
@@ -1575,7 +1632,7 @@ impl App {
         {
             if let Some(options) = &self.startup_options.fullscreen_options {
                 // Tell JS to toggle fullscreen.
-                if let Err(err) = options.on_toggle.call() {
+                if let Err(err) = options.on_toggle.call0() {
                     re_log::error!("{}", crate::web_tools::string_from_js_value(err));
                 };
             }
@@ -1591,7 +1648,7 @@ impl App {
     pub(crate) fn is_fullscreen_mode(&self) -> bool {
         if let Some(options) = &self.startup_options.fullscreen_options {
             // Ask JS if fullscreen is on or not.
-            match options.get_state.call() {
+            match options.get_state.call0() {
                 Ok(v) => return v.is_truthy(),
                 Err(err) => re_log::error_once!("{}", crate::web_tools::string_from_js_value(err)),
             }

@@ -1,13 +1,16 @@
 //! Formatting for tables of Arrow arrays
 
-use std::{borrow::Borrow, fmt::Formatter};
+use std::fmt::Formatter;
 
-use arrow2::{
-    array::{get_display, Array, ListArray},
-    datatypes::{DataType, Field, IntervalUnit, Metadata, TimeUnit},
+use arrow::{
+    array::{Array, ArrayRef, ListArray},
+    datatypes::{DataType, Field, Fields, IntervalUnit, TimeUnit},
+    util::display::{ArrayFormatter, FormatOptions},
 };
 use comfy_table::{presets, Cell, Row, Table};
+use itertools::Itertools as _;
 
+use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_tuid::Tuid;
 use re_types_core::Loggable as _;
 
@@ -18,63 +21,50 @@ use re_types_core::Loggable as _;
 // B) Because how to deserialize and inspect some type is a private implementation detail of that
 //    type, re_format shouldn't know how to deserialize a TUID…
 
-type CustomFormatter<'a, F> = Box<dyn Fn(&mut F, usize) -> std::fmt::Result + 'a>;
+/// Format the given row as a string
+type CustomArrayFormatter<'a> = Box<dyn Fn(usize) -> Result<String, String> + 'a>;
 
-fn get_custom_display<'a, F: std::fmt::Write + 'a>(
-    array: &'a dyn Array,
-    null: &'static str,
-) -> CustomFormatter<'a, F> {
-    // NOTE: If the top-level array is a list, it's probably not the type we're looking for: we're
-    // interested in the type of the array that's underneath.
-    let datatype = (|| match array.data_type().to_logical_type() {
-        DataType::List(_) => array
-            .as_any()
-            .downcast_ref::<ListArray<i32>>()?
-            .iter()
-            .next()?
-            .map(|array| array.data_type().clone()),
-        _ => Some(array.data_type().clone()),
-    })();
+/// This is a `BTreeMap`, and not a `HashMap`, because we want a predictable order.
+type Metadata = std::collections::BTreeMap<String, String>;
 
-    if let Some(DataType::Extension(name, _, _)) = datatype {
+fn custom_array_formatter<'a>(field: &Field, array: &'a dyn Array) -> CustomArrayFormatter<'a> {
+    if let Some(extension_name) = field.metadata().get("ARROW:extension:name") {
         // TODO(#1775): This should be registered dynamically.
-        if name.as_str() == Tuid::NAME {
-            return Box::new(|w, index| {
+        if extension_name.as_str() == Tuid::ARROW_EXTENSION_NAME {
+            return Box::new(|index| {
                 if let Some(tuid) = parse_tuid(array, index) {
-                    w.write_fmt(format_args!("{tuid}"))
+                    Ok(format!("{tuid}"))
                 } else {
-                    w.write_str("<ERR>")
+                    Err("Invalid RowId".to_owned())
                 }
             });
         }
     }
 
-    get_display(array, null)
+    match ArrayFormatter::try_new(array, &FormatOptions::default()) {
+        Ok(formatter) => Box::new(move |index| Ok(format!("{}", formatter.value(index)))),
+        Err(err) => Box::new(move |_| Err(format!("Failed to format array: {err}"))),
+    }
 }
 
 // TODO(#1775): This should be defined and registered by the `re_tuid` crate.
 fn parse_tuid(array: &dyn Array, index: usize) -> Option<Tuid> {
-    let (array, index) = match array.data_type().to_logical_type() {
-        // Legacy MsgId lists: just grab the first value, they're all identical
-        DataType::List(_) => (
-            array
-                .as_any()
-                .downcast_ref::<ListArray<i32>>()?
-                .value(index),
-            0,
-        ),
-        // New control columns: it's not a list to begin with!
-        _ => (array.to_boxed(), index),
-    };
+    fn parse_inner(array: &dyn Array, index: usize) -> Option<Tuid> {
+        let tuids = Tuid::from_arrow(array).ok()?;
+        tuids.get(index).copied()
+    }
 
-    let array = re_types_core::external::arrow::array::ArrayRef::from(array);
-    let tuids = Tuid::from_arrow(&array).ok()?;
-    tuids.get(index).copied()
+    match array.data_type() {
+        // Legacy MsgId lists: just grab the first value, they're all identical
+        DataType::List(_) => parse_inner(&array.downcast_array_ref::<ListArray>()?.value(index), 0),
+        // New control columns: it's not a list to begin with!
+        _ => parse_inner(array, index),
+    }
 }
 
 // ---
 
-//TODO(john) move this and the Display impl upstream into arrow2
+// arrow has `ToString` implemented, but it is way too verbose.
 #[repr(transparent)]
 struct DisplayTimeUnit(TimeUnit);
 
@@ -90,7 +80,7 @@ impl std::fmt::Display for DisplayTimeUnit {
     }
 }
 
-//TODO(john) move this and the Display impl upstream into arrow2
+// arrow has `ToString` implemented, but it is way too verbose.
 #[repr(transparent)]
 struct DisplayIntervalUnit(IntervalUnit);
 
@@ -105,7 +95,7 @@ impl std::fmt::Display for DisplayIntervalUnit {
     }
 }
 
-//TODO(john) move this and the Display impl upstream into arrow2
+// arrow has `ToString` implemented, but it is way too verbose.
 #[repr(transparent)]
 struct DisplayDatatype<'a>(&'a DataType);
 
@@ -127,72 +117,83 @@ impl std::fmt::Display for DisplayDatatype<'_> {
             DataType::Float64 => "f64",
             DataType::Timestamp(unit, timezone) => {
                 let s = if let Some(tz) = timezone {
-                    format!("timestamp({}, {tz})", DisplayTimeUnit(*unit))
+                    format!("Timestamp({}, {tz})", DisplayTimeUnit(*unit))
                 } else {
-                    format!("timestamp({})", DisplayTimeUnit(*unit))
+                    format!("Timestamp({})", DisplayTimeUnit(*unit))
                 };
                 return f.write_str(&s);
             }
-            DataType::Date32 => "date32",
-            DataType::Date64 => "date64",
+            DataType::Date32 => "Date32",
+            DataType::Date64 => "Date64",
             DataType::Time32(unit) => {
-                let s = format!("time32({})", DisplayTimeUnit(*unit));
+                let s = format!("Time32({})", DisplayTimeUnit(*unit));
                 return f.write_str(&s);
             }
             DataType::Time64(unit) => {
-                let s = format!("time64({})", DisplayTimeUnit(*unit));
+                let s = format!("Time64({})", DisplayTimeUnit(*unit));
                 return f.write_str(&s);
             }
             DataType::Duration(unit) => {
-                let s = format!("duration({})", DisplayTimeUnit(*unit));
+                let s = format!("Duration({})", DisplayTimeUnit(*unit));
                 return f.write_str(&s);
             }
             DataType::Interval(unit) => {
-                let s = format!("interval({})", DisplayIntervalUnit(*unit));
+                let s = format!("Interval({})", DisplayIntervalUnit(*unit));
                 return f.write_str(&s);
             }
-            DataType::Binary => "bin",
-            DataType::FixedSizeBinary(size) => return write!(f, "fixed-bin[{size}]"),
-            DataType::LargeBinary => "large-bin",
-            DataType::Utf8 => "str",
-            DataType::LargeUtf8 => "large-string",
+            DataType::Binary => "Binary",
+            DataType::FixedSizeBinary(size) => return write!(f, "FixedSizeBinary[{size}]"),
+            DataType::LargeBinary => "LargeBinary",
+            DataType::Utf8 => "Utf8",
+            DataType::LargeUtf8 => "LargeUtf8",
             DataType::List(ref field) => {
-                let s = format!("list[{}]", Self(field.data_type()));
+                let s = format!("List[{}]", Self(field.data_type()));
                 return f.write_str(&s);
             }
             DataType::FixedSizeList(field, len) => {
-                let s = format!("fixed-list[{}; {len}]", Self(field.data_type()));
+                let s = format!("FixedSizeList[{}; {len}]", Self(field.data_type()));
                 return f.write_str(&s);
             }
             DataType::LargeList(field) => {
-                let s = format!("large-list[{}]", Self(field.data_type()));
+                let s = format!("LargeList[{}]", Self(field.data_type()));
                 return f.write_str(&s);
             }
-            DataType::Struct(fields) => return write!(f, "struct[{}]", fields.len()),
-            DataType::Union(fields, _, _) => return write!(f, "union[{}]", fields.len()),
-            DataType::Map(field, _) => return write!(f, "map[{}]", Self(field.data_type())),
-            DataType::Dictionary(_, _, _) => "dict",
-            DataType::Decimal(_, _) => "decimal",
-            DataType::Decimal256(_, _) => "decimal256",
-            DataType::Extension(name, _, _) => {
-                return f.write_str(trim_name(name));
+            DataType::Struct(fields) => return write!(f, "Struct[{}]", fields.len()),
+            DataType::Union(fields, _) => return write!(f, "Union[{}]", fields.len()),
+            DataType::Map(field, _) => return write!(f, "Map[{}]", Self(field.data_type())),
+            DataType::Dictionary(key, value) => {
+                return write!(f, "Dictionary{{{}: {}}}", Self(key), Self(value))
+            }
+            DataType::Decimal128(_, _) => "Decimal128",
+            DataType::Decimal256(_, _) => "Decimal256",
+            DataType::BinaryView => "BinaryView",
+            DataType::Utf8View => "Utf8View",
+            DataType::ListView(field) => return write!(f, "ListView[{}]", Self(field.data_type())),
+            DataType::LargeListView(field) => {
+                return write!(f, "LargeListView[{}]", Self(field.data_type()))
+            }
+            DataType::RunEndEncoded(_run_ends, values) => {
+                return write!(f, "RunEndEncoded[{}]", Self(values.data_type()))
             }
         };
         f.write_str(s)
     }
 }
 
-struct DisplayMetadata<'a>(&'a Metadata, &'a str);
+struct DisplayMetadata {
+    prefix: &'static str,
+    metadata: Metadata,
+}
 
-impl std::fmt::Display for DisplayMetadata<'_> {
+impl std::fmt::Display for DisplayMetadata {
     #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let Self(metadata, prefix) = self;
+        let Self { prefix, metadata } = self;
         f.write_str(
             &metadata
                 .iter()
                 .map(|(key, value)| format!("{prefix}{}: {:?}", trim_name(key), trim_name(value)))
-                .collect::<Vec<_>>()
+                .collect_vec()
                 .join("\n"),
         )
     }
@@ -211,29 +212,30 @@ fn trim_name(name: &str) -> &str {
         .trim_start_matches("rerun.")
 }
 
-pub fn format_dataframe<F, C>(
-    metadata: impl Borrow<Metadata>,
-    fields: impl IntoIterator<Item = F>,
-    columns: impl IntoIterator<Item = C>,
-) -> Table
-where
-    F: Borrow<Field>,
-    C: Borrow<dyn Array>,
-{
-    let metadata = metadata.borrow();
+/// Nicely format this record batch in a way that fits the terminal.
+pub fn format_record_batch(batch: &arrow::array::RecordBatch) -> Table {
+    format_record_batch_with_width(batch, None)
+}
 
-    let fields = fields.into_iter().collect::<Vec<_>>();
-    let fields = fields
-        .iter()
-        .map(|field| field.borrow())
-        .collect::<Vec<_>>();
+/// Nicely format this record batch, either with the given fixed width, or with the terminal width (`None`).
+pub fn format_record_batch_with_width(
+    batch: &arrow::array::RecordBatch,
+    width: Option<usize>,
+) -> Table {
+    format_dataframe(
+        &batch.schema_ref().metadata.clone().into_iter().collect(), // HashMap -> BTreeMap
+        &batch.schema_ref().fields,
+        batch.columns(),
+        width,
+    )
+}
 
-    let columns = columns.into_iter().collect::<Vec<_>>();
-    let columns = columns
-        .iter()
-        .map(|column| column.borrow())
-        .collect::<Vec<_>>();
-
+fn format_dataframe(
+    metadata: &Metadata,
+    fields: &Fields,
+    columns: &[ArrayRef],
+    width: Option<usize>,
+) -> Table {
     const MAXIMUM_CELL_CONTENT_WIDTH: u16 = 100;
 
     let mut outer_table = Table::new();
@@ -242,75 +244,77 @@ where
     let mut table = Table::new();
     table.load_preset(presets::UTF8_FULL);
 
+    if let Some(width) = width {
+        outer_table.set_width(width as _);
+        outer_table.set_content_arrangement(comfy_table::ContentArrangement::Disabled);
+        table.set_width(width as _);
+        table.set_content_arrangement(comfy_table::ContentArrangement::Disabled);
+    } else {
+        outer_table.set_content_arrangement(comfy_table::ContentArrangement::Dynamic);
+        table.set_content_arrangement(comfy_table::ContentArrangement::Dynamic);
+    }
+
     outer_table.add_row({
         let mut row = Row::new();
-        row.add_cell({
-            let cell = Cell::new(format!(
-                "CHUNK METADATA:\n{}",
-                DisplayMetadata(metadata, "* ")
-            ));
-
-            #[cfg(not(target_arch = "wasm32"))] // requires TTY
-            {
-                cell.add_attribute(comfy_table::Attribute::Italic)
+        row.add_cell(Cell::new(format!(
+            "CHUNK METADATA:\n{}",
+            DisplayMetadata {
+                prefix: "* ",
+                metadata: metadata.clone()
             }
-            #[cfg(target_arch = "wasm32")]
-            {
-                cell
-            }
-        });
+        )));
         row
     });
 
     let header = fields.iter().map(|field| {
-        if field.metadata.is_empty() {
+        if field.metadata().is_empty() {
             Cell::new(format!(
                 "{}\n---\ntype: \"{}\"", // NOLINT
-                trim_name(&field.name),
+                trim_name(field.name()),
                 DisplayDatatype(field.data_type()),
             ))
         } else {
             Cell::new(format!(
                 "{}\n---\ntype: \"{}\"\n{}", // NOLINT
-                trim_name(&field.name),
+                trim_name(field.name()),
                 DisplayDatatype(field.data_type()),
-                DisplayMetadata(&field.metadata, ""),
+                DisplayMetadata {
+                    prefix: "",
+                    metadata: field.metadata().clone().into_iter().collect()
+                },
             ))
         }
     });
     table.set_header(header);
 
-    let displays = columns
-        .iter()
-        .map(|array| get_custom_display(&**array, "-"))
-        .collect::<Vec<_>>();
+    let formatters = itertools::izip!(fields.iter(), columns.iter())
+        .map(|(field, array)| custom_array_formatter(field, &**array))
+        .collect_vec();
     let num_rows = columns.first().map_or(0, |list_array| list_array.len());
 
-    if displays.is_empty() || num_rows == 0 {
+    if formatters.is_empty() || num_rows == 0 {
         return table;
     }
 
     for row in 0..num_rows {
-        let cells: Vec<_> = displays
+        let cells: Vec<_> = formatters
             .iter()
-            .map(|disp| {
-                let mut string = String::new();
-                if (disp)(&mut string, row).is_err() {
-                    // Seems to be okay to silently ignore errors here, but reset the string just in case
-                    string.clear();
+            .map(|formatter| match formatter(row) {
+                Ok(string) => {
+                    let chars: Vec<_> = string.chars().collect();
+                    if chars.len() > MAXIMUM_CELL_CONTENT_WIDTH as usize {
+                        Cell::new(
+                            chars
+                                .into_iter()
+                                .take(MAXIMUM_CELL_CONTENT_WIDTH.saturating_sub(1).into())
+                                .chain(['…'])
+                                .collect::<String>(),
+                        )
+                    } else {
+                        Cell::new(string)
+                    }
                 }
-                let chars: Vec<_> = string.chars().collect();
-                if chars.len() > MAXIMUM_CELL_CONTENT_WIDTH as usize {
-                    Cell::new(
-                        chars
-                            .into_iter()
-                            .take(MAXIMUM_CELL_CONTENT_WIDTH.saturating_sub(1).into())
-                            .chain(['…'])
-                            .collect::<String>(),
-                    )
-                } else {
-                    Cell::new(string)
-                }
+                Err(err) => Cell::new(err),
             })
             .collect();
         table.add_row(cells);

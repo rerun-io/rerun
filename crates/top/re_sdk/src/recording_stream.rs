@@ -9,14 +9,12 @@ use itertools::Either;
 use nohash_hasher::IntMap;
 use parking_lot::Mutex;
 
-use arrow2::array::PrimitiveArray as Arrow2PrimitiveArray;
 use re_chunk::{
-    Chunk, ChunkBatcher, ChunkBatcherConfig, ChunkBatcherError, ChunkComponents, PendingRow, RowId,
+    Chunk, ChunkBatcher, ChunkBatcherConfig, ChunkBatcherError, ChunkComponents, ChunkError,
+    ChunkId, PendingRow, RowId, TimeColumn,
 };
-
-use re_chunk::{ChunkError, ChunkId, TimeColumn};
 use re_log_types::{
-    ApplicationId, ArrowChunkReleaseCallback, BlueprintActivationCommand, EntityPath, LogMsg,
+    ApplicationId, ArrowRecordBatchReleaseCallback, BlueprintActivationCommand, EntityPath, LogMsg,
     StoreId, StoreInfo, StoreKind, StoreSource, Time, TimeInt, TimePoint, TimeType, Timeline,
     TimelineName,
 };
@@ -1035,10 +1033,10 @@ impl RecordingStream {
     #[deprecated(since = "0.16.0", note = "use `log_static` instead")]
     #[doc(hidden)]
     #[inline]
-    pub fn log_timeless(
+    pub fn log_timeless<AS: ?Sized + AsComponents>(
         &self,
         ent_path: impl Into<EntityPath>,
-        arch: &impl AsComponents,
+        arch: &AS,
     ) -> RecordingStreamResult<()> {
         self.log_static(ent_path, arch)
     }
@@ -1065,10 +1063,10 @@ impl RecordingStream {
     /// [SDK Micro Batching]: https://www.rerun.io/docs/reference/sdk/micro-batching
     /// [component bundle]: [`AsComponents`]
     #[inline]
-    pub fn log_static(
+    pub fn log_static<AS: ?Sized + AsComponents>(
         &self,
         ent_path: impl Into<EntityPath>,
-        as_components: &impl AsComponents,
+        as_components: &AS,
     ) -> RecordingStreamResult<()> {
         self.log_with_static(ent_path, true, as_components)
     }
@@ -1076,11 +1074,11 @@ impl RecordingStream {
     #[deprecated(since = "0.16.0", note = "use `log_static` instead")]
     #[doc(hidden)]
     #[inline]
-    pub fn log_with_timeless(
+    pub fn log_with_timeless<AS: ?Sized + AsComponents>(
         &self,
         ent_path: impl Into<EntityPath>,
         static_: bool,
-        arch: &impl AsComponents,
+        arch: &AS,
     ) -> RecordingStreamResult<()> {
         self.log_with_static(ent_path, static_, arch)
     }
@@ -1115,14 +1113,11 @@ impl RecordingStream {
         as_components: &AS,
     ) -> RecordingStreamResult<()> {
         let row_id = RowId::new(); // Create row-id as early as possible. It has a timestamp and is used to estimate e2e latency.
-        self.log_component_batches_impl(
+        self.log_serialized_batches_impl(
             row_id,
             ent_path,
             static_,
-            as_components
-                .as_component_batches()
-                .iter()
-                .map(|any_comp_batch| any_comp_batch as &dyn re_types_core::ComponentBatch),
+            as_components.as_serialized_batches(),
         )
     }
 
@@ -1149,6 +1144,7 @@ impl RecordingStream {
     /// See [SDK Micro Batching] for more information.
     ///
     /// [SDK Micro Batching]: https://www.rerun.io/docs/reference/sdk/micro-batching
+    #[deprecated(since = "0.22.0", note = "use log_serialized_batches instead")]
     pub fn log_component_batches<'a>(
         &self,
         ent_path: impl Into<EntityPath>,
@@ -1181,6 +1177,79 @@ impl RecordingStream {
             })
             .collect();
         let components: IntMap<_, _> = comp_batches?.into_iter().collect();
+
+        // NOTE: The timepoint is irrelevant, the `RecordingStream` will overwrite it using its
+        // internal clock.
+        let timepoint = TimePoint::default();
+
+        if !components.is_empty() {
+            let row = PendingRow {
+                row_id,
+                timepoint,
+                components,
+            };
+            self.record_row(entity_path, row, !static_);
+        }
+
+        Ok(())
+    }
+
+    /// Logs a set of [`SerializedComponentBatch`]es into Rerun.
+    ///
+    /// If `static_` is set to `true`, all timestamp data associated with this message will be
+    /// dropped right before sending it to Rerun.
+    /// Static data has no time associated with it, exists on all timelines, and unconditionally shadows
+    /// any temporal data of the same type.
+    ///
+    /// Otherwise, the data will be timestamped automatically based on the [`RecordingStream`]'s
+    /// internal clock.
+    /// See `RecordingStream::set_time_*` family of methods for more information.
+    ///
+    /// The number of instances will be determined by the longest batch in the bundle.
+    ///
+    /// The entity path can either be a string
+    /// (with special characters escaped, split on unescaped slashes)
+    /// or an [`EntityPath`] constructed with [`crate::entity_path`].
+    /// See <https://www.rerun.io/docs/concepts/entity-path> for more on entity paths.
+    ///
+    /// Internally, the stream will automatically micro-batch multiple log calls to optimize
+    /// transport.
+    /// See [SDK Micro Batching] for more information.
+    ///
+    /// [SDK Micro Batching]: https://www.rerun.io/docs/reference/sdk/micro-batching
+    ///
+    /// [`SerializedComponentBatch`]: [re_types_core::SerializedComponentBatch]
+    pub fn log_serialized_batches(
+        &self,
+        ent_path: impl Into<EntityPath>,
+        static_: bool,
+        comp_batches: impl IntoIterator<Item = re_types_core::SerializedComponentBatch>,
+    ) -> RecordingStreamResult<()> {
+        let row_id = RowId::new(); // Create row-id as early as possible. It has a timestamp and is used to estimate e2e latency.
+        self.log_serialized_batches_impl(row_id, ent_path, static_, comp_batches)
+    }
+
+    // NOTE: For bw and fw compatibility reasons, we need our logging APIs to be fallible, even
+    // though they really aren't at the moment.
+    #[allow(clippy::unnecessary_wraps)]
+    fn log_serialized_batches_impl(
+        &self,
+        row_id: RowId,
+        entity_path: impl Into<EntityPath>,
+        static_: bool,
+        comp_batches: impl IntoIterator<Item = re_types_core::SerializedComponentBatch>,
+    ) -> RecordingStreamResult<()> {
+        if !self.is_enabled() {
+            return Ok(()); // silently drop the message
+        }
+
+        let entity_path = entity_path.into();
+
+        let comp_batches: Vec<_> = comp_batches
+            .into_iter()
+            .map(|comp_batch| (comp_batch.descriptor, comp_batch.array))
+            .collect();
+        let components: IntMap<_, _> = comp_batches.into_iter().collect();
 
         // NOTE: The timepoint is irrelevant, the `RecordingStream` will overwrite it using its
         // internal clock.
@@ -1342,7 +1411,7 @@ fn forwarding_thread(
     mut sink: Box<dyn LogSink>,
     cmds_rx: Receiver<Command>,
     chunks: Receiver<Chunk>,
-    on_release: Option<ArrowChunkReleaseCallback>,
+    on_release: Option<ArrowRecordBatchReleaseCallback>,
 ) {
     /// Returns `true` to indicate that processing can continue; i.e. `false` means immediate
     /// shutdown.
@@ -1547,10 +1616,9 @@ impl RecordingStream {
                 let time_timeline = Timeline::log_time();
                 let time = TimeInt::new_temporal(Time::now().nanos_since_epoch());
 
-                let repeated_time = Arrow2PrimitiveArray::<i64>::from_values(
-                    std::iter::repeat(time.as_i64()).take(chunk.num_rows()),
-                )
-                .to(time_timeline.datatype());
+                let repeated_time = std::iter::repeat(time.as_i64())
+                    .take(chunk.num_rows())
+                    .collect();
 
                 let time_column = TimeColumn::new(Some(true), time_timeline, repeated_time);
 
@@ -1571,10 +1639,7 @@ impl RecordingStream {
                     .tick
                     .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
 
-                let repeated_tick = Arrow2PrimitiveArray::<i64>::from_values(
-                    std::iter::repeat(tick).take(chunk.num_rows()),
-                )
-                .to(tick_timeline.datatype());
+                let repeated_tick = std::iter::repeat(tick).take(chunk.num_rows()).collect();
 
                 let tick_chunk = TimeColumn::new(Some(true), tick_timeline, repeated_tick);
 
@@ -2285,7 +2350,6 @@ impl RecordingStream {
 
 #[cfg(test)]
 mod tests {
-    use re_chunk::TransportChunk;
     use re_log_types::example_components::MyLabel;
 
     use super::*;
@@ -2345,11 +2409,7 @@ mod tests {
             LogMsg::ArrowMsg(rid, msg) => {
                 assert_eq!(store_info.store_id, rid);
 
-                let chunk = Chunk::from_transport(&TransportChunk {
-                    schema: msg.schema.clone(),
-                    data: msg.chunk.clone(),
-                })
-                .unwrap();
+                let chunk = Chunk::from_arrow_msg(&msg).unwrap();
 
                 chunk.sanity_check().unwrap();
             }
@@ -2407,11 +2467,7 @@ mod tests {
             LogMsg::ArrowMsg(rid, msg) => {
                 assert_eq!(store_info.store_id, rid);
 
-                let chunk = Chunk::from_transport(&TransportChunk {
-                    schema: msg.schema.clone(),
-                    data: msg.chunk.clone(),
-                })
-                .unwrap();
+                let chunk = Chunk::from_arrow_msg(&msg).unwrap();
 
                 chunk.sanity_check().unwrap();
             }
@@ -2478,11 +2534,7 @@ mod tests {
                 LogMsg::ArrowMsg(rid, msg) => {
                     assert_eq!(store_info.store_id, rid);
 
-                    let chunk = Chunk::from_transport(&TransportChunk {
-                        schema: msg.schema.clone(),
-                        data: msg.chunk.clone(),
-                    })
-                    .unwrap();
+                    let chunk = Chunk::from_arrow_msg(&msg).unwrap();
 
                     chunk.sanity_check().unwrap();
                 }

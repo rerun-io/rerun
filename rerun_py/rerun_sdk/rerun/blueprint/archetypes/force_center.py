@@ -49,8 +49,8 @@ class ForceCenter(Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            enabled=None,  # type: ignore[arg-type]
-            strength=None,  # type: ignore[arg-type]
+            enabled=None,
+            strength=None,
         )
 
     @classmethod
@@ -60,10 +60,60 @@ class ForceCenter(Archetype):
         inst.__attrs_clear__()
         return inst
 
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        enabled: datatypes.BoolLike | None = None,
+        strength: datatypes.Float64Like | None = None,
+    ) -> ForceCenter:
+        """
+        Update only some specific fields of a `ForceCenter`.
+
+        Parameters
+        ----------
+        clear:
+            If true, all unspecified fields will be explicitly cleared.
+        enabled:
+            Whether the center force is enabled.
+
+            The center force tries to move the center of mass of the graph towards the origin.
+        strength:
+            The strength of the force.
+
+        """
+
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            kwargs = {
+                "enabled": enabled,
+                "strength": strength,
+            }
+
+            if clear:
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+            inst.__attrs_init__(**kwargs)
+            return inst
+
+        inst.__attrs_clear__()
+        return inst
+
+    @classmethod
+    def clear_fields(cls) -> ForceCenter:
+        """Clear all the fields of a `ForceCenter`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            enabled=[],
+            strength=[],
+        )
+        return inst
+
     enabled: blueprint_components.EnabledBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=blueprint_components.EnabledBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.EnabledBatch._converter,  # type: ignore[misc]
     )
     # Whether the center force is enabled.
     #
@@ -72,9 +122,9 @@ class ForceCenter(Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     strength: blueprint_components.ForceStrengthBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=blueprint_components.ForceStrengthBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.ForceStrengthBatch._converter,  # type: ignore[misc]
     )
     # The strength of the force.
     #

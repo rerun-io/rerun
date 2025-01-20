@@ -1,0 +1,13 @@
+---
+source: crates/store/re_dataframe/src/query.rs
+assertion_line: 1763
+expression: dataframe
+snapshot_kind: text
+---
+┌───────────────────────────────┬───────────────────────────────┐
+│ frame_nr                      ┆ log_time                      │
+│ ---                           ┆ ---                           │
+│ type: "i64"                   ┆ type: "Timestamp(ns)"         │
+│ sorbet.index_name: "frame_nr" ┆ sorbet.index_name: "log_time" │
+╞═══════════════════════════════╪═══════════════════════════════╡
+└───────────────────────────────┴───────────────────────────────┘

@@ -53,7 +53,7 @@ pub fn determine_time_range(
     let mut time_range =
         ResolvedTimeRange::from_relative_time_range(&visible_time_range, time_cursor);
 
-    let is_auto_bounds = plot_mem.map_or(false, |mem| mem.auto_bounds.x || mem.auto_bounds.y);
+    let is_auto_bounds = plot_mem.is_some_and(|mem| mem.auto_bounds.x || mem.auto_bounds.y);
     let plot_bounds = plot_mem.map(|mem| {
         let bounds = mem.bounds().range_x();
         let x_min = bounds.start().floor() as i64;

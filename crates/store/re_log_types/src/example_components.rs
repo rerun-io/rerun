@@ -2,16 +2,66 @@
 
 use std::sync::Arc;
 
+use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_byte_size::SizeBytes;
-use re_types_core::{Component, ComponentDescriptor, DeserializationError, Loggable};
+use re_types_core::{
+    Component, ComponentDescriptor, DeserializationError, Loggable, SerializedComponentBatch,
+};
 
 // ----------------------------------------------------------------------------
 
 #[derive(Debug)]
-pub struct MyPoints;
+pub struct MyPoints {
+    pub points: Option<SerializedComponentBatch>,
+    pub colors: Option<SerializedComponentBatch>,
+    pub labels: Option<SerializedComponentBatch>,
+}
 
 impl MyPoints {
     pub const NUM_COMPONENTS: usize = 5;
+}
+
+impl MyPoints {
+    pub fn descriptor_points() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("example.MyPoints".into()),
+            archetype_field_name: Some("points".into()),
+            component_name: MyPoint::name(),
+        }
+    }
+
+    pub fn descriptor_colors() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("example.MyPoints".into()),
+            archetype_field_name: Some("colors".into()),
+            component_name: MyColor::name(),
+        }
+    }
+
+    pub fn descriptor_labels() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("example.MyPoints".into()),
+            archetype_field_name: Some("labels".into()),
+            component_name: MyLabel::name(),
+        }
+    }
+
+    pub fn clear_fields() -> Self {
+        Self {
+            points: Some(SerializedComponentBatch::new(
+                MyPoint::arrow_empty(),
+                Self::descriptor_points(),
+            )),
+            colors: Some(SerializedComponentBatch::new(
+                MyColor::arrow_empty(),
+                Self::descriptor_colors(),
+            )),
+            labels: Some(SerializedComponentBatch::new(
+                MyLabel::arrow_empty(),
+                Self::descriptor_labels(),
+            )),
+        }
+    }
 }
 
 impl re_types_core::Archetype for MyPoints {
@@ -116,8 +166,7 @@ impl Loggable for MyPoint {
         data: &dyn arrow::array::Array,
     ) -> re_types_core::DeserializationResult<Vec<Option<Self>>> {
         let array = data
-            .as_any()
-            .downcast_ref::<arrow::array::StructArray>()
+            .downcast_array_ref::<arrow::array::StructArray>()
             .ok_or(DeserializationError::downcast_error::<
                 arrow::array::StructArray,
             >())?;
@@ -126,14 +175,12 @@ impl Loggable for MyPoint {
         let y_array = array.columns()[1].as_ref();
 
         let xs = x_array
-            .as_any()
-            .downcast_ref::<arrow::array::Float32Array>()
+            .downcast_array_ref::<arrow::array::Float32Array>()
             .ok_or(DeserializationError::downcast_error::<
                 arrow::array::Float32Array,
             >())?;
         let ys = y_array
-            .as_any()
-            .downcast_ref::<arrow::array::Float32Array>()
+            .downcast_array_ref::<arrow::array::Float32Array>()
             .ok_or(DeserializationError::downcast_error::<
                 arrow::array::Float32Array,
             >())?;
@@ -235,8 +282,7 @@ impl Loggable for MyPoint64 {
         data: &dyn arrow::array::Array,
     ) -> re_types_core::DeserializationResult<Vec<Option<Self>>> {
         let array = data
-            .as_any()
-            .downcast_ref::<arrow::array::StructArray>()
+            .downcast_array_ref::<arrow::array::StructArray>()
             .ok_or(DeserializationError::downcast_error::<
                 arrow::array::StructArray,
             >())?;
@@ -245,14 +291,12 @@ impl Loggable for MyPoint64 {
         let y_array = array.columns()[1].as_ref();
 
         let xs = x_array
-            .as_any()
-            .downcast_ref::<arrow::array::Float64Array>()
+            .downcast_array_ref::<arrow::array::Float64Array>()
             .ok_or(DeserializationError::downcast_error::<
                 arrow::array::Float64Array,
             >())?;
         let ys = y_array
-            .as_any()
-            .downcast_ref::<arrow::array::Float64Array>()
+            .downcast_array_ref::<arrow::array::Float64Array>()
             .ok_or(DeserializationError::downcast_error::<
                 arrow::array::Float64Array,
             >())?;

@@ -97,12 +97,12 @@ class GraphNodes(Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            node_ids=None,  # type: ignore[arg-type]
-            positions=None,  # type: ignore[arg-type]
-            colors=None,  # type: ignore[arg-type]
-            labels=None,  # type: ignore[arg-type]
-            show_labels=None,  # type: ignore[arg-type]
-            radii=None,  # type: ignore[arg-type]
+            node_ids=None,
+            positions=None,
+            colors=None,
+            labels=None,
+            show_labels=None,
+            radii=None,
         )
 
     @classmethod
@@ -112,54 +112,123 @@ class GraphNodes(Archetype):
         inst.__attrs_clear__()
         return inst
 
-    node_ids: components.GraphNodeBatch = field(
-        metadata={"component": "required"},
-        converter=components.GraphNodeBatch._required,  # type: ignore[misc]
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        node_ids: datatypes.Utf8ArrayLike | None = None,
+        positions: datatypes.Vec2DArrayLike | None = None,
+        colors: datatypes.Rgba32ArrayLike | None = None,
+        labels: datatypes.Utf8ArrayLike | None = None,
+        show_labels: datatypes.BoolLike | None = None,
+        radii: datatypes.Float32ArrayLike | None = None,
+    ) -> GraphNodes:
+        """
+        Update only some specific fields of a `GraphNodes`.
+
+        Parameters
+        ----------
+        clear:
+            If true, all unspecified fields will be explicitly cleared.
+        node_ids:
+            A list of node IDs.
+        positions:
+            Optional center positions of the nodes.
+        colors:
+            Optional colors for the boxes.
+        labels:
+            Optional text labels for the node.
+        show_labels:
+            Optional choice of whether the text labels should be shown by default.
+        radii:
+            Optional radii for nodes.
+
+        """
+
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            kwargs = {
+                "node_ids": node_ids,
+                "positions": positions,
+                "colors": colors,
+                "labels": labels,
+                "show_labels": show_labels,
+                "radii": radii,
+            }
+
+            if clear:
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+            inst.__attrs_init__(**kwargs)
+            return inst
+
+        inst.__attrs_clear__()
+        return inst
+
+    @classmethod
+    def clear_fields(cls) -> GraphNodes:
+        """Clear all the fields of a `GraphNodes`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            node_ids=[],
+            positions=[],
+            colors=[],
+            labels=[],
+            show_labels=[],
+            radii=[],
+        )
+        return inst
+
+    node_ids: components.GraphNodeBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.GraphNodeBatch._converter,  # type: ignore[misc]
     )
     # A list of node IDs.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     positions: components.Position2DBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.Position2DBatch._optional,  # type: ignore[misc]
+        converter=components.Position2DBatch._converter,  # type: ignore[misc]
     )
     # Optional center positions of the nodes.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     colors: components.ColorBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.ColorBatch._optional,  # type: ignore[misc]
+        converter=components.ColorBatch._converter,  # type: ignore[misc]
     )
     # Optional colors for the boxes.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     labels: components.TextBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.TextBatch._optional,  # type: ignore[misc]
+        converter=components.TextBatch._converter,  # type: ignore[misc]
     )
     # Optional text labels for the node.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     show_labels: components.ShowLabelsBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.ShowLabelsBatch._optional,  # type: ignore[misc]
+        converter=components.ShowLabelsBatch._converter,  # type: ignore[misc]
     )
     # Optional choice of whether the text labels should be shown by default.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     radii: components.RadiusBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.RadiusBatch._optional,  # type: ignore[misc]
+        converter=components.RadiusBatch._converter,  # type: ignore[misc]
     )
     # Optional radii for nodes.
     #

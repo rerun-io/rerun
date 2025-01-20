@@ -26,8 +26,10 @@ default = []
 
 [dependencies]
 # Rerun dependencies:
+re_arrow_util.workspace = true
 re_chunk.workspace = true
 re_chunk_store.workspace = true
+re_format_arrow.workspace = true
 re_log.workspace = true
 re_log_encoding.workspace = true
 re_log_types.workspace = true
@@ -37,7 +39,9 @@ re_types_core.workspace = true
 
 # External dependencies:
 anyhow.workspace = true
+arrow.workspace = true
 arrow2.workspace = true
+insta.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true
 rayon.workspace = true

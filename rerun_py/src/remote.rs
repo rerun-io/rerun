@@ -1,21 +1,23 @@
-#![allow(unsafe_op_in_unsafe_fn)]
+#![allow(unsafe_op_in_unsafe_fn)] // False positive due to #[pyfunction] macro
 
 use std::collections::BTreeSet;
 
 use arrow::{
     array::{RecordBatch, RecordBatchIterator, RecordBatchReader},
-    datatypes::Schema,
+    datatypes::Schema as ArrowSchema,
     ffi_stream::ArrowArrayStreamReader,
     pyarrow::PyArrowType,
 };
-// False positive due to #[pyfunction] macro
 use pyo3::{
     exceptions::{PyRuntimeError, PyTypeError, PyValueError},
     prelude::*,
     types::PyDict,
     Bound, PyResult,
 };
-use re_chunk::{Chunk, TransportChunk};
+use tokio_stream::StreamExt;
+
+use re_arrow_util::ArrowArrayDowncastRef as _;
+use re_chunk::Chunk;
 use re_chunk_store::ChunkStore;
 use re_dataframe::{ChunkStoreHandle, QueryExpression, SparseFillStrategy, ViewContentsSelector};
 use re_grpc_client::TonicStatusError;
@@ -24,15 +26,15 @@ use re_log_types::{EntityPathFilter, StoreInfo, StoreSource};
 use re_protos::{
     common::v0::RecordingId,
     remote_store::v0::{
-        storage_node_client::StorageNodeClient, CatalogFilter, FetchRecordingRequest,
-        QueryCatalogRequest, QueryRequest, RecordingType, RegisterRecordingRequest,
-        UpdateCatalogRequest,
+        storage_node_client::StorageNodeClient, CatalogFilter, ColumnProjection,
+        FetchRecordingRequest, GetRecordingSchemaRequest, QueryCatalogRequest, QueryRequest,
+        RecordingType, RegisterRecordingRequest, UpdateCatalogRequest,
     },
+    TypeConversionError,
 };
 use re_sdk::{ApplicationId, ComponentName, StoreId, StoreKind, Time, Timeline};
-use tokio_stream::StreamExt;
 
-use crate::dataframe::{ComponentLike, PyRecording, PyRecordingHandle, PyRecordingView};
+use crate::dataframe::{ComponentLike, PyRecording, PyRecordingHandle, PyRecordingView, PySchema};
 
 /// Register the `rerun.remote` module.
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -128,7 +130,10 @@ impl PyStorageNodeClient {
                     ));
                 }
 
-                re_grpc_client::store_info_from_catalog_chunk(&resp[0], id)
+                re_grpc_client::store_info_from_catalog_chunk(
+                    &re_chunk::TransportChunk::from(resp[0].clone()),
+                    id,
+                )
             })
             .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
@@ -167,17 +172,12 @@ impl PyStorageNodeClient {
 
             let schema = batches
                 .first()
-                .map(|batch| batch.schema.clone())
-                .unwrap_or_else(|| arrow2::datatypes::Schema::from(vec![]));
-
-            let fields: Vec<arrow::datatypes::Field> =
-                schema.fields.iter().map(|f| f.clone().into()).collect();
-            let metadata = schema.metadata.clone().into_iter().collect();
-            let schema = arrow::datatypes::Schema::new(fields).with_metadata(metadata);
+                .map(|batch| batch.schema())
+                .unwrap_or_else(|| ArrowSchema::empty().into());
 
             Ok(RecordBatchIterator::new(
-                batches.into_iter().map(|tc| tc.try_to_arrow_record_batch()),
-                std::sync::Arc::new(schema),
+                batches.into_iter().map(Ok),
+                schema,
             ))
         });
 
@@ -190,13 +190,34 @@ impl PyStorageNodeClient {
 
 #[pymethods]
 impl PyStorageNodeClient {
-    /// Get the metadata for all recordings in the storage node.
-    fn query_catalog(&mut self) -> PyResult<PyArrowType<Box<dyn RecordBatchReader + Send>>> {
+    /// Get the metadata for recordings in the storage node.
+    ///
+    /// Parameters
+    /// ----------
+    /// columns : Optional[list[str]]
+    ///     The columns to fetch. If `None`, fetch all columns.
+    /// recording_ids : Optional[list[str]]
+    ///     Fetch metadata of only specific recordings. If `None`, fetch for all.
+    #[pyo3(signature = (
+        columns = None,
+        recording_ids = None,
+    ))]
+    fn query_catalog(
+        &mut self,
+        columns: Option<Vec<String>>,
+        recording_ids: Option<Vec<String>>,
+    ) -> PyResult<PyArrowType<Box<dyn RecordBatchReader + Send>>> {
         let reader = self.runtime.block_on(async {
-            // TODO(jleibs): Support column projection and filtering
+            let column_projection = columns.map(|columns| ColumnProjection { columns });
+            let filter = recording_ids.map(|recording_ids| CatalogFilter {
+                recording_ids: recording_ids
+                    .into_iter()
+                    .map(|id| RecordingId { id })
+                    .collect(),
+            });
             let request = QueryCatalogRequest {
-                column_projection: None,
-                filter: None,
+                column_projection,
+                filter,
             };
 
             let transport_chunks = self
@@ -216,17 +237,14 @@ impl PyStorageNodeClient {
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
             let record_batches: Vec<Result<RecordBatch, arrow::error::ArrowError>> =
-                transport_chunks
-                    .into_iter()
-                    .map(|tc| tc.try_to_arrow_record_batch())
-                    .collect();
+                transport_chunks.into_iter().map(Ok).collect();
 
             // TODO(jleibs): surfacing this schema is awkward. This should be more explicit in
             // the gRPC APIs somehow.
             let schema = record_batches
                 .first()
                 .and_then(|batch| batch.as_ref().ok().map(|batch| batch.schema()))
-                .unwrap_or(std::sync::Arc::new(Schema::empty()));
+                .unwrap_or(std::sync::Arc::new(ArrowSchema::empty()));
 
             let reader = RecordBatchIterator::new(record_batches, schema);
 
@@ -234,6 +252,42 @@ impl PyStorageNodeClient {
         })?;
 
         Ok(PyArrowType(Box::new(reader)))
+    }
+
+    #[pyo3(signature = (id,))]
+    /// Get the schema for a recording in the storage node.
+    ///
+    /// Parameters
+    /// ----------
+    /// id : str
+    ///     The id of the recording to get the schema for.
+    ///
+    /// Returns
+    /// -------
+    /// Schema
+    ///     The schema of the recording.
+    fn get_recording_schema(&mut self, id: String) -> PyResult<PySchema> {
+        self.runtime.block_on(async {
+            let request = GetRecordingSchemaRequest {
+                recording_id: Some(RecordingId { id }),
+            };
+
+            let column_descriptors = self
+                .client
+                .get_recording_schema(request)
+                .await
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
+                .into_inner()
+                .column_descriptors
+                .into_iter()
+                .map(|cd| cd.try_into())
+                .collect::<Result<Vec<_>, _>>()
+                .map_err(|err: TypeConversionError| PyRuntimeError::new_err(err.to_string()))?;
+
+            Ok(PySchema {
+                schema: column_descriptors,
+            })
+        })
     }
 
     /// Register a recording along with some metadata.
@@ -267,8 +321,7 @@ impl PyStorageNodeClient {
                         ));
                     }
 
-                    let metadata_tc = TransportChunk::from_arrow_record_batch(&metadata);
-                    metadata_tc
+                    metadata
                         .encode()
                         .map_err(|err| PyRuntimeError::new_err(err.to_string()))
                 })
@@ -293,12 +346,9 @@ impl PyStorageNodeClient {
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
             let recording_id = metadata
-                .all_columns()
-                .find(|(field, _data)| field.name == "rerun_recording_id")
-                .map(|(_field, data)| data)
+                .column_by_name("rerun_recording_id")
                 .ok_or(PyRuntimeError::new_err("No rerun_recording_id"))?
-                .as_any()
-                .downcast_ref::<arrow2::array::Utf8Array<i32>>()
+                .downcast_array_ref::<arrow::array::StringArray>()
                 .ok_or(PyRuntimeError::new_err("Recording Id is not a string"))?
                 .value(0)
                 .to_owned();
@@ -335,11 +385,9 @@ impl PyStorageNodeClient {
                 ));
             }
 
-            let metadata_tc = TransportChunk::from_arrow_record_batch(&metadata);
-
             let request = UpdateCatalogRequest {
                 metadata: Some(
-                    metadata_tc
+                    metadata
                         .encode()
                         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?,
                 ),
@@ -430,13 +478,13 @@ impl PyStorageNodeClient {
 
             while let Some(result) = resp.next().await {
                 let response = result.map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
-                let tc = match response.decode() {
+                let batch = match response.decode() {
                     Ok(tc) => tc,
                     Err(err) => {
                         return Err(PyRuntimeError::new_err(err.to_string()));
                     }
                 };
-                let chunk = Chunk::from_transport(&tc)
+                let chunk = Chunk::from_record_batch(batch)
                     .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
                 store

@@ -1,10 +1,10 @@
 //! Rerun Time Panel
 //!
-//! This crate provides a panel that shows allows to control time & timelines,
-//! as well as all necessary ui elements that make it up.
+//! This crate provides a panel that shows all entities in the store and allows control of time and
+//! timelines, as well as all necessary ui elements that make it up.
 
 // TODO(#6330): remove unwrap()
-#![allow(clippy::unwrap_used)]
+#![expect(clippy::unwrap_used)]
 
 mod data_density_graph;
 mod paint_ticks;
@@ -26,11 +26,11 @@ use re_data_ui::DataUi as _;
 use re_data_ui::{item_ui::guess_instance_path_icon, sorted_component_list_for_ui};
 use re_entity_db::{EntityDb, EntityTree, InstancePath};
 use re_log_types::{
-    external::re_types_core::ComponentName, ComponentPath, EntityPath, EntityPathPart,
+    external::re_types_core::ComponentName, ApplicationId, ComponentPath, EntityPath,
     ResolvedTimeRange, TimeInt, TimeReal, TimeType,
 };
 use re_types::blueprint::components::PanelState;
-use re_ui::{list_item, ContextExt as _, DesignTokens, UiExt as _};
+use re_ui::{filter_widget, list_item, ContextExt as _, DesignTokens, UiExt as _};
 use re_viewer_context::{
     CollapseScope, HoverHighlight, Item, ItemContext, RecordingConfig, TimeControl, TimeView,
     UiLayout, ViewerContext,
@@ -135,8 +135,19 @@ pub struct TimePanel {
     /// Ui elements for controlling time.
     time_control_ui: TimeControlUi,
 
-    /// Which source is the time panel controlling
+    /// Which source is the time panel controlling?
     source: TimePanelSource,
+
+    /// Filtering of entity paths shown in the panel (when expanded).
+    #[serde(skip)]
+    filter_state: filter_widget::FilterState,
+
+    /// The store id the filter widget relates to.
+    ///
+    /// Used to invalidate the filter state (aka deactivate it) when the user switches to a
+    /// recording with a different application id.
+    #[serde(skip)]
+    filter_state_app_id: Option<ApplicationId>,
 }
 
 impl Default for TimePanel {
@@ -150,6 +161,8 @@ impl Default for TimePanel {
             time_ranges_ui: Default::default(),
             time_control_ui: TimeControlUi,
             source: TimePanelSource::Recording,
+            filter_state: Default::default(),
+            filter_state_app_id: None,
         }
     }
 }
@@ -183,6 +196,12 @@ impl TimePanel {
     ) {
         if state.is_hidden() {
             return;
+        }
+
+        // Invalidate the filter widget if the store id has changed.
+        if self.filter_state_app_id.as_ref() != Some(&ctx.store_context.app_id) {
+            self.filter_state = Default::default();
+            self.filter_state_app_id = Some(ctx.store_context.app_id.clone());
         }
 
         self.data_density_graph_painter.begin_frame(ui.ctx());
@@ -316,7 +335,7 @@ impl TimePanel {
 
         let time_range = entity_db.time_range_for(time_ctrl.timeline());
         let has_more_than_one_time_point =
-            time_range.map_or(false, |time_range| time_range.min() != time_range.max());
+            time_range.is_some_and(|time_range| time_range.min() != time_range.max());
 
         if ui.max_rect().width() < 600.0 && has_more_than_one_time_point {
             // Responsive ui for narrow screens, e.g. mobile. Split the controls into two rows.
@@ -391,7 +410,10 @@ impl TimePanel {
         //               ▲
         //               └ tree_max_y (= time_x_left)
 
-        self.next_col_right = ui.min_rect().left(); // next_col_right will expand during the call
+        // We use this to track what the rightmost coordinate for the tree section should be. We
+        // clamp it to a minimum of 150.0px for the filter widget to behave correctly even when the
+        // tree is fully collapsed (and thus narrow).
+        self.next_col_right = ui.min_rect().left() + 150.0;
 
         let time_x_left =
             (ui.min_rect().left() + self.prev_col_width + ui.spacing().item_spacing.x)
@@ -422,16 +444,27 @@ impl TimePanel {
         let timeline_rect = {
             let top = ui.min_rect().bottom();
 
+            ui.add_space(-4.0); // hack to vertically center the text
+
             let size = egui::vec2(self.prev_col_width, 28.0);
             ui.allocate_ui_with_layout(size, egui::Layout::top_down(egui::Align::LEFT), |ui| {
                 ui.set_min_size(size);
                 ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
-                ui.add_space(4.0); // hack to vertically center the text
-                if self.source == TimePanelSource::Blueprint {
-                    ui.strong("Blueprint Streams");
-                } else {
-                    ui.strong("Streams");
-                }
+                ui.spacing_mut().item_spacing.y = 0.0;
+
+                ui.full_span_scope(0.0..=time_x_left, |ui| {
+                    self.filter_state.ui(
+                        ui,
+                        egui::RichText::new(if self.source == TimePanelSource::Blueprint {
+                            "Blueprint Streams"
+                        } else {
+                            "Streams"
+                        })
+                        .strong(),
+                    );
+                });
+
+                ui.add_space(2.0); // hack to vertically center the text
             })
             .response
             .on_hover_text(
@@ -558,7 +591,7 @@ impl TimePanel {
     }
 
     // All the entity rows and their data density graphs:
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     fn tree_ui(
         &mut self,
         ctx: &ViewerContext<'_>,
@@ -590,6 +623,8 @@ impl TimePanel {
                 // stores, due to `Item::*` not tracking stores for entity paths.
                 let show_root = self.source == TimePanelSource::Recording;
 
+                let filter_matcher = self.filter_state.filter();
+
                 if show_root {
                     self.show_tree(
                         ctx,
@@ -598,10 +633,9 @@ impl TimePanel {
                         time_ctrl,
                         time_area_response,
                         time_area_painter,
-                        None,
                         entity_db.tree(),
+                        &filter_matcher,
                         ui,
-                        "/",
                     );
                 } else {
                     self.show_children(
@@ -612,13 +646,14 @@ impl TimePanel {
                         time_area_response,
                         time_area_painter,
                         entity_db.tree(),
+                        &filter_matcher,
                         ui,
                     );
                 }
             });
     }
 
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     fn show_tree(
         &mut self,
         ctx: &ViewerContext<'_>,
@@ -627,29 +662,66 @@ impl TimePanel {
         time_ctrl: &mut TimeControl,
         time_area_response: &egui::Response,
         time_area_painter: &egui::Painter,
-        last_path_part: Option<&EntityPathPart>,
         tree: &EntityTree,
+        filter_matcher: &filter_widget::FilterMatcher,
         ui: &mut egui::Ui,
-        show_root_as: &str,
     ) {
+        // We traverse and display this tree only if it contains a matching entity part.
+        'early_exit: {
+            if filter_matcher.matches_nothing() {
+                return;
+            }
+
+            // Filter is inactive or otherwise whitelisting everything.
+            if filter_matcher.matches_everything() {
+                break 'early_exit;
+            }
+
+            // The current path is a match.
+            if tree
+                .path
+                .iter()
+                .any(|entity_part| filter_matcher.matches(&entity_part.ui_string()))
+            {
+                break 'early_exit;
+            }
+
+            // Our subtree contains a match.
+            if tree
+                .find_first_child_recursive(|entity_path| {
+                    entity_path
+                        .last()
+                        .is_some_and(|entity_part| filter_matcher.matches(&entity_part.ui_string()))
+                })
+                .is_some()
+            {
+                break 'early_exit;
+            }
+
+            // No match to be found, so nothing to display.
+            return;
+        }
+
         let db = match self.source {
             TimePanelSource::Recording => ctx.recording(),
             TimePanelSource::Blueprint => ctx.store_context.blueprint,
         };
 
         // The last part of the path component
+        let last_path_part = tree.path.last();
         let text = if let Some(last_path_part) = last_path_part {
-            let stem = last_path_part.ui_string();
-            if tree.is_leaf() {
-                stem
+            let part_text = if tree.is_leaf() {
+                last_path_part.ui_string()
             } else {
-                format!("{stem}/") // show we have children with a /
-            }
-        } else {
-            show_root_as.to_owned()
-        };
+                format!("{}/", last_path_part.ui_string()) // show we have children with a /
+            };
 
-        let default_open = tree.path.len() <= 1 && !tree.is_leaf();
+            filter_matcher
+                .matches_formatted(ui.ctx(), &part_text)
+                .unwrap_or_else(|| part_text.into())
+        } else {
+            "/".into()
+        };
 
         let item = TimePanelItem::entity_path(tree.path.clone());
         let is_selected = ctx.selection().contains_item(&item.to_item());
@@ -658,6 +730,8 @@ impl TimePanel {
             .highlight_for_ui_element(&item.to_item())
             == HoverHighlight::Hovered;
 
+        let collapse_scope = self.collapse_scope();
+
         // expand if children is focused
         let focused_entity_path = ctx
             .focused_item
@@ -665,19 +739,17 @@ impl TimePanel {
             .and_then(|item| item.entity_path());
 
         if focused_entity_path.is_some_and(|entity_path| entity_path.is_descendant_of(&tree.path)) {
-            CollapseScope::StreamsTree
+            collapse_scope
                 .entity(tree.path.clone())
                 .set_open(ui.ctx(), true);
         }
 
-        // Globally unique id - should only be one of these in view at one time.
-        // We do this so that we can support "collapse/expand all" command.
-        let id = egui::Id::new(match self.source {
-            TimePanelSource::Recording => CollapseScope::StreamsTree.entity(tree.path.clone()),
-            TimePanelSource::Blueprint => {
-                CollapseScope::BlueprintStreamsTree.entity(tree.path.clone())
-            }
-        });
+        // Globally unique id that is dependent on the "nature" of the tree (recording or blueprint,
+        // in a filter session or not)
+        let id = collapse_scope.entity(tree.path.clone()).into();
+
+        let is_short_path = tree.path.len() <= 1 && !tree.is_leaf();
+        let default_open = self.filter_state.session_id().is_some() || is_short_path;
 
         let list_item::ShowCollapsingResponse {
             item_response: response,
@@ -707,6 +779,7 @@ impl TimePanel {
                         time_area_response,
                         time_area_painter,
                         tree,
+                        filter_matcher,
                         ui,
                     );
                 },
@@ -740,6 +813,7 @@ impl TimePanel {
             // expand/collapse context menu actions need this information
             ItemContext::StreamsTree {
                 store_kind: self.source.into(),
+                filter_session_id: self.filter_state.session_id(),
             },
             &response,
             SelectionUpdateBehavior::UseSelection,
@@ -790,7 +864,7 @@ impl TimePanel {
         }
     }
 
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     fn show_children(
         &mut self,
         ctx: &ViewerContext<'_>,
@@ -800,9 +874,10 @@ impl TimePanel {
         time_area_response: &egui::Response,
         time_area_painter: &egui::Painter,
         tree: &EntityTree,
+        filter_matcher: &filter_widget::FilterMatcher,
         ui: &mut egui::Ui,
     ) {
-        for (last_component, child) in &tree.children {
+        for child in tree.children.values() {
             self.show_tree(
                 ctx,
                 viewport_blueprint,
@@ -810,10 +885,9 @@ impl TimePanel {
                 time_ctrl,
                 time_area_response,
                 time_area_painter,
-                Some(last_component),
                 child,
+                filter_matcher,
                 ui,
-                "/",
             );
         }
 
@@ -1015,6 +1089,22 @@ impl TimePanel {
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 help_button(ui);
             });
+        }
+    }
+
+    fn collapse_scope(&self) -> CollapseScope {
+        match (self.source, self.filter_state.session_id()) {
+            (TimePanelSource::Recording, None) => CollapseScope::StreamsTree,
+
+            (TimePanelSource::Blueprint, None) => CollapseScope::BlueprintStreamsTree,
+
+            (TimePanelSource::Recording, Some(session_id)) => {
+                CollapseScope::StreamsTreeFiltered { session_id }
+            }
+
+            (TimePanelSource::Blueprint, Some(session_id)) => {
+                CollapseScope::BlueprintStreamsTreeFiltered { session_id }
+            }
         }
     }
 }
@@ -1398,8 +1488,7 @@ fn interact_with_streams_rect(
 
     // Check for zoom/pan inputs (via e.g. horizontal scrolling) on the entire
     // time area rectangle, including the timeline rect.
-    let full_rect_hovered =
-        pointer_pos.map_or(false, |pointer_pos| full_rect.contains(pointer_pos));
+    let full_rect_hovered = pointer_pos.is_some_and(|pointer_pos| full_rect.contains(pointer_pos));
     if full_rect_hovered {
         ui.input(|input| {
             delta_x += input.smooth_scroll_delta.x;

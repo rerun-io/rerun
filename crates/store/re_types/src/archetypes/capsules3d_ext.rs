@@ -65,6 +65,7 @@ impl Capsules3D {
 }
 
 #[cfg(test)]
+#[cfg(feature = "glam")]
 mod tests {
     use super::*;
     use glam::vec3;

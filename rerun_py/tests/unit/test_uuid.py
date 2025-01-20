@@ -11,7 +11,7 @@ from .common_arrays import none_empty_or_value, uuid_bytes0, uuids_arrays
 
 def uuids_expected(obj: Any) -> Any:
     expected = none_empty_or_value(obj, uuids_arrays[-1])
-    return UuidBatch._optional(expected)
+    return UuidBatch._converter(expected)
 
 
 def test_uuid() -> None:

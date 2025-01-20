@@ -16,6 +16,7 @@ namespace rerun.archetypes;
 ///
 /// \example archetypes/segmentation_image_simple title="Simple segmentation image" image="https://static.rerun.io/segmentation_image_simple/f8aac62abcf4c59c5d62f9ebc2d86fd0285c1736/1200w.png"
 table SegmentationImage (
+  "attr.rust.archetype_eager",
   "attr.rust.derive": "PartialEq",
   "attr.cpp.no_field_ctors",
   "attr.docs.category": "Image & tensor",

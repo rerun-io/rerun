@@ -22,11 +22,10 @@ mod view_blueprint;
 mod view_contents;
 mod viewport_blueprint;
 mod visible_time_ranges;
-mod visible_time_ranges_ext;
 mod visual_bounds2d;
 
 pub use self::background::Background;
-pub use self::container_blueprint::ContainerBlueprint;
+pub use self::container_blueprint::{ContainerBlueprint, NativeContainerBlueprint};
 pub use self::dataframe_query::DataframeQuery;
 pub use self::force_center::ForceCenter;
 pub use self::force_collision_radius::ForceCollisionRadius;

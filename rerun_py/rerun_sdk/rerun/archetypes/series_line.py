@@ -101,10 +101,10 @@ class SeriesLine(Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            color=None,  # type: ignore[arg-type]
-            width=None,  # type: ignore[arg-type]
-            name=None,  # type: ignore[arg-type]
-            aggregation_policy=None,  # type: ignore[arg-type]
+            color=None,
+            width=None,
+            name=None,
+            aggregation_policy=None,
         )
 
     @classmethod
@@ -114,28 +114,92 @@ class SeriesLine(Archetype):
         inst.__attrs_clear__()
         return inst
 
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        color: datatypes.Rgba32Like | None = None,
+        width: datatypes.Float32Like | None = None,
+        name: datatypes.Utf8Like | None = None,
+        aggregation_policy: components.AggregationPolicyLike | None = None,
+    ) -> SeriesLine:
+        """
+        Update only some specific fields of a `SeriesLine`.
+
+        Parameters
+        ----------
+        clear:
+            If true, all unspecified fields will be explicitly cleared.
+        color:
+            Color for the corresponding series.
+        width:
+            Stroke width for the corresponding series.
+        name:
+            Display name of the series.
+
+            Used in the legend.
+        aggregation_policy:
+            Configures the zoom-dependent scalar aggregation.
+
+            This is done only if steps on the X axis go below a single pixel,
+            i.e. a single pixel covers more than one tick worth of data. It can greatly improve performance
+            (and readability) in such situations as it prevents overdraw.
+
+        """
+
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            kwargs = {
+                "color": color,
+                "width": width,
+                "name": name,
+                "aggregation_policy": aggregation_policy,
+            }
+
+            if clear:
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+            inst.__attrs_init__(**kwargs)
+            return inst
+
+        inst.__attrs_clear__()
+        return inst
+
+    @classmethod
+    def clear_fields(cls) -> SeriesLine:
+        """Clear all the fields of a `SeriesLine`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            color=[],
+            width=[],
+            name=[],
+            aggregation_policy=[],
+        )
+        return inst
+
     color: components.ColorBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.ColorBatch._optional,  # type: ignore[misc]
+        converter=components.ColorBatch._converter,  # type: ignore[misc]
     )
     # Color for the corresponding series.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     width: components.StrokeWidthBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.StrokeWidthBatch._optional,  # type: ignore[misc]
+        converter=components.StrokeWidthBatch._converter,  # type: ignore[misc]
     )
     # Stroke width for the corresponding series.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     name: components.NameBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.NameBatch._optional,  # type: ignore[misc]
+        converter=components.NameBatch._converter,  # type: ignore[misc]
     )
     # Display name of the series.
     #
@@ -144,9 +208,9 @@ class SeriesLine(Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     aggregation_policy: components.AggregationPolicyBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.AggregationPolicyBatch._optional,  # type: ignore[misc]
+        converter=components.AggregationPolicyBatch._converter,  # type: ignore[misc]
     )
     # Configures the zoom-dependent scalar aggregation.
     #

@@ -1,15 +1,15 @@
+use arrow::array::ArrayRef as ArrowArrayRef;
 use arrow2::array::{
     Array as Arrow2Array, BooleanArray as Arrow2BooleanArray, ListArray as Arrow2ListArray,
-    PrimitiveArray as Arrow2PrimitiveArray, StructArray as Arrow2StructArray,
 };
-
 use itertools::Itertools;
 use nohash_hasher::IntSet;
 
+use re_arrow_util::{arrow2_util, arrow_util, Arrow2ArrayDowncastRef as _};
 use re_log_types::Timeline;
 use re_types_core::{ComponentDescriptor, ComponentName};
 
-use crate::{arrow2_util, Chunk, RowId, TimeColumn};
+use crate::{Chunk, RowId, TimeColumn};
 
 // ---
 
@@ -26,7 +26,7 @@ impl Chunk {
         &self,
         row_id: RowId,
         component_desc: &ComponentDescriptor,
-    ) -> Option<Box<dyn Arrow2Array>> {
+    ) -> Option<ArrowArrayRef> {
         let list_array = self
             .components
             .get(&component_desc.component_name)
@@ -38,8 +38,8 @@ impl Chunk {
             let row_id_inc = (row_id_128 & (!0 >> 64)) as u64;
 
             let (times, incs) = self.row_ids_raw();
-            let times = times.values().as_slice();
-            let incs = incs.values().as_slice();
+            let times = times.values();
+            let incs = incs.values();
 
             let mut index = times.partition_point(|&time| time < row_id_time_ns);
             while index < incs.len() && incs[index] < row_id_inc {
@@ -49,11 +49,15 @@ impl Chunk {
             let found_it =
                 times.get(index) == Some(&row_id_time_ns) && incs.get(index) == Some(&row_id_inc);
 
-            (found_it && list_array.is_valid(index)).then(|| list_array.value(index))
+            (found_it && list_array.is_valid(index)).then(|| list_array.value(index).into())
         } else {
             self.row_ids()
                 .find_position(|id| *id == row_id)
-                .and_then(|(index, _)| list_array.is_valid(index).then(|| list_array.value(index)))
+                .and_then(|(index, _)| {
+                    list_array
+                        .is_valid(index)
+                        .then(|| list_array.value(index).into())
+                })
         }
     }
 
@@ -102,7 +106,7 @@ impl Chunk {
             entity_path: entity_path.clone(),
             heap_size_bytes: Default::default(),
             is_sorted,
-            row_ids: row_ids.clone().sliced(index, len),
+            row_ids: row_ids.clone().slice(index, len),
             timelines: timelines
                 .iter()
                 .map(|(timeline, time_column)| (*timeline, time_column.row_sliced(index, len)))
@@ -369,7 +373,7 @@ impl Chunk {
             entity_path: entity_path.clone(),
             heap_size_bytes: Default::default(),
             is_sorted,
-            row_ids: arrow2_util::filter_array(row_ids, &validity_filter),
+            row_ids: arrow_util::filter_array(row_ids, &validity_filter.clone().into()),
             timelines: timelines
                 .iter()
                 .map(|(&timeline, time_column)| (timeline, time_column.filtered(&validity_filter)))
@@ -387,8 +391,7 @@ impl Chunk {
                         #[allow(clippy::unwrap_used)]
                         filtered
                             .with_validity(None)
-                            .as_any()
-                            .downcast_ref::<Arrow2ListArray<i32>>()
+                            .downcast_array2_ref::<Arrow2ListArray<i32>>()
                             // Unwrap: cannot possibly fail -- going from a ListArray back to a ListArray.
                             .unwrap()
                             .clone()
@@ -450,7 +453,7 @@ impl Chunk {
             entity_path: entity_path.clone(),
             heap_size_bytes: Default::default(),
             is_sorted: true,
-            row_ids: Arrow2StructArray::new_empty(row_ids.data_type().clone()),
+            row_ids: arrow::array::StructBuilder::from_fields(row_ids.fields().clone(), 0).finish(),
             timelines: timelines
                 .iter()
                 .map(|(&timeline, time_column)| (timeline, time_column.emptied()))
@@ -538,7 +541,7 @@ impl Chunk {
                     i.saturating_sub(1) as i32
                 })
                 .collect_vec();
-            Arrow2PrimitiveArray::<i32>::from_vec(indices)
+            arrow2::array::Int32Array::from_vec(indices)
         };
 
         let chunk = Self {
@@ -546,7 +549,10 @@ impl Chunk {
             entity_path: self.entity_path.clone(),
             heap_size_bytes: Default::default(),
             is_sorted: self.is_sorted,
-            row_ids: arrow2_util::take_array(&self.row_ids, &indices),
+            row_ids: arrow_util::take_array(
+                &self.row_ids,
+                &arrow::array::Int32Array::from(indices.clone()),
+            ),
             timelines: self
                 .timelines
                 .iter()
@@ -619,7 +625,7 @@ impl Chunk {
             entity_path: entity_path.clone(),
             heap_size_bytes: Default::default(),
             is_sorted,
-            row_ids: arrow2_util::filter_array(row_ids, filter),
+            row_ids: arrow_util::filter_array(row_ids, &filter.clone().into()),
             timelines: timelines
                 .iter()
                 .map(|(&timeline, time_column)| (timeline, time_column.filtered(filter)))
@@ -671,7 +677,7 @@ impl Chunk {
     /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
     #[must_use]
     #[inline]
-    pub fn taken<O: arrow2::types::Index>(&self, indices: &Arrow2PrimitiveArray<O>) -> Self {
+    pub fn taken(&self, indices: &arrow2::array::Int32Array) -> Self {
         let Self {
             id,
             entity_path,
@@ -699,7 +705,10 @@ impl Chunk {
             entity_path: entity_path.clone(),
             heap_size_bytes: Default::default(),
             is_sorted,
-            row_ids: arrow2_util::take_array(row_ids, indices),
+            row_ids: arrow_util::take_array(
+                row_ids,
+                &arrow::array::Int32Array::from(indices.clone()),
+            ),
             timelines: timelines
                 .iter()
                 .map(|(&timeline, time_column)| (timeline, time_column.taken(indices)))
@@ -792,11 +801,7 @@ impl TimeColumn {
         // The original chunk is unsorted, but the new sliced one actually ends up being sorted.
         let is_sorted_opt = is_sorted.then_some(is_sorted);
 
-        Self::new(
-            is_sorted_opt,
-            *timeline,
-            Arrow2PrimitiveArray::sliced(times.clone(), index, len),
-        )
+        Self::new(is_sorted_opt, *timeline, times.clone().slice(index, len))
     }
 
     /// Empties the [`TimeColumn`] vertically.
@@ -806,16 +811,12 @@ impl TimeColumn {
     pub fn emptied(&self) -> Self {
         let Self {
             timeline,
-            times,
+            times: _,
             is_sorted: _,
             time_range: _,
         } = self;
 
-        Self::new(
-            Some(true),
-            *timeline,
-            Arrow2PrimitiveArray::new_empty(times.data_type().clone()),
-        )
+        Self::new(Some(true), *timeline, vec![].into())
     }
 
     /// Runs a [filter] compute kernel on the time data with the specified `mask`.
@@ -852,15 +853,20 @@ impl TimeColumn {
         Self::new(
             is_sorted_opt,
             *timeline,
-            arrow2_util::filter_array(times, filter),
+            arrow_util::filter_array(
+                &arrow::array::Int64Array::new(times.clone(), None),
+                &filter.clone().into(),
+            )
+            .into_parts()
+            .1,
         )
     }
 
     /// Runs a [take] compute kernel on the time data with the specified `indices`.
     ///
-    /// [take]: arrow2::compute::take::take
+    /// [take]: arrow::compute::take
     #[inline]
-    pub(crate) fn taken<O: arrow2::types::Index>(&self, indices: &Arrow2PrimitiveArray<O>) -> Self {
+    pub(crate) fn taken(&self, indices: &arrow2::array::Int32Array) -> Self {
         let Self {
             timeline,
             times,
@@ -868,11 +874,14 @@ impl TimeColumn {
             time_range: _,
         } = self;
 
-        Self::new(
-            Some(*is_sorted),
-            *timeline,
-            arrow2_util::take_array(times, indices),
+        let new_times = arrow_util::take_array(
+            &arrow::array::Int64Array::new(times.clone(), None),
+            &arrow::array::Int32Array::from(indices.clone()),
         )
+        .into_parts()
+        .1;
+
+        Self::new(Some(*is_sorted), *timeline, new_times)
     }
 }
 
@@ -880,6 +889,7 @@ impl TimeColumn {
 
 #[cfg(test)]
 mod tests {
+    use arrow2::array::PrimitiveArray as Arrow2PrimitiveArray;
     use itertools::Itertools;
     use re_log_types::{
         example_components::{MyColor, MyLabel, MyPoint},
@@ -994,8 +1004,8 @@ mod tests {
 
         assert!(!chunk.is_sorted());
         for (row_id, component_desc, expected) in expectations {
-            let expected = expected
-                .and_then(|expected| re_types_core::LoggableBatch::to_arrow2(expected).ok());
+            let expected =
+                expected.and_then(|expected| re_types_core::LoggableBatch::to_arrow(expected).ok());
             eprintln!("{component_desc} @ {row_id}");
             similar_asserts::assert_eq!(expected, chunk.cell(*row_id, component_desc));
         }
@@ -1004,8 +1014,8 @@ mod tests {
         assert!(chunk.is_sorted());
 
         for (row_id, component_desc, expected) in expectations {
-            let expected = expected
-                .and_then(|expected| re_types_core::LoggableBatch::to_arrow2(expected).ok());
+            let expected =
+                expected.and_then(|expected| re_types_core::LoggableBatch::to_arrow(expected).ok());
             eprintln!("{component_desc} @ {row_id}");
             similar_asserts::assert_eq!(expected, chunk.cell(*row_id, component_desc));
         }
@@ -1123,7 +1133,7 @@ mod tests {
 
             for (row_id, component_desc, expected) in expectations {
                 let expected = expected
-                    .and_then(|expected| re_types_core::LoggableBatch::to_arrow2(expected).ok());
+                    .and_then(|expected| re_types_core::LoggableBatch::to_arrow(expected).ok());
                 eprintln!("{component_desc} @ {row_id}");
                 similar_asserts::assert_eq!(expected, chunk.cell(*row_id, component_desc));
             }
@@ -1154,7 +1164,7 @@ mod tests {
 
             for (row_id, component_desc, expected) in expectations {
                 let expected = expected
-                    .and_then(|expected| re_types_core::LoggableBatch::to_arrow2(expected).ok());
+                    .and_then(|expected| re_types_core::LoggableBatch::to_arrow(expected).ok());
                 eprintln!("{component_desc} @ {row_id}");
                 similar_asserts::assert_eq!(expected, chunk.cell(*row_id, component_desc));
             }
@@ -1250,7 +1260,7 @@ mod tests {
 
             for (row_id, component_name, expected) in expectations {
                 let expected = expected
-                    .and_then(|expected| re_types_core::LoggableBatch::to_arrow2(expected).ok());
+                    .and_then(|expected| re_types_core::LoggableBatch::to_arrow(expected).ok());
                 eprintln!("{component_name} @ {row_id}");
                 similar_asserts::assert_eq!(expected, chunk.cell(*row_id, component_name));
             }
@@ -1269,7 +1279,7 @@ mod tests {
 
             for (row_id, component_name, expected) in expectations {
                 let expected = expected
-                    .and_then(|expected| re_types_core::LoggableBatch::to_arrow2(expected).ok());
+                    .and_then(|expected| re_types_core::LoggableBatch::to_arrow(expected).ok());
                 eprintln!("{component_name} @ {row_id}");
                 similar_asserts::assert_eq!(expected, chunk.cell(*row_id, component_name));
             }
@@ -1396,7 +1406,7 @@ mod tests {
 
             for (row_id, component_name, expected) in expectations {
                 let expected = expected
-                    .and_then(|expected| re_types_core::LoggableBatch::to_arrow2(expected).ok());
+                    .and_then(|expected| re_types_core::LoggableBatch::to_arrow(expected).ok());
                 eprintln!("{component_name} @ {row_id}");
                 similar_asserts::assert_eq!(expected, chunk.cell(*row_id, component_name));
             }
@@ -1543,7 +1553,7 @@ mod tests {
 
             for (row_id, component_name, expected) in expectations {
                 let expected = expected
-                    .and_then(|expected| re_types_core::LoggableBatch::to_arrow2(expected).ok());
+                    .and_then(|expected| re_types_core::LoggableBatch::to_arrow(expected).ok());
                 eprintln!("{component_name} @ {row_id}");
                 similar_asserts::assert_eq!(expected, chunk.cell(*row_id, component_name));
             }

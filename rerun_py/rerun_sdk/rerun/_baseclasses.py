@@ -147,13 +147,7 @@ class ComponentBatchLike(Protocol):
 
 
 class AsComponents(Protocol):
-    """
-    Describes interface for interpreting an object as a bundle of Components.
-
-    Note: the `num_instances()` function is an optional part of this interface. The method does not need to be
-    implemented as it is only used after checking for its existence. (There is unfortunately no way to express this
-    correctly with the Python typing system, see <https://github.com/python/typing/issues/601>).
-    """
+    """Describes interface for interpreting an object as a bundle of Components."""
 
     def as_component_batches(self) -> Iterable[ComponentBatchLike]:
         """
@@ -197,22 +191,6 @@ class Archetype:
         from ._log import IndicatorComponentBatch
 
         return IndicatorComponentBatch(cls.archetype_name())
-
-    def num_instances(self) -> int:
-        """
-        The number of instances that make up the batch.
-
-        Part of the `AsComponents` logging interface.
-        """
-        num_instances = 0
-        for fld in fields(type(self)):
-            if "component" in fld.metadata:
-                try:
-                    num_instances = max(num_instances, len(getattr(self, fld.name)))
-                except TypeError:  # Happens for indicator batches.
-                    num_instances = max(num_instances, 1)
-
-        return num_instances
 
     def as_component_batches(self) -> Iterable[ComponentBatchLike]:
         """
@@ -281,21 +259,11 @@ class BaseBatch(Generic[T]):
         self.pa_array = _empty_pa_array(self._ARROW_DATATYPE)
 
     @classmethod
-    def _required(cls, data: T | None) -> BaseBatch[T]:
+    def _converter(cls, data: T | None) -> BaseBatch[T] | None:
         """
-        Primary method for creating Arrow arrays for optional components.
+        Primary method for creating Arrow arrays for components.
 
-        Just calls through to __init__, but with clearer type annotations.
-        """
-        return cls(data)
-
-    @classmethod
-    def _optional(cls, data: T | None) -> BaseBatch[T] | None:
-        """
-        Primary method for creating Arrow arrays for optional components.
-
-        For optional components, the default value of None is preserved in the field to indicate that the optional
-        field was not specified.
+        The default value of None is preserved in the field to indicate that the optional field was not specified.
         If any value other than None is provided, it is passed through to `__init__`.
 
         Parameters

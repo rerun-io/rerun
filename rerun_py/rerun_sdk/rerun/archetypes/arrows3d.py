@@ -7,10 +7,11 @@ from __future__ import annotations
 
 from attrs import define, field
 
-from .. import components
+from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
 )
+from ..error_utils import catch_and_log_exceptions
 from .arrows3d_ext import Arrows3DExt
 
 __all__ = ["Arrows3D"]
@@ -57,13 +58,13 @@ class Arrows3D(Arrows3DExt, Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            vectors=None,  # type: ignore[arg-type]
-            origins=None,  # type: ignore[arg-type]
-            radii=None,  # type: ignore[arg-type]
-            colors=None,  # type: ignore[arg-type]
-            labels=None,  # type: ignore[arg-type]
-            show_labels=None,  # type: ignore[arg-type]
-            class_ids=None,  # type: ignore[arg-type]
+            vectors=None,
+            origins=None,
+            radii=None,
+            colors=None,
+            labels=None,
+            show_labels=None,
+            class_ids=None,
         )
 
     @classmethod
@@ -73,18 +74,102 @@ class Arrows3D(Arrows3DExt, Archetype):
         inst.__attrs_clear__()
         return inst
 
-    vectors: components.Vector3DBatch = field(
-        metadata={"component": "required"},
-        converter=components.Vector3DBatch._required,  # type: ignore[misc]
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        vectors: datatypes.Vec3DArrayLike | None = None,
+        origins: datatypes.Vec3DArrayLike | None = None,
+        radii: datatypes.Float32ArrayLike | None = None,
+        colors: datatypes.Rgba32ArrayLike | None = None,
+        labels: datatypes.Utf8ArrayLike | None = None,
+        show_labels: datatypes.BoolLike | None = None,
+        class_ids: datatypes.ClassIdArrayLike | None = None,
+    ) -> Arrows3D:
+        """
+        Update only some specific fields of a `Arrows3D`.
+
+        Parameters
+        ----------
+        clear:
+            If true, all unspecified fields will be explicitly cleared.
+        vectors:
+            All the vectors for each arrow in the batch.
+        origins:
+            All the origin (base) positions for each arrow in the batch.
+
+            If no origins are set, (0, 0, 0) is used as the origin for each arrow.
+        radii:
+            Optional radii for the arrows.
+
+            The shaft is rendered as a line with `radius = 0.5 * radius`.
+            The tip is rendered with `height = 2.0 * radius` and `radius = 1.0 * radius`.
+        colors:
+            Optional colors for the points.
+        labels:
+            Optional text labels for the arrows.
+
+            If there's a single label present, it will be placed at the center of the entity.
+            Otherwise, each instance will have its own label.
+        show_labels:
+            Optional choice of whether the text labels should be shown by default.
+        class_ids:
+            Optional class Ids for the points.
+
+            The [`components.ClassId`][rerun.components.ClassId] provides colors and labels if not specified explicitly.
+
+        """
+
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            kwargs = {
+                "vectors": vectors,
+                "origins": origins,
+                "radii": radii,
+                "colors": colors,
+                "labels": labels,
+                "show_labels": show_labels,
+                "class_ids": class_ids,
+            }
+
+            if clear:
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+            inst.__attrs_init__(**kwargs)
+            return inst
+
+        inst.__attrs_clear__()
+        return inst
+
+    @classmethod
+    def clear_fields(cls) -> Arrows3D:
+        """Clear all the fields of a `Arrows3D`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            vectors=[],
+            origins=[],
+            radii=[],
+            colors=[],
+            labels=[],
+            show_labels=[],
+            class_ids=[],
+        )
+        return inst
+
+    vectors: components.Vector3DBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.Vector3DBatch._converter,  # type: ignore[misc]
     )
     # All the vectors for each arrow in the batch.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     origins: components.Position3DBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.Position3DBatch._optional,  # type: ignore[misc]
+        converter=components.Position3DBatch._converter,  # type: ignore[misc]
     )
     # All the origin (base) positions for each arrow in the batch.
     #
@@ -93,9 +178,9 @@ class Arrows3D(Arrows3DExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     radii: components.RadiusBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.RadiusBatch._optional,  # type: ignore[misc]
+        converter=components.RadiusBatch._converter,  # type: ignore[misc]
     )
     # Optional radii for the arrows.
     #
@@ -105,18 +190,18 @@ class Arrows3D(Arrows3DExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     colors: components.ColorBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.ColorBatch._optional,  # type: ignore[misc]
+        converter=components.ColorBatch._converter,  # type: ignore[misc]
     )
     # Optional colors for the points.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     labels: components.TextBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.TextBatch._optional,  # type: ignore[misc]
+        converter=components.TextBatch._converter,  # type: ignore[misc]
     )
     # Optional text labels for the arrows.
     #
@@ -126,18 +211,18 @@ class Arrows3D(Arrows3DExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     show_labels: components.ShowLabelsBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.ShowLabelsBatch._optional,  # type: ignore[misc]
+        converter=components.ShowLabelsBatch._converter,  # type: ignore[misc]
     )
     # Optional choice of whether the text labels should be shown by default.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     class_ids: components.ClassIdBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.ClassIdBatch._optional,  # type: ignore[misc]
+        converter=components.ClassIdBatch._converter,  # type: ignore[misc]
     )
     # Optional class Ids for the points.
     #

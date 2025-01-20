@@ -12,9 +12,9 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 
-use ::re_types_core::external::arrow;
+use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
@@ -48,154 +48,172 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/arrow2d_simple/59f044ccc03f7bc66ee802288f75706618b29a6e/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub struct Arrows2D {
     /// All the vectors for each arrow in the batch.
-    pub vectors: Vec<crate::components::Vector2D>,
+    pub vectors: Option<SerializedComponentBatch>,
 
     /// All the origin (base) positions for each arrow in the batch.
     ///
     /// If no origins are set, (0, 0) is used as the origin for each arrow.
-    pub origins: Option<Vec<crate::components::Position2D>>,
+    pub origins: Option<SerializedComponentBatch>,
 
     /// Optional radii for the arrows.
     ///
     /// The shaft is rendered as a line with `radius = 0.5 * radius`.
     /// The tip is rendered with `height = 2.0 * radius` and `radius = 1.0 * radius`.
-    pub radii: Option<Vec<crate::components::Radius>>,
+    pub radii: Option<SerializedComponentBatch>,
 
     /// Optional colors for the points.
-    pub colors: Option<Vec<crate::components::Color>>,
+    pub colors: Option<SerializedComponentBatch>,
 
     /// Optional text labels for the arrows.
     ///
     /// If there's a single label present, it will be placed at the center of the entity.
     /// Otherwise, each instance will have its own label.
-    pub labels: Option<Vec<crate::components::Text>>,
+    pub labels: Option<SerializedComponentBatch>,
 
     /// Optional choice of whether the text labels should be shown by default.
-    pub show_labels: Option<crate::components::ShowLabels>,
+    pub show_labels: Option<SerializedComponentBatch>,
 
     /// An optional floating point value that specifies the 2D drawing order.
     ///
     /// Objects with higher values are drawn on top of those with lower values.
-    pub draw_order: Option<crate::components::DrawOrder>,
+    pub draw_order: Option<SerializedComponentBatch>,
 
     /// Optional class Ids for the points.
     ///
     /// The [`components::ClassId`][crate::components::ClassId] provides colors and labels if not specified explicitly.
-    pub class_ids: Option<Vec<crate::components::ClassId>>,
+    pub class_ids: Option<SerializedComponentBatch>,
 }
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
+impl Arrows2D {
+    /// Returns the [`ComponentDescriptor`] for [`Self::vectors`].
+    #[inline]
+    pub fn descriptor_vectors() -> ComponentDescriptor {
+        ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Arrows2D".into()),
             component_name: "rerun.components.Vector2D".into(),
             archetype_field_name: Some("vectors".into()),
-        }]
-    });
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::origins`].
+    #[inline]
+    pub fn descriptor_origins() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Arrows2D".into()),
+            component_name: "rerun.components.Position2D".into(),
+            archetype_field_name: Some("origins".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::radii`].
+    #[inline]
+    pub fn descriptor_radii() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Arrows2D".into()),
+            component_name: "rerun.components.Radius".into(),
+            archetype_field_name: Some("radii".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::colors`].
+    #[inline]
+    pub fn descriptor_colors() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Arrows2D".into()),
+            component_name: "rerun.components.Color".into(),
+            archetype_field_name: Some("colors".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::labels`].
+    #[inline]
+    pub fn descriptor_labels() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Arrows2D".into()),
+            component_name: "rerun.components.Text".into(),
+            archetype_field_name: Some("labels".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::show_labels`].
+    #[inline]
+    pub fn descriptor_show_labels() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Arrows2D".into()),
+            component_name: "rerun.components.ShowLabels".into(),
+            archetype_field_name: Some("show_labels".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::draw_order`].
+    #[inline]
+    pub fn descriptor_draw_order() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Arrows2D".into()),
+            component_name: "rerun.components.DrawOrder".into(),
+            archetype_field_name: Some("draw_order".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::class_ids`].
+    #[inline]
+    pub fn descriptor_class_ids() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Arrows2D".into()),
+            component_name: "rerun.components.ClassId".into(),
+            archetype_field_name: Some("class_ids".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
+    #[inline]
+    pub fn descriptor_indicator() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Arrows2D".into()),
+            component_name: "rerun.components.Arrows2DIndicator".into(),
+            archetype_field_name: None,
+        }
+    }
+}
+
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [Arrows2D::descriptor_vectors()]);
 
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Arrows2D".into()),
-                component_name: "rerun.components.Position2D".into(),
-                archetype_field_name: Some("origins".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Arrows2D".into()),
-                component_name: "rerun.components.Arrows2DIndicator".into(),
-                archetype_field_name: None,
-            },
+            Arrows2D::descriptor_origins(),
+            Arrows2D::descriptor_indicator(),
         ]
     });
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 6usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Arrows2D".into()),
-                component_name: "rerun.components.Radius".into(),
-                archetype_field_name: Some("radii".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Arrows2D".into()),
-                component_name: "rerun.components.Color".into(),
-                archetype_field_name: Some("colors".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Arrows2D".into()),
-                component_name: "rerun.components.Text".into(),
-                archetype_field_name: Some("labels".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Arrows2D".into()),
-                component_name: "rerun.components.ShowLabels".into(),
-                archetype_field_name: Some("show_labels".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Arrows2D".into()),
-                component_name: "rerun.components.DrawOrder".into(),
-                archetype_field_name: Some("draw_order".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Arrows2D".into()),
-                component_name: "rerun.components.ClassId".into(),
-                archetype_field_name: Some("class_ids".into()),
-            },
+            Arrows2D::descriptor_radii(),
+            Arrows2D::descriptor_colors(),
+            Arrows2D::descriptor_labels(),
+            Arrows2D::descriptor_show_labels(),
+            Arrows2D::descriptor_draw_order(),
+            Arrows2D::descriptor_class_ids(),
         ]
     });
 
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 9usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Arrows2D".into()),
-                component_name: "rerun.components.Vector2D".into(),
-                archetype_field_name: Some("vectors".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Arrows2D".into()),
-                component_name: "rerun.components.Position2D".into(),
-                archetype_field_name: Some("origins".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Arrows2D".into()),
-                component_name: "rerun.components.Arrows2DIndicator".into(),
-                archetype_field_name: None,
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Arrows2D".into()),
-                component_name: "rerun.components.Radius".into(),
-                archetype_field_name: Some("radii".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Arrows2D".into()),
-                component_name: "rerun.components.Color".into(),
-                archetype_field_name: Some("colors".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Arrows2D".into()),
-                component_name: "rerun.components.Text".into(),
-                archetype_field_name: Some("labels".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Arrows2D".into()),
-                component_name: "rerun.components.ShowLabels".into(),
-                archetype_field_name: Some("show_labels".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Arrows2D".into()),
-                component_name: "rerun.components.DrawOrder".into(),
-                archetype_field_name: Some("draw_order".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Arrows2D".into()),
-                component_name: "rerun.components.ClassId".into(),
-                archetype_field_name: Some("class_ids".into()),
-            },
+            Arrows2D::descriptor_vectors(),
+            Arrows2D::descriptor_origins(),
+            Arrows2D::descriptor_indicator(),
+            Arrows2D::descriptor_radii(),
+            Arrows2D::descriptor_colors(),
+            Arrows2D::descriptor_labels(),
+            Arrows2D::descriptor_show_labels(),
+            Arrows2D::descriptor_draw_order(),
+            Arrows2D::descriptor_class_ids(),
         ]
     });
 
@@ -248,104 +266,41 @@ impl ::re_types_core::Archetype for Arrows2D {
 
     #[inline]
     fn from_arrow_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, arrow::array::ArrayRef)>,
+        arrow_data: impl IntoIterator<Item = (ComponentDescriptor, arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(name, array)| (name.full_name(), array))
-            .collect();
-        let vectors = {
-            let array = arrays_by_name
-                .get("rerun.components.Vector2D")
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.Arrows2D#vectors")?;
-            <crate::components::Vector2D>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Arrows2D#vectors")?
-                .into_iter()
-                .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                .collect::<DeserializationResult<Vec<_>>>()
-                .with_context("rerun.archetypes.Arrows2D#vectors")?
-        };
-        let origins = if let Some(array) = arrays_by_name.get("rerun.components.Position2D") {
-            Some({
-                <crate::components::Position2D>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Arrows2D#origins")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                    .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.Arrows2D#origins")?
-            })
-        } else {
-            None
-        };
-        let radii = if let Some(array) = arrays_by_name.get("rerun.components.Radius") {
-            Some({
-                <crate::components::Radius>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Arrows2D#radii")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                    .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.Arrows2D#radii")?
-            })
-        } else {
-            None
-        };
-        let colors = if let Some(array) = arrays_by_name.get("rerun.components.Color") {
-            Some({
-                <crate::components::Color>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Arrows2D#colors")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                    .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.Arrows2D#colors")?
-            })
-        } else {
-            None
-        };
-        let labels = if let Some(array) = arrays_by_name.get("rerun.components.Text") {
-            Some({
-                <crate::components::Text>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Arrows2D#labels")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                    .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.Arrows2D#labels")?
-            })
-        } else {
-            None
-        };
-        let show_labels = if let Some(array) = arrays_by_name.get("rerun.components.ShowLabels") {
-            <crate::components::ShowLabels>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Arrows2D#show_labels")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
-        let draw_order = if let Some(array) = arrays_by_name.get("rerun.components.DrawOrder") {
-            <crate::components::DrawOrder>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Arrows2D#draw_order")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
-        let class_ids = if let Some(array) = arrays_by_name.get("rerun.components.ClassId") {
-            Some({
-                <crate::components::ClassId>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Arrows2D#class_ids")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                    .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.Arrows2D#class_ids")?
-            })
-        } else {
-            None
-        };
+        let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
+        let vectors = arrays_by_descr
+            .get(&Self::descriptor_vectors())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_vectors()));
+        let origins = arrays_by_descr
+            .get(&Self::descriptor_origins())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_origins()));
+        let radii = arrays_by_descr
+            .get(&Self::descriptor_radii())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_radii()));
+        let colors = arrays_by_descr
+            .get(&Self::descriptor_colors())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_colors()));
+        let labels = arrays_by_descr
+            .get(&Self::descriptor_labels())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_labels()));
+        let show_labels = arrays_by_descr
+            .get(&Self::descriptor_show_labels())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_show_labels())
+            });
+        let draw_order = arrays_by_descr
+            .get(&Self::descriptor_draw_order())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_draw_order())
+            });
+        let class_ids = arrays_by_descr
+            .get(&Self::descriptor_class_ids())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_class_ids())
+            });
         Ok(Self {
             vectors,
             origins,
@@ -360,105 +315,19 @@ impl ::re_types_core::Archetype for Arrows2D {
 }
 
 impl ::re_types_core::AsComponents for Arrows2D {
-    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
-        re_tracing::profile_function!();
+    #[inline]
+    fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
-            (Some(&self.vectors as &dyn ComponentBatch)).map(|batch| {
-                ::re_types_core::ComponentBatchCowWithDescriptor {
-                    batch: batch.into(),
-                    descriptor_override: Some(ComponentDescriptor {
-                        archetype_name: Some("rerun.archetypes.Arrows2D".into()),
-                        archetype_field_name: Some(("vectors").into()),
-                        component_name: ("rerun.components.Vector2D").into(),
-                    }),
-                }
-            }),
-            (self
-                .origins
-                .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.Arrows2D".into()),
-                    archetype_field_name: Some(("origins").into()),
-                    component_name: ("rerun.components.Position2D").into(),
-                }),
-            }),
-            (self
-                .radii
-                .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.Arrows2D".into()),
-                    archetype_field_name: Some(("radii").into()),
-                    component_name: ("rerun.components.Radius").into(),
-                }),
-            }),
-            (self
-                .colors
-                .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.Arrows2D".into()),
-                    archetype_field_name: Some(("colors").into()),
-                    component_name: ("rerun.components.Color").into(),
-                }),
-            }),
-            (self
-                .labels
-                .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.Arrows2D".into()),
-                    archetype_field_name: Some(("labels").into()),
-                    component_name: ("rerun.components.Text").into(),
-                }),
-            }),
-            (self
-                .show_labels
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.Arrows2D".into()),
-                    archetype_field_name: Some(("show_labels").into()),
-                    component_name: ("rerun.components.ShowLabels").into(),
-                }),
-            }),
-            (self
-                .draw_order
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.Arrows2D".into()),
-                    archetype_field_name: Some(("draw_order").into()),
-                    component_name: ("rerun.components.DrawOrder").into(),
-                }),
-            }),
-            (self
-                .class_ids
-                .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.Arrows2D".into()),
-                    archetype_field_name: Some(("class_ids").into()),
-                    component_name: ("rerun.components.ClassId").into(),
-                }),
-            }),
+            Self::indicator().serialized(),
+            self.vectors.clone(),
+            self.origins.clone(),
+            self.radii.clone(),
+            self.colors.clone(),
+            self.labels.clone(),
+            self.show_labels.clone(),
+            self.draw_order.clone(),
+            self.class_ids.clone(),
         ]
         .into_iter()
         .flatten()
@@ -475,7 +344,7 @@ impl Arrows2D {
         vectors: impl IntoIterator<Item = impl Into<crate::components::Vector2D>>,
     ) -> Self {
         Self {
-            vectors: vectors.into_iter().map(Into::into).collect(),
+            vectors: try_serialize_field(Self::descriptor_vectors(), vectors),
             origins: None,
             radii: None,
             colors: None,
@@ -486,6 +355,62 @@ impl Arrows2D {
         }
     }
 
+    /// Update only some specific fields of a `Arrows2D`.
+    #[inline]
+    pub fn update_fields() -> Self {
+        Self::default()
+    }
+
+    /// Clear all the fields of a `Arrows2D`.
+    #[inline]
+    pub fn clear_fields() -> Self {
+        use ::re_types_core::Loggable as _;
+        Self {
+            vectors: Some(SerializedComponentBatch::new(
+                crate::components::Vector2D::arrow_empty(),
+                Self::descriptor_vectors(),
+            )),
+            origins: Some(SerializedComponentBatch::new(
+                crate::components::Position2D::arrow_empty(),
+                Self::descriptor_origins(),
+            )),
+            radii: Some(SerializedComponentBatch::new(
+                crate::components::Radius::arrow_empty(),
+                Self::descriptor_radii(),
+            )),
+            colors: Some(SerializedComponentBatch::new(
+                crate::components::Color::arrow_empty(),
+                Self::descriptor_colors(),
+            )),
+            labels: Some(SerializedComponentBatch::new(
+                crate::components::Text::arrow_empty(),
+                Self::descriptor_labels(),
+            )),
+            show_labels: Some(SerializedComponentBatch::new(
+                crate::components::ShowLabels::arrow_empty(),
+                Self::descriptor_show_labels(),
+            )),
+            draw_order: Some(SerializedComponentBatch::new(
+                crate::components::DrawOrder::arrow_empty(),
+                Self::descriptor_draw_order(),
+            )),
+            class_ids: Some(SerializedComponentBatch::new(
+                crate::components::ClassId::arrow_empty(),
+                Self::descriptor_class_ids(),
+            )),
+        }
+    }
+
+    /// All the vectors for each arrow in the batch.
+    #[inline]
+    pub fn with_vectors(
+        mut self,
+        vectors: impl IntoIterator<Item = impl Into<crate::components::Vector2D>>,
+    ) -> Self {
+        self.vectors = try_serialize_field(Self::descriptor_vectors(), vectors);
+        self
+    }
+
     /// All the origin (base) positions for each arrow in the batch.
     ///
     /// If no origins are set, (0, 0) is used as the origin for each arrow.
@@ -494,7 +419,7 @@ impl Arrows2D {
         mut self,
         origins: impl IntoIterator<Item = impl Into<crate::components::Position2D>>,
     ) -> Self {
-        self.origins = Some(origins.into_iter().map(Into::into).collect());
+        self.origins = try_serialize_field(Self::descriptor_origins(), origins);
         self
     }
 
@@ -507,7 +432,7 @@ impl Arrows2D {
         mut self,
         radii: impl IntoIterator<Item = impl Into<crate::components::Radius>>,
     ) -> Self {
-        self.radii = Some(radii.into_iter().map(Into::into).collect());
+        self.radii = try_serialize_field(Self::descriptor_radii(), radii);
         self
     }
 
@@ -517,7 +442,7 @@ impl Arrows2D {
         mut self,
         colors: impl IntoIterator<Item = impl Into<crate::components::Color>>,
     ) -> Self {
-        self.colors = Some(colors.into_iter().map(Into::into).collect());
+        self.colors = try_serialize_field(Self::descriptor_colors(), colors);
         self
     }
 
@@ -530,7 +455,7 @@ impl Arrows2D {
         mut self,
         labels: impl IntoIterator<Item = impl Into<crate::components::Text>>,
     ) -> Self {
-        self.labels = Some(labels.into_iter().map(Into::into).collect());
+        self.labels = try_serialize_field(Self::descriptor_labels(), labels);
         self
     }
 
@@ -540,7 +465,7 @@ impl Arrows2D {
         mut self,
         show_labels: impl Into<crate::components::ShowLabels>,
     ) -> Self {
-        self.show_labels = Some(show_labels.into());
+        self.show_labels = try_serialize_field(Self::descriptor_show_labels(), [show_labels]);
         self
     }
 
@@ -549,7 +474,7 @@ impl Arrows2D {
     /// Objects with higher values are drawn on top of those with lower values.
     #[inline]
     pub fn with_draw_order(mut self, draw_order: impl Into<crate::components::DrawOrder>) -> Self {
-        self.draw_order = Some(draw_order.into());
+        self.draw_order = try_serialize_field(Self::descriptor_draw_order(), [draw_order]);
         self
     }
 
@@ -561,7 +486,7 @@ impl Arrows2D {
         mut self,
         class_ids: impl IntoIterator<Item = impl Into<crate::components::ClassId>>,
     ) -> Self {
-        self.class_ids = Some(class_ids.into_iter().map(Into::into).collect());
+        self.class_ids = try_serialize_field(Self::descriptor_class_ids(), class_ids);
         self
     }
 }
@@ -577,17 +502,5 @@ impl ::re_byte_size::SizeBytes for Arrows2D {
             + self.show_labels.heap_size_bytes()
             + self.draw_order.heap_size_bytes()
             + self.class_ids.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <Vec<crate::components::Vector2D>>::is_pod()
-            && <Option<Vec<crate::components::Position2D>>>::is_pod()
-            && <Option<Vec<crate::components::Radius>>>::is_pod()
-            && <Option<Vec<crate::components::Color>>>::is_pod()
-            && <Option<Vec<crate::components::Text>>>::is_pod()
-            && <Option<crate::components::ShowLabels>>::is_pod()
-            && <Option<crate::components::DrawOrder>>::is_pod()
-            && <Option<Vec<crate::components::ClassId>>>::is_pod()
     }
 }

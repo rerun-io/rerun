@@ -1,7 +1,7 @@
 use egui::NumExt as _;
 
 use re_types::{
-    blueprint::{archetypes::TensorSliceSelection, components::TensorDimensionIndexSlider},
+    blueprint::components::TensorDimensionIndexSlider,
     components::{TensorDimensionIndexSelection, TensorHeightDimension, TensorWidthDimension},
     datatypes::TensorDimensionSelection,
 };
@@ -9,38 +9,51 @@ use re_viewport_blueprint::ViewProperty;
 
 use crate::TensorDimension;
 
-/// Loads slice selection from blueprint and makes modifications (without writing back) such that it is valid
-/// for the given tensor shape.
+/// Selection of a 2D slice of a tensor.
 ///
-/// This is a best effort function and will insert fallbacks as needed.
-/// Note that fallbacks are defined on the spot here and don't use the component fallback system.
-/// We don't need the fallback system here since we're also not using generic ui either.
-///
-/// General rules for scrubbing the input data:
-/// * out of bounds dimensions and indices are clamped to valid
-/// * missing width/height is filled in if there's at least 2 dimensions.
-pub fn load_tensor_slice_selection_and_make_valid(
-    slice_selection: &ViewProperty,
-    shape: &[TensorDimension],
-) -> Result<TensorSliceSelection, re_types::DeserializationError> {
-    re_tracing::profile_function!();
+/// This is practically a deserialized & validated version of [`re_types::blueprint::archetypes::TensorSliceSelection`].
+#[derive(Clone, Debug, Hash)]
+pub struct TensorSliceSelection {
+    pub width: Option<TensorWidthDimension>,
+    pub height: Option<TensorHeightDimension>,
+    pub indices: Vec<TensorDimensionIndexSelection>,
+    pub slider: Option<Vec<TensorDimensionIndexSlider>>,
+}
 
-    let mut width = slice_selection.component_or_empty::<TensorWidthDimension>()?;
-    let mut height = slice_selection.component_or_empty::<TensorHeightDimension>()?;
-    let mut indices =
-        slice_selection.component_array_or_empty::<TensorDimensionIndexSelection>()?;
-    let mut slider = slice_selection.component_array::<TensorDimensionIndexSlider>()?;
+impl TensorSliceSelection {
+    /// Loads slice selection from blueprint and makes modifications (without writing back) such that it is valid
+    /// for the given tensor shape.
+    ///
+    /// This is a best effort function and will insert fallbacks as needed.
+    /// Note that fallbacks are defined on the spot here and don't use the component fallback system.
+    /// We don't need the fallback system here since we're also not using generic ui either.
+    ///
+    /// General rules for scrubbing the input data:
+    /// * out of bounds dimensions and indices are clamped to valid
+    /// * missing width/height is filled in if there's at least 2 dimensions.
+    pub fn load_and_make_valid(
+        slice_selection: &ViewProperty,
+        shape: &[TensorDimension],
+    ) -> Result<Self, re_types::DeserializationError> {
+        re_tracing::profile_function!();
 
-    make_width_height_valid(shape, &mut width, &mut height);
-    make_indices_valid(shape, &mut indices, width, height);
-    make_slider_valid(shape.len() as _, &mut slider, &indices, width, height);
+        let mut width = slice_selection.component_or_empty::<TensorWidthDimension>()?;
+        let mut height = slice_selection.component_or_empty::<TensorHeightDimension>()?;
+        let mut indices =
+            slice_selection.component_array_or_empty::<TensorDimensionIndexSelection>()?;
+        let mut slider = slice_selection.component_array::<TensorDimensionIndexSlider>()?;
 
-    Ok(TensorSliceSelection {
-        width,
-        height,
-        indices: Some(indices),
-        slider,
-    })
+        make_width_height_valid(shape, &mut width, &mut height);
+        make_indices_valid(shape, &mut indices, width, height);
+        make_slider_valid(shape.len() as _, &mut slider, &indices, width, height);
+
+        Ok(Self {
+            width,
+            height,
+            indices,
+            slider,
+        })
+    }
 }
 
 fn make_width_height_valid(
@@ -75,7 +88,7 @@ fn make_width_height_valid(
                     invert: shape[default_width]
                         .name
                         .as_ref()
-                        .map_or(false, |name| name.to_lowercase().eq("left")),
+                        .is_some_and(|name| name.to_lowercase().eq("left")),
                 }
                 .into(),
             );
@@ -87,7 +100,7 @@ fn make_width_height_valid(
                     invert: shape[default_height]
                         .name
                         .as_ref()
-                        .map_or(false, |name| name.to_lowercase().eq("up")),
+                        .is_some_and(|name| name.to_lowercase().eq("up")),
                 }
                 .into(),
             );

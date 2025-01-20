@@ -12,9 +12,9 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 
-use ::re_types_core::external::arrow;
+use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
@@ -46,92 +46,100 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/geopoint_simple/b86ce83e5871837587bd33a0ad639358b96e9010/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub struct GeoPoints {
     /// The [EPSG:4326](https://epsg.io/4326) coordinates for the points (North/East-positive degrees).
-    pub positions: Vec<crate::components::LatLon>,
+    pub positions: Option<SerializedComponentBatch>,
 
     /// Optional radii for the points, effectively turning them into circles.
     ///
     /// *Note*: scene units radiii are interpreted as meters.
-    pub radii: Option<Vec<crate::components::Radius>>,
+    pub radii: Option<SerializedComponentBatch>,
 
     /// Optional colors for the points.
-    pub colors: Option<Vec<crate::components::Color>>,
+    pub colors: Option<SerializedComponentBatch>,
 
     /// Optional class Ids for the points.
     ///
     /// The [`components::ClassId`][crate::components::ClassId] provides colors if not specified explicitly.
-    pub class_ids: Option<Vec<crate::components::ClassId>>,
+    pub class_ids: Option<SerializedComponentBatch>,
 }
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
+impl GeoPoints {
+    /// Returns the [`ComponentDescriptor`] for [`Self::positions`].
+    #[inline]
+    pub fn descriptor_positions() -> ComponentDescriptor {
+        ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.GeoPoints".into()),
             component_name: "rerun.components.LatLon".into(),
             archetype_field_name: Some("positions".into()),
-        }]
-    });
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::radii`].
+    #[inline]
+    pub fn descriptor_radii() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.GeoPoints".into()),
+            component_name: "rerun.components.Radius".into(),
+            archetype_field_name: Some("radii".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::colors`].
+    #[inline]
+    pub fn descriptor_colors() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.GeoPoints".into()),
+            component_name: "rerun.components.Color".into(),
+            archetype_field_name: Some("colors".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::class_ids`].
+    #[inline]
+    pub fn descriptor_class_ids() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.GeoPoints".into()),
+            component_name: "rerun.components.ClassId".into(),
+            archetype_field_name: Some("class_ids".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
+    #[inline]
+    pub fn descriptor_indicator() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.GeoPoints".into()),
+            component_name: "rerun.components.GeoPointsIndicator".into(),
+            archetype_field_name: None,
+        }
+    }
+}
+
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| [GeoPoints::descriptor_positions()]);
 
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.GeoPoints".into()),
-                component_name: "rerun.components.Radius".into(),
-                archetype_field_name: Some("radii".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.GeoPoints".into()),
-                component_name: "rerun.components.Color".into(),
-                archetype_field_name: Some("colors".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.GeoPoints".into()),
-                component_name: "rerun.components.GeoPointsIndicator".into(),
-                archetype_field_name: None,
-            },
+            GeoPoints::descriptor_radii(),
+            GeoPoints::descriptor_colors(),
+            GeoPoints::descriptor_indicator(),
         ]
     });
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.GeoPoints".into()),
-            component_name: "rerun.components.ClassId".into(),
-            archetype_field_name: Some("class_ids".into()),
-        }]
-    });
+    once_cell::sync::Lazy::new(|| [GeoPoints::descriptor_class_ids()]);
 
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.GeoPoints".into()),
-                component_name: "rerun.components.LatLon".into(),
-                archetype_field_name: Some("positions".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.GeoPoints".into()),
-                component_name: "rerun.components.Radius".into(),
-                archetype_field_name: Some("radii".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.GeoPoints".into()),
-                component_name: "rerun.components.Color".into(),
-                archetype_field_name: Some("colors".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.GeoPoints".into()),
-                component_name: "rerun.components.GeoPointsIndicator".into(),
-                archetype_field_name: None,
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.GeoPoints".into()),
-                component_name: "rerun.components.ClassId".into(),
-                archetype_field_name: Some("class_ids".into()),
-            },
+            GeoPoints::descriptor_positions(),
+            GeoPoints::descriptor_radii(),
+            GeoPoints::descriptor_colors(),
+            GeoPoints::descriptor_indicator(),
+            GeoPoints::descriptor_class_ids(),
         ]
     });
 
@@ -184,62 +192,27 @@ impl ::re_types_core::Archetype for GeoPoints {
 
     #[inline]
     fn from_arrow_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, arrow::array::ArrayRef)>,
+        arrow_data: impl IntoIterator<Item = (ComponentDescriptor, arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(name, array)| (name.full_name(), array))
-            .collect();
-        let positions = {
-            let array = arrays_by_name
-                .get("rerun.components.LatLon")
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.GeoPoints#positions")?;
-            <crate::components::LatLon>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.GeoPoints#positions")?
-                .into_iter()
-                .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                .collect::<DeserializationResult<Vec<_>>>()
-                .with_context("rerun.archetypes.GeoPoints#positions")?
-        };
-        let radii = if let Some(array) = arrays_by_name.get("rerun.components.Radius") {
-            Some({
-                <crate::components::Radius>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.GeoPoints#radii")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                    .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.GeoPoints#radii")?
-            })
-        } else {
-            None
-        };
-        let colors = if let Some(array) = arrays_by_name.get("rerun.components.Color") {
-            Some({
-                <crate::components::Color>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.GeoPoints#colors")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                    .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.GeoPoints#colors")?
-            })
-        } else {
-            None
-        };
-        let class_ids = if let Some(array) = arrays_by_name.get("rerun.components.ClassId") {
-            Some({
-                <crate::components::ClassId>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.GeoPoints#class_ids")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                    .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.GeoPoints#class_ids")?
-            })
-        } else {
-            None
-        };
+        let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
+        let positions = arrays_by_descr
+            .get(&Self::descriptor_positions())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_positions())
+            });
+        let radii = arrays_by_descr
+            .get(&Self::descriptor_radii())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_radii()));
+        let colors = arrays_by_descr
+            .get(&Self::descriptor_colors())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_colors()));
+        let class_ids = arrays_by_descr
+            .get(&Self::descriptor_class_ids())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_class_ids())
+            });
         Ok(Self {
             positions,
             radii,
@@ -250,57 +223,15 @@ impl ::re_types_core::Archetype for GeoPoints {
 }
 
 impl ::re_types_core::AsComponents for GeoPoints {
-    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
-        re_tracing::profile_function!();
+    #[inline]
+    fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
-            (Some(&self.positions as &dyn ComponentBatch)).map(|batch| {
-                ::re_types_core::ComponentBatchCowWithDescriptor {
-                    batch: batch.into(),
-                    descriptor_override: Some(ComponentDescriptor {
-                        archetype_name: Some("rerun.archetypes.GeoPoints".into()),
-                        archetype_field_name: Some(("positions").into()),
-                        component_name: ("rerun.components.LatLon").into(),
-                    }),
-                }
-            }),
-            (self
-                .radii
-                .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.GeoPoints".into()),
-                    archetype_field_name: Some(("radii").into()),
-                    component_name: ("rerun.components.Radius").into(),
-                }),
-            }),
-            (self
-                .colors
-                .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.GeoPoints".into()),
-                    archetype_field_name: Some(("colors").into()),
-                    component_name: ("rerun.components.Color").into(),
-                }),
-            }),
-            (self
-                .class_ids
-                .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.GeoPoints".into()),
-                    archetype_field_name: Some(("class_ids").into()),
-                    component_name: ("rerun.components.ClassId").into(),
-                }),
-            }),
+            Self::indicator().serialized(),
+            self.positions.clone(),
+            self.radii.clone(),
+            self.colors.clone(),
+            self.class_ids.clone(),
         ]
         .into_iter()
         .flatten()
@@ -317,11 +248,51 @@ impl GeoPoints {
         positions: impl IntoIterator<Item = impl Into<crate::components::LatLon>>,
     ) -> Self {
         Self {
-            positions: positions.into_iter().map(Into::into).collect(),
+            positions: try_serialize_field(Self::descriptor_positions(), positions),
             radii: None,
             colors: None,
             class_ids: None,
         }
+    }
+
+    /// Update only some specific fields of a `GeoPoints`.
+    #[inline]
+    pub fn update_fields() -> Self {
+        Self::default()
+    }
+
+    /// Clear all the fields of a `GeoPoints`.
+    #[inline]
+    pub fn clear_fields() -> Self {
+        use ::re_types_core::Loggable as _;
+        Self {
+            positions: Some(SerializedComponentBatch::new(
+                crate::components::LatLon::arrow_empty(),
+                Self::descriptor_positions(),
+            )),
+            radii: Some(SerializedComponentBatch::new(
+                crate::components::Radius::arrow_empty(),
+                Self::descriptor_radii(),
+            )),
+            colors: Some(SerializedComponentBatch::new(
+                crate::components::Color::arrow_empty(),
+                Self::descriptor_colors(),
+            )),
+            class_ids: Some(SerializedComponentBatch::new(
+                crate::components::ClassId::arrow_empty(),
+                Self::descriptor_class_ids(),
+            )),
+        }
+    }
+
+    /// The [EPSG:4326](https://epsg.io/4326) coordinates for the points (North/East-positive degrees).
+    #[inline]
+    pub fn with_positions(
+        mut self,
+        positions: impl IntoIterator<Item = impl Into<crate::components::LatLon>>,
+    ) -> Self {
+        self.positions = try_serialize_field(Self::descriptor_positions(), positions);
+        self
     }
 
     /// Optional radii for the points, effectively turning them into circles.
@@ -332,7 +303,7 @@ impl GeoPoints {
         mut self,
         radii: impl IntoIterator<Item = impl Into<crate::components::Radius>>,
     ) -> Self {
-        self.radii = Some(radii.into_iter().map(Into::into).collect());
+        self.radii = try_serialize_field(Self::descriptor_radii(), radii);
         self
     }
 
@@ -342,7 +313,7 @@ impl GeoPoints {
         mut self,
         colors: impl IntoIterator<Item = impl Into<crate::components::Color>>,
     ) -> Self {
-        self.colors = Some(colors.into_iter().map(Into::into).collect());
+        self.colors = try_serialize_field(Self::descriptor_colors(), colors);
         self
     }
 
@@ -354,7 +325,7 @@ impl GeoPoints {
         mut self,
         class_ids: impl IntoIterator<Item = impl Into<crate::components::ClassId>>,
     ) -> Self {
-        self.class_ids = Some(class_ids.into_iter().map(Into::into).collect());
+        self.class_ids = try_serialize_field(Self::descriptor_class_ids(), class_ids);
         self
     }
 }
@@ -366,13 +337,5 @@ impl ::re_byte_size::SizeBytes for GeoPoints {
             + self.radii.heap_size_bytes()
             + self.colors.heap_size_bytes()
             + self.class_ids.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <Vec<crate::components::LatLon>>::is_pod()
-            && <Option<Vec<crate::components::Radius>>>::is_pod()
-            && <Option<Vec<crate::components::Color>>>::is_pod()
-            && <Option<Vec<crate::components::ClassId>>>::is_pod()
     }
 }

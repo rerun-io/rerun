@@ -77,8 +77,8 @@ class GraphEdges(Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            edges=None,  # type: ignore[arg-type]
-            graph_type=None,  # type: ignore[arg-type]
+            edges=None,
+            graph_type=None,
         )
 
     @classmethod
@@ -88,18 +88,69 @@ class GraphEdges(Archetype):
         inst.__attrs_clear__()
         return inst
 
-    edges: components.GraphEdgeBatch = field(
-        metadata={"component": "required"},
-        converter=components.GraphEdgeBatch._required,  # type: ignore[misc]
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        edges: datatypes.Utf8PairArrayLike | None = None,
+        graph_type: components.GraphTypeLike | None = None,
+    ) -> GraphEdges:
+        """
+        Update only some specific fields of a `GraphEdges`.
+
+        Parameters
+        ----------
+        clear:
+            If true, all unspecified fields will be explicitly cleared.
+        edges:
+            A list of node tuples.
+        graph_type:
+            Specifies if the graph is directed or undirected.
+
+            If no [`components.GraphType`][rerun.components.GraphType] is provided, the graph is assumed to be undirected.
+
+        """
+
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            kwargs = {
+                "edges": edges,
+                "graph_type": graph_type,
+            }
+
+            if clear:
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+            inst.__attrs_init__(**kwargs)
+            return inst
+
+        inst.__attrs_clear__()
+        return inst
+
+    @classmethod
+    def clear_fields(cls) -> GraphEdges:
+        """Clear all the fields of a `GraphEdges`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            edges=[],
+            graph_type=[],
+        )
+        return inst
+
+    edges: components.GraphEdgeBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.GraphEdgeBatch._converter,  # type: ignore[misc]
     )
     # A list of node tuples.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     graph_type: components.GraphTypeBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.GraphTypeBatch._optional,  # type: ignore[misc]
+        converter=components.GraphTypeBatch._converter,  # type: ignore[misc]
     )
     # Specifies if the graph is directed or undirected.
     #

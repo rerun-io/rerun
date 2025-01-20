@@ -102,8 +102,6 @@
 //! See [`Logger`].
 //!
 
-// TODO(#6330): remove unwrap()
-#![allow(clippy::unwrap_used)]
 #![warn(missing_docs)] // Let's keep the this crate well-documented!
 
 #[cfg(feature = "run")]
@@ -168,11 +166,13 @@ pub const EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE: i32 = 66;
 /// Re-exports of other crates.
 pub mod external {
     pub use anyhow;
+    pub use arrow;
 
     pub use ::re_build_info;
     pub use ::re_entity_db;
     pub use ::re_entity_db::external::*;
     pub use ::re_format;
+    pub use ::re_format_arrow;
 
     #[cfg(feature = "run")]
     pub use re_data_source;

@@ -4,8 +4,6 @@
 #![doc = document_features::document_features!()]
 //!
 
-pub mod arrow2_util;
-pub mod arrow_util;
 mod builder;
 mod chunk;
 mod helpers;
@@ -22,11 +20,10 @@ mod transport;
 #[cfg(not(target_arch = "wasm32"))]
 mod batcher;
 
-#[cfg(feature = "arrow")]
-mod arrow;
-
 pub use self::builder::{ChunkBuilder, TimeColumnBuilder};
-pub use self::chunk::{Chunk, ChunkComponents, ChunkError, ChunkResult, TimeColumn};
+pub use self::chunk::{
+    Chunk, ChunkComponents, ChunkError, ChunkResult, TimeColumn, TimeColumnError,
+};
 pub use self::helpers::{ChunkShared, UnitChunkShared};
 pub use self::id::{ChunkId, RowId};
 pub use self::iter::{

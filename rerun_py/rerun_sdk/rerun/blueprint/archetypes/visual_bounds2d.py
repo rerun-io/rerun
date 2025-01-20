@@ -7,10 +7,12 @@ from __future__ import annotations
 
 from attrs import define, field
 
+from ... import datatypes
 from ..._baseclasses import (
     Archetype,
 )
 from ...blueprint import components as blueprint_components
+from ...error_utils import catch_and_log_exceptions
 from .visual_bounds2d_ext import VisualBounds2DExt
 
 __all__ = ["VisualBounds2D"]
@@ -33,7 +35,7 @@ class VisualBounds2D(VisualBounds2DExt, Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            range=None,  # type: ignore[arg-type]
+            range=None,
         )
 
     @classmethod
@@ -43,9 +45,55 @@ class VisualBounds2D(VisualBounds2DExt, Archetype):
         inst.__attrs_clear__()
         return inst
 
-    range: blueprint_components.VisualBounds2DBatch = field(
-        metadata={"component": "required"},
-        converter=blueprint_components.VisualBounds2DBatch._required,  # type: ignore[misc]
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        range: datatypes.Range2DLike | None = None,
+    ) -> VisualBounds2D:
+        """
+        Update only some specific fields of a `VisualBounds2D`.
+
+        Parameters
+        ----------
+        clear:
+            If true, all unspecified fields will be explicitly cleared.
+        range:
+            Controls the visible range of a 2D view.
+
+            Use this to control pan & zoom of the view.
+
+        """
+
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            kwargs = {
+                "range": range,
+            }
+
+            if clear:
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+            inst.__attrs_init__(**kwargs)
+            return inst
+
+        inst.__attrs_clear__()
+        return inst
+
+    @classmethod
+    def clear_fields(cls) -> VisualBounds2D:
+        """Clear all the fields of a `VisualBounds2D`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            range=[],
+        )
+        return inst
+
+    range: blueprint_components.VisualBounds2DBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=blueprint_components.VisualBounds2DBatch._converter,  # type: ignore[misc]
     )
     # Controls the visible range of a 2D view.
     #

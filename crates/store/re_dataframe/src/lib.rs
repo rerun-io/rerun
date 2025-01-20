@@ -3,13 +3,11 @@
 mod engine;
 mod query;
 
-pub use self::engine::{QueryEngine, RecordBatch};
+pub use self::engine::QueryEngine;
 pub use self::query::QueryHandle;
 
 #[doc(no_inline)]
-pub use self::external::arrow2::chunk::Chunk as Arrow2Chunk;
-#[doc(no_inline)]
-pub use self::external::re_chunk::{arrow2_util::concatenate_record_batches, TransportChunk};
+pub use self::external::re_chunk::TransportChunk;
 #[doc(no_inline)]
 pub use self::external::re_chunk_store::{
     ChunkStoreConfig, ChunkStoreHandle, ColumnSelector, ComponentColumnSelector, Index, IndexRange,

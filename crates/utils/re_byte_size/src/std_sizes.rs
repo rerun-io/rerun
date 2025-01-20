@@ -11,7 +11,7 @@ impl SizeBytes for String {
     /// Does not take capacity into account.
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.as_bytes().len() as u64
+        self.len() as u64
     }
 }
 

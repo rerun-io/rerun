@@ -7,10 +7,12 @@ from __future__ import annotations
 
 from attrs import define, field
 
+from ... import datatypes
 from ..._baseclasses import (
     Archetype,
 )
-from ...blueprint import components as blueprint_components
+from ...blueprint import components as blueprint_components, datatypes as blueprint_datatypes
+from ...error_utils import catch_and_log_exceptions
 from .dataframe_query_ext import DataframeQueryExt
 
 __all__ = ["DataframeQuery"]
@@ -25,11 +27,11 @@ class DataframeQuery(DataframeQueryExt, Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            timeline=None,  # type: ignore[arg-type]
-            filter_by_range=None,  # type: ignore[arg-type]
-            filter_is_not_null=None,  # type: ignore[arg-type]
-            apply_latest_at=None,  # type: ignore[arg-type]
-            select=None,  # type: ignore[arg-type]
+            timeline=None,
+            filter_by_range=None,
+            filter_is_not_null=None,
+            apply_latest_at=None,
+            select=None,
         )
 
     @classmethod
@@ -39,10 +41,77 @@ class DataframeQuery(DataframeQueryExt, Archetype):
         inst.__attrs_clear__()
         return inst
 
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        timeline: datatypes.Utf8Like | None = None,
+        filter_by_range: blueprint_datatypes.FilterByRangeLike | None = None,
+        filter_is_not_null: blueprint_datatypes.FilterIsNotNullLike | None = None,
+        apply_latest_at: datatypes.BoolLike | None = None,
+        select: blueprint_datatypes.SelectedColumnsLike | None = None,
+    ) -> DataframeQuery:
+        """
+        Update only some specific fields of a `DataframeQuery`.
+
+        Parameters
+        ----------
+        clear:
+            If true, all unspecified fields will be explicitly cleared.
+        timeline:
+            The timeline for this query.
+
+            If unset, the timeline currently active on the time panel is used.
+        filter_by_range:
+            If provided, only rows whose timestamp is within this range will be shown.
+
+            Note: will be unset as soon as `timeline` is changed.
+        filter_is_not_null:
+            If provided, only show rows which contains a logged event for the specified component.
+        apply_latest_at:
+            Should empty cells be filled with latest-at queries?
+        select:
+            Selected columns. If unset, all columns are selected.
+
+        """
+
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            kwargs = {
+                "timeline": timeline,
+                "filter_by_range": filter_by_range,
+                "filter_is_not_null": filter_is_not_null,
+                "apply_latest_at": apply_latest_at,
+                "select": select,
+            }
+
+            if clear:
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+            inst.__attrs_init__(**kwargs)
+            return inst
+
+        inst.__attrs_clear__()
+        return inst
+
+    @classmethod
+    def clear_fields(cls) -> DataframeQuery:
+        """Clear all the fields of a `DataframeQuery`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            timeline=[],
+            filter_by_range=[],
+            filter_is_not_null=[],
+            apply_latest_at=[],
+            select=[],
+        )
+        return inst
+
     timeline: blueprint_components.TimelineNameBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=blueprint_components.TimelineNameBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.TimelineNameBatch._converter,  # type: ignore[misc]
     )
     # The timeline for this query.
     #
@@ -51,9 +120,9 @@ class DataframeQuery(DataframeQueryExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     filter_by_range: blueprint_components.FilterByRangeBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=blueprint_components.FilterByRangeBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.FilterByRangeBatch._converter,  # type: ignore[misc]
     )
     # If provided, only rows whose timestamp is within this range will be shown.
     #
@@ -62,27 +131,27 @@ class DataframeQuery(DataframeQueryExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     filter_is_not_null: blueprint_components.FilterIsNotNullBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=blueprint_components.FilterIsNotNullBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.FilterIsNotNullBatch._converter,  # type: ignore[misc]
     )
     # If provided, only show rows which contains a logged event for the specified component.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     apply_latest_at: blueprint_components.ApplyLatestAtBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=blueprint_components.ApplyLatestAtBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.ApplyLatestAtBatch._converter,  # type: ignore[misc]
     )
     # Should empty cells be filled with latest-at queries?
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     select: blueprint_components.SelectedColumnsBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=blueprint_components.SelectedColumnsBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.SelectedColumnsBatch._converter,  # type: ignore[misc]
     )
     # Selected columns. If unset, all columns are selected.
     #

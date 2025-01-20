@@ -1,13 +1,14 @@
-use arrow2::array::{
-    Array as Arrow2Array, ListArray as Arrow2ListArray, PrimitiveArray as Arrow2PrimitiveArray,
-    StructArray as Arrow2StructArray,
-};
+use arrow::array::StructArray as ArrowStructArray;
+use arrow::buffer::ScalarBuffer as ArrowScalarBuffer;
+use arrow2::array::{Array as Arrow2Array, ListArray as Arrow2ListArray};
 use itertools::{izip, Itertools};
 use nohash_hasher::IntMap;
 
-use crate::{
-    arrow2_util, chunk::ChunkComponents, Chunk, ChunkError, ChunkId, ChunkResult, TimeColumn,
+use re_arrow_util::{
+    arrow2_util, arrow_util, Arrow2ArrayDowncastRef as _, ArrowArrayDowncastRef as _,
 };
+
+use crate::{chunk::ChunkComponents, Chunk, ChunkError, ChunkId, ChunkResult, TimeColumn};
 
 // ---
 
@@ -48,12 +49,11 @@ impl Chunk {
         let row_ids = {
             re_tracing::profile_scope!("row_ids");
 
-            let row_ids = arrow2_util::concat_arrays(&[&cl.row_ids, &cr.row_ids])?;
+            let row_ids = arrow_util::concat_arrays(&[&cl.row_ids, &cr.row_ids])?;
             #[allow(clippy::unwrap_used)]
             // concatenating 2 RowId arrays must yield another RowId array
             row_ids
-                .as_any()
-                .downcast_ref::<Arrow2StructArray>()
+                .downcast_array_ref::<ArrowStructArray>()
                 .unwrap()
                 .clone()
         };
@@ -109,8 +109,7 @@ impl Chunk {
                         let list_array =
                             arrow2_util::concat_arrays(&[lhs_list_array, rhs_list_array]).ok()?;
                         let list_array = list_array
-                            .as_any()
-                            .downcast_ref::<Arrow2ListArray<i32>>()?
+                            .downcast_array2_ref::<Arrow2ListArray<i32>>()?
                             .clone();
 
                         Some((component_desc.clone(), list_array))
@@ -151,8 +150,7 @@ impl Chunk {
                         let list_array =
                             arrow2_util::concat_arrays(&[lhs_list_array, rhs_list_array]).ok()?;
                         let list_array = list_array
-                            .as_any()
-                            .downcast_ref::<Arrow2ListArray<i32>>()?
+                            .downcast_array2_ref::<Arrow2ListArray<i32>>()?
                             .clone();
 
                         Some((component_desc.clone(), list_array))
@@ -173,7 +171,7 @@ impl Chunk {
         let components = {
             let mut per_name = ChunkComponents::default();
             for (component_desc, list_array) in components {
-                per_name.insert_descriptor(component_desc.clone(), list_array.into());
+                per_name.insert_descriptor_arrow2(component_desc.clone(), list_array);
             }
             per_name
         };
@@ -281,17 +279,20 @@ impl TimeColumn {
         if self.timeline != rhs.timeline {
             return None;
         }
+        re_tracing::profile_function!();
 
         let is_sorted =
             self.is_sorted && rhs.is_sorted && self.time_range.max() <= rhs.time_range.min();
 
         let time_range = self.time_range.union(rhs.time_range);
 
-        let times = arrow2_util::concat_arrays(&[&self.times, &rhs.times]).ok()?;
-        let times = times
-            .as_any()
-            .downcast_ref::<Arrow2PrimitiveArray<i64>>()?
-            .clone();
+        let times = self
+            .times_raw()
+            .iter()
+            .chain(rhs.times_raw())
+            .copied()
+            .collect_vec();
+        let times = ArrowScalarBuffer::from(times);
 
         Some(Self {
             timeline: self.timeline,

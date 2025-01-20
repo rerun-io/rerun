@@ -45,6 +45,9 @@ pub struct StoreHub {
     active_blueprint_by_app_id: HashMap<ApplicationId, StoreId>,
     store_bundle: StoreBundle,
 
+    /// These applications should enable the heuristics early next frame.
+    should_enable_heuristics_by_app_id: HashSet<ApplicationId>,
+
     /// Things that need caching.
     caches_per_recording: HashMap<StoreId, Caches>,
 
@@ -143,6 +146,8 @@ impl StoreHub {
             active_blueprint_by_app_id: Default::default(),
             store_bundle,
 
+            should_enable_heuristics_by_app_id: Default::default(),
+
             caches_per_recording: Default::default(),
             blueprint_last_save: Default::default(),
             blueprint_last_gc: Default::default(),
@@ -184,8 +189,11 @@ impl StoreHub {
             }
         }
 
-        // If there's no active blueprint for this app, try to make the current default one active.
-        if !self.active_blueprint_by_app_id.contains_key(&app_id) {
+        // If there's no active blueprint for this app, we must use the default blueprint, UNLESS
+        // we're about to enable heuristics for this app.
+        if !self.active_blueprint_by_app_id.contains_key(&app_id)
+            && !self.should_enable_heuristics_by_app_id.contains(&app_id)
+        {
             if let Some(blueprint_id) = self.default_blueprint_by_app_id.get(&app_id).cloned() {
                 self.set_cloned_blueprint_active_for_app(&app_id, &blueprint_id)
                     .unwrap_or_else(|err| {
@@ -220,6 +228,7 @@ impl StoreHub {
             self.active_rec_id = None;
         }
 
+        let should_enable_heuristics = self.should_enable_heuristics_by_app_id.remove(&app_id);
         let caches = self.active_caches();
 
         Some(StoreContext {
@@ -230,6 +239,7 @@ impl StoreHub {
             bundle: &self.store_bundle,
             caches: caches.unwrap_or(&EMPTY_CACHES),
             hub: self,
+            should_enable_heuristics,
         })
     }
 
@@ -497,15 +507,6 @@ impl StoreHub {
         Ok(())
     }
 
-    /// Clear the current default blueprint
-    pub fn clear_default_blueprint(&mut self) {
-        if let Some(app_id) = &self.active_application_id {
-            if let Some(blueprint_id) = self.default_blueprint_by_app_id.remove(app_id) {
-                self.remove(&blueprint_id);
-            }
-        }
-    }
-
     // ---------------------
     // Active blueprint
 
@@ -575,6 +576,22 @@ impl StoreHub {
                 re_log::debug!("Clearing blueprint for {app_id}: {blueprint_id}");
                 self.remove(&blueprint_id);
             }
+        }
+    }
+
+    /// Clear the currently active blueprint and enable the heuristics to generate a new one.
+    ///
+    /// These keeps the default blueprint as is, so the user may reset to the default blueprint
+    /// afterward.
+    pub fn clear_active_blueprint_and_generate(&mut self) {
+        self.clear_active_blueprint();
+
+        // Simply clearing the default blueprint would trigger a reset to default. Instead, we must
+        // actively set the blueprint to use the heuristics, so we store a flag so we do that early
+        // next frame.
+        if let Some(app_id) = self.active_app() {
+            self.should_enable_heuristics_by_app_id
+                .insert(app_id.clone());
         }
     }
 

@@ -88,7 +88,7 @@ impl ChunkStore {
             for (component_desc, list_array) in chunk.components().iter_flattened() {
                 let is_empty = list_array
                     .validity()
-                    .map_or(false, |validity| validity.is_empty());
+                    .is_some_and(|validity| validity.is_empty());
                 if is_empty {
                     continue;
                 }
@@ -387,7 +387,7 @@ impl ChunkStore {
                 });
             {
                 let is_semantically_empty =
-                    re_chunk::arrow2_util::is_list_array_semantically_empty(list_array);
+                    re_arrow_util::arrow2_util::is_list_array_semantically_empty(list_array);
 
                 column_metadata_state.is_semantically_empty &= is_semantically_empty;
             }

@@ -32,7 +32,7 @@ pub enum UICommand {
     OpenRerunDiscord,
 
     ResetViewer,
-    ClearAndGenerateBlueprint,
+    ClearActiveBlueprintAndEnableHeuristics,
 
     #[cfg(not(target_arch = "wasm32"))]
     OpenProfiler,
@@ -121,7 +121,7 @@ impl UICommand {
             ),
 
             Self::CloseAllRecordings => ("Close all recordings",
-                "Close all open current recording (unsaved data will be lost)"),
+                                         "Close all open current recording (unsaved data will be lost)"),
 
             Self::Undo => ("Undo", "Undo the last blueprint edit for the open recording"),
             Self::Redo => ("Redo", "Redo the last undone thing"),
@@ -137,11 +137,10 @@ impl UICommand {
                 "Reset the Viewer to how it looked the first time you ran it, forgetting all stored blueprints and UI state",
             ),
 
-            Self::ClearAndGenerateBlueprint => (
-                "Clear and generate new blueprint",
-                "Clear the current blueprint and generate a new one based on heuristics."
+            Self::ClearActiveBlueprintAndEnableHeuristics => (
+                "Reset to heuristic blueprint",
+                "Re-populate viewport with automatically chosen views"
             ),
-
 
             #[cfg(not(target_arch = "wasm32"))]
             Self::OpenProfiler => (
@@ -173,7 +172,6 @@ impl UICommand {
                 "Toggle egui debug panel",
                 "View and change global egui style settings",
             ),
-
 
             #[cfg(not(target_arch = "wasm32"))]
             Self::ToggleFullscreen => (
@@ -256,7 +254,6 @@ impl UICommand {
                 "Restart with WebGPU",
                 "Reloads the webpage and force WebGPU for rendering. All data will be lost."
             ),
-
         }
     }
 
@@ -314,7 +311,7 @@ impl UICommand {
             Self::Quit => smallvec![cmd(Key::Q)],
 
             Self::ResetViewer => smallvec![ctrl_shift(Key::R)],
-            Self::ClearAndGenerateBlueprint => smallvec![],
+            Self::ClearActiveBlueprintAndEnableHeuristics => smallvec![],
 
             #[cfg(not(target_arch = "wasm32"))]
             Self::OpenProfiler => smallvec![ctrl_shift(Key::P)],

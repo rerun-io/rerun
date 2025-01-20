@@ -7,11 +7,12 @@ from __future__ import annotations
 
 from attrs import define, field
 
-from ... import components
+from ... import components, datatypes
 from ..._baseclasses import (
     Archetype,
 )
 from ...blueprint import components as blueprint_components
+from ...error_utils import catch_and_log_exceptions
 from .background_ext import BackgroundExt
 
 __all__ = ["Background"]
@@ -26,8 +27,8 @@ class Background(BackgroundExt, Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            kind=None,  # type: ignore[arg-type]
-            color=None,  # type: ignore[arg-type]
+            kind=None,
+            color=None,
         )
 
     @classmethod
@@ -37,18 +38,67 @@ class Background(BackgroundExt, Archetype):
         inst.__attrs_clear__()
         return inst
 
-    kind: blueprint_components.BackgroundKindBatch = field(
-        metadata={"component": "required"},
-        converter=blueprint_components.BackgroundKindBatch._required,  # type: ignore[misc]
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        kind: blueprint_components.BackgroundKindLike | None = None,
+        color: datatypes.Rgba32Like | None = None,
+    ) -> Background:
+        """
+        Update only some specific fields of a `Background`.
+
+        Parameters
+        ----------
+        clear:
+            If true, all unspecified fields will be explicitly cleared.
+        kind:
+            The type of the background.
+        color:
+            Color used for the solid background type.
+
+        """
+
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            kwargs = {
+                "kind": kind,
+                "color": color,
+            }
+
+            if clear:
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+            inst.__attrs_init__(**kwargs)
+            return inst
+
+        inst.__attrs_clear__()
+        return inst
+
+    @classmethod
+    def clear_fields(cls) -> Background:
+        """Clear all the fields of a `Background`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            kind=[],
+            color=[],
+        )
+        return inst
+
+    kind: blueprint_components.BackgroundKindBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=blueprint_components.BackgroundKindBatch._converter,  # type: ignore[misc]
     )
     # The type of the background.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     color: components.ColorBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.ColorBatch._optional,  # type: ignore[misc]
+        converter=components.ColorBatch._converter,  # type: ignore[misc]
     )
     # Color used for the solid background type.
     #

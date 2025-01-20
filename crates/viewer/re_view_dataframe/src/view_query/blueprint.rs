@@ -109,7 +109,7 @@ impl Query {
         Ok(self
             .query_property
             .component_or_empty::<components::ApplyLatestAt>()?
-            .map_or(false, |comp| *comp.0))
+            .is_some_and(|comp| *comp.0))
     }
 
     pub(crate) fn save_latest_at_enabled(&self, ctx: &ViewerContext<'_>, enabled: bool) {
@@ -204,8 +204,8 @@ impl Query {
             .filter(|column| match column {
                 ColumnDescriptor::Time(desc) => {
                     // we always include the query timeline column because we need it for the dataframe ui
-                    desc.timeline.name() == &query_timeline_name
-                        || selected_time_columns.contains(desc.timeline.name())
+                    desc.name() == &query_timeline_name
+                        || selected_time_columns.contains(desc.name())
                 }
 
                 ColumnDescriptor::Component(desc) => {

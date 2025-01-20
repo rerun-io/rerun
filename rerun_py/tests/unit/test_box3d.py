@@ -113,7 +113,7 @@ def test_boxes3d() -> None:
         assert arch.quaternions == quaternions_expected(quaternions, PoseRotationQuatBatch)
         assert arch.colors == colors_expected(colors)
         assert arch.radii == radii_expected(radii)
-        assert arch.fill_mode == rr.components.FillModeBatch._optional(fill_mode)
+        assert arch.fill_mode == rr.components.FillModeBatch._converter(fill_mode)
         assert arch.labels == labels_expected(labels)
         assert arch.class_ids == class_ids_expected(class_ids)
 

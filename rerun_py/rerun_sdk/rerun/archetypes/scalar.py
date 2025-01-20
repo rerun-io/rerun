@@ -78,7 +78,7 @@ class Scalar(Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            scalar=None,  # type: ignore[arg-type]
+            scalar=None,
         )
 
     @classmethod
@@ -88,9 +88,53 @@ class Scalar(Archetype):
         inst.__attrs_clear__()
         return inst
 
-    scalar: components.ScalarBatch = field(
-        metadata={"component": "required"},
-        converter=components.ScalarBatch._required,  # type: ignore[misc]
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        scalar: datatypes.Float64Like | None = None,
+    ) -> Scalar:
+        """
+        Update only some specific fields of a `Scalar`.
+
+        Parameters
+        ----------
+        clear:
+            If true, all unspecified fields will be explicitly cleared.
+        scalar:
+            The scalar value to log.
+
+        """
+
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            kwargs = {
+                "scalar": scalar,
+            }
+
+            if clear:
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+            inst.__attrs_init__(**kwargs)
+            return inst
+
+        inst.__attrs_clear__()
+        return inst
+
+    @classmethod
+    def clear_fields(cls) -> Scalar:
+        """Clear all the fields of a `Scalar`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            scalar=[],
+        )
+        return inst
+
+    scalar: components.ScalarBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.ScalarBatch._converter,  # type: ignore[misc]
     )
     # The scalar value to log.
     #

@@ -8,7 +8,7 @@ use std::{
 };
 
 use arrow::{
-    array::{make_array, Array, ArrayData, Int64Array, RecordBatchIterator, RecordBatchReader},
+    array::{make_array, ArrayData, Int64Array, RecordBatchIterator, RecordBatchReader},
     pyarrow::PyArrowType,
 };
 use numpy::PyArrayMethods as _;
@@ -18,6 +18,7 @@ use pyo3::{
     types::{PyDict, PyTuple},
 };
 
+use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk_store::{
     ChunkStore, ChunkStoreConfig, ChunkStoreHandle, ColumnDescriptor, ColumnSelector,
     ComponentColumnDescriptor, ComponentColumnSelector, QueryExpression, SparseFillStrategy,
@@ -74,7 +75,7 @@ struct PyIndexColumnDescriptor(TimeColumnDescriptor);
 #[pymethods]
 impl PyIndexColumnDescriptor {
     fn __repr__(&self) -> String {
-        format!("Index(timeline:{})", self.0.timeline.name())
+        format!("Index(timeline:{})", self.0.name())
     }
 
     /// The name of the index.
@@ -82,7 +83,7 @@ impl PyIndexColumnDescriptor {
     /// This property is read-only.
     #[getter]
     fn name(&self) -> &str {
-        self.0.timeline.name()
+        self.0.name()
     }
 
     /// Part of generic ColumnDescriptor interface: always False for Index.
@@ -344,7 +345,7 @@ impl IndexValuesLike<'_> {
             Self::PyArrow(array) => {
                 let array = make_array(array.0.clone());
 
-                let int_array = array.as_any().downcast_ref::<Int64Array>().ok_or_else(|| {
+                let int_array = array.downcast_array_ref::<Int64Array>().ok_or_else(|| {
                     PyTypeError::new_err("pyarrow.Array for IndexValuesLike must be of type int64.")
                 })?;
 
@@ -393,7 +394,7 @@ impl IndexValuesLike<'_> {
                         let array = make_array(chunk.0.clone());
 
                         let int_array =
-                            array.as_any().downcast_ref::<Int64Array>().ok_or_else(|| {
+                            array.downcast_array_ref::<Int64Array>().ok_or_else(|| {
                                 PyTypeError::new_err(
                                     "pyarrow.Array for IndexValuesLike must be of type int64.",
                                 )
@@ -752,18 +753,10 @@ impl PyRecordingView {
                     py_rerun_warn("RecordingView::select: tried to select static data, but no non-static contents generated an index value on this timeline. No results will be returned. Either include non-static data or consider using `select_static()` instead.")?;
                 }
 
-                let schema = query_handle.schema();
-                let fields: Vec<arrow::datatypes::Field> =
-                    schema.fields.iter().map(|f| f.clone().into()).collect();
-                let metadata = schema.metadata.clone().into_iter().collect();
-                let schema = arrow::datatypes::Schema::new(fields).with_metadata(metadata);
+                let schema = query_handle.schema().clone();
 
-                let reader = RecordBatchIterator::new(
-                    query_handle
-                        .into_batch_iter()
-                        .map(|batch| batch.try_to_arrow_record_batch()),
-                    std::sync::Arc::new(schema),
-                );
+                let reader =
+                    RecordBatchIterator::new(query_handle.into_batch_iter().map(Ok), schema);
                 Ok(PyArrowType(Box::new(reader)))
             }
             #[cfg(feature = "remote")]
@@ -849,18 +842,10 @@ impl PyRecordingView {
                     )));
                 }
 
-                let schema = query_handle.schema();
-                let fields: Vec<arrow::datatypes::Field> =
-                    schema.fields.iter().map(|f| f.clone().into()).collect();
-                let metadata = schema.metadata.clone().into_iter().collect();
-                let schema = arrow::datatypes::Schema::new(fields).with_metadata(metadata);
+                let schema = query_handle.schema().clone();
 
-                let reader = RecordBatchIterator::new(
-                    query_handle
-                        .into_batch_iter()
-                        .map(|batch| batch.try_to_arrow_record_batch()),
-                    std::sync::Arc::new(schema),
-                );
+                let reader =
+                    RecordBatchIterator::new(query_handle.into_batch_iter().map(Ok), schema);
 
                 Ok(PyArrowType(Box::new(reader)))
             }
@@ -1371,7 +1356,7 @@ impl PyRecording {
             include_semantically_empty_columns,
             include_indicator_columns,
             include_tombstone_columns,
-            filtered_index: Some(timeline.timeline),
+            filtered_index: Some(timeline.timeline()),
             filtered_index_range: None,
             filtered_index_values: None,
             using_index_values: None,

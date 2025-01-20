@@ -43,10 +43,11 @@ mod tests {
         };
         let decoded = dataframe_part.decode();
 
-        assert!(matches!(
-            decoded.err().unwrap(),
-            CodecError::ArrowSerialization(_)
-        ));
+        let error = decoded.err().unwrap();
+        assert!(
+            matches!(error, CodecError::ArrowDeserialization(_)),
+            "Expected CodecError::ArrowDeserialization; got {error:?}"
+        );
     }
 
     #[test]
@@ -61,7 +62,7 @@ mod tests {
             .unwrap();
 
         let decoded = encoded.decode().unwrap();
-        let decoded_chunk = Chunk::from_transport(&decoded).unwrap();
+        let decoded_chunk = Chunk::from_record_batch(decoded).unwrap();
 
         assert_eq!(expected_chunk, decoded_chunk);
     }

@@ -12,75 +12,81 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 
-use ::re_types_core::external::arrow;
+use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: A force between each pair of nodes that ressembles an electrical charge.
 ///
 /// If `strength` is smaller than 0, it pushes nodes apart, if it is larger than 0 it pulls them together.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct ForceManyBody {
     /// Whether the many body force is enabled.
     ///
     /// The many body force is applied on each pair of nodes in a way that ressembles an electrical charge. If the
     /// strength is smaller than 0, it pushes nodes apart; if it is larger than 0, it pulls them together.
-    pub enabled: Option<crate::blueprint::components::Enabled>,
+    pub enabled: Option<SerializedComponentBatch>,
 
     /// The strength of the force.
     ///
     /// If `strength` is smaller than 0, it pushes nodes apart, if it is larger than 0 it pulls them together.
-    pub strength: Option<crate::blueprint::components::ForceStrength>,
+    pub strength: Option<SerializedComponentBatch>,
+}
+
+impl ForceManyBody {
+    /// Returns the [`ComponentDescriptor`] for [`Self::enabled`].
+    #[inline]
+    pub fn descriptor_enabled() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ForceManyBody".into()),
+            component_name: "rerun.blueprint.components.Enabled".into(),
+            archetype_field_name: Some("enabled".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::strength`].
+    #[inline]
+    pub fn descriptor_strength() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ForceManyBody".into()),
+            component_name: "rerun.blueprint.components.ForceStrength".into(),
+            archetype_field_name: Some("strength".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
+    #[inline]
+    pub fn descriptor_indicator() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ForceManyBody".into()),
+            component_name: "rerun.blueprint.components.ForceManyBodyIndicator".into(),
+            archetype_field_name: None,
+        }
+    }
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ForceManyBody".into()),
-            component_name: "rerun.blueprint.components.ForceManyBodyIndicator".into(),
-            archetype_field_name: None,
-        }]
-    });
+    once_cell::sync::Lazy::new(|| [ForceManyBody::descriptor_indicator()]);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ForceManyBody".into()),
-                component_name: "rerun.blueprint.components.Enabled".into(),
-                archetype_field_name: Some("enabled".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ForceManyBody".into()),
-                component_name: "rerun.blueprint.components.ForceStrength".into(),
-                archetype_field_name: Some("strength".into()),
-            },
+            ForceManyBody::descriptor_enabled(),
+            ForceManyBody::descriptor_strength(),
         ]
     });
 
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ForceManyBody".into()),
-                component_name: "rerun.blueprint.components.ForceManyBodyIndicator".into(),
-                archetype_field_name: None,
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ForceManyBody".into()),
-                component_name: "rerun.blueprint.components.Enabled".into(),
-                archetype_field_name: Some("enabled".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ForceManyBody".into()),
-                component_name: "rerun.blueprint.components.ForceStrength".into(),
-                archetype_field_name: Some("strength".into()),
-            },
+            ForceManyBody::descriptor_indicator(),
+            ForceManyBody::descriptor_enabled(),
+            ForceManyBody::descriptor_strength(),
         ]
     });
 
@@ -133,68 +139,29 @@ impl ::re_types_core::Archetype for ForceManyBody {
 
     #[inline]
     fn from_arrow_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, arrow::array::ArrayRef)>,
+        arrow_data: impl IntoIterator<Item = (ComponentDescriptor, arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(name, array)| (name.full_name(), array))
-            .collect();
-        let enabled = if let Some(array) = arrays_by_name.get("rerun.blueprint.components.Enabled")
-        {
-            <crate::blueprint::components::Enabled>::from_arrow_opt(&**array)
-                .with_context("rerun.blueprint.archetypes.ForceManyBody#enabled")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
-        let strength =
-            if let Some(array) = arrays_by_name.get("rerun.blueprint.components.ForceStrength") {
-                <crate::blueprint::components::ForceStrength>::from_arrow_opt(&**array)
-                    .with_context("rerun.blueprint.archetypes.ForceManyBody#strength")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-            } else {
-                None
-            };
+        let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
+        let enabled = arrays_by_descr
+            .get(&Self::descriptor_enabled())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_enabled()));
+        let strength = arrays_by_descr
+            .get(&Self::descriptor_strength())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_strength()));
         Ok(Self { enabled, strength })
     }
 }
 
 impl ::re_types_core::AsComponents for ForceManyBody {
-    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
-        re_tracing::profile_function!();
+    #[inline]
+    fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
-            (self
-                .enabled
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.blueprint.archetypes.ForceManyBody".into()),
-                    archetype_field_name: Some(("enabled").into()),
-                    component_name: ("rerun.blueprint.components.Enabled").into(),
-                }),
-            }),
-            (self
-                .strength
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.blueprint.archetypes.ForceManyBody".into()),
-                    archetype_field_name: Some(("strength").into()),
-                    component_name: ("rerun.blueprint.components.ForceStrength").into(),
-                }),
-            }),
+            Self::indicator().serialized(),
+            self.enabled.clone(),
+            self.strength.clone(),
         ]
         .into_iter()
         .flatten()
@@ -214,6 +181,28 @@ impl ForceManyBody {
         }
     }
 
+    /// Update only some specific fields of a `ForceManyBody`.
+    #[inline]
+    pub fn update_fields() -> Self {
+        Self::default()
+    }
+
+    /// Clear all the fields of a `ForceManyBody`.
+    #[inline]
+    pub fn clear_fields() -> Self {
+        use ::re_types_core::Loggable as _;
+        Self {
+            enabled: Some(SerializedComponentBatch::new(
+                crate::blueprint::components::Enabled::arrow_empty(),
+                Self::descriptor_enabled(),
+            )),
+            strength: Some(SerializedComponentBatch::new(
+                crate::blueprint::components::ForceStrength::arrow_empty(),
+                Self::descriptor_strength(),
+            )),
+        }
+    }
+
     /// Whether the many body force is enabled.
     ///
     /// The many body force is applied on each pair of nodes in a way that ressembles an electrical charge. If the
@@ -223,7 +212,7 @@ impl ForceManyBody {
         mut self,
         enabled: impl Into<crate::blueprint::components::Enabled>,
     ) -> Self {
-        self.enabled = Some(enabled.into());
+        self.enabled = try_serialize_field(Self::descriptor_enabled(), [enabled]);
         self
     }
 
@@ -235,7 +224,7 @@ impl ForceManyBody {
         mut self,
         strength: impl Into<crate::blueprint::components::ForceStrength>,
     ) -> Self {
-        self.strength = Some(strength.into());
+        self.strength = try_serialize_field(Self::descriptor_strength(), [strength]);
         self
     }
 }
@@ -244,11 +233,5 @@ impl ::re_byte_size::SizeBytes for ForceManyBody {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.enabled.heap_size_bytes() + self.strength.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <Option<crate::blueprint::components::Enabled>>::is_pod()
-            && <Option<crate::blueprint::components::ForceStrength>>::is_pod()
     }
 }

@@ -69,8 +69,8 @@ class BarChart(BarChartExt, Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            values=None,  # type: ignore[arg-type]
-            color=None,  # type: ignore[arg-type]
+            values=None,
+            color=None,
         )
 
     @classmethod
@@ -80,8 +80,57 @@ class BarChart(BarChartExt, Archetype):
         inst.__attrs_clear__()
         return inst
 
-    values: components.TensorDataBatch = field(
-        metadata={"component": "required"},
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        values: datatypes.TensorDataLike | None = None,
+        color: datatypes.Rgba32Like | None = None,
+    ) -> BarChart:
+        """
+        Update only some specific fields of a `BarChart`.
+
+        Parameters
+        ----------
+        clear:
+            If true, all unspecified fields will be explicitly cleared.
+        values:
+            The values. Should always be a 1-dimensional tensor (i.e. a vector).
+        color:
+            The color of the bar chart
+
+        """
+
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            kwargs = {
+                "values": values,
+                "color": color,
+            }
+
+            if clear:
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+            inst.__attrs_init__(**kwargs)
+            return inst
+
+        inst.__attrs_clear__()
+        return inst
+
+    @classmethod
+    def clear_fields(cls) -> BarChart:
+        """Clear all the fields of a `BarChart`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            values=[],
+            color=[],
+        )
+        return inst
+
+    values: components.TensorDataBatch | None = field(
+        metadata={"component": True},
+        default=None,
         converter=BarChartExt.values__field_converter_override,  # type: ignore[misc]
     )
     # The values. Should always be a 1-dimensional tensor (i.e. a vector).
@@ -89,9 +138,9 @@ class BarChart(BarChartExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     color: components.ColorBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.ColorBatch._optional,  # type: ignore[misc]
+        converter=components.ColorBatch._converter,  # type: ignore[misc]
     )
     # The color of the bar chart
     #

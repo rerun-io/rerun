@@ -52,11 +52,13 @@ pub use self::{
     },
     loggable_batch::{
         ComponentBatch, ComponentBatchCow, ComponentBatchCowWithDescriptor, LoggableBatch,
+        SerializedComponentBatch,
     },
     result::{
         DeserializationError, DeserializationResult, ResultExt, SerializationError,
         SerializationResult, _Backtrace,
     },
+    tuid::tuid_arrow_fields,
     view::{View, ViewClassIdentifier},
 };
 
@@ -96,8 +98,7 @@ pub mod external {
 
 /// Useful macro for statically asserting that a `struct` contains some specific fields.
 ///
-/// In particular, this is useful to statcially check that an archetype
-/// has a specific component.
+/// For asserting that an archetype has a specific component use `re_log_types::debug_assert_archetype_has_components`
 ///
 ///  ```
 /// # #[macro_use] extern crate re_types_core;
@@ -138,5 +139,52 @@ macro_rules! static_assert_struct_has_fields {
         const _: fn(&$strct) = |s: &$strct| {
             $(let _: &$field_typ = &s.$field;)+
         };
+    }
+}
+
+// ---
+
+/// Internal serialization helper for code-generated archetypes.
+///
+/// # Fallibility
+///
+/// There are very few ways in which serialization can fail, all of which are very rare to hit
+/// in practice.
+/// One such example is trying to serialize data with more than 2^31 elements into a `ListArray`.
+///
+/// For that reason, this method favors a nice user experience over error handling: errors will
+/// merely be logged, not returned (except in debug builds, where all errors panic).
+#[doc(hidden)] // public so we can access it from re_types too
+#[allow(clippy::unnecessary_wraps)] // clippy gets confused in debug builds
+pub fn try_serialize_field<C: crate::Component>(
+    descriptor: ComponentDescriptor,
+    instances: impl IntoIterator<Item = impl Into<C>>,
+) -> Option<SerializedComponentBatch> {
+    let res = C::to_arrow(
+        instances
+            .into_iter()
+            .map(|v| std::borrow::Cow::Owned(v.into())),
+    );
+
+    match res {
+        Ok(array) => Some(SerializedComponentBatch::new(array, descriptor)),
+
+        #[cfg(debug_assertions)]
+        Err(err) => {
+            panic!(
+                "failed to serialize data for {descriptor}: {}",
+                re_error::format_ref(&err)
+            )
+        }
+
+        #[cfg(not(debug_assertions))]
+        Err(err) => {
+            re_log::error!(
+                %descriptor,
+                "failed to serialize data: {}",
+                re_error::format_ref(&err)
+            );
+            None
+        }
     }
 }

@@ -12,83 +12,91 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 
-use ::re_types_core::external::arrow;
+use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor};
+use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: Similar to gravity, this force pulls nodes towards a specific position.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct ForcePosition {
     /// Whether the position force is enabled.
     ///
     /// The position force pulls nodes towards a specific position, similar to gravity.
-    pub enabled: Option<crate::blueprint::components::Enabled>,
+    pub enabled: Option<SerializedComponentBatch>,
 
     /// The strength of the force.
-    pub strength: Option<crate::blueprint::components::ForceStrength>,
+    pub strength: Option<SerializedComponentBatch>,
 
     /// The position where the nodes should be pulled towards.
-    pub position: Option<crate::components::Position2D>,
+    pub position: Option<SerializedComponentBatch>,
+}
+
+impl ForcePosition {
+    /// Returns the [`ComponentDescriptor`] for [`Self::enabled`].
+    #[inline]
+    pub fn descriptor_enabled() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ForcePosition".into()),
+            component_name: "rerun.blueprint.components.Enabled".into(),
+            archetype_field_name: Some("enabled".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::strength`].
+    #[inline]
+    pub fn descriptor_strength() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ForcePosition".into()),
+            component_name: "rerun.blueprint.components.ForceStrength".into(),
+            archetype_field_name: Some("strength".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::position`].
+    #[inline]
+    pub fn descriptor_position() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ForcePosition".into()),
+            component_name: "rerun.components.Position2D".into(),
+            archetype_field_name: Some("position".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
+    #[inline]
+    pub fn descriptor_indicator() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ForcePosition".into()),
+            component_name: "rerun.blueprint.components.ForcePositionIndicator".into(),
+            archetype_field_name: None,
+        }
+    }
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ForcePosition".into()),
-            component_name: "rerun.blueprint.components.ForcePositionIndicator".into(),
-            archetype_field_name: None,
-        }]
-    });
+    once_cell::sync::Lazy::new(|| [ForcePosition::descriptor_indicator()]);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ForcePosition".into()),
-                component_name: "rerun.blueprint.components.Enabled".into(),
-                archetype_field_name: Some("enabled".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ForcePosition".into()),
-                component_name: "rerun.blueprint.components.ForceStrength".into(),
-                archetype_field_name: Some("strength".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ForcePosition".into()),
-                component_name: "rerun.components.Position2D".into(),
-                archetype_field_name: Some("position".into()),
-            },
+            ForcePosition::descriptor_enabled(),
+            ForcePosition::descriptor_strength(),
+            ForcePosition::descriptor_position(),
         ]
     });
 
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ForcePosition".into()),
-                component_name: "rerun.blueprint.components.ForcePositionIndicator".into(),
-                archetype_field_name: None,
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ForcePosition".into()),
-                component_name: "rerun.blueprint.components.Enabled".into(),
-                archetype_field_name: Some("enabled".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ForcePosition".into()),
-                component_name: "rerun.blueprint.components.ForceStrength".into(),
-                archetype_field_name: Some("strength".into()),
-            },
-            ComponentDescriptor {
-                archetype_name: Some("rerun.blueprint.archetypes.ForcePosition".into()),
-                component_name: "rerun.components.Position2D".into(),
-                archetype_field_name: Some("position".into()),
-            },
+            ForcePosition::descriptor_indicator(),
+            ForcePosition::descriptor_enabled(),
+            ForcePosition::descriptor_strength(),
+            ForcePosition::descriptor_position(),
         ]
     });
 
@@ -141,43 +149,20 @@ impl ::re_types_core::Archetype for ForcePosition {
 
     #[inline]
     fn from_arrow_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, arrow::array::ArrayRef)>,
+        arrow_data: impl IntoIterator<Item = (ComponentDescriptor, arrow::array::ArrayRef)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(name, array)| (name.full_name(), array))
-            .collect();
-        let enabled = if let Some(array) = arrays_by_name.get("rerun.blueprint.components.Enabled")
-        {
-            <crate::blueprint::components::Enabled>::from_arrow_opt(&**array)
-                .with_context("rerun.blueprint.archetypes.ForcePosition#enabled")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
-        let strength =
-            if let Some(array) = arrays_by_name.get("rerun.blueprint.components.ForceStrength") {
-                <crate::blueprint::components::ForceStrength>::from_arrow_opt(&**array)
-                    .with_context("rerun.blueprint.archetypes.ForcePosition#strength")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-            } else {
-                None
-            };
-        let position = if let Some(array) = arrays_by_name.get("rerun.components.Position2D") {
-            <crate::components::Position2D>::from_arrow_opt(&**array)
-                .with_context("rerun.blueprint.archetypes.ForcePosition#position")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
+        let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
+        let enabled = arrays_by_descr
+            .get(&Self::descriptor_enabled())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_enabled()));
+        let strength = arrays_by_descr
+            .get(&Self::descriptor_strength())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_strength()));
+        let position = arrays_by_descr
+            .get(&Self::descriptor_position())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_position()));
         Ok(Self {
             enabled,
             strength,
@@ -187,47 +172,14 @@ impl ::re_types_core::Archetype for ForcePosition {
 }
 
 impl ::re_types_core::AsComponents for ForcePosition {
-    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
-        re_tracing::profile_function!();
+    #[inline]
+    fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
-            (self
-                .enabled
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.blueprint.archetypes.ForcePosition".into()),
-                    archetype_field_name: Some(("enabled").into()),
-                    component_name: ("rerun.blueprint.components.Enabled").into(),
-                }),
-            }),
-            (self
-                .strength
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.blueprint.archetypes.ForcePosition".into()),
-                    archetype_field_name: Some(("strength").into()),
-                    component_name: ("rerun.blueprint.components.ForceStrength").into(),
-                }),
-            }),
-            (self
-                .position
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(ComponentDescriptor {
-                    archetype_name: Some("rerun.blueprint.archetypes.ForcePosition".into()),
-                    archetype_field_name: Some(("position").into()),
-                    component_name: ("rerun.components.Position2D").into(),
-                }),
-            }),
+            Self::indicator().serialized(),
+            self.enabled.clone(),
+            self.strength.clone(),
+            self.position.clone(),
         ]
         .into_iter()
         .flatten()
@@ -248,6 +200,32 @@ impl ForcePosition {
         }
     }
 
+    /// Update only some specific fields of a `ForcePosition`.
+    #[inline]
+    pub fn update_fields() -> Self {
+        Self::default()
+    }
+
+    /// Clear all the fields of a `ForcePosition`.
+    #[inline]
+    pub fn clear_fields() -> Self {
+        use ::re_types_core::Loggable as _;
+        Self {
+            enabled: Some(SerializedComponentBatch::new(
+                crate::blueprint::components::Enabled::arrow_empty(),
+                Self::descriptor_enabled(),
+            )),
+            strength: Some(SerializedComponentBatch::new(
+                crate::blueprint::components::ForceStrength::arrow_empty(),
+                Self::descriptor_strength(),
+            )),
+            position: Some(SerializedComponentBatch::new(
+                crate::components::Position2D::arrow_empty(),
+                Self::descriptor_position(),
+            )),
+        }
+    }
+
     /// Whether the position force is enabled.
     ///
     /// The position force pulls nodes towards a specific position, similar to gravity.
@@ -256,7 +234,7 @@ impl ForcePosition {
         mut self,
         enabled: impl Into<crate::blueprint::components::Enabled>,
     ) -> Self {
-        self.enabled = Some(enabled.into());
+        self.enabled = try_serialize_field(Self::descriptor_enabled(), [enabled]);
         self
     }
 
@@ -266,14 +244,14 @@ impl ForcePosition {
         mut self,
         strength: impl Into<crate::blueprint::components::ForceStrength>,
     ) -> Self {
-        self.strength = Some(strength.into());
+        self.strength = try_serialize_field(Self::descriptor_strength(), [strength]);
         self
     }
 
     /// The position where the nodes should be pulled towards.
     #[inline]
     pub fn with_position(mut self, position: impl Into<crate::components::Position2D>) -> Self {
-        self.position = Some(position.into());
+        self.position = try_serialize_field(Self::descriptor_position(), [position]);
         self
     }
 }
@@ -284,12 +262,5 @@ impl ::re_byte_size::SizeBytes for ForcePosition {
         self.enabled.heap_size_bytes()
             + self.strength.heap_size_bytes()
             + self.position.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <Option<crate::blueprint::components::Enabled>>::is_pod()
-            && <Option<crate::blueprint::components::ForceStrength>>::is_pod()
-            && <Option<crate::components::Position2D>>::is_pod()
     }
 }

@@ -100,24 +100,43 @@ impl ContextMenuAction for CollapseExpandAllAction {
     }
 
     fn process_instance_path(&self, ctx: &ContextMenuContext<'_>, instance_path: &InstancePath) {
-        #[expect(clippy::match_same_arms)]
         let (db, scope) = match ctx
             .selection
             .context_for_item(&Item::InstancePath(instance_path.clone()))
         {
             Some(&ItemContext::StreamsTree {
+                store_kind: StoreKind::Recording,
+                filter_session_id: None,
+            }) => (ctx.viewer_context.recording(), CollapseScope::StreamsTree),
+
+            Some(&ItemContext::StreamsTree {
+                store_kind: StoreKind::Recording,
+                filter_session_id: Some(session_id),
+            }) => (
+                ctx.viewer_context.recording(),
+                CollapseScope::StreamsTreeFiltered { session_id },
+            ),
+
+            Some(&ItemContext::StreamsTree {
                 store_kind: StoreKind::Blueprint,
+                filter_session_id: None,
             }) => (
                 ctx.viewer_context.blueprint_db(),
                 CollapseScope::BlueprintStreamsTree,
             ),
 
             Some(&ItemContext::StreamsTree {
-                store_kind: StoreKind::Recording,
-            }) => (ctx.viewer_context.recording(), CollapseScope::StreamsTree),
+                store_kind: StoreKind::Blueprint,
+                filter_session_id: Some(session_id),
+            }) => (
+                ctx.viewer_context.blueprint_db(),
+                CollapseScope::BlueprintStreamsTreeFiltered { session_id },
+            ),
 
             // default to recording if we don't have more specific information
-            _ => (ctx.viewer_context.recording(), CollapseScope::StreamsTree),
+            Some(&ItemContext::TwoD { .. } | &ItemContext::ThreeD { .. }) | None => {
+                (ctx.viewer_context.recording(), CollapseScope::StreamsTree)
+            }
         };
 
         let Some(subtree) = db.tree().subtree(&instance_path.entity_path) else {

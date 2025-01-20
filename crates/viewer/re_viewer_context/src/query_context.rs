@@ -92,7 +92,7 @@ impl DataQueryResult {
     pub fn contains_entity(&self, path: &EntityPath) -> bool {
         self.tree
             .lookup_result_by_path(path)
-            .map_or(false, |result| !result.tree_prefix_only)
+            .is_some_and(|result| !result.tree_prefix_only)
     }
 }
 

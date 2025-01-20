@@ -186,7 +186,7 @@ impl TcpClient {
                 num_attempts,
             } => {
                 // If a timeout wasn't provided, never timeout
-                self.flush_timeout.map_or(false, |timeout| {
+                self.flush_timeout.is_some_and(|timeout| {
                     Instant::now().duration_since(start_time) > timeout && num_attempts > 0
                 })
             }

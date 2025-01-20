@@ -153,6 +153,7 @@ def test_image_encoded_nv12() -> None:
         assert len(warnings) == 1
 
     assert type(img) is rr.Image
+    assert img.format is not None
 
     image_format_arrow = img.format.as_arrow_array()[0].as_py()
 

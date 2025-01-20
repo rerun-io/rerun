@@ -3,9 +3,8 @@ use re_log_types::{EntityPath, TimeInt, TimePoint};
 use re_types::archetypes::{AssetVideo, VideoFrameReference};
 use re_types::components::VideoTimestamp;
 use re_types::Archetype;
-use re_types::{components::MediaType, ComponentBatch};
+use re_types::ComponentBatch;
 
-use arrow2::array::PrimitiveArray as Arrow2PrimitiveArray;
 use arrow2::Either;
 
 use crate::{DataLoader, DataLoaderError, LoadedData};
@@ -163,7 +162,7 @@ fn load_image(
             let mut arch = re_types::archetypes::EncodedImage::from_file_contents(contents);
 
             if let Ok(format) = image::ImageFormat::from_path(filepath) {
-                arch.media_type = Some(MediaType::from(format.to_mime_type()));
+                arch = arch.with_media_type(format.to_mime_type());
             }
 
             Chunk::builder(entity_path)
@@ -193,13 +192,14 @@ fn load_video(
         Ok(frame_timestamps_ns) => {
             // Time column.
             let is_sorted = Some(true);
-            let time_column_times = Arrow2PrimitiveArray::from_slice(&frame_timestamps_ns);
+            let frame_timestamps_ns: arrow::buffer::ScalarBuffer<i64> = frame_timestamps_ns.into();
             let time_column =
-                re_chunk::TimeColumn::new(is_sorted, video_timeline, time_column_times);
+                re_chunk::TimeColumn::new(is_sorted, video_timeline, frame_timestamps_ns.clone());
 
             // VideoTimestamp component column.
             let video_timestamps = frame_timestamps_ns
-                .into_iter()
+                .iter()
+                .copied()
                 .map(VideoTimestamp::from_nanoseconds)
                 .collect::<Vec<_>>();
             let video_timestamp_batch = &video_timestamps as &dyn ComponentBatch;

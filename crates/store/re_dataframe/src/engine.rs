@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use re_chunk::{EntityPath, TransportChunk};
+use re_chunk::EntityPath;
 use re_chunk_store::{
     ChunkStore, ChunkStoreConfig, ChunkStoreHandle, ColumnDescriptor, QueryExpression,
 };
@@ -12,14 +12,6 @@ use crate::QueryHandle;
 // Used all over in docstrings.
 #[allow(unused_imports)]
 use re_chunk_store::ComponentColumnDescriptor;
-
-// ---
-
-// TODO(#3741): `arrow2` has no concept of a `RecordBatch`, so for now we just use our trustworthy
-// `TransportChunk` type until we migrate to `arrow-rs`.
-// `TransportChunk` maps 1:1 to `RecordBatch` so the switch (and the compatibility layer in the meantime)
-// will be trivial.
-pub type RecordBatch = TransportChunk;
 
 // --- Queries ---
 

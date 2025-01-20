@@ -1,12 +1,13 @@
 //! All the APIs used specifically for `re_dataframe`.
 
-use std::collections::{BTreeMap, BTreeSet};
-use std::ops::Deref;
-use std::ops::DerefMut;
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    ops::{Deref, DerefMut},
+};
 
-use arrow2::{
+use arrow::{
     array::ListArray as ArrowListArray,
-    datatypes::{DataType as Arrow2Datatype, Field as Arrow2Field},
+    datatypes::{DataType as ArrowDatatype, Field as ArrowField},
 };
 use itertools::Itertools;
 
@@ -43,7 +44,7 @@ impl ColumnDescriptor {
     }
 
     #[inline]
-    pub fn datatype(&self) -> Arrow2Datatype {
+    pub fn arrow_datatype(&self) -> ArrowDatatype {
         match self {
             Self::Time(descr) => descr.datatype.clone(),
             Self::Component(descr) => descr.returned_datatype(),
@@ -51,7 +52,7 @@ impl ColumnDescriptor {
     }
 
     #[inline]
-    pub fn to_arrow_field(&self) -> Arrow2Field {
+    pub fn to_arrow_field(&self) -> ArrowField {
         match self {
             Self::Time(descr) => descr.to_arrow_field(),
             Self::Component(descr) => descr.to_arrow_field(),
@@ -82,7 +83,7 @@ pub struct TimeColumnDescriptor {
     pub timeline: Timeline,
 
     /// The Arrow datatype of the column.
-    pub datatype: Arrow2Datatype,
+    pub datatype: ArrowDatatype,
 }
 
 impl PartialOrd for TimeColumnDescriptor {
@@ -104,30 +105,52 @@ impl Ord for TimeColumnDescriptor {
 }
 
 impl TimeColumnDescriptor {
-    fn metadata(&self) -> arrow2::datatypes::Metadata {
-        let Self {
-            timeline,
-            datatype: _,
-        } = self;
+    /// Used when returning a null column, i.e. when a lookup failed.
+    #[inline]
+    pub fn new_null(name: TimelineName) -> Self {
+        Self {
+            // TODO(cmc): I picked a sequence here because I have to pick something.
+            // It doesn't matter, only the name will remain in the Arrow schema anyhow.
+            timeline: Timeline::new_sequence(name),
+            datatype: ArrowDatatype::Null,
+        }
+    }
 
-        std::iter::once(Some((
+    #[inline]
+    pub fn timeline(&self) -> Timeline {
+        self.timeline
+    }
+
+    #[inline]
+    pub fn name(&self) -> &TimelineName {
+        self.timeline.name()
+    }
+
+    #[inline]
+    pub fn typ(&self) -> re_log_types::TimeType {
+        self.timeline.typ()
+    }
+
+    #[inline]
+    pub fn datatype(&self) -> &ArrowDatatype {
+        &self.datatype
+    }
+
+    #[inline]
+    pub fn to_arrow_field(&self) -> ArrowField {
+        let Self { timeline, datatype } = self;
+
+        let nullable = true; // Time column must be nullable since static data doesn't have a time.
+
+        let metadata = std::iter::once(Some((
             "sorbet.index_name".to_owned(),
             timeline.name().to_string(),
         )))
         .flatten()
-        .collect()
-    }
+        .collect();
 
-    #[inline]
-    // Time column must be nullable since static data doesn't have a time.
-    pub fn to_arrow_field(&self) -> Arrow2Field {
-        let Self { timeline, datatype } = self;
-        Arrow2Field::new(
-            timeline.name().to_string(),
-            datatype.clone(),
-            true, /* nullable */
-        )
-        .with_metadata(self.metadata())
+        ArrowField::new(timeline.name().to_string(), datatype.clone(), nullable)
+            .with_metadata(metadata)
     }
 }
 
@@ -167,7 +190,7 @@ pub struct ComponentColumnDescriptor {
     /// This is the log-time datatype corresponding to how this data is encoded
     /// in a chunk. Currently this will always be an [`ArrowListArray`], but as
     /// we introduce mono-type optimization, this might be a native type instead.
-    pub store_datatype: Arrow2Datatype,
+    pub store_datatype: ArrowDatatype,
 
     /// Whether this column represents static data.
     pub is_static: bool,
@@ -279,7 +302,7 @@ impl ComponentColumnDescriptor {
         &self.entity_path == entity_path && self.component_name.matches(component_name)
     }
 
-    fn metadata(&self) -> arrow2::datatypes::Metadata {
+    fn metadata(&self) -> std::collections::HashMap<String, String> {
         let Self {
             entity_path,
             archetype_name,
@@ -319,12 +342,12 @@ impl ComponentColumnDescriptor {
     }
 
     #[inline]
-    pub fn returned_datatype(&self) -> Arrow2Datatype {
+    pub fn returned_datatype(&self) -> ArrowDatatype {
         self.store_datatype.clone()
     }
 
     #[inline]
-    pub fn to_arrow_field(&self) -> Arrow2Field {
+    pub fn to_arrow_field(&self) -> ArrowField {
         let entity_path = &self.entity_path;
         let descriptor = ComponentDescriptor {
             archetype_name: self.archetype_name,
@@ -332,7 +355,7 @@ impl ComponentColumnDescriptor {
             component_name: self.component_name,
         };
 
-        Arrow2Field::new(
+        ArrowField::new(
             // NOTE: Uncomment this to expose fully-qualified names in the Dataframe APIs!
             // I'm not doing that right now, to avoid breaking changes (and we need to talk about
             // what the syntax for these fully-qualified paths need to look like first).
@@ -723,7 +746,7 @@ impl ChunkStore {
             .filter_map(|(entity_path, component_descr)| {
                 let metadata =
                     self.lookup_column_metadata(entity_path, &component_descr.component_name)?;
-                let datatype = self.lookup_datatype_arrow2(&component_descr.component_name)?;
+                let datatype = self.lookup_datatype(&component_descr.component_name)?;
 
                 Some(((entity_path, component_descr), (metadata, datatype)))
             })
@@ -743,7 +766,9 @@ impl ChunkStore {
                     // NOTE: The data is always a at least a list, whether it's latest-at or range.
                     // It might be wrapped further in e.g. a dict, but at the very least
                     // it's a list.
-                    store_datatype: ArrowListArray::<i32>::default_datatype(datatype.clone()),
+                    store_datatype: ArrowListArray::DATA_TYPE_CONSTRUCTOR(
+                        ArrowField::new("item", datatype.clone(), true).into(),
+                    ),
                     is_static,
                     is_indicator,
                     is_tombstone,
@@ -833,16 +858,17 @@ impl ChunkStore {
             });
 
         let datatype = self
-            .lookup_datatype_arrow2(&component_name)
-            .cloned()
-            .unwrap_or(Arrow2Datatype::Null);
+            .lookup_datatype(&component_name)
+            .unwrap_or(ArrowDatatype::Null);
 
         ComponentColumnDescriptor {
             entity_path: selector.entity_path.clone(),
             archetype_name: component_descr.and_then(|descr| descr.archetype_name),
             archetype_field_name: component_descr.and_then(|descr| descr.archetype_field_name),
             component_name,
-            store_datatype: ArrowListArray::<i32>::default_datatype(datatype.clone()),
+            store_datatype: ArrowListArray::DATA_TYPE_CONSTRUCTOR(
+                ArrowField::new("item", datatype, true).into(),
+            ),
             is_static,
             is_indicator,
             is_tombstone,
@@ -900,7 +926,7 @@ impl ChunkStore {
                 view_contents.as_ref().map_or(true, |view_contents| {
                     view_contents
                         .get(&column.entity_path)
-                        .map_or(false, |components| {
+                        .is_some_and(|components| {
                             components.as_ref().map_or(true, |components| {
                                 components.contains(&column.component_name)
                             })

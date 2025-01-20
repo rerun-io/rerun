@@ -3,7 +3,7 @@ use nohash_hasher::IntMap;
 
 use re_chunk_store::UnitChunkShared;
 use re_entity_db::InstancePath;
-use re_log_types::ComponentPath;
+use re_log_types::{debug_assert_archetype_has_components, ComponentPath};
 use re_types::{
     archetypes, components,
     datatypes::{ChannelDatatype, ColorModel},
@@ -278,12 +278,12 @@ fn preview_if_image_ui(
         buffer: components::ImageBuffer,
         format: components::ImageFormat
     );
-    static_assert_struct_has_fields!(
+    debug_assert_archetype_has_components!(
         archetypes::DepthImage,
         buffer: components::ImageBuffer,
         format: components::ImageFormat
     );
-    static_assert_struct_has_fields!(
+    debug_assert_archetype_has_components!(
         archetypes::SegmentationImage,
         buffer: components::ImageBuffer,
         format: components::ImageFormat

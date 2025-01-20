@@ -39,7 +39,7 @@ use std::sync::Arc;
 use re_build_info::CrateVersion;
 use re_byte_size::SizeBytes;
 
-pub use self::arrow_msg::{ArrowChunkReleaseCallback, ArrowMsg};
+pub use self::arrow_msg::{ArrowMsg, ArrowRecordBatchReleaseCallback};
 pub use self::instance::Instance;
 pub use self::path::*;
 pub use self::resolved_time_range::{ResolvedTimeRange, ResolvedTimeRangeF};
@@ -301,6 +301,18 @@ impl LogMsg {
             Self::BlueprintActivationCommand(cmd) => {
                 cmd.blueprint_id = new_store_id;
             }
+        }
+    }
+
+    // TODO(#3741): remove this once we are all in on arrow-rs
+    /// USE ONLY FOR TESTS
+    pub fn strip_arrow_extension_types(self) -> Self {
+        match self {
+            Self::ArrowMsg(store_id, mut arrow_msg) => {
+                strip_arrow_extension_types_from_batch(&mut arrow_msg.batch);
+                Self::ArrowMsg(store_id, arrow_msg)
+            }
+            other => other,
         }
     }
 }
@@ -746,15 +758,11 @@ impl SizeBytes for ArrowMsg {
         let Self {
             chunk_id,
             timepoint_max,
-            schema,
-            chunk,
+            batch,
             on_release: _,
         } = self;
 
-        chunk_id.heap_size_bytes()
-            + timepoint_max.heap_size_bytes()
-            + schema.heap_size_bytes()
-            + chunk.heap_size_bytes()
+        chunk_id.heap_size_bytes() + timepoint_max.heap_size_bytes() + batch.heap_size_bytes()
     }
 }
 
@@ -772,6 +780,78 @@ impl SizeBytes for LogMsg {
         }
     }
 }
+
+/// USE ONLY FOR TESTS
+// TODO(#3741): remove once <https://github.com/apache/arrow-rs/issues/6803> is released
+use arrow::array::RecordBatch as ArrowRecordBatch;
+
+pub fn strip_arrow_extension_types_from_batch(batch: &mut ArrowRecordBatch) {
+    use arrow::datatypes::{Field, Schema};
+
+    fn strip_arrow_extensions_from_field(field: &Field) -> Field {
+        let mut metadata = field.metadata().clone();
+        metadata.retain(|key, _| !key.starts_with("ARROW:extension"));
+        field.clone().with_metadata(metadata)
+    }
+
+    let old_schema = batch.schema();
+    let new_fields: arrow::datatypes::Fields = old_schema
+        .fields()
+        .iter()
+        .map(|field| strip_arrow_extensions_from_field(field))
+        .collect();
+    let new_schema = Schema::new_with_metadata(new_fields, old_schema.metadata().clone());
+
+    #[allow(clippy::unwrap_used)] // The invariants of the input aren't changed
+    {
+        *batch = ArrowRecordBatch::try_new(new_schema.into(), batch.columns().to_vec()).unwrap();
+    }
+}
+
+// ----------------------------------------------------------------------------
+
+/// Runtime asserts that an archetype has the given components.
+///
+/// In particular, this is useful to statically check that an archetype
+/// has a specific component.
+///
+/// ```
+/// # #[macro_use] extern crate re_log_types;
+/// # use re_log_types::example_components::*;
+/// debug_assert_archetype_has_components!(MyPoints, colors: MyColor);
+/// ```
+///
+/// This will panic because the type is wrong:
+///
+/// ```should_panic
+/// # #[macro_use] extern crate re_log_types;
+/// # use re_log_types::example_components::*;
+/// debug_assert_archetype_has_components!(MyPoints, colors: MyPoint);
+/// ```
+///
+/// This will fail to compile because the field is missing:
+///
+/// ```compile_fail
+/// # #[macro_use] extern crate re_log_types;
+/// # use re_log_types::example_components::*;
+/// debug_assert_archetype_has_components!(MyPoints, colours: MyColor);
+/// ```
+///
+#[macro_export]
+macro_rules! debug_assert_archetype_has_components {
+    ($arch:ty, $($field:ident: $field_typ:ty),+ $(,)?) => {
+        #[cfg(debug_assertions)]
+        {
+            use re_log_types::external::re_types_core::{Component as _};
+            let archetype = <$arch>::clear_fields();
+            $(
+                assert_eq!(archetype.$field.map(|batch| batch.descriptor.component_name), Some(<$field_typ>::name()));
+            )+
+        }
+    };
+}
+
+// ----------------------------------------------------------------------------
 
 #[cfg(test)]
 mod tests {

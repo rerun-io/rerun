@@ -577,8 +577,37 @@ class StorageNodeClient:
     Required-feature: `remote`
     """
 
-    def query_catalog(self) -> pa.RecordBatchReader:
-        """Get the metadata for all recordings in the storage node."""
+    def query_catalog(
+        self, columns: Optional[list[str]] = None, recording_ids: Optional[list[str]] = None
+    ) -> pa.RecordBatchReader:
+        """
+        Get the metadata for recordings in the storage node.
+
+        Parameters
+        ----------
+        columns : Optional[list[str]]
+            The columns to fetch. If `None`, fetch all columns.
+        recording_ids : Optional[list[str]]
+            Fetch metadata of only specific recordings. If `None`, fetch for all.
+
+        """
+        ...
+
+    def get_recording_schema(self, id: str) -> Schema:
+        """
+        Get the schema for a recording in the storage node.
+
+        Parameters
+        ----------
+        id : str
+            The id of the recording to get the schema for.
+
+        Returns
+        -------
+        Schema
+            The schema of the recording.
+
+        """
         ...
 
     def register(self, storage_url: str, metadata: Optional[TableLike] = None) -> str:

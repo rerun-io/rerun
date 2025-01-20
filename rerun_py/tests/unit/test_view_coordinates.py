@@ -17,8 +17,7 @@ def view_coordinates_expected(obj: Any) -> rrc.ViewCoordinatesBatch:
     return rrc.ViewCoordinatesBatch(expected)
 
 
-VIEW_COORDINATES_INPUTS: list[ViewCoordinatesArrayLike | None] = [
-    None,
+VIEW_COORDINATES_INPUTS: list[ViewCoordinatesArrayLike] = [
     rrc.ViewCoordinates([
         rrc.ViewCoordinates.ViewDir.Right,
         rrc.ViewCoordinates.ViewDir.Down,

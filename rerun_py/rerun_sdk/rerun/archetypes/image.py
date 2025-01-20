@@ -7,10 +7,11 @@ from __future__ import annotations
 
 from attrs import define, field
 
-from .. import components
+from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
 )
+from ..error_utils import catch_and_log_exceptions
 from .image_ext import ImageExt
 
 __all__ = ["Image"]
@@ -92,10 +93,10 @@ class Image(ImageExt, Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            buffer=None,  # type: ignore[arg-type]
-            format=None,  # type: ignore[arg-type]
-            opacity=None,  # type: ignore[arg-type]
-            draw_order=None,  # type: ignore[arg-type]
+            buffer=None,
+            format=None,
+            opacity=None,
+            draw_order=None,
         )
 
     @classmethod
@@ -105,26 +106,90 @@ class Image(ImageExt, Archetype):
         inst.__attrs_clear__()
         return inst
 
-    buffer: components.ImageBufferBatch = field(
-        metadata={"component": "required"},
-        converter=components.ImageBufferBatch._required,  # type: ignore[misc]
+    @classmethod
+    def update_fields(
+        cls,
+        *,
+        clear: bool = False,
+        buffer: datatypes.BlobLike | None = None,
+        format: datatypes.ImageFormatLike | None = None,
+        opacity: datatypes.Float32Like | None = None,
+        draw_order: datatypes.Float32Like | None = None,
+    ) -> Image:
+        """
+        Update only some specific fields of a `Image`.
+
+        Parameters
+        ----------
+        clear:
+            If true, all unspecified fields will be explicitly cleared.
+        buffer:
+            The raw image data.
+        format:
+            The format of the image.
+        opacity:
+            Opacity of the image, useful for layering several images.
+
+            Defaults to 1.0 (fully opaque).
+        draw_order:
+            An optional floating point value that specifies the 2D drawing order.
+
+            Objects with higher values are drawn on top of those with lower values.
+
+        """
+
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            kwargs = {
+                "buffer": buffer,
+                "format": format,
+                "opacity": opacity,
+                "draw_order": draw_order,
+            }
+
+            if clear:
+                kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
+
+            inst.__attrs_init__(**kwargs)
+            return inst
+
+        inst.__attrs_clear__()
+        return inst
+
+    @classmethod
+    def clear_fields(cls) -> Image:
+        """Clear all the fields of a `Image`."""
+        inst = cls.__new__(cls)
+        inst.__attrs_init__(
+            buffer=[],
+            format=[],
+            opacity=[],
+            draw_order=[],
+        )
+        return inst
+
+    buffer: components.ImageBufferBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.ImageBufferBatch._converter,  # type: ignore[misc]
     )
     # The raw image data.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    format: components.ImageFormatBatch = field(
-        metadata={"component": "required"},
-        converter=components.ImageFormatBatch._required,  # type: ignore[misc]
+    format: components.ImageFormatBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.ImageFormatBatch._converter,  # type: ignore[misc]
     )
     # The format of the image.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     opacity: components.OpacityBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.OpacityBatch._optional,  # type: ignore[misc]
+        converter=components.OpacityBatch._converter,  # type: ignore[misc]
     )
     # Opacity of the image, useful for layering several images.
     #
@@ -133,9 +198,9 @@ class Image(ImageExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     draw_order: components.DrawOrderBatch | None = field(
-        metadata={"component": "optional"},
+        metadata={"component": True},
         default=None,
-        converter=components.DrawOrderBatch._optional,  # type: ignore[misc]
+        converter=components.DrawOrderBatch._converter,  # type: ignore[misc]
     )
     # An optional floating point value that specifies the 2D drawing order.
     #

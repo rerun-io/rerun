@@ -6,18 +6,25 @@ use std::{
     },
 };
 
+use arrow::{
+    array::{ArrayRef as ArrowArrayRef, RecordBatch as ArrowRecordBatch},
+    buffer::ScalarBuffer as ArrowScalarBuffer,
+    datatypes::{
+        DataType as ArrowDataType, Fields as ArrowFields, Schema as ArrowSchema,
+        SchemaRef as ArrowSchemaRef,
+    },
+};
 use arrow2::{
     array::{
         Array as Arrow2Array, BooleanArray as Arrow2BooleanArray,
         PrimitiveArray as Arrow2PrimitiveArray,
     },
-    chunk::Chunk as Arrow2Chunk,
-    datatypes::Schema as Arrow2Schema,
     Either,
 };
 use itertools::Itertools;
-
 use nohash_hasher::{IntMap, IntSet};
+
+use re_arrow_util::Arrow2ArrayDowncastRef as _;
 use re_chunk::{
     external::arrow::array::ArrayRef, Chunk, ComponentName, EntityPath, RangeQuery, RowId, TimeInt,
     Timeline, UnitChunkShared,
@@ -30,8 +37,6 @@ use re_chunk_store::{
 use re_log_types::ResolvedTimeRange;
 use re_query::{QueryCache, StorageEngineLike};
 use re_types_core::{components::ClearIsRecursive, ComponentDescriptor};
-
-use crate::RecordBatch;
 
 // ---
 
@@ -105,7 +110,7 @@ struct QueryHandleState {
     /// The Arrow schema that corresponds to the `selected_contents`.
     ///
     /// All returned rows will have this schema.
-    arrow_schema: Arrow2Schema,
+    arrow_schema: ArrowSchemaRef,
 
     /// All the [`Chunk`]s included in the view contents.
     ///
@@ -189,13 +194,13 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         // 3. Compute the Arrow schema of the selected components.
         //
         // Every result returned using this `QueryHandle` will match this schema exactly.
-        let arrow_schema = Arrow2Schema {
-            fields: selected_contents
+        let arrow_schema = ArrowSchemaRef::from(ArrowSchema::new_with_metadata(
+            selected_contents
                 .iter()
                 .map(|(_, descr)| descr.to_arrow_field())
-                .collect_vec(),
-            metadata: Default::default(),
-        };
+                .collect::<ArrowFields>(),
+            Default::default(),
+        ));
 
         // 4. Perform the query and keep track of all the relevant chunks.
         let query = {
@@ -240,13 +245,10 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                 if let Some(clear_chunks) = clear_chunks.get(&descr.entity_path) {
                     chunks.extend(clear_chunks.iter().map(|chunk| {
                         let child_datatype = match &descr.store_datatype {
-                            arrow2::datatypes::DataType::List(field)
-                            | arrow2::datatypes::DataType::LargeList(field) => {
+                            ArrowDataType::List(field) | ArrowDataType::LargeList(field) => {
                                 field.data_type().clone()
                             }
-                            arrow2::datatypes::DataType::Dictionary(_, datatype, _) => {
-                                (**datatype).clone()
-                            }
+                            ArrowDataType::Dictionary(_, datatype) => (**datatype).clone(),
                             datatype => datatype.clone(),
                         };
 
@@ -260,8 +262,8 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                                     archetype_name: descr.archetype_name,
                                     archetype_field_name: descr.archetype_field_name,
                                 },
-                                re_chunk::arrow2_util::new_list_array_of_empties(
-                                    child_datatype,
+                                re_arrow_util::arrow_util::new_list_array_of_empties(
+                                    &child_datatype,
                                     chunk.num_rows(),
                                 ),
                             )
@@ -372,82 +374,73 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     ) -> Vec<(usize, ColumnDescriptor)> {
         selection
             .iter()
-            .map(|column| {
-                match column {
-                    ColumnSelector::Time(selected_column) => {
-                        let TimeColumnSelector {
-                            timeline: selected_timeline,
-                        } = selected_column;
+            .map(|column| match column {
+                ColumnSelector::Time(selected_column) => {
+                    let TimeColumnSelector {
+                        timeline: selected_timeline,
+                    } = selected_column;
 
-                        view_contents
-                            .iter()
-                            .enumerate()
-                            .filter_map(|(idx, view_column)| match view_column {
-                                ColumnDescriptor::Time(view_descr) => Some((idx, view_descr)),
-                                ColumnDescriptor::Component(_) => None,
-                            })
-                            .find(|(_idx, view_descr)| {
-                                *view_descr.timeline.name() == *selected_timeline
-                            })
-                            .map_or_else(
-                                || {
-                                    (
-                                        usize::MAX,
-                                        ColumnDescriptor::Time(TimeColumnDescriptor {
-                                            // TODO(cmc): I picked a sequence here because I have to pick something.
-                                            // It doesn't matter, only the name will remain in the Arrow schema anyhow.
-                                            timeline: Timeline::new_sequence(*selected_timeline),
-                                            datatype: arrow2::datatypes::DataType::Null,
-                                        }),
-                                    )
-                                },
-                                |(idx, view_descr)| {
-                                    (idx, ColumnDescriptor::Time(view_descr.clone()))
-                                },
-                            )
-                    }
+                    view_contents
+                        .iter()
+                        .enumerate()
+                        .filter_map(|(idx, view_column)| match view_column {
+                            ColumnDescriptor::Time(view_descr) => Some((idx, view_descr)),
+                            ColumnDescriptor::Component(_) => None,
+                        })
+                        .find(|(_idx, view_descr)| *view_descr.name() == *selected_timeline)
+                        .map_or_else(
+                            || {
+                                (
+                                    usize::MAX,
+                                    ColumnDescriptor::Time(TimeColumnDescriptor::new_null(
+                                        *selected_timeline,
+                                    )),
+                                )
+                            },
+                            |(idx, view_descr)| (idx, ColumnDescriptor::Time(view_descr.clone())),
+                        )
+                }
 
-                    ColumnSelector::Component(selected_column) => {
-                        let ComponentColumnSelector {
-                            entity_path: selected_entity_path,
-                            component_name: selected_component_name,
-                        } = selected_column;
+                ColumnSelector::Component(selected_column) => {
+                    let ComponentColumnSelector {
+                        entity_path: selected_entity_path,
+                        component_name: selected_component_name,
+                    } = selected_column;
 
-                        view_contents
-                            .iter()
-                            .enumerate()
-                            .filter_map(|(idx, view_column)| match view_column {
-                                ColumnDescriptor::Component(view_descr) => Some((idx, view_descr)),
-                                ColumnDescriptor::Time(_) => None,
-                            })
-                            .find(|(_idx, view_descr)| {
-                                view_descr.entity_path == *selected_entity_path
-                                    && view_descr.component_name.matches(selected_component_name)
-                            })
-                            .map_or_else(
-                                || {
-                                    (
-                                        usize::MAX,
-                                        ColumnDescriptor::Component(ComponentColumnDescriptor {
-                                            entity_path: selected_entity_path.clone(),
-                                            archetype_name: None,
-                                            archetype_field_name: None,
-                                            component_name: ComponentName::from(
-                                                selected_component_name.clone(),
-                                            ),
-                                            store_datatype: arrow2::datatypes::DataType::Null,
-                                            is_static: false,
-                                            is_indicator: false,
-                                            is_tombstone: false,
-                                            is_semantically_empty: false,
-                                        }),
-                                    )
-                                },
-                                |(idx, view_descr)| {
-                                    (idx, ColumnDescriptor::Component(view_descr.clone()))
-                                },
-                            )
-                    }
+                    view_contents
+                        .iter()
+                        .enumerate()
+                        .filter_map(|(idx, view_column)| match view_column {
+                            ColumnDescriptor::Component(view_descr) => Some((idx, view_descr)),
+                            ColumnDescriptor::Time(_) => None,
+                        })
+                        .find(|(_idx, view_descr)| {
+                            view_descr.entity_path == *selected_entity_path
+                                && view_descr.component_name.matches(selected_component_name)
+                        })
+                        .map_or_else(
+                            || {
+                                (
+                                    usize::MAX,
+                                    ColumnDescriptor::Component(ComponentColumnDescriptor {
+                                        entity_path: selected_entity_path.clone(),
+                                        archetype_name: None,
+                                        archetype_field_name: None,
+                                        component_name: ComponentName::from(
+                                            selected_component_name.clone(),
+                                        ),
+                                        store_datatype: ArrowDataType::Null,
+                                        is_static: false,
+                                        is_indicator: false,
+                                        is_tombstone: false,
+                                        is_semantically_empty: false,
+                                    }),
+                                )
+                            },
+                            |(idx, view_descr)| {
+                                (idx, ColumnDescriptor::Component(view_descr.clone()))
+                            },
+                        )
                 }
             })
             .collect_vec()
@@ -526,8 +519,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
 
             let values = list_array
                 .values()
-                .as_any()
-                .downcast_ref::<Arrow2BooleanArray>()?;
+                .downcast_array2_ref::<Arrow2BooleanArray>()?;
 
             let indices = Arrow2PrimitiveArray::from_vec(
                 values
@@ -677,7 +669,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     ///
     /// Columns that do not yield any data will still be present in the results, filled with null values.
     #[inline]
-    pub fn schema(&self) -> &Arrow2Schema {
+    pub fn schema(&self) -> &ArrowSchemaRef {
         &self.init().arrow_schema
     }
 
@@ -803,38 +795,6 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     pub fn next_row(&self) -> Option<Vec<ArrayRef>> {
         self.engine
             .with(|store, cache| self._next_row(store, cache))
-            .map(|vec| vec.into_iter().map(|a| a.into()).collect())
-    }
-
-    /// Returns the next row's worth of data.
-    ///
-    /// The returned vector of Arrow arrays strictly follows the schema specified by [`Self::schema`].
-    /// Columns that do not yield any data will still be present in the results, filled with null values.
-    ///
-    /// Each cell in the result corresponds to the latest _locally_ known value at that particular point in
-    /// the index, for each respective `ColumnDescriptor`.
-    /// See [`QueryExpression::sparse_fill_strategy`] to go beyond local resolution.
-    ///
-    /// Example:
-    /// ```ignore
-    /// while let Some(row) = query_handle.next_row() {
-    ///     // …
-    /// }
-    /// ```
-    ///
-    /// ## Pagination
-    ///
-    /// Use [`Self::seek_to_row`]:
-    /// ```ignore
-    /// query_handle.seek_to_row(42);
-    /// for row in query_handle.into_iter().take(len) {
-    ///     // …
-    /// }
-    /// ```
-    #[inline]
-    fn next_row_arrow2(&self) -> Option<Vec<Box<dyn Arrow2Array>>> {
-        self.engine
-            .with(|store, cache| self._next_row(store, cache))
     }
 
     /// Asynchronously returns the next row's worth of data.
@@ -853,9 +813,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     /// }
     /// ```
     #[cfg(not(target_arch = "wasm32"))]
-    pub fn next_row_async(
-        &self,
-    ) -> impl std::future::Future<Output = Option<Vec<Box<dyn Arrow2Array>>>>
+    pub fn next_row_async(&self) -> impl std::future::Future<Output = Option<Vec<ArrayRef>>>
     where
         E: 'static + Send + Clone,
     {
@@ -891,11 +849,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         })
     }
 
-    pub fn _next_row(
-        &self,
-        store: &ChunkStore,
-        cache: &QueryCache,
-    ) -> Option<Vec<Box<dyn Arrow2Array>>> {
+    pub fn _next_row(&self, store: &ChunkStore, cache: &QueryCache) -> Option<Vec<ArrowArrayRef>> {
         re_tracing::profile_function!();
 
         /// Temporary state used to resolve the streaming join for the current iteration.
@@ -968,8 +922,8 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                 let cur_index_row_id_at = |at: usize| {
                     let (times, incs) = cur_index_row_ids;
 
-                    let times = times.values().as_slice();
-                    let incs = incs.values().as_slice();
+                    let times = times.values();
+                    let incs = incs.values();
 
                     let time = *times.get(at)?;
                     let inc = *incs.get(at)?;
@@ -1133,7 +1087,8 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         // * return the minimum value instead of the max
         // * return the exact value for each component (that would be a _lot_ of columns!)
         // * etc
-        let mut max_value_per_index = IntMap::default();
+        let mut max_value_per_index: IntMap<Timeline, (TimeInt, ArrowScalarBuffer<i64>)> =
+            IntMap::default();
         {
             view_streaming_state
                 .iter()
@@ -1158,7 +1113,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                             .map(|time| {
                                 (
                                     *time_column.timeline(),
-                                    (time, time_column.times_array().sliced(cursor, 1)),
+                                    (time, time_column.times_buffer().slice(cursor, 1)),
                                 )
                             })
                     })
@@ -1182,9 +1137,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                     state.filtered_index,
                     (
                         *cur_index_value,
-                        Arrow2PrimitiveArray::<i64>::from_vec(vec![cur_index_value.as_i64()])
-                            .to(state.filtered_index.datatype())
-                            .to_boxed(),
+                        ArrowScalarBuffer::from(vec![cur_index_value.as_i64()]),
                     ),
                 );
             }
@@ -1248,9 +1201,9 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             .iter()
             .map(|(view_idx, column)| match column {
                 ColumnDescriptor::Time(descr) => {
-                    max_value_per_index.get(&descr.timeline).map_or_else(
-                        || arrow2::array::new_null_array(column.datatype(), 1),
-                        |(_time, time_sliced)| time_sliced.clone(),
+                    max_value_per_index.get(&descr.timeline()).map_or_else(
+                        || arrow::array::new_null_array(&column.arrow_datatype(), 1),
+                        |(_time, time_sliced)| descr.typ().make_arrow_array(time_sliced.clone()),
                     )
                 }
 
@@ -1258,7 +1211,8 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                     .get(*view_idx)
                     .cloned()
                     .flatten()
-                    .unwrap_or_else(|| arrow2::array::new_null_array(column.datatype(), 1)),
+                    .map(|a| a.into())
+                    .unwrap_or_else(|| arrow::array::new_null_array(&column.arrow_datatype(), 1)),
             })
             .collect_vec();
 
@@ -1267,23 +1221,21 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         Some(selected_arrays)
     }
 
-    /// Calls [`Self::next_row`] and wraps the result in a [`RecordBatch`].
+    /// Calls [`Self::next_row`] and wraps the result in a [`ArrowRecordBatch`].
     ///
-    /// Only use this if you absolutely need a [`RecordBatch`] as this adds a lot of allocation
-    /// overhead.
+    /// Only use this if you absolutely need a [`ArrowRecordBatch`] as this adds a
+    /// some overhead for schema validation.
     ///
     /// See [`Self::next_row`] for more information.
     #[inline]
-    pub fn next_row_batch(&self) -> Option<RecordBatch> {
-        Some(RecordBatch {
-            schema: self.schema().clone(),
-            data: Arrow2Chunk::new(self.next_row_arrow2()?),
-        })
+    pub fn next_row_batch(&self) -> Option<ArrowRecordBatch> {
+        let row = self.next_row()?;
+        ArrowRecordBatch::try_new(self.schema().clone(), row).ok()
     }
 
     #[inline]
     #[cfg(not(target_arch = "wasm32"))]
-    pub async fn next_row_batch_async(&self) -> Option<RecordBatch>
+    pub async fn next_row_batch_async(&self) -> Option<ArrowRecordBatch>
     where
         E: 'static + Send + Clone,
     {
@@ -1293,35 +1245,32 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         #[allow(clippy::unwrap_used)]
         let schema = self.state.get().unwrap().arrow_schema.clone();
 
-        Some(RecordBatch {
-            schema,
-            data: Arrow2Chunk::new(row),
-        })
+        ArrowRecordBatch::try_new(schema, row).ok()
     }
 }
 
 impl<E: StorageEngineLike> QueryHandle<E> {
     /// Returns an iterator backed by [`Self::next_row`].
     #[allow(clippy::should_implement_trait)] // we need an anonymous closure, this won't work
-    pub fn iter(&self) -> impl Iterator<Item = Vec<Box<dyn Arrow2Array>>> + '_ {
-        std::iter::from_fn(move || self.next_row_arrow2())
+    pub fn iter(&self) -> impl Iterator<Item = Vec<ArrowArrayRef>> + '_ {
+        std::iter::from_fn(move || self.next_row())
     }
 
     /// Returns an iterator backed by [`Self::next_row`].
     #[allow(clippy::should_implement_trait)] // we need an anonymous closure, this won't work
-    pub fn into_iter(self) -> impl Iterator<Item = Vec<Box<dyn Arrow2Array>>> {
-        std::iter::from_fn(move || self.next_row_arrow2())
+    pub fn into_iter(self) -> impl Iterator<Item = Vec<ArrowArrayRef>> {
+        std::iter::from_fn(move || self.next_row())
     }
 
     /// Returns an iterator backed by [`Self::next_row_batch`].
     #[allow(clippy::should_implement_trait)] // we need an anonymous closure, this won't work
-    pub fn batch_iter(&self) -> impl Iterator<Item = RecordBatch> + '_ {
+    pub fn batch_iter(&self) -> impl Iterator<Item = ArrowRecordBatch> + '_ {
         std::iter::from_fn(move || self.next_row_batch())
     }
 
     /// Returns an iterator backed by [`Self::next_row_batch`].
     #[allow(clippy::should_implement_trait)] // we need an anonymous closure, this won't work
-    pub fn into_batch_iter(self) -> impl Iterator<Item = RecordBatch> {
+    pub fn into_batch_iter(self) -> impl Iterator<Item = ArrowRecordBatch> {
         std::iter::from_fn(move || self.next_row_batch())
     }
 }
@@ -1333,12 +1282,12 @@ impl<E: StorageEngineLike> QueryHandle<E> {
 mod tests {
     use std::sync::Arc;
 
-    use re_chunk::{
-        arrow2_util::concatenate_record_batches, Chunk, ChunkId, RowId, TimePoint, TransportChunk,
-    };
+    use arrow::compute::concat_batches;
+    use re_chunk::{Chunk, ChunkId, RowId, TimePoint, TransportChunk};
     use re_chunk_store::{
         ChunkStore, ChunkStoreConfig, ChunkStoreHandle, ResolvedTimeRange, TimeInt,
     };
+    use re_format_arrow::format_record_batch;
     use re_log_types::{
         build_frame_nr, build_log_time,
         example_components::{MyColor, MyLabel, MyPoint},
@@ -1351,6 +1300,12 @@ mod tests {
     use crate::{QueryCache, QueryEngine};
 
     use super::*;
+
+    macro_rules! assert_snapshot_fixed_width {
+        ($($arg:tt)*) => {
+            insta::_assert_snapshot_base!(transform=|v| std::format!("{v:200}"), $($arg)*)
+        };
+    }
 
     // NOTE: The best way to understand what these tests are doing is to run them in verbose mode,
     // e.g. `cargo t -p re_dataframe -- --show-output barebones`.
@@ -1401,26 +1356,13 @@ mod tests {
                 query_engine.query(query.clone()).into_iter().count() as u64,
                 query_handle.num_rows()
             );
-            let dataframe = concatenate_record_batches(
-                query_handle.schema().clone(),
-                &query_handle.into_batch_iter().collect_vec(),
+            let dataframe = concat_batches(
+                query_handle.schema(),
+                &query_handle.batch_iter().collect_vec(),
             )?;
-            eprintln!("{dataframe}");
+            eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
-            let expected = unindent::unindent(
-                "\
-                [
-                    Int64[None],
-                    Timestamp(Nanosecond, None)[None],
-                    ListArray[None],
-                    ListArray[[c]],
-                    ListArray[None],
-                ]\
-                ",
-            );
-
-            similar_asserts::assert_eq!(expected, got);
+            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
         }
 
         // temporal
@@ -1436,26 +1378,13 @@ mod tests {
                 query_engine.query(query.clone()).into_iter().count() as u64,
                 query_handle.num_rows()
             );
-            let dataframe = concatenate_record_batches(
-                query_handle.schema().clone(),
-                &query_handle.into_batch_iter().collect_vec(),
+            let dataframe = concat_batches(
+                query_handle.schema(),
+                &query_handle.batch_iter().collect_vec(),
             )?;
-            eprintln!("{dataframe}");
+            eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
-            let expected = unindent::unindent(
-                "\
-                [
-                    Int64[10, 20, 30, 40, 50, 60, 70],
-                    Timestamp(Nanosecond, None)[1970-01-01 00:00:00.000000010, None, None, None, 1970-01-01 00:00:00.000000050, None, 1970-01-01 00:00:00.000000070],
-                    ListArray[None, None, [2], [3], [4], None, [6]],
-                    ListArray[[c], [c], [c], [c], [c], [c], [c]],
-                    ListArray[[{x: 0, y: 0}], [{x: 1, y: 1}], [{x: 2, y: 2}], [{x: 3, y: 3}], [{x: 4, y: 4}], [{x: 5, y: 5}], [{x: 8, y: 8}]],
-                ]\
-                "
-            );
-
-            similar_asserts::assert_eq!(expected, got);
+            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
         }
 
         Ok(())
@@ -1483,26 +1412,13 @@ mod tests {
             query_engine.query(query.clone()).into_iter().count() as u64,
             query_handle.num_rows()
         );
-        let dataframe = concatenate_record_batches(
-            query_handle.schema().clone(),
-            &query_handle.into_batch_iter().collect_vec(),
+        let dataframe = concat_batches(
+            query_handle.schema(),
+            &query_handle.batch_iter().collect_vec(),
         )?;
-        eprintln!("{dataframe}");
+        eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-        let got = format!("{:#?}", dataframe.data.iter().collect_vec());
-        let expected = unindent::unindent(
-            "\
-            [
-                Int64[10, 20, 30, 40, 50, 60, 70],
-                Timestamp(Nanosecond, None)[1970-01-01 00:00:00.000000010, None, None, None, 1970-01-01 00:00:00.000000050, None, 1970-01-01 00:00:00.000000070],
-                ListArray[None, None, [2], [3], [4], [4], [6]],
-                ListArray[[c], [c], [c], [c], [c], [c], [c]],
-                ListArray[[{x: 0, y: 0}], [{x: 1, y: 1}], [{x: 2, y: 2}], [{x: 3, y: 3}], [{x: 4, y: 4}], [{x: 5, y: 5}], [{x: 8, y: 8}]],
-            ]\
-            "
-        );
-
-        similar_asserts::assert_eq!(expected, got);
+        assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
 
         Ok(())
     }
@@ -1529,26 +1445,13 @@ mod tests {
             query_engine.query(query.clone()).into_iter().count() as u64,
             query_handle.num_rows()
         );
-        let dataframe = concatenate_record_batches(
-            query_handle.schema().clone(),
-            &query_handle.into_batch_iter().collect_vec(),
+        let dataframe = concat_batches(
+            query_handle.schema(),
+            &query_handle.batch_iter().collect_vec(),
         )?;
-        eprintln!("{dataframe}");
+        eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-        let got = format!("{:#?}", dataframe.data.iter().collect_vec());
-        let expected = unindent::unindent(
-            "\
-            [
-                Int64[30, 40, 50, 60],
-                Timestamp(Nanosecond, None)[None, None, 1970-01-01 00:00:00.000000050, None],
-                ListArray[[2], [3], [4], None],
-                ListArray[[c], [c], [c], [c]],
-                ListArray[[{x: 2, y: 2}], [{x: 3, y: 3}], [{x: 4, y: 4}], [{x: 5, y: 5}]],
-            ]\
-            ",
-        );
-
-        similar_asserts::assert_eq!(expected, got);
+        assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
 
         Ok(())
     }
@@ -1581,26 +1484,13 @@ mod tests {
             query_engine.query(query.clone()).into_iter().count() as u64,
             query_handle.num_rows()
         );
-        let dataframe = concatenate_record_batches(
-            query_handle.schema().clone(),
-            &query_handle.into_batch_iter().collect_vec(),
+        let dataframe = concat_batches(
+            query_handle.schema(),
+            &query_handle.batch_iter().collect_vec(),
         )?;
-        eprintln!("{dataframe}");
+        eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-        let got = format!("{:#?}", dataframe.data.iter().collect_vec());
-        let expected = unindent::unindent(
-            "\
-            [
-                Int64[30, 60],
-                Timestamp(Nanosecond, None)[None, None],
-                ListArray[[2], None],
-                ListArray[[c], [c]],
-                ListArray[[{x: 2, y: 2}], [{x: 5, y: 5}]],
-            ]\
-            ",
-        );
-
-        similar_asserts::assert_eq!(expected, got);
+        assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
 
         Ok(())
     }
@@ -1636,26 +1526,13 @@ mod tests {
                 query_engine.query(query.clone()).into_iter().count() as u64,
                 query_handle.num_rows()
             );
-            let dataframe = concatenate_record_batches(
-                query_handle.schema().clone(),
-                &query_handle.into_batch_iter().collect_vec(),
+            let dataframe = concat_batches(
+                query_handle.schema(),
+                &query_handle.batch_iter().collect_vec(),
             )?;
-            eprintln!("{dataframe}");
+            eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
-            let expected = unindent::unindent(
-                "\
-                [
-                    Int64[0, 15, 30, 45, 60, 75, 90],
-                    Timestamp(Nanosecond, None)[None, None, None, None, None, None, None],
-                    ListArray[None, None, [2], None, None, None, None],
-                    ListArray[[c], [c], [c], [c], [c], [c], [c]],
-                    ListArray[None, None, [{x: 2, y: 2}], None, [{x: 5, y: 5}], None, None],
-                ]\
-                ",
-            );
-
-            similar_asserts::assert_eq!(expected, got);
+            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
         }
 
         // sparse-filled
@@ -1679,26 +1556,13 @@ mod tests {
                 query_engine.query(query.clone()).into_iter().count() as u64,
                 query_handle.num_rows()
             );
-            let dataframe = concatenate_record_batches(
-                query_handle.schema().clone(),
-                &query_handle.into_batch_iter().collect_vec(),
+            let dataframe = concat_batches(
+                query_handle.schema(),
+                &query_handle.batch_iter().collect_vec(),
             )?;
-            eprintln!("{dataframe}");
+            eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
-            let expected = unindent::unindent(
-                "\
-                [
-                    Int64[0, 15, 30, 45, 60, 75, 90],
-                    Timestamp(Nanosecond, None)[None, 1970-01-01 00:00:00.000000010, None, None, None, 1970-01-01 00:00:00.000000070, 1970-01-01 00:00:00.000000070],
-                    ListArray[None, None, [2], [3], [4], [6], [6]],
-                    ListArray[[c], [c], [c], [c], [c], [c], [c]],
-                    ListArray[None, [{x: 0, y: 0}], [{x: 2, y: 2}], [{x: 3, y: 3}], [{x: 5, y: 5}], [{x: 8, y: 8}], [{x: 8, y: 8}]],
-                ]\
-                ",
-            );
-
-            similar_asserts::assert_eq!(expected, got);
+            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
         }
 
         Ok(())
@@ -1733,16 +1597,13 @@ mod tests {
                 query_engine.query(query.clone()).into_iter().count() as u64,
                 query_handle.num_rows()
             );
-            let dataframe = concatenate_record_batches(
-                query_handle.schema().clone(),
-                &query_handle.into_batch_iter().collect_vec(),
+            let dataframe = concat_batches(
+                query_handle.schema(),
+                &query_handle.batch_iter().collect_vec(),
             )?;
-            eprintln!("{dataframe}");
+            eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
-            let expected = "[]";
-
-            similar_asserts::assert_eq!(expected, got);
+            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
         }
 
         // non-existing component
@@ -1762,16 +1623,13 @@ mod tests {
                 query_engine.query(query.clone()).into_iter().count() as u64,
                 query_handle.num_rows()
             );
-            let dataframe = concatenate_record_batches(
-                query_handle.schema().clone(),
-                &query_handle.into_batch_iter().collect_vec(),
+            let dataframe = concat_batches(
+                query_handle.schema(),
+                &query_handle.batch_iter().collect_vec(),
             )?;
-            eprintln!("{dataframe}");
+            eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
-            let expected = "[]";
-
-            similar_asserts::assert_eq!(expected, got);
+            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
         }
 
         // MyPoint
@@ -1791,26 +1649,13 @@ mod tests {
                 query_engine.query(query.clone()).into_iter().count() as u64,
                 query_handle.num_rows()
             );
-            let dataframe = concatenate_record_batches(
-                query_handle.schema().clone(),
-                &query_handle.into_batch_iter().collect_vec(),
+            let dataframe = concat_batches(
+                query_handle.schema(),
+                &query_handle.batch_iter().collect_vec(),
             )?;
-            eprintln!("{dataframe}");
+            eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
-            let expected = unindent::unindent(
-                "\
-                [
-                    Int64[10, 20, 30, 40, 50, 60, 70],
-                    Timestamp(Nanosecond, None)[1970-01-01 00:00:00.000000010, None, None, None, 1970-01-01 00:00:00.000000050, None, 1970-01-01 00:00:00.000000070],
-                    ListArray[None, None, [2], [3], [4], None, [6]],
-                    ListArray[[c], [c], [c], [c], [c], [c], [c]],
-                    ListArray[[{x: 0, y: 0}], [{x: 1, y: 1}], [{x: 2, y: 2}], [{x: 3, y: 3}], [{x: 4, y: 4}], [{x: 5, y: 5}], [{x: 8, y: 8}]],
-                ]\
-                "
-            );
-
-            similar_asserts::assert_eq!(expected, got);
+            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
         }
 
         // MyColor
@@ -1830,26 +1675,13 @@ mod tests {
                 query_engine.query(query.clone()).into_iter().count() as u64,
                 query_handle.num_rows()
             );
-            let dataframe = concatenate_record_batches(
-                query_handle.schema().clone(),
-                &query_handle.into_batch_iter().collect_vec(),
+            let dataframe = concat_batches(
+                query_handle.schema(),
+                &query_handle.batch_iter().collect_vec(),
             )?;
-            eprintln!("{dataframe}");
+            eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
-            let expected = unindent::unindent(
-                "\
-                [
-                    Int64[30, 40, 50, 70],
-                    Timestamp(Nanosecond, None)[None, None, 1970-01-01 00:00:00.000000050, 1970-01-01 00:00:00.000000070],
-                    ListArray[[2], [3], [4], [6]],
-                    ListArray[[c], [c], [c], [c]],
-                    ListArray[[{x: 2, y: 2}], [{x: 3, y: 3}], [{x: 4, y: 4}], [{x: 8, y: 8}]],
-                ]\
-                ",
-            );
-
-            similar_asserts::assert_eq!(expected, got);
+            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
         }
 
         Ok(())
@@ -1885,16 +1717,13 @@ mod tests {
                 query_engine.query(query.clone()).into_iter().count() as u64,
                 query_handle.num_rows()
             );
-            let dataframe = concatenate_record_batches(
-                query_handle.schema().clone(),
-                &query_handle.into_batch_iter().collect_vec(),
+            let dataframe = concat_batches(
+                query_handle.schema(),
+                &query_handle.batch_iter().collect_vec(),
             )?;
-            eprintln!("{dataframe}");
+            eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
-            let expected = "[]";
-
-            similar_asserts::assert_eq!(expected, got);
+            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
         }
 
         {
@@ -1925,25 +1754,13 @@ mod tests {
                 query_engine.query(query.clone()).into_iter().count() as u64,
                 query_handle.num_rows()
             );
-            let dataframe = concatenate_record_batches(
-                query_handle.schema().clone(),
-                &query_handle.into_batch_iter().collect_vec(),
+            let dataframe = concat_batches(
+                query_handle.schema(),
+                &query_handle.batch_iter().collect_vec(),
             )?;
-            eprintln!("{dataframe}");
+            eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
-            let expected = unindent::unindent(
-                "\
-                [
-                    Int64[30, 40, 50, 70],
-                    Timestamp(Nanosecond, None)[None, None, None, None],
-                    ListArray[[2], [3], [4], [6]],
-                    ListArray[[c], [c], [c], [c]],
-                ]\
-                ",
-            );
-
-            similar_asserts::assert_eq!(expected, got);
+            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
         }
 
         Ok(())
@@ -1975,16 +1792,13 @@ mod tests {
                 query_engine.query(query.clone()).into_iter().count() as u64,
                 query_handle.num_rows()
             );
-            let dataframe = concatenate_record_batches(
-                query_handle.schema().clone(),
-                &query_handle.into_batch_iter().collect_vec(),
+            let dataframe = concat_batches(
+                query_handle.schema(),
+                &query_handle.batch_iter().collect_vec(),
             )?;
-            eprintln!("{dataframe}");
+            eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
-            let expected = "[]";
-
-            similar_asserts::assert_eq!(expected, got);
+            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
         }
 
         // only indices (+ duplication)
@@ -2011,24 +1825,13 @@ mod tests {
                 query_engine.query(query.clone()).into_iter().count() as u64,
                 query_handle.num_rows()
             );
-            let dataframe = concatenate_record_batches(
-                query_handle.schema().clone(),
-                &query_handle.into_batch_iter().collect_vec(),
+            let dataframe = concat_batches(
+                query_handle.schema(),
+                &query_handle.batch_iter().collect_vec(),
             )?;
-            eprintln!("{dataframe}");
+            eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
-            let expected = unindent::unindent(
-                "\
-                [
-                    Int64[10, 20, 30, 40, 50, 60, 70],
-                    Int64[10, 20, 30, 40, 50, 60, 70],
-                    NullArray(7),
-                ]\
-                ",
-            );
-
-            similar_asserts::assert_eq!(expected, got);
+            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
         }
 
         // only components (+ duplication)
@@ -2062,25 +1865,13 @@ mod tests {
                 query_engine.query(query.clone()).into_iter().count() as u64,
                 query_handle.num_rows()
             );
-            let dataframe = concatenate_record_batches(
-                query_handle.schema().clone(),
-                &query_handle.into_batch_iter().collect_vec(),
+            let dataframe = concat_batches(
+                query_handle.schema(),
+                &query_handle.batch_iter().collect_vec(),
             )?;
-            eprintln!("{dataframe}");
+            eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
-            let expected = unindent::unindent(
-                "\
-                [
-                    ListArray[None, None, [2], [3], [4], None, [6]],
-                    ListArray[None, None, [2], [3], [4], None, [6]],
-                    NullArray(7),
-                    NullArray(7),
-                ]\
-                ",
-            );
-
-            similar_asserts::assert_eq!(expected, got);
+            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
         }
 
         // static
@@ -2135,32 +1926,13 @@ mod tests {
                 query_engine.query(query.clone()).into_iter().count() as u64,
                 query_handle.num_rows()
             );
-            let dataframe = concatenate_record_batches(
-                query_handle.schema().clone(),
-                &query_handle.into_batch_iter().collect_vec(),
+            let dataframe = concat_batches(
+                query_handle.schema(),
+                &query_handle.batch_iter().collect_vec(),
             )?;
-            eprintln!("{dataframe}");
+            eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
-            let expected = unindent::unindent(
-                "\
-                [
-                    Int64[10, 20, 30, 40, 50, 60, 70],
-                    Int64[10, 20, 30, 40, 50, 60, 70],
-                    Int64[10, 20, 30, 40, 50, 60, 70],
-                    Int64[10, 20, 30, 40, 50, 60, 70],
-                    Int64[10, 20, 30, 40, 50, 60, 70],
-                    Int64[10, 20, 30, 40, 50, 60, 70],
-                    Int64[10, 20, 30, 40, 50, 60, 70],
-                    Int64[10, 20, 30, 40, 50, 60, 70],
-                    Int64[10, 20, 30, 40, 50, 60, 70],
-                    Int64[10, 20, 30, 40, 50, 60, 70],
-                    ListArray[[c], [c], [c], [c], [c], [c], [c]],
-                ]\
-                ",
-            );
-
-            similar_asserts::assert_eq!(expected, got);
+            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
         }
 
         Ok(())
@@ -2223,27 +1995,13 @@ mod tests {
                 query_engine.query(query.clone()).into_iter().count() as u64,
                 query_handle.num_rows()
             );
-            let dataframe = concatenate_record_batches(
-                query_handle.schema().clone(),
-                &query_handle.into_batch_iter().collect_vec(),
+            let dataframe = concat_batches(
+                query_handle.schema(),
+                &query_handle.batch_iter().collect_vec(),
             )?;
-            eprintln!("{dataframe}");
+            eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
-            let expected = unindent::unindent(
-                "\
-                [
-                    Int64[30, 40, 50, 70],
-                    Timestamp(Nanosecond, None)[None, None, None, None],
-                    NullArray(4),
-                    NullArray(4),
-                    ListArray[[2], [3], [4], [6]],
-                    ListArray[[c], [c], [c], [c]],
-                ]\
-                ",
-            );
-
-            similar_asserts::assert_eq!(expected, got);
+            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
         }
 
         Ok(())
@@ -2277,26 +2035,13 @@ mod tests {
                 query_engine.query(query.clone()).into_iter().count() as u64,
                 query_handle.num_rows()
             );
-            let dataframe = concatenate_record_batches(
-                query_handle.schema().clone(),
-                &query_handle.into_batch_iter().collect_vec(),
+            let dataframe = concat_batches(
+                query_handle.schema(),
+                &query_handle.batch_iter().collect_vec(),
             )?;
-            eprintln!("{dataframe}");
+            eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
-            let expected = unindent::unindent(
-            "\
-            [
-                Int64[10, 20, 30, 40, 50, 60, 65, 70],
-                Timestamp(Nanosecond, None)[1970-01-01 00:00:00.000000010, None, None, None, 1970-01-01 00:00:00.000000050, 1970-01-01 00:00:00.000000060, 1970-01-01 00:00:00.000000065, 1970-01-01 00:00:00.000000070],
-                ListArray[None, None, [2], [3], [4], [], [], [6]],
-                ListArray[[c], [c], [c], [c], [c], [c], [c], [c]],
-                ListArray[[{x: 0, y: 0}], [{x: 1, y: 1}], [{x: 2, y: 2}], [{x: 3, y: 3}], [{x: 4, y: 4}], [], [], [{x: 8, y: 8}]],
-            ]\
-            "
-        );
-
-            similar_asserts::assert_eq!(expected, got);
+            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
         }
 
         // sparse-filled
@@ -2314,30 +2059,17 @@ mod tests {
                 query_engine.query(query.clone()).into_iter().count() as u64,
                 query_handle.num_rows()
             );
-            let dataframe = concatenate_record_batches(
-                query_handle.schema().clone(),
-                &query_handle.into_batch_iter().collect_vec(),
+            let dataframe = concat_batches(
+                query_handle.schema(),
+                &query_handle.batch_iter().collect_vec(),
             )?;
-            eprintln!("{dataframe}");
+            eprintln!("{}", format_record_batch(&dataframe.clone()));
 
             // TODO(#7650): Those null values for `MyColor` on 10 and 20 look completely insane, but then again
             // static clear semantics in general are pretty unhinged right now, especially when
             // ranges are involved.
-            // It's extremely niche, our time is better spent somewhere else right now.
-            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
-            let expected = unindent::unindent(
-            "\
-            [
-                Int64[10, 20, 30, 40, 50, 60, 65, 70],
-                Timestamp(Nanosecond, None)[1970-01-01 00:00:00.000000010, None, None, None, 1970-01-01 00:00:00.000000050, 1970-01-01 00:00:00.000000060, 1970-01-01 00:00:00.000000065, 1970-01-01 00:00:00.000000070],
-                ListArray[None, None, [2], [3], [4], [], [], [6]],
-                ListArray[[c], [c], [c], [c], [c], [c], [c], [c]],
-                ListArray[[{x: 0, y: 0}], [{x: 1, y: 1}], [{x: 2, y: 2}], [{x: 3, y: 3}], [{x: 4, y: 4}], [], [], [{x: 8, y: 8}]],
-            ]\
-            "
-        );
 
-            similar_asserts::assert_eq!(expected, got);
+            assert_snapshot_fixed_width!(TransportChunk::from(dataframe));
         }
 
         Ok(())
@@ -2375,17 +2107,17 @@ mod tests {
                 for i in 0..expected_rows.len() {
                     query_handle.seek_to_row(i);
 
-                    let expected = concatenate_record_batches(
-                        query_handle.schema().clone(),
+                    let expected = concat_batches(
+                        query_handle.schema(),
                         &expected_rows.iter().skip(i).take(3).cloned().collect_vec(),
                     )?;
-                    let got = concatenate_record_batches(
-                        query_handle.schema().clone(),
+                    let got = concat_batches(
+                        query_handle.schema(),
                         &query_handle.batch_iter().take(3).collect_vec(),
                     )?;
 
-                    let expected = format!("{:#?}", expected.data.iter().collect_vec());
-                    let got = format!("{:#?}", got.data.iter().collect_vec());
+                    let expected = format!("{:#?}", expected.columns());
+                    let got = format!("{:#?}", got.columns());
 
                     similar_asserts::assert_eq!(expected, got);
                 }
@@ -2416,17 +2148,17 @@ mod tests {
                 for i in 0..expected_rows.len() {
                     query_handle.seek_to_row(i);
 
-                    let expected = concatenate_record_batches(
-                        query_handle.schema().clone(),
+                    let expected = concat_batches(
+                        query_handle.schema(),
                         &expected_rows.iter().skip(i).take(3).cloned().collect_vec(),
                     )?;
-                    let got = concatenate_record_batches(
-                        query_handle.schema().clone(),
+                    let got = concat_batches(
+                        query_handle.schema(),
                         &query_handle.batch_iter().take(3).collect_vec(),
                     )?;
 
-                    let expected = format!("{:#?}", expected.data.iter().collect_vec());
-                    let got = format!("{:#?}", got.data.iter().collect_vec());
+                    let expected = format!("{:#?}", expected.columns());
+                    let got = format!("{:#?}", got.columns());
 
                     similar_asserts::assert_eq!(expected, got);
                 }
@@ -2460,17 +2192,17 @@ mod tests {
                 for i in 0..expected_rows.len() {
                     query_handle.seek_to_row(i);
 
-                    let expected = concatenate_record_batches(
-                        query_handle.schema().clone(),
+                    let expected = concat_batches(
+                        query_handle.schema(),
                         &expected_rows.iter().skip(i).take(3).cloned().collect_vec(),
                     )?;
-                    let got = concatenate_record_batches(
-                        query_handle.schema().clone(),
+                    let got = concat_batches(
+                        query_handle.schema(),
                         &query_handle.batch_iter().take(3).collect_vec(),
                     )?;
 
-                    let expected = format!("{:#?}", expected.data.iter().collect_vec());
-                    let got = format!("{:#?}", got.data.iter().collect_vec());
+                    let expected = format!("{:#?}", expected.columns());
+                    let got = format!("{:#?}", got.columns());
 
                     similar_asserts::assert_eq!(expected, got);
                 }
@@ -2498,17 +2230,17 @@ mod tests {
                 for i in 0..expected_rows.len() {
                     query_handle.seek_to_row(i);
 
-                    let expected = concatenate_record_batches(
-                        query_handle.schema().clone(),
+                    let expected = concat_batches(
+                        query_handle.schema(),
                         &expected_rows.iter().skip(i).take(3).cloned().collect_vec(),
                     )?;
-                    let got = concatenate_record_batches(
-                        query_handle.schema().clone(),
+                    let got = concat_batches(
+                        query_handle.schema(),
                         &query_handle.batch_iter().take(3).collect_vec(),
                     )?;
 
-                    let expected = format!("{:#?}", expected.data.iter().collect_vec());
-                    let got = format!("{:#?}", got.data.iter().collect_vec());
+                    let expected = format!("{:#?}", expected.columns());
+                    let got = format!("{:#?}", got.columns());
 
                     similar_asserts::assert_eq!(expected, got);
                 }
@@ -2528,7 +2260,7 @@ mod tests {
         pub struct QueryHandleStream(pub QueryHandle<StorageEngine>);
 
         impl tokio_stream::Stream for QueryHandleStream {
-            type Item = TransportChunk;
+            type Item = ArrowRecordBatch;
 
             #[inline]
             fn poll_next(
@@ -2567,28 +2299,18 @@ mod tests {
                         .len() as u64,
                     query_handle.num_rows()
                 );
-                let dataframe = concatenate_record_batches(
-                    query_handle.schema().clone(),
+                let dataframe = concat_batches(
+                    query_handle.schema(),
                     &QueryHandleStream(query_engine.query(query.clone()))
                         .collect::<Vec<_>>()
                         .await,
                 )?;
-                eprintln!("{dataframe}");
+                eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-                let got = format!("{:#?}", dataframe.data.iter().collect_vec());
-                let expected = unindent::unindent(
-                    "\
-                    [
-                        Int64[None],
-                        Timestamp(Nanosecond, None)[None],
-                        ListArray[None],
-                        ListArray[[c]],
-                        ListArray[None],
-                    ]\
-                    ",
+                assert_snapshot_fixed_width!(
+                    "async_barebones_static",
+                    TransportChunk::from(dataframe)
                 );
-
-                similar_asserts::assert_eq!(expected, got);
 
                 Ok::<_, anyhow::Error>(())
             }
@@ -2611,28 +2333,18 @@ mod tests {
                         .len() as u64,
                     query_handle.num_rows()
                 );
-                let dataframe = concatenate_record_batches(
-                    query_handle.schema().clone(),
+                let dataframe = concat_batches(
+                    query_handle.schema(),
                     &QueryHandleStream(query_engine.query(query.clone()))
                         .collect::<Vec<_>>()
                         .await,
                 )?;
-                eprintln!("{dataframe}");
+                eprintln!("{}", format_record_batch(&dataframe.clone()));
 
-                let got = format!("{:#?}", dataframe.data.iter().collect_vec());
-                let expected = unindent::unindent(
-                    "\
-                    [
-                        Int64[10, 20, 30, 40, 50, 60, 70],
-                        Timestamp(Nanosecond, None)[1970-01-01 00:00:00.000000010, None, None, None, 1970-01-01 00:00:00.000000050, None, 1970-01-01 00:00:00.000000070],
-                        ListArray[None, None, [2], [3], [4], None, [6]],
-                        ListArray[[c], [c], [c], [c], [c], [c], [c]],
-                        ListArray[[{x: 0, y: 0}], [{x: 1, y: 1}], [{x: 2, y: 2}], [{x: 3, y: 3}], [{x: 4, y: 4}], [{x: 5, y: 5}], [{x: 8, y: 8}]],
-                    ]\
-                    "
+                assert_snapshot_fixed_width!(
+                    "async_barebones_temporal",
+                    TransportChunk::from(dataframe)
                 );
-
-                similar_asserts::assert_eq!(expected, got);
 
                 Ok::<_, anyhow::Error>(())
             }

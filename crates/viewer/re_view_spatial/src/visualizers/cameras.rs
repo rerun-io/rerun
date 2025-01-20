@@ -14,7 +14,8 @@ use re_viewer_context::{
 
 use super::{filter_visualizable_3d_entities, SpatialViewVisualizerData};
 use crate::{
-    contexts::TransformContext, query_pinhole, space_camera_3d::SpaceCamera3D, ui::SpatialViewState,
+    contexts::TransformTreeContext, query_pinhole, space_camera_3d::SpaceCamera3D,
+    ui::SpatialViewState,
 };
 
 const CAMERA_COLOR: re_renderer::Color32 = re_renderer::Color32::from_rgb(150, 150, 150);
@@ -46,7 +47,7 @@ impl CamerasVisualizer {
     fn visit_instance(
         &mut self,
         line_builder: &mut re_renderer::LineDrawableBuilder<'_>,
-        transforms: &TransformContext,
+        transforms: &TransformTreeContext,
         data_result: &DataResult,
         pinhole: &Pinhole,
         pinhole_view_coordinates: ViewCoordinates,
@@ -71,7 +72,7 @@ impl CamerasVisualizer {
         }
 
         // The camera transform does not include the pinhole transform.
-        let Some(transform_info) = transforms.transform_info_for_entity(ent_path) else {
+        let Some(transform_info) = transforms.transform_info_for_entity(ent_path.hash()) else {
             return;
         };
         let Some(twod_in_threed_info) = &transform_info.twod_in_threed_info else {
@@ -214,7 +215,7 @@ impl VisualizerSystem for CamerasVisualizer {
         query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
-        let transforms = context_systems.get::<TransformContext>()?;
+        let transforms = context_systems.get::<TransformTreeContext>()?;
 
         // Counting all cameras ahead of time is a bit wasteful, but we also don't expect a huge amount,
         // so let re_renderer's allocator internally decide what buffer sizes to pick & grow them as we go.
@@ -236,7 +237,7 @@ impl VisualizerSystem for CamerasVisualizer {
                     transforms,
                     data_result,
                     &pinhole,
-                    pinhole.camera_xyz.unwrap_or(ViewCoordinates::RDF), // TODO(#2641): This should come from archetype
+                    pinhole.camera_xyz.unwrap_or(Pinhole::DEFAULT_CAMERA_XYZ),
                     entity_highlight,
                 );
             }
@@ -279,4 +280,10 @@ impl TypedComponentFallbackProvider<ImagePlaneDistance> for CamerasVisualizer {
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(CamerasVisualizer => [ImagePlaneDistance]);
+impl TypedComponentFallbackProvider<ViewCoordinates> for CamerasVisualizer {
+    fn fallback_for(&self, _ctx: &QueryContext<'_>) -> ViewCoordinates {
+        Pinhole::DEFAULT_CAMERA_XYZ
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(CamerasVisualizer => [ImagePlaneDistance, ViewCoordinates]);

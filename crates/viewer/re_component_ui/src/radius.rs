@@ -33,7 +33,7 @@ pub fn edit_radius_ui(
         if combobox_response
             .inner
             .as_ref()
-            .map_or(false, |r| r.changed())
+            .is_some_and(|r| r.changed())
         {
             // When we change the type of units,the value is likely going to be _very wrong_.
             // Unfortunately, we don't have knowledge of a fallback here, so we use hardcoded "reasonable" values.

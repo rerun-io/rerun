@@ -48,7 +48,7 @@ impl VisualizerAdditionalApplicabilityFilter for ImageMediaTypeFilter {
         diff_component_filter(event, |media_type: &re_types::components::MediaType| {
             media_type.is_image()
         }) || diff_component_filter(event, |image: &re_types::components::Blob| {
-            MediaType::guess_from_data(&image.0).map_or(false, |media| media.is_image())
+            MediaType::guess_from_data(&image.0).is_some_and(|media| media.is_image())
         })
     }
 }

@@ -12,6 +12,7 @@ service StorageNode {
     // metadata API calls
     rpc QueryCatalog(QueryCatalogRequest) returns (stream DataframePart) {}
     rpc UpdateCatalog(UpdateCatalogRequest) returns (UpdateCatalogResponse) {}
+    rpc GetRecordingSchema(GetRecordingSchemaRequest) returns (GetRecordingSchemaResponse) {}
 
     // TODO(zehiko) support registering more than one recording at a time
     rpc RegisterRecording(RegisterRecordingRequest) returns (DataframePart) {}
@@ -29,6 +30,16 @@ message DataframePart {
 
     // Data payload is Arrow IPC encoded RecordBatch
     bytes payload = 1000;
+}
+
+// ---------------- GetRecordingSchema ------------------
+
+message GetRecordingSchemaRequest {
+    rerun.common.v0.RecordingId recording_id = 1;
+}
+
+message GetRecordingSchemaResponse {
+    repeated rerun.common.v0.ColumnDescriptor column_descriptors = 1;
 }
 
 // ---------------- RegisterRecording ------------------
