@@ -94,24 +94,10 @@ impl<T: ArrowNativeType> ArrowBuffer<T> {
     }
 }
 
-impl<T: ArrowNativeType + arrow2::types::NativeType> From<arrow::buffer::ScalarBuffer<T>>
-    for ArrowBuffer<T>
-{
+impl<T: ArrowNativeType> From<arrow::buffer::ScalarBuffer<T>> for ArrowBuffer<T> {
     #[inline]
     fn from(value: arrow::buffer::ScalarBuffer<T>) -> Self {
         Self(value.into_inner().into())
-    }
-}
-
-impl<T: ArrowNativeType + arrow2::types::NativeType> From<arrow2::buffer::Buffer<T>>
-    for ArrowBuffer<T>
-{
-    #[inline]
-    fn from(arrow2_buffer: arrow2::buffer::Buffer<T>) -> Self {
-        let num_elements = arrow2_buffer.len();
-        let arrow1_buffer = arrow::buffer::Buffer::from(arrow2_buffer);
-        let scalar_buffer = arrow::buffer::ScalarBuffer::new(arrow1_buffer, 0, num_elements);
-        Self(scalar_buffer)
     }
 }
 
