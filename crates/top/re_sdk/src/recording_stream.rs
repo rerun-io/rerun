@@ -1030,17 +1030,6 @@ impl RecordingStream {
         Ok(())
     }
 
-    #[deprecated(since = "0.16.0", note = "use `log_static` instead")]
-    #[doc(hidden)]
-    #[inline]
-    pub fn log_timeless<AS: ?Sized + AsComponents>(
-        &self,
-        ent_path: impl Into<EntityPath>,
-        arch: &AS,
-    ) -> RecordingStreamResult<()> {
-        self.log_static(ent_path, arch)
-    }
-
     /// Log data to Rerun.
     ///
     /// It can be used to log anything
@@ -1069,18 +1058,6 @@ impl RecordingStream {
         as_components: &AS,
     ) -> RecordingStreamResult<()> {
         self.log_with_static(ent_path, true, as_components)
-    }
-
-    #[deprecated(since = "0.16.0", note = "use `log_static` instead")]
-    #[doc(hidden)]
-    #[inline]
-    pub fn log_with_timeless<AS: ?Sized + AsComponents>(
-        &self,
-        ent_path: impl Into<EntityPath>,
-        static_: bool,
-        arch: &AS,
-    ) -> RecordingStreamResult<()> {
-        self.log_with_static(ent_path, static_, arch)
     }
 
     /// Logs the contents of a [component bundle] into Rerun.
@@ -2585,14 +2562,14 @@ mod tests {
             .unwrap();
     }
 
-    fn example_rows(timeless: bool) -> Vec<PendingRow> {
+    fn example_rows(static_: bool) -> Vec<PendingRow> {
         use re_log_types::example_components::{MyColor, MyLabel, MyPoint};
         use re_types_core::{Component as _, Loggable};
 
         let mut tick = 0i64;
         let mut timepoint = |frame_nr: i64| {
             let mut tp = TimePoint::default();
-            if !timeless {
+            if !static_ {
                 tp.insert(Timeline::log_time(), Time::now());
                 tp.insert(Timeline::log_tick(), tick);
                 tp.insert(Timeline::new_sequence("frame_nr"), frame_nr);

@@ -364,13 +364,6 @@ namespace rerun {
             try_log_with_static(entity_path, false, archetypes_or_collections...).handle();
         }
 
-        template <typename... Ts>
-        [[deprecated("Use `log_static` instead")]] void log_timeless(
-            std::string_view entity_path, const Ts&... archetypes_or_collections
-        ) const {
-            return log_static(entity_path, archetypes_or_collections...);
-        }
-
         /// Logs one or more archetype and/or component batches as static data.
         ///
         /// Like `log` but logs the data as static:
@@ -411,13 +404,6 @@ namespace rerun {
             return try_log_with_static(entity_path, false, archetypes_or_collections...);
         }
 
-        template <typename... Ts>
-        [[deprecated("Use `try_log_static` instead")]] Error try_log_timeless(
-            std::string_view entity_path, const Ts&... archetypes_or_collections
-        ) const {
-            return try_log_static(entity_path, archetypes_or_collections...);
-        }
-
         /// Logs one or more archetype and/or component batches as static data, returning an error.
         ///
         /// See `log`/`log_static` for more information.
@@ -436,13 +422,6 @@ namespace rerun {
                 return Error::ok();
             }
             return try_log_with_static(entity_path, true, archetypes_or_collections...);
-        }
-
-        template <typename... Ts>
-        [[deprecated("Use `log_with_static` instead")]] void log_with_timeless(
-            std::string_view entity_path, bool timeless, const Ts&... archetypes_or_collections
-        ) const {
-            return log_with_static(entity_path, timeless, archetypes_or_collections...);
         }
 
         /// Logs one or more archetype and/or component batches optionally static, returning an error.
@@ -465,13 +444,6 @@ namespace rerun {
             std::string_view entity_path, bool static_, const Ts&... archetypes_or_collections
         ) const {
             try_log_with_static(entity_path, static_, archetypes_or_collections...).handle();
-        }
-
-        template <typename... Ts>
-        [[deprecated("Use `try_log_with_static` instead")]] Error try_log_with_timeless(
-            std::string_view entity_path, bool static_, const Ts&... archetypes_or_collections
-        ) const {
-            return try_log_with_static(entity_path, static_, archetypes_or_collections...);
         }
 
         /// Logs one or more archetype and/or component batches optionally static, returning an error.

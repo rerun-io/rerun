@@ -31,7 +31,7 @@ Additionally, to provide a 3D view, the visualization includes a pinhole camera 
 The visualization in this example were created with the following Rerun code.
 
 ```python
-rr.log("realsense", rr.ViewCoordinates.RDF, timeless=True) # Visualize the data as RDF
+rr.log("realsense", rr.ViewCoordinates.RDF, static=True) # Visualize the data as RDF
 ```
 
 
@@ -51,7 +51,7 @@ rr.log(
         mat3x3=np.reshape(rgb_from_depth.rotation, (3, 3)),
         from_parent=True,
     ),
-    timeless=True,
+    static=True,
 )
 ```
 
@@ -63,7 +63,7 @@ rr.log(
         focal_length=[rgb_intr.fx, rgb_intr.fy],
         principal_point=[rgb_intr.ppx, rgb_intr.ppy],
     ),
-    timeless=True,
+    static=True,
 )
 ```
 ```python
@@ -83,7 +83,7 @@ rr.log(
         focal_length=[depth_intr.fx, depth_intr.fy],
         principal_point=[depth_intr.ppx, depth_intr.ppy],
     ),
-    timeless=True,
+    static=True,
 )
 ```
 ```python

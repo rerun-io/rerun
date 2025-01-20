@@ -28,7 +28,7 @@ Make sure video plays on all views unless lack of support is mentioned:
 def run(args: Namespace) -> None:
     rr.script_setup(args, f"{os.path.basename(__file__)}", recording_id=uuid4())
 
-    rr.log("readme", rr.TextDocument(README, media_type=rr.MediaType.MARKDOWN), timeless=True)
+    rr.log("readme", rr.TextDocument(README, media_type=rr.MediaType.MARKDOWN), static=True)
 
     for codec in ["av1", "h264", "h265", "vp9"]:
         # Log video asset which is referred to by frame references.

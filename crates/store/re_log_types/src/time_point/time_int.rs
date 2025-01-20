@@ -43,7 +43,7 @@ impl TimeInt {
     /// It is illegal to create a [`TimeInt`] with that value in a temporal context.
     ///
     /// SDK users cannot log data at that timestamp explicitly, the only way to do so is to use
-    /// the timeless APIs.
+    /// the static APIs.
     pub const STATIC: Self = Self(None);
 
     /// Value used to represent the minimal temporal value a [`TimeInt`] can hold.

@@ -134,7 +134,7 @@ def main() -> None:
     )
 
     rr.script_setup(args, "rerun_example_raw_mesh", default_blueprint=blueprint)
-    rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), timeless=True)
+    rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), static=True)
 
     # glTF always uses a right-handed coordinate system when +Y is up and meshes face +Z.
     rr.log(root, rr.ViewCoordinates.RUB, static=True)

@@ -87,7 +87,7 @@ rr.log(
         colors=[160, 230, 130, 255],
         labels=bbox.category,
     ),
-    timeless=True,
+    static=True,
 )
 ```
 

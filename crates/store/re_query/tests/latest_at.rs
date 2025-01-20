@@ -469,14 +469,14 @@ fn static_invalidation() {
 
     let entity_path = "points";
 
-    let timeless = TimePoint::default();
+    let static_ = TimePoint::default();
 
     let query_time = [build_frame_nr(9999)];
 
     let row_id1 = RowId::new();
     let points = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
     let chunk = Chunk::builder(entity_path.into())
-        .with_component_batches(row_id1, timeless.clone(), [&points as _])
+        .with_component_batches(row_id1, static_.clone(), [&points as _])
         .build()
         .unwrap();
     insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
@@ -498,7 +498,7 @@ fn static_invalidation() {
     let row_id2 = RowId::new();
     let colors = vec![MyColor::from_rgb(255, 0, 0)];
     let chunk = Chunk::builder(entity_path.into())
-        .with_component_batches(row_id2, timeless.clone(), [&colors as _])
+        .with_component_batches(row_id2, static_.clone(), [&colors as _])
         .build()
         .unwrap();
     insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
@@ -520,7 +520,7 @@ fn static_invalidation() {
     let row_id3 = RowId::new();
     let colors = vec![MyColor::from_rgb(0, 0, 255)];
     let chunk = Chunk::builder(entity_path.into())
-        .with_component_batches(row_id3, timeless.clone(), [&colors as _])
+        .with_component_batches(row_id3, static_.clone(), [&colors as _])
         .build()
         .unwrap();
     insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));

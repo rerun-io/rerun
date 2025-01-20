@@ -12,10 +12,10 @@ pub type TimeHistogram = re_int_histogram::Int64Histogram;
 
 /// Number of messages per time per timeline.
 ///
-/// Does NOT include timeless.
+/// Does NOT include static data.
 #[derive(Default)]
 pub struct TimeHistogramPerTimeline {
-    /// When do we have data? Ignores timeless.
+    /// When do we have data? Ignores static data.
     times: BTreeMap<Timeline, TimeHistogram>,
 
     /// Extra bookkeeping used to seed any timelines that include static msgs.
