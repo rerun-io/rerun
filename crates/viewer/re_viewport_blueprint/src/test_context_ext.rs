@@ -7,10 +7,10 @@ use crate::ViewportBlueprint;
 /// Extension trait to [`TestContext`] for blueprint-related features.
 pub trait TestContextExt {
     /// See docstring on the implementation below.
-    fn setup_viewport_blueprint(
+    fn setup_viewport_blueprint<R>(
         &mut self,
-        setup_blueprint: impl FnOnce(&ViewerContext<'_>, &mut ViewportBlueprint),
-    );
+        setup_blueprint: impl FnOnce(&ViewerContext<'_>, &mut ViewportBlueprint) -> R,
+    ) -> R;
 }
 
 impl TestContextExt for TestContext {
@@ -20,9 +20,9 @@ impl TestContextExt for TestContext {
     /// closure, and saving it back to the blueprint store. The closure should call the appropriate
     /// methods of [`ViewportBlueprint`] to inspect and/or create views and containers as required.
     ///
-    /// Each time [`setup_viewport_blueprint`], it entirely recomputes the "query results", i.e.,
-    /// the [`re_viewer_context::DataResult`]s that each view contains, based on the current content
-    /// of the recording store.
+    /// Each time [`setup_viewport_blueprint`] is called, it entirely recomputes the "query
+    /// results", i.e., the [`re_viewer_context::DataResult`]s that each view contains, based on the
+    /// current content of the recording store.
     ///
     /// Important pre-requisite:
     /// - The view classes used by view must be already registered (see
@@ -30,11 +30,13 @@ impl TestContextExt for TestContext {
     /// - The data store must be already populated for the views to have any content (see, e.g.,
     ///   [`TestContext::log_entity`]).
     ///
-    fn setup_viewport_blueprint(
+    fn setup_viewport_blueprint<R>(
         &mut self,
-        setup_blueprint: impl FnOnce(&ViewerContext<'_>, &mut ViewportBlueprint),
-    ) {
+        setup_blueprint: impl FnOnce(&ViewerContext<'_>, &mut ViewportBlueprint) -> R,
+    ) -> R {
         let mut setup_blueprint: Option<_> = Some(setup_blueprint);
+
+        let mut result = None;
 
         egui::__run_test_ctx(|egui_ctx| {
             // We use `take` to ensure that the blueprint is setup only once, since egui forces
@@ -45,7 +47,7 @@ impl TestContextExt for TestContext {
                         &self.blueprint_store,
                         &self.blueprint_query,
                     );
-                    setup_blueprint(ctx, &mut viewport_blueprint);
+                    result = Some(setup_blueprint(ctx, &mut viewport_blueprint));
                     viewport_blueprint.save_to_blueprint_store(ctx);
                 });
 
@@ -59,7 +61,6 @@ impl TestContextExt for TestContext {
                     .view_class_registry
                     .applicable_entities_for_visualizer_systems(&self.recording_store.store_id());
                 let mut query_results = HashMap::default();
-
                 self.run(egui_ctx, |ctx| {
                     viewport_blueprint.visit_contents(&mut |contents, _| {
                         if let Contents::View(view_id) = contents {
@@ -71,7 +72,8 @@ impl TestContextExt for TestContext {
                             let data_query_result = {
                                 let visualizable_entities = ctx
                                     .view_class_registry
-                                    .get_class_or_log_error(class_identifier)
+                                    .class(class_identifier)
+                                    .expect("The class must be registered beforehand")
                                     .determine_visualizable_entities(
                                         &applicable_entities_per_visualizer,
                                         ctx.recording(),
@@ -98,5 +100,7 @@ impl TestContextExt for TestContext {
                 self.query_results = query_results;
             }
         });
+
+        result.expect("The `setup_closure` is expected to be called at least once")
     }
 }

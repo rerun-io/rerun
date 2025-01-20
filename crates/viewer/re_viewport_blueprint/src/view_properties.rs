@@ -26,6 +26,7 @@ impl From<ViewPropertyQueryError> for ViewSystemExecutionError {
 }
 
 /// Utility for querying view properties.
+#[derive(Debug)]
 pub struct ViewProperty {
     /// Entity path in the blueprint store where all components of this view property archetype are
     /// stored.

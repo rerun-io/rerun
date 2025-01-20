@@ -8,7 +8,7 @@ use re_chunk_store::{Chunk, RowId};
 use re_entity_db::EntityPath;
 use re_types::{components, Component as _};
 use re_view_graph::{GraphView, GraphViewState};
-use re_viewer_context::{test_context::TestContext, RecommendedView, ViewClass, ViewId};
+use re_viewer_context::{test_context::TestContext, RecommendedView, ViewClass};
 use re_viewport_blueprint::test_context_ext::TestContextExt as _;
 use re_viewport_blueprint::ViewBlueprint;
 
@@ -127,20 +127,15 @@ fn run_graph_view_and_save_snapshot(
     name: &str,
     size: Vec2,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let view_id = ViewId::hashed_from_str("/graph");
-
-    test_context.setup_viewport_blueprint(|_, blueprint| {
-        // make the view id known
-        let mut view_blueprint = ViewBlueprint::new(
+    let view_id = test_context.setup_viewport_blueprint(|_, blueprint| {
+        let view_blueprint = ViewBlueprint::new(
             re_view_graph::GraphView::identifier(),
-            RecommendedView {
-                origin: EntityPath::root(),
-                query_filter: format!("+ /{name}").as_str().try_into().unwrap(),
-            },
+            RecommendedView::root(),
         );
-        view_blueprint.id = view_id;
 
+        let view_id = view_blueprint.id;
         blueprint.add_views(std::iter::once(view_blueprint), None, None);
+        view_id
     });
 
     let mut view_state = GraphViewState::default();
