@@ -1229,6 +1229,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         match ArrowRecordBatch::try_new_with_options(
             self.schema().clone(),
             row,
+            // Explicitly setting row-count to one means it works even when there are no columns (e.g. due to heavy filtering)
             &arrow::array::RecordBatchOptions::new().with_row_count(Some(1)),
         ) {
             Ok(batch) => Some(batch),
