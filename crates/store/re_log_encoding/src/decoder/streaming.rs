@@ -18,11 +18,14 @@ pub struct StreamingDecoder<R: AsyncBufRead> {
     version: CrateVersion,
     options: EncodingOptions,
     reader: R,
+
     /// buffer used for uncompressing data. This is a tiny optimization
     /// to (potentially) avoid allocation for each (compressed) message
     uncompressed: Vec<u8>,
+
     /// internal buffer for unprocessed bytes
     unprocessed_bytes: BytesMut,
+
     /// flag to indicate if we're expecting more data to be read.
     expect_more_data: bool,
 }

@@ -235,6 +235,7 @@ impl MessageHeader {
                 )),
             ));
         }
+
         fn u32_from_le_slice(bytes: &[u8]) -> u32 {
             u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]])
         }
