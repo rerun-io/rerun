@@ -183,3 +183,24 @@ Here's how to communicate about `fallback` vs. `wildcard`:
 Corollary:
 * A function taking `ComponentName` as a parameter is automatically suspicious (and likely problematic).
 * 99.9% of things need to be descriptor driven (that number is 0% today :)).
+
+
+
+
+
+
+FALLBACK SEMANTICS
+`latest_at("points@Points3D:Color#colors")` 
+-> * `Points3D:Color#colors`
+-> * `Points3D:Color`
+-> * `Color#colors`
+-> * `Color`
+
+
+LATEST_AT -> "most-specific at closest index"
+
+
+WILDCARD SEMANTICS
+`latest_at("*:Color#*")`
+
+`latest_at("*:Color#*")`
