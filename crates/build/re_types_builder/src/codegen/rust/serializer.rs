@@ -585,46 +585,40 @@ fn quote_arrow_field_serializer(
         DataType::Utf8 => {
             // NOTE: We need values for all slots, regardless of what the validity says,
             // hence `unwrap_or_default`.
-            let (quoted_transparent_mapping, quoted_transparent_length) =
-                if inner_is_arrow_transparent {
-                    let inner_obj = inner_obj.as_ref().unwrap();
-                    let is_tuple_struct = is_tuple_struct_from_obj(inner_obj);
-                    let quoted_data_dst = format_ident!(
-                        "{}",
-                        if is_tuple_struct {
-                            "data0"
-                        } else {
-                            inner_obj.fields[0].name.as_str()
-                        }
-                    );
-                    let quoted_member_accessor = if is_tuple_struct {
-                        quote!(0)
+            let (quoted_member_accessor, quoted_transparent_length) = if inner_is_arrow_transparent
+            {
+                let inner_obj = inner_obj.as_ref().unwrap();
+                let is_tuple_struct = is_tuple_struct_from_obj(inner_obj);
+                let quoted_data_dst = format_ident!(
+                    "{}",
+                    if is_tuple_struct {
+                        "data0"
                     } else {
-                        quote!(#quoted_data_dst)
-                    };
-
-                    (
-                        quote! {
-                            .flat_map(|datum| {
-                                datum.#quoted_member_accessor.into_arrow2_buffer()
-                            })
-                        },
-                        quote! {
-                            .map(|datum| {
-                                datum.#quoted_member_accessor.len()
-                            })
-                        },
-                    )
+                        inner_obj.fields[0].name.as_str()
+                    }
+                );
+                let quoted_member_accessor = if is_tuple_struct {
+                    quote!(.0)
                 } else {
-                    (
-                        quote! {
-                            .flat_map(|s| s.into_arrow2_buffer())
-                        },
-                        quote! {
-                            .map(|datum| datum.len())
-                        },
-                    )
+                    quote!(.#quoted_data_dst)
                 };
+
+                (
+                    quoted_member_accessor.clone(),
+                    quote! {
+                        .map(|datum| {
+                            datum #quoted_member_accessor.len()
+                        })
+                    },
+                )
+            } else {
+                (
+                    quote! {},
+                    quote! {
+                        .map(|datum| datum.len())
+                    },
+                )
+            };
 
             let inner_data_and_offsets = if elements_are_nullable {
                 quote! {
@@ -632,10 +626,18 @@ fn quote_arrow_field_serializer(
                         #data_src.iter().map(|opt| opt.as_ref() #quoted_transparent_length .unwrap_or_default())
                     );
 
+                    // Offsets is always non-empty. The last element is the total length of buffer we need.
+                    // We want this capacity in order to allocate exactly as much memory as we need.
+                    #[allow(clippy::unwrap_used)]
+                    let capacity = offsets.last().copied().unwrap() as usize;
+
+                    let mut buffer_builder = arrow::array::builder::BufferBuilder::<u8>::new(capacity);
                     // NOTE: Flattening to remove the guaranteed layer of nullability: we don't care
                     // about it while building the backing buffer since it's all offsets driven.
-                    let inner_data: arrow::buffer::Buffer =
-                        #data_src.into_iter().flatten() #quoted_transparent_mapping.collect();
+                    for data in #data_src.iter().flatten() {
+                        buffer_builder.append_slice(data #quoted_member_accessor.as_bytes());
+                    }
+                    let inner_data: arrow::buffer::Buffer = buffer_builder.finish();
                 }
             } else {
                 quote! {
@@ -643,8 +645,16 @@ fn quote_arrow_field_serializer(
                         #data_src.iter() #quoted_transparent_length
                     );
 
-                    let inner_data: arrow::buffer::Buffer =
-                        #data_src.into_iter() #quoted_transparent_mapping.collect();
+                    // Offsets is always non-empty. The last element is the total length of buffer we need.
+                    // We want this capacity in order to allocate exactly as much memory as we need.
+                    #[allow(clippy::unwrap_used)]
+                    let capacity = offsets.last().copied().unwrap() as usize;
+
+                    let mut buffer_builder = arrow::array::builder::BufferBuilder::<u8>::new(capacity);
+                    for data in &#data_src {
+                        buffer_builder.append_slice(data #quoted_member_accessor.as_bytes());
+                    }
+                    let inner_data: arrow::buffer::Buffer = buffer_builder.finish();
                 }
             };
 
