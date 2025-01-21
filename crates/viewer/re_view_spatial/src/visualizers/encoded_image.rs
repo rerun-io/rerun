@@ -5,10 +5,10 @@ use re_types::{
 };
 use re_view::{diff_component_filter, HybridResults};
 use re_viewer_context::{
-    IdentifiedViewSystem, ImageDecodeCache, MaybeVisualizableEntities, QueryContext,
-    TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewQuery,
-    ViewSystemExecutionError, VisualizableEntities, VisualizableFilterContext,
-    DataBasedVisualizabilityFilter, VisualizerQueryInfo, VisualizerSystem,
+    DataBasedVisualizabilityFilter, IdentifiedViewSystem, ImageDecodeCache,
+    MaybeVisualizableEntities, QueryContext, TypedComponentFallbackProvider, ViewContext,
+    ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
+    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{

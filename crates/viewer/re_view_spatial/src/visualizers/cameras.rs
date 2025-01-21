@@ -6,7 +6,7 @@ use re_types::{
     components::{ImagePlaneDistance, ViewCoordinates},
 };
 use re_viewer_context::{
-    MaybeVisualizableEntities, DataResult, IdentifiedViewSystem, QueryContext,
+    DataResult, IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext,
     TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewOutlineMasks,
     ViewQuery, ViewStateExt as _, ViewSystemExecutionError, VisualizableEntities,
     VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,

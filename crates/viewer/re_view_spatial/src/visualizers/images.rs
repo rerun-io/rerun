@@ -6,7 +6,7 @@ use re_types::{
 };
 use re_view::HybridResults;
 use re_viewer_context::{
-    MaybeVisualizableEntities, IdentifiedViewSystem, ImageInfo, QueryContext,
+    IdentifiedViewSystem, ImageInfo, MaybeVisualizableEntities, QueryContext,
     TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewQuery,
     ViewSystemExecutionError, VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo,
     VisualizerSystem,

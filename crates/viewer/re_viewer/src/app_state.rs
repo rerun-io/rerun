@@ -220,8 +220,8 @@ impl AppState {
             viewport_ui.blueprint.root_container,
         ));
 
-        let maybe_visualizable_entities_per_visualizer =
-            view_class_registry.maybe_visualizable_entities_for_visualizer_systems(&recording.store_id());
+        let maybe_visualizable_entities_per_visualizer = view_class_registry
+            .maybe_visualizable_entities_for_visualizer_systems(&recording.store_id());
         let indicated_entities_per_visualizer =
             view_class_registry.indicated_entities_per_visualizer(&recording.store_id());
 

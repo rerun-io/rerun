@@ -5,7 +5,7 @@ use re_types::{
     Component as _,
 };
 use re_viewer_context::{
-    MaybeVisualizableEntities, IdentifiedViewSystem, ImageInfo, QueryContext,
+    IdentifiedViewSystem, ImageInfo, MaybeVisualizableEntities, QueryContext,
     TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewQuery,
     ViewSystemExecutionError, VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo,
     VisualizerSystem,

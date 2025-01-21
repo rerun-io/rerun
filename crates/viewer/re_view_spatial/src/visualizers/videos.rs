@@ -15,7 +15,7 @@ use re_types::{
     Archetype, Component as _,
 };
 use re_viewer_context::{
-    MaybeVisualizableEntities, IdentifiedViewSystem, TypedComponentFallbackProvider, VideoCache,
+    IdentifiedViewSystem, MaybeVisualizableEntities, TypedComponentFallbackProvider, VideoCache,
     ViewClass as _, ViewContext, ViewContextCollection, ViewId, ViewQuery,
     ViewSystemExecutionError, ViewerContext, VisualizableEntities, VisualizableFilterContext,
     VisualizerQueryInfo, VisualizerSystem,

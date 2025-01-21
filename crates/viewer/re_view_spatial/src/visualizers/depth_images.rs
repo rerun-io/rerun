@@ -12,7 +12,7 @@ use re_types::{
     Component as _,
 };
 use re_viewer_context::{
-    MaybeVisualizableEntities, ColormapWithRange, IdentifiedViewSystem, ImageInfo, ImageStatsCache,
+    ColormapWithRange, IdentifiedViewSystem, ImageInfo, ImageStatsCache, MaybeVisualizableEntities,
     QueryContext, TypedComponentFallbackProvider, ViewClass, ViewContext, ViewContextCollection,
     ViewQuery, ViewSystemExecutionError, VisualizableEntities, VisualizableFilterContext,
     VisualizerQueryInfo, VisualizerSystem,

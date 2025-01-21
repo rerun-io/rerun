@@ -37,9 +37,7 @@ struct Transform3DVisualizabilityFilter {
     visualizability_trigger_components: IntSet<ComponentName>,
 }
 
-impl re_viewer_context::DataBasedVisualizabilityFilter
-    for Transform3DVisualizabilityFilter
-{
+impl re_viewer_context::DataBasedVisualizabilityFilter for Transform3DVisualizabilityFilter {
     fn update_visualizability(&mut self, event: &re_chunk_store::ChunkStoreEvent) -> bool {
         // There's no required component on `Transform3D` archetype, so by default it would always be visualizable.
         // That's not entirely wrong, after all, the transform arrows make always sense!

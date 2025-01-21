@@ -15,9 +15,9 @@ use re_types::{
 use re_ui::{list_item, UiExt as _};
 use re_view::{suggest_view_for_each_entity, view_property_ui};
 use re_viewer_context::{
-    gpu_bridge, MaybeVisualizableEntities, ColormapWithRange, IdentifiedViewSystem as _,
-    IndicatedEntities, PerVisualizer, TensorStatsCache, TypedComponentFallbackProvider, ViewClass,
-    ViewClassRegistryError, ViewId, ViewQuery, ViewState, ViewStateExt as _,
+    gpu_bridge, ColormapWithRange, IdentifiedViewSystem as _, IndicatedEntities,
+    MaybeVisualizableEntities, PerVisualizer, TensorStatsCache, TypedComponentFallbackProvider,
+    ViewClass, ViewClassRegistryError, ViewId, ViewQuery, ViewState, ViewStateExt as _,
     ViewSystemExecutionError, ViewerContext, VisualizableEntities,
 };
 use re_viewport_blueprint::ViewProperty;

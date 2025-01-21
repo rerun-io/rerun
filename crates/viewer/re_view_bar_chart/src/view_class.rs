@@ -11,7 +11,7 @@ use re_view::controls::{
 };
 use re_view::{controls, suggest_view_for_each_entity, view_property_ui};
 use re_viewer_context::{
-    MaybeVisualizableEntities, IdentifiedViewSystem as _, IndicatedEntities, PerVisualizer,
+    IdentifiedViewSystem as _, IndicatedEntities, MaybeVisualizableEntities, PerVisualizer,
     TypedComponentFallbackProvider, ViewClass, ViewClassRegistryError, ViewId, ViewQuery,
     ViewState, ViewStateExt, ViewSystemExecutionError, ViewerContext, VisualizableEntities,
 };
