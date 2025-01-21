@@ -24,7 +24,7 @@ namespace rerun::archetypes {
     /// this by logging both archetypes to the same path, or alternatively configuring
     /// the plot-specific archetypes through the blueprint.
     ///
-    /// ## Example
+    /// ## Examples
     ///
     /// ### Simple line plot
     /// ![image](https://static.rerun.io/scalar_simple/8bcc92f56268739f8cd24d60d1fe72a655f62a46/full.png)
@@ -43,6 +43,37 @@ namespace rerun::archetypes {
     ///         rec.set_time_sequence("step", step);
     ///         rec.log("scalar", rerun::Scalar(std::sin(static_cast<double>(step) / 10.0)));
     ///     }
+    /// }
+    /// ```
+    ///
+    /// ### Multiple scalars in a single `send_columns` call
+    /// ![image](https://static.rerun.io/scalar_send_columns/b4bf172256f521f4851dfec5c2c6e3143f5d6923/full.png)
+    ///
+    /// ```cpp
+    /// #include <cmath>
+    /// #include <numeric>
+    /// #include <vector>
+    ///
+    /// #include <rerun.hpp>
+    ///
+    /// int main() {
+    ///     const auto rec = rerun::RecordingStream("rerun_example_scalar_send_columns");
+    ///     rec.spawn().exit_on_failure();
+    ///
+    ///     // Native scalars & times.
+    ///     std::vector<double> scalar_data(64);
+    ///     for (size_t i = 0; i <64; ++i) {
+    ///         scalar_data[i] = sin(static_cast<double>(i) / 10.0);
+    ///     }
+    ///     std::vector<int64_t> times(64);
+    ///     std::iota(times.begin(), times.end(), 0);
+    ///
+    ///     // Convert to rerun time / scalars
+    ///     auto time_column = rerun::TimeColumn::from_sequence_points("step", std::move(times));
+    ///     auto scalar_data_collection =
+    ///         rerun::Collection<rerun::components::Scalar>(std::move(scalar_data));
+    ///
+    ///     rec.send_columns("scalars", time_column, scalar_data_collection);
     /// }
     /// ```
     struct Scalar {
