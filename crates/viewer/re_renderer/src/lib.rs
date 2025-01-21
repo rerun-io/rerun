@@ -98,16 +98,6 @@ pub mod external {
 
 // ---------------------------------------------------------------------------
 
-// Make Arrow integration as transparent as possible.
-
-#[cfg(feature = "arrow")]
-pub type Buffer<T> = arrow2::buffer::Buffer<T>;
-
-#[cfg(not(feature = "arrow"))]
-pub type Buffer<T> = Vec<T>;
-
-// ---------------------------------------------------------------------------
-
 /// Pad `RGB` to `RGBA` with the given alpha.
 pub fn pad_rgb_to_rgba<T: Copy>(rgb: &[T], alpha: T) -> Vec<T> {
     re_tracing::profile_function!();

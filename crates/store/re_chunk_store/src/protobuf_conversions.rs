@@ -270,7 +270,9 @@ impl TryFrom<crate::ColumnDescriptor> for re_protos::common::v0::ColumnDescripto
                             timeline: Some(re_protos::common::v0::Timeline {
                                 name: time_descriptor.timeline.name().to_string(),
                             }),
-                            datatype: time_descriptor.datatype.to_string(), // TODO(emilk): use arrow IPC instead
+                            datatype: serde_json::to_string(&time_descriptor.datatype).map_err(
+                                |err| invalid_field!(Self, "time column descriptor", err),
+                            )?,
                         },
                     ),
                 ),
@@ -287,7 +289,10 @@ impl TryFrom<crate::ColumnDescriptor> for re_protos::common::v0::ColumnDescripto
                                 .archetype_field_name
                                 .map(|afn| afn.to_string()),
                             component_name: component_descriptor.component_name.to_string(),
-                            datatype: component_descriptor.store_datatype.to_string(), // TODO(emilk): use arrow IPC instead
+                            datatype: serde_json::to_string(&component_descriptor.store_datatype)
+                                .map_err(|err| {
+                                invalid_field!(Self, "component column descriptor", err)
+                            })?,
                             is_static: component_descriptor.is_static,
                             is_tombstone: component_descriptor.is_tombstone,
                             is_semantically_empty: component_descriptor.is_semantically_empty,
@@ -320,7 +325,7 @@ impl TryFrom<re_protos::common::v0::ColumnDescriptor> for crate::ColumnDescripto
                         "timeline",
                     ))?
                     .into(),
-                datatype: time_descriptor.datatype.parse().map_err(|err| {
+                datatype: serde_json::from_str(&time_descriptor.datatype).map_err(|err| {
                     invalid_field!(
                         re_protos::common::v0::ColumnDescriptor,
                         "time column descriptor",
@@ -341,13 +346,15 @@ impl TryFrom<re_protos::common::v0::ColumnDescriptor> for crate::ColumnDescripto
                 archetype_name: component_descriptor.archetype_name.map(Into::into),
                 archetype_field_name: component_descriptor.archetype_field_name.map(Into::into),
                 component_name: component_descriptor.component_name.into(),
-                store_datatype: component_descriptor.datatype.parse().map_err(|err| {
-                    invalid_field!(
-                        re_protos::common::v0::ColumnDescriptor,
-                        "component column descriptor",
-                        err
-                    )
-                })?,
+                store_datatype: serde_json::from_str(&component_descriptor.datatype).map_err(
+                    |err| {
+                        invalid_field!(
+                            re_protos::common::v0::ColumnDescriptor,
+                            "component column descriptor",
+                            err
+                        )
+                    },
+                )?,
                 is_static: component_descriptor.is_static,
                 is_tombstone: component_descriptor.is_tombstone,
                 is_semantically_empty: component_descriptor.is_semantically_empty,

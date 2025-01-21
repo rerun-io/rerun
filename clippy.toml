@@ -96,6 +96,7 @@ doc-valid-idents = [
   "MiMalloc",
   "NaN",
   "OBJ",
+  "OpenID",
   "OpenGL",
   "PyPI",
   "sRGB",

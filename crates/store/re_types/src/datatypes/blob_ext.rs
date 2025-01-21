@@ -28,3 +28,10 @@ impl std::ops::Deref for Blob {
         &self.0
     }
 }
+
+impl From<arrow::buffer::ScalarBuffer<u8>> for Blob {
+    #[inline]
+    fn from(buff: arrow::buffer::ScalarBuffer<u8>) -> Self {
+        Self(buff.into())
+    }
+}

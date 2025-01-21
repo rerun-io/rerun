@@ -3,7 +3,6 @@ use std::sync::atomic::AtomicU64;
 use std::sync::Arc;
 
 use arrow::datatypes::DataType as ArrowDataType;
-use arrow2::datatypes::DataType as Arrow2DataType;
 use nohash_hasher::IntMap;
 
 use re_chunk::{Chunk, ChunkId, RowId};
@@ -408,7 +407,7 @@ pub struct ChunkStore {
     //
     // TODO(cmc): this would become fairly problematic in a world where each chunk can use a
     // different datatype for a given component.
-    pub(crate) type_registry: IntMap<ComponentName, Arrow2DataType>,
+    pub(crate) type_registry: IntMap<ComponentName, ArrowDataType>,
 
     pub(crate) per_column_metadata:
         IntMap<EntityPath, IntMap<ComponentName, IntMap<ComponentDescriptor, ColumnMetadataState>>>,
@@ -458,9 +457,6 @@ pub struct ChunkStore {
     /// Monotonically increasing ID for insertions.
     pub(crate) insert_id: u64,
 
-    /// Monotonically increasing ID for queries.
-    pub(crate) query_id: AtomicU64,
-
     /// Monotonically increasing ID for GCs.
     pub(crate) gc_id: u64,
 
@@ -487,7 +483,6 @@ impl Clone for ChunkStore {
             static_chunk_ids_per_entity: self.static_chunk_ids_per_entity.clone(),
             static_chunks_stats: self.static_chunks_stats,
             insert_id: Default::default(),
-            query_id: Default::default(),
             gc_id: Default::default(),
             event_id: Default::default(),
         }
@@ -510,7 +505,6 @@ impl std::fmt::Display for ChunkStore {
             static_chunk_ids_per_entity: _,
             static_chunks_stats,
             insert_id: _,
-            query_id: _,
             gc_id: _,
             event_id: _,
         } = self;
@@ -572,7 +566,6 @@ impl ChunkStore {
             static_chunk_ids_per_entity: Default::default(),
             static_chunks_stats: Default::default(),
             insert_id: 0,
-            query_id: AtomicU64::new(0),
             gc_id: 0,
             event_id: AtomicU64::new(0),
         }
@@ -641,9 +634,7 @@ impl ChunkStore {
     /// Lookup the _latest_ arrow [`ArrowDataType`] used by a specific [`re_types_core::Component`].
     #[inline]
     pub fn lookup_datatype(&self, component_name: &ComponentName) -> Option<ArrowDataType> {
-        self.type_registry
-            .get(component_name)
-            .map(|dt| dt.clone().into())
+        self.type_registry.get(component_name).cloned()
     }
 
     /// Lookup the [`ColumnMetadata`] for a specific [`EntityPath`] and [`re_types_core::Component`].

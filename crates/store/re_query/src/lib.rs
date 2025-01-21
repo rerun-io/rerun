@@ -64,9 +64,6 @@ pub enum QueryError {
     #[error("Error serializing: {0}")]
     SerializationError(#[from] re_types_core::SerializationError),
 
-    #[error("Error converting arrow data: {0}")]
-    ArrowError(#[from] arrow2::error::Error),
-
     #[error("Not implemented")]
     NotImplemented,
 

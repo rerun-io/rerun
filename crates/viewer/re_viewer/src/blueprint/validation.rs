@@ -12,7 +12,7 @@ pub(crate) fn validate_component<C: Component>(blueprint: &EntityDb) -> bool {
                 "Unexpected datatype for component {:?}.\nFound: {:#?}\nExpected: {:#?}",
                 C::name(),
                 data_type,
-                C::arrow2_datatype()
+                C::arrow_datatype()
             );
             return false;
         } else {

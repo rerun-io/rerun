@@ -75,50 +75,6 @@ pub trait Loggable: 'static + Send + Sync + Clone + Sized + SizeBytes {
     ) -> crate::DeserializationResult<Vec<Option<Self>>> {
         Self::from_arrow(data).map(|v| v.into_iter().map(Some).collect())
     }
-
-    // ------------- Legacy arrow2 helpers - do NOT override these! -------------
-
-    /// The underlying [`arrow2::datatypes::DataType`], excluding datatype extensions.
-    ///
-    /// Legacy arrow2 stuff - do NOT override this!
-    fn arrow2_datatype() -> arrow2::datatypes::DataType {
-        Self::arrow_datatype().into()
-    }
-
-    /// Given an iterator of owned or reference values to the current [`Loggable`], serializes
-    /// them into an Arrow2 array.
-    ///
-    /// When using Rerun's builtin components & datatypes, this can only fail if the data
-    /// exceeds the maximum number of entries in an Arrow2 array (2^31 for standard arrays,
-    /// 2^63 for large arrays).
-    ///
-    /// Legacy arrow2 stuff - do NOT override this!
-    #[inline]
-    fn to_arrow2<'a>(
-        data: impl IntoIterator<Item = impl Into<std::borrow::Cow<'a, Self>>>,
-    ) -> SerializationResult<Box<dyn arrow2::array::Array>>
-    where
-        Self: 'a,
-    {
-        Self::to_arrow(data).map(|arr| arr.into())
-    }
-
-    /// Given an iterator of options of owned or reference values to the current
-    /// [`Loggable`], serializes them into an Arrow2 array.
-    ///
-    /// When using Rerun's builtin components & datatypes, this can only fail if the data
-    /// exceeds the maximum number of entries in an Arrow2 array (2^31 for standard arrays,
-    /// 2^63 for large arrays).
-    ///
-    /// Legacy arrow2 stuff - do NOT override this!
-    fn to_arrow2_opt<'a>(
-        data: impl IntoIterator<Item = Option<impl Into<std::borrow::Cow<'a, Self>>>>,
-    ) -> SerializationResult<Box<dyn arrow2::array::Array>>
-    where
-        Self: 'a,
-    {
-        Self::to_arrow_opt(data).map(|array| array.into())
-    }
 }
 
 /// A [`Component`] describes semantic data that can be used by any number of [`Archetype`]s.

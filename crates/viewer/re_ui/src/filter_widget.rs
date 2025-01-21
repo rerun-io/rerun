@@ -52,6 +52,22 @@ pub struct FilterState {
 }
 
 impl FilterState {
+    /// Activate the filter.
+    ///
+    /// This is the same as clicking the "loupe" icon button.
+    pub fn activate(&mut self, query: &str) {
+        self.inner_state = Some(InnerState {
+            filter_query: query.to_owned(),
+            ..Default::default()
+        });
+        self.request_focus = true;
+    }
+
+    /// Is the filter currently active?
+    pub fn is_active(&self) -> bool {
+        self.inner_state.is_some()
+    }
+
     /// Return the filter if any.
     ///
     /// Returns `None` if the filter is disabled. Returns `Some(query)` if the filter is enabled
@@ -76,7 +92,11 @@ impl FilterState {
     ///
     /// Note: this uses [`egui::Ui::available_width`] to determine the location of the right-aligned
     /// search button, as usual for [`list_item::ListItem`]-based widgets.
-    pub fn ui(&mut self, ui: &mut egui::Ui, section_title: impl Into<egui::WidgetText>) {
+    pub fn ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        section_title: impl Into<egui::WidgetText>,
+    ) -> Option<egui::Response> {
         let mut button_clicked = false;
 
         let icon = if self.inner_state.is_none() {
@@ -95,56 +115,61 @@ impl FilterState {
         );
         let text_width = galley.size().x;
 
+        let mut title_response = None;
+
         list_item::list_item_scope(ui, ui.next_auto_id(), |ui| {
-            ui.list_item()
-                .interactive(false)
-                .with_height(30.0)
-                .show_flat(
-                    ui,
-                    list_item::CustomContent::new(|ui, _| {
-                        if self.inner_state.is_some()
-                            && ui.input_mut(|i| {
-                                i.consume_key(egui::Modifiers::NONE, egui::Key::Escape)
-                            })
-                        {
-                            self.inner_state = None;
+            ui.list_item().interactive(false).show_flat(
+                ui,
+                list_item::CustomContent::new(|ui, _| {
+                    if self.inner_state.is_some()
+                        && ui.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape))
+                    {
+                        self.inner_state = None;
+                    }
+
+                    if let Some(inner_state) = self.inner_state.as_mut() {
+                        // we add additional spacing for aesthetic reasons (active text edits have a
+                        // fat border)
+                        ui.spacing_mut().text_edit_width =
+                            (ui.max_rect().width() - 10.0).at_least(0.0);
+
+                        // TODO(ab): ideally _all_ text edits would be styled this way, but we
+                        // require egui support for that (https://github.com/emilk/egui/issues/3284)
+                        ui.visuals_mut().widgets.hovered.expansion = 0.0;
+                        ui.visuals_mut().widgets.active.expansion = 0.0;
+                        ui.visuals_mut().widgets.open.expansion = 0.0;
+                        ui.visuals_mut().widgets.active.fg_stroke.width = 1.0;
+                        ui.visuals_mut().selection.stroke.width = 1.0;
+
+                        let response = egui::TextEdit::singleline(&mut inner_state.filter_query)
+                            .lock_focus(true)
+                            .ui(ui);
+
+                        if self.request_focus {
+                            self.request_focus = false;
+                            response.request_focus();
                         }
-
-                        if let Some(inner_state) = self.inner_state.as_mut() {
-                            // we add additional spacing for aesthetic reasons (active text edits have a
-                            // fat border)
-                            ui.spacing_mut().text_edit_width =
-                                (ui.max_rect().width() - 10.0).at_least(0.0);
-
-                            let response =
-                                egui::TextEdit::singleline(&mut inner_state.filter_query)
-                                    .lock_focus(true)
-                                    .ui(ui);
-
-                            if self.request_focus {
-                                self.request_focus = false;
-                                response.request_focus();
-                            }
-                        } else {
-                            ui.label(galley);
-                        }
-                    })
-                    .with_content_width(text_width)
-                    .action_button(icon, || {
-                        button_clicked = true;
-                    }),
-                );
+                    } else {
+                        title_response = Some(ui.label(galley));
+                    }
+                })
+                .with_content_width(text_width)
+                .action_button(icon, || {
+                    button_clicked = true;
+                }),
+            );
         });
 
         // defer button handling because we can't mutably borrow `self` in both closures above
         if button_clicked {
             if self.inner_state.is_none() {
-                self.inner_state = Some(InnerState::default());
-                self.request_focus = true;
+                self.activate("");
             } else {
                 self.inner_state = None;
             }
         }
+
+        title_response
     }
 }
 

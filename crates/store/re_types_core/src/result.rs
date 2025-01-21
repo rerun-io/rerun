@@ -32,10 +32,6 @@ pub enum SerializationError {
     /// E.g. too many values (overflows i32).
     #[error(transparent)]
     ArrowError(#[from] ArcArrowError),
-
-    /// E.g. too many values (overflows i32).
-    #[error(transparent)]
-    Arrow2Error(#[from] ArcArrow2Error),
 }
 
 impl std::fmt::Debug for SerializationError {
@@ -79,7 +75,7 @@ impl SerializationError {
         match self {
             Self::MissingExtensionMetadata { backtrace, .. }
             | Self::NotImplemented { backtrace, .. } => Some(backtrace.clone()),
-            Self::ArrowError { .. } | Self::Arrow2Error { .. } | Self::Context { .. } => None,
+            Self::ArrowError { .. } | Self::Context { .. } => None,
         }
     }
 }
@@ -88,7 +84,7 @@ impl SerializationError {
 
 /// A cloneable wrapper around [`arrow::error::ArrowError`], for easier use.
 ///
-/// The motivation behind this type is that we often use code that can return a `arrow2::error::Error`
+/// The motivation behind this type is that we often use code that can return a [`arrow::error::ArrowError`]
 /// inside functions that return a `SerializationError`. By wrapping it we can use the ? operator and simplify the code.
 /// Second, normally also [`arrow::error::ArrowError`] isn't cloneable, but `SerializationError` is.
 #[derive(Clone, Debug)]
@@ -116,43 +112,6 @@ impl Deref for ArcArrowError {
 }
 
 impl Display for ArcArrowError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.fmt(f)
-    }
-}
-
-// ----------------------------------------------------------------------------
-
-/// A cloneable wrapper around `arrow2::error::Error`, for easier use.
-///
-/// The motivation behind this type is that we often use code that can return a `arrow2::error::Error`
-/// inside functions that return a `SerializationError`. By wrapping it we can use the ? operator and simplify the code.
-/// Second, normally also `arrow2::error::Error` isn't cloneable, but `SerializationError` is.
-#[derive(Clone, Debug)]
-pub struct ArcArrow2Error(std::sync::Arc<arrow2::error::Error>);
-
-impl From<arrow2::error::Error> for ArcArrow2Error {
-    fn from(e: arrow2::error::Error) -> Self {
-        Self(std::sync::Arc::new(e))
-    }
-}
-
-impl From<arrow2::error::Error> for SerializationError {
-    fn from(e: arrow2::error::Error) -> Self {
-        Self::Arrow2Error(ArcArrow2Error::from(e))
-    }
-}
-
-impl Deref for ArcArrow2Error {
-    type Target = arrow2::error::Error;
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        self.0.as_ref()
-    }
-}
-
-impl Display for ArcArrow2Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.0.fmt(f)
     }
@@ -190,7 +149,7 @@ pub enum DeserializationError {
 
     #[error("Expected field {field_name:?} to be present in {datatype:#?}")]
     MissingStructField {
-        datatype: arrow2::datatypes::DataType,
+        datatype: arrow::datatypes::DataType,
         field_name: String,
         backtrace: _Backtrace,
     },
@@ -208,7 +167,7 @@ pub enum DeserializationError {
 
     #[error("Expected union arm {arm_name:?} (#{arm_index}) to be present in {datatype:#?}")]
     MissingUnionArm {
-        datatype: arrow2::datatypes::DataType,
+        datatype: arrow::datatypes::DataType,
         arm_name: String,
         arm_index: usize,
         backtrace: _Backtrace,
@@ -216,8 +175,8 @@ pub enum DeserializationError {
 
     #[error("Expected {expected:#?} but found {got:#?} instead")]
     DatatypeMismatch {
-        expected: arrow2::datatypes::DataType,
-        got: arrow2::datatypes::DataType,
+        expected: arrow::datatypes::DataType,
+        got: arrow::datatypes::DataType,
         backtrace: _Backtrace,
     },
 
@@ -274,7 +233,7 @@ impl DeserializationError {
 
     #[inline]
     pub fn missing_struct_field(
-        datatype: impl Into<arrow2::datatypes::DataType>,
+        datatype: impl Into<arrow::datatypes::DataType>,
         field_name: impl AsRef<str>,
     ) -> Self {
         Self::MissingStructField {
@@ -302,7 +261,7 @@ impl DeserializationError {
 
     #[inline]
     pub fn missing_union_arm(
-        datatype: impl Into<arrow2::datatypes::DataType>,
+        datatype: impl Into<arrow::datatypes::DataType>,
         arm_name: impl AsRef<str>,
         arm_index: usize,
     ) -> Self {
@@ -316,8 +275,8 @@ impl DeserializationError {
 
     #[inline]
     pub fn datatype_mismatch(
-        expected: impl Into<arrow2::datatypes::DataType>,
-        got: impl Into<arrow2::datatypes::DataType>,
+        expected: impl Into<arrow::datatypes::DataType>,
+        got: impl Into<arrow::datatypes::DataType>,
     ) -> Self {
         Self::DatatypeMismatch {
             expected: expected.into(),
