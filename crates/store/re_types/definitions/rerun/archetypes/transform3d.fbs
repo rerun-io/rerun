@@ -18,6 +18,7 @@ namespace rerun.archetypes;
 /// \example archetypes/transform3d_hierarchy title="Transform hierarchy" image="https://static.rerun.io/transform_hierarchy/cb7be7a5a31fcb2efc02ba38e434849248f87554/1200w.png"
 table Transform3D (
   "attr.rust.archetype_eager",
+  "attr.cpp.archetype_eager",
   "attr.docs.category": "Spatial 3D",
   "attr.docs.view_types": "Spatial3DView, Spatial2DView: if logged above active projection",
   "attr.rerun.log_missing_as_empty", // See https://github.com/rerun-io/rerun/issues/6909

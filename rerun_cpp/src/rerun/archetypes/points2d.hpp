@@ -148,10 +148,15 @@ namespace rerun::archetypes {
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+        /// The name of the archetype as used in `ComponentDescriptor`s.
+        static constexpr const char ArchetypeName[] = "rerun.archetypes.Points2D";
 
       public:
         Points2D() = default;
         Points2D(Points2D&& other) = default;
+        Points2D(const Points2D& other) = default;
+        Points2D& operator=(const Points2D& other) = default;
+        Points2D& operator=(Points2D&& other) = default;
 
         explicit Points2D(Collection<rerun::components::Position2D> _positions)
             : positions(std::move(_positions)) {}

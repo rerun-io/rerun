@@ -25,21 +25,21 @@ namespace rerun::blueprint::archetypes {
         /// The timeline for this query.
         ///
         /// If unset, the timeline currently active on the time panel is used.
-        std::optional<rerun::blueprint::components::TimelineName> timeline;
+        std::optional<ComponentBatch> timeline;
 
         /// If provided, only rows whose timestamp is within this range will be shown.
         ///
         /// Note: will be unset as soon as `timeline` is changed.
-        std::optional<rerun::blueprint::components::FilterByRange> filter_by_range;
+        std::optional<ComponentBatch> filter_by_range;
 
         /// If provided, only show rows which contains a logged event for the specified component.
-        std::optional<rerun::blueprint::components::FilterIsNotNull> filter_is_not_null;
+        std::optional<ComponentBatch> filter_is_not_null;
 
         /// Should empty cells be filled with latest-at queries?
-        std::optional<rerun::blueprint::components::ApplyLatestAt> apply_latest_at;
+        std::optional<ComponentBatch> apply_latest_at;
 
         /// Selected columns. If unset, all columns are selected.
-        std::optional<rerun::blueprint::components::SelectedColumns> select;
+        std::optional<ComponentBatch> select;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -47,16 +47,57 @@ namespace rerun::blueprint::archetypes {
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+        /// The name of the archetype as used in `ComponentDescriptor`s.
+        static constexpr const char ArchetypeName[] = "rerun.blueprint.archetypes.DataframeQuery";
+
+        /// `ComponentDescriptor` for the `timeline` field.
+        static constexpr auto Descriptor_timeline = ComponentDescriptor(
+            ArchetypeName, "timeline",
+            Loggable<rerun::blueprint::components::TimelineName>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `filter_by_range` field.
+        static constexpr auto Descriptor_filter_by_range = ComponentDescriptor(
+            ArchetypeName, "filter_by_range",
+            Loggable<rerun::blueprint::components::FilterByRange>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `filter_is_not_null` field.
+        static constexpr auto Descriptor_filter_is_not_null = ComponentDescriptor(
+            ArchetypeName, "filter_is_not_null",
+            Loggable<rerun::blueprint::components::FilterIsNotNull>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `apply_latest_at` field.
+        static constexpr auto Descriptor_apply_latest_at = ComponentDescriptor(
+            ArchetypeName, "apply_latest_at",
+            Loggable<rerun::blueprint::components::ApplyLatestAt>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `select` field.
+        static constexpr auto Descriptor_select = ComponentDescriptor(
+            ArchetypeName, "select",
+            Loggable<rerun::blueprint::components::SelectedColumns>::Descriptor.component_name
+        );
 
       public:
         DataframeQuery() = default;
         DataframeQuery(DataframeQuery&& other) = default;
+        DataframeQuery(const DataframeQuery& other) = default;
+        DataframeQuery& operator=(const DataframeQuery& other) = default;
+        DataframeQuery& operator=(DataframeQuery&& other) = default;
+
+        /// Update only some specific fields of a `DataframeQuery`.
+        static DataframeQuery update_fields() {
+            return DataframeQuery();
+        }
+
+        /// Clear all the fields of a `DataframeQuery`.
+        static DataframeQuery clear_fields();
 
         /// The timeline for this query.
         ///
         /// If unset, the timeline currently active on the time panel is used.
-        DataframeQuery with_timeline(rerun::blueprint::components::TimelineName _timeline) && {
-            timeline = std::move(_timeline);
+        DataframeQuery with_timeline(const rerun::blueprint::components::TimelineName& _timeline
+        ) && {
+            timeline =
+                ComponentBatch::from_loggable(_timeline, Descriptor_timeline).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
@@ -65,34 +106,41 @@ namespace rerun::blueprint::archetypes {
         ///
         /// Note: will be unset as soon as `timeline` is changed.
         DataframeQuery with_filter_by_range(
-            rerun::blueprint::components::FilterByRange _filter_by_range
+            const rerun::blueprint::components::FilterByRange& _filter_by_range
         ) && {
-            filter_by_range = std::move(_filter_by_range);
+            filter_by_range =
+                ComponentBatch::from_loggable(_filter_by_range, Descriptor_filter_by_range)
+                    .value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// If provided, only show rows which contains a logged event for the specified component.
         DataframeQuery with_filter_is_not_null(
-            rerun::blueprint::components::FilterIsNotNull _filter_is_not_null
+            const rerun::blueprint::components::FilterIsNotNull& _filter_is_not_null
         ) && {
-            filter_is_not_null = std::move(_filter_is_not_null);
+            filter_is_not_null =
+                ComponentBatch::from_loggable(_filter_is_not_null, Descriptor_filter_is_not_null)
+                    .value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Should empty cells be filled with latest-at queries?
         DataframeQuery with_apply_latest_at(
-            rerun::blueprint::components::ApplyLatestAt _apply_latest_at
+            const rerun::blueprint::components::ApplyLatestAt& _apply_latest_at
         ) && {
-            apply_latest_at = std::move(_apply_latest_at);
+            apply_latest_at =
+                ComponentBatch::from_loggable(_apply_latest_at, Descriptor_apply_latest_at)
+                    .value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Selected columns. If unset, all columns are selected.
-        DataframeQuery with_select(rerun::blueprint::components::SelectedColumns _select) && {
-            select = std::move(_select);
+        DataframeQuery with_select(const rerun::blueprint::components::SelectedColumns& _select
+        ) && {
+            select = ComponentBatch::from_loggable(_select, Descriptor_select).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

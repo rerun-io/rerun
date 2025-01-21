@@ -6,23 +6,16 @@
 
 # These archetypes will ignore the associated snippets in the snippet index.
 [snippets_ref.archetypes.opt_out]
-"DataframeQuery" = [
-  "reference/dataframe_save_blueprint"
-]
+"DataframeQuery" = ["reference/dataframe_save_blueprint"]
 
 # These components will ignore the associated snippets in the snippet index.
 [snippets_ref.components.opt_out]
-"ShowLabels" = [
-  "tutorials/data_out",
-]
+"ShowLabels" = ["tutorials/data_out"]
 
 # These arbitrary feature names will be indexed exactly as written down.
 # Add anything you can think about!
 [snippets_ref.features]
-"Dataframes" = [
-  "reference/dataframe_query",
-  "reference/dataframe_view_query",
-]
+"Dataframes" = ["reference/dataframe_query", "reference/dataframe_view_query"]
 "`AnyValue`" = [
   "tutorials/any_values",
   "tutorials/extra_values",
@@ -270,9 +263,6 @@ quick_start = [ # These examples don't have exactly the same implementation.
 ]
 "archetypes/transform3d_hierarchy" = [ # Uses a lot of trigonometry which is surprisingly easy to get the same on Rust & C++, but not on Python/Numpy
   "py",
-]
-"archetypes/transform3d_partial_updates" = [
-  "cpp", # TODO(#8583): remove once C++ partial updates APIs have shipped
 ]
 "archetypes/instance_poses3d_combined" = [ # TODO(#3235): Slight floating point differences in point grid.
   "cpp",

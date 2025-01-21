@@ -130,10 +130,15 @@ namespace rerun::archetypes {
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+        /// The name of the archetype as used in `ComponentDescriptor`s.
+        static constexpr const char ArchetypeName[] = "rerun.archetypes.LineStrips3D";
 
       public:
         LineStrips3D() = default;
         LineStrips3D(LineStrips3D&& other) = default;
+        LineStrips3D(const LineStrips3D& other) = default;
+        LineStrips3D& operator=(const LineStrips3D& other) = default;
+        LineStrips3D& operator=(LineStrips3D&& other) = default;
 
         explicit LineStrips3D(Collection<rerun::components::LineStrip3D> _strips)
             : strips(std::move(_strips)) {}

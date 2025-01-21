@@ -85,7 +85,11 @@ SCENARIO(
                 class_map.push_back(element);
             }
         }
-        manual_archetype.context.class_map = std::move(class_map);
+        manual_archetype.context = rerun::ComponentBatch::from_loggable(
+                                       rerun::components::AnnotationContext(class_map),
+                                       AnnotationContext::Descriptor_context
+        )
+                                       .value_or_throw();
 
         test_compare_archetype_serialization(from_utilities, manual_archetype);
     }

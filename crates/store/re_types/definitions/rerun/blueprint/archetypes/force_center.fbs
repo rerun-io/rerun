@@ -2,6 +2,7 @@ namespace rerun.blueprint.archetypes;
 
 /// Tries to move the center of mass of the graph to the origin.
 struct ForceCenter (
+    "attr.cpp.archetype_eager",
     "attr.rust.archetype_eager",
     "attr.rerun.scope": "blueprint"
 ) {

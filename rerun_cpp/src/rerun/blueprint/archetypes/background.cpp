@@ -5,7 +5,17 @@
 
 #include "../../collection_adapter_builtins.hpp"
 
-namespace rerun::blueprint::archetypes {}
+namespace rerun::blueprint::archetypes {
+    Background Background::clear_fields() {
+        auto archetype = Background();
+        archetype.kind =
+            ComponentBatch::empty<rerun::blueprint::components::BackgroundKind>(Descriptor_kind)
+                .value_or_throw();
+        archetype.color =
+            ComponentBatch::empty<rerun::components::Color>(Descriptor_color).value_or_throw();
+        return archetype;
+    }
+} // namespace rerun::blueprint::archetypes
 
 namespace rerun {
 
@@ -16,29 +26,11 @@ namespace rerun {
         std::vector<ComponentBatch> cells;
         cells.reserve(3);
 
-        {
-            auto result = ComponentBatch::from_loggable(
-                archetype.kind,
-                ComponentDescriptor(
-                    "rerun.blueprint.archetypes.Background",
-                    "kind",
-                    "rerun.blueprint.components.BackgroundKind"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+        if (archetype.kind.has_value()) {
+            cells.push_back(archetype.kind.value());
         }
         if (archetype.color.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.color.value(),
-                ComponentDescriptor(
-                    "rerun.blueprint.archetypes.Background",
-                    "color",
-                    "rerun.components.Color"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.color.value());
         }
         {
             auto indicator = Background::IndicatorComponent();

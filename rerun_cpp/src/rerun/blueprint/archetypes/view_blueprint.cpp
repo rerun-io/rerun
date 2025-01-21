@@ -5,7 +5,25 @@
 
 #include "../../collection_adapter_builtins.hpp"
 
-namespace rerun::blueprint::archetypes {}
+namespace rerun::blueprint::archetypes {
+    ViewBlueprint ViewBlueprint::clear_fields() {
+        auto archetype = ViewBlueprint();
+        archetype.class_identifier = ComponentBatch::empty<rerun::blueprint::components::ViewClass>(
+                                         Descriptor_class_identifier
+        )
+                                         .value_or_throw();
+        archetype.display_name =
+            ComponentBatch::empty<rerun::components::Name>(Descriptor_display_name)
+                .value_or_throw();
+        archetype.space_origin =
+            ComponentBatch::empty<rerun::blueprint::components::ViewOrigin>(Descriptor_space_origin)
+                .value_or_throw();
+        archetype.visible =
+            ComponentBatch::empty<rerun::blueprint::components::Visible>(Descriptor_visible)
+                .value_or_throw();
+        return archetype;
+    }
+} // namespace rerun::blueprint::archetypes
 
 namespace rerun {
 
@@ -17,53 +35,17 @@ namespace rerun {
         std::vector<ComponentBatch> cells;
         cells.reserve(5);
 
-        {
-            auto result = ComponentBatch::from_loggable(
-                archetype.class_identifier,
-                ComponentDescriptor(
-                    "rerun.blueprint.archetypes.ViewBlueprint",
-                    "class_identifier",
-                    "rerun.blueprint.components.ViewClass"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+        if (archetype.class_identifier.has_value()) {
+            cells.push_back(archetype.class_identifier.value());
         }
         if (archetype.display_name.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.display_name.value(),
-                ComponentDescriptor(
-                    "rerun.blueprint.archetypes.ViewBlueprint",
-                    "display_name",
-                    "rerun.components.Name"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.display_name.value());
         }
         if (archetype.space_origin.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.space_origin.value(),
-                ComponentDescriptor(
-                    "rerun.blueprint.archetypes.ViewBlueprint",
-                    "space_origin",
-                    "rerun.blueprint.components.ViewOrigin"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.space_origin.value());
         }
         if (archetype.visible.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.visible.value(),
-                ComponentDescriptor(
-                    "rerun.blueprint.archetypes.ViewBlueprint",
-                    "visible",
-                    "rerun.blueprint.components.Visible"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.visible.value());
         }
         {
             auto indicator = ViewBlueprint::IndicatorComponent();

@@ -22,10 +22,10 @@ namespace rerun::blueprint::archetypes {
         /// Whether the center force is enabled.
         ///
         /// The center force tries to move the center of mass of the graph towards the origin.
-        std::optional<rerun::blueprint::components::Enabled> enabled;
+        std::optional<ComponentBatch> enabled;
 
         /// The strength of the force.
-        std::optional<rerun::blueprint::components::ForceStrength> strength;
+        std::optional<ComponentBatch> strength;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -33,23 +33,48 @@ namespace rerun::blueprint::archetypes {
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+        /// The name of the archetype as used in `ComponentDescriptor`s.
+        static constexpr const char ArchetypeName[] = "rerun.blueprint.archetypes.ForceCenter";
+
+        /// `ComponentDescriptor` for the `enabled` field.
+        static constexpr auto Descriptor_enabled = ComponentDescriptor(
+            ArchetypeName, "enabled",
+            Loggable<rerun::blueprint::components::Enabled>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `strength` field.
+        static constexpr auto Descriptor_strength = ComponentDescriptor(
+            ArchetypeName, "strength",
+            Loggable<rerun::blueprint::components::ForceStrength>::Descriptor.component_name
+        );
 
       public:
         ForceCenter() = default;
         ForceCenter(ForceCenter&& other) = default;
+        ForceCenter(const ForceCenter& other) = default;
+        ForceCenter& operator=(const ForceCenter& other) = default;
+        ForceCenter& operator=(ForceCenter&& other) = default;
+
+        /// Update only some specific fields of a `ForceCenter`.
+        static ForceCenter update_fields() {
+            return ForceCenter();
+        }
+
+        /// Clear all the fields of a `ForceCenter`.
+        static ForceCenter clear_fields();
 
         /// Whether the center force is enabled.
         ///
         /// The center force tries to move the center of mass of the graph towards the origin.
-        ForceCenter with_enabled(rerun::blueprint::components::Enabled _enabled) && {
-            enabled = std::move(_enabled);
+        ForceCenter with_enabled(const rerun::blueprint::components::Enabled& _enabled) && {
+            enabled = ComponentBatch::from_loggable(_enabled, Descriptor_enabled).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// The strength of the force.
-        ForceCenter with_strength(rerun::blueprint::components::ForceStrength _strength) && {
-            strength = std::move(_strength);
+        ForceCenter with_strength(const rerun::blueprint::components::ForceStrength& _strength) && {
+            strength =
+                ComponentBatch::from_loggable(_strength, Descriptor_strength).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

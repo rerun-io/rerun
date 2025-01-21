@@ -5,7 +5,15 @@
 
 #include "../../collection_adapter_builtins.hpp"
 
-namespace rerun::blueprint::archetypes {}
+namespace rerun::blueprint::archetypes {
+    MapBackground MapBackground::clear_fields() {
+        auto archetype = MapBackground();
+        archetype.provider =
+            ComponentBatch::empty<rerun::blueprint::components::MapProvider>(Descriptor_provider)
+                .value_or_throw();
+        return archetype;
+    }
+} // namespace rerun::blueprint::archetypes
 
 namespace rerun {
 
@@ -17,17 +25,8 @@ namespace rerun {
         std::vector<ComponentBatch> cells;
         cells.reserve(2);
 
-        {
-            auto result = ComponentBatch::from_loggable(
-                archetype.provider,
-                ComponentDescriptor(
-                    "rerun.blueprint.archetypes.MapBackground",
-                    "provider",
-                    "rerun.blueprint.components.MapProvider"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+        if (archetype.provider.has_value()) {
+            cells.push_back(archetype.provider.value());
         }
         {
             auto indicator = MapBackground::IndicatorComponent();

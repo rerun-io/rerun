@@ -79,6 +79,8 @@ namespace rerun::archetypes {
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+        /// The name of the archetype as used in `ComponentDescriptor`s.
+        static constexpr const char ArchetypeName[] = "rerun.archetypes.Boxes2D";
 
       public: // START of extensions from boxes2d_ext.cpp:
         /// Creates new `Boxes2D` with `half_sizes` centered around the local origin.
@@ -132,6 +134,9 @@ namespace rerun::archetypes {
       public:
         Boxes2D() = default;
         Boxes2D(Boxes2D&& other) = default;
+        Boxes2D(const Boxes2D& other) = default;
+        Boxes2D& operator=(const Boxes2D& other) = default;
+        Boxes2D& operator=(Boxes2D&& other) = default;
 
         /// Optional center positions of the boxes.
         Boxes2D with_centers(Collection<rerun::components::Position2D> _centers) && {

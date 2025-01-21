@@ -93,10 +93,15 @@ namespace rerun::archetypes {
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+        /// The name of the archetype as used in `ComponentDescriptor`s.
+        static constexpr const char ArchetypeName[] = "rerun.archetypes.TextDocument";
 
       public:
         TextDocument() = default;
         TextDocument(TextDocument&& other) = default;
+        TextDocument(const TextDocument& other) = default;
+        TextDocument& operator=(const TextDocument& other) = default;
+        TextDocument& operator=(TextDocument&& other) = default;
 
         explicit TextDocument(rerun::components::Text _text) : text(std::move(_text)) {}
 

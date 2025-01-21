@@ -5,7 +5,15 @@
 
 #include "../../collection_adapter_builtins.hpp"
 
-namespace rerun::blueprint::archetypes {}
+namespace rerun::blueprint::archetypes {
+    ViewContents ViewContents::clear_fields() {
+        auto archetype = ViewContents();
+        archetype.query =
+            ComponentBatch::empty<rerun::blueprint::components::QueryExpression>(Descriptor_query)
+                .value_or_throw();
+        return archetype;
+    }
+} // namespace rerun::blueprint::archetypes
 
 namespace rerun {
 
@@ -17,17 +25,8 @@ namespace rerun {
         std::vector<ComponentBatch> cells;
         cells.reserve(2);
 
-        {
-            auto result = ComponentBatch::from_loggable(
-                archetype.query,
-                ComponentDescriptor(
-                    "rerun.blueprint.archetypes.ViewContents",
-                    "query",
-                    "rerun.blueprint.components.QueryExpression"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+        if (archetype.query.has_value()) {
+            cells.push_back(archetype.query.value());
         }
         {
             auto indicator = ViewContents::IndicatorComponent();

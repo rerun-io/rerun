@@ -5,7 +5,15 @@
 
 #include "../../collection_adapter_builtins.hpp"
 
-namespace rerun::blueprint::archetypes {}
+namespace rerun::blueprint::archetypes {
+    TensorViewFit TensorViewFit::clear_fields() {
+        auto archetype = TensorViewFit();
+        archetype.scaling =
+            ComponentBatch::empty<rerun::blueprint::components::ViewFit>(Descriptor_scaling)
+                .value_or_throw();
+        return archetype;
+    }
+} // namespace rerun::blueprint::archetypes
 
 namespace rerun {
 
@@ -18,16 +26,7 @@ namespace rerun {
         cells.reserve(2);
 
         if (archetype.scaling.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.scaling.value(),
-                ComponentDescriptor(
-                    "rerun.blueprint.archetypes.TensorViewFit",
-                    "scaling",
-                    "rerun.blueprint.components.ViewFit"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.scaling.value());
         }
         {
             auto indicator = TensorViewFit::IndicatorComponent();
