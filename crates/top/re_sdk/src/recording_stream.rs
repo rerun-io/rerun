@@ -18,7 +18,7 @@ use re_log_types::{
     StoreId, StoreInfo, StoreKind, StoreSource, Time, TimeInt, TimePoint, TimeType, Timeline,
     TimelineName,
 };
-use re_types_core::{AsComponents, SerializationError};
+use re_types_core::{AsComponents, SerializationError, SerializedComponentColumn};
 
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
@@ -1024,6 +1024,41 @@ impl RecordingStream {
         let components: ChunkComponents = components?.into_iter().collect();
 
         let chunk = Chunk::from_auto_row_ids(id, ent_path.into(), timelines, components)?;
+
+        self.send_chunk(chunk);
+
+        Ok(())
+    }
+
+    /// Lower-level logging API to provide data spanning multiple timepoints.
+    ///
+    /// Unlike the regular `log` API, which is row-oriented, this API lets you submit the data
+    /// in a columnar form. The lengths of all of the [`TimeColumn`] and the component columns
+    /// must match. All data that occurs at the same index across the different time and components
+    /// arrays will act as a single logical row.
+    ///
+    /// Note that this API ignores any stateful time set on the log stream via the
+    /// [`Self::set_timepoint`]/[`Self::set_time_nanos`]/etc. APIs.
+    /// Furthermore, this will _not_ inject the default timelines `log_tick` and `log_time` timeline columns.
+    pub fn send_columns_v2(
+        &self,
+        ent_path: impl Into<EntityPath>,
+        indexes: impl IntoIterator<Item = TimeColumn>,
+        columns: impl IntoIterator<Item = SerializedComponentColumn>,
+    ) -> RecordingStreamResult<()> {
+        let id = ChunkId::new();
+
+        let indexes = indexes
+            .into_iter()
+            .map(|timeline| (*timeline.timeline(), timeline))
+            .collect::<IntMap<_, _>>();
+
+        let components: ChunkComponents = columns
+            .into_iter()
+            .map(|column| (column.descriptor, column.list_array))
+            .collect();
+
+        let chunk = Chunk::from_auto_row_ids(id, ent_path.into(), indexes, components)?;
 
         self.send_chunk(chunk);
 

@@ -5627,6 +5627,7 @@ version = "0.22.0-alpha.1+dev"
 dependencies = [
  "arrow",
  "itertools 0.13.0",
+ "re_error",
  "re_log",
  "re_tracing",
 ]
