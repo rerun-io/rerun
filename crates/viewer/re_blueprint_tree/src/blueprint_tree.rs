@@ -1,22 +1,23 @@
 use egui::{Response, Ui};
 use itertools::Itertools;
-use re_data_ui::item_ui::guess_instance_path_icon;
 use smallvec::SmallVec;
 
-use re_context_menu::{context_menu_ui_for_item, SelectionUpdateBehavior};
+use re_context_menu::{context_menu_ui_for_item_with_context, SelectionUpdateBehavior};
+use re_data_ui::item_ui::guess_instance_path_icon;
 use re_entity_db::InstancePath;
-use re_log_types::EntityPath;
+use re_log_types::{ApplicationId, EntityPath};
 use re_types::blueprint::components::Visible;
-use re_ui::{drag_and_drop::DropTarget, list_item, ContextExt as _, DesignTokens, UiExt as _};
-use re_viewer_context::{
-    contents_name_style, icon_for_container_kind, CollapseScope, Contents, DataResultNodeOrPath,
-    DragAndDropFeedback, DragAndDropPayload, SystemCommandSender,
+use re_ui::{
+    drag_and_drop::DropTarget, filter_widget, list_item, ContextExt as _, DesignTokens, UiExt as _,
 };
 use re_viewer_context::{
-    ContainerId, DataQueryResult, DataResultNode, HoverHighlight, Item, ViewId, ViewerContext,
+    contents_name_style, icon_for_container_kind, CollapseScope, ContainerId, Contents,
+    DataQueryResult, DataResultNode, DataResultNodeOrPath, DragAndDropFeedback, DragAndDropPayload,
+    HoverHighlight, Item, ItemContext, SystemCommandSender, ViewId, ViewerContext,
 };
-use re_viewport_blueprint::ui::show_add_view_or_container_modal;
-use re_viewport_blueprint::{ViewBlueprint, ViewportBlueprint};
+use re_viewport_blueprint::{
+    ui::show_add_view_or_container_modal, ViewBlueprint, ViewportBlueprint,
+};
 
 /// Holds the state of the blueprint tree UI.
 #[derive(Default)]
@@ -38,6 +39,15 @@ pub struct BlueprintTree {
     ///
     /// We double-buffer this value to deal with ordering constraints.
     next_candidate_drop_parent_container_id: Option<ContainerId>,
+
+    /// State of the entity filter widget.
+    filter_state: filter_widget::FilterState,
+
+    /// The store id the filter widget relates to.
+    ///
+    /// Used to invalidate the filter state (aka deactivate it) when the user switches to a
+    /// recording with a different application id.
+    filter_state_app_id: Option<ApplicationId>,
 }
 
 impl BlueprintTree {
@@ -48,16 +58,29 @@ impl BlueprintTree {
         viewport: &ViewportBlueprint,
         ui: &mut egui::Ui,
     ) {
+        // Invalidate the filter widget if the store id has changed.
+        if self.filter_state_app_id.as_ref() != Some(&ctx.store_context.app_id) {
+            self.filter_state = Default::default();
+            self.filter_state_app_id = Some(ctx.store_context.app_id.clone());
+        }
+
         ui.panel_content(|ui| {
             ui.full_span_separator();
             ui.add_space(-1.);
 
             ui.list_item_scope("blueprint_section_title", |ui| {
-                ui.list_item_flat_noninteractive(
+                ui.list_item().interactive(false).show_flat(
+                    ui,
                     list_item::CustomContent::new(|ui, _| {
-                        ui.strong("Blueprint").on_hover_text(
-                            "The blueprint is where you can configure the Rerun Viewer",
-                        );
+                        let title_response = self
+                            .filter_state
+                            .ui(ui, egui::RichText::new("Blueprint").strong());
+
+                        if let Some(title_response) = title_response {
+                            title_response.on_hover_text(
+                                "The blueprint is where you can configure the Rerun Viewer",
+                            );
+                        }
                     })
                     .menu_button(&re_ui::icons::MORE, |ui| {
                         add_new_view_or_container_menu_button(ctx, viewport, ui);
@@ -88,6 +111,8 @@ impl BlueprintTree {
         self.candidate_drop_parent_container_id = self.next_candidate_drop_parent_container_id;
         self.next_candidate_drop_parent_container_id = None;
 
+        let filter_matcher = self.filter_state.filter();
+
         egui::ScrollArea::both()
             .id_salt("blueprint_tree_scroll_area")
             .auto_shrink([true, false])
@@ -96,10 +121,10 @@ impl BlueprintTree {
                     self.blueprint_tree_scroll_to_item = ctx
                         .focused_item
                         .as_ref()
-                        .and_then(|item| handle_focused_item(ctx, viewport, ui, item));
+                        .and_then(|item| self.handle_focused_item(ctx, viewport, ui, item));
 
                     list_item::list_item_scope(ui, "blueprint tree", |ui| {
-                        self.root_container_tree_ui(ctx, viewport, ui);
+                        self.root_container_ui(ctx, viewport, ui, &filter_matcher);
                     });
 
                     let empty_space_response =
@@ -146,13 +171,21 @@ impl BlueprintTree {
         ui: &mut egui::Ui,
         contents: &Contents,
         parent_visible: bool,
+        filter_matcher: &filter_widget::FilterMatcher,
     ) {
         match contents {
             Contents::Container(container_id) => {
-                self.container_tree_ui(ctx, viewport, ui, container_id, parent_visible);
+                self.container_ui(
+                    ctx,
+                    viewport,
+                    ui,
+                    container_id,
+                    parent_visible,
+                    filter_matcher,
+                );
             }
             Contents::View(view_id) => {
-                self.view_entry_ui(ctx, viewport, ui, view_id, parent_visible);
+                self.view_ui(ctx, viewport, ui, view_id, parent_visible, filter_matcher);
             }
         };
     }
@@ -161,13 +194,17 @@ impl BlueprintTree {
     ///
     /// The root container is different from other containers in that it cannot be removed or dragged, and it cannot be
     /// collapsed, so it's drawn without a collapsing triangle.
-    fn root_container_tree_ui(
+    fn root_container_ui(
         &mut self,
         ctx: &ViewerContext<'_>,
         viewport: &ViewportBlueprint,
         ui: &mut egui::Ui,
+        filter_matcher: &filter_widget::FilterMatcher,
     ) {
         let container_id = viewport.root_container;
+        if !match_container(ctx, viewport, &container_id, filter_matcher) {
+            return;
+        }
 
         let Some(container_blueprint) = viewport.container(&container_id) else {
             re_log::warn!("Failed to find root container {container_id} in ViewportBlueprint");
@@ -190,13 +227,17 @@ impl BlueprintTree {
             );
 
         for child in &container_blueprint.contents {
-            self.contents_ui(ctx, viewport, ui, child, true);
+            self.contents_ui(ctx, viewport, ui, child, true, filter_matcher);
         }
 
-        context_menu_ui_for_item(
+        context_menu_ui_for_item_with_context(
             ctx,
             viewport,
             &item,
+            // expand/collapse context menu actions need this information
+            ItemContext::BlueprintTree {
+                filter_session_id: self.filter_state.session_id(),
+            },
             &item_response,
             SelectionUpdateBehavior::UseSelection,
         );
@@ -212,14 +253,19 @@ impl BlueprintTree {
         );
     }
 
-    fn container_tree_ui(
+    fn container_ui(
         &mut self,
         ctx: &ViewerContext<'_>,
         viewport: &ViewportBlueprint,
         ui: &mut egui::Ui,
         container_id: &ContainerId,
         parent_visible: bool,
+        filter_matcher: &filter_widget::FilterMatcher,
     ) {
+        if !match_container(ctx, viewport, container_id, filter_matcher) {
+            return;
+        }
+
         let item = Item::Container(*container_id);
         let content = Contents::Container(*container_id);
 
@@ -253,7 +299,7 @@ impl BlueprintTree {
 
         // Globally unique id - should only be one of these in view at one time.
         // We do this so that we can support "collapse/expand all" command.
-        let id = egui::Id::new(CollapseScope::BlueprintTree.container(*container_id));
+        let id = egui::Id::new(self.collapse_scope().container(*container_id));
 
         let list_item::ShowCollapsingResponse {
             item_response: response,
@@ -266,7 +312,7 @@ impl BlueprintTree {
             .drop_target_style(self.is_candidate_drop_parent_container(container_id))
             .show_hierarchical_with_children(ui, id, default_open, item_content, |ui| {
                 for child in &container_blueprint.contents {
-                    self.contents_ui(ctx, viewport, ui, child, container_visible);
+                    self.contents_ui(ctx, viewport, ui, child, container_visible, filter_matcher);
                 }
             });
 
@@ -275,10 +321,14 @@ impl BlueprintTree {
             container_blueprint.container_kind
         ));
 
-        context_menu_ui_for_item(
+        context_menu_ui_for_item_with_context(
             ctx,
             viewport,
             &item,
+            // expand/collapse context menu actions need this information
+            ItemContext::BlueprintTree {
+                filter_session_id: self.filter_state.session_id(),
+            },
             &response,
             SelectionUpdateBehavior::UseSelection,
         );
@@ -297,14 +347,19 @@ impl BlueprintTree {
         );
     }
 
-    fn view_entry_ui(
+    fn view_ui(
         &mut self,
         ctx: &ViewerContext<'_>,
         viewport: &ViewportBlueprint,
         ui: &mut egui::Ui,
         view_id: &ViewId,
         container_visible: bool,
+        filter_matcher: &filter_widget::FilterMatcher,
     ) {
+        if !match_view(ctx, view_id, filter_matcher) {
+            return;
+        }
+
         let Some(view) = viewport.view(view_id) else {
             re_log::warn_once!("Bug: asked to show a UI for a view that doesn't exist");
             return;
@@ -321,7 +376,8 @@ impl BlueprintTree {
         let root_node = result_tree.root_node();
 
         // empty views should display as open by default to highlight the fact that they are empty
-        let default_open = root_node.map_or(true, Self::default_open_for_data_result);
+        let default_open = self.filter_state.is_active()
+            || root_node.map_or(true, Self::default_open_for_data_result);
 
         let is_item_hovered =
             ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
@@ -347,7 +403,7 @@ impl BlueprintTree {
 
         // Globally unique id - should only be one of these in view at one time.
         // We do this so that we can support "collapse/expand all" command.
-        let id = egui::Id::new(CollapseScope::BlueprintTree.view(*view_id));
+        let id = egui::Id::new(self.collapse_scope().view(*view_id));
 
         let list_item::ShowCollapsingResponse {
             item_response: response,
@@ -360,7 +416,7 @@ impl BlueprintTree {
             .force_hovered(is_item_hovered)
             .show_hierarchical_with_children(ui, id, default_open, item_content, |ui| {
                 // Always show the origin hierarchy first.
-                self.view_entity_hierarchy_ui(
+                self.data_result_ui(
                     ctx,
                     viewport,
                     ui,
@@ -369,6 +425,7 @@ impl BlueprintTree {
                     view,
                     view_visible,
                     false,
+                    filter_matcher,
                 );
 
                 // Show 'projections' if there's any items that weren't part of the tree under origin but are directly included.
@@ -380,10 +437,25 @@ impl BlueprintTree {
                     } else if node.data_result.tree_prefix_only {
                         true // Keep recursing until we find a projection.
                     } else {
-                        projections.push(node);
-                        false // We found a projection, stop recursing as everything below is now included in the projections.
+                        // We found a projection, but we must check if it is ruled out by the
+                        // filter.
+                        if self.match_data_result(
+                            query_result,
+                            &DataResultNodeOrPath::DataResultNode(node),
+                            view,
+                            true,
+                            filter_matcher,
+                        ) {
+                            projections.push(node);
+                        }
+
+                        // No further recursion needed in this branch, everything below is included
+                        // in the projection (or shouldn't be included if the projection has already
+                        // been filtered out).
+                        false
                     }
                 });
+
                 if !projections.is_empty() {
                     ui.list_item().interactive(false).show_flat(
                         ui,
@@ -391,7 +463,7 @@ impl BlueprintTree {
                     );
 
                     for projection in projections {
-                        self.view_entity_hierarchy_ui(
+                        self.data_result_ui(
                             ctx,
                             viewport,
                             ui,
@@ -400,6 +472,7 @@ impl BlueprintTree {
                             view,
                             view_visible,
                             true,
+                            filter_matcher,
                         );
                     }
                 }
@@ -411,10 +484,14 @@ impl BlueprintTree {
             viewport.focus_tab(view.id);
         }
 
-        context_menu_ui_for_item(
+        context_menu_ui_for_item_with_context(
             ctx,
             viewport,
             &item,
+            // expand/collapse context menu actions need this information
+            ItemContext::BlueprintTree {
+                filter_session_id: self.filter_state.session_id(),
+            },
             &response,
             SelectionUpdateBehavior::UseSelection,
         );
@@ -435,7 +512,7 @@ impl BlueprintTree {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn view_entity_hierarchy_ui(
+    fn data_result_ui(
         &self,
         ctx: &ViewerContext<'_>,
         viewport: &ViewportBlueprint,
@@ -445,10 +522,21 @@ impl BlueprintTree {
         view: &ViewBlueprint,
         view_visible: bool,
         projection_mode: bool,
+        filter_matcher: &filter_widget::FilterMatcher,
     ) {
-        let entity_path = node_or_path.path();
+        if !self.match_data_result(
+            query_result,
+            node_or_path,
+            view,
+            projection_mode,
+            filter_matcher,
+        ) {
+            return;
+        }
 
-        if projection_mode && entity_path == &view.space_origin {
+        let entity_path = node_or_path.path();
+        let display_origin_placeholder = projection_mode && entity_path == &view.space_origin;
+        if display_origin_placeholder {
             if ui
                 .list_item()
                 .show_hierarchical(
@@ -491,9 +579,11 @@ impl BlueprintTree {
                 .map_or("unknown".to_owned(), |e| e.ui_string())
         };
         let item_label = if ctx.recording().is_known_entity(entity_path) {
-            egui::RichText::new(item_label)
+            filter_matcher
+                .matches_formatted(ui.ctx(), &item_label)
+                .unwrap_or_else(|| item_label.into())
         } else {
-            ui.ctx().warning_text(item_label)
+            ui.ctx().warning_text(item_label).into()
         };
 
         let subdued = !view_visible || !visible;
@@ -544,13 +634,15 @@ impl BlueprintTree {
         let has_children = data_result_node.is_some_and(|n| !n.children.is_empty());
         let response = if let (true, Some(node)) = (has_children, data_result_node) {
             // Don't default open projections.
-            let default_open = entity_path.starts_with(&view.space_origin)
-                && Self::default_open_for_data_result(node);
+            let default_open = self.filter_state.is_active()
+                || (entity_path.starts_with(&view.space_origin)
+                    && Self::default_open_for_data_result(node));
 
             // Globally unique id - should only be one of these in view at one time.
             // We do this so that we can support "collapse/expand all" command.
             let id = egui::Id::new(
-                CollapseScope::BlueprintTree.data_result(view.id, entity_path.clone()),
+                self.collapse_scope()
+                    .data_result(view.id, entity_path.clone()),
             );
 
             list_item
@@ -566,7 +658,7 @@ impl BlueprintTree {
                             continue;
                         };
 
-                        self.view_entity_hierarchy_ui(
+                        self.data_result_ui(
                             ctx,
                             viewport,
                             ui,
@@ -575,6 +667,7 @@ impl BlueprintTree {
                             view,
                             view_visible,
                             projection_mode,
+                            filter_matcher,
                         );
                     }
                 })
@@ -602,15 +695,95 @@ impl BlueprintTree {
             }
         });
 
-        context_menu_ui_for_item(
+        context_menu_ui_for_item_with_context(
             ctx,
             viewport,
             &item,
+            // expand/collapse context menu actions need this information
+            ItemContext::BlueprintTree {
+                filter_session_id: self.filter_state.session_id(),
+            },
             &response,
             SelectionUpdateBehavior::UseSelection,
         );
         self.scroll_to_me_if_needed(ui, &item, &response);
         ctx.handle_select_hover_drag_interactions(&response, item, true);
+    }
+
+    /// Should this data result (and its children) be displayed?
+    fn match_data_result(
+        &self,
+        query_result: &DataQueryResult,
+        node_or_path: &DataResultNodeOrPath<'_>,
+        view: &ViewBlueprint,
+        projection_mode: bool,
+        filter_matcher: &filter_widget::FilterMatcher,
+    ) -> bool {
+        let entity_path = node_or_path.path();
+        let display_origin_placeholder = projection_mode && entity_path == &view.space_origin;
+
+        if filter_matcher.matches_nothing() {
+            return false;
+        }
+
+        // Filter is inactive or otherwise whitelisting everything.
+        if filter_matcher.matches_everything() {
+            return true;
+        }
+
+        // We never display the origin placeholder if the filter is active, because if the
+        // `$origin` subtree matched something, it would be visible in the non-projected
+        // data-results.
+        if display_origin_placeholder && self.filter_state.is_active() {
+            return false;
+        }
+
+        // Is the current path a match?
+        //
+        // This is subtle! If we are in projection mode, we check for all parts starting at the
+        // root for a match. However, if we are _not_ in projection mode, we skip checking the
+        // origin part (which is always the first part of the entity path in this case), because
+        // that part is not displayed and, as such, should not trigger a match.
+        if entity_path
+            .iter()
+            .skip(
+                if !projection_mode && entity_path.starts_with(&view.space_origin) {
+                    view.space_origin.len()
+                } else {
+                    0
+                },
+            )
+            .any(|entity_part| filter_matcher.matches(&entity_part.ui_string()))
+        {
+            return true;
+        }
+
+        // Our subtree contains a match.
+        if let Some(node) = node_or_path.data_result_node() {
+            if query_result
+                .tree
+                .find_node_by(Some(node), |node| {
+                    // If are in projection mode, we must reject anything that is the origin or
+                    // its child. If there was a match there, then it would be displayed in the
+                    // non-projected data results.
+                    if projection_mode
+                        && node.data_result.entity_path.starts_with(&view.space_origin)
+                    {
+                        return false;
+                    }
+
+                    node.data_result
+                        .entity_path
+                        .last()
+                        .is_some_and(|entity_part| filter_matcher.matches(&entity_part.ui_string()))
+                })
+                .is_some()
+            {
+                return true;
+            }
+        }
+
+        false
     }
 
     // ----------------------------------------------------------------------------
@@ -849,6 +1022,193 @@ impl BlueprintTree {
     fn is_candidate_drop_parent_container(&self, container_id: &ContainerId) -> bool {
         self.candidate_drop_parent_container_id.as_ref() == Some(container_id)
     }
+
+    fn collapse_scope(&self) -> CollapseScope {
+        match self.filter_state.session_id() {
+            None => CollapseScope::BlueprintTree,
+            Some(session_id) => CollapseScope::BlueprintTreeFiltered { session_id },
+        }
+    }
+
+    // ---
+
+    /// Expand all required items and compute which item we should scroll to.
+    fn handle_focused_item(
+        &self,
+        ctx: &ViewerContext<'_>,
+        viewport: &ViewportBlueprint,
+        ui: &egui::Ui,
+        focused_item: &Item,
+    ) -> Option<Item> {
+        match focused_item {
+            Item::AppId(_) | Item::DataSource(_) | Item::StoreId(_) => None,
+
+            Item::Container(container_id) => {
+                self.expand_all_contents_until(
+                    viewport,
+                    ui.ctx(),
+                    &Contents::Container(*container_id),
+                );
+                Some(focused_item.clone())
+            }
+            Item::View(view_id) => {
+                self.expand_all_contents_until(viewport, ui.ctx(), &Contents::View(*view_id));
+                ctx.focused_item.clone()
+            }
+            Item::DataResult(view_id, instance_path) => {
+                self.expand_all_contents_until(viewport, ui.ctx(), &Contents::View(*view_id));
+                self.expand_all_data_results_until(
+                    ctx,
+                    ui.ctx(),
+                    view_id,
+                    &instance_path.entity_path,
+                );
+
+                ctx.focused_item.clone()
+            }
+            Item::InstancePath(instance_path) => {
+                let view_ids = list_views_with_entity(ctx, viewport, &instance_path.entity_path);
+
+                // focus on the first matching data result
+                let res = view_ids
+                    .first()
+                    .map(|id| Item::DataResult(*id, instance_path.clone()));
+
+                for view_id in view_ids {
+                    self.expand_all_contents_until(viewport, ui.ctx(), &Contents::View(view_id));
+                    self.expand_all_data_results_until(
+                        ctx,
+                        ui.ctx(),
+                        &view_id,
+                        &instance_path.entity_path,
+                    );
+                }
+
+                res
+            }
+            Item::ComponentPath(component_path) => self.handle_focused_item(
+                ctx,
+                viewport,
+                ui,
+                &Item::InstancePath(InstancePath::entity_all(component_path.entity_path.clone())),
+            ),
+        }
+    }
+
+    /// Expand all containers until reaching the provided content.
+    fn expand_all_contents_until(
+        &self,
+        viewport: &ViewportBlueprint,
+        egui_ctx: &egui::Context,
+        focused_contents: &Contents,
+    ) {
+        //TODO(ab): this could look nicer if `Contents` was declared in re_view_context :)
+        let expend_contents = |contents: &Contents| match contents {
+            Contents::Container(container_id) => self
+                .collapse_scope()
+                .container(*container_id)
+                .set_open(egui_ctx, true),
+            Contents::View(view_id) => self
+                .collapse_scope()
+                .view(*view_id)
+                .set_open(egui_ctx, true),
+        };
+
+        viewport.visit_contents(&mut |contents, hierarchy| {
+            if contents == focused_contents {
+                expend_contents(contents);
+                for parent in hierarchy {
+                    expend_contents(&Contents::Container(*parent));
+                }
+            }
+            true
+        });
+    }
+
+    /// Expand data results of the provided view all the way to the provided entity.
+    fn expand_all_data_results_until(
+        &self,
+        ctx: &ViewerContext<'_>,
+        egui_ctx: &egui::Context,
+        view_id: &ViewId,
+        entity_path: &EntityPath,
+    ) {
+        let result_tree = &ctx.lookup_query_result(*view_id).tree;
+        if result_tree.lookup_node_by_path(entity_path).is_some() {
+            if let Some(root_node) = result_tree.root_node() {
+                EntityPath::incremental_walk(Some(&root_node.data_result.entity_path), entity_path)
+                    .chain(std::iter::once(root_node.data_result.entity_path.clone()))
+                    .for_each(|entity_path| {
+                        self.collapse_scope()
+                            .data_result(*view_id, entity_path)
+                            .set_open(egui_ctx, true);
+                    });
+            }
+        }
+    }
+}
+
+// ----------------------------------------------------------------------------
+
+fn match_container(
+    ctx: &ViewerContext<'_>,
+    viewport: &ViewportBlueprint,
+    container_id: &ContainerId,
+    filter_matcher: &filter_widget::FilterMatcher,
+) -> bool {
+    if filter_matcher.matches_everything() {
+        return true;
+    }
+
+    if filter_matcher.matches_nothing() {
+        return false;
+    }
+
+    viewport
+        .find_contents_in_container_by(
+            &|content| {
+                // dont recurse infinitely
+                if content == &Contents::Container(*container_id) {
+                    return false;
+                }
+
+                match content {
+                    Contents::Container(container_id) => {
+                        match_container(ctx, viewport, container_id, filter_matcher)
+                    }
+                    Contents::View(view_id) => match_view(ctx, view_id, filter_matcher),
+                }
+            },
+            container_id,
+        )
+        .is_some()
+}
+
+/// Does this view match the provided filter?
+fn match_view(
+    ctx: &ViewerContext<'_>,
+    view_id: &ViewId,
+    filter_matcher: &filter_widget::FilterMatcher,
+) -> bool {
+    if filter_matcher.matches_everything() {
+        return true;
+    }
+
+    if filter_matcher.matches_nothing() {
+        return false;
+    };
+
+    let query_result = ctx.lookup_query_result(*view_id);
+    let result_tree = &query_result.tree;
+
+    result_tree
+        .find_node_by(None, |node| {
+            node.data_result
+                .entity_path
+                .last()
+                .is_some_and(|entity_part| filter_matcher.matches(&entity_part.ui_string()))
+        })
+        .is_some()
 }
 
 // ----------------------------------------------------------------------------
@@ -944,80 +1304,6 @@ fn set_blueprint_to_auto_menu_button(
     }
 }
 
-/// Expand all required items and compute which item we should scroll to.
-fn handle_focused_item(
-    ctx: &ViewerContext<'_>,
-    viewport: &ViewportBlueprint,
-    ui: &egui::Ui,
-    focused_item: &Item,
-) -> Option<Item> {
-    match focused_item {
-        Item::AppId(_) | Item::DataSource(_) | Item::StoreId(_) => None,
-
-        Item::Container(container_id) => {
-            expand_all_contents_until(viewport, ui.ctx(), &Contents::Container(*container_id));
-            Some(focused_item.clone())
-        }
-        Item::View(view_id) => {
-            expand_all_contents_until(viewport, ui.ctx(), &Contents::View(*view_id));
-            ctx.focused_item.clone()
-        }
-        Item::DataResult(view_id, instance_path) => {
-            expand_all_contents_until(viewport, ui.ctx(), &Contents::View(*view_id));
-            expand_all_data_results_until(ctx, ui.ctx(), view_id, &instance_path.entity_path);
-
-            ctx.focused_item.clone()
-        }
-        Item::InstancePath(instance_path) => {
-            let view_ids = list_views_with_entity(ctx, viewport, &instance_path.entity_path);
-
-            // focus on the first matching data result
-            let res = view_ids
-                .first()
-                .map(|id| Item::DataResult(*id, instance_path.clone()));
-
-            for view_id in view_ids {
-                expand_all_contents_until(viewport, ui.ctx(), &Contents::View(view_id));
-                expand_all_data_results_until(ctx, ui.ctx(), &view_id, &instance_path.entity_path);
-            }
-
-            res
-        }
-        Item::ComponentPath(component_path) => handle_focused_item(
-            ctx,
-            viewport,
-            ui,
-            &Item::InstancePath(InstancePath::entity_all(component_path.entity_path.clone())),
-        ),
-    }
-}
-
-/// Expand all containers until reaching the provided content.
-fn expand_all_contents_until(
-    viewport: &ViewportBlueprint,
-    egui_ctx: &egui::Context,
-    focused_contents: &Contents,
-) {
-    //TODO(ab): this could look nicer if `Contents` was declared in re_view_context :)
-    let expend_contents = |contents: &Contents| match contents {
-        Contents::Container(container_id) => CollapseScope::BlueprintTree
-            .container(*container_id)
-            .set_open(egui_ctx, true),
-        Contents::View(view_id) => CollapseScope::BlueprintTree
-            .view(*view_id)
-            .set_open(egui_ctx, true),
-    };
-
-    viewport.visit_contents(&mut |contents, hierarchy| {
-        if contents == focused_contents {
-            expend_contents(contents);
-            for parent in hierarchy {
-                expend_contents(&Contents::Container(*parent));
-            }
-        }
-    });
-}
-
 /// List all views that have the provided entity as data result.
 #[inline]
 fn list_views_with_entity(
@@ -1033,29 +1319,9 @@ fn list_views_with_entity(
                 view_ids.push(*view_id);
             }
         }
+        true
     });
     view_ids
-}
-
-/// Expand data results of the provided view all the way to the provided entity.
-fn expand_all_data_results_until(
-    ctx: &ViewerContext<'_>,
-    egui_ctx: &egui::Context,
-    view_id: &ViewId,
-    entity_path: &EntityPath,
-) {
-    let result_tree = &ctx.lookup_query_result(*view_id).tree;
-    if result_tree.lookup_node_by_path(entity_path).is_some() {
-        if let Some(root_node) = result_tree.root_node() {
-            EntityPath::incremental_walk(Some(&root_node.data_result.entity_path), entity_path)
-                .chain(std::iter::once(root_node.data_result.entity_path.clone()))
-                .for_each(|entity_path| {
-                    CollapseScope::BlueprintTree
-                        .data_result(*view_id, entity_path)
-                        .set_open(egui_ctx, true);
-                });
-        }
-    }
 }
 
 fn remove_button_ui(ui: &mut Ui, tooltip: &str) -> Response {

@@ -1,13 +1,21 @@
+//! Context menu action to expand and collapse various trees in the UI.
+//!
+//! Note: the actual collapse/expand logic is in [`crate::collapse_expand`].
+
 use re_entity_db::InstancePath;
 use re_log_types::StoreKind;
-use re_viewer_context::{CollapseScope, ContainerId, Contents, Item, ItemContext, ViewId};
+use re_viewer_context::{CollapseScope, ContainerId, Item, ItemContext, ViewId};
 
+use crate::collapse_expand::{
+    collapse_expand_container, collapse_expand_data_result, collapse_expand_instance_path,
+    collapse_expand_view,
+};
 use crate::{ContextMenuAction, ContextMenuContext};
 
 /// Collapse or expand all items in the selection.
-// TODO(ab): the current implementation makes strong assumptions of which CollapseScope to use based
-// on the item type. This is brittle and will not scale if/when we add more trees to the UI. When
-// that happens, we will have to pass the scope to `context_menu_ui_for_item` and use it here.
+///
+/// Note: this makes _heavy_ use of [`ItemContext`] to determine the correct scope to
+/// collapse/expand.
 pub(crate) enum CollapseExpandAllAction {
     CollapseAll,
     ExpandAll,
@@ -50,29 +58,21 @@ impl ContextMenuAction for CollapseExpandAllAction {
     }
 
     fn process_container(&self, ctx: &ContextMenuContext<'_>, container_id: &ContainerId) {
-        ctx.viewport_blueprint
-            .visit_contents_in_container(container_id, &mut |contents, _| match contents {
-                Contents::Container(container_id) => CollapseScope::BlueprintTree
-                    .container(*container_id)
-                    .set_open(&ctx.egui_context, self.open()),
-                Contents::View(view_id) => self.process_view(ctx, view_id),
-            });
+        let scope = blueprint_collapse_scope(ctx, &Item::Container(*container_id));
+
+        collapse_expand_container(
+            ctx.viewer_context,
+            ctx.viewport_blueprint,
+            container_id,
+            scope,
+            self.open(),
+        );
     }
 
     fn process_view(&self, ctx: &ContextMenuContext<'_>, view_id: &ViewId) {
-        CollapseScope::BlueprintTree
-            .view(*view_id)
-            .set_open(&ctx.egui_context, self.open());
+        let scope = blueprint_collapse_scope(ctx, &Item::View(*view_id));
 
-        let query_result = ctx.viewer_context.lookup_query_result(*view_id);
-        let result_tree = &query_result.tree;
-        if let Some(root_node) = result_tree.root_node() {
-            self.process_data_result(
-                ctx,
-                view_id,
-                &InstancePath::entity_all(root_node.data_result.entity_path.clone()),
-            );
-        }
+        collapse_expand_view(ctx.viewer_context, view_id, scope, self.open());
     }
 
     fn process_data_result(
@@ -81,22 +81,16 @@ impl ContextMenuAction for CollapseExpandAllAction {
         view_id: &ViewId,
         instance_path: &InstancePath,
     ) {
-        //TODO(ab): here we should in principle walk the DataResult tree instead of the entity tree
-        // but the current API isn't super ergonomic.
-        let Some(subtree) = ctx
-            .viewer_context
-            .recording()
-            .tree()
-            .subtree(&instance_path.entity_path)
-        else {
-            return;
-        };
+        let scope =
+            blueprint_collapse_scope(ctx, &Item::DataResult(*view_id, instance_path.clone()));
 
-        subtree.visit_children_recursively(|entity_path| {
-            CollapseScope::BlueprintTree
-                .data_result(*view_id, entity_path.clone())
-                .set_open(&ctx.egui_context, self.open());
-        });
+        collapse_expand_data_result(
+            ctx.viewer_context,
+            view_id,
+            instance_path,
+            scope,
+            self.open(),
+        );
     }
 
     fn process_instance_path(&self, ctx: &ContextMenuContext<'_>, instance_path: &InstancePath) {
@@ -104,11 +98,6 @@ impl ContextMenuAction for CollapseExpandAllAction {
             .selection
             .context_for_item(&Item::InstancePath(instance_path.clone()))
         {
-            Some(&ItemContext::StreamsTree {
-                store_kind: StoreKind::Recording,
-                filter_session_id: None,
-            }) => (ctx.viewer_context.recording(), CollapseScope::StreamsTree),
-
             Some(&ItemContext::StreamsTree {
                 store_kind: StoreKind::Recording,
                 filter_session_id: Some(session_id),
@@ -133,21 +122,21 @@ impl ContextMenuAction for CollapseExpandAllAction {
                 CollapseScope::BlueprintStreamsTreeFiltered { session_id },
             ),
 
-            // default to recording if we don't have more specific information
-            Some(&ItemContext::TwoD { .. } | &ItemContext::ThreeD { .. }) | None => {
-                (ctx.viewer_context.recording(), CollapseScope::StreamsTree)
-            }
+            // default to recording if the item context explicitly points to it or if we don't have
+            // any relevant context
+            Some(
+                &ItemContext::StreamsTree {
+                    store_kind: StoreKind::Recording,
+                    filter_session_id: None,
+                }
+                | &ItemContext::TwoD { .. }
+                | &ItemContext::ThreeD { .. }
+                | &ItemContext::BlueprintTree { .. },
+            )
+            | None => (ctx.viewer_context.recording(), CollapseScope::StreamsTree),
         };
 
-        let Some(subtree) = db.tree().subtree(&instance_path.entity_path) else {
-            return;
-        };
-
-        subtree.visit_children_recursively(|entity_path| {
-            scope
-                .entity(entity_path.clone())
-                .set_open(&ctx.egui_context, self.open());
-        });
+        collapse_expand_instance_path(ctx.viewer_context, db, instance_path, scope, self.open());
     }
 }
 
@@ -157,5 +146,24 @@ impl CollapseExpandAllAction {
             Self::CollapseAll => false,
             Self::ExpandAll => true,
         }
+    }
+}
+
+/// Determine the [`CollapseScope`] to use for items in the blueprint tree.
+fn blueprint_collapse_scope(ctx: &ContextMenuContext<'_>, item: &Item) -> CollapseScope {
+    match ctx.selection.context_for_item(item) {
+        Some(&ItemContext::BlueprintTree {
+            filter_session_id: Some(session_id),
+        }) => CollapseScope::BlueprintTreeFiltered { session_id },
+
+        None
+        | Some(
+            &ItemContext::BlueprintTree {
+                filter_session_id: None,
+            }
+            | &ItemContext::StreamsTree { .. }
+            | &ItemContext::TwoD { .. }
+            | &ItemContext::ThreeD { .. },
+        ) => CollapseScope::BlueprintTree,
     }
 }

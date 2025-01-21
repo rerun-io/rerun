@@ -188,7 +188,7 @@ pub struct ComponentColumnDescriptor {
     /// The Arrow datatype of the stored column.
     ///
     /// This is the log-time datatype corresponding to how this data is encoded
-    /// in a chunk. Currently this will always be an [`ArrowListArray`], but as
+    /// in a chunk. Currently this will always be an [`arrow::array::ListArray`], but as
     /// we introduce mono-type optimization, this might be a native type instead.
     pub store_datatype: ArrowDatatype,
 

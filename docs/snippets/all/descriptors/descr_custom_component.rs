@@ -60,18 +60,10 @@ fn check_tags(rec: &rerun::RecordingStream) {
             .collect::<Vec<_>>();
         descriptors.sort();
 
-        // TODO(cmc): revert me
-        // let expected = vec![
-        //     ComponentDescriptor {
-        //         archetype_name: Some("user.CustomArchetype".into()),
-        //         archetype_field_name: Some("custom_positions".into()),
-        //         component_name: "user.CustomPosition3D".into(),
-        //     }, //
-        // ];
         let expected = vec![
             ComponentDescriptor {
-                archetype_name: None,
-                archetype_field_name: None,
+                archetype_name: Some("user.CustomArchetype".into()),
+                archetype_field_name: Some("custom_positions".into()),
                 component_name: "user.CustomPosition3D".into(),
             }, //
         ];

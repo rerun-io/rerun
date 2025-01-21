@@ -142,10 +142,6 @@ impl ComponentDescriptor {
         }
     }
 
-    pub fn untagged(self) -> Self {
-        Self::new(self.component_name)
-    }
-
     /// Unconditionally sets [`Self::archetype_name`] to the given one.
     #[inline]
     pub fn with_archetype_name(mut self, archetype_name: ArchetypeName) -> Self {

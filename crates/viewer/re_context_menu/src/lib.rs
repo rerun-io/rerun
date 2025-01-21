@@ -9,6 +9,7 @@ use re_viewer_context::{
 use re_viewport_blueprint::{ContainerBlueprint, ViewportBlueprint};
 
 mod actions;
+pub mod collapse_expand;
 mod sub_menu;
 
 use actions::{

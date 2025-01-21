@@ -84,28 +84,6 @@ pub trait AsComponents {
             .map(|comp_batch| Ok((arrow::datatypes::Field::from(&comp_batch), comp_batch.array)))
             .collect()
     }
-
-    /// Serializes all non-null [`Component`]s of this bundle into Arrow2 arrays.
-    ///
-    /// The default implementation will simply serialize the result of [`Self::as_component_batches`]
-    /// as-is, which is what you want in 99.9% of cases.
-    ///
-    /// [`Component`]: [crate::Component]
-    #[inline]
-    fn to_arrow2(
-        &self,
-    ) -> SerializationResult<Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>>
-    {
-        self.as_serialized_batches()
-            .into_iter()
-            .map(|comp_batch| {
-                Ok((
-                    arrow2::datatypes::Field::from(&comp_batch),
-                    comp_batch.array.into(),
-                ))
-            })
-            .collect()
-    }
 }
 
 #[allow(dead_code)]
