@@ -302,11 +302,12 @@ uuid = "1.1"
 vec1 = "1.8"
 walkdir = "2.0"
 walkers = "0.32"
-# NOTE: `rerun_js/web-viewer/build-wasm.mjs` is HIGHLY sensitive to changes in `wasm-bindgen`.
+# TODO(#8766): `rerun_js/web-viewer/build-wasm.mjs` is HIGHLY sensitive to changes in `wasm-bindgen`.
 #       Whenever updating `wasm-bindgen`, update this and the narrower dependency specifications in
 #       `crates/viewer/re_viewer/Cargo.toml`, and make sure that the build script still works.
 #       Do not make this an `=` dependency, because that may break Rust users’ builds when a newer
 #       version is released, even if they are not building the web viewer.
+#       For details see https://github.com/rerun-io/rerun/issues/8766
 wasm-bindgen = "0.2.100"
 wasm-bindgen-cli-support = "=0.2.100"
 wasm-bindgen-futures = "0.4.50"
