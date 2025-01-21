@@ -722,7 +722,7 @@ impl Chunk {
 mod tests {
     use nohash_hasher::IntMap;
 
-    use re_arrow_util::arrow2_util;
+    use re_arrow_util::arrow_util;
     use re_log_types::{
         example_components::{MyColor, MyPoint},
         Timeline,
@@ -743,27 +743,27 @@ mod tests {
 
         let timelines2 = IntMap::default(); // static
 
-        let points1 = MyPoint::to_arrow2([
+        let points1 = MyPoint::to_arrow([
             MyPoint::new(1.0, 2.0),
             MyPoint::new(3.0, 4.0),
             MyPoint::new(5.0, 6.0),
         ])?;
         let points2 = None;
-        let points3 = MyPoint::to_arrow2([MyPoint::new(10.0, 20.0)])?;
-        let points4 = MyPoint::to_arrow2([MyPoint::new(100.0, 200.0), MyPoint::new(300.0, 400.0)])?;
+        let points3 = MyPoint::to_arrow([MyPoint::new(10.0, 20.0)])?;
+        let points4 = MyPoint::to_arrow([MyPoint::new(100.0, 200.0), MyPoint::new(300.0, 400.0)])?;
 
-        let colors1 = MyColor::to_arrow2([
+        let colors1 = MyColor::to_arrow([
             MyColor::from_rgb(1, 2, 3),
             MyColor::from_rgb(4, 5, 6),
             MyColor::from_rgb(7, 8, 9),
         ])?;
-        let colors2 = MyColor::to_arrow2([MyColor::from_rgb(10, 20, 30)])?;
+        let colors2 = MyColor::to_arrow([MyColor::from_rgb(10, 20, 30)])?;
         let colors3 = None;
         let colors4 = None;
 
         let components = [
             (MyPoint::descriptor(), {
-                let list_array = arrow2_util::arrays_to_list_array_opt(&[
+                let list_array = arrow_util::arrays_to_list_array_opt(&[
                     Some(&*points1),
                     points2,
                     Some(&*points3),
@@ -774,7 +774,7 @@ mod tests {
                 list_array
             }),
             (MyPoint::descriptor(), {
-                let list_array = arrow2_util::arrays_to_list_array_opt(&[
+                let list_array = arrow_util::arrays_to_list_array_opt(&[
                     Some(&*colors1),
                     Some(&*colors2),
                     colors3,
@@ -854,7 +854,7 @@ mod tests {
 
                 assert_eq!(chunk_before, chunk_after);
 
-                assert!(chunk_before.are_equal_ignoring_extension_types(&chunk_after));
+                assert!(chunk_before.are_equal(&chunk_after));
 
                 chunk_before = chunk_after;
             }

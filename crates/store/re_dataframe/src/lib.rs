@@ -27,5 +27,5 @@ pub mod external {
     pub use re_log_types;
     pub use re_query;
 
-    pub use arrow2;
+    pub use arrow;
 }

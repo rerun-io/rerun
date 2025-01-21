@@ -51,7 +51,7 @@ pub use self::time_real::TimeReal;
 pub use self::vec_deque_ext::{VecDequeInsertionExt, VecDequeRemovalExt, VecDequeSortingExt};
 
 pub mod external {
-    pub use arrow2;
+    pub use arrow;
 
     pub use re_tuid;
     pub use re_types_core;

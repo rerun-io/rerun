@@ -7,24 +7,20 @@ use std::{
 };
 
 use arrow::{
-    array::{ArrayRef as ArrowArrayRef, RecordBatch as ArrowRecordBatch},
+    array::{
+        ArrayRef as ArrowArrayRef, BooleanArray as ArrowBooleanArray,
+        PrimitiveArray as ArrowPrimitiveArray, RecordBatch as ArrowRecordBatch,
+    },
     buffer::ScalarBuffer as ArrowScalarBuffer,
     datatypes::{
         DataType as ArrowDataType, Fields as ArrowFields, Schema as ArrowSchema,
         SchemaRef as ArrowSchemaRef,
     },
 };
-use arrow2::{
-    array::{
-        Array as Arrow2Array, BooleanArray as Arrow2BooleanArray,
-        PrimitiveArray as Arrow2PrimitiveArray,
-    },
-    Either,
-};
-use itertools::Itertools;
+use itertools::{Either, Itertools as _};
 use nohash_hasher::{IntMap, IntSet};
 
-use re_arrow_util::Arrow2ArrayDowncastRef as _;
+use re_arrow_util::{arrow_util::into_arrow_ref, ArrowArrayDowncastRef as _};
 use re_chunk::{
     external::arrow::array::ArrayRef, Chunk, ComponentName, EntityPath, RangeQuery, RowId, TimeInt,
     Timeline, UnitChunkShared,
@@ -519,9 +515,9 @@ impl<E: StorageEngineLike> QueryHandle<E> {
 
             let values = list_array
                 .values()
-                .downcast_array2_ref::<Arrow2BooleanArray>()?;
+                .downcast_array_ref::<ArrowBooleanArray>()?;
 
-            let indices = Arrow2PrimitiveArray::from_vec(
+            let indices = ArrowPrimitiveArray::from(
                 values
                     .iter()
                     .enumerate()
@@ -1164,7 +1160,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                                 .components()
                                 .iter_flattened()
                                 .next()
-                                .map(|(_, list_array)| list_array.sliced(s.cursor as usize, 1))
+                                .map(|(_, list_array)| list_array.slice(s.cursor as usize, 1))
 
                         }
 
@@ -1177,7 +1173,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                                 }),
                                 ColumnDescriptor::Time(_) => None,
                             })?;
-                            unit.components().get_by_descriptor(&component_desc).map(|list_array| list_array.to_boxed())
+                            unit.components().get_by_descriptor(&component_desc).cloned()
                         }
                     };
 
@@ -1211,7 +1207,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                     .get(*view_idx)
                     .cloned()
                     .flatten()
-                    .map(|a| a.into())
+                    .map(into_arrow_ref)
                     .unwrap_or_else(|| arrow::array::new_null_array(&column.arrow_datatype(), 1)),
             })
             .collect_vec();
@@ -1230,7 +1226,22 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     #[inline]
     pub fn next_row_batch(&self) -> Option<ArrowRecordBatch> {
         let row = self.next_row()?;
-        ArrowRecordBatch::try_new(self.schema().clone(), row).ok()
+        match ArrowRecordBatch::try_new_with_options(
+            self.schema().clone(),
+            row,
+            // Explicitly setting row-count to one means it works even when there are no columns (e.g. due to heavy filtering)
+            &arrow::array::RecordBatchOptions::new().with_row_count(Some(1)),
+        ) {
+            Ok(batch) => Some(batch),
+            Err(err) => {
+                if cfg!(debug_assertions) {
+                    panic!("Failed to create record batch: {err}");
+                } else {
+                    re_log::error_once!("Failed to create record batch: {err}");
+                    None
+                }
+            }
+        }
     }
 
     #[inline]

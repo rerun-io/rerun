@@ -8,25 +8,19 @@ use itertools::Itertools as _;
 // ---------------------------------------------------------------------------------
 
 /// Downcast an arrow array to another array, without having to go via `Any`.
-///
-/// This is shorter, but also better: it means we don't accidentally downcast
-/// an arrow2 array to an arrow1 array, or vice versa.
-pub trait ArrowArrayDowncastRef {
+pub trait ArrowArrayDowncastRef<'a>: 'a {
     /// Downcast an arrow array to another array, without having to go via `Any`.
-    ///
-    /// This is shorter, but also better: it means we don't accidentally downcast
-    /// an arrow2 array to an arrow1 array, or vice versa.
-    fn downcast_array_ref<T: Array + 'static>(&self) -> Option<&T>;
+    fn downcast_array_ref<T: Array + 'static>(self) -> Option<&'a T>;
 }
 
-impl ArrowArrayDowncastRef for &dyn Array {
-    fn downcast_array_ref<T: Array + 'static>(&self) -> Option<&T> {
+impl<'a> ArrowArrayDowncastRef<'a> for &'a dyn Array {
+    fn downcast_array_ref<T: Array + 'static>(self) -> Option<&'a T> {
         self.as_any().downcast_ref()
     }
 }
 
-impl ArrowArrayDowncastRef for ArrayRef {
-    fn downcast_array_ref<T: Array + 'static>(&self) -> Option<&T> {
+impl<'a> ArrowArrayDowncastRef<'a> for &'a ArrayRef {
+    fn downcast_array_ref<T: Array + 'static>(self) -> Option<&'a T> {
         self.as_any().downcast_ref()
     }
 }
@@ -36,6 +30,22 @@ impl ArrowArrayDowncastRef for ArrayRef {
 #[inline]
 pub fn into_arrow_ref(array: impl Array + 'static) -> ArrayRef {
     std::sync::Arc::new(array)
+}
+
+/// Returns an iterator with the lengths of the offsets
+pub fn offsets_lengths(
+    offsets: &arrow::buffer::OffsetBuffer<i32>,
+) -> impl Iterator<Item = usize> + '_ {
+    // TODO(emilk): remove when we update to Arrow 54 (which has an API for this)
+    offsets.windows(2).map(|w| {
+        let start = w[0];
+        let end = w[1];
+        debug_assert!(
+            start <= end && 0 <= start,
+            "Bad arrow offset buffer: {start}, {end}"
+        );
+        end.saturating_sub(start).max(0) as usize
+    })
 }
 
 /// Returns true if the given `list_array` is semantically empty.
@@ -64,6 +74,7 @@ pub fn arrays_to_list_array_opt(arrays: &[Option<&dyn Array>]) -> Option<ListArr
 }
 
 /// An empty array of the given datatype.
+// TODO(#3741): replace with `arrow::array::new_empty_array`
 pub fn new_empty_array(datatype: &DataType) -> ArrayRef {
     let capacity = 0;
     arrow::array::make_builder(datatype, capacity).finish()
@@ -248,8 +259,9 @@ pub fn new_list_array_of_empties(child_datatype: &DataType, len: usize) -> ListA
 /// Returns an error if the arrays don't share the exact same datatype.
 pub fn concat_arrays(arrays: &[&dyn Array]) -> arrow::error::Result<ArrayRef> {
     #[allow(clippy::disallowed_methods)] // that's the whole point
-    arrow::compute::concat(arrays)
-    // TODO(#3741): call .shrink_to_fit on the result
+    let mut array = arrow::compute::concat(arrays)?;
+    array.shrink_to_fit(); // VERY IMPORTANT! https://github.com/rerun-io/rerun/issues/7222
+    Ok(array)
 }
 
 /// Applies a [filter] kernel to the given `array`.
@@ -276,14 +288,16 @@ pub fn filter_array<A: Array + Clone + 'static>(array: &A, filter: &BooleanArray
 
     #[allow(clippy::disallowed_methods)] // that's the whole point
     #[allow(clippy::unwrap_used)]
-    arrow::compute::filter(array, filter)
+    let mut array = arrow::compute::filter(array, filter)
         // Unwrap: this literally cannot fail.
         .unwrap()
         .as_any()
         .downcast_ref::<A>()
         // Unwrap: that's initial type that we got.
         .unwrap()
-        .clone()
+        .clone();
+    array.shrink_to_fit(); // VERY IMPORTANT! https://github.com/rerun-io/rerun/issues/7222
+    array
 }
 
 /// Applies a [take] kernel to the given `array`.
@@ -339,12 +353,14 @@ where
 
     #[allow(clippy::disallowed_methods)] // that's the whole point
     #[allow(clippy::unwrap_used)]
-    arrow::compute::take(array, indices, Default::default())
+    let mut array = arrow::compute::take(array, indices, Default::default())
         // Unwrap: this literally cannot fail.
         .unwrap()
         .as_any()
         .downcast_ref::<A>()
         // Unwrap: that's initial type that we got.
         .unwrap()
-        .clone()
+        .clone();
+    array.shrink_to_fit(); // VERY IMPORTANT! https://github.com/rerun-io/rerun/issues/7222
+    array
 }

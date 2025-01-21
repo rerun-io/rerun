@@ -1,11 +1,11 @@
+use itertools::Either;
+
 use re_chunk::{Chunk, RowId};
 use re_log_types::{EntityPath, TimeInt, TimePoint};
 use re_types::archetypes::{AssetVideo, VideoFrameReference};
 use re_types::components::VideoTimestamp;
 use re_types::Archetype;
 use re_types::ComponentBatch;
-
-use arrow2::Either;
 
 use crate::{DataLoader, DataLoaderError, LoadedData};
 

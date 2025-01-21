@@ -9,6 +9,7 @@ use re_byte_size::SizeBytes;
 /// This avoids some of the lifetime complexities that would otherwise
 /// arise from returning a `&[T]` directly, but is significantly more
 /// performant than doing the full allocation necessary to return a `Vec<T>`.
+// TODO(#3741): remove. This is just a `ArrowScalarBuffer` anyway
 #[derive(Clone, Debug, PartialEq)]
 pub struct ArrowBuffer<T: ArrowNativeType>(arrow::buffer::ScalarBuffer<T>);
 
@@ -93,24 +94,10 @@ impl<T: ArrowNativeType> ArrowBuffer<T> {
     }
 }
 
-impl<T: ArrowNativeType + arrow2::types::NativeType> From<arrow::buffer::ScalarBuffer<T>>
-    for ArrowBuffer<T>
-{
+impl<T: ArrowNativeType> From<arrow::buffer::ScalarBuffer<T>> for ArrowBuffer<T> {
     #[inline]
     fn from(value: arrow::buffer::ScalarBuffer<T>) -> Self {
         Self(value.into_inner().into())
-    }
-}
-
-impl<T: ArrowNativeType + arrow2::types::NativeType> From<arrow2::buffer::Buffer<T>>
-    for ArrowBuffer<T>
-{
-    #[inline]
-    fn from(arrow2_buffer: arrow2::buffer::Buffer<T>) -> Self {
-        let num_elements = arrow2_buffer.len();
-        let arrow1_buffer = arrow::buffer::Buffer::from(arrow2_buffer);
-        let scalar_buffer = arrow::buffer::ScalarBuffer::new(arrow1_buffer, 0, num_elements);
-        Self(scalar_buffer)
     }
 }
 
@@ -150,23 +137,5 @@ impl<T: ArrowNativeType> std::ops::Deref for ArrowBuffer<T> {
     #[inline]
     fn deref(&self) -> &[T] {
         self.as_slice()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_arrow2_compatibility() {
-        let arrow2_buffer = arrow2::buffer::Buffer::<f32>::from(vec![1.0, 2.0, 3.0, 4.0, 5.0]);
-        assert_eq!(arrow2_buffer.as_slice(), &[1.0, 2.0, 3.0, 4.0, 5.0]);
-
-        let sliced_arrow2_buffer = arrow2_buffer.sliced(1, 3);
-        assert_eq!(sliced_arrow2_buffer.as_slice(), &[2.0, 3.0, 4.0]);
-
-        let arrow_buffer = ArrowBuffer::<f32>::from(sliced_arrow2_buffer);
-        assert_eq!(arrow_buffer.num_instances(), 3);
-        assert_eq!(arrow_buffer.as_slice(), &[2.0, 3.0, 4.0]);
     }
 }
