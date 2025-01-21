@@ -827,49 +827,84 @@ mod tests {
 
     #[derive(Debug, Clone, Copy)]
     enum StaticTestFlavour {
-        StaticThenDynamic { update_inbetween: bool },
-        DynamicThenStatic { update_inbetween: bool },
+        /// First log a static chunk and then a regular chunk.
+        StaticThenRegular { update_inbetween: bool },
+
+        /// First log a regular chunk and then a static chunk.
+        RegularThenStatic { update_inbetween: bool },
+
+        /// Test case where we first log a static chunk and regular chunk and then later swap out the static chunk.
+        /// This tests that we're able to invalidate the cache on static changes after the fact.
+        PriorStaticThenRegularThenStatic { update_inbetween: bool },
     }
 
-    const ALL_STATIC_TEST_FLAVOURS: [StaticTestFlavour; 2] = [
-        StaticTestFlavour::StaticThenDynamic {
+    const ALL_STATIC_TEST_FLAVOURS: [StaticTestFlavour; 6] = [
+        StaticTestFlavour::StaticThenRegular {
             update_inbetween: true,
         },
-        StaticTestFlavour::DynamicThenStatic {
+        StaticTestFlavour::RegularThenStatic {
             update_inbetween: true,
+        },
+        StaticTestFlavour::PriorStaticThenRegularThenStatic {
+            update_inbetween: true,
+        },
+        StaticTestFlavour::StaticThenRegular {
+            update_inbetween: false,
+        },
+        StaticTestFlavour::RegularThenStatic {
+            update_inbetween: false,
+        },
+        StaticTestFlavour::PriorStaticThenRegularThenStatic {
+            update_inbetween: false,
         },
     ];
 
-    fn static_test_add_chunks(
-        entity_db: &mut EntityDb,
-        static_chunk: Chunk,
-        dynamic_chunk: Chunk,
+    fn static_test_setup_store(
+        prior_static_chunk: Chunk,
+        final_static_chunk: Chunk,
+        regular_chunk: Chunk,
         flavour: StaticTestFlavour,
-    ) {
+    ) -> EntityDb {
         // Print the flavour to its shown on test failure.
         println!("{:?}", flavour);
 
+        let mut entity_db = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
+        ensure_subscriber_registered(&entity_db);
+
         match flavour {
-            StaticTestFlavour::StaticThenDynamic { update_inbetween } => {
-                entity_db.add_chunk(&Arc::new(static_chunk)).unwrap();
+            StaticTestFlavour::StaticThenRegular { update_inbetween } => {
+                entity_db.add_chunk(&Arc::new(final_static_chunk)).unwrap();
                 if update_inbetween {
                     TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
                         cache.apply_all_updates(&entity_db);
                     });
                 }
-                entity_db.add_chunk(&Arc::new(dynamic_chunk)).unwrap();
+                entity_db.add_chunk(&Arc::new(regular_chunk)).unwrap();
             }
 
-            StaticTestFlavour::DynamicThenStatic { update_inbetween } => {
-                entity_db.add_chunk(&Arc::new(dynamic_chunk)).unwrap();
+            StaticTestFlavour::RegularThenStatic { update_inbetween } => {
+                entity_db.add_chunk(&Arc::new(regular_chunk)).unwrap();
                 if update_inbetween {
                     TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
                         cache.apply_all_updates(&entity_db);
                     });
                 }
-                entity_db.add_chunk(&Arc::new(static_chunk)).unwrap();
+                entity_db.add_chunk(&Arc::new(final_static_chunk)).unwrap();
+            }
+
+            StaticTestFlavour::PriorStaticThenRegularThenStatic { update_inbetween } => {
+                entity_db.add_chunk(&Arc::new(prior_static_chunk)).unwrap();
+                entity_db.add_chunk(&Arc::new(regular_chunk)).unwrap();
+                if update_inbetween {
+                    TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+                        cache.apply_all_updates(&entity_db);
+                    });
+                }
+                entity_db.add_chunk(&Arc::new(final_static_chunk)).unwrap();
             }
         }
+
+        entity_db
     }
 
     fn ensure_subscriber_registered(entity_db: &EntityDb) {
@@ -927,21 +962,30 @@ mod tests {
     #[test]
     fn test_static_tree_transforms() {
         for flavour in &ALL_STATIC_TEST_FLAVOURS {
-            let mut entity_db = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
-            ensure_subscriber_registered(&entity_db);
-
             // Log a few tree transforms at different times.
             let timeline = Timeline::new_sequence("t");
-            let static_chunk = ChunkBuilder::new(ChunkId::new(), EntityPath::from("my_entity"))
-                .with_archetype(
-                    RowId::new(),
-                    TimePoint::default(),
-                    // Make sure only translation is logged (no null arrays for everything else).
-                    &archetypes::Transform3D::update_fields().with_translation([1.0, 2.0, 3.0]),
-                )
-                .build()
-                .unwrap();
-            let dynamic_chunk = ChunkBuilder::new(ChunkId::new(), EntityPath::from("my_entity"))
+            let prior_static_chunk =
+                ChunkBuilder::new(ChunkId::new(), EntityPath::from("my_entity"))
+                    .with_archetype(
+                        RowId::new(),
+                        TimePoint::default(),
+                        // Make sure only translation is logged (no null arrays for everything else).
+                        &archetypes::Transform3D::update_fields()
+                            .with_translation([123.0, 234.0, 345.0]),
+                    )
+                    .build()
+                    .unwrap();
+            let final_static_chunk =
+                ChunkBuilder::new(ChunkId::new(), EntityPath::from("my_entity"))
+                    .with_archetype(
+                        RowId::new(),
+                        TimePoint::default(),
+                        // Make sure only translation is logged (no null arrays for everything else).
+                        &archetypes::Transform3D::update_fields().with_translation([1.0, 2.0, 3.0]),
+                    )
+                    .build()
+                    .unwrap();
+            let regular_chunk = ChunkBuilder::new(ChunkId::new(), EntityPath::from("my_entity"))
                 .with_archetype(
                     RowId::new(),
                     [(timeline, 1)],
@@ -950,7 +994,12 @@ mod tests {
                 .build()
                 .unwrap();
 
-            static_test_add_chunks(&mut entity_db, static_chunk, dynamic_chunk, *flavour);
+            let entity_db = static_test_setup_store(
+                prior_static_chunk,
+                final_static_chunk,
+                regular_chunk,
+                *flavour,
+            );
 
             // Check that the transform cache has the expected transforms.
             TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
@@ -999,21 +1048,29 @@ mod tests {
     #[test]
     fn test_static_pose_transforms() {
         for flavour in &ALL_STATIC_TEST_FLAVOURS {
-            let mut entity_db = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
-            ensure_subscriber_registered(&entity_db);
-
             // Log a few tree transforms at different times.
             let timeline = Timeline::new_sequence("t");
-            let static_chunk = ChunkBuilder::new(ChunkId::new(), EntityPath::from("my_entity"))
-                .with_archetype(
-                    RowId::new(),
-                    TimePoint::default(),
-                    &archetypes::InstancePoses3D::new()
-                        .with_translations([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]),
-                )
-                .build()
-                .unwrap();
-            let dynamic_chunk = ChunkBuilder::new(ChunkId::new(), EntityPath::from("my_entity"))
+            let prior_static_chunk =
+                ChunkBuilder::new(ChunkId::new(), EntityPath::from("my_entity"))
+                    .with_archetype(
+                        RowId::new(),
+                        TimePoint::default(),
+                        &archetypes::InstancePoses3D::new()
+                            .with_translations([[321.0, 234.0, 345.0]]),
+                    )
+                    .build()
+                    .unwrap();
+            let final_static_chunk =
+                ChunkBuilder::new(ChunkId::new(), EntityPath::from("my_entity"))
+                    .with_archetype(
+                        RowId::new(),
+                        TimePoint::default(),
+                        &archetypes::InstancePoses3D::new()
+                            .with_translations([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]),
+                    )
+                    .build()
+                    .unwrap();
+            let regular_chunk = ChunkBuilder::new(ChunkId::new(), EntityPath::from("my_entity"))
                 .with_archetype(
                     RowId::new(),
                     [(timeline, 1)],
@@ -1022,7 +1079,13 @@ mod tests {
                 )
                 .build()
                 .unwrap();
-            static_test_add_chunks(&mut entity_db, static_chunk, dynamic_chunk, *flavour);
+
+            let entity_db = static_test_setup_store(
+                prior_static_chunk,
+                final_static_chunk,
+                regular_chunk,
+                *flavour,
+            );
 
             // Check that the transform cache has the expected transforms.
             TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
@@ -1084,10 +1147,12 @@ mod tests {
     #[test]
     fn test_static_pinhole_projection() {
         for flavour in &ALL_STATIC_TEST_FLAVOURS {
-            let mut entity_db = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
-            ensure_subscriber_registered(&entity_db);
-
-            let image_from_camera =
+            let image_from_camera_prior =
+                components::PinholeProjection::from_focal_length_and_principal_point(
+                    [123.0, 123.0],
+                    [123.0, 123.0],
+                );
+            let image_from_camera_final =
                 components::PinholeProjection::from_focal_length_and_principal_point(
                     [1.0, 2.0],
                     [1.0, 2.0],
@@ -1095,15 +1160,25 @@ mod tests {
 
             // Static pinhole, non-static view coordinates.
             let timeline = Timeline::new_sequence("t");
-            let static_chunk = ChunkBuilder::new(ChunkId::new(), EntityPath::from("my_entity"))
-                .with_archetype(
-                    RowId::new(),
-                    TimePoint::default(),
-                    &archetypes::Pinhole::new(image_from_camera),
-                )
-                .build()
-                .unwrap();
-            let dynamic_chunk = ChunkBuilder::new(ChunkId::new(), EntityPath::from("my_entity"))
+            let prior_static_chunk =
+                ChunkBuilder::new(ChunkId::new(), EntityPath::from("my_entity"))
+                    .with_archetype(
+                        RowId::new(),
+                        TimePoint::default(),
+                        &archetypes::Pinhole::new(image_from_camera_prior),
+                    )
+                    .build()
+                    .unwrap();
+            let final_static_chunk =
+                ChunkBuilder::new(ChunkId::new(), EntityPath::from("my_entity"))
+                    .with_archetype(
+                        RowId::new(),
+                        TimePoint::default(),
+                        &archetypes::Pinhole::new(image_from_camera_final),
+                    )
+                    .build()
+                    .unwrap();
+            let regular_chunk = ChunkBuilder::new(ChunkId::new(), EntityPath::from("my_entity"))
                 .with_archetype(
                     RowId::new(),
                     [(timeline, 1)],
@@ -1111,7 +1186,13 @@ mod tests {
                 )
                 .build()
                 .unwrap();
-            static_test_add_chunks(&mut entity_db, static_chunk, dynamic_chunk, *flavour);
+
+            let entity_db = static_test_setup_store(
+                prior_static_chunk,
+                final_static_chunk,
+                regular_chunk,
+                *flavour,
+            );
 
             // Check that the transform cache has the expected transforms.
             TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
@@ -1124,7 +1205,7 @@ mod tests {
                 assert_eq!(
                     transforms.latest_at_pinhole(&LatestAtQuery::new(timeline, TimeInt::MIN)),
                     Some(&ResolvedPinholeProjection {
-                        image_from_camera: image_from_camera,
+                        image_from_camera: image_from_camera_final,
                         view_coordinates: archetypes::Pinhole::DEFAULT_CAMERA_XYZ,
                     })
                 );
@@ -1135,7 +1216,7 @@ mod tests {
                 assert_eq!(
                     transforms.latest_at_pinhole(&LatestAtQuery::new(timeline, 1)),
                     Some(&ResolvedPinholeProjection {
-                        image_from_camera,
+                        image_from_camera: image_from_camera_final,
                         view_coordinates: components::ViewCoordinates::BLU,
                     })
                 );
@@ -1149,7 +1230,7 @@ mod tests {
                 assert_eq!(
                     transforms.latest_at_pinhole(&LatestAtQuery::new(timeline, 123)),
                     Some(&ResolvedPinholeProjection {
-                        image_from_camera: image_from_camera,
+                        image_from_camera: image_from_camera_final,
                         view_coordinates: archetypes::Pinhole::DEFAULT_CAMERA_XYZ,
                     })
                 );
@@ -1160,9 +1241,6 @@ mod tests {
     #[test]
     fn test_static_view_coordinates_projection() {
         for flavour in &ALL_STATIC_TEST_FLAVOURS {
-            let mut entity_db = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
-            ensure_subscriber_registered(&entity_db);
-
             let image_from_camera =
                 components::PinholeProjection::from_focal_length_and_principal_point(
                     [1.0, 2.0],
@@ -1171,15 +1249,25 @@ mod tests {
 
             // Static view coordinates, non-static pinhole.
             let timeline = Timeline::new_sequence("t");
-            let static_chunk = ChunkBuilder::new(ChunkId::new(), EntityPath::from("my_entity"))
-                .with_archetype(
-                    RowId::new(),
-                    TimePoint::default(),
-                    &archetypes::ViewCoordinates::BLU,
-                )
-                .build()
-                .unwrap();
-            let dynamic_chunk = ChunkBuilder::new(ChunkId::new(), EntityPath::from("my_entity"))
+            let prior_static_chunk =
+                ChunkBuilder::new(ChunkId::new(), EntityPath::from("my_entity"))
+                    .with_archetype(
+                        RowId::new(),
+                        TimePoint::default(),
+                        &archetypes::ViewCoordinates::BRU,
+                    )
+                    .build()
+                    .unwrap();
+            let final_static_chunk =
+                ChunkBuilder::new(ChunkId::new(), EntityPath::from("my_entity"))
+                    .with_archetype(
+                        RowId::new(),
+                        TimePoint::default(),
+                        &archetypes::ViewCoordinates::BLU,
+                    )
+                    .build()
+                    .unwrap();
+            let regular_chunk = ChunkBuilder::new(ChunkId::new(), EntityPath::from("my_entity"))
                 .with_archetype(
                     RowId::new(),
                     [(timeline, 1)],
@@ -1187,7 +1275,13 @@ mod tests {
                 )
                 .build()
                 .unwrap();
-            static_test_add_chunks(&mut entity_db, static_chunk, dynamic_chunk, *flavour);
+
+            let entity_db = static_test_setup_store(
+                prior_static_chunk,
+                final_static_chunk,
+                regular_chunk,
+                *flavour,
+            );
 
             // Check that the transform cache has the expected transforms.
             TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
