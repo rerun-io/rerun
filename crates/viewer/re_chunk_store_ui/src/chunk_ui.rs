@@ -1,11 +1,12 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
+use arrow::array::Array as _;
 use egui_extras::{Column, TableRow};
 use itertools::Itertools;
 
 use re_byte_size::SizeBytes;
-use re_chunk_store::external::re_chunk::{Arrow2Array, TransportChunk};
+use re_chunk_store::external::re_chunk::TransportChunk;
 use re_chunk_store::Chunk;
 use re_log_types::{TimeZone, Timeline};
 use re_types::datatypes::TimeInt;

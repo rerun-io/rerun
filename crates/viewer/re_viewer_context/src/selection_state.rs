@@ -41,6 +41,13 @@ pub enum ItemContext {
         /// Which store does this streams tree correspond to?
         store_kind: StoreKind,
 
+        /// The current entity filter session id, if any.
+        filter_session_id: Option<egui::Id>,
+    },
+
+    /// Hovering/selecting in the blueprint tree.
+    BlueprintTree {
+        /// The current entity filter session id, if any.
         filter_session_id: Option<egui::Id>,
     },
 }

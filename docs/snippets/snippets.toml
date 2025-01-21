@@ -231,6 +231,9 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "py",
   "rust",
 ]
+"archetypes/points3d_partial_updates" = [ # TODO(cmc): revert once C++ has tagged partial updates
+  "cpp",
+]
 "archetypes/points3d_random" = [ # TODO(#3206): examples use different RNGs
   "cpp",
   "py",

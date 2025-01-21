@@ -1,7 +1,7 @@
 use std::{collections::BTreeSet, sync::Arc};
 
 use ahash::HashMap;
-use arrow2::array::{Array as _, ListArray as Arrow2ListArray};
+use arrow::array::Array as _;
 use itertools::Itertools as _;
 
 use re_byte_size::SizeBytes;
@@ -63,7 +63,6 @@ impl ChunkStore {
         // * Etc.
         if self.id.kind == re_log_types::StoreKind::Blueprint {
             let patched = chunk.patched_for_blueprint_021_compat();
-            let patched = patched.clone_as_untagged();
             chunk = Arc::new(patched);
         }
 
@@ -87,7 +86,7 @@ impl ChunkStore {
 
             for (component_desc, list_array) in chunk.components().iter_flattened() {
                 let is_empty = list_array
-                    .validity()
+                    .nulls()
                     .is_some_and(|validity| validity.is_empty());
                 if is_empty {
                     continue;
@@ -370,10 +369,8 @@ impl ChunkStore {
             .push(chunk.id());
 
         for (component_descr, list_array) in chunk.components().iter_flattened() {
-            self.type_registry.insert(
-                component_descr.component_name,
-                Arrow2ListArray::<i32>::get_child_type(list_array.data_type()).clone(),
-            );
+            self.type_registry
+                .insert(component_descr.component_name, list_array.value_type());
 
             let column_metadata_state = self
                 .per_column_metadata
@@ -387,7 +384,7 @@ impl ChunkStore {
                 });
             {
                 let is_semantically_empty =
-                    re_arrow_util::arrow2_util::is_list_array_semantically_empty(list_array);
+                    re_arrow_util::arrow_util::is_list_array_semantically_empty(list_array);
 
                 column_metadata_state.is_semantically_empty &= is_semantically_empty;
             }
@@ -566,7 +563,6 @@ impl ChunkStore {
             static_chunk_ids_per_entity,
             static_chunks_stats,
             insert_id: _,
-            query_id: _,
             gc_id: _,
             event_id,
         } = self;

@@ -121,11 +121,15 @@ impl ::re_types_core::Loggable for AffixFuzzer20 {
                                     opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()
                                 }),
                             );
-                            let inner_data: arrow::buffer::Buffer = s
-                                .into_iter()
-                                .flatten()
-                                .flat_map(|datum| datum.0.into_arrow2_buffer())
-                                .collect();
+                            #[allow(clippy::unwrap_used)]
+                            let capacity = offsets.last().copied().unwrap() as usize;
+                            let mut buffer_builder =
+                                arrow::array::builder::BufferBuilder::<u8>::new(capacity);
+                            for data in s.iter().flatten() {
+                                buffer_builder.append_slice(data.0.as_bytes());
+                            }
+                            let inner_data: arrow::buffer::Buffer = buffer_builder.finish();
+
                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                             as_array_ref(unsafe {
                                 StringArray::new_unchecked(offsets, inner_data, s_validity)

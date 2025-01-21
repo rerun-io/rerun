@@ -1,7 +1,4 @@
-use std::{
-    collections::BTreeSet,
-    sync::{atomic::Ordering, Arc},
-};
+use std::{collections::BTreeSet, sync::Arc};
 
 use itertools::Itertools;
 use nohash_hasher::IntSet;
@@ -116,8 +113,6 @@ impl ChunkStore {
     ) -> Option<UnorderedComponentNameSet> {
         re_tracing::profile_function!();
 
-        self.query_id.fetch_add(1, Ordering::Relaxed);
-
         let static_components: Option<UnorderedComponentNameSet> = self
             .static_chunk_ids_per_entity
             .get(entity_path)
@@ -160,8 +155,6 @@ impl ChunkStore {
     ) -> Option<ComponentNameSet> {
         re_tracing::profile_function!();
 
-        self.query_id.fetch_add(1, Ordering::Relaxed);
-
         let static_components: Option<ComponentNameSet> = self
             .static_chunk_ids_per_entity
             .get(entity_path)
@@ -202,8 +195,6 @@ impl ChunkStore {
     ) -> Option<UnorderedComponentNameSet> {
         re_tracing::profile_function!();
 
-        self.query_id.fetch_add(1, Ordering::Relaxed);
-
         let static_components: Option<UnorderedComponentNameSet> = self
             .static_chunk_ids_per_entity
             .get(entity_path)
@@ -242,8 +233,6 @@ impl ChunkStore {
         entity_path: &EntityPath,
     ) -> Option<ComponentNameSet> {
         re_tracing::profile_function!();
-
-        self.query_id.fetch_add(1, Ordering::Relaxed);
 
         let static_components: Option<ComponentNameSet> = self
             .static_chunk_ids_per_entity
@@ -314,8 +303,6 @@ impl ChunkStore {
     ) -> bool {
         // re_tracing::profile_function!(); // This function is too fast; profiling will only add overhead
 
-        self.query_id.fetch_add(1, Ordering::Relaxed);
-
         self.static_chunk_ids_per_entity
             .get(entity_path)
             .is_some_and(|static_chunk_ids_per_component| {
@@ -333,8 +320,6 @@ impl ChunkStore {
         component_name: &ComponentName,
     ) -> bool {
         // re_tracing::profile_function!(); // This function is too fast; profiling will only add overhead
-
-        self.query_id.fetch_add(1, Ordering::Relaxed);
 
         self.temporal_chunk_ids_per_entity_per_component
             .get(entity_path)
@@ -356,8 +341,6 @@ impl ChunkStore {
         component_name: &ComponentName,
     ) -> bool {
         // re_tracing::profile_function!(); // This function is too fast; profiling will only add overhead
-
-        self.query_id.fetch_add(1, Ordering::Relaxed);
 
         self.temporal_chunk_ids_per_entity_per_component
             .get(entity_path)
@@ -405,8 +388,6 @@ impl ChunkStore {
     pub fn entity_has_static_data(&self, entity_path: &EntityPath) -> bool {
         // re_tracing::profile_function!(); // This function is too fast; profiling will only add overhead
 
-        self.query_id.fetch_add(1, Ordering::Relaxed);
-
         self.static_chunk_ids_per_entity
             .get(entity_path)
             .is_some_and(|static_chunk_ids_per_component| {
@@ -423,8 +404,6 @@ impl ChunkStore {
     #[inline]
     pub fn entity_has_temporal_data(&self, entity_path: &EntityPath) -> bool {
         // re_tracing::profile_function!(); // This function is too fast; profiling will only add overhead
-
-        self.query_id.fetch_add(1, Ordering::Relaxed);
 
         self.temporal_chunk_ids_per_entity_per_component
             .get(entity_path)
@@ -451,8 +430,6 @@ impl ChunkStore {
         entity_path: &EntityPath,
     ) -> bool {
         // re_tracing::profile_function!(); // This function is too fast; profiling will only add overhead
-
-        self.query_id.fetch_add(1, Ordering::Relaxed);
 
         self.temporal_chunk_ids_per_entity_per_component
             .get(entity_path)
@@ -506,8 +483,6 @@ impl ChunkStore {
     ) -> Option<ResolvedTimeRange> {
         re_tracing::profile_function!();
 
-        self.query_id.fetch_add(1, Ordering::Relaxed);
-
         let temporal_chunk_ids_per_timeline =
             self.temporal_chunk_ids_per_entity.get(entity_path)?;
         let chunk_id_sets = temporal_chunk_ids_per_timeline.get(timeline)?;
@@ -524,8 +499,6 @@ impl ChunkStore {
     /// This ignores static data.
     pub fn time_range(&self, timeline: &Timeline) -> Option<ResolvedTimeRange> {
         re_tracing::profile_function!();
-
-        self.query_id.fetch_add(1, Ordering::Relaxed);
 
         self.temporal_chunk_ids_per_entity
             .values()
@@ -620,8 +593,6 @@ impl ChunkStore {
     ) -> Vec<Arc<Chunk>> {
         re_tracing::profile_function!(format!("{query:?}"));
 
-        self.query_id.fetch_add(1, Ordering::Relaxed);
-
         let chunks = self
             .temporal_chunk_ids_per_entity
             .get(entity_path)
@@ -711,8 +682,6 @@ impl ChunkStore {
     ) -> Vec<Arc<Chunk>> {
         re_tracing::profile_function!(format!("{query:?}"));
 
-        self.query_id.fetch_add(1, Ordering::Relaxed);
-
         if let Some(static_chunk) = self
             .static_chunk_ids_per_entity
             .get(entity_path)
@@ -777,8 +746,6 @@ impl ChunkStore {
         entity_path: &EntityPath,
     ) -> Vec<Arc<Chunk>> {
         re_tracing::profile_function!(format!("{query:?}"));
-
-        self.query_id.fetch_add(1, Ordering::Relaxed);
 
         let chunks = self
             .range(

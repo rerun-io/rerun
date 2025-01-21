@@ -104,11 +104,15 @@ impl ::re_types_core::Loggable for ComponentColumnSelector {
                                     opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()
                                 }),
                             );
-                            let inner_data: arrow::buffer::Buffer = entity_path
-                                .into_iter()
-                                .flatten()
-                                .flat_map(|datum| datum.0.into_arrow2_buffer())
-                                .collect();
+                            #[allow(clippy::unwrap_used)]
+                            let capacity = offsets.last().copied().unwrap() as usize;
+                            let mut buffer_builder =
+                                arrow::array::builder::BufferBuilder::<u8>::new(capacity);
+                            for data in entity_path.iter().flatten() {
+                                buffer_builder.append_slice(data.0.as_bytes());
+                            }
+                            let inner_data: arrow::buffer::Buffer = buffer_builder.finish();
+
                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                             as_array_ref(unsafe {
                                 StringArray::new_unchecked(
@@ -137,11 +141,14 @@ impl ::re_types_core::Loggable for ComponentColumnSelector {
                                     opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()
                                 }),
                             );
-                            let inner_data: arrow::buffer::Buffer = component
-                                .into_iter()
-                                .flatten()
-                                .flat_map(|datum| datum.0.into_arrow2_buffer())
-                                .collect();
+                            #[allow(clippy::unwrap_used)]
+                            let capacity = offsets.last().copied().unwrap() as usize;
+                            let mut buffer_builder =
+                                arrow::array::builder::BufferBuilder::<u8>::new(capacity);
+                            for data in component.iter().flatten() {
+                                buffer_builder.append_slice(data.0.as_bytes());
+                            }
+                            let inner_data: arrow::buffer::Buffer = buffer_builder.finish();
 
                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                             as_array_ref(unsafe {

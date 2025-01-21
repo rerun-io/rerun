@@ -907,7 +907,9 @@ fn show_projections_from_2d_space(
                 }
             }
         }
-        ItemContext::ThreeD { .. } | ItemContext::StreamsTree { .. } => {}
+        ItemContext::ThreeD { .. }
+        | ItemContext::StreamsTree { .. }
+        | ItemContext::BlueprintTree { .. } => {}
     }
 }
 
