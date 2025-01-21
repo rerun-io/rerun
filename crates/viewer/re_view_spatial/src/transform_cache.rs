@@ -1081,7 +1081,6 @@ mod tests {
         }
     }
 
-    // TODO: static view coordinates.
     #[test]
     fn test_static_pinhole_projection() {
         for flavour in &ALL_STATIC_TEST_FLAVOURS {
@@ -1152,6 +1151,67 @@ mod tests {
                     Some(&ResolvedPinholeProjection {
                         image_from_camera: image_from_camera,
                         view_coordinates: archetypes::Pinhole::DEFAULT_CAMERA_XYZ,
+                    })
+                );
+            });
+        }
+    }
+
+    #[test]
+    fn test_static_view_coordinates_projection() {
+        for flavour in &ALL_STATIC_TEST_FLAVOURS {
+            let mut entity_db = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
+            ensure_subscriber_registered(&entity_db);
+
+            let image_from_camera =
+                components::PinholeProjection::from_focal_length_and_principal_point(
+                    [1.0, 2.0],
+                    [1.0, 2.0],
+                );
+
+            // Static view coordinates, non-static pinhole.
+            let timeline = Timeline::new_sequence("t");
+            let static_chunk = ChunkBuilder::new(ChunkId::new(), EntityPath::from("my_entity"))
+                .with_archetype(
+                    RowId::new(),
+                    TimePoint::default(),
+                    &archetypes::ViewCoordinates::BLU,
+                )
+                .build()
+                .unwrap();
+            let dynamic_chunk = ChunkBuilder::new(ChunkId::new(), EntityPath::from("my_entity"))
+                .with_archetype(
+                    RowId::new(),
+                    [(timeline, 1)],
+                    &archetypes::Pinhole::new(image_from_camera),
+                )
+                .build()
+                .unwrap();
+            static_test_add_chunks(&mut entity_db, static_chunk, dynamic_chunk, *flavour);
+
+            // Check that the transform cache has the expected transforms.
+            TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+                cache.apply_all_updates(&entity_db);
+                let transforms_per_timeline = cache.transforms_for_timeline(timeline);
+                let transforms = transforms_per_timeline
+                    .entity_transforms(EntityPath::from("my_entity").hash())
+                    .unwrap();
+
+                // There's view coordinates, but that doesn't show up.
+                assert_eq!(
+                    transforms.latest_at_pinhole(&LatestAtQuery::new(timeline, TimeInt::MIN)),
+                    None
+                );
+                assert_eq!(
+                    transforms.latest_at_pinhole(&LatestAtQuery::new(timeline, TimeInt::MIN)),
+                    transforms.latest_at_pinhole(&LatestAtQuery::new(timeline, 0)),
+                );
+                // Once we get a pinhole camera, the view coordinates should be there.
+                assert_eq!(
+                    transforms.latest_at_pinhole(&LatestAtQuery::new(timeline, 1)),
+                    Some(&ResolvedPinholeProjection {
+                        image_from_camera,
+                        view_coordinates: components::ViewCoordinates::BLU,
                     })
                 );
             });
