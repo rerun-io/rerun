@@ -5,10 +5,10 @@ use re_types::{
 };
 use re_view::{diff_component_filter, HybridResults};
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, ImageDecodeCache, QueryContext,
+    IdentifiedViewSystem, ImageDecodeCache, MaybeVisualizableEntities, QueryContext,
     TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewQuery,
     ViewSystemExecutionError, VisualizableEntities, VisualizableFilterContext,
-    VisualizerAdditionalApplicabilityFilter, VisualizerQueryInfo, VisualizerSystem,
+    DataBasedVisualizabilityFilter, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{
@@ -40,11 +40,11 @@ impl IdentifiedViewSystem for EncodedImageVisualizer {
 
 struct ImageMediaTypeFilter;
 
-impl VisualizerAdditionalApplicabilityFilter for ImageMediaTypeFilter {
-    /// Marks entities only as applicable for `EncodedImage` if they have an image media type.
+impl DataBasedVisualizabilityFilter for ImageMediaTypeFilter {
+    /// Marks entities only as "maybe visualizable" for `EncodedImage` if they have an image media type.
     ///
     /// Otherwise the image encoder might be suggested for other blobs like video.
-    fn update_applicability(&mut self, event: &re_chunk_store::ChunkStoreEvent) -> bool {
+    fn update_visualizability(&mut self, event: &re_chunk_store::ChunkStoreEvent) -> bool {
         diff_component_filter(event, |media_type: &re_types::components::MediaType| {
             media_type.is_image()
         }) || diff_component_filter(event, |image: &re_types::components::Blob| {
@@ -58,15 +58,15 @@ impl VisualizerSystem for EncodedImageVisualizer {
         VisualizerQueryInfo::from_archetype::<EncodedImage>()
     }
 
-    fn applicability_filter(
+    fn data_based_visualizability_filter(
         &self,
-    ) -> Option<Box<dyn re_viewer_context::VisualizerAdditionalApplicabilityFilter>> {
+    ) -> Option<Box<dyn re_viewer_context::DataBasedVisualizabilityFilter>> {
         Some(Box::new(ImageMediaTypeFilter))
     }
 
     fn filter_visualizable_entities(
         &self,
-        entities: ApplicableEntities,
+        entities: MaybeVisualizableEntities,
         context: &dyn VisualizableFilterContext,
     ) -> VisualizableEntities {
         re_tracing::profile_function!();

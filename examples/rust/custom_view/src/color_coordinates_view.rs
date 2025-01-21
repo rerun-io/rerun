@@ -106,9 +106,9 @@ impl ViewClass for ColorCoordinatesView {
     }
 
     fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> ViewSpawnHeuristics {
-        // By default spawn a single view at the root if there's anything the visualizer is applicable to.
+        // By default spawn a single view at the root if there's anything the visualizer may be able to show.
         if ctx
-            .applicable_entities_per_visualizer
+            .maybe_visualizable_entities_per_visualizer
             .get(&InstanceColorSystem::identifier())
             .map_or(true, |entities| entities.is_empty())
         {

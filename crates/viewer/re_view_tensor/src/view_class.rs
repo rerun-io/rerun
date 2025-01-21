@@ -15,7 +15,7 @@ use re_types::{
 use re_ui::{list_item, UiExt as _};
 use re_view::{suggest_view_for_each_entity, view_property_ui};
 use re_viewer_context::{
-    gpu_bridge, ApplicableEntities, ColormapWithRange, IdentifiedViewSystem as _,
+    gpu_bridge, MaybeVisualizableEntities, ColormapWithRange, IdentifiedViewSystem as _,
     IndicatedEntities, PerVisualizer, TensorStatsCache, TypedComponentFallbackProvider, ViewClass,
     ViewClassRegistryError, ViewId, ViewQuery, ViewState, ViewStateExt as _,
     ViewSystemExecutionError, ViewerContext, VisualizableEntities,
@@ -95,7 +95,7 @@ Note: select the view to configure which dimensions are shown."
     fn choose_default_visualizers(
         &self,
         entity_path: &EntityPath,
-        _applicable_entities_per_visualizer: &PerVisualizer<ApplicableEntities>,
+        _maybe_visualizable_entities_per_visualizer: &PerVisualizer<MaybeVisualizableEntities>,
         visualizable_entities_per_visualizer: &PerVisualizer<VisualizableEntities>,
         _indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
     ) -> re_viewer_context::SmallVisualizerSet {

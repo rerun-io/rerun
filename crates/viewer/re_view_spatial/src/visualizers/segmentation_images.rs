@@ -5,7 +5,7 @@ use re_types::{
     Component as _,
 };
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, ImageInfo, QueryContext,
+    MaybeVisualizableEntities, IdentifiedViewSystem, ImageInfo, QueryContext,
     TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewQuery,
     ViewSystemExecutionError, VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo,
     VisualizerSystem,
@@ -50,7 +50,7 @@ impl VisualizerSystem for SegmentationImageVisualizer {
 
     fn filter_visualizable_entities(
         &self,
-        entities: ApplicableEntities,
+        entities: MaybeVisualizableEntities,
         context: &dyn VisualizableFilterContext,
     ) -> VisualizableEntities {
         re_tracing::profile_function!();

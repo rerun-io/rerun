@@ -6,7 +6,7 @@ use re_types::{
     components::{ImagePlaneDistance, ViewCoordinates},
 };
 use re_viewer_context::{
-    ApplicableEntities, DataResult, IdentifiedViewSystem, QueryContext,
+    MaybeVisualizableEntities, DataResult, IdentifiedViewSystem, QueryContext,
     TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewOutlineMasks,
     ViewQuery, ViewStateExt as _, ViewSystemExecutionError, VisualizableEntities,
     VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
@@ -202,7 +202,7 @@ impl VisualizerSystem for CamerasVisualizer {
 
     fn filter_visualizable_entities(
         &self,
-        entities: ApplicableEntities,
+        entities: MaybeVisualizableEntities,
         context: &dyn VisualizableFilterContext,
     ) -> VisualizableEntities {
         re_tracing::profile_function!();

@@ -8,9 +8,9 @@ use re_query::StorageEngineReadGuard;
 
 use crate::drag_and_drop::DragAndDropPayload;
 use crate::{
-    query_context::DataQueryResult, AppOptions, ApplicableEntities, ApplicationSelectionState,
-    Caches, CommandSender, ComponentUiRegistry, DragAndDropManager, IndicatedEntities,
-    ItemCollection, PerVisualizer, StoreContext, SystemCommandSender as _, TimeControl,
+    query_context::DataQueryResult, AppOptions, ApplicationSelectionState, Caches, CommandSender,
+    ComponentUiRegistry, DragAndDropManager, IndicatedEntities, ItemCollection,
+    MaybeVisualizableEntities, PerVisualizer, StoreContext, SystemCommandSender as _, TimeControl,
     ViewClassRegistry, ViewId,
 };
 
@@ -45,12 +45,12 @@ pub struct ViewerContext<'a> {
     /// Mapping from class and system to entities for the store
     ///
     /// TODO(andreas): This should have a generation id, allowing to update heuristics(?)/visualizable entities etc.
-    pub applicable_entities_per_visualizer: &'a PerVisualizer<ApplicableEntities>,
+    pub maybe_visualizable_entities_per_visualizer: &'a PerVisualizer<MaybeVisualizableEntities>,
 
     /// For each visualizer, the set of entities that have at least one matching indicator component.
     ///
-    /// TODO(andreas): Should we always do the intersection with `applicable_entities_per_visualizer`
-    ///                 or are we ever interested in a non-applicable but indicator-matching entity?
+    /// TODO(andreas): Should we always do the intersection with `maybe_visualizable_entities_per_visualizer`
+    ///                 or are we ever interested in a (definitely-)non-visualizable but indicator-matching entity?
     pub indicated_entities_per_visualizer: &'a PerVisualizer<IndicatedEntities>,
 
     /// All the query results for this frame.

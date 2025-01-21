@@ -15,7 +15,7 @@ use re_types::{
     Archetype, Component as _,
 };
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, TypedComponentFallbackProvider, VideoCache,
+    MaybeVisualizableEntities, IdentifiedViewSystem, TypedComponentFallbackProvider, VideoCache,
     ViewClass as _, ViewContext, ViewContextCollection, ViewId, ViewQuery,
     ViewSystemExecutionError, ViewerContext, VisualizableEntities, VisualizableFilterContext,
     VisualizerQueryInfo, VisualizerSystem,
@@ -59,7 +59,7 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
 
     fn filter_visualizable_entities(
         &self,
-        entities: ApplicableEntities,
+        entities: MaybeVisualizableEntities,
         context: &dyn VisualizableFilterContext,
     ) -> VisualizableEntities {
         re_tracing::profile_function!();

@@ -178,8 +178,10 @@ fn run_graph_view_and_save_snapshot(
     let class_identifier = GraphView::identifier();
 
     let view_class_registry = &mut test_context.view_class_registry;
-    let applicable_entities_per_visualizer = view_class_registry
-        .applicable_entities_for_visualizer_systems(&test_context.recording_store.store_id());
+    let maybe_visualizable_entities_per_visualizer = view_class_registry
+        .maybe_visualizable_entities_for_visualizer_systems(
+            &test_context.recording_store.store_id(),
+        );
 
     // TODO(andreas): this is c&p from TestContext::run. Make it nicer plz ;)
     let store_context = re_viewer_context::StoreContext {
@@ -201,7 +203,7 @@ fn run_graph_view_and_save_snapshot(
         let visualizable_entities = view_class_registry
             .get_class_or_log_error(class_identifier)
             .determine_visualizable_entities(
-                &applicable_entities_per_visualizer,
+                &maybe_visualizable_entities_per_visualizer,
                 &test_context.recording_store,
                 &view_class_registry.new_visualizer_collection(class_identifier),
                 &view_blueprint.space_origin,

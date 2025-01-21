@@ -16,7 +16,7 @@ use re_view::controls::{
 };
 use re_view::{controls, view_property_ui};
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, IndicatedEntities, PerVisualizer, QueryRange,
+    IdentifiedViewSystem, IndicatedEntities, MaybeVisualizableEntities, PerVisualizer, QueryRange,
     RecommendedView, SmallVisualizerSet, SystemExecutionOutput, TypedComponentFallbackProvider,
     ViewClass, ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState,
     ViewStateExt as _, ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext,
@@ -191,12 +191,14 @@ Display time series data in a plot.
         }
 
         // Because SeriesLine is our fallback visualizer, also include any entities for which
-        // SeriesLine is applicable, even if not indicated.
-        if let Some(applicable) = ctx
-            .applicable_entities_per_visualizer
+        // SeriesLine is visualizable, even if not indicated.
+        if let Some(maybe_visualizable) = ctx
+            .maybe_visualizable_entities_per_visualizer
             .get(&SeriesLineSystem::identifier())
         {
-            indicated_entities.0.extend(applicable.iter().cloned());
+            indicated_entities
+                .0
+                .extend(maybe_visualizable.iter().cloned());
         }
 
         if indicated_entities.0.is_empty() {
@@ -236,7 +238,7 @@ Display time series data in a plot.
     fn choose_default_visualizers(
         &self,
         entity_path: &EntityPath,
-        _applicable_entities_per_visualizer: &PerVisualizer<ApplicableEntities>,
+        _maybe_visualizable_entities_per_visualizer: &PerVisualizer<MaybeVisualizableEntities>,
         visualizable_entities_per_visualizer: &PerVisualizer<VisualizableEntities>,
         indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
     ) -> SmallVisualizerSet {

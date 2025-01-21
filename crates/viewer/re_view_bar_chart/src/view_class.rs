@@ -11,7 +11,7 @@ use re_view::controls::{
 };
 use re_view::{controls, suggest_view_for_each_entity, view_property_ui};
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem as _, IndicatedEntities, PerVisualizer,
+    MaybeVisualizableEntities, IdentifiedViewSystem as _, IndicatedEntities, PerVisualizer,
     TypedComponentFallbackProvider, ViewClass, ViewClassRegistryError, ViewId, ViewQuery,
     ViewState, ViewStateExt, ViewSystemExecutionError, ViewerContext, VisualizableEntities,
 };
@@ -75,7 +75,7 @@ Display a 1D tensor as a bar chart.
     fn choose_default_visualizers(
         &self,
         entity_path: &EntityPath,
-        _applicable_entities_per_visualizer: &PerVisualizer<ApplicableEntities>,
+        _maybe_visualizable_entities_per_visualizer: &PerVisualizer<MaybeVisualizableEntities>,
         visualizable_entities_per_visualizer: &PerVisualizer<VisualizableEntities>,
         _indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
     ) -> re_viewer_context::SmallVisualizerSet {

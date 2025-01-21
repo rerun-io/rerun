@@ -74,7 +74,7 @@ pub use self::{
     time_control::{Looping, PlayState, TimeControl, TimeView, TimelineCallbacks},
     time_drag_value::TimeDragValue,
     typed_entity_collections::{
-        ApplicableEntities, IndicatedEntities, PerVisualizer, VisualizableEntities,
+        IndicatedEntities, MaybeVisualizableEntities, PerVisualizer, VisualizableEntities,
     },
     undo::BlueprintUndoState,
     utils::{auto_color_egui, auto_color_for_entity_path, level_to_rich_text},
@@ -86,7 +86,7 @@ pub use self::{
         ViewContextCollection, ViewContextSystem, ViewEntityHighlight, ViewHighlights,
         ViewOutlineMasks, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt, ViewStates,
         ViewSystemExecutionError, ViewSystemIdentifier, ViewSystemRegistrator,
-        VisualizableFilterContext, VisualizerAdditionalApplicabilityFilter, VisualizerCollection,
+        VisualizableFilterContext, VisualizerCollection, DataBasedVisualizabilityFilter,
         VisualizerQueryInfo, VisualizerSystem,
     },
     viewer_context::{RecordingConfig, ViewerContext},

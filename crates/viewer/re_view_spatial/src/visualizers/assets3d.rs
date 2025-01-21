@@ -7,7 +7,7 @@ use re_types::{
     ArrowBuffer, ArrowString, Component as _,
 };
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection,
+    MaybeVisualizableEntities, IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection,
     ViewQuery, ViewSystemExecutionError, VisualizableEntities, VisualizableFilterContext,
     VisualizerQueryInfo, VisualizerSystem,
 };
@@ -121,7 +121,7 @@ impl VisualizerSystem for Asset3DVisualizer {
 
     fn filter_visualizable_entities(
         &self,
-        entities: ApplicableEntities,
+        entities: MaybeVisualizableEntities,
         context: &dyn VisualizableFilterContext,
     ) -> VisualizableEntities {
         re_tracing::profile_function!();
