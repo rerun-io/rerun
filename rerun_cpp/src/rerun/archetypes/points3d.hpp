@@ -127,7 +127,7 @@ namespace rerun::archetypes {
     ///
     ///     // At each time stamp, all points in the cloud share the same but changing color.
     ///     std::vector<uint32_t> colors = {0xFF0000FF, 0x00FF00FF, 0x0000FFFF, 0xFFFF00FF, 0x00FFFFFF};
-    ///     std::vector<float> radii = {0.05, 0.01, 0.2, 0.1, 0.3};
+    ///     std::vector<float> radii = {0.05f, 0.01f, 0.2f, 0.1f, 0.3f};
     ///
     ///     // Log at seconds 10-14
     ///     auto times = rerun::Collection{10s, 11s, 12s, 13s, 14s};
