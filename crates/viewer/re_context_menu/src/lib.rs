@@ -9,6 +9,7 @@ use re_viewer_context::{
 use re_viewport_blueprint::{ContainerBlueprint, ViewportBlueprint};
 
 mod actions;
+pub mod collapse_expand;
 mod sub_menu;
 
 use actions::{
@@ -91,7 +92,6 @@ fn context_menu_ui_for_item_with_context_impl(
             let context_menu_ctx = ContextMenuContext {
                 viewer_context: ctx,
                 viewport_blueprint,
-                egui_context: ui.ctx().clone(),
                 selection,
                 clicked_item: item,
             };
@@ -241,7 +241,6 @@ fn show_context_menu_for_selection(ctx: &ContextMenuContext<'_>, ui: &mut egui::
 struct ContextMenuContext<'a> {
     viewer_context: &'a ViewerContext<'a>,
     viewport_blueprint: &'a ViewportBlueprint,
-    egui_context: egui::Context,
     selection: &'a ItemCollection,
     clicked_item: &'a Item,
 }
@@ -273,6 +272,10 @@ impl<'a> ContextMenuContext<'a> {
                     .container(&container_id)
                     .map(|container| (container, pos))
             })
+    }
+
+    pub fn egui_context(&self) -> &egui::Context {
+        self.viewer_context.egui_ctx
     }
 }
 

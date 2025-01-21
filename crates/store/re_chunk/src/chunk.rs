@@ -8,11 +8,7 @@ use arrow::{
     },
     buffer::ScalarBuffer as ArrowScalarBuffer,
 };
-use arrow2::{
-    array::{Array as Arrow2Array, ListArray as Arrow2ListArray},
-    Either,
-};
-use itertools::{izip, Itertools};
+use itertools::{izip, Either, Itertools};
 use nohash_hasher::IntMap;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
@@ -37,9 +33,6 @@ pub enum ChunkError {
     #[error(transparent)]
     Arrow(#[from] arrow::error::ArrowError),
 
-    #[error(transparent)]
-    Arrow2(#[from] arrow2::error::Error),
-
     #[error("{kind} index out of bounds: {index} (len={len})")]
     IndexOutOfBounds {
         kind: String,
@@ -47,10 +40,10 @@ pub enum ChunkError {
         index: usize,
     },
 
-    #[error(transparent)]
+    #[error("Serialization: {0}")]
     Serialization(#[from] SerializationError),
 
-    #[error(transparent)]
+    #[error("Deserialization: {0}")]
     Deserialization(#[from] DeserializationError),
 }
 
@@ -64,7 +57,7 @@ pub struct ChunkComponents(
     //
     // NOTE: The extra `ComponentName` layer is needed because it is very common to want to look
     // for anything matching a `ComponentName`, without any further tags specified.
-    pub IntMap<ComponentName, IntMap<ComponentDescriptor, Arrow2ListArray<i32>>>,
+    pub IntMap<ComponentName, IntMap<ComponentDescriptor, ArrowListArray>>,
 );
 
 impl ChunkComponents {
@@ -75,23 +68,6 @@ impl ChunkComponents {
         component_desc: ComponentDescriptor,
         list_array: ArrowListArray,
     ) -> Option<ArrowListArray> {
-        // TODO(cmc): revert me
-        let component_desc = component_desc.untagged();
-        self.0
-            .entry(component_desc.component_name)
-            .or_default()
-            .insert(component_desc, list_array.into())
-            .map(|la| la.into())
-    }
-
-    #[inline]
-    pub fn insert_descriptor_arrow2(
-        &mut self,
-        component_desc: ComponentDescriptor,
-        list_array: Arrow2ListArray<i32>,
-    ) -> Option<Arrow2ListArray<i32>> {
-        // TODO(cmc): revert me
-        let component_desc = component_desc.untagged();
         self.0
             .entry(component_desc.component_name)
             .or_default()
@@ -105,7 +81,7 @@ impl ChunkComponents {
     pub fn get_by_component_name<'a>(
         &'a self,
         component_name: &ComponentName,
-    ) -> impl Iterator<Item = &'a Arrow2ListArray<i32>> {
+    ) -> impl Iterator<Item = &'a ArrowListArray> {
         self.get(component_name).map_or_else(
             || itertools::Either::Left(std::iter::empty()),
             |per_desc| itertools::Either::Right(per_desc.values()),
@@ -116,7 +92,7 @@ impl ChunkComponents {
     pub fn get_by_descriptor(
         &self,
         component_desc: &ComponentDescriptor,
-    ) -> Option<&Arrow2ListArray<i32>> {
+    ) -> Option<&ArrowListArray> {
         self.get(&component_desc.component_name)
             .and_then(|per_desc| per_desc.get(component_desc))
     }
@@ -125,28 +101,26 @@ impl ChunkComponents {
     pub fn get_by_descriptor_mut(
         &mut self,
         component_desc: &ComponentDescriptor,
-    ) -> Option<&mut Arrow2ListArray<i32>> {
+    ) -> Option<&mut ArrowListArray> {
         self.get_mut(&component_desc.component_name)
             .and_then(|per_desc| per_desc.get_mut(component_desc))
     }
 
     #[inline]
-    pub fn iter_flattened(
-        &self,
-    ) -> impl Iterator<Item = (&ComponentDescriptor, &Arrow2ListArray<i32>)> {
+    pub fn iter_flattened(&self) -> impl Iterator<Item = (&ComponentDescriptor, &ArrowListArray)> {
         self.0.values().flatten()
     }
 
     #[inline]
     pub fn into_iter_flattened(
         self,
-    ) -> impl Iterator<Item = (ComponentDescriptor, Arrow2ListArray<i32>)> {
+    ) -> impl Iterator<Item = (ComponentDescriptor, ArrowListArray)> {
         self.0.into_values().flatten()
     }
 }
 
 impl std::ops::Deref for ChunkComponents {
-    type Target = IntMap<ComponentName, IntMap<ComponentDescriptor, Arrow2ListArray<i32>>>;
+    type Target = IntMap<ComponentName, IntMap<ComponentDescriptor, ArrowListArray>>;
 
     #[inline]
     fn deref(&self) -> &Self::Target {
@@ -179,35 +153,6 @@ impl FromIterator<(ComponentDescriptor, ArrowListArray)> for ChunkComponents {
 impl FromIterator<(ComponentName, ArrowListArray)> for ChunkComponents {
     #[inline]
     fn from_iter<T: IntoIterator<Item = (ComponentName, ArrowListArray)>>(iter: T) -> Self {
-        iter.into_iter()
-            .map(|(component_name, list_array)| {
-                let component_desc = ComponentDescriptor::new(component_name);
-                (component_desc, list_array)
-            })
-            .collect()
-    }
-}
-
-impl FromIterator<(ComponentDescriptor, Arrow2ListArray<i32>)> for ChunkComponents {
-    #[inline]
-    fn from_iter<T: IntoIterator<Item = (ComponentDescriptor, Arrow2ListArray<i32>)>>(
-        iter: T,
-    ) -> Self {
-        let mut this = Self::default();
-        {
-            for (component_desc, list_array) in iter {
-                this.insert_descriptor_arrow2(component_desc, list_array);
-            }
-        }
-        this
-    }
-}
-
-// TODO(cmc): Kinda disgusting but it makes our lives easier during the interim, as long as we're
-// in this weird halfway in-between state where we still have a bunch of things indexed by name only.
-impl FromIterator<(ComponentName, Arrow2ListArray<i32>)> for ChunkComponents {
-    #[inline]
-    fn from_iter<T: IntoIterator<Item = (ComponentName, Arrow2ListArray<i32>)>>(iter: T) -> Self {
         iter.into_iter()
             .map(|(component_name, list_array)| {
                 let component_desc = ComponentDescriptor::new(component_name);
@@ -289,10 +234,7 @@ impl Chunk {
     // TODO(cmc): Kinda disgusting but it makes our lives easier during the interim, as long as we're
     // in this weird halfway in-between state where we still have a bunch of things indexed by name only.
     #[inline]
-    pub fn get_first_component(
-        &self,
-        component_name: &ComponentName,
-    ) -> Option<&Arrow2ListArray<i32>> {
+    pub fn get_first_component(&self, component_name: &ComponentName) -> Option<&ArrowListArray> {
         self.components
             .get(component_name)
             .and_then(|per_desc| per_desc.values().next())
@@ -351,14 +293,8 @@ impl Chunk {
             && *components == rhs.components
     }
 
-    /// Check for equality while ignoring possible `Extension` type information
-    ///
-    /// This is necessary because `arrow2` loses the `Extension` datatype
-    /// when deserializing back from the `arrow_schema::DataType` representation.
-    ///
-    /// In theory we could fix this, but as we're moving away from arrow2 anyways
-    /// it's unlikely worth the effort.
-    pub fn are_equal_ignoring_extension_types(&self, other: &Self) -> bool {
+    // Only used for tests atm
+    pub fn are_equal(&self, other: &Self) -> bool {
         let Self {
             id,
             entity_path,
@@ -369,34 +305,22 @@ impl Chunk {
             components,
         } = self;
 
-        let components_no_extension: IntMap<_, _> = components
+        let my_components: IntMap<_, _> = components
             .values()
             .flat_map(|per_desc| {
-                per_desc.iter().map(|(component_descr, list_array)| {
-                    let list_array = arrow2::array::ListArray::new(
-                        list_array.data_type().to_logical_type().clone(),
-                        list_array.offsets().clone(),
-                        list_array.values().clone(),
-                        list_array.validity().cloned(),
-                    );
-                    (component_descr.clone(), list_array)
-                })
+                per_desc
+                    .iter()
+                    .map(|(descr, list_array)| (descr.clone(), list_array))
             })
             .collect();
 
-        let other_components_no_extension: IntMap<_, _> = other
+        let other_components: IntMap<_, _> = other
             .components
             .values()
             .flat_map(|per_desc| {
-                per_desc.iter().map(|(component_descr, list_array)| {
-                    let list_array = arrow2::array::ListArray::new(
-                        list_array.data_type().to_logical_type().clone(),
-                        list_array.offsets().clone(),
-                        list_array.values().clone(),
-                        list_array.validity().cloned(),
-                    );
-                    (component_descr.clone(), list_array)
-                })
+                per_desc
+                    .iter()
+                    .map(|(descr, list_array)| (descr.clone(), list_array))
             })
             .collect();
 
@@ -405,7 +329,7 @@ impl Chunk {
             && *is_sorted == other.is_sorted
             && row_ids == &other.row_ids
             && *timelines == other.timelines
-            && components_no_extension == other_components_no_extension
+            && my_components == other_components
     }
 }
 
@@ -465,32 +389,6 @@ impl Chunk {
         self
     }
 
-    /// Clones the chunk into a new chunk where all descriptors are untagged.
-    ///
-    /// Only useful as a migration tool while the Rerun ecosystem slowly moves over
-    /// to always using tags for everything.
-    #[doc(hidden)]
-    #[inline]
-    pub fn clone_as_untagged(&self) -> Self {
-        let mut chunk = self.clone();
-
-        let per_component_name = &mut chunk.components;
-        for (component_name, per_desc) in per_component_name.iter_mut() {
-            if per_desc.len() != 1 {
-                // If there are more than one entry, then we're in the land of UB anyway (for now).
-                continue;
-            }
-
-            let untagged_descriptor = ComponentDescriptor::new(*component_name);
-            *per_desc = std::mem::take(per_desc)
-                .into_values()
-                .map(|list_array| (untagged_descriptor.clone(), list_array))
-                .collect();
-        }
-
-        chunk
-    }
-
     /// Clones the chunk into a new chunk where all [`RowId`]s are [`RowId::ZERO`].
     pub fn zeroed(self) -> Self {
         let row_ids = std::iter::repeat(RowId::ZERO)
@@ -547,9 +445,9 @@ impl Chunk {
             .values()
             .flat_map(|per_desc| per_desc.values())
             .map(|list_array| {
-                list_array.validity().map_or_else(
+                list_array.nulls().map_or_else(
                     || list_array.len() as u64,
-                    |validity| validity.len() as u64 - validity.unset_bits() as u64,
+                    |validity| validity.len() as u64 - validity.null_count() as u64,
                 )
             })
             .sum()
@@ -613,7 +511,7 @@ impl Chunk {
                 .values()
                 .flat_map(|per_desc| per_desc.values())
                 .for_each(|list_array| {
-                    if let Some(validity) = list_array.validity() {
+                    if let Some(validity) = list_array.nulls() {
                         validity
                             .iter()
                             .enumerate()
@@ -662,7 +560,7 @@ impl Chunk {
             .values()
             .flat_map(|per_desc| per_desc.values())
             .fold(HashMap::default(), |acc, list_array| {
-                if let Some(validity) = list_array.validity() {
+                if let Some(validity) = list_array.nulls() {
                     time_column.times().zip(validity.iter()).fold(
                         acc,
                         |mut acc, (time, is_valid)| {
@@ -692,9 +590,9 @@ impl Chunk {
     pub fn num_events_for_component(&self, component_name: ComponentName) -> Option<u64> {
         // Reminder: component columns are sparse, we must check validity bitmap.
         self.get_first_component(&component_name).map(|list_array| {
-            list_array.validity().map_or_else(
+            list_array.nulls().map_or_else(
                 || list_array.len() as u64,
-                |validity| validity.len() as u64 - validity.unset_bits() as u64,
+                |validity| validity.len() as u64 - validity.null_count() as u64,
             )
         })
     }
@@ -969,22 +867,6 @@ impl Chunk {
     ) -> ChunkResult<()> {
         self.components
             .insert_descriptor(component_desc, list_array);
-        self.sanity_check()
-    }
-
-    /// Unconditionally inserts an [`Arrow2ListArray`] as a component column.
-    ///
-    /// Removes and replaces the column if it already exists.
-    ///
-    /// This will fail if the end result is malformed in any way -- see [`Self::sanity_check`].
-    #[inline]
-    pub fn add_component_arrow2(
-        &mut self,
-        component_desc: ComponentDescriptor,
-        list_array: Arrow2ListArray<i32>,
-    ) -> ChunkResult<()> {
-        self.components
-            .insert_descriptor_arrow2(component_desc, list_array);
         self.sanity_check()
     }
 
@@ -1268,11 +1150,11 @@ impl Chunk {
 
         let row_ids = self.row_ids();
 
-        if let Some(validity) = list_array.validity() {
+        if let Some(validity) = list_array.nulls() {
             Either::Right(Either::Left(
                 row_ids
                     .enumerate()
-                    .filter_map(|(i, o)| validity.get_bit(i).then_some(o)),
+                    .filter_map(|(i, o)| validity.is_valid(i).then_some(o)),
             ))
         } else {
             Either::Right(Either::Right(row_ids))
@@ -1445,21 +1327,21 @@ impl TimeColumn {
                     per_desc
                         .iter()
                         .filter_map(|(component_desc, list_array)| {
-                            if let Some(validity) = list_array.validity() {
+                            if let Some(validity) = list_array.nulls() {
                                 // Potentially sparse
 
                                 if validity.is_empty() {
                                     return None;
                                 }
 
-                                let is_dense = validity.unset_bits() == 0;
+                                let is_dense = validity.null_count() == 0;
                                 if is_dense {
                                     return Some((component_desc.clone(), self.time_range));
                                 }
 
                                 let mut time_min = TimeInt::MAX;
                                 for (i, time) in times.iter().copied().enumerate() {
-                                    if validity.get(i).unwrap_or(false) {
+                                    if validity.is_valid(i) {
                                         time_min = TimeInt::new_temporal(time);
                                         break;
                                     }
@@ -1467,7 +1349,7 @@ impl TimeColumn {
 
                                 let mut time_max = TimeInt::MIN;
                                 for (i, time) in times.iter().copied().enumerate().rev() {
-                                    if validity.get(i).unwrap_or(false) {
+                                    if validity.is_valid(i) {
                                         time_max = TimeInt::new_temporal(time);
                                         break;
                                     }
@@ -1613,7 +1495,7 @@ impl Chunk {
         // Components
         for (_component_name, per_desc) in components.iter() {
             for (component_desc, list_array) in per_desc {
-                if !matches!(list_array.data_type(), arrow2::datatypes::DataType::List(_)) {
+                if !matches!(list_array.data_type(), arrow::datatypes::DataType::List(_)) {
                     return Err(ChunkError::Malformed {
                         reason: format!(
                             "The outer array in a chunked component batch must be a sparse list, got {:?}",
@@ -1621,8 +1503,8 @@ impl Chunk {
                         ),
                     });
                 }
-                if let arrow2::datatypes::DataType::List(field) = list_array.data_type() {
-                    if !field.is_nullable {
+                if let arrow::datatypes::DataType::List(field) = list_array.data_type() {
+                    if !field.is_nullable() {
                         return Err(ChunkError::Malformed {
                             reason: format!(
                                 "The outer array in chunked component batch must be a sparse list, got {:?}",
@@ -1642,7 +1524,7 @@ impl Chunk {
                 }
 
                 let validity_is_empty = list_array
-                    .validity()
+                    .nulls()
                     .is_some_and(|validity| validity.is_empty());
                 if !self.is_empty() && validity_is_empty {
                     return Err(ChunkError::Malformed {

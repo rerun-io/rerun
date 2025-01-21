@@ -1,4 +1,4 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, sync::Arc};
 
 use crate::{
     ComponentBatch, ComponentBatchCowWithDescriptor, ComponentDescriptor, ComponentName,
@@ -131,24 +131,6 @@ pub trait Archetype {
             backtrace: _Backtrace::new_unresolved(),
         })
     }
-
-    /// Given an iterator of Arrow arrays and their respective `ComponentNames`, deserializes them
-    /// into this archetype.
-    ///
-    /// Arrow arrays that are unknown to this [`Archetype`] will simply be ignored and a warning
-    /// logged to stderr.
-    #[inline]
-    fn from_arrow2_components(
-        data: impl IntoIterator<Item = (ComponentDescriptor, Box<dyn ::arrow2::array::Array>)>,
-    ) -> DeserializationResult<Self>
-    where
-        Self: Sized,
-    {
-        Self::from_arrow_components(
-            data.into_iter()
-                .map(|(descr, arrow2_array)| (descr, arrow::array::ArrayRef::from(arrow2_array))),
-        )
-    }
 }
 
 /// Indicates that the archetype has reflection data available for it.
@@ -254,9 +236,8 @@ impl<A: Archetype> Default for GenericIndicatorComponent<A> {
 
 impl<A: Archetype> crate::LoggableBatch for GenericIndicatorComponent<A> {
     #[inline]
-    fn to_arrow2(&self) -> SerializationResult<Box<dyn arrow2::array::Array>> {
-        let datatype = arrow2::datatypes::DataType::Null;
-        Ok(arrow2::array::NullArray::new(datatype, 1).boxed())
+    fn to_arrow(&self) -> SerializationResult<arrow::array::ArrayRef> {
+        Ok(Arc::new(arrow::array::NullArray::new(1)))
     }
 }
 
@@ -285,9 +266,8 @@ pub struct GenericIndicatorComponentArray<A: Archetype> {
 
 impl<A: Archetype> crate::LoggableBatch for GenericIndicatorComponentArray<A> {
     #[inline]
-    fn to_arrow2(&self) -> SerializationResult<Box<dyn arrow2::array::Array>> {
-        let datatype = arrow2::datatypes::DataType::Null;
-        Ok(arrow2::array::NullArray::new(datatype, self.len).boxed())
+    fn to_arrow(&self) -> SerializationResult<arrow::array::ArrayRef> {
+        Ok(Arc::new(arrow::array::NullArray::new(self.len)))
     }
 }
 
@@ -320,9 +300,8 @@ impl NamedIndicatorComponent {
 
 impl crate::LoggableBatch for NamedIndicatorComponent {
     #[inline]
-    fn to_arrow2(&self) -> SerializationResult<Box<dyn arrow2::array::Array>> {
-        let datatype = arrow2::datatypes::DataType::Null;
-        Ok(arrow2::array::NullArray::new(datatype, 1).boxed())
+    fn to_arrow(&self) -> SerializationResult<arrow::array::ArrayRef> {
+        Ok(Arc::new(arrow::array::NullArray::new(1)))
     }
 }
 

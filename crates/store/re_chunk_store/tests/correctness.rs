@@ -130,7 +130,7 @@ fn row_id_ordering_semantics() -> anyhow::Result<()> {
     }
 
     // Static data has last-write-wins semantics, as defined by RowId-ordering.
-    // Timeless is RowId-ordered too!
+    // Static data is RowId-ordered too!
     //
     // * Insert static `point1` with a random `RowId`.
     // * Insert static `point2` using `point1`'s `RowId`, decremented by one.

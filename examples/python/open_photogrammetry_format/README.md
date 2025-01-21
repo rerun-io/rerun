@@ -70,7 +70,7 @@ rr.log("world/cameras/image/rgb", rr.Image(np.array(img)).compress(jpeg_quality=
 Point clouds from the project are logged as [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d) archetype to the `world/points` entity.
 
 ```python
-rr.log("world/points", rr.Points3D(points.position, colors=points.color), timeless=True)
+rr.log("world/points", rr.Points3D(points.position, colors=points.color), static=True)
 ```
 
 

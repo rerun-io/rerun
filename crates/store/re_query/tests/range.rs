@@ -187,7 +187,7 @@ fn static_range() -> anyhow::Result<()> {
 
     // --- Second test: `[timepoint1, timepoint3]` ---
 
-    // The inclusion of `timepoint1` means latest-at semantics will fall back to timeless data!
+    // The inclusion of `timepoint1` means latest-at semantics will fall back to static data!
 
     let query = RangeQuery::new(
         timepoint1[0].0,
@@ -628,7 +628,7 @@ fn invalidation() {
         );
     };
 
-    let timeless = TimePoint::default();
+    let static_ = TimePoint::default();
     let frame_122 = build_frame_nr(122);
     let frame_123 = build_frame_nr(123);
     let frame_124 = build_frame_nr(124);
@@ -643,7 +643,7 @@ fn invalidation() {
     test_invalidation(
         RangeQuery::new(frame_123.0, ResolvedTimeRange::EVERYTHING),
         [frame_123].into(),
-        timeless,
+        static_,
         [frame_124].into(),
     );
 }
@@ -683,7 +683,7 @@ fn invalidation_of_future_optionals() {
 
     let entity_path = "points";
 
-    let timeless = TimePoint::default();
+    let static_ = TimePoint::default();
     let frame2 = [build_frame_nr(2)];
     let frame3 = [build_frame_nr(3)];
 
@@ -692,7 +692,7 @@ fn invalidation_of_future_optionals() {
     let row_id1 = RowId::new();
     let points1 = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
     let chunk1 = Chunk::builder(entity_path.into())
-        .with_component_batch(row_id1, timeless, &points1)
+        .with_component_batch(row_id1, static_, &points1)
         .build()
         .unwrap();
     insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk1));
@@ -784,7 +784,7 @@ fn invalidation_static() {
 
     let entity_path = "points";
 
-    let timeless = TimePoint::default();
+    let static_ = TimePoint::default();
 
     let frame0 = [build_frame_nr(TimeInt::ZERO)];
     let query = RangeQuery::new(frame0[0].0, ResolvedTimeRange::EVERYTHING);
@@ -792,7 +792,7 @@ fn invalidation_static() {
     let row_id1 = RowId::new();
     let points1 = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
     let chunk1 = Chunk::builder(entity_path.into())
-        .with_component_batch(row_id1, timeless.clone(), &points1)
+        .with_component_batch(row_id1, static_.clone(), &points1)
         .build()
         .unwrap();
     insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk1));
@@ -813,7 +813,7 @@ fn invalidation_static() {
     let row_id2 = RowId::new();
     let colors2 = vec![MyColor::from_rgb(255, 0, 0)];
     let chunk2 = Chunk::builder(entity_path.into())
-        .with_component_batch(row_id2, timeless.clone(), &colors2)
+        .with_component_batch(row_id2, static_.clone(), &colors2)
         .build()
         .unwrap();
     insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk2));
@@ -833,7 +833,7 @@ fn invalidation_static() {
     let row_id3 = RowId::new();
     let colors3 = vec![MyColor::from_rgb(0, 0, 255)];
     let chunk3 = Chunk::builder(entity_path.into())
-        .with_component_batch(row_id3, timeless, &colors3)
+        .with_component_batch(row_id3, static_, &colors3)
         .build()
         .unwrap();
     insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk3));

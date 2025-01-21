@@ -1,8 +1,11 @@
-use arrow2::array::{Array, Utf8Array};
+use arrow::array::{
+    Array as ArrowArray, ArrayRef as ArrowArrayRef, StringArray as ArrowStringArray,
+};
 use itertools::Itertools;
 use nohash_hasher::IntMap;
 
-use re_arrow_util::{arrow2_util, Arrow2ArrayDowncastRef as _};
+use re_arrow_util::{arrow_util, ArrowArrayDowncastRef as _};
+use re_types_core::arrow_helpers::as_array_ref;
 
 use crate::Chunk;
 
@@ -51,35 +54,36 @@ impl Chunk {
                     let arrays = list_array
                         .iter()
                         .map(|utf8_array| {
-                            utf8_array.map(|array| {
-                                let Some(array) = array.downcast_array2_ref::<Utf8Array<i32>>()
+                            utf8_array.map(|array| -> ArrowArrayRef {
+                                let Some(array) = array.downcast_array_ref::<ArrowStringArray>()
                                 else {
                                     // Unreachable, just avoiding unwraps.
                                     return array;
                                 };
 
-                                array
-                                    .iter()
-                                    .map(|s| {
-                                        s.map(|s| {
-                                            let mut s = s.to_owned();
-                                            for (from, to) in PATCHES {
-                                                s = s.replace(from, to);
-                                            }
-                                            s
+                                as_array_ref(
+                                    array
+                                        .iter()
+                                        .map(|s| {
+                                            s.map(|s| {
+                                                let mut s = s.to_owned();
+                                                for (from, to) in PATCHES {
+                                                    s = s.replace(from, to);
+                                                }
+                                                s
+                                            })
                                         })
-                                    })
-                                    .collect::<Utf8Array<i32>>()
-                                    .to_boxed()
+                                        .collect::<ArrowStringArray>(),
+                                )
                             })
                         })
                         .collect_vec();
                     let arrays = arrays
                         .iter()
-                        .map(|a| a.as_deref() as Option<&dyn Array>)
+                        .map(|a| a.as_deref() as Option<&dyn ArrowArray>)
                         .collect_vec();
 
-                    if let Some(list_array_patched) = arrow2_util::arrays_to_list_array_opt(&arrays)
+                    if let Some(list_array_patched) = arrow_util::arrays_to_list_array_opt(&arrays)
                     {
                         *list_array = list_array_patched;
                     }
@@ -88,7 +92,7 @@ impl Chunk {
         }
 
         for (desc, list_array) in components_patched {
-            chunk.components.insert_descriptor_arrow2(desc, list_array);
+            chunk.components.insert_descriptor(desc, list_array);
         }
 
         chunk

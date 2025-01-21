@@ -27,6 +27,7 @@ re_types.workspace = true
 re_ui = { workspace = true, features = ["arrow"] }
 re_viewer_context.workspace = true
 
+arrow.workspace = true
 egui.workspace = true
 egui_extras.workspace = true
 itertools.workspace = true

@@ -94,7 +94,7 @@ message Query {
 
     // The specific _columns_ to sample from the final view contents.
     // The order of the samples will be respected in the final result.
-    ///
+    //
     // If unspecified, it means - everything.
     ColumnSelection column_selection = 10;
 
@@ -113,9 +113,8 @@ message TimeColumnDescriptor {
     // The timeline this column is associated with.
     Timeline timeline = 1;
     // The Arrow datatype of the column.
-    ///
-    // Currently this is just the `Display` of the `arrow-rs` `DataType`.
-    // TODO(emilk): use arrow IPC instead.
+    //
+    // Currently this is a JSON-encoded `arrow-rs` `DataType`.
     string datatype = 2;
 }
 
@@ -130,9 +129,8 @@ message ComponentColumnDescriptor {
     // Semantic name associated with this data.
     string component_name = 4;
     // The Arrow datatype of the column.
-    ///
-    // Currently this is just the `Display` of the `arrow-rs` `DataType`.
-    // TODO(emilk): use arrow IPC instead.
+    //
+    // Currently this is a JSON-encoded `arrow-rs` `DataType`.
     string datatype = 5;
     // Whether the column is a static column.
     bool is_static = 6;

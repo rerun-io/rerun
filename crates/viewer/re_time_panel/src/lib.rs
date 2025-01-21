@@ -183,6 +183,11 @@ impl TimePanel {
         }
     }
 
+    /// Activates the search filter (for e.g. test purposes).
+    pub fn activate_filter(&mut self, query: &str) {
+        self.filter_state.activate(query);
+    }
+
     #[allow(clippy::too_many_arguments)]
     pub fn show_panel(
         &mut self,
@@ -446,7 +451,7 @@ impl TimePanel {
 
             ui.add_space(-4.0); // hack to vertically center the text
 
-            let size = egui::vec2(self.prev_col_width, 28.0);
+            let size = egui::vec2(self.prev_col_width, 27.0);
             ui.allocate_ui_with_layout(size, egui::Layout::top_down(egui::Align::LEFT), |ui| {
                 ui.set_min_size(size);
                 ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
@@ -463,8 +468,6 @@ impl TimePanel {
                         .strong(),
                     );
                 });
-
-                ui.add_space(2.0); // hack to vertically center the text
             })
             .response
             .on_hover_text(
@@ -749,7 +752,7 @@ impl TimePanel {
         let id = collapse_scope.entity(tree.path.clone()).into();
 
         let is_short_path = tree.path.len() <= 1 && !tree.is_leaf();
-        let default_open = self.filter_state.session_id().is_some() || is_short_path;
+        let default_open = self.filter_state.is_active() || is_short_path;
 
         let list_item::ShowCollapsingResponse {
             item_response: response,

@@ -77,7 +77,7 @@ _rec->log(
 
 ## Text document
 ```cpp
-_rec->log_timeless(_entity_path + "/configuration", rerun::TextDocument(layout_str));
+_rec->log_static(_entity_path + "/configuration", rerun::TextDocument(layout_str));
 ```
 
 # Run the code

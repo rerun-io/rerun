@@ -41,13 +41,9 @@ struct Args {
     #[argh(option)]
     entity_path_prefix: Option<String>,
 
-    /// deprecated: alias for `--static`
-    #[argh(switch)]
-    timeless: bool,
-
     /// optionally mark data to be logged statically
     #[argh(arg_name = "static", switch)]
-    statically: bool,
+    static_: bool,
 
     /// optional timestamps to log at (e.g. `--time sim_time=1709203426`) (repeatable)
     #[argh(option)]
@@ -105,7 +101,7 @@ fn main() -> anyhow::Result<()> {
 
     rec.log_with_static(
         entity_path_prefix.join(&rerun::EntityPath::from_file_path(&args.filepath)),
-        args.statically || args.timeless,
+        args.static_,
         &rerun::TextDocument::from_markdown(text),
     )?;
 

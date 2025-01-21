@@ -52,7 +52,6 @@ def log(
     entity_path: str | list[str],
     entity: AsComponents | Iterable[ComponentBatchLike],
     *extra: AsComponents | Iterable[ComponentBatchLike],
-    timeless: bool = False,
     static: bool = False,
     recording: RecordingStream | None = None,
     strict: bool | None = None,
@@ -110,9 +109,6 @@ def log(
         An arbitrary number of additional component bundles implementing the [`rerun.AsComponents`][]
         interface, that are logged to the same entity path.
 
-    timeless:
-        Deprecated. Refer to `static` instead.
-
     static:
         If true, the components will be logged as static data.
 
@@ -134,15 +130,6 @@ def log(
         if None, use the global default from `rerun.strict_mode()`
 
     """
-
-    if timeless is True:
-        import warnings
-
-        warnings.warn(
-            message=("`timeless` is deprecated as an argument to `log`; prefer `static` instead"),
-            category=DeprecationWarning,
-        )
-        static = True
 
     # TODO(jleibs): Profile is_instance with runtime_checkable vs has_attr
     # Note from: https://docs.python.org/3/library/typing.html#typing.runtime_checkable
@@ -185,7 +172,6 @@ def log_components(
     entity_path: str | list[str],
     components: Iterable[ComponentBatchLike],
     *,
-    timeless: bool = False,
     static: bool = False,
     recording: RecordingStream | None = None,
     strict: bool | None = None,
@@ -211,9 +197,6 @@ def log_components(
     components:
         A collection of `ComponentBatchLike` objects.
 
-    timeless:
-        Deprecated. Refer to `static` instead.
-
     static:
         If true, the components will be logged as static data.
 
@@ -235,15 +218,6 @@ def log_components(
         if None, use the global default from `rerun.strict_mode()`
 
     """
-
-    if timeless is True:
-        import warnings
-
-        warnings.warn(
-            message=("`timeless` is deprecated as an argument to `log`; prefer `static` instead"),
-            category=DeprecationWarning,
-        )
-        static = True
 
     instanced: dict[ComponentDescriptor, pa.Array] = {}
 
@@ -291,7 +265,6 @@ def log_file_from_path(
     *,
     entity_path_prefix: str | None = None,
     static: bool = False,
-    timeless: bool = False,
     recording: RecordingStream | None = None,
 ) -> None:
     r"""
@@ -312,9 +285,6 @@ def log_file_from_path(
     entity_path_prefix:
         What should the logged entity paths be prefixed with?
 
-    timeless:
-        Deprecated. Refer to `static` instead.
-
     static:
         If true, the components will be logged as static data.
 
@@ -331,15 +301,6 @@ def log_file_from_path(
         also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
-    if timeless is True:
-        import warnings
-
-        warnings.warn(
-            message=("`timeless` is deprecated as an argument to `log`; prefer `static` instead"),
-            category=DeprecationWarning,
-        )
-        static = True
-
     bindings.log_file_from_path(
         Path(file_path),
         entity_path_prefix=entity_path_prefix,
@@ -356,7 +317,6 @@ def log_file_from_contents(
     *,
     entity_path_prefix: str | None = None,
     static: bool = False,
-    timeless: bool | None = None,
     recording: RecordingStream | None = None,
 ) -> None:
     r"""
@@ -379,9 +339,6 @@ def log_file_from_contents(
 
     entity_path_prefix:
         What should the logged entity paths be prefixed with?
-
-    timeless:
-        Deprecated. Refer to `static` instead.
 
     static:
         If true, the components will be logged as static data.

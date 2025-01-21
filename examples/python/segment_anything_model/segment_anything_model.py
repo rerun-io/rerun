@@ -188,7 +188,7 @@ def main() -> None:
     logging.getLogger().addHandler(rr.LoggingHandler("logs"))
     logging.getLogger().setLevel(logging.INFO)
 
-    rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), timeless=True)
+    rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), static=True)
 
     sam = create_sam(args.model, args.device)
 

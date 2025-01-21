@@ -10,7 +10,9 @@ use arrow::array::RecordBatch as ArrowRecordBatch;
 use crate::TimePoint;
 
 // TODO(#3741): Remove once <https://github.com/apache/arrow-rs/issues/6803> is released
+#[cfg(feature = "serde")]
 const SERIALIZE_WITH_ARROW_1: bool = false;
+#[cfg(feature = "serde")]
 const DESERIALIZE_WITH_ARROW_1: bool = true; // Both arrow1 and arrow2 should be working fine
 
 /// An arbitrary callback to be run when an [`ArrowMsg`], and more specifically the

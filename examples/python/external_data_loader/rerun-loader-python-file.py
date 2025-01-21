@@ -35,7 +35,6 @@ parser.add_argument("filepath", type=str)
 parser.add_argument("--application-id", type=str, help="optional recommended ID for the application")
 parser.add_argument("--recording-id", type=str, help="optional recommended ID for the recording")
 parser.add_argument("--entity-path-prefix", type=str, help="optional prefix for all entity paths")
-parser.add_argument("--timeless", action="store_true", default=False, help="deprecated: alias for `--static`")
 parser.add_argument("--static", action="store_true", default=False, help="optionally mark data to be logged as static")
 parser.add_argument(
     "--time",
@@ -77,13 +76,11 @@ def main() -> None:
     with open(args.filepath, encoding="utf8") as file:
         body = file.read()
         text = f"""## Some Python code\n```python\n{body}\n```\n"""
-        rr.log(
-            entity_path, rr.TextDocument(text, media_type=rr.MediaType.MARKDOWN), static=args.static or args.timeless
-        )
+        rr.log(entity_path, rr.TextDocument(text, media_type=rr.MediaType.MARKDOWN), static=args.static)
 
 
 def set_time_from_args() -> None:
-    if not args.timeless and args.time is not None:
+    if not args.static and args.time is not None:
         for time_str in args.time:
             parts = time_str.split("=")
             if len(parts) != 2:
