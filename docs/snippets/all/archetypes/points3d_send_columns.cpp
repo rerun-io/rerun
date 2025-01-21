@@ -7,10 +7,10 @@
 using namespace std::chrono_literals;
 
 int main() {
-    const auto rec = rerun::RecordingStream("rerun_example_send_columns_arrays");
+    const auto rec = rerun::RecordingStream("rerun_example_points3d_send_columns");
     rec.spawn().exit_on_failure();
 
-    // Prepare a point cloud that evolves over time 5 timesteps, changing the number of points in the process.
+    // Prepare a point cloud that evolves over 5 timesteps, changing the number of points in the process.
     std::vector<std::array<float, 3>> positions = {
         // clang-format off
         {1.0, 0.0, 1.0}, {0.5, 0.5, 2.0},
@@ -23,6 +23,7 @@ int main() {
 
     // At each time stamp, all points in the cloud share the same but changing color.
     std::vector<uint32_t> colors = {0xFF0000FF, 0x00FF00FF, 0x0000FFFF, 0xFFFF00FF, 0x00FFFFFF};
+    std::vector<float> radii = {0.05, 0.01, 0.2, 0.1, 0.3};
 
     // Log at seconds 10-14
     auto times = rerun::Collection{10s, 11s, 12s, 13s, 14s};
@@ -37,7 +38,11 @@ int main() {
     auto color_batch = rerun::ComponentColumn::from_loggable(
         rerun::Collection<rerun::components::Color>(std::move(colors))
     );
+    auto radius_batch = rerun::ComponentColumn::from_loggable(
+        rerun::Collection<rerun::components::Radius>(std::move(radii))
+    );
 
+    // TODO(#8754) : use tagged columnar APIs
     rec.send_columns(
         "points",
         time_column,
@@ -45,6 +50,7 @@ int main() {
             indicator_batch.value_or_throw(),
             position_batch.value_or_throw(),
             color_batch.value_or_throw(),
+            radius_batch.value_or_throw(),
         }
     );
 }
