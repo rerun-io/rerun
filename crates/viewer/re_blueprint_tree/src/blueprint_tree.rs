@@ -389,7 +389,7 @@ impl BlueprintTree {
         let is_item_hovered =
             ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
 
-        let class = &view.class(ctx.view_class_registry);
+        let class = view.class(ctx.view_class_registry);
         let view_name = view.display_name_or_default();
 
         let item_content = list_item::LabelContent::new(view_name.as_ref())

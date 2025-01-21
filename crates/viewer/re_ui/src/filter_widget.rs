@@ -191,6 +191,11 @@ impl FilterMatcher {
         }
     }
 
+    /// Is the filter currently active?
+    pub fn is_active(&self) -> bool {
+        self.lowercase_query.is_some()
+    }
+
     /// Is the filter set to match everything?
     ///
     /// Can be used by client code to short-circuit more expansive matching logic.
@@ -223,7 +228,7 @@ impl FilterMatcher {
     /// Returns `None` when there is no match.
     /// Returns `Some` when the filter is inactive (and thus matches everything), or if there is an
     /// actual match.
-    fn find_matches(&self, text: &str) -> Option<impl Iterator<Item = Range<usize>> + '_> {
+    pub fn find_matches(&self, text: &str) -> Option<impl Iterator<Item = Range<usize>> + '_> {
         let query = match self.lowercase_query.as_deref() {
             None => {
                 return Some(Either::Left(std::iter::empty()));
