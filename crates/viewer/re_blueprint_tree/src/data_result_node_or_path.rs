@@ -1,8 +1,12 @@
-use re_chunk::EntityPath;
+use re_log_types::EntityPath;
+use re_viewer_context::{DataResultNode, DataResultTree};
 
-use crate::{DataResultNode, DataResultTree};
-
-// TODO(wumpf): document this
+/// Helper for presenting [`DataResultNode`]s within a larger entity-based tree.
+///
+/// The blueprint tree presents data results within possibly larger tree structures. For example,
+/// all "in-tree" data results are presented within the subtree defined by the view origin. Yet
+/// part of this subtree may not be a [`DataResultNode`] by itself. This enum can represent any node
+/// of any subtree, regardless of whether it is a [`DataResultNode`] or note.
 pub enum DataResultNodeOrPath<'a> {
     Path(&'a EntityPath),
     DataResultNode(&'a DataResultNode),
