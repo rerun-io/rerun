@@ -468,6 +468,52 @@ impl Transform3D {
         }
     }
 
+    /// Partitions the component data into multiple sub-batches.
+    ///
+    /// Specifically, this transforms the existing [`SerializedComponentBatch`]es data into [`SerializedComponentColumn`]s
+    /// instead, via [`SerializedComponentBatch::partitioned`].
+    ///
+    /// This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
+    ///
+    /// The specified `lengths` must sum to the total length of the component batch.
+    ///
+    /// [`SerializedComponentColumn`]: [::re_types_core::SerializedComponentColumn]
+    #[inline]
+    pub fn columns<I>(
+        self,
+        _lengths: I,
+    ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>>
+    where
+        I: IntoIterator<Item = usize> + Clone,
+    {
+        let columns = [
+            self.translation
+                .map(|translation| translation.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.rotation_axis_angle
+                .map(|rotation_axis_angle| rotation_axis_angle.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.quaternion
+                .map(|quaternion| quaternion.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.scale
+                .map(|scale| scale.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.mat3x3
+                .map(|mat3x3| mat3x3.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.relation
+                .map(|relation| relation.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.axis_length
+                .map(|axis_length| axis_length.partitioned(_lengths.clone()))
+                .transpose()?,
+        ];
+        let indicator_column =
+            ::re_types_core::indicator_column::<Self>(_lengths.into_iter().count())?;
+        Ok(columns.into_iter().chain([indicator_column]).flatten())
+    }
+
     /// Translation vector.
     #[inline]
     pub fn with_translation(

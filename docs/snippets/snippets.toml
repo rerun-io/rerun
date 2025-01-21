@@ -91,9 +91,6 @@
   "cpp",  # Missing examples
   "rust", # Missing examples
 ]
-"archetypes/points3d_send_columns" = [
-  "rust", # Doesn't support partitioned component batches yet.
-]
 "howto/any_batch_value_send_columns" = [
   "cpp",  # Not implemented
   "rust", # Not implemented
@@ -233,6 +230,10 @@ quick_start = [ # These examples don't have exactly the same implementation.
 ]
 "archetypes/points3d_partial_updates" = [ # TODO(cmc): revert once C++ has tagged partial updates
   "cpp",
+]
+"archetypes/points3d_send_columns" = [
+  "py", # TODO(#8752): needs tagged columnar APIs
+  "cpp", # TODO(#8754): needs tagged columnar APIs
 ]
 "archetypes/points3d_random" = [ # TODO(#3206): examples use different RNGs
   "cpp",

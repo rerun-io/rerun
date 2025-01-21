@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 
 use anyhow::Context as _;
 use camino::{Utf8Path, Utf8PathBuf};
-use itertools::Itertools as _;
+use itertools::Itertools;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
@@ -1922,10 +1922,47 @@ fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) 
         }
     });
 
+    let columnar_methods = obj.is_eager_rust_archetype().then(|| {
+        let columns_doc = unindent::unindent("\
+        Partitions the component data into multiple sub-batches.
+
+        Specifically, this transforms the existing [`SerializedComponentBatch`]es data into [`SerializedComponentColumn`]s
+        instead, via [`SerializedComponentBatch::partitioned`].
+
+        This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
+
+        The specified `lengths` must sum to the total length of the component batch.
+
+        [`SerializedComponentColumn`]: [::re_types_core::SerializedComponentColumn]
+        ");
+        let columns_doc = quote_doc_lines(&columns_doc.lines().map(|l| l.to_owned()).collect_vec());
+
+        let fields = required.iter().chain(optional.iter()).map(|field| {
+            let field_name = format_ident!("{}", field.name);
+            quote!(self.#field_name.map(|#field_name| #field_name.partitioned(_lengths.clone())).transpose()?)
+        });
+
+        quote! {
+            #columns_doc
+            #[inline]
+            pub fn columns<I>(
+                self,
+                _lengths: I, // prefixed so it doesn't conflict with fields of the same name
+            ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>>
+            where
+                I: IntoIterator<Item = usize> + Clone,
+            {
+                let columns = [ #(#fields),* ];
+                let indicator_column = ::re_types_core::indicator_column::<Self>(_lengths.into_iter().count())?;
+                Ok(columns.into_iter().chain([indicator_column]).flatten())
+            }
+        }
+    });
+
     let with_methods = if obj.is_eager_rust_archetype() {
         quote! {
             #partial_update_methods
-
+            #columnar_methods
             #(#eager_with_methods)*
         }
     } else {
