@@ -508,6 +508,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9579b9d8bce47aa41389fe344f2c6758279983b7c0ebb4013e283e3e91bb450e"
 dependencies = [
  "bitflags 2.6.0",
+ "serde",
 ]
 
 [[package]]
@@ -5747,6 +5748,7 @@ dependencies = [
  "ahash",
  "anyhow",
  "arrow",
+ "arrow-schema",
  "criterion",
  "document-features",
  "indent",
@@ -5768,6 +5770,7 @@ dependencies = [
  "re_tracing",
  "re_types",
  "re_types_core",
+ "serde_json",
  "similar-asserts",
  "thiserror 1.0.65",
  "tinyvec",
