@@ -142,7 +142,7 @@ pub struct Query {
     pub filtered_is_not_null: ::core::option::Option<ComponentColumnSelector>,
     /// The specific _columns_ to sample from the final view contents.
     /// The order of the samples will be respected in the final result.
-    /// /
+    ///
     /// If unspecified, it means - everything.
     #[prost(message, optional, tag = "10")]
     pub column_selection: ::core::option::Option<ColumnSelection>,
@@ -191,9 +191,8 @@ pub struct TimeColumnDescriptor {
     #[prost(message, optional, tag = "1")]
     pub timeline: ::core::option::Option<Timeline>,
     /// The Arrow datatype of the column.
-    /// /
-    /// Currently this is just the `Display` of the `arrow-rs` `DataType`.
-    /// TODO(emilk): use arrow IPC instead.
+    ///
+    /// Currently this is a JSON-encoded `arrow-rs` `DataType`.
     #[prost(string, tag = "2")]
     pub datatype: ::prost::alloc::string::String,
 }
@@ -223,9 +222,8 @@ pub struct ComponentColumnDescriptor {
     #[prost(string, tag = "4")]
     pub component_name: ::prost::alloc::string::String,
     /// The Arrow datatype of the column.
-    /// /
-    /// Currently this is just the `Display` of the `arrow-rs` `DataType`.
-    /// TODO(emilk): use arrow IPC instead.
+    ///
+    /// Currently this is a JSON-encoded `arrow-rs` `DataType`.
     #[prost(string, tag = "5")]
     pub datatype: ::prost::alloc::string::String,
     /// Whether the column is a static column.
