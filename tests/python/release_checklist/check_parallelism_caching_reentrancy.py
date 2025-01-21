@@ -84,8 +84,8 @@ def log_text_logs() -> None:
 def log_plots() -> None:
     from math import cos, sin, tau
 
-    rr.log("plots/sin", rr.SeriesLine(color=[255, 0, 0], name="sin(0.01t)"), timeless=True)
-    rr.log("plots/cos", rr.SeriesLine(color=[0, 255, 0], name="cos(0.01t)"), timeless=True)
+    rr.log("plots/sin", rr.SeriesLine(color=[255, 0, 0], name="sin(0.01t)"), static=True)
+    rr.log("plots/cos", rr.SeriesLine(color=[0, 255, 0], name="cos(0.01t)"), static=True)
 
     for t in range(0, int(tau * 2 * 10.0)):
         rr.set_time_sequence("frame_nr", t)

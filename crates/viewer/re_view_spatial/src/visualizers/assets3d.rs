@@ -165,7 +165,7 @@ impl VisualizerSystem for Asset3DVisualizer {
                     blobs.first().map(|blob| Asset3DComponentData {
                         index,
                         query_result_hash,
-                        blob: blob.clone(),
+                        blob: blob.clone().into(),
                         media_type: media_types
                             .and_then(|media_types| media_types.first().cloned()),
                         albedo_factor: albedo_factors

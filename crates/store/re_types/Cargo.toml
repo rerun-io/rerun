@@ -61,14 +61,9 @@ re_types_core.workspace = true
 re_video = { workspace = true, optional = true }
 
 # External
-anyhow.workspace = true # TODO(#1845): Use thiserror instead
+anyhow.workspace = true                                                      # TODO(#1845): Use thiserror instead
 array-init.workspace = true
 arrow.workspace = true
-arrow2 = { workspace = true, features = [
-  "io_ipc",
-  "io_print",
-  "compute_concatenate",
-] }
 bytemuck = { workspace = true, features = ["derive", "extern_crate_alloc"] }
 document-features.workspace = true
 emath.workspace = true

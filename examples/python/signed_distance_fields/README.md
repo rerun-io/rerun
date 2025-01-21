@@ -51,7 +51,7 @@ The sampled points and their corresponding signed distances are visualized using
 
 ```python
 # Points inside the object are highlighted in red, while those outside are marked in green.
-rr.log("world/sdf", rr.AnnotationContext([(0, "inside", (255, 0, 0)), (1, "outside", (0, 255, 0))]), timeless=False)
+rr.log("world/sdf", rr.AnnotationContext([(0, "inside", (255, 0, 0)), (1, "outside", (0, 255, 0))]), static=False)
 ```
 
 ```python

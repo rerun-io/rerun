@@ -798,7 +798,7 @@ impl PendingRow {
             re_tracing::profile_scope!("iterate per timeline set");
 
             // Then we split the micro batches even further -- one sub-batch per unique set of datatypes.
-            let mut per_datatype_set: IntMap<u64 /* Arrow2Datatype set */, Vec<Self>> =
+            let mut per_datatype_set: IntMap<u64 /* ArrowDatatype set */, Vec<Self>> =
                 Default::default();
             {
                 re_tracing::profile_scope!("compute datatype sets");
@@ -1080,7 +1080,7 @@ mod tests {
     fn simple_static() -> anyhow::Result<()> {
         let batcher = ChunkBatcher::new(ChunkBatcherConfig::NEVER)?;
 
-        let timeless = TimePoint::default();
+        let static_ = TimePoint::default();
 
         let points1 = MyPoint::to_arrow([MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)])?;
         let points2 = MyPoint::to_arrow([MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)])?;
@@ -1090,9 +1090,9 @@ mod tests {
         let components2 = [(MyPoint::descriptor(), points2.clone())];
         let components3 = [(MyPoint::descriptor(), points3.clone())];
 
-        let row1 = PendingRow::new(timeless.clone(), components1.into_iter().collect());
-        let row2 = PendingRow::new(timeless.clone(), components2.into_iter().collect());
-        let row3 = PendingRow::new(timeless.clone(), components3.into_iter().collect());
+        let row1 = PendingRow::new(static_.clone(), components1.into_iter().collect());
+        let row2 = PendingRow::new(static_.clone(), components2.into_iter().collect());
+        let row3 = PendingRow::new(static_.clone(), components3.into_iter().collect());
 
         let entity_path1: EntityPath = "a/b/c".into();
         batcher.push_row(entity_path1.clone(), row1.clone());

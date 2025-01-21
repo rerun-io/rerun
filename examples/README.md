@@ -33,7 +33,7 @@ Check out [`examples/python/template/README.md`](python/template/README.md) to s
 
 You are also encourage to add a _short_ `DESCRIPTION = """…"""` markdown to the top of the `main.py` and then log it with:
 ```py
-rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), timeless=True)
+rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), static=True)
 ```
 
 ## Adding a new example

@@ -11,6 +11,21 @@ use crate::{CError, CErrorCode};
 pub unsafe fn arrow_array_from_c_ffi(
     array: &arrow2::ffi::ArrowArray,
     datatype: arrow2::datatypes::DataType,
+) -> Result<arrow::array::ArrayRef, CError> {
+    unsafe { arrow2_array_from_c_ffi(array, datatype).map(|array| array.into()) }
+}
+
+/// Converts a C-FFI arrow array into a Rust component batch, taking ownership of the underlying arrow data.
+///
+/// Safety:
+/// This must only be ever called once for a given ffi array.
+/// Conceptually, this takes ownership of the array, i.e. this should really be a move operation,
+/// but since we have typically pass c arrays (ptr + length), we can't actually move out data.
+#[allow(unsafe_code)]
+#[allow(clippy::result_large_err)]
+unsafe fn arrow2_array_from_c_ffi(
+    array: &arrow2::ffi::ArrowArray,
+    datatype: arrow2::datatypes::DataType,
 ) -> Result<Box<dyn arrow2::array::Array>, CError> {
     // Arrow2 implements drop for Arrow2Array and Arrow2Schema.
     //

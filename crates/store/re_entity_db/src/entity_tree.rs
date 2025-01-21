@@ -58,8 +58,8 @@ pub struct CompactedStoreEvents {
     /// What time points were deleted for each entity+timeline+component?
     pub temporal: IntMap<EntityPathHash, IntMap<Timeline, IntMap<ComponentName, Vec<TimeInt>>>>,
 
-    /// For each entity+component, how many timeless entries were deleted?
-    pub timeless: IntMap<EntityPathHash, IntMap<ComponentName, u64>>,
+    /// For each entity+component, how many static entries were deleted?
+    pub static_: IntMap<EntityPathHash, IntMap<ComponentName, u64>>,
 }
 
 impl CompactedStoreEvents {
@@ -70,13 +70,13 @@ impl CompactedStoreEvents {
                 .flat_map(|event| event.chunk.row_ids())
                 .collect(),
             temporal: Default::default(),
-            timeless: Default::default(),
+            static_: Default::default(),
         };
 
         for event in store_events {
             if event.is_static() {
                 let per_component = this
-                    .timeless
+                    .static_
                     .entry(event.chunk.entity_path().hash())
                     .or_default();
                 for component_name in event.chunk.component_names() {

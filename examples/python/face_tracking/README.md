@@ -53,7 +53,7 @@ Logging the face landmarks involves specifying connections between the points, e
 The 2D points are visualized over the video/image for a better understanding and visualization of the face.
 The 3D points allows the creation of a 3D model of the face reconstruction for a more comprehensive representation of the face.
 
-The 2D and 3D points are logged through a combination of two archetypes. First, a timeless
+The 2D and 3D points are logged through a combination of two archetypes. First, a static
 [`ClassDescription`](https://www.rerun.io/docs/reference/types/datatypes/class_description) is logged, that contains the information which maps keypoint ids to labels and how to connect
 the keypoints. Defining these connections automatically renders lines between them.
 Second, the actual keypoint positions are logged in 2D and 3D as [`Points2D`](https://www.rerun.io/docs/reference/types/archetypes/points2d) and [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d) archetypes, respectively.
@@ -101,10 +101,10 @@ for i, klass in enumerate(classes):
     )
 
 # Log annotation context for video/landmarker and reconstruction entities
-rr.log("video/landmarker", rr.AnnotationContext(class_descriptions), timeless=True)
-rr.log("reconstruction", rr.AnnotationContext(class_descriptions), timeless=True)
+rr.log("video/landmarker", rr.AnnotationContext(class_descriptions), static=True)
+rr.log("reconstruction", rr.AnnotationContext(class_descriptions), static=True)
 
-rr.log("reconstruction", rr.ViewCoordinates.RDF, timeless=True) # properly align the 3D face in the viewer
+rr.log("reconstruction", rr.ViewCoordinates.RDF, static=True) # properly align the 3D face in the viewer
 ```
 
 With the below annotation, the keypoints will be connected with lines to enhance visibility in the `video/detector` entity.
@@ -114,7 +114,7 @@ rr.log(
     rr.ClassDescription(
         info=rr.AnnotationInfo(id=0), keypoint_connections=[(0, 1), (1, 2), (2, 0), (2, 3), (0, 4), (1, 5)]
     ),
-    timeless=True,
+    static=True,
 )
 ```
 #### Bounding box

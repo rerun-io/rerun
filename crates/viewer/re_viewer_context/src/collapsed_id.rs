@@ -25,6 +25,9 @@ pub enum CollapseScope {
 
     /// Blueprint tree from the blueprint panel (left panel)
     BlueprintTree,
+
+    /// Blueprint tree from the blueprint panel (left panel), when the filter is active
+    BlueprintTreeFiltered { session_id: egui::Id },
 }
 
 impl CollapseScope {

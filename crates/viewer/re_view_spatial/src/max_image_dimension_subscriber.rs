@@ -92,7 +92,7 @@ impl PerStoreChunkSubscriber for MaxImageDimensionsStoreSubscriber {
             {
                 if let Some(blob) = blob.first() {
                     if let Some([width, height]) = size_from_blob(
-                        blob.as_slice(),
+                        blob,
                         media_type.and_then(|v| v.first().map(|v| MediaType(v.clone().into()))),
                     ) {
                         let max_dim = self

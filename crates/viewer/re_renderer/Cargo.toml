@@ -33,9 +33,6 @@ ignored = ["profiling"] # Needed to hook up wgpu, see below at dependency setup.
 [features]
 default = ["import-obj", "import-gltf", "import-stl"]
 
-## Support for Arrow datatypes for end-to-end zero-copy.
-arrow = ["dep:arrow2"]
-
 ## Support importing .obj files
 import-obj = ["dep:tobj"]
 
@@ -84,7 +81,6 @@ wgpu.workspace = true
 wgpu-types.workspace = true
 
 # optional
-arrow2 = { workspace = true, optional = true }
 gltf = { workspace = true, optional = true }
 tinystl = { workspace = true, features = ["bytemuck"], optional = true }
 serde = { workspace = true, features = ["derive"], optional = true }

@@ -230,7 +230,7 @@ def main() -> None:
 
     # display everything in Rerun
     rr.script_setup(args, "rerun_example_open_photogrammetry_format")
-    rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), timeless=True)
+    rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), static=True)
     rr.log("world", rr.ViewCoordinates.RIGHT_HAND_Z_UP, static=True)
     project.log_point_cloud()
     project.log_calibrated_cameras(jpeg_quality=args.jpeg_quality)

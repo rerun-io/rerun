@@ -1,5 +1,5 @@
 use arrow::{
-    array::{Array, ArrayRef, RecordBatch},
+    array::{Array, ArrayRef, ListArray, RecordBatch},
     buffer::ScalarBuffer,
     datatypes::{ArrowNativeType, DataType, Field, Fields, Schema, UnionFields},
 };
@@ -31,6 +31,13 @@ impl<T: ArrowNativeType> SizeBytes for ScalarBuffer<T> {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.inner().capacity() as _
+    }
+}
+
+impl SizeBytes for ListArray {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.get_array_memory_size() as u64
     }
 }
 

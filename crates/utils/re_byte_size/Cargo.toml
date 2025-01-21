@@ -25,6 +25,5 @@ all-features = true
 [dependencies]
 # TODO(emilk): make some of these opt-in
 arrow.workspace = true
-arrow2.workspace = true
 half.workspace = true
 smallvec.workspace = true

@@ -49,14 +49,9 @@ re_types_core.workspace = true
 ahash.workspace = true
 anyhow.workspace = true
 arrow.workspace = true
-arrow2 = { workspace = true, features = [
-  "arrow",
-  "compute_concatenate",
-  "compute_filter",
-  "compute_take",
-] }
 bytemuck.workspace = true
 document-features.workspace = true
+half.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true
 rand = { workspace = true, features = ["std_rng"] }

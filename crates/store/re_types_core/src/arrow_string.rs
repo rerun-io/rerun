@@ -81,13 +81,6 @@ impl From<arrow::buffer::Buffer> for ArrowString {
     }
 }
 
-impl From<arrow2::buffer::Buffer<u8>> for ArrowString {
-    #[inline]
-    fn from(buf: arrow2::buffer::Buffer<u8>) -> Self {
-        Self(buf.into())
-    }
-}
-
 impl From<String> for ArrowString {
     #[inline]
     fn from(value: String) -> Self {

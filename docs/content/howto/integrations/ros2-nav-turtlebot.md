@@ -443,7 +443,7 @@ if node_data:
                 translation=world_from_mesh[3, 0:3],
                 mat3x3=world_from_mesh[0:3, 0:3],
             ),
-            timeless=timeless,
+            static=static,
         )
 
 
@@ -459,7 +459,7 @@ if node_data:
                 vertex_normals=mesh.vertex_normals,
                 albedo_factor=albedo_factor,
             ),
-            timeless=timeless,
+            static=static,
         )
 ```
 
