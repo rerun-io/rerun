@@ -281,10 +281,36 @@ impl TensorScalarMapping {
         self
     }
 
+    /// This method makes it possible to pack multiple [`crate::components::MagnificationFilter`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_mag_filter`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_mag_filter(
+        mut self,
+        mag_filter: impl IntoIterator<Item = impl Into<crate::components::MagnificationFilter>>,
+    ) -> Self {
+        self.mag_filter = try_serialize_field(Self::descriptor_mag_filter(), mag_filter);
+        self
+    }
+
     /// How scalar values map to colors.
     #[inline]
     pub fn with_colormap(mut self, colormap: impl Into<crate::components::Colormap>) -> Self {
         self.colormap = try_serialize_field(Self::descriptor_colormap(), [colormap]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::Colormap`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_colormap`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_colormap(
+        mut self,
+        colormap: impl IntoIterator<Item = impl Into<crate::components::Colormap>>,
+    ) -> Self {
+        self.colormap = try_serialize_field(Self::descriptor_colormap(), colormap);
         self
     }
 
@@ -298,6 +324,19 @@ impl TensorScalarMapping {
     #[inline]
     pub fn with_gamma(mut self, gamma: impl Into<crate::components::GammaCorrection>) -> Self {
         self.gamma = try_serialize_field(Self::descriptor_gamma(), [gamma]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::GammaCorrection`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_gamma`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_gamma(
+        mut self,
+        gamma: impl IntoIterator<Item = impl Into<crate::components::GammaCorrection>>,
+    ) -> Self {
+        self.gamma = try_serialize_field(Self::descriptor_gamma(), gamma);
         self
     }
 }

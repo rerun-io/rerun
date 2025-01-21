@@ -227,6 +227,19 @@ impl Scalar {
         self.scalar = try_serialize_field(Self::descriptor_scalar(), [scalar]);
         self
     }
+
+    /// This method makes it possible to pack multiple [`crate::components::Scalar`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_scalar`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_scalar(
+        mut self,
+        scalar: impl IntoIterator<Item = impl Into<crate::components::Scalar>>,
+    ) -> Self {
+        self.scalar = try_serialize_field(Self::descriptor_scalar(), scalar);
+        self
+    }
 }
 
 impl ::re_byte_size::SizeBytes for Scalar {

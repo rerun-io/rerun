@@ -1876,11 +1876,28 @@ fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) 
                 }
             }
         } else {
+            let method_name_many = format_ident!("with_many_{field_name}");
+            let docstring_many = unindent::unindent(&format!("\
+            This method makes it possible to pack multiple [`{typ}`] in a single component batch.
+
+            This only makes sense when used in conjunction with [`Self::columns`]. [`Self::{method_name}`] should
+            be used when logging a single row's worth of data.
+            "));
+            let docstring_many = quote_doc_lines(&docstring_many.lines().map(|l| l.to_owned()).collect_vec());
+
+
             quote! {
                 #docstring
                 #[inline]
                 pub fn #method_name(mut self, #field_name: impl Into<#typ>) -> Self {
                     self.#field_name = try_serialize_field(Self::#descr_fn_name(), [#field_name]);
+                    self
+                }
+
+                #docstring_many
+                #[inline]
+                pub fn #method_name_many(mut self, #field_name: impl IntoIterator<Item = impl Into<#typ>>) -> Self {
+                    self.#field_name = try_serialize_field(Self::#descr_fn_name(), #field_name);
                     self
                 }
             }

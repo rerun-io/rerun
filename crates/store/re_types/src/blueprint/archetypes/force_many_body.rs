@@ -247,6 +247,19 @@ impl ForceManyBody {
         self
     }
 
+    /// This method makes it possible to pack multiple [`crate::blueprint::components::Enabled`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_enabled`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_enabled(
+        mut self,
+        enabled: impl IntoIterator<Item = impl Into<crate::blueprint::components::Enabled>>,
+    ) -> Self {
+        self.enabled = try_serialize_field(Self::descriptor_enabled(), enabled);
+        self
+    }
+
     /// The strength of the force.
     ///
     /// If `strength` is smaller than 0, it pushes nodes apart, if it is larger than 0 it pulls them together.
@@ -256,6 +269,19 @@ impl ForceManyBody {
         strength: impl Into<crate::blueprint::components::ForceStrength>,
     ) -> Self {
         self.strength = try_serialize_field(Self::descriptor_strength(), [strength]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::blueprint::components::ForceStrength`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_strength`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_strength(
+        mut self,
+        strength: impl IntoIterator<Item = impl Into<crate::blueprint::components::ForceStrength>>,
+    ) -> Self {
+        self.strength = try_serialize_field(Self::descriptor_strength(), strength);
         self
     }
 }

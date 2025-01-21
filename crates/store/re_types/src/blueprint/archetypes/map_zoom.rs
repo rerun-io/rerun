@@ -197,6 +197,19 @@ impl MapZoom {
         self.zoom = try_serialize_field(Self::descriptor_zoom(), [zoom]);
         self
     }
+
+    /// This method makes it possible to pack multiple [`crate::blueprint::components::ZoomLevel`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_zoom`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_zoom(
+        mut self,
+        zoom: impl IntoIterator<Item = impl Into<crate::blueprint::components::ZoomLevel>>,
+    ) -> Self {
+        self.zoom = try_serialize_field(Self::descriptor_zoom(), zoom);
+        self
+    }
 }
 
 impl ::re_byte_size::SizeBytes for MapZoom {

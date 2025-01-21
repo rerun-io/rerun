@@ -460,10 +460,36 @@ impl DepthImage {
         self
     }
 
+    /// This method makes it possible to pack multiple [`crate::components::ImageBuffer`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_buffer`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_buffer(
+        mut self,
+        buffer: impl IntoIterator<Item = impl Into<crate::components::ImageBuffer>>,
+    ) -> Self {
+        self.buffer = try_serialize_field(Self::descriptor_buffer(), buffer);
+        self
+    }
+
     /// The format of the image.
     #[inline]
     pub fn with_format(mut self, format: impl Into<crate::components::ImageFormat>) -> Self {
         self.format = try_serialize_field(Self::descriptor_format(), [format]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::ImageFormat`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_format`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_format(
+        mut self,
+        format: impl IntoIterator<Item = impl Into<crate::components::ImageFormat>>,
+    ) -> Self {
+        self.format = try_serialize_field(Self::descriptor_format(), format);
         self
     }
 
@@ -480,12 +506,38 @@ impl DepthImage {
         self
     }
 
+    /// This method makes it possible to pack multiple [`crate::components::DepthMeter`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_meter`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_meter(
+        mut self,
+        meter: impl IntoIterator<Item = impl Into<crate::components::DepthMeter>>,
+    ) -> Self {
+        self.meter = try_serialize_field(Self::descriptor_meter(), meter);
+        self
+    }
+
     /// Colormap to use for rendering the depth image.
     ///
     /// If not set, the depth image will be rendered using the Turbo colormap.
     #[inline]
     pub fn with_colormap(mut self, colormap: impl Into<crate::components::Colormap>) -> Self {
         self.colormap = try_serialize_field(Self::descriptor_colormap(), [colormap]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::Colormap`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_colormap`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_colormap(
+        mut self,
+        colormap: impl IntoIterator<Item = impl Into<crate::components::Colormap>>,
+    ) -> Self {
+        self.colormap = try_serialize_field(Self::descriptor_colormap(), colormap);
         self
     }
 
@@ -509,6 +561,19 @@ impl DepthImage {
         self
     }
 
+    /// This method makes it possible to pack multiple [`crate::components::ValueRange`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_depth_range`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_depth_range(
+        mut self,
+        depth_range: impl IntoIterator<Item = impl Into<crate::components::ValueRange>>,
+    ) -> Self {
+        self.depth_range = try_serialize_field(Self::descriptor_depth_range(), depth_range);
+        self
+    }
+
     /// Scale the radii of the points in the point cloud generated from this image.
     ///
     /// A fill ratio of 1.0 (the default) means that each point is as big as to touch the center of its neighbor
@@ -526,12 +591,39 @@ impl DepthImage {
         self
     }
 
+    /// This method makes it possible to pack multiple [`crate::components::FillRatio`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_point_fill_ratio`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_point_fill_ratio(
+        mut self,
+        point_fill_ratio: impl IntoIterator<Item = impl Into<crate::components::FillRatio>>,
+    ) -> Self {
+        self.point_fill_ratio =
+            try_serialize_field(Self::descriptor_point_fill_ratio(), point_fill_ratio);
+        self
+    }
+
     /// An optional floating point value that specifies the 2D drawing order, used only if the depth image is shown as a 2D image.
     ///
     /// Objects with higher values are drawn on top of those with lower values.
     #[inline]
     pub fn with_draw_order(mut self, draw_order: impl Into<crate::components::DrawOrder>) -> Self {
         self.draw_order = try_serialize_field(Self::descriptor_draw_order(), [draw_order]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::DrawOrder`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_draw_order`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_draw_order(
+        mut self,
+        draw_order: impl IntoIterator<Item = impl Into<crate::components::DrawOrder>>,
+    ) -> Self {
+        self.draw_order = try_serialize_field(Self::descriptor_draw_order(), draw_order);
         self
     }
 }

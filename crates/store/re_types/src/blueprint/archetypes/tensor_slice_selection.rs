@@ -306,6 +306,19 @@ impl TensorSliceSelection {
         self
     }
 
+    /// This method makes it possible to pack multiple [`crate::components::TensorWidthDimension`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_width`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_width(
+        mut self,
+        width: impl IntoIterator<Item = impl Into<crate::components::TensorWidthDimension>>,
+    ) -> Self {
+        self.width = try_serialize_field(Self::descriptor_width(), width);
+        self
+    }
+
     /// Which dimension to map to height.
     ///
     /// If not specified, the height will be determined automatically based on the name and index of the dimension.
@@ -315,6 +328,19 @@ impl TensorSliceSelection {
         height: impl Into<crate::components::TensorHeightDimension>,
     ) -> Self {
         self.height = try_serialize_field(Self::descriptor_height(), [height]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::TensorHeightDimension`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_height`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_height(
+        mut self,
+        height: impl IntoIterator<Item = impl Into<crate::components::TensorHeightDimension>>,
+    ) -> Self {
+        self.height = try_serialize_field(Self::descriptor_height(), height);
         self
     }
 

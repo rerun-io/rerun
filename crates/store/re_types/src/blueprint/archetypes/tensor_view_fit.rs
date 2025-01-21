@@ -199,6 +199,19 @@ impl TensorViewFit {
         self.scaling = try_serialize_field(Self::descriptor_scaling(), [scaling]);
         self
     }
+
+    /// This method makes it possible to pack multiple [`crate::blueprint::components::ViewFit`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_scaling`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_scaling(
+        mut self,
+        scaling: impl IntoIterator<Item = impl Into<crate::blueprint::components::ViewFit>>,
+    ) -> Self {
+        self.scaling = try_serialize_field(Self::descriptor_scaling(), scaling);
+        self
+    }
 }
 
 impl ::re_byte_size::SizeBytes for TensorViewFit {

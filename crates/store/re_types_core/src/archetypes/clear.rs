@@ -254,6 +254,19 @@ impl Clear {
         self.is_recursive = try_serialize_field(Self::descriptor_is_recursive(), [is_recursive]);
         self
     }
+
+    /// This method makes it possible to pack multiple [`crate::components::ClearIsRecursive`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_is_recursive`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_is_recursive(
+        mut self,
+        is_recursive: impl IntoIterator<Item = impl Into<crate::components::ClearIsRecursive>>,
+    ) -> Self {
+        self.is_recursive = try_serialize_field(Self::descriptor_is_recursive(), is_recursive);
+        self
+    }
 }
 
 impl ::re_byte_size::SizeBytes for Clear {

@@ -350,10 +350,36 @@ impl SegmentationImage {
         self
     }
 
+    /// This method makes it possible to pack multiple [`crate::components::ImageBuffer`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_buffer`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_buffer(
+        mut self,
+        buffer: impl IntoIterator<Item = impl Into<crate::components::ImageBuffer>>,
+    ) -> Self {
+        self.buffer = try_serialize_field(Self::descriptor_buffer(), buffer);
+        self
+    }
+
     /// The format of the image.
     #[inline]
     pub fn with_format(mut self, format: impl Into<crate::components::ImageFormat>) -> Self {
         self.format = try_serialize_field(Self::descriptor_format(), [format]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::ImageFormat`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_format`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_format(
+        mut self,
+        format: impl IntoIterator<Item = impl Into<crate::components::ImageFormat>>,
+    ) -> Self {
+        self.format = try_serialize_field(Self::descriptor_format(), format);
         self
     }
 
@@ -366,12 +392,38 @@ impl SegmentationImage {
         self
     }
 
+    /// This method makes it possible to pack multiple [`crate::components::Opacity`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_opacity`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_opacity(
+        mut self,
+        opacity: impl IntoIterator<Item = impl Into<crate::components::Opacity>>,
+    ) -> Self {
+        self.opacity = try_serialize_field(Self::descriptor_opacity(), opacity);
+        self
+    }
+
     /// An optional floating point value that specifies the 2D drawing order.
     ///
     /// Objects with higher values are drawn on top of those with lower values.
     #[inline]
     pub fn with_draw_order(mut self, draw_order: impl Into<crate::components::DrawOrder>) -> Self {
         self.draw_order = try_serialize_field(Self::descriptor_draw_order(), [draw_order]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::DrawOrder`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_draw_order`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_draw_order(
+        mut self,
+        draw_order: impl IntoIterator<Item = impl Into<crate::components::DrawOrder>>,
+    ) -> Self {
+        self.draw_order = try_serialize_field(Self::descriptor_draw_order(), draw_order);
         self
     }
 }

@@ -313,10 +313,37 @@ impl ViewBlueprint {
         self
     }
 
+    /// This method makes it possible to pack multiple [`crate::blueprint::components::ViewClass`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_class_identifier`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_class_identifier(
+        mut self,
+        class_identifier: impl IntoIterator<Item = impl Into<crate::blueprint::components::ViewClass>>,
+    ) -> Self {
+        self.class_identifier =
+            try_serialize_field(Self::descriptor_class_identifier(), class_identifier);
+        self
+    }
+
     /// The name of the view.
     #[inline]
     pub fn with_display_name(mut self, display_name: impl Into<crate::components::Name>) -> Self {
         self.display_name = try_serialize_field(Self::descriptor_display_name(), [display_name]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::Name`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_display_name`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_display_name(
+        mut self,
+        display_name: impl IntoIterator<Item = impl Into<crate::components::Name>>,
+    ) -> Self {
+        self.display_name = try_serialize_field(Self::descriptor_display_name(), display_name);
         self
     }
 
@@ -336,6 +363,19 @@ impl ViewBlueprint {
         self
     }
 
+    /// This method makes it possible to pack multiple [`crate::blueprint::components::ViewOrigin`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_space_origin`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_space_origin(
+        mut self,
+        space_origin: impl IntoIterator<Item = impl Into<crate::blueprint::components::ViewOrigin>>,
+    ) -> Self {
+        self.space_origin = try_serialize_field(Self::descriptor_space_origin(), space_origin);
+        self
+    }
+
     /// Whether this view is visible.
     ///
     /// Defaults to true if not specified.
@@ -345,6 +385,19 @@ impl ViewBlueprint {
         visible: impl Into<crate::blueprint::components::Visible>,
     ) -> Self {
         self.visible = try_serialize_field(Self::descriptor_visible(), [visible]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::blueprint::components::Visible`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_visible`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_visible(
+        mut self,
+        visible: impl IntoIterator<Item = impl Into<crate::blueprint::components::Visible>>,
+    ) -> Self {
+        self.visible = try_serialize_field(Self::descriptor_visible(), visible);
         self
     }
 }

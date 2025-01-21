@@ -211,6 +211,22 @@ impl NearClipPlane {
             try_serialize_field(Self::descriptor_near_clip_plane(), [near_clip_plane]);
         self
     }
+
+    /// This method makes it possible to pack multiple [`crate::blueprint::components::NearClipPlane`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_near_clip_plane`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_near_clip_plane(
+        mut self,
+        near_clip_plane: impl IntoIterator<
+            Item = impl Into<crate::blueprint::components::NearClipPlane>,
+        >,
+    ) -> Self {
+        self.near_clip_plane =
+            try_serialize_field(Self::descriptor_near_clip_plane(), near_clip_plane);
+        self
+    }
 }
 
 impl ::re_byte_size::SizeBytes for NearClipPlane {

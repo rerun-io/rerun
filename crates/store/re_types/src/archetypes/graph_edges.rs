@@ -281,6 +281,19 @@ impl GraphEdges {
         self.graph_type = try_serialize_field(Self::descriptor_graph_type(), [graph_type]);
         self
     }
+
+    /// This method makes it possible to pack multiple [`crate::components::GraphType`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_graph_type`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_graph_type(
+        mut self,
+        graph_type: impl IntoIterator<Item = impl Into<crate::components::GraphType>>,
+    ) -> Self {
+        self.graph_type = try_serialize_field(Self::descriptor_graph_type(), graph_type);
+        self
+    }
 }
 
 impl ::re_byte_size::SizeBytes for GraphEdges {

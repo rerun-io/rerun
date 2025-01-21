@@ -340,6 +340,19 @@ impl LineGrid3D {
         self
     }
 
+    /// This method makes it possible to pack multiple [`crate::blueprint::components::Visible`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_visible`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_visible(
+        mut self,
+        visible: impl IntoIterator<Item = impl Into<crate::blueprint::components::Visible>>,
+    ) -> Self {
+        self.visible = try_serialize_field(Self::descriptor_visible(), visible);
+        self
+    }
+
     /// Space between grid lines spacing of one line to the next in scene units.
     ///
     /// As you zoom out, successively only every tenth line is shown.
@@ -353,12 +366,38 @@ impl LineGrid3D {
         self
     }
 
+    /// This method makes it possible to pack multiple [`crate::blueprint::components::GridSpacing`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_spacing`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_spacing(
+        mut self,
+        spacing: impl IntoIterator<Item = impl Into<crate::blueprint::components::GridSpacing>>,
+    ) -> Self {
+        self.spacing = try_serialize_field(Self::descriptor_spacing(), spacing);
+        self
+    }
+
     /// In what plane the grid is drawn.
     ///
     /// Defaults to whatever plane is determined as the plane at zero units up/down as defined by [`components::ViewCoordinates`][crate::components::ViewCoordinates] if present.
     #[inline]
     pub fn with_plane(mut self, plane: impl Into<crate::components::Plane3D>) -> Self {
         self.plane = try_serialize_field(Self::descriptor_plane(), [plane]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::Plane3D`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_plane`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_plane(
+        mut self,
+        plane: impl IntoIterator<Item = impl Into<crate::components::Plane3D>>,
+    ) -> Self {
+        self.plane = try_serialize_field(Self::descriptor_plane(), plane);
         self
     }
 
@@ -374,6 +413,19 @@ impl LineGrid3D {
         self
     }
 
+    /// This method makes it possible to pack multiple [`crate::components::StrokeWidth`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_stroke_width`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_stroke_width(
+        mut self,
+        stroke_width: impl IntoIterator<Item = impl Into<crate::components::StrokeWidth>>,
+    ) -> Self {
+        self.stroke_width = try_serialize_field(Self::descriptor_stroke_width(), stroke_width);
+        self
+    }
+
     /// Color used for the grid.
     ///
     /// Transparency via alpha channel is supported.
@@ -381,6 +433,19 @@ impl LineGrid3D {
     #[inline]
     pub fn with_color(mut self, color: impl Into<crate::components::Color>) -> Self {
         self.color = try_serialize_field(Self::descriptor_color(), [color]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::Color`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_color`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_color(
+        mut self,
+        color: impl IntoIterator<Item = impl Into<crate::components::Color>>,
+    ) -> Self {
+        self.color = try_serialize_field(Self::descriptor_color(), color);
         self
     }
 }

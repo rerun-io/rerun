@@ -205,6 +205,19 @@ impl MapBackground {
         self.provider = try_serialize_field(Self::descriptor_provider(), [provider]);
         self
     }
+
+    /// This method makes it possible to pack multiple [`crate::blueprint::components::MapProvider`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_provider`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_provider(
+        mut self,
+        provider: impl IntoIterator<Item = impl Into<crate::blueprint::components::MapProvider>>,
+    ) -> Self {
+        self.provider = try_serialize_field(Self::descriptor_provider(), provider);
+        self
+    }
 }
 
 impl ::re_byte_size::SizeBytes for MapBackground {

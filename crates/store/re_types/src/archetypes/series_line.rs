@@ -351,10 +351,36 @@ impl SeriesLine {
         self
     }
 
+    /// This method makes it possible to pack multiple [`crate::components::Color`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_color`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_color(
+        mut self,
+        color: impl IntoIterator<Item = impl Into<crate::components::Color>>,
+    ) -> Self {
+        self.color = try_serialize_field(Self::descriptor_color(), color);
+        self
+    }
+
     /// Stroke width for the corresponding series.
     #[inline]
     pub fn with_width(mut self, width: impl Into<crate::components::StrokeWidth>) -> Self {
         self.width = try_serialize_field(Self::descriptor_width(), [width]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::StrokeWidth`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_width`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_width(
+        mut self,
+        width: impl IntoIterator<Item = impl Into<crate::components::StrokeWidth>>,
+    ) -> Self {
+        self.width = try_serialize_field(Self::descriptor_width(), width);
         self
     }
 
@@ -364,6 +390,19 @@ impl SeriesLine {
     #[inline]
     pub fn with_name(mut self, name: impl Into<crate::components::Name>) -> Self {
         self.name = try_serialize_field(Self::descriptor_name(), [name]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::Name`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_name`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_name(
+        mut self,
+        name: impl IntoIterator<Item = impl Into<crate::components::Name>>,
+    ) -> Self {
+        self.name = try_serialize_field(Self::descriptor_name(), name);
         self
     }
 
@@ -379,6 +418,20 @@ impl SeriesLine {
     ) -> Self {
         self.aggregation_policy =
             try_serialize_field(Self::descriptor_aggregation_policy(), [aggregation_policy]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::AggregationPolicy`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_aggregation_policy`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_aggregation_policy(
+        mut self,
+        aggregation_policy: impl IntoIterator<Item = impl Into<crate::components::AggregationPolicy>>,
+    ) -> Self {
+        self.aggregation_policy =
+            try_serialize_field(Self::descriptor_aggregation_policy(), aggregation_policy);
         self
     }
 }

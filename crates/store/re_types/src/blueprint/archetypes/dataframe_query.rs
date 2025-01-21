@@ -336,6 +336,19 @@ impl DataframeQuery {
         self
     }
 
+    /// This method makes it possible to pack multiple [`crate::blueprint::components::TimelineName`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_timeline`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_timeline(
+        mut self,
+        timeline: impl IntoIterator<Item = impl Into<crate::blueprint::components::TimelineName>>,
+    ) -> Self {
+        self.timeline = try_serialize_field(Self::descriptor_timeline(), timeline);
+        self
+    }
+
     /// If provided, only rows whose timestamp is within this range will be shown.
     ///
     /// Note: will be unset as soon as `timeline` is changed.
@@ -346,6 +359,22 @@ impl DataframeQuery {
     ) -> Self {
         self.filter_by_range =
             try_serialize_field(Self::descriptor_filter_by_range(), [filter_by_range]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::blueprint::components::FilterByRange`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_filter_by_range`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_filter_by_range(
+        mut self,
+        filter_by_range: impl IntoIterator<
+            Item = impl Into<crate::blueprint::components::FilterByRange>,
+        >,
+    ) -> Self {
+        self.filter_by_range =
+            try_serialize_field(Self::descriptor_filter_by_range(), filter_by_range);
         self
     }
 
@@ -360,6 +389,22 @@ impl DataframeQuery {
         self
     }
 
+    /// This method makes it possible to pack multiple [`crate::blueprint::components::FilterIsNotNull`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_filter_is_not_null`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_filter_is_not_null(
+        mut self,
+        filter_is_not_null: impl IntoIterator<
+            Item = impl Into<crate::blueprint::components::FilterIsNotNull>,
+        >,
+    ) -> Self {
+        self.filter_is_not_null =
+            try_serialize_field(Self::descriptor_filter_is_not_null(), filter_is_not_null);
+        self
+    }
+
     /// Should empty cells be filled with latest-at queries?
     #[inline]
     pub fn with_apply_latest_at(
@@ -371,6 +416,22 @@ impl DataframeQuery {
         self
     }
 
+    /// This method makes it possible to pack multiple [`crate::blueprint::components::ApplyLatestAt`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_apply_latest_at`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_apply_latest_at(
+        mut self,
+        apply_latest_at: impl IntoIterator<
+            Item = impl Into<crate::blueprint::components::ApplyLatestAt>,
+        >,
+    ) -> Self {
+        self.apply_latest_at =
+            try_serialize_field(Self::descriptor_apply_latest_at(), apply_latest_at);
+        self
+    }
+
     /// Selected columns. If unset, all columns are selected.
     #[inline]
     pub fn with_select(
@@ -378,6 +439,19 @@ impl DataframeQuery {
         select: impl Into<crate::blueprint::components::SelectedColumns>,
     ) -> Self {
         self.select = try_serialize_field(Self::descriptor_select(), [select]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::blueprint::components::SelectedColumns`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_select`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_select(
+        mut self,
+        select: impl IntoIterator<Item = impl Into<crate::blueprint::components::SelectedColumns>>,
+    ) -> Self {
+        self.select = try_serialize_field(Self::descriptor_select(), select);
         self
     }
 }
