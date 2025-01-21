@@ -90,7 +90,7 @@ bitflags::bitflags! {
 
 /// Points in time that have changed for a given entity,
 /// i.e. the cache is invalid for these times.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct InvalidatedTransforms {
     entity_path: EntityPath,
     times: Vec<TimeInt>,
@@ -112,7 +112,9 @@ pub struct CachedTransformsForTimeline {
 impl CachedTransformsForTimeline {
     fn new(timeline: &Timeline, static_transforms: &Self) -> Self {
         Self {
-            invalidated_transforms: Default::default(),
+            // It's crucial to take over any invalidated transform events from the static timeline,
+            // otherwise we'd miss any pending static transforms that should ALSO be added to this timeline.
+            invalidated_transforms: static_transforms.invalidated_transforms.clone(),
             per_entity: static_transforms
                 .per_entity
                 .iter()
