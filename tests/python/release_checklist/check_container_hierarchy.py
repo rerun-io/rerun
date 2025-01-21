@@ -72,8 +72,8 @@ def log_some_views() -> None:
     rr.log("points2d", rr.Points2D([[0, 0], [1, 1], [3, 2]], labels=["a", "b", "c"]))
     rr.log("points2d/bbx", rr.Boxes2D(centers=[1, 1], half_sizes=[3, 3]))
 
-    rr.log("plots/sin", rr.SeriesLine(color=[255, 0, 0], name="sin(0.01t)"), timeless=True)
-    rr.log("plots/cos", rr.SeriesLine(color=[0, 255, 0], name="cos(0.01t)"), timeless=True)
+    rr.log("plots/sin", rr.SeriesLine(color=[255, 0, 0], name="sin(0.01t)"), static=True)
+    rr.log("plots/cos", rr.SeriesLine(color=[0, 255, 0], name="cos(0.01t)"), static=True)
 
     for t in range(0, int(tau * 2 * 10.0)):
         rr.set_time_sequence("frame_nr", t)

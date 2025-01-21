@@ -46,7 +46,7 @@ Keypoints are currently only applicable to 2D and 3D points.
 
 ### Logging an annotation context
 
-Annotation Context is typically logged as [timeless](timelines.md#timeless-data) data, but can change over time if needed.
+Annotation Context is typically logged as [static](timelines.md#static-data) data, but can change over time if needed.
 
 The Annotation Context is defined as a list of Class Descriptions that define how classes are styled
 (as well as optional keypoint style and connection).

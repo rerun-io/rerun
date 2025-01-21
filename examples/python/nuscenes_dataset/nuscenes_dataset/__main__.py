@@ -354,7 +354,7 @@ def main() -> None:
     rr.log(
         "description",
         rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN),
-        timeless=True,
+        static=True,
     )
 
     log_nuscenes(nusc, args.scene_name, max_time_sec=args.seconds)

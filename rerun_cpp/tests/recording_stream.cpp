@@ -571,7 +571,7 @@ SCENARIO("RecordingStream can set time without errors", TEST_TAG) {
 }
 
 // Regression test for https://github.com/rerun-io/cpp-example-opencv-eigen/issues/25
-SCENARIO("Deprecated log_timeless still works", TEST_TAG) {
+SCENARIO("Deprecated log_static still works", TEST_TAG) {
     rerun::RecordingStream stream("test");
 
     // Disable deprecation warnings for this test since this is testing deprecated functionality.
@@ -584,11 +584,11 @@ SCENARIO("Deprecated log_timeless still works", TEST_TAG) {
                 rerun::components::Position2D{1.0, 2.0},
                 rerun::components::Position2D{4.0, 5.0},
             };
-            stream.log_timeless("as-initializer-list", c_style_array);
+            stream.log_static("as-initializer-list", c_style_array);
         }
 
         THEN("components as std::array can be logged") {
-            stream.log_timeless(
+            stream.log_static(
                 "as-array",
                 std::array<rerun::Position2D, 2>{
                     rerun::Vec2D{1.0, 2.0},
@@ -598,7 +598,7 @@ SCENARIO("Deprecated log_timeless still works", TEST_TAG) {
         }
 
         THEN("components as std::vector can be logged") {
-            stream.log_timeless(
+            stream.log_static(
                 "as-vector",
                 std::vector<rerun::Position2D>{
                     rerun::Vec2D{1.0, 2.0},
@@ -613,7 +613,7 @@ SCENARIO("Deprecated log_timeless still works", TEST_TAG) {
                 rerun::Text("friend"),
                 rerun::Text("yo"),
             };
-            stream.log_timeless(
+            stream.log_static(
                 "as-mix",
                 std::vector{
                     rerun::Position2D(rerun::Vec2D{0.0, 0.0}),
@@ -630,7 +630,7 @@ SCENARIO("Deprecated log_timeless still works", TEST_TAG) {
         }
 
         THEN("components with splatting some of them can be logged") {
-            stream.log_timeless(
+            stream.log_static(
                 "log-splat",
                 std::vector{
                     rerun::Position2D(rerun::Vec2D{0.0, 0.0}),
@@ -641,7 +641,7 @@ SCENARIO("Deprecated log_timeless still works", TEST_TAG) {
         }
 
         THEN("an archetype can be logged") {
-            stream.log_timeless(
+            stream.log_static(
                 "log_archetype-splat",
                 rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}}
                 ).with_colors(rerun::Color(0xFF0000FF))

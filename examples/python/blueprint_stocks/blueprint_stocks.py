@@ -173,8 +173,8 @@ def main() -> None:
     # In a future blueprint release, this can move into the blueprint as well
     for symbol in symbols:
         for day in dates:
-            rr.log(f"stocks/{symbol}/{day}", style_plot(symbol), timeless=True)
-            rr.log(f"stocks/{symbol}/peaks/{day}", style_peak(symbol), timeless=True)
+            rr.log(f"stocks/{symbol}/{day}", style_plot(symbol), static=True)
+            rr.log(f"stocks/{symbol}/peaks/{day}", style_peak(symbol), static=True)
 
     for symbol in symbols:
         stock = yf.Ticker(symbol)
@@ -194,7 +194,7 @@ def main() -> None:
         rr.log(
             f"stocks/{symbol}/info",
             rr.TextDocument(info_md, media_type=rr.MediaType.MARKDOWN),
-            timeless=True,
+            static=True,
         )
 
         for day in dates:
