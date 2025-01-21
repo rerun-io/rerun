@@ -99,13 +99,15 @@ class Points3D(Points3DExt, Archetype):
 
     # Prepare a point cloud that evolves over 5 timesteps, changing the number of points in the process.
     times = np.arange(10, 15, 1.0)
+    # fmt: off
     positions = [
-        [[1.0, 0.0, 1.0], [0.5, 0.5, 2.0]],
-        [[1.5, -0.5, 1.5], [1.0, 1.0, 2.5], [-0.5, 1.5, 1.0], [-1.5, 0.0, 2.0]],
-        [[2.0, 0.0, 2.0], [1.5, -1.5, 3.0], [0.0, -2.0, 2.5], [1.0, -1.0, 3.5]],
-        [[-2.0, 0.0, 2.0], [-1.5, 1.5, 3.0], [-1.0, 1.0, 3.5]],
-        [[1.0, -1.0, 1.0], [2.0, -2.0, 2.0], [3.0, -1.0, 3.0], [2.0, 0.0, 4.0]],
+        [1.0, 0.0, 1.0], [0.5, 0.5, 2.0],
+        [1.5, -0.5, 1.5], [1.0, 1.0, 2.5], [-0.5, 1.5, 1.0], [-1.5, 0.0, 2.0],
+        [2.0, 0.0, 2.0], [1.5, -1.5, 3.0], [0.0, -2.0, 2.5], [1.0, -1.0, 3.5],
+        [-2.0, 0.0, 2.0], [-1.5, 1.5, 3.0], [-1.0, 1.0, 3.5],
+        [1.0, -1.0, 1.0], [2.0, -2.0, 2.0], [3.0, -1.0, 3.0], [2.0, 0.0, 4.0],
     ]
+    # fmt: on
     positions_arr = np.concatenate(positions)
 
     # At each timestep, all points in the cloud share the same but changing color and radius.
@@ -118,7 +120,7 @@ class Points3D(Points3DExt, Archetype):
         times=[rr.TimeSecondsColumn("time", times)],
         components=[
             rr.Points3D.indicator(),
-            rr.components.Position3DBatch(positions_arr).partition([len(row) for row in positions]),
+            rr.components.Position3DBatch(positions_arr).partition([2, 4, 4, 3, 4]),
             rr.components.ColorBatch(colors),
             rr.components.RadiusBatch(radii),
         ],
