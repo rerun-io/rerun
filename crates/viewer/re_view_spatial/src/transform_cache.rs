@@ -287,7 +287,7 @@ impl TransformCacheStoreSubscriber {
                 .or_insert_with(|| TransformsForEntity::new(None, None));
 
             // Technically this doesn't query static components but rather just what's at the beginning of the tick timeline,
-            // but it's the most convenient way to the the data we want.
+            // but it's the most convenient way to the data we want.
             let query = LatestAtQuery::new(Timeline::log_tick(), TimeInt::MIN);
 
             if aspects.contains(TransformAspect::Tree) {
@@ -826,7 +826,7 @@ mod tests {
     use super::*;
 
     #[derive(Debug, Clone, Copy)]
-    enum StaticTestFlavour {
+    enum StaticTestFlavor {
         /// First log a static chunk and then a regular chunk.
         StaticThenRegular { update_inbetween: bool },
 
@@ -838,23 +838,23 @@ mod tests {
         PriorStaticThenRegularThenStatic { update_inbetween: bool },
     }
 
-    const ALL_STATIC_TEST_FLAVOURS: [StaticTestFlavour; 6] = [
-        StaticTestFlavour::StaticThenRegular {
+    const ALL_STATIC_TEST_FLAVOURS: [StaticTestFlavor; 6] = [
+        StaticTestFlavor::StaticThenRegular {
             update_inbetween: true,
         },
-        StaticTestFlavour::RegularThenStatic {
+        StaticTestFlavor::RegularThenStatic {
             update_inbetween: true,
         },
-        StaticTestFlavour::PriorStaticThenRegularThenStatic {
+        StaticTestFlavor::PriorStaticThenRegularThenStatic {
             update_inbetween: true,
         },
-        StaticTestFlavour::StaticThenRegular {
+        StaticTestFlavor::StaticThenRegular {
             update_inbetween: false,
         },
-        StaticTestFlavour::RegularThenStatic {
+        StaticTestFlavor::RegularThenStatic {
             update_inbetween: false,
         },
-        StaticTestFlavour::PriorStaticThenRegularThenStatic {
+        StaticTestFlavor::PriorStaticThenRegularThenStatic {
             update_inbetween: false,
         },
     ];
@@ -863,16 +863,16 @@ mod tests {
         prior_static_chunk: Chunk,
         final_static_chunk: Chunk,
         regular_chunk: Chunk,
-        flavour: StaticTestFlavour,
+        flavor: StaticTestFlavor,
     ) -> EntityDb {
-        // Print the flavour to its shown on test failure.
-        println!("{:?}", flavour);
+        // Print the flavor to its shown on test failure.
+        println!("{flavor:?}");
 
         let mut entity_db = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
         ensure_subscriber_registered(&entity_db);
 
-        match flavour {
-            StaticTestFlavour::StaticThenRegular { update_inbetween } => {
+        match flavor {
+            StaticTestFlavor::StaticThenRegular { update_inbetween } => {
                 entity_db.add_chunk(&Arc::new(final_static_chunk)).unwrap();
                 if update_inbetween {
                     TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
@@ -882,7 +882,7 @@ mod tests {
                 entity_db.add_chunk(&Arc::new(regular_chunk)).unwrap();
             }
 
-            StaticTestFlavour::RegularThenStatic { update_inbetween } => {
+            StaticTestFlavor::RegularThenStatic { update_inbetween } => {
                 entity_db.add_chunk(&Arc::new(regular_chunk)).unwrap();
                 if update_inbetween {
                     TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
@@ -892,7 +892,7 @@ mod tests {
                 entity_db.add_chunk(&Arc::new(final_static_chunk)).unwrap();
             }
 
-            StaticTestFlavour::PriorStaticThenRegularThenStatic { update_inbetween } => {
+            StaticTestFlavor::PriorStaticThenRegularThenStatic { update_inbetween } => {
                 entity_db.add_chunk(&Arc::new(prior_static_chunk)).unwrap();
                 entity_db.add_chunk(&Arc::new(regular_chunk)).unwrap();
                 if update_inbetween {
@@ -961,7 +961,7 @@ mod tests {
 
     #[test]
     fn test_static_tree_transforms() {
-        for flavour in &ALL_STATIC_TEST_FLAVOURS {
+        for flavor in &ALL_STATIC_TEST_FLAVOURS {
             // Log a few tree transforms at different times.
             let timeline = Timeline::new_sequence("t");
             let prior_static_chunk =
@@ -998,7 +998,7 @@ mod tests {
                 prior_static_chunk,
                 final_static_chunk,
                 regular_chunk,
-                *flavour,
+                *flavor,
             );
 
             // Check that the transform cache has the expected transforms.
@@ -1047,7 +1047,7 @@ mod tests {
 
     #[test]
     fn test_static_pose_transforms() {
-        for flavour in &ALL_STATIC_TEST_FLAVOURS {
+        for flavor in &ALL_STATIC_TEST_FLAVOURS {
             // Log a few tree transforms at different times.
             let timeline = Timeline::new_sequence("t");
             let prior_static_chunk =
@@ -1084,7 +1084,7 @@ mod tests {
                 prior_static_chunk,
                 final_static_chunk,
                 regular_chunk,
-                *flavour,
+                *flavor,
             );
 
             // Check that the transform cache has the expected transforms.
@@ -1146,7 +1146,7 @@ mod tests {
 
     #[test]
     fn test_static_pinhole_projection() {
-        for flavour in &ALL_STATIC_TEST_FLAVOURS {
+        for flavor in &ALL_STATIC_TEST_FLAVOURS {
             let image_from_camera_prior =
                 components::PinholeProjection::from_focal_length_and_principal_point(
                     [123.0, 123.0],
@@ -1191,7 +1191,7 @@ mod tests {
                 prior_static_chunk,
                 final_static_chunk,
                 regular_chunk,
-                *flavour,
+                *flavor,
             );
 
             // Check that the transform cache has the expected transforms.
@@ -1240,7 +1240,7 @@ mod tests {
 
     #[test]
     fn test_static_view_coordinates_projection() {
-        for flavour in &ALL_STATIC_TEST_FLAVOURS {
+        for flavor in &ALL_STATIC_TEST_FLAVOURS {
             let image_from_camera =
                 components::PinholeProjection::from_focal_length_and_principal_point(
                     [1.0, 2.0],
@@ -1280,7 +1280,7 @@ mod tests {
                 prior_static_chunk,
                 final_static_chunk,
                 regular_chunk,
-                *flavour,
+                *flavor,
             );
 
             // Check that the transform cache has the expected transforms.
