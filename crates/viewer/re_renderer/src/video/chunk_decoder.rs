@@ -185,7 +185,7 @@ fn copy_web_video_frame_to_texture(
         depth_or_array_layers: 1,
     };
     let frame: &web_sys::VideoFrame = frame;
-    let source = wgpu::ImageCopyExternalImage {
+    let source = wgpu::CopyExternalImageSourceInfo {
         // Careful: `web_sys::VideoFrame` has a custom `clone` method:
         // https://developer.mozilla.org/en-US/docs/Web/API/VideoFrame/clone
         // We instead just want to clone the js value wrapped in VideoFrame!
@@ -193,7 +193,8 @@ fn copy_web_video_frame_to_texture(
         origin: wgpu::Origin2d { x: 0, y: 0 },
         flip_y: false,
     };
-    let dest = wgpu::ImageCopyTextureTagged {
+    // TODO(wgpu#6962): This type is not exposed through wgpu.
+    let dest = wgpu_types::CopyExternalImageDestInfo {
         texture: &target_texture.texture,
         mip_level: 0,
         origin: wgpu::Origin3d { x: 0, y: 0, z: 0 },

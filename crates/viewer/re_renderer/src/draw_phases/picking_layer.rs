@@ -361,7 +361,7 @@ impl PickingLayerProcessor {
             encoder,
             &[
                 (
-                    wgpu::ImageCopyTexture {
+                    wgpu::TexelCopyTextureInfo {
                         texture: &self.picking_target.texture,
                         mip_level: 0,
                         origin: wgpu::Origin3d::ZERO,
@@ -370,7 +370,7 @@ impl PickingLayerProcessor {
                     extent,
                 ),
                 (
-                    wgpu::ImageCopyTexture {
+                    wgpu::TexelCopyTextureInfo {
                         texture: &readable_depth_texture.texture,
                         mip_level: 0,
                         origin: wgpu::Origin3d::ZERO,

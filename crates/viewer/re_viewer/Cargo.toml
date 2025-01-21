@@ -131,10 +131,13 @@ js-sys.workspace = true
 strum.workspace = true
 strum_macros.workspace = true
 wasm-bindgen-futures.workspace = true
-# NOTE: `rerun_js/web-viewer/build-wasm.mjs` is HIGHLY sensitive to changes in `wasm-bindgen`.
-#       Whenever updating `wasm-bindgen`, update this and the broader dependency specifications in
-#       the root `/Cargo.toml`, and make sure that the output of `pixi run js-build-base` still works.
-wasm-bindgen = "=0.2.95"
+# TODO(#8766): `rerun_js/web-viewer/build-wasm.mjs` is HIGHLY sensitive to changes in `wasm-bindgen`.
+#       Whenever updating `wasm-bindgen`, update this and the narrower dependency specifications in
+#       `crates/viewer/re_viewer/Cargo.toml`, and make sure that the build script still works.
+#       Do not make this an `=` dependency, because that may break Rust users’ builds when a newer
+#       version is released, even if they are not building the web viewer.
+#       For details see https://github.com/rerun-io/rerun/issues/8766
+wasm-bindgen = "=0.2.100"
 web-sys = { workspace = true, features = [
   "History",
   "Location",

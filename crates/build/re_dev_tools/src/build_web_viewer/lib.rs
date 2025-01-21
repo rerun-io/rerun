@@ -173,10 +173,7 @@ pub fn build(
         match target {
             Target::Browser => bindgen_cmd.no_modules(true)?.typescript(false),
             Target::Module => bindgen_cmd.no_modules(false)?.typescript(true),
-            Target::NoModulesBase => bindgen_cmd
-                .no_modules(true)?
-                .reference_types(true)
-                .typescript(true),
+            Target::NoModulesBase => bindgen_cmd.no_modules(true)?.typescript(true),
         };
         if let Err(err) = bindgen_cmd.generate(build_dir.as_str()) {
             if err
