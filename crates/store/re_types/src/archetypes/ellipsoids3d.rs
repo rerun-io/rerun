@@ -494,6 +494,61 @@ impl Ellipsoids3D {
         }
     }
 
+    /// Partitions the component data into multiple sub-batches.
+    ///
+    /// Specifically, this transforms the existing [`SerializedComponentBatch`]es data into [`SerializedComponentColumn`]s
+    /// instead, via [`SerializedComponentBatch::partitioned`].
+    ///
+    /// This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
+    ///
+    /// The specified `lengths` must sum to the total length of the component batch.
+    ///
+    /// [`SerializedComponentColumn`]: [::re_types_core::SerializedComponentColumn]
+    #[inline]
+    pub fn columns<I>(
+        self,
+        _lengths: I,
+    ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>>
+    where
+        I: IntoIterator<Item = usize> + Clone,
+    {
+        let columns = [
+            self.half_sizes
+                .map(|half_sizes| half_sizes.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.centers
+                .map(|centers| centers.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.rotation_axis_angles
+                .map(|rotation_axis_angles| rotation_axis_angles.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.quaternions
+                .map(|quaternions| quaternions.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.colors
+                .map(|colors| colors.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.line_radii
+                .map(|line_radii| line_radii.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.fill_mode
+                .map(|fill_mode| fill_mode.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.labels
+                .map(|labels| labels.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.show_labels
+                .map(|show_labels| show_labels.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.class_ids
+                .map(|class_ids| class_ids.partitioned(_lengths.clone()))
+                .transpose()?,
+        ];
+        let indicator_column =
+            ::re_types_core::indicator_column::<Self>(_lengths.into_iter().count())?;
+        Ok(columns.into_iter().chain([indicator_column]).flatten())
+    }
+
     /// For each ellipsoid, half of its size on its three axes.
     ///
     /// If all components are equal, then it is a sphere with that radius.

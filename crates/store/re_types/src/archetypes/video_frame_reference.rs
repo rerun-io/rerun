@@ -317,6 +317,37 @@ impl VideoFrameReference {
         }
     }
 
+    /// Partitions the component data into multiple sub-batches.
+    ///
+    /// Specifically, this transforms the existing [`SerializedComponentBatch`]es data into [`SerializedComponentColumn`]s
+    /// instead, via [`SerializedComponentBatch::partitioned`].
+    ///
+    /// This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
+    ///
+    /// The specified `lengths` must sum to the total length of the component batch.
+    ///
+    /// [`SerializedComponentColumn`]: [::re_types_core::SerializedComponentColumn]
+    #[inline]
+    pub fn columns<I>(
+        self,
+        _lengths: I,
+    ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>>
+    where
+        I: IntoIterator<Item = usize> + Clone,
+    {
+        let columns = [
+            self.timestamp
+                .map(|timestamp| timestamp.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.video_reference
+                .map(|video_reference| video_reference.partitioned(_lengths.clone()))
+                .transpose()?,
+        ];
+        let indicator_column =
+            ::re_types_core::indicator_column::<Self>(_lengths.into_iter().count())?;
+        Ok(columns.into_iter().chain([indicator_column]).flatten())
+    }
+
     /// References the closest video frame to this timestamp.
     ///
     /// Note that this uses the closest video frame instead of the latest at this timestamp
