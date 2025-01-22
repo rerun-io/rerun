@@ -71,8 +71,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///         [times],
 ///         rerun::Scalar::update_fields()
 ///             .with_many_scalar(scalars)
-///             .columns(std::iter::repeat(1).take(STEPS as _))?
-///             .filter(|column| !column.descriptor.component_name.contains("Indicator")),
+///             .columns(std::iter::repeat(1).take(STEPS as _))?,
 ///     )?;
 ///
 ///     Ok(())
