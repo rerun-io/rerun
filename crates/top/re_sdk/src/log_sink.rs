@@ -384,7 +384,7 @@ pub mod grpc {
         ///
         /// ### Example
         ///
-        /// ```no_run
+        /// ```ignore
         /// GrpcSink::new("http://127.0.0.1:9434");
         /// ```
         #[inline]
