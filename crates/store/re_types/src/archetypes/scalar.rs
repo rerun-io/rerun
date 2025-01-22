@@ -247,7 +247,7 @@ impl Scalar {
     {
         let columns = [self
             .scalar
-            .map(|scalar| scalar.partitioned(_lengths.clone()))
+            .map(|scalar| scalar.partitioned(_lengths.into_iter()))
             .transpose()?];
         let indicator_column = None;
         Ok(columns.into_iter().chain([indicator_column]).flatten())
