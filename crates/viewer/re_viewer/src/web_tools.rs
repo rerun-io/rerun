@@ -95,7 +95,6 @@ enum EndpointCategory {
     WebEventListener(String),
 
     #[cfg(feature = "grpc")]
-    // TODO(#8761): URL prefix
     /// A stream of messages over gRPC, relayed from the SDK.
     MessageProxy(String),
 }
@@ -111,6 +110,7 @@ impl EndpointCategory {
         } else if uri.starts_with("web_event:") {
             Self::WebEventListener(uri)
         } else if uri.starts_with("temp:") {
+            // TODO(#8761): URL prefix
             Self::MessageProxy(uri)
         } else {
             // If this is something like `foo.com` we can't know what it is until we connect to it.
