@@ -286,9 +286,14 @@ impl TransformCacheStoreSubscriber {
                 // into that entity for static transforms.
                 .or_insert_with(|| TransformsForEntity::new(None, None));
 
-            // Technically this doesn't query static components but rather just what's at the beginning of the tick timeline,
+            // Technically this doesn't query static components but rather just what's at the beginning of this arbitrary timeline,
             // but it's the most convenient way to the data we want.
-            let query = LatestAtQuery::new(Timeline::log_tick(), TimeInt::MIN);
+            let query = LatestAtQuery::new(
+                Timeline::new_sequence(
+                    "placeholder timeline (only actually interested in static components)",
+                ),
+                TimeInt::MIN,
+            );
 
             if aspects.contains(TransformAspect::Tree) {
                 if let Some(transform) =
