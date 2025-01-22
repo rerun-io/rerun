@@ -34,7 +34,7 @@ fn run(rec: &RecordingStream) -> anyhow::Result<()> {
         &rerun::TextDocument::from_markdown(DESCRIPTION),
     )?;
 
-    rec.log_static("world", &rerun::ViewCoordinates::RIGHT_HAND_Y_DOWN)?;
+    rec.log_static("world", &rerun::ViewCoordinates::RIGHT_HAND_Y_DOWN())?;
 
     const W: u32 = 2000;
     const H: u32 = 1000;

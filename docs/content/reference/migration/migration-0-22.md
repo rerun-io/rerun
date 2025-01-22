@@ -25,3 +25,10 @@ It was no longer used for several releases, so we removed it.
 
 **Note**: although `rr.log_components()` is technically a public API, it is undocumented, and we discourage using it.
 For logging custom components, use [`rr.AnyValue`](https://ref.rerun.io/docs/python/main/common/custom_data/#rerun.AnyValues) and [`rr.AnyBatchValue`](https://ref.rerun.io/docs/python/main/common/custom_data/#rerun.AnyBatchValue).
+
+
+### Rust's `ViewCoordinates` archetype now has static methods instead of constants
+
+As part of the switch to "eager archetype serialization" (serialization of archetype components now occurs at time if archetype instantiation rather than logging), we can no longer offer constants
+for the `ViewCoordinates` archetype like `ViewCoordinates::RUB`.
+Instead, there's now methods with the same name, i.e. `ViewCoordinates::RUB()`.

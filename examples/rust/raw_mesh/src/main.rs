@@ -153,7 +153,10 @@ fn run(rec: &RecordingStream, args: &Args) -> anyhow::Result<()> {
     // Log raw glTF nodes and their transforms with Rerun
     for root in nodes {
         re_log::info!(scene = root.name, "logging glTF scene");
-        rec.log_static(root.name.as_str(), &rerun::ViewCoordinates::RIGHT_HAND_Y_UP)?;
+        rec.log_static(
+            root.name.as_str(),
+            &rerun::ViewCoordinates::RIGHT_HAND_Y_UP(),
+        )?;
         log_node(rec, root)?;
     }
 
