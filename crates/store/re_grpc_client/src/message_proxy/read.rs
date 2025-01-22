@@ -39,27 +39,25 @@ struct MessageProxyAddress(String);
 
 impl MessageProxyAddress {
     fn parse(url: &str) -> Result<Self, InvalidMessageProxyAddress> {
-        let mut parsed = Url::parse(url).map_err(|err| InvalidMessageProxyAddress {
-            url: url.to_owned(),
-            msg: err.to_string(),
-        })?;
-
-        // TODO(#8761): URL prefix
-        if !parsed.scheme().starts_with("temp") {
+        let Some(url) = url.strip_prefix("temp") else {
+            let scheme = url.split_once("://").map(|(a, _)| a).ok_or("unknown");
             return Err(InvalidMessageProxyAddress {
                 url: url.to_owned(),
                 msg: format!(
-                    "Invalid scheme {:?}, expected {:?}",
-                    parsed.scheme(),
+                    "Invalid scheme {scheme:?}, expected {:?}",
                     // TODO(#8761): URL prefix
                     "temp"
                 ),
             });
-        }
+        };
+        let url = format!("http{url}");
 
-        parsed.set_scheme("http").ok();
+        let _ = Url::parse(&url).map_err(|err| InvalidMessageProxyAddress {
+            url: url.clone(),
+            msg: err.to_string(),
+        })?;
 
-        Ok(Self(parsed.to_string()))
+        Ok(Self(url))
     }
 
     fn to_http(&self) -> String {

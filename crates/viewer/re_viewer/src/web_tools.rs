@@ -93,6 +93,11 @@ enum EndpointCategory {
 
     /// An eventListener for rrd posted from containing html
     WebEventListener(String),
+
+    #[cfg(feature = "grpc")]
+    // TODO(#8761): URL prefix
+    /// A stream of messages over gRPC, relayed from the SDK.
+    MessageProxy(String),
 }
 
 impl EndpointCategory {
@@ -105,6 +110,8 @@ impl EndpointCategory {
             Self::WebSocket(uri)
         } else if uri.starts_with("web_event:") {
             Self::WebEventListener(uri)
+        } else if uri.starts_with("temp:") {
+            Self::MessageProxy(uri)
         } else {
             // If this is something like `foo.com` we can't know what it is until we connect to it.
             // We could/should connect and see what it is, but for now we just take a wild guess instead:
@@ -181,6 +188,11 @@ pub fn url_to_receiver(
         }
         EndpointCategory::WebSocket(url) => re_data_source::connect_to_ws_url(&url, Some(ui_waker))
             .with_context(|| format!("Failed to connect to WebSocket server at {url}.")),
+
+        #[cfg(feature = "grpc")]
+        EndpointCategory::MessageProxy(url) => {
+            re_grpc_client::message_proxy::read::stream(url, Some(ui_waker)).map_err(|e| e.into())
+        }
     }
 }
 
