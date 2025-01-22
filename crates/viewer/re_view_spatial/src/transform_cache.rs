@@ -201,7 +201,9 @@ impl TransformsForEntity {
 
     #[inline]
     pub fn latest_at_tree_transform(&self, query: &LatestAtQuery) -> Affine3A {
+        #[cfg(debug_assertions)] // `self.timeline` is only present with `debug_assertions` enabled.
         debug_assert!(Some(query.timeline()) == self.timeline || self.timeline.is_none());
+
         self.tree_transforms
             .range(..query.at().inc())
             .next_back()
@@ -211,7 +213,9 @@ impl TransformsForEntity {
 
     #[inline]
     pub fn latest_at_instance_poses(&self, query: &LatestAtQuery) -> &[Affine3A] {
+        #[cfg(debug_assertions)] // `self.timeline` is only present with `debug_assertions` enabled.
         debug_assert!(Some(query.timeline()) == self.timeline || self.timeline.is_none());
+
         self.pose_transforms
             .as_ref()
             .and_then(|pose_transforms| pose_transforms.range(..query.at().inc()).next_back())
@@ -221,7 +225,9 @@ impl TransformsForEntity {
 
     #[inline]
     pub fn latest_at_pinhole(&self, query: &LatestAtQuery) -> Option<&ResolvedPinholeProjection> {
+        #[cfg(debug_assertions)] // `self.timeline` is only present with `debug_assertions` enabled.
         debug_assert!(Some(query.timeline()) == self.timeline || self.timeline.is_none());
+
         self.pinhole_projections
             .as_ref()
             .and_then(|pinhole_projections| {
