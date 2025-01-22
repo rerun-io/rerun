@@ -1959,10 +1959,21 @@ fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) 
         ");
         let columns_doc = quote_doc_lines(&columns_doc.lines().map(|l| l.to_owned()).collect_vec());
 
+        let has_indicator = obj.fqname.as_str() != "rerun.archetypes.Scalar";
+
+        let num_fields = required.iter().chain(optional.iter()).count();
         let fields = required.iter().chain(optional.iter()).map(|field| {
             let field_name = format_ident!("{}", field.name);
-            quote!(self.#field_name.map(|#field_name| #field_name.partitioned(_lengths.clone())).transpose()?)
+            let clone = if num_fields == 1 && !has_indicator { quote!(.into_iter()) } else { quote!(.clone()) };
+            quote!(self.#field_name.map(|#field_name| #field_name.partitioned(_lengths #clone)).transpose()?)
         });
+
+        let indicator_column = if !has_indicator {
+            // NOTE(#8768): Scalar indicators are extremely wasteful, and not actually used for anything.
+            quote!(None)
+        } else {
+            quote!(::re_types_core::indicator_column::<Self>(_lengths.into_iter().count())?)
+        };
 
         quote! {
             #columns_doc
@@ -1975,7 +1986,7 @@ fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) 
                 I: IntoIterator<Item = usize> + Clone,
             {
                 let columns = [ #(#fields),* ];
-                let indicator_column = ::re_types_core::indicator_column::<Self>(_lengths.into_iter().count())?;
+                let indicator_column = #indicator_column;
                 Ok(columns.into_iter().chain([indicator_column]).flatten())
             }
         }

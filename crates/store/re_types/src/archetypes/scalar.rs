@@ -71,8 +71,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///         [times],
 ///         rerun::Scalar::update_fields()
 ///             .with_many_scalar(scalars)
-///             .columns(std::iter::repeat(1).take(STEPS as _))?
-///             .filter(|column| !column.descriptor.component_name.contains("Indicator")),
+///             .columns(std::iter::repeat(1).take(STEPS as _))?,
 ///     )?;
 ///
 ///     Ok(())
@@ -248,10 +247,9 @@ impl Scalar {
     {
         let columns = [self
             .scalar
-            .map(|scalar| scalar.partitioned(_lengths.clone()))
+            .map(|scalar| scalar.partitioned(_lengths.into_iter()))
             .transpose()?];
-        let indicator_column =
-            ::re_types_core::indicator_column::<Self>(_lengths.into_iter().count())?;
+        let indicator_column = None;
         Ok(columns.into_iter().chain([indicator_column]).flatten())
     }
 
