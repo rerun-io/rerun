@@ -103,12 +103,11 @@ async fn stream_async(
 
     re_log::debug!("Streaming messages from gRPC endpoint {url}");
 
-    let stream = client
+    let mut stream = client
         .read_messages(Empty {})
         .await
         .map_err(TonicStatusError)?
         .into_inner();
-    tokio::pin!(stream);
 
     loop {
         match stream.try_next().await {
