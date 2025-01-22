@@ -44,12 +44,14 @@ impl MessageProxyAddress {
             msg: err.to_string(),
         })?;
 
+        // TODO(#8761): URL prefix
         if !parsed.scheme().starts_with("temp") {
             return Err(InvalidMessageProxyAddress {
                 url: url.to_owned(),
                 msg: format!(
                     "Invalid scheme {:?}, expected {:?}",
                     parsed.scheme(),
+                    // TODO(#8761): URL prefix
                     "temp"
                 ),
             });
