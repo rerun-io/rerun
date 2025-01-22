@@ -1944,7 +1944,7 @@ fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) 
         }
     });
 
-    let columnar_methods = obj.is_eager_rust_archetype().then(|| {
+    let columnar_methods = (obj.is_eager_rust_archetype() && obj.scope().is_none()).then(|| {
         let columns_doc = unindent::unindent("\
         Partitions the component data into multiple sub-batches.
 

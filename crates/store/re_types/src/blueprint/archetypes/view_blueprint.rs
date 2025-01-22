@@ -265,64 +265,6 @@ impl ViewBlueprint {
         }
     }
 
-    /// Partitions the component data into multiple sub-batches.
-    ///
-    /// Specifically, this transforms the existing [`SerializedComponentBatch`]es data into [`SerializedComponentColumn`]s
-    /// instead, via [`SerializedComponentBatch::partitioned`].
-    ///
-    /// This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
-    ///
-    /// The specified `lengths` must sum to the total length of the component batch.
-    ///
-    /// [`SerializedComponentColumn`]: [::re_types_core::SerializedComponentColumn]
-    #[inline]
-    pub fn columns<I>(
-        self,
-        _lengths: I,
-    ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>>
-    where
-        I: IntoIterator<Item = usize> + Clone,
-    {
-        let columns = [
-            self.class_identifier
-                .map(|class_identifier| class_identifier.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.display_name
-                .map(|display_name| display_name.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.space_origin
-                .map(|space_origin| space_origin.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.visible
-                .map(|visible| visible.partitioned(_lengths.clone()))
-                .transpose()?,
-        ];
-        let indicator_column =
-            ::re_types_core::indicator_column::<Self>(_lengths.into_iter().count())?;
-        Ok(columns.into_iter().chain([indicator_column]).flatten())
-    }
-
-    /// Helper to partition the component data into unit-length sub-batches.
-    ///
-    /// This is semantically similar to calling [`Self::columns`] with `std::iter::take(1).repeat(n)`,
-    /// where `n` is automatically guessed.
-    #[inline]
-    pub fn unary_columns(
-        self,
-    ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
-        let len_class_identifier = self.class_identifier.as_ref().map(|b| b.array.len());
-        let len_display_name = self.display_name.as_ref().map(|b| b.array.len());
-        let len_space_origin = self.space_origin.as_ref().map(|b| b.array.len());
-        let len_visible = self.visible.as_ref().map(|b| b.array.len());
-        let len = None
-            .or(len_class_identifier)
-            .or(len_display_name)
-            .or(len_space_origin)
-            .or(len_visible)
-            .unwrap_or(0);
-        self.columns(std::iter::repeat(1).take(len))
-    }
-
     /// The class of the view.
     #[inline]
     pub fn with_class_identifier(

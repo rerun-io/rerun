@@ -167,46 +167,6 @@ impl MapBackground {
         }
     }
 
-    /// Partitions the component data into multiple sub-batches.
-    ///
-    /// Specifically, this transforms the existing [`SerializedComponentBatch`]es data into [`SerializedComponentColumn`]s
-    /// instead, via [`SerializedComponentBatch::partitioned`].
-    ///
-    /// This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
-    ///
-    /// The specified `lengths` must sum to the total length of the component batch.
-    ///
-    /// [`SerializedComponentColumn`]: [::re_types_core::SerializedComponentColumn]
-    #[inline]
-    pub fn columns<I>(
-        self,
-        _lengths: I,
-    ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>>
-    where
-        I: IntoIterator<Item = usize> + Clone,
-    {
-        let columns = [self
-            .provider
-            .map(|provider| provider.partitioned(_lengths.clone()))
-            .transpose()?];
-        let indicator_column =
-            ::re_types_core::indicator_column::<Self>(_lengths.into_iter().count())?;
-        Ok(columns.into_iter().chain([indicator_column]).flatten())
-    }
-
-    /// Helper to partition the component data into unit-length sub-batches.
-    ///
-    /// This is semantically similar to calling [`Self::columns`] with `std::iter::take(1).repeat(n)`,
-    /// where `n` is automatically guessed.
-    #[inline]
-    pub fn unary_columns(
-        self,
-    ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
-        let len_provider = self.provider.as_ref().map(|b| b.array.len());
-        let len = None.or(len_provider).unwrap_or(0);
-        self.columns(std::iter::repeat(1).take(len))
-    }
-
     /// Map provider and style to use.
     ///
     /// **Note**: Requires a Mapbox API key in the `RERUN_MAPBOX_ACCESS_TOKEN` environment variable.

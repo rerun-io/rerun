@@ -284,69 +284,6 @@ impl DataframeQuery {
         }
     }
 
-    /// Partitions the component data into multiple sub-batches.
-    ///
-    /// Specifically, this transforms the existing [`SerializedComponentBatch`]es data into [`SerializedComponentColumn`]s
-    /// instead, via [`SerializedComponentBatch::partitioned`].
-    ///
-    /// This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
-    ///
-    /// The specified `lengths` must sum to the total length of the component batch.
-    ///
-    /// [`SerializedComponentColumn`]: [::re_types_core::SerializedComponentColumn]
-    #[inline]
-    pub fn columns<I>(
-        self,
-        _lengths: I,
-    ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>>
-    where
-        I: IntoIterator<Item = usize> + Clone,
-    {
-        let columns = [
-            self.timeline
-                .map(|timeline| timeline.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.filter_by_range
-                .map(|filter_by_range| filter_by_range.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.filter_is_not_null
-                .map(|filter_is_not_null| filter_is_not_null.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.apply_latest_at
-                .map(|apply_latest_at| apply_latest_at.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.select
-                .map(|select| select.partitioned(_lengths.clone()))
-                .transpose()?,
-        ];
-        let indicator_column =
-            ::re_types_core::indicator_column::<Self>(_lengths.into_iter().count())?;
-        Ok(columns.into_iter().chain([indicator_column]).flatten())
-    }
-
-    /// Helper to partition the component data into unit-length sub-batches.
-    ///
-    /// This is semantically similar to calling [`Self::columns`] with `std::iter::take(1).repeat(n)`,
-    /// where `n` is automatically guessed.
-    #[inline]
-    pub fn unary_columns(
-        self,
-    ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
-        let len_timeline = self.timeline.as_ref().map(|b| b.array.len());
-        let len_filter_by_range = self.filter_by_range.as_ref().map(|b| b.array.len());
-        let len_filter_is_not_null = self.filter_is_not_null.as_ref().map(|b| b.array.len());
-        let len_apply_latest_at = self.apply_latest_at.as_ref().map(|b| b.array.len());
-        let len_select = self.select.as_ref().map(|b| b.array.len());
-        let len = None
-            .or(len_timeline)
-            .or(len_filter_by_range)
-            .or(len_filter_is_not_null)
-            .or(len_apply_latest_at)
-            .or(len_select)
-            .unwrap_or(0);
-        self.columns(std::iter::repeat(1).take(len))
-    }
-
     /// The timeline for this query.
     ///
     /// If unset, the timeline currently active on the time panel is used.

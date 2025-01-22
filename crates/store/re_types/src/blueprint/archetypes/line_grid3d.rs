@@ -288,69 +288,6 @@ impl LineGrid3D {
         }
     }
 
-    /// Partitions the component data into multiple sub-batches.
-    ///
-    /// Specifically, this transforms the existing [`SerializedComponentBatch`]es data into [`SerializedComponentColumn`]s
-    /// instead, via [`SerializedComponentBatch::partitioned`].
-    ///
-    /// This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
-    ///
-    /// The specified `lengths` must sum to the total length of the component batch.
-    ///
-    /// [`SerializedComponentColumn`]: [::re_types_core::SerializedComponentColumn]
-    #[inline]
-    pub fn columns<I>(
-        self,
-        _lengths: I,
-    ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>>
-    where
-        I: IntoIterator<Item = usize> + Clone,
-    {
-        let columns = [
-            self.visible
-                .map(|visible| visible.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.spacing
-                .map(|spacing| spacing.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.plane
-                .map(|plane| plane.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.stroke_width
-                .map(|stroke_width| stroke_width.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.color
-                .map(|color| color.partitioned(_lengths.clone()))
-                .transpose()?,
-        ];
-        let indicator_column =
-            ::re_types_core::indicator_column::<Self>(_lengths.into_iter().count())?;
-        Ok(columns.into_iter().chain([indicator_column]).flatten())
-    }
-
-    /// Helper to partition the component data into unit-length sub-batches.
-    ///
-    /// This is semantically similar to calling [`Self::columns`] with `std::iter::take(1).repeat(n)`,
-    /// where `n` is automatically guessed.
-    #[inline]
-    pub fn unary_columns(
-        self,
-    ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
-        let len_visible = self.visible.as_ref().map(|b| b.array.len());
-        let len_spacing = self.spacing.as_ref().map(|b| b.array.len());
-        let len_plane = self.plane.as_ref().map(|b| b.array.len());
-        let len_stroke_width = self.stroke_width.as_ref().map(|b| b.array.len());
-        let len_color = self.color.as_ref().map(|b| b.array.len());
-        let len = None
-            .or(len_visible)
-            .or(len_spacing)
-            .or(len_plane)
-            .or(len_stroke_width)
-            .or(len_color)
-            .unwrap_or(0);
-        self.columns(std::iter::repeat(1).take(len))
-    }
-
     /// Whether the grid is visible.
     ///
     /// Defaults to true.
