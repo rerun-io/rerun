@@ -23,7 +23,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let ten_per_timestamp = rerun::SerializedComponentBatch::new(
         Arc::new(arrow::array::Float64Array::from_iter((0..STEPS).flat_map(
-            |_| (0..STEPS * 10).map(|v| ((v as f64) / 10.0).cos() / 100.0),
+            |_| (0..STEPS * 10).map(|v| ((v as f64) / 100.0).cos()),
         ))),
         rerun::ComponentDescriptor::new("custom_component_multi"),
     );
