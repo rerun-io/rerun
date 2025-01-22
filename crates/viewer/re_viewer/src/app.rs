@@ -539,7 +539,8 @@ impl App {
                 self.rx.retain(|r| match r.source() {
                     SmartChannelSource::File(_)
                     | SmartChannelSource::RrdHttpStream { .. }
-                    | SmartChannelSource::RerunGrpcStream { .. } => false,
+                    | SmartChannelSource::RerunGrpcStream { .. }
+                    | SmartChannelSource::MessageProxy { .. } => false,
 
                     SmartChannelSource::WsClient { .. }
                     | SmartChannelSource::JsChannel { .. }
@@ -1574,6 +1575,7 @@ impl App {
                 SmartChannelSource::File(_)
                 | SmartChannelSource::RrdHttpStream { .. }
                 | SmartChannelSource::RerunGrpcStream { .. }
+                | SmartChannelSource::MessageProxy { .. }
                 | SmartChannelSource::Stdin
                 | SmartChannelSource::RrdWebEventListener
                 | SmartChannelSource::Sdk

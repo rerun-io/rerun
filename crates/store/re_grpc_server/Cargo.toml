@@ -24,7 +24,7 @@ re_build_info.workspace = true
 re_byte_size.workspace = true
 re_chunk.workspace = true
 re_format.workspace = true
-re_log.workspace = true
+re_log = { workspace = true, features = ["setup"] }
 re_log_encoding = { workspace = true, features = ["encoder", "decoder"] }
 re_log_types.workspace = true
 re_memory.workspace = true
@@ -37,3 +37,5 @@ tokio.workspace = true
 tokio-stream = { workspace = true, features = ["sync"] }
 tokio-util.workspace = true
 tonic = { workspace = true, default-features = false, features = ["transport"] }
+tonic-web.workspace = true
+tower-http = { workspace = true, features = ["cors"] }

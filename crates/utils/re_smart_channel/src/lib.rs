@@ -68,13 +68,22 @@ pub enum SmartChannelSource {
         /// Should include `rerun://` prefix.
         url: String,
     },
+
+    /// A stream of messages over message proxy gRPC interface.
+    MessageProxy {
+        // TODO(#8761): URL prefix
+        /// Should include `temp://` prefix.
+        url: String,
+    },
 }
 
 impl std::fmt::Display for SmartChannelSource {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::File(path) => path.display().fmt(f),
-            Self::RrdHttpStream { url, follow: _ } | Self::RerunGrpcStream { url } => url.fmt(f),
+            Self::RrdHttpStream { url, follow: _ }
+            | Self::RerunGrpcStream { url }
+            | Self::MessageProxy { url } => url.fmt(f),
             Self::RrdWebEventListener => "Web event listener".fmt(f),
             Self::JsChannel { channel_name } => write!(f, "Javascript channel: {channel_name}"),
             Self::Sdk => "SDK".fmt(f),
@@ -93,7 +102,8 @@ impl SmartChannelSource {
             | Self::WsClient { .. }
             | Self::JsChannel { .. }
             | Self::TcpServer { .. }
-            | Self::RerunGrpcStream { .. } => true,
+            | Self::RerunGrpcStream { .. }
+            | Self::MessageProxy { .. } => true,
         }
     }
 }
@@ -155,6 +165,13 @@ pub enum SmartMessageSource {
         /// Should include `rerun://` prefix.
         url: String,
     },
+
+    /// A stream of messages over message proxy gRPC interface.
+    MessageProxy {
+        // TODO(#8761): URL prefix
+        /// Should include `temp://` prefix.
+        url: String,
+    },
 }
 
 impl std::fmt::Display for SmartMessageSource {
@@ -162,7 +179,9 @@ impl std::fmt::Display for SmartMessageSource {
         f.write_str(&match self {
             Self::Unknown => "unknown".into(),
             Self::File(path) => format!("file://{}", path.to_string_lossy()),
-            Self::RrdHttpStream { url } | Self::RerunGrpcStream { url } => url.clone(),
+            Self::RrdHttpStream { url }
+            | Self::RerunGrpcStream { url }
+            | Self::MessageProxy { url } => url.clone(),
             Self::RrdWebEventCallback => "web_callback".into(),
             Self::JsChannelPush => "javascript".into(),
             Self::Sdk => "sdk".into(),
