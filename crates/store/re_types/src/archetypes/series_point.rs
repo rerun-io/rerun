@@ -349,10 +349,36 @@ impl SeriesPoint {
         self
     }
 
+    /// This method makes it possible to pack multiple [`crate::components::Color`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_color`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_color(
+        mut self,
+        color: impl IntoIterator<Item = impl Into<crate::components::Color>>,
+    ) -> Self {
+        self.color = try_serialize_field(Self::descriptor_color(), color);
+        self
+    }
+
     /// What shape to use to represent the point
     #[inline]
     pub fn with_marker(mut self, marker: impl Into<crate::components::MarkerShape>) -> Self {
         self.marker = try_serialize_field(Self::descriptor_marker(), [marker]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::MarkerShape`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_marker`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_marker(
+        mut self,
+        marker: impl IntoIterator<Item = impl Into<crate::components::MarkerShape>>,
+    ) -> Self {
+        self.marker = try_serialize_field(Self::descriptor_marker(), marker);
         self
     }
 
@@ -365,6 +391,19 @@ impl SeriesPoint {
         self
     }
 
+    /// This method makes it possible to pack multiple [`crate::components::Name`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_name`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_name(
+        mut self,
+        name: impl IntoIterator<Item = impl Into<crate::components::Name>>,
+    ) -> Self {
+        self.name = try_serialize_field(Self::descriptor_name(), name);
+        self
+    }
+
     /// Size of the marker.
     #[inline]
     pub fn with_marker_size(
@@ -372,6 +411,19 @@ impl SeriesPoint {
         marker_size: impl Into<crate::components::MarkerSize>,
     ) -> Self {
         self.marker_size = try_serialize_field(Self::descriptor_marker_size(), [marker_size]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::MarkerSize`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_marker_size`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_marker_size(
+        mut self,
+        marker_size: impl IntoIterator<Item = impl Into<crate::components::MarkerSize>>,
+    ) -> Self {
+        self.marker_size = try_serialize_field(Self::descriptor_marker_size(), marker_size);
         self
     }
 }

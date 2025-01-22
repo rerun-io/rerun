@@ -365,6 +365,19 @@ impl VideoFrameReference {
         self
     }
 
+    /// This method makes it possible to pack multiple [`crate::components::VideoTimestamp`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_timestamp`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_timestamp(
+        mut self,
+        timestamp: impl IntoIterator<Item = impl Into<crate::components::VideoTimestamp>>,
+    ) -> Self {
+        self.timestamp = try_serialize_field(Self::descriptor_timestamp(), timestamp);
+        self
+    }
+
     /// Optional reference to an entity with a [`archetypes::AssetVideo`][crate::archetypes::AssetVideo].
     ///
     /// If none is specified, the video is assumed to be at the same entity.
@@ -381,6 +394,20 @@ impl VideoFrameReference {
     ) -> Self {
         self.video_reference =
             try_serialize_field(Self::descriptor_video_reference(), [video_reference]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::EntityPath`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_video_reference`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_video_reference(
+        mut self,
+        video_reference: impl IntoIterator<Item = impl Into<crate::components::EntityPath>>,
+    ) -> Self {
+        self.video_reference =
+            try_serialize_field(Self::descriptor_video_reference(), video_reference);
         self
     }
 }

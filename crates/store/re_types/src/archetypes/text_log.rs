@@ -296,6 +296,19 @@ impl TextLog {
         self
     }
 
+    /// This method makes it possible to pack multiple [`crate::components::Text`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_text`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_text(
+        mut self,
+        text: impl IntoIterator<Item = impl Into<crate::components::Text>>,
+    ) -> Self {
+        self.text = try_serialize_field(Self::descriptor_text(), text);
+        self
+    }
+
     /// The verbosity level of the message.
     ///
     /// This can be used to filter the log messages in the Rerun Viewer.
@@ -305,10 +318,36 @@ impl TextLog {
         self
     }
 
+    /// This method makes it possible to pack multiple [`crate::components::TextLogLevel`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_level`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_level(
+        mut self,
+        level: impl IntoIterator<Item = impl Into<crate::components::TextLogLevel>>,
+    ) -> Self {
+        self.level = try_serialize_field(Self::descriptor_level(), level);
+        self
+    }
+
     /// Optional color to use for the log line in the Rerun Viewer.
     #[inline]
     pub fn with_color(mut self, color: impl Into<crate::components::Color>) -> Self {
         self.color = try_serialize_field(Self::descriptor_color(), [color]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::Color`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_color`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_color(
+        mut self,
+        color: impl IntoIterator<Item = impl Into<crate::components::Color>>,
+    ) -> Self {
+        self.color = try_serialize_field(Self::descriptor_color(), color);
         self
     }
 }

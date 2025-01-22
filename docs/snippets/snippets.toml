@@ -236,6 +236,10 @@ quick_start = [ # These examples don't have exactly the same implementation.
 "archetypes/scalar_multiple_plots" = [ # trigonometric functions have slightly different outcomes
   "cpp",
 ]
+"archetypes/scalar_send_columns" = [
+  "py", # TODO(#8752): needs tagged columnar APIs
+  "cpp", # TODO(#8754): needs tagged columnar APIs
+]
 "archetypes/tensor_simple" = [ # TODO(#3206): examples use different RNGs
   "cpp",
   "py",

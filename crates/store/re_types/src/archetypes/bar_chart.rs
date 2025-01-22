@@ -256,10 +256,36 @@ impl BarChart {
         self
     }
 
+    /// This method makes it possible to pack multiple [`crate::components::TensorData`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_values`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_values(
+        mut self,
+        values: impl IntoIterator<Item = impl Into<crate::components::TensorData>>,
+    ) -> Self {
+        self.values = try_serialize_field(Self::descriptor_values(), values);
+        self
+    }
+
     /// The color of the bar chart
     #[inline]
     pub fn with_color(mut self, color: impl Into<crate::components::Color>) -> Self {
         self.color = try_serialize_field(Self::descriptor_color(), [color]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::Color`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_color`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_color(
+        mut self,
+        color: impl IntoIterator<Item = impl Into<crate::components::Color>>,
+    ) -> Self {
+        self.color = try_serialize_field(Self::descriptor_color(), color);
         self
     }
 }

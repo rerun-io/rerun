@@ -427,6 +427,19 @@ impl GraphNodes {
         self
     }
 
+    /// This method makes it possible to pack multiple [`crate::components::ShowLabels`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_show_labels`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_show_labels(
+        mut self,
+        show_labels: impl IntoIterator<Item = impl Into<crate::components::ShowLabels>>,
+    ) -> Self {
+        self.show_labels = try_serialize_field(Self::descriptor_show_labels(), show_labels);
+        self
+    }
+
     /// Optional radii for nodes.
     #[inline]
     pub fn with_radii(

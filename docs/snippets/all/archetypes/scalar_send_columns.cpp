@@ -7,7 +7,7 @@
 #include <rerun.hpp>
 
 int main() {
-    const auto rec = rerun::RecordingStream("rerun_example_send_columns");
+    const auto rec = rerun::RecordingStream("rerun_example_scalar_send_columns");
     rec.spawn().exit_on_failure();
 
     // Native scalars & times.

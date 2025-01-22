@@ -524,6 +524,19 @@ impl Transform3D {
         self
     }
 
+    /// This method makes it possible to pack multiple [`crate::components::Translation3D`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_translation`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_translation(
+        mut self,
+        translation: impl IntoIterator<Item = impl Into<crate::components::Translation3D>>,
+    ) -> Self {
+        self.translation = try_serialize_field(Self::descriptor_translation(), translation);
+        self
+    }
+
     /// Rotation via axis + angle.
     #[inline]
     pub fn with_rotation_axis_angle(
@@ -537,6 +550,20 @@ impl Transform3D {
         self
     }
 
+    /// This method makes it possible to pack multiple [`crate::components::RotationAxisAngle`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_rotation_axis_angle`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_rotation_axis_angle(
+        mut self,
+        rotation_axis_angle: impl IntoIterator<Item = impl Into<crate::components::RotationAxisAngle>>,
+    ) -> Self {
+        self.rotation_axis_angle =
+            try_serialize_field(Self::descriptor_rotation_axis_angle(), rotation_axis_angle);
+        self
+    }
+
     /// Rotation via quaternion.
     #[inline]
     pub fn with_quaternion(
@@ -547,6 +574,19 @@ impl Transform3D {
         self
     }
 
+    /// This method makes it possible to pack multiple [`crate::components::RotationQuat`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_quaternion`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_quaternion(
+        mut self,
+        quaternion: impl IntoIterator<Item = impl Into<crate::components::RotationQuat>>,
+    ) -> Self {
+        self.quaternion = try_serialize_field(Self::descriptor_quaternion(), quaternion);
+        self
+    }
+
     /// Scaling factor.
     #[inline]
     pub fn with_scale(mut self, scale: impl Into<crate::components::Scale3D>) -> Self {
@@ -554,10 +594,36 @@ impl Transform3D {
         self
     }
 
+    /// This method makes it possible to pack multiple [`crate::components::Scale3D`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_scale`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_scale(
+        mut self,
+        scale: impl IntoIterator<Item = impl Into<crate::components::Scale3D>>,
+    ) -> Self {
+        self.scale = try_serialize_field(Self::descriptor_scale(), scale);
+        self
+    }
+
     /// 3x3 transformation matrix.
     #[inline]
     pub fn with_mat3x3(mut self, mat3x3: impl Into<crate::components::TransformMat3x3>) -> Self {
         self.mat3x3 = try_serialize_field(Self::descriptor_mat3x3(), [mat3x3]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::TransformMat3x3`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_mat3x3`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_mat3x3(
+        mut self,
+        mat3x3: impl IntoIterator<Item = impl Into<crate::components::TransformMat3x3>>,
+    ) -> Self {
+        self.mat3x3 = try_serialize_field(Self::descriptor_mat3x3(), mat3x3);
         self
     }
 
@@ -571,6 +637,19 @@ impl Transform3D {
         self
     }
 
+    /// This method makes it possible to pack multiple [`crate::components::TransformRelation`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_relation`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_relation(
+        mut self,
+        relation: impl IntoIterator<Item = impl Into<crate::components::TransformRelation>>,
+    ) -> Self {
+        self.relation = try_serialize_field(Self::descriptor_relation(), relation);
+        self
+    }
+
     /// Visual length of the 3 axes.
     ///
     /// The length is interpreted in the local coordinate system of the transform.
@@ -581,6 +660,19 @@ impl Transform3D {
         axis_length: impl Into<crate::components::AxisLength>,
     ) -> Self {
         self.axis_length = try_serialize_field(Self::descriptor_axis_length(), [axis_length]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::AxisLength`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_axis_length`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_axis_length(
+        mut self,
+        axis_length: impl IntoIterator<Item = impl Into<crate::components::AxisLength>>,
+    ) -> Self {
+        self.axis_length = try_serialize_field(Self::descriptor_axis_length(), axis_length);
         self
     }
 }

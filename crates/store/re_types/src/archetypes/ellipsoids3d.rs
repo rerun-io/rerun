@@ -632,6 +632,19 @@ impl Ellipsoids3D {
         self
     }
 
+    /// This method makes it possible to pack multiple [`crate::components::FillMode`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_fill_mode`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_fill_mode(
+        mut self,
+        fill_mode: impl IntoIterator<Item = impl Into<crate::components::FillMode>>,
+    ) -> Self {
+        self.fill_mode = try_serialize_field(Self::descriptor_fill_mode(), fill_mode);
+        self
+    }
+
     /// Optional text labels for the ellipsoids.
     #[inline]
     pub fn with_labels(
@@ -649,6 +662,19 @@ impl Ellipsoids3D {
         show_labels: impl Into<crate::components::ShowLabels>,
     ) -> Self {
         self.show_labels = try_serialize_field(Self::descriptor_show_labels(), [show_labels]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::ShowLabels`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_show_labels`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_show_labels(
+        mut self,
+        show_labels: impl IntoIterator<Item = impl Into<crate::components::ShowLabels>>,
+    ) -> Self {
+        self.show_labels = try_serialize_field(Self::descriptor_show_labels(), show_labels);
         self
     }
 
