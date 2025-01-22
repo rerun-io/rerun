@@ -87,7 +87,6 @@
 ]
 "howto/any_batch_value_send_columns" = [
   "cpp",  # Not implemented
-  "rust", # Not implemented
 ]
 "howto/any_values_send_columns" = [
   "cpp",  # Not implemented
