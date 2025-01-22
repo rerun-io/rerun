@@ -335,6 +335,7 @@ impl SnippetsRefCodeGenerator {
         );
         // NOTE: `C++` is written with a UTF8 zero-width word joiner (<https://unicode-explorer.com/c/2060>) in
         // order to force the markdown renderer to *not* split it into two lines ("C+\n+").
+        #[allow(clippy::invisible_characters)]
         let out = format!(
             "
 {autogen_warning}
