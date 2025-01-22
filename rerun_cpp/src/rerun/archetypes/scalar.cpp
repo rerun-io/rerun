@@ -5,7 +5,14 @@
 
 #include "../collection_adapter_builtins.hpp"
 
-namespace rerun::archetypes {}
+namespace rerun::archetypes {
+    Scalar Scalar::clear_fields() {
+        auto archetype = Scalar();
+        archetype.scalar =
+            ComponentBatch::empty<rerun::components::Scalar>(Descriptor_scalar).value_or_throw();
+        return archetype;
+    }
+} // namespace rerun::archetypes
 
 namespace rerun {
 
@@ -16,13 +23,8 @@ namespace rerun {
         std::vector<ComponentBatch> cells;
         cells.reserve(2);
 
-        {
-            auto result = ComponentBatch::from_loggable(
-                archetype.scalar,
-                ComponentDescriptor("rerun.archetypes.Scalar", "scalar", "rerun.components.Scalar")
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+        if (archetype.scalar.has_value()) {
+            cells.push_back(archetype.scalar.value());
         }
         {
             auto indicator = Scalar::IndicatorComponent();
