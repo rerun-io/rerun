@@ -352,20 +352,6 @@ impl ViewportBlueprint {
         self
     }
 
-    /// This method makes it possible to pack multiple [`crate::blueprint::components::RootContainer`] in a single component batch.
-    ///
-    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_root_container`] should
-    /// be used when logging a single row's worth of data.
-    #[inline]
-    pub fn with_many_root_container(
-        mut self,
-        root_container: impl IntoIterator<Item = impl Into<crate::blueprint::components::RootContainer>>,
-    ) -> Self {
-        self.root_container =
-            try_serialize_field(Self::descriptor_root_container(), root_container);
-        self
-    }
-
     /// Show one tab as maximized?
     #[inline]
     pub fn with_maximized(
@@ -373,19 +359,6 @@ impl ViewportBlueprint {
         maximized: impl Into<crate::blueprint::components::ViewMaximized>,
     ) -> Self {
         self.maximized = try_serialize_field(Self::descriptor_maximized(), [maximized]);
-        self
-    }
-
-    /// This method makes it possible to pack multiple [`crate::blueprint::components::ViewMaximized`] in a single component batch.
-    ///
-    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_maximized`] should
-    /// be used when logging a single row's worth of data.
-    #[inline]
-    pub fn with_many_maximized(
-        mut self,
-        maximized: impl IntoIterator<Item = impl Into<crate::blueprint::components::ViewMaximized>>,
-    ) -> Self {
-        self.maximized = try_serialize_field(Self::descriptor_maximized(), maximized);
         self
     }
 
@@ -402,19 +375,6 @@ impl ViewportBlueprint {
         self
     }
 
-    /// This method makes it possible to pack multiple [`crate::blueprint::components::AutoLayout`] in a single component batch.
-    ///
-    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_auto_layout`] should
-    /// be used when logging a single row's worth of data.
-    #[inline]
-    pub fn with_many_auto_layout(
-        mut self,
-        auto_layout: impl IntoIterator<Item = impl Into<crate::blueprint::components::AutoLayout>>,
-    ) -> Self {
-        self.auto_layout = try_serialize_field(Self::descriptor_auto_layout(), auto_layout);
-        self
-    }
-
     /// Whether or not views should be created automatically.
     ///
     /// If `true`, the viewer will only add views that it hasn't considered previously (as identified by `past_viewer_recommendations`)
@@ -426,19 +386,6 @@ impl ViewportBlueprint {
         auto_views: impl Into<crate::blueprint::components::AutoViews>,
     ) -> Self {
         self.auto_views = try_serialize_field(Self::descriptor_auto_views(), [auto_views]);
-        self
-    }
-
-    /// This method makes it possible to pack multiple [`crate::blueprint::components::AutoViews`] in a single component batch.
-    ///
-    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_auto_views`] should
-    /// be used when logging a single row's worth of data.
-    #[inline]
-    pub fn with_many_auto_views(
-        mut self,
-        auto_views: impl IntoIterator<Item = impl Into<crate::blueprint::components::AutoViews>>,
-    ) -> Self {
-        self.auto_views = try_serialize_field(Self::descriptor_auto_views(), auto_views);
         self
     }
 

@@ -232,36 +232,10 @@ impl Background {
         self
     }
 
-    /// This method makes it possible to pack multiple [`crate::blueprint::components::BackgroundKind`] in a single component batch.
-    ///
-    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_kind`] should
-    /// be used when logging a single row's worth of data.
-    #[inline]
-    pub fn with_many_kind(
-        mut self,
-        kind: impl IntoIterator<Item = impl Into<crate::blueprint::components::BackgroundKind>>,
-    ) -> Self {
-        self.kind = try_serialize_field(Self::descriptor_kind(), kind);
-        self
-    }
-
     /// Color used for the solid background type.
     #[inline]
     pub fn with_color(mut self, color: impl Into<crate::components::Color>) -> Self {
         self.color = try_serialize_field(Self::descriptor_color(), [color]);
-        self
-    }
-
-    /// This method makes it possible to pack multiple [`crate::components::Color`] in a single component batch.
-    ///
-    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_color`] should
-    /// be used when logging a single row's worth of data.
-    #[inline]
-    pub fn with_many_color(
-        mut self,
-        color: impl IntoIterator<Item = impl Into<crate::components::Color>>,
-    ) -> Self {
-        self.color = try_serialize_field(Self::descriptor_color(), color);
         self
     }
 }

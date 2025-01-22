@@ -211,19 +211,6 @@ impl VisualBounds2D {
         self.range = try_serialize_field(Self::descriptor_range(), [range]);
         self
     }
-
-    /// This method makes it possible to pack multiple [`crate::blueprint::components::VisualBounds2D`] in a single component batch.
-    ///
-    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_range`] should
-    /// be used when logging a single row's worth of data.
-    #[inline]
-    pub fn with_many_range(
-        mut self,
-        range: impl IntoIterator<Item = impl Into<crate::blueprint::components::VisualBounds2D>>,
-    ) -> Self {
-        self.range = try_serialize_field(Self::descriptor_range(), range);
-        self
-    }
 }
 
 impl ::re_byte_size::SizeBytes for VisualBounds2D {

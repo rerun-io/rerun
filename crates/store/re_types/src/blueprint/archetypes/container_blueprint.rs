@@ -644,37 +644,10 @@ impl ContainerBlueprint {
         self
     }
 
-    /// This method makes it possible to pack multiple [`crate::blueprint::components::ContainerKind`] in a single component batch.
-    ///
-    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_container_kind`] should
-    /// be used when logging a single row's worth of data.
-    #[inline]
-    pub fn with_many_container_kind(
-        mut self,
-        container_kind: impl IntoIterator<Item = impl Into<crate::blueprint::components::ContainerKind>>,
-    ) -> Self {
-        self.container_kind =
-            try_serialize_field(Self::descriptor_container_kind(), container_kind);
-        self
-    }
-
     /// The name of the container.
     #[inline]
     pub fn with_display_name(mut self, display_name: impl Into<crate::components::Name>) -> Self {
         self.display_name = try_serialize_field(Self::descriptor_display_name(), [display_name]);
-        self
-    }
-
-    /// This method makes it possible to pack multiple [`crate::components::Name`] in a single component batch.
-    ///
-    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_display_name`] should
-    /// be used when logging a single row's worth of data.
-    #[inline]
-    pub fn with_many_display_name(
-        mut self,
-        display_name: impl IntoIterator<Item = impl Into<crate::components::Name>>,
-    ) -> Self {
-        self.display_name = try_serialize_field(Self::descriptor_display_name(), display_name);
         self
     }
 
@@ -728,19 +701,6 @@ impl ContainerBlueprint {
         self
     }
 
-    /// This method makes it possible to pack multiple [`crate::blueprint::components::ActiveTab`] in a single component batch.
-    ///
-    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_active_tab`] should
-    /// be used when logging a single row's worth of data.
-    #[inline]
-    pub fn with_many_active_tab(
-        mut self,
-        active_tab: impl IntoIterator<Item = impl Into<crate::blueprint::components::ActiveTab>>,
-    ) -> Self {
-        self.active_tab = try_serialize_field(Self::descriptor_active_tab(), active_tab);
-        self
-    }
-
     /// Whether this container is visible.
     ///
     /// Defaults to true if not specified.
@@ -750,19 +710,6 @@ impl ContainerBlueprint {
         visible: impl Into<crate::blueprint::components::Visible>,
     ) -> Self {
         self.visible = try_serialize_field(Self::descriptor_visible(), [visible]);
-        self
-    }
-
-    /// This method makes it possible to pack multiple [`crate::blueprint::components::Visible`] in a single component batch.
-    ///
-    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_visible`] should
-    /// be used when logging a single row's worth of data.
-    #[inline]
-    pub fn with_many_visible(
-        mut self,
-        visible: impl IntoIterator<Item = impl Into<crate::blueprint::components::Visible>>,
-    ) -> Self {
-        self.visible = try_serialize_field(Self::descriptor_visible(), visible);
         self
     }
 
@@ -777,19 +724,6 @@ impl ContainerBlueprint {
         grid_columns: impl Into<crate::blueprint::components::GridColumns>,
     ) -> Self {
         self.grid_columns = try_serialize_field(Self::descriptor_grid_columns(), [grid_columns]);
-        self
-    }
-
-    /// This method makes it possible to pack multiple [`crate::blueprint::components::GridColumns`] in a single component batch.
-    ///
-    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_grid_columns`] should
-    /// be used when logging a single row's worth of data.
-    #[inline]
-    pub fn with_many_grid_columns(
-        mut self,
-        grid_columns: impl IntoIterator<Item = impl Into<crate::blueprint::components::GridColumns>>,
-    ) -> Self {
-        self.grid_columns = try_serialize_field(Self::descriptor_grid_columns(), grid_columns);
         self
     }
 }

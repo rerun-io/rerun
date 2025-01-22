@@ -276,19 +276,6 @@ impl ForceLink {
         self
     }
 
-    /// This method makes it possible to pack multiple [`crate::blueprint::components::Enabled`] in a single component batch.
-    ///
-    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_enabled`] should
-    /// be used when logging a single row's worth of data.
-    #[inline]
-    pub fn with_many_enabled(
-        mut self,
-        enabled: impl IntoIterator<Item = impl Into<crate::blueprint::components::Enabled>>,
-    ) -> Self {
-        self.enabled = try_serialize_field(Self::descriptor_enabled(), enabled);
-        self
-    }
-
     /// The target distance between two nodes.
     #[inline]
     pub fn with_distance(
@@ -296,19 +283,6 @@ impl ForceLink {
         distance: impl Into<crate::blueprint::components::ForceDistance>,
     ) -> Self {
         self.distance = try_serialize_field(Self::descriptor_distance(), [distance]);
-        self
-    }
-
-    /// This method makes it possible to pack multiple [`crate::blueprint::components::ForceDistance`] in a single component batch.
-    ///
-    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_distance`] should
-    /// be used when logging a single row's worth of data.
-    #[inline]
-    pub fn with_many_distance(
-        mut self,
-        distance: impl IntoIterator<Item = impl Into<crate::blueprint::components::ForceDistance>>,
-    ) -> Self {
-        self.distance = try_serialize_field(Self::descriptor_distance(), distance);
         self
     }
 
@@ -321,19 +295,6 @@ impl ForceLink {
         iterations: impl Into<crate::blueprint::components::ForceIterations>,
     ) -> Self {
         self.iterations = try_serialize_field(Self::descriptor_iterations(), [iterations]);
-        self
-    }
-
-    /// This method makes it possible to pack multiple [`crate::blueprint::components::ForceIterations`] in a single component batch.
-    ///
-    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_iterations`] should
-    /// be used when logging a single row's worth of data.
-    #[inline]
-    pub fn with_many_iterations(
-        mut self,
-        iterations: impl IntoIterator<Item = impl Into<crate::blueprint::components::ForceIterations>>,
-    ) -> Self {
-        self.iterations = try_serialize_field(Self::descriptor_iterations(), iterations);
         self
     }
 }

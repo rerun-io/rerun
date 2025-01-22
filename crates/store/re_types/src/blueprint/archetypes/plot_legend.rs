@@ -243,19 +243,6 @@ impl PlotLegend {
         self
     }
 
-    /// This method makes it possible to pack multiple [`crate::blueprint::components::Corner2D`] in a single component batch.
-    ///
-    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_corner`] should
-    /// be used when logging a single row's worth of data.
-    #[inline]
-    pub fn with_many_corner(
-        mut self,
-        corner: impl IntoIterator<Item = impl Into<crate::blueprint::components::Corner2D>>,
-    ) -> Self {
-        self.corner = try_serialize_field(Self::descriptor_corner(), corner);
-        self
-    }
-
     /// Whether the legend is shown at all.
     ///
     /// True by default.
@@ -265,19 +252,6 @@ impl PlotLegend {
         visible: impl Into<crate::blueprint::components::Visible>,
     ) -> Self {
         self.visible = try_serialize_field(Self::descriptor_visible(), [visible]);
-        self
-    }
-
-    /// This method makes it possible to pack multiple [`crate::blueprint::components::Visible`] in a single component batch.
-    ///
-    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_visible`] should
-    /// be used when logging a single row's worth of data.
-    #[inline]
-    pub fn with_many_visible(
-        mut self,
-        visible: impl IntoIterator<Item = impl Into<crate::blueprint::components::Visible>>,
-    ) -> Self {
-        self.visible = try_serialize_field(Self::descriptor_visible(), visible);
         self
     }
 }
