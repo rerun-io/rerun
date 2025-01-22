@@ -28,7 +28,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// this by logging both archetypes to the same path, or alternatively configuring
 /// the plot-specific archetypes through the blueprint.
 ///
-/// ## Example
+/// ## Examples
 ///
 /// ### Simple line plot
 /// ```ignore
@@ -51,6 +51,40 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/scalar_simple/8bcc92f56268739f8cd24d60d1fe72a655f62a46/1024w.png">
 ///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/scalar_simple/8bcc92f56268739f8cd24d60d1fe72a655f62a46/1200w.png">
 ///   <img src="https://static.rerun.io/scalar_simple/8bcc92f56268739f8cd24d60d1fe72a655f62a46/full.png" width="640">
+/// </picture>
+/// </center>
+///
+/// ### Multiple scalars in a single `send_columns` call
+/// ```ignore
+/// use rerun::TimeColumn;
+///
+/// fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_scalar_send_columns").spawn()?;
+///
+///     const STEPS: i64 = 64;
+///
+///     let times = TimeColumn::new_sequence("step", 0..STEPS);
+///     let scalars = (0..STEPS).map(|step| (step as f64 / 10.0).sin());
+///
+///     rec.send_columns_v2(
+///         "scalars",
+///         [times],
+///         rerun::Scalar::update_fields()
+///             .with_many_scalar(scalars)
+///             .columns(std::iter::repeat(1).take(STEPS as _))?
+///             .filter(|column| !column.descriptor.component_name.contains("Indicator")),
+///     )?;
+///
+///     Ok(())
+/// }
+/// ```
+/// <center>
+/// <picture>
+///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/scalar_send_columns/b4bf172256f521f4851dfec5c2c6e3143f5d6923/480w.png">
+///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/scalar_send_columns/b4bf172256f521f4851dfec5c2c6e3143f5d6923/768w.png">
+///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/scalar_send_columns/b4bf172256f521f4851dfec5c2c6e3143f5d6923/1024w.png">
+///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/scalar_send_columns/b4bf172256f521f4851dfec5c2c6e3143f5d6923/1200w.png">
+///   <img src="https://static.rerun.io/scalar_send_columns/b4bf172256f521f4851dfec5c2c6e3143f5d6923/full.png" width="640">
 /// </picture>
 /// </center>
 #[derive(Clone, Debug, PartialEq, Default)]

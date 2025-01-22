@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Use the `send_columns` API to send scalars over time in a single call."""
 
 from __future__ import annotations

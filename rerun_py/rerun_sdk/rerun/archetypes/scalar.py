@@ -31,8 +31,8 @@ class Scalar(Archetype):
     this by logging both archetypes to the same path, or alternatively configuring
     the plot-specific archetypes through the blueprint.
 
-    Example
-    -------
+    Examples
+    --------
     ### Simple line plot:
     ```python
     import math
@@ -53,6 +53,34 @@ class Scalar(Archetype):
       <source media="(max-width: 1024px)" srcset="https://static.rerun.io/scalar_simple/8bcc92f56268739f8cd24d60d1fe72a655f62a46/1024w.png">
       <source media="(max-width: 1200px)" srcset="https://static.rerun.io/scalar_simple/8bcc92f56268739f8cd24d60d1fe72a655f62a46/1200w.png">
       <img src="https://static.rerun.io/scalar_simple/8bcc92f56268739f8cd24d60d1fe72a655f62a46/full.png" width="640">
+    </picture>
+    </center>
+
+    ### Multiple scalars in a single `send_columns` call:
+    ```python
+    from __future__ import annotations
+
+    import numpy as np
+    import rerun as rr
+
+    rr.init("rerun_example_scalar_send_columns", spawn=True)
+
+    times = np.arange(0, 64)
+    scalars = np.sin(times / 10.0)
+
+    rr.send_columns(
+        "scalars",
+        times=[rr.TimeSequenceColumn("step", times)],
+        components=[rr.components.ScalarBatch(scalars)],
+    )
+    ```
+    <center>
+    <picture>
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/scalar_send_columns/b4bf172256f521f4851dfec5c2c6e3143f5d6923/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/scalar_send_columns/b4bf172256f521f4851dfec5c2c6e3143f5d6923/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/scalar_send_columns/b4bf172256f521f4851dfec5c2c6e3143f5d6923/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/scalar_send_columns/b4bf172256f521f4851dfec5c2c6e3143f5d6923/1200w.png">
+      <img src="https://static.rerun.io/scalar_send_columns/b4bf172256f521f4851dfec5c2c6e3143f5d6923/full.png" width="640">
     </picture>
     </center>
 
