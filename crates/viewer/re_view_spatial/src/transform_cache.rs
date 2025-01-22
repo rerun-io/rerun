@@ -458,11 +458,11 @@ impl TransformCacheStoreSubscriber {
                 // All of these require complex latest-at queries that would require a lot more context,
                 // are fairly expensive, and may depend on other components that may come in at the same time.
                 // (we could inject that here, but it's not entirely straight forward).
-                // So instead, we note down that the caches is invalidated for the given entity & times.
+                // So instead, we note down that the caches are invalidated for the given entity & times.
 
                 // This invalidates any time _after_ the first event in this chunk.
                 // (e.g. if a rotation is added prior to translations later on,
-                // then the resulting transforms at those translations changes as well for latest-at queries)
+                // then the resulting transforms at those translations change as well for latest-at queries)
 
                 let mut invalidated_times = Vec::new();
                 let Some(min_time) = time_column.times().min() else {
