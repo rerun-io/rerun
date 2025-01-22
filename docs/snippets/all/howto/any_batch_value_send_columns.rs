@@ -1,5 +1,7 @@
 //! Use `send_column` to send an entire column of custom data to Rerun.
 
+#![allow(clippy::from_iter_instead_of_collect)]
+
 use std::sync::Arc;
 
 use rerun::{external::arrow, TimeColumn};
