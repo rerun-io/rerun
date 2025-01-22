@@ -4,7 +4,6 @@
 #pragma once
 
 #include "../collection.hpp"
-#include "../compiler_utils.hpp"
 #include "../component_batch.hpp"
 #include "../components/class_id.hpp"
 #include "../components/color.hpp"
@@ -233,8 +232,7 @@ namespace rerun::archetypes {
         Boxes3D with_half_sizes(const Collection<rerun::components::HalfSize3D>& _half_sizes) && {
             half_sizes =
                 ComponentBatch::from_loggable(_half_sizes, Descriptor_half_sizes).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// Optional center positions of the boxes.
@@ -243,8 +241,7 @@ namespace rerun::archetypes {
         /// Note that this uses a `components::PoseTranslation3D` which is also used by `archetypes::InstancePoses3D`.
         Boxes3D with_centers(const Collection<rerun::components::PoseTranslation3D>& _centers) && {
             centers = ComponentBatch::from_loggable(_centers, Descriptor_centers).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// Rotations via axis + angle.
@@ -259,8 +256,7 @@ namespace rerun::archetypes {
                                        Descriptor_rotation_axis_angles
             )
                                        .value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// Rotations via quaternion.
@@ -271,30 +267,26 @@ namespace rerun::archetypes {
         ) && {
             quaternions = ComponentBatch::from_loggable(_quaternions, Descriptor_quaternions)
                               .value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// Optional colors for the boxes.
         Boxes3D with_colors(const Collection<rerun::components::Color>& _colors) && {
             colors = ComponentBatch::from_loggable(_colors, Descriptor_colors).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// Optional radii for the lines that make up the boxes.
         Boxes3D with_radii(const Collection<rerun::components::Radius>& _radii) && {
             radii = ComponentBatch::from_loggable(_radii, Descriptor_radii).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// Optionally choose whether the boxes are drawn with lines or solid.
         Boxes3D with_fill_mode(const rerun::components::FillMode& _fill_mode) && {
             fill_mode =
                 ComponentBatch::from_loggable(_fill_mode, Descriptor_fill_mode).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// Optional text labels for the boxes.
@@ -303,16 +295,14 @@ namespace rerun::archetypes {
         /// Otherwise, each instance will have its own label.
         Boxes3D with_labels(const Collection<rerun::components::Text>& _labels) && {
             labels = ComponentBatch::from_loggable(_labels, Descriptor_labels).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// Optional choice of whether the text labels should be shown by default.
         Boxes3D with_show_labels(const rerun::components::ShowLabels& _show_labels) && {
             show_labels = ComponentBatch::from_loggable(_show_labels, Descriptor_show_labels)
                               .value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// Optional `components::ClassId`s for the boxes.
@@ -321,8 +311,7 @@ namespace rerun::archetypes {
         Boxes3D with_class_ids(const Collection<rerun::components::ClassId>& _class_ids) && {
             class_ids =
                 ComponentBatch::from_loggable(_class_ids, Descriptor_class_ids).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
     };
 

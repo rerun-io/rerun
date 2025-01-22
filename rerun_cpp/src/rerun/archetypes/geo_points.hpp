@@ -4,7 +4,6 @@
 #pragma once
 
 #include "../collection.hpp"
-#include "../compiler_utils.hpp"
 #include "../component_batch.hpp"
 #include "../components/class_id.hpp"
 #include "../components/color.hpp"
@@ -117,8 +116,7 @@ namespace rerun::archetypes {
         GeoPoints with_positions(const Collection<rerun::components::LatLon>& _positions) && {
             positions =
                 ComponentBatch::from_loggable(_positions, Descriptor_positions).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// Optional radii for the points, effectively turning them into circles.
@@ -126,15 +124,13 @@ namespace rerun::archetypes {
         /// *Note*: scene units radiii are interpreted as meters.
         GeoPoints with_radii(const Collection<rerun::components::Radius>& _radii) && {
             radii = ComponentBatch::from_loggable(_radii, Descriptor_radii).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// Optional colors for the points.
         GeoPoints with_colors(const Collection<rerun::components::Color>& _colors) && {
             colors = ComponentBatch::from_loggable(_colors, Descriptor_colors).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// Optional class Ids for the points.
@@ -143,8 +139,7 @@ namespace rerun::archetypes {
         GeoPoints with_class_ids(const Collection<rerun::components::ClassId>& _class_ids) && {
             class_ids =
                 ComponentBatch::from_loggable(_class_ids, Descriptor_class_ids).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
     };
 

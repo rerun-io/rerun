@@ -4,7 +4,6 @@
 #pragma once
 
 #include "../collection.hpp"
-#include "../compiler_utils.hpp"
 #include "../component_batch.hpp"
 #include "../components/draw_order.hpp"
 #include "../components/image_buffer.hpp"
@@ -200,15 +199,13 @@ namespace rerun::archetypes {
         /// The raw image data.
         SegmentationImage with_buffer(const rerun::components::ImageBuffer& _buffer) && {
             buffer = ComponentBatch::from_loggable(_buffer, Descriptor_buffer).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// The format of the image.
         SegmentationImage with_format(const rerun::components::ImageFormat& _format) && {
             format = ComponentBatch::from_loggable(_format, Descriptor_format).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// Opacity of the image, useful for layering the segmentation image on top of another image.
@@ -216,8 +213,7 @@ namespace rerun::archetypes {
         /// Defaults to 0.5 if there's any other images in the scene, otherwise 1.0.
         SegmentationImage with_opacity(const rerun::components::Opacity& _opacity) && {
             opacity = ComponentBatch::from_loggable(_opacity, Descriptor_opacity).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// An optional floating point value that specifies the 2D drawing order.
@@ -226,8 +222,7 @@ namespace rerun::archetypes {
         SegmentationImage with_draw_order(const rerun::components::DrawOrder& _draw_order) && {
             draw_order =
                 ComponentBatch::from_loggable(_draw_order, Descriptor_draw_order).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
     };
 

@@ -4,7 +4,6 @@
 #pragma once
 
 #include "../collection.hpp"
-#include "../compiler_utils.hpp"
 #include "../component_batch.hpp"
 #include "../components/color.hpp"
 #include "../components/tensor_data.hpp"
@@ -201,15 +200,13 @@ namespace rerun::archetypes {
         /// The values. Should always be a 1-dimensional tensor (i.e. a vector).
         BarChart with_values(const rerun::components::TensorData& _values) && {
             values = ComponentBatch::from_loggable(_values, Descriptor_values).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// The color of the bar chart
         BarChart with_color(const rerun::components::Color& _color) && {
             color = ComponentBatch::from_loggable(_color, Descriptor_color).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
     };
 

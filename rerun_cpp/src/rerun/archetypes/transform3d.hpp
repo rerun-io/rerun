@@ -611,8 +611,7 @@ namespace rerun::archetypes {
         Transform3D with_translation(const rerun::components::Translation3D& _translation) && {
             translation = ComponentBatch::from_loggable(_translation, Descriptor_translation)
                               .value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// Rotation via axis + angle.
@@ -622,38 +621,33 @@ namespace rerun::archetypes {
             rotation_axis_angle =
                 ComponentBatch::from_loggable(_rotation_axis_angle, Descriptor_rotation_axis_angle)
                     .value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// Rotation via quaternion.
         Transform3D with_quaternion(const rerun::components::RotationQuat& _quaternion) && {
             quaternion =
                 ComponentBatch::from_loggable(_quaternion, Descriptor_quaternion).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// Scaling factor.
         Transform3D with_scale(const rerun::components::Scale3D& _scale) && {
             scale = ComponentBatch::from_loggable(_scale, Descriptor_scale).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// 3x3 transformation matrix.
         Transform3D with_mat3x3(const rerun::components::TransformMat3x3& _mat3x3) && {
             mat3x3 = ComponentBatch::from_loggable(_mat3x3, Descriptor_mat3x3).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// Specifies the relation this transform establishes between this entity and its parent.
         Transform3D with_relation(const rerun::components::TransformRelation& _relation) && {
             relation =
                 ComponentBatch::from_loggable(_relation, Descriptor_relation).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// Visual length of the 3 axes.
@@ -663,8 +657,7 @@ namespace rerun::archetypes {
         Transform3D with_axis_length(const rerun::components::AxisLength& _axis_length) && {
             axis_length = ComponentBatch::from_loggable(_axis_length, Descriptor_axis_length)
                               .value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
     };
 

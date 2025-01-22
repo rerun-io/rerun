@@ -4,7 +4,6 @@
 #pragma once
 
 #include "../collection.hpp"
-#include "../compiler_utils.hpp"
 #include "../component_batch.hpp"
 #include "../components/albedo_factor.hpp"
 #include "../components/class_id.hpp"
@@ -228,8 +227,7 @@ namespace rerun::archetypes {
             vertex_positions =
                 ComponentBatch::from_loggable(_vertex_positions, Descriptor_vertex_positions)
                     .value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// Optional indices for the triangles that make up the mesh.
@@ -239,8 +237,7 @@ namespace rerun::archetypes {
             triangle_indices =
                 ComponentBatch::from_loggable(_triangle_indices, Descriptor_triangle_indices)
                     .value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// An optional normal for each vertex.
@@ -249,16 +246,14 @@ namespace rerun::archetypes {
             vertex_normals =
                 ComponentBatch::from_loggable(_vertex_normals, Descriptor_vertex_normals)
                     .value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// An optional color for each vertex.
         Mesh3D with_vertex_colors(const Collection<rerun::components::Color>& _vertex_colors) && {
             vertex_colors = ComponentBatch::from_loggable(_vertex_colors, Descriptor_vertex_colors)
                                 .value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// An optional uv texture coordinate for each vertex.
@@ -268,16 +263,14 @@ namespace rerun::archetypes {
             vertex_texcoords =
                 ComponentBatch::from_loggable(_vertex_texcoords, Descriptor_vertex_texcoords)
                     .value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// A color multiplier applied to the whole mesh.
         Mesh3D with_albedo_factor(const rerun::components::AlbedoFactor& _albedo_factor) && {
             albedo_factor = ComponentBatch::from_loggable(_albedo_factor, Descriptor_albedo_factor)
                                 .value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// Optional albedo texture.
@@ -294,8 +287,7 @@ namespace rerun::archetypes {
                                         Descriptor_albedo_texture_buffer
             )
                                         .value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// The format of the `albedo_texture_buffer`, if any.
@@ -307,8 +299,7 @@ namespace rerun::archetypes {
                                         Descriptor_albedo_texture_format
             )
                                         .value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// Optional class Ids for the vertices.
@@ -317,8 +308,7 @@ namespace rerun::archetypes {
         Mesh3D with_class_ids(const Collection<rerun::components::ClassId>& _class_ids) && {
             class_ids =
                 ComponentBatch::from_loggable(_class_ids, Descriptor_class_ids).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
     };
 

@@ -25,7 +25,6 @@
 #include <cstdint>
 #include <optional>
 #include <rerun/collection.hpp>
-#include <rerun/compiler_utils.hpp>
 #include <rerun/component_batch.hpp>
 #include <rerun/indicator_component.hpp>
 #include <rerun/result.hpp>
@@ -188,127 +187,109 @@ namespace rerun::archetypes {
         AffixFuzzer3 with_fuzz2001(const rerun::components::AffixFuzzer1& _fuzz2001) && {
             fuzz2001 =
                 ComponentBatch::from_loggable(_fuzz2001, Descriptor_fuzz2001).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         AffixFuzzer3 with_fuzz2002(const rerun::components::AffixFuzzer2& _fuzz2002) && {
             fuzz2002 =
                 ComponentBatch::from_loggable(_fuzz2002, Descriptor_fuzz2002).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         AffixFuzzer3 with_fuzz2003(const rerun::components::AffixFuzzer3& _fuzz2003) && {
             fuzz2003 =
                 ComponentBatch::from_loggable(_fuzz2003, Descriptor_fuzz2003).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         AffixFuzzer3 with_fuzz2004(const rerun::components::AffixFuzzer4& _fuzz2004) && {
             fuzz2004 =
                 ComponentBatch::from_loggable(_fuzz2004, Descriptor_fuzz2004).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         AffixFuzzer3 with_fuzz2005(const rerun::components::AffixFuzzer5& _fuzz2005) && {
             fuzz2005 =
                 ComponentBatch::from_loggable(_fuzz2005, Descriptor_fuzz2005).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         AffixFuzzer3 with_fuzz2006(const rerun::components::AffixFuzzer6& _fuzz2006) && {
             fuzz2006 =
                 ComponentBatch::from_loggable(_fuzz2006, Descriptor_fuzz2006).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         AffixFuzzer3 with_fuzz2007(const rerun::components::AffixFuzzer7& _fuzz2007) && {
             fuzz2007 =
                 ComponentBatch::from_loggable(_fuzz2007, Descriptor_fuzz2007).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         AffixFuzzer3 with_fuzz2008(const rerun::components::AffixFuzzer8& _fuzz2008) && {
             fuzz2008 =
                 ComponentBatch::from_loggable(_fuzz2008, Descriptor_fuzz2008).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         AffixFuzzer3 with_fuzz2009(const rerun::components::AffixFuzzer9& _fuzz2009) && {
             fuzz2009 =
                 ComponentBatch::from_loggable(_fuzz2009, Descriptor_fuzz2009).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         AffixFuzzer3 with_fuzz2010(const rerun::components::AffixFuzzer10& _fuzz2010) && {
             fuzz2010 =
                 ComponentBatch::from_loggable(_fuzz2010, Descriptor_fuzz2010).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         AffixFuzzer3 with_fuzz2011(const rerun::components::AffixFuzzer11& _fuzz2011) && {
             fuzz2011 =
                 ComponentBatch::from_loggable(_fuzz2011, Descriptor_fuzz2011).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         AffixFuzzer3 with_fuzz2012(const rerun::components::AffixFuzzer12& _fuzz2012) && {
             fuzz2012 =
                 ComponentBatch::from_loggable(_fuzz2012, Descriptor_fuzz2012).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         AffixFuzzer3 with_fuzz2013(const rerun::components::AffixFuzzer13& _fuzz2013) && {
             fuzz2013 =
                 ComponentBatch::from_loggable(_fuzz2013, Descriptor_fuzz2013).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         AffixFuzzer3 with_fuzz2014(const rerun::components::AffixFuzzer14& _fuzz2014) && {
             fuzz2014 =
                 ComponentBatch::from_loggable(_fuzz2014, Descriptor_fuzz2014).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         AffixFuzzer3 with_fuzz2015(const rerun::components::AffixFuzzer15& _fuzz2015) && {
             fuzz2015 =
                 ComponentBatch::from_loggable(_fuzz2015, Descriptor_fuzz2015).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         AffixFuzzer3 with_fuzz2016(const rerun::components::AffixFuzzer16& _fuzz2016) && {
             fuzz2016 =
                 ComponentBatch::from_loggable(_fuzz2016, Descriptor_fuzz2016).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         AffixFuzzer3 with_fuzz2017(const rerun::components::AffixFuzzer17& _fuzz2017) && {
             fuzz2017 =
                 ComponentBatch::from_loggable(_fuzz2017, Descriptor_fuzz2017).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         AffixFuzzer3 with_fuzz2018(const rerun::components::AffixFuzzer18& _fuzz2018) && {
             fuzz2018 =
                 ComponentBatch::from_loggable(_fuzz2018, Descriptor_fuzz2018).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
     };
 

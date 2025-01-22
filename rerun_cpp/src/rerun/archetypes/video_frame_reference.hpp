@@ -4,7 +4,6 @@
 #pragma once
 
 #include "../collection.hpp"
-#include "../compiler_utils.hpp"
 #include "../component_batch.hpp"
 #include "../components/entity_path.hpp"
 #include "../components/video_timestamp.hpp"
@@ -183,8 +182,7 @@ namespace rerun::archetypes {
         VideoFrameReference with_timestamp(const rerun::components::VideoTimestamp& _timestamp) && {
             timestamp =
                 ComponentBatch::from_loggable(_timestamp, Descriptor_timestamp).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// Optional reference to an entity with a `archetypes::AssetVideo`.
@@ -202,8 +200,7 @@ namespace rerun::archetypes {
             video_reference =
                 ComponentBatch::from_loggable(_video_reference, Descriptor_video_reference)
                     .value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
     };
 

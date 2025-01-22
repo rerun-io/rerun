@@ -6,7 +6,6 @@
 #include "../../blueprint/components/enabled.hpp"
 #include "../../blueprint/components/force_strength.hpp"
 #include "../../collection.hpp"
-#include "../../compiler_utils.hpp"
 #include "../../component_batch.hpp"
 #include "../../indicator_component.hpp"
 #include "../../result.hpp"
@@ -73,8 +72,7 @@ namespace rerun::blueprint::archetypes {
         /// strength is smaller than 0, it pushes nodes apart; if it is larger than 0, it pulls them together.
         ForceManyBody with_enabled(const rerun::blueprint::components::Enabled& _enabled) && {
             enabled = ComponentBatch::from_loggable(_enabled, Descriptor_enabled).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// The strength of the force.
@@ -84,8 +82,7 @@ namespace rerun::blueprint::archetypes {
         ) && {
             strength =
                 ComponentBatch::from_loggable(_strength, Descriptor_strength).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
     };
 

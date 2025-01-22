@@ -4,7 +4,6 @@
 #pragma once
 
 #include "../collection.hpp"
-#include "../compiler_utils.hpp"
 #include "../component_batch.hpp"
 #include "../components/tensor_data.hpp"
 #include "../components/value_range.hpp"
@@ -140,8 +139,7 @@ namespace rerun::archetypes {
         /// The tensor data
         Tensor with_data(const rerun::components::TensorData& _data) && {
             data = ComponentBatch::from_loggable(_data, Descriptor_data).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// The expected range of values.
@@ -158,8 +156,7 @@ namespace rerun::archetypes {
         Tensor with_value_range(const rerun::components::ValueRange& _value_range) && {
             value_range = ComponentBatch::from_loggable(_value_range, Descriptor_value_range)
                               .value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
     };
 

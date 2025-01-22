@@ -5,7 +5,6 @@
 
 #include "../../blueprint/components/lock_range_during_zoom.hpp"
 #include "../../collection.hpp"
-#include "../../compiler_utils.hpp"
 #include "../../component_batch.hpp"
 #include "../../components/range1d.hpp"
 #include "../../indicator_component.hpp"
@@ -66,8 +65,7 @@ namespace rerun::blueprint::archetypes {
         /// If unset, the range well be automatically determined based on the queried data.
         ScalarAxis with_range(const rerun::components::Range1D& _range) && {
             range = ComponentBatch::from_loggable(_range, Descriptor_range).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// If enabled, the Y axis range will remain locked to the specified range when zooming.
@@ -76,8 +74,7 @@ namespace rerun::blueprint::archetypes {
         ) && {
             zoom_lock =
                 ComponentBatch::from_loggable(_zoom_lock, Descriptor_zoom_lock).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
     };
 

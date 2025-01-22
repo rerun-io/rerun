@@ -5,7 +5,6 @@
 
 #include "../../blueprint/components/query_expression.hpp"
 #include "../../collection.hpp"
-#include "../../compiler_utils.hpp"
 #include "../../component_batch.hpp"
 #include "../../indicator_component.hpp"
 #include "../../result.hpp"
@@ -101,8 +100,7 @@ namespace rerun::blueprint::archetypes {
             const Collection<rerun::blueprint::components::QueryExpression>& _query
         ) && {
             query = ComponentBatch::from_loggable(_query, Descriptor_query).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
     };
 

@@ -4,7 +4,6 @@
 #pragma once
 
 #include "../collection.hpp"
-#include "../compiler_utils.hpp"
 #include "../component_batch.hpp"
 #include "../components/color.hpp"
 #include "../components/marker_shape.hpp"
@@ -131,15 +130,13 @@ namespace rerun::archetypes {
         /// Color for the corresponding series.
         SeriesPoint with_color(const rerun::components::Color& _color) && {
             color = ComponentBatch::from_loggable(_color, Descriptor_color).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// What shape to use to represent the point
         SeriesPoint with_marker(const rerun::components::MarkerShape& _marker) && {
             marker = ComponentBatch::from_loggable(_marker, Descriptor_marker).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// Display name of the series.
@@ -147,16 +144,14 @@ namespace rerun::archetypes {
         /// Used in the legend.
         SeriesPoint with_name(const rerun::components::Name& _name) && {
             name = ComponentBatch::from_loggable(_name, Descriptor_name).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// Size of the marker.
         SeriesPoint with_marker_size(const rerun::components::MarkerSize& _marker_size) && {
             marker_size = ComponentBatch::from_loggable(_marker_size, Descriptor_marker_size)
                               .value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
     };
 

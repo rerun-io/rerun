@@ -4,7 +4,6 @@
 #pragma once
 
 #include "../collection.hpp"
-#include "../compiler_utils.hpp"
 #include "../component_batch.hpp"
 #include "../components/class_id.hpp"
 #include "../components/color.hpp"
@@ -257,22 +256,19 @@ namespace rerun::archetypes {
         Points3D with_positions(const Collection<rerun::components::Position3D>& _positions) && {
             positions =
                 ComponentBatch::from_loggable(_positions, Descriptor_positions).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// Optional radii for the points, effectively turning them into circles.
         Points3D with_radii(const Collection<rerun::components::Radius>& _radii) && {
             radii = ComponentBatch::from_loggable(_radii, Descriptor_radii).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// Optional colors for the points.
         Points3D with_colors(const Collection<rerun::components::Color>& _colors) && {
             colors = ComponentBatch::from_loggable(_colors, Descriptor_colors).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// Optional text labels for the points.
@@ -281,16 +277,14 @@ namespace rerun::archetypes {
         /// Otherwise, each instance will have its own label.
         Points3D with_labels(const Collection<rerun::components::Text>& _labels) && {
             labels = ComponentBatch::from_loggable(_labels, Descriptor_labels).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// Optional choice of whether the text labels should be shown by default.
         Points3D with_show_labels(const rerun::components::ShowLabels& _show_labels) && {
             show_labels = ComponentBatch::from_loggable(_show_labels, Descriptor_show_labels)
                               .value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// Optional class Ids for the points.
@@ -299,8 +293,7 @@ namespace rerun::archetypes {
         Points3D with_class_ids(const Collection<rerun::components::ClassId>& _class_ids) && {
             class_ids =
                 ComponentBatch::from_loggable(_class_ids, Descriptor_class_ids).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// Optional keypoint IDs for the points, identifying them within a class.
@@ -315,8 +308,7 @@ namespace rerun::archetypes {
         ) && {
             keypoint_ids = ComponentBatch::from_loggable(_keypoint_ids, Descriptor_keypoint_ids)
                                .value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
     };
 

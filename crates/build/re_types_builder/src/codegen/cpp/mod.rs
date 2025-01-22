@@ -587,11 +587,6 @@ impl QuotedObject {
             let field_type = quote_archetype_unserialized_type(&mut hpp_includes, obj_field);
             let descriptor = archetype_component_descriptor_constant_ident(obj_field);
 
-            // TODO: Haven't tested this again since introducing eager serialization.
-            hpp_includes.insert_rerun("compiler_utils.hpp");
-            let gcc_ignore_comment =
-                quote_comment("See: https://github.com/rerun-io/rerun/issues/4027");
-
             methods.push(Method {
                     docs: obj_field.docs.clone().into(),
                     declaration: MethodDeclaration {
@@ -604,8 +599,7 @@ impl QuotedObject {
                     definition_body: quote! {
                         #field_ident = ComponentBatch::from_loggable(#parameter_ident, #descriptor).value_or_throw();
                         #NEWLINE_TOKEN
-                        #gcc_ignore_comment
-                        RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+                        return std::move(*this);
                     },
                     inline: true,
                 });

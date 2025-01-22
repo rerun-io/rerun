@@ -4,7 +4,6 @@
 #pragma once
 
 #include "../collection.hpp"
-#include "../compiler_utils.hpp"
 #include "../component_batch.hpp"
 #include "../components/view_coordinates.hpp"
 #include "../indicator_component.hpp"
@@ -342,8 +341,7 @@ namespace rerun::archetypes {
         /// The directions of the [x, y, z] axes.
         ViewCoordinates with_xyz(const rerun::components::ViewCoordinates& _xyz) && {
             xyz = ComponentBatch::from_loggable(_xyz, Descriptor_xyz).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
     };
 

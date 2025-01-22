@@ -4,7 +4,6 @@
 #pragma once
 
 #include "../collection.hpp"
-#include "../compiler_utils.hpp"
 #include "../component_batch.hpp"
 #include "../components/colormap.hpp"
 #include "../components/depth_meter.hpp"
@@ -246,15 +245,13 @@ namespace rerun::archetypes {
         /// The raw depth image data.
         DepthImage with_buffer(const rerun::components::ImageBuffer& _buffer) && {
             buffer = ComponentBatch::from_loggable(_buffer, Descriptor_buffer).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// The format of the image.
         DepthImage with_format(const rerun::components::ImageFormat& _format) && {
             format = ComponentBatch::from_loggable(_format, Descriptor_format).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// An optional floating point value that specifies how long a meter is in the native depth units.
@@ -266,8 +263,7 @@ namespace rerun::archetypes {
         /// In 3D views on the other hand, this affects where the points of the point cloud are placed.
         DepthImage with_meter(const rerun::components::DepthMeter& _meter) && {
             meter = ComponentBatch::from_loggable(_meter, Descriptor_meter).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// Colormap to use for rendering the depth image.
@@ -276,8 +272,7 @@ namespace rerun::archetypes {
         DepthImage with_colormap(const rerun::components::Colormap& _colormap) && {
             colormap =
                 ComponentBatch::from_loggable(_colormap, Descriptor_colormap).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// The expected range of depth values.
@@ -294,8 +289,7 @@ namespace rerun::archetypes {
         DepthImage with_depth_range(const rerun::components::ValueRange& _depth_range) && {
             depth_range = ComponentBatch::from_loggable(_depth_range, Descriptor_depth_range)
                               .value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// Scale the radii of the points in the point cloud generated from this image.
@@ -309,8 +303,7 @@ namespace rerun::archetypes {
             point_fill_ratio =
                 ComponentBatch::from_loggable(_point_fill_ratio, Descriptor_point_fill_ratio)
                     .value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// An optional floating point value that specifies the 2D drawing order, used only if the depth image is shown as a 2D image.
@@ -319,8 +312,7 @@ namespace rerun::archetypes {
         DepthImage with_draw_order(const rerun::components::DrawOrder& _draw_order) && {
             draw_order =
                 ComponentBatch::from_loggable(_draw_order, Descriptor_draw_order).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
     };
 

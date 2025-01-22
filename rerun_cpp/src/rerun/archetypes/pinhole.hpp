@@ -4,7 +4,6 @@
 #pragma once
 
 #include "../collection.hpp"
-#include "../compiler_utils.hpp"
 #include "../component_batch.hpp"
 #include "../components/image_plane_distance.hpp"
 #include "../components/pinhole_projection.hpp"
@@ -234,8 +233,7 @@ namespace rerun::archetypes {
             image_from_camera =
                 ComponentBatch::from_loggable(_image_from_camera, Descriptor_image_from_camera)
                     .value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// Pixel resolution (usually integers) of child image space. Width and height.
@@ -249,8 +247,7 @@ namespace rerun::archetypes {
         Pinhole with_resolution(const rerun::components::Resolution& _resolution) && {
             resolution =
                 ComponentBatch::from_loggable(_resolution, Descriptor_resolution).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// Sets the view coordinates for the camera.
@@ -283,8 +280,7 @@ namespace rerun::archetypes {
         Pinhole with_camera_xyz(const rerun::components::ViewCoordinates& _camera_xyz) && {
             camera_xyz =
                 ComponentBatch::from_loggable(_camera_xyz, Descriptor_camera_xyz).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// The distance from the camera origin to the image plane when the projection is shown in a 3D viewer.
@@ -298,8 +294,7 @@ namespace rerun::archetypes {
                                        Descriptor_image_plane_distance
             )
                                        .value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
     };
 

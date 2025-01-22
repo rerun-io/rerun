@@ -4,7 +4,6 @@
 #pragma once
 
 #include "../collection.hpp"
-#include "../compiler_utils.hpp"
 #include "../component_batch.hpp"
 #include "../components/annotation_context.hpp"
 #include "../indicator_component.hpp"
@@ -105,8 +104,7 @@ namespace rerun::archetypes {
         /// List of class descriptions, mapping class indices to class names, colors etc.
         AnnotationContext with_context(const rerun::components::AnnotationContext& _context) && {
             context = ComponentBatch::from_loggable(_context, Descriptor_context).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
     };
 

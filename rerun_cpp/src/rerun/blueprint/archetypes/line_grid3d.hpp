@@ -6,7 +6,6 @@
 #include "../../blueprint/components/grid_spacing.hpp"
 #include "../../blueprint/components/visible.hpp"
 #include "../../collection.hpp"
-#include "../../compiler_utils.hpp"
 #include "../../component_batch.hpp"
 #include "../../components/color.hpp"
 #include "../../components/plane3d.hpp"
@@ -102,8 +101,7 @@ namespace rerun::blueprint::archetypes {
         /// Defaults to true.
         LineGrid3D with_visible(const rerun::blueprint::components::Visible& _visible) && {
             visible = ComponentBatch::from_loggable(_visible, Descriptor_visible).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// Space between grid lines spacing of one line to the next in scene units.
@@ -112,8 +110,7 @@ namespace rerun::blueprint::archetypes {
         /// This controls the closest zoom level.
         LineGrid3D with_spacing(const rerun::blueprint::components::GridSpacing& _spacing) && {
             spacing = ComponentBatch::from_loggable(_spacing, Descriptor_spacing).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// In what plane the grid is drawn.
@@ -121,8 +118,7 @@ namespace rerun::blueprint::archetypes {
         /// Defaults to whatever plane is determined as the plane at zero units up/down as defined by `components::ViewCoordinates` if present.
         LineGrid3D with_plane(const rerun::components::Plane3D& _plane) && {
             plane = ComponentBatch::from_loggable(_plane, Descriptor_plane).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// How thick the lines should be in ui units.
@@ -131,8 +127,7 @@ namespace rerun::blueprint::archetypes {
         LineGrid3D with_stroke_width(const rerun::components::StrokeWidth& _stroke_width) && {
             stroke_width = ComponentBatch::from_loggable(_stroke_width, Descriptor_stroke_width)
                                .value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// Color used for the grid.
@@ -141,8 +136,7 @@ namespace rerun::blueprint::archetypes {
         /// Defaults to a slightly transparent light gray.
         LineGrid3D with_color(const rerun::components::Color& _color) && {
             color = ComponentBatch::from_loggable(_color, Descriptor_color).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
     };
 
