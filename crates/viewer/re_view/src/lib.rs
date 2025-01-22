@@ -40,7 +40,7 @@ pub mod external {
 
 // -----------
 
-/// Utility for implementing [`re_viewer_context::VisualizerDataBasedVisualizabilityFilter`] using on the properties of a concrete component.
+/// Utility for implementing [`re_viewer_context::DataBasedVisualizabilityFilter`] using on the properties of a concrete component.
 #[inline]
 pub fn diff_component_filter<T: re_types_core::Component>(
     event: &re_chunk_store::ChunkStoreEvent,
