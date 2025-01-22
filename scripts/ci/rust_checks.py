@@ -148,7 +148,7 @@ def main() -> None:
 
     # Print timings overview
     print("-----------------")
-    print("Ran {len(results)} checks in {total_duration:.0f}s")
+    print(f"Ran {len(results)} checks in {total_duration:.0f}s")
     print("Individual timings, slowest first:")
     results.sort(key=lambda result: result.duration, reverse=True)
     for result in results:
