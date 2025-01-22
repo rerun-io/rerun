@@ -191,7 +191,8 @@ pub fn url_to_receiver(
 
         #[cfg(feature = "grpc")]
         EndpointCategory::MessageProxy(url) => {
-            re_grpc_client::message_proxy::read::stream(url, Some(ui_waker)).map_err(|e| e.into())
+            re_grpc_client::message_proxy::read::stream(url, Some(ui_waker))
+                .map_err(|err| err.into())
         }
     }
 }
