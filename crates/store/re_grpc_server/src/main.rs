@@ -1,3 +1,7 @@
+use std::net::IpAddr;
+use std::net::Ipv4Addr;
+use std::net::SocketAddr;
+
 use re_grpc_server::MessageProxy;
 use re_memory::MemoryLimit;
 use re_protos::sdk_comms::v0::message_proxy_server::MessageProxyServer;
@@ -5,17 +9,21 @@ use tokio::net::TcpListener;
 use tonic::transport::server::TcpIncoming;
 use tonic::transport::Server;
 
+const DEFAULT_GRPC_PORT: u16 = 1852;
+const DEFAULT_GRPC_ADDR: SocketAddr =
+    SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), DEFAULT_GRPC_PORT);
+
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), tonic::transport::Error> {
     re_log::setup_logging();
 
-    let tcp_listener = TcpListener::bind("127.0.0.1:1852")
+    let tcp_listener = TcpListener::bind(DEFAULT_GRPC_ADDR)
         .await
-        .expect("failed to bind listener on 127.0.0.1:1852");
+        .unwrap_or_else(|err| panic!("failed to bind listener on {DEFAULT_GRPC_ADDR}: {err}"));
     let incoming =
         TcpIncoming::from_listener(tcp_listener, true, None).expect("failed to init listener");
 
-    re_log::info!("Listening for gRPC connections on 127.0.0.1:1852");
+    re_log::info!("Listening for gRPC connections on {DEFAULT_GRPC_ADDR}");
 
     use tower_http::cors::{Any, CorsLayer};
     let cors = CorsLayer::new()
