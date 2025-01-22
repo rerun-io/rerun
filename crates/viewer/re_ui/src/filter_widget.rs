@@ -262,7 +262,7 @@ impl FilterMatcher {
     /// actual match.
     pub fn matches_formatted(&self, ctx: &egui::Context, text: &str) -> Option<egui::WidgetText> {
         self.find_matches(text)
-            .map(|match_iter| format_matching_text(ctx, text, match_iter))
+            .map(|match_iter| format_matching_text(ctx, text, match_iter, None))
     }
 }
 
@@ -272,9 +272,12 @@ pub fn format_matching_text(
     ctx: &egui::Context,
     text: &str,
     match_iter: impl Iterator<Item = Range<usize>>,
+    text_color: Option<egui::Color32>,
 ) -> egui::WidgetText {
     let mut current = 0;
     let mut job = egui::text::LayoutJob::default();
+
+    let color = text_color.unwrap_or(Color32::PLACEHOLDER);
 
     for Range { start, end } in match_iter {
         if current < start {
@@ -283,7 +286,7 @@ pub fn format_matching_text(
                 0.0,
                 egui::TextFormat {
                     font_id: egui::TextStyle::Body.resolve(&ctx.style()),
-                    color: Color32::PLACEHOLDER,
+                    color,
                     ..Default::default()
                 },
             );
@@ -294,7 +297,7 @@ pub fn format_matching_text(
             0.0,
             egui::TextFormat {
                 font_id: egui::TextStyle::Body.resolve(&ctx.style()),
-                color: Color32::PLACEHOLDER,
+                color,
                 background: ctx.style().visuals.selection.bg_fill,
                 ..Default::default()
             },
@@ -309,7 +312,7 @@ pub fn format_matching_text(
             0.0,
             egui::TextFormat {
                 font_id: egui::TextStyle::Body.resolve(&ctx.style()),
-                color: Color32::PLACEHOLDER,
+                color,
                 ..Default::default()
             },
         );
