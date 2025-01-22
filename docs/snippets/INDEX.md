@@ -20,7 +20,7 @@ Use it to quickly find copy-pastable snippets of code for any Rerun feature you'
 
 ## Features
 
-| Feature | Example | Description | Python | Rust | C++ |
+| Feature | Example | Description | Python | Rust | C+⁠+ |
 | ------- | ------- | ----------- | ------ | ---- | --- |
 | **Query dataframes** | `dataframe_query` | Query and display the first 10 rows of a recording | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/reference/dataframe_query.py) | [🦀](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/reference/dataframe_query.rs) |  |
 | **Query dataframes** | `dataframe_view_query` | Query and display the first 10 rows of a recording in a dataframe view | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/reference/dataframe_view_query.py) |  |  |
@@ -45,7 +45,7 @@ Use it to quickly find copy-pastable snippets of code for any Rerun feature you'
 
 _All snippets, organized by the [`Archetype`](https://rerun.io/docs/reference/types/archetypes)(s) they use._
 
-| Archetype | Snippet | Description | Python | Rust | C++ |
+| Archetype | Snippet | Description | Python | Rust | C+⁠+ |
 | --------- | ------- | ----------- | ------ | ---- | --- |
 | **[`AnnotationContext`](https://rerun.io/docs/reference/types/archetypes/annotation_context)** | `tutorials/annotation_context` |  | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/tutorials/annotation_context.py) | [🦀](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/tutorials/annotation_context.rs) | [🌊](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/tutorials/annotation_context.cpp) |
 | **[`AnnotationContext`](https://rerun.io/docs/reference/types/archetypes/annotation_context)** | `archetypes/annotation_context_segmentation` | Log a segmentation image with annotations | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/annotation_context_segmentation.py) | [🦀](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/annotation_context_segmentation.rs) | [🌊](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/annotation_context_segmentation.cpp) |
@@ -202,7 +202,7 @@ _All snippets, organized by the [`Archetype`](https://rerun.io/docs/reference/ty
 
 _All snippets, organized by the [`Component`](https://rerun.io/docs/reference/types/components)(s) they use._
 
-| Component | Snippet | Description | Python | Rust | C++ |
+| Component | Snippet | Description | Python | Rust | C+⁠+ |
 | --------- | ------- | ----------- | ------ | ---- | --- |
 | **[`AnnotationContext`](https://rerun.io/docs/reference/types/components/annotation_context)** | `tutorials/annotation_context` |  | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/tutorials/annotation_context.py) | [🦀](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/tutorials/annotation_context.rs) | [🌊](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/tutorials/annotation_context.cpp) |
 | **[`AnnotationContext`](https://rerun.io/docs/reference/types/components/annotation_context)** | `archetypes/annotation_context_segmentation` | Log a segmentation image with annotations | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/annotation_context_segmentation.py) | [🦀](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/annotation_context_segmentation.rs) | [🌊](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/annotation_context_segmentation.cpp) |
@@ -293,7 +293,7 @@ _All snippets, organized by the [`Component`](https://rerun.io/docs/reference/ty
 
 _All snippets, organized by the [`View`](https://rerun.io/docs/reference/types/views)(s) they use._
 
-| Component | Snippet | Description | Python | Rust | C++ |
+| Component | Snippet | Description | Python | Rust | C+⁠+ |
 | --------- | ------- | ----------- | ------ | ---- | --- |
 | **[`BarChartView`](https://rerun.io/docs/reference/types/views/bar_chart_view)** | `tutorials/visualization/save_blueprint` | Craft an example blueprint with the python API and save it to a file for future use | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/tutorials/visualization/save_blueprint.py) |  |  |
 | **[`BarChartView`](https://rerun.io/docs/reference/types/views/bar_chart_view)** | `views/bar_chart` | Use a blueprint to show a bar chart | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/views/bar_chart.py) |  |  |
@@ -334,7 +334,7 @@ _All snippets, organized by the [`View`](https://rerun.io/docs/reference/types/v
 
 _All snippets, organized by the blueprint-related [`Archetype`](https://rerun.io/docs/reference/types/archetypes)(s) they use._
 
-| Archetype | Snippet | Description | Python | Rust | C++ |
+| Archetype | Snippet | Description | Python | Rust | C+⁠+ |
 | --------- | ------- | ----------- | ------ | ---- | --- |
 | **`Background`** | `tutorials/annotation_context` |  | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/tutorials/annotation_context.py) | [🦀](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/tutorials/annotation_context.rs) | [🌊](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/tutorials/annotation_context.cpp) |
 | **`DataframeQuery`** | `reference/dataframe_view_query` | Query and display the first 10 rows of a recording in a dataframe view | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/reference/dataframe_view_query.py) |  |  |
@@ -361,7 +361,7 @@ _All snippets, organized by the blueprint-related [`Archetype`](https://rerun.io
 
 _All snippets, organized by the blueprint-related [`Component`](https://rerun.io/docs/reference/types/components)(s) they use._
 
-| Component | Snippet | Description | Python | Rust | C++ |
+| Component | Snippet | Description | Python | Rust | C+⁠+ |
 | --------- | ------- | ----------- | ------ | ---- | --- |
 | **`MapProvider`** | `views/map` | Use a blueprint to customize a map view | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/views/map.py) |  |  |
 | **`Visible`** | `tutorials/fixed_window_plot` |  | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/tutorials/fixed_window_plot.py) |  |  |
