@@ -12,9 +12,7 @@ namespace rerun {
 
         /// Creates new `Boxes2D` with `half_sizes` centered around the local origin.
         static Boxes2D from_half_sizes(Collection<components::HalfSize2D> half_sizes) {
-            Boxes2D boxes;
-            boxes.half_sizes = std::move(half_sizes);
-            return boxes;
+            return Boxes2D().with_half_sizes(std::move(half_sizes));
         }
 
         /// Creates new `Boxes2D` with `centers` and `half_sizes`.
@@ -22,10 +20,9 @@ namespace rerun {
             Collection<components::Position2D> centers,
             Collection<components::HalfSize2D> half_sizes
         ) {
-            Boxes2D boxes;
-            boxes.half_sizes = std::move(half_sizes);
-            boxes.centers = std::move(centers);
-            return boxes;
+            return Boxes2D()
+                .with_half_sizes(std::move(half_sizes))
+                .with_centers(std::move(centers));
         }
 
         /// Creates new `Boxes2D` with `half_sizes` created from (full) sizes.
@@ -42,9 +39,7 @@ namespace rerun {
         static Boxes2D from_centers_and_sizes(
             Collection<components::Position2D> centers, const std::vector<datatypes::Vec2D>& sizes
         ) {
-            Boxes2D boxes = from_sizes(std::move(sizes));
-            boxes.centers = std::move(centers);
-            return boxes;
+            return from_sizes(std::move(sizes)).with_centers(std::move(centers));
         }
 
         /// Creates new `Boxes2D` with `half_sizes` and `centers` created from minimums and (full)
@@ -87,10 +82,9 @@ namespace rerun {
                 centers.emplace_back(mins[i].x() + half_size_x, mins[i].y() + half_size_y);
             }
 
-            Boxes2D boxes;
-            boxes.half_sizes = std::move(half_sizes);
-            boxes.centers = std::move(centers);
-            return boxes;
+            return Boxes2D()
+                .with_half_sizes(std::move(half_sizes))
+                .with_centers(std::move(centers));
         }
     } // namespace archetypes
 } // namespace rerun
