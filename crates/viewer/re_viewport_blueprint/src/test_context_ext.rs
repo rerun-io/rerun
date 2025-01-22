@@ -57,9 +57,11 @@ impl TestContextExt for TestContext {
                 let viewport_blueprint =
                     ViewportBlueprint::try_from_db(&self.blueprint_store, &self.blueprint_query);
 
-                let applicable_entities_per_visualizer = self
+                let maybe_visualizable_entities_per_visualizer = self
                     .view_class_registry
-                    .applicable_entities_for_visualizer_systems(&self.recording_store.store_id());
+                    .maybe_visualizable_entities_for_visualizer_systems(
+                        &self.recording_store.store_id(),
+                    );
                 let mut query_results = HashMap::default();
                 self.run(egui_ctx, |ctx| {
                     viewport_blueprint.visit_contents(&mut |contents, _| {
@@ -75,7 +77,7 @@ impl TestContextExt for TestContext {
                                     .class(class_identifier)
                                     .expect("The class must be registered beforehand")
                                     .determine_visualizable_entities(
-                                        &applicable_entities_per_visualizer,
+                                        &maybe_visualizable_entities_per_visualizer,
                                         ctx.recording(),
                                         &ctx.view_class_registry
                                             .new_visualizer_collection(class_identifier),

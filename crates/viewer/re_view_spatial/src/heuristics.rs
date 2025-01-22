@@ -8,8 +8,9 @@ use crate::{view_kind::SpatialViewKind, visualizers::SpatialViewVisualizerData};
 
 /// Returns all entities for which a visualizer of the given kind would be picked.
 ///
-/// I.e. all entities for which at least one visualizer of the specified kind is applicable
+/// I.e. all entities for which at least one visualizer of the specified kind is "maybe visualizable"
 /// *and* has a matching indicator component.
+/// (we can't reason with "visualizable" because that can be influenced by view properties like its origin)
 pub fn default_visualized_entities_for_visualizer_kind(
     ctx: &ViewerContext<'_>,
     view_class_identifier: ViewClassIdentifier,
@@ -27,8 +28,8 @@ pub fn default_visualized_entities_for_visualizer_kind(
 
             if data.preferred_view_kind == Some(visualizer_kind) {
                 let indicator_matching = ctx.indicated_entities_per_visualizer.get(&id)?;
-                let applicable = ctx.applicable_entities_per_visualizer.get(&id)?;
-                Some(indicator_matching.intersection(applicable))
+                let maybe_visualizable = ctx.maybe_visualizable_entities_per_visualizer.get(&id)?;
+                Some(indicator_matching.intersection(maybe_visualizable))
             } else {
                 None
             }

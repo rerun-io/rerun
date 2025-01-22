@@ -101,12 +101,12 @@ Display a graph of nodes and edges.
     }
 
     fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> ViewSpawnHeuristics {
-        if let Some(applicable) = ctx
-            .applicable_entities_per_visualizer
+        if let Some(maybe_visualizable) = ctx
+            .maybe_visualizable_entities_per_visualizer
             .get(&NodeVisualizer::identifier())
         {
             ViewSpawnHeuristics::new(
-                applicable
+                maybe_visualizable
                     .iter()
                     .cloned()
                     .map(RecommendedView::new_single_entity),

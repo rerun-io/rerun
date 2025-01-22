@@ -165,7 +165,7 @@ impl ChunkStoreSubscriber for SpatialTopologyStoreSubscriber {
 ///
 /// Describes how 2D & 3D spaces are connected/disconnected.
 ///
-/// Used to determine whether 2D/3D visualizers are applicable and to inform
+/// Used to determine whether 2D/3D visualizers are visualizable and to inform
 /// view generation heuristics.
 ///
 /// Spatial topology is time independent but may change as new data comes in.

@@ -5,7 +5,7 @@ use re_chunk_store::{ChunkStore, ChunkStoreSubscriberHandle};
 use re_types::ViewClassIdentifier;
 
 use crate::{
-    ApplicableEntities, IdentifiedViewSystem, IndicatedEntities, PerVisualizer, ViewClass,
+    IdentifiedViewSystem, IndicatedEntities, MaybeVisualizableEntities, PerVisualizer, ViewClass,
     ViewContextCollection, ViewContextSystem, ViewSystemIdentifier, VisualizerCollection,
     VisualizerSystem,
 };
@@ -270,16 +270,16 @@ impl ViewClassRegistry {
             .sorted_by_key(|entry| entry.class.display_name())
     }
 
-    /// For each visualizer, return the set of entities that is applicable to it.
+    /// For each visualizer, return the set of entities that may be visualizable with it.
     ///
     /// The list is kept up to date by store subscribers.
-    pub fn applicable_entities_for_visualizer_systems(
+    pub fn maybe_visualizable_entities_for_visualizer_systems(
         &self,
         store_id: &re_log_types::StoreId,
-    ) -> PerVisualizer<ApplicableEntities> {
+    ) -> PerVisualizer<MaybeVisualizableEntities> {
         re_tracing::profile_function!();
 
-        PerVisualizer::<ApplicableEntities>(
+        PerVisualizer::<MaybeVisualizableEntities>(
             self.visualizers
                 .iter()
                 .map(|(id, entry)| {
@@ -287,7 +287,7 @@ impl ViewClassRegistry {
                         *id,
                         ChunkStore::with_subscriber::<VisualizerEntitySubscriber, _, _>(
                             entry.entity_subscriber_handle,
-                            |subscriber| subscriber.applicable_entities(store_id).cloned(),
+                            |subscriber| subscriber.maybe_visualizable_entities(store_id).cloned(),
                         )
                         .flatten()
                         .unwrap_or_default(),

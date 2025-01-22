@@ -268,7 +268,7 @@ impl TestContext {
             component_ui_registry: &self.component_ui_registry,
             view_class_registry: &self.view_class_registry,
             store_context: &store_context,
-            applicable_entities_per_visualizer: &Default::default(),
+            maybe_visualizable_entities_per_visualizer: &Default::default(),
             indicated_entities_per_visualizer: &Default::default(),
             query_results: &self.query_results,
             rec_cfg: &self.recording_config,

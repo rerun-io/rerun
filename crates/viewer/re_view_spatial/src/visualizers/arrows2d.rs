@@ -9,7 +9,7 @@ use re_types::{
 };
 use re_view::{process_annotation_and_keypoint_slices, process_color_slice};
 use re_viewer_context::{
-    auto_color_for_entity_path, ApplicableEntities, IdentifiedViewSystem, QueryContext,
+    auto_color_for_entity_path, IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext,
     TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewQuery,
     ViewSystemExecutionError, VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo,
     VisualizerSystem,
@@ -178,7 +178,7 @@ impl VisualizerSystem for Arrows2DVisualizer {
 
     fn filter_visualizable_entities(
         &self,
-        entities: ApplicableEntities,
+        entities: MaybeVisualizableEntities,
         context: &dyn VisualizableFilterContext,
     ) -> VisualizableEntities {
         re_tracing::profile_function!();

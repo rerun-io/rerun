@@ -551,15 +551,15 @@ fn available_inactive_visualizers(
 ) -> Vec<ViewSystemIdentifier> {
     // TODO(jleibs): This has already been computed for the View this frame. Maybe We
     // should do this earlier and store it with the View?
-    let applicable_entities_per_visualizer = ctx
+    let maybe_visualizable_entities = ctx
         .viewer_ctx
         .view_class_registry
-        .applicable_entities_for_visualizer_systems(&entity_db.store_id());
+        .maybe_visualizable_entities_for_visualizer_systems(&entity_db.store_id());
 
     let visualizable_entities = view
         .class(ctx.viewer_ctx.view_class_registry)
         .determine_visualizable_entities(
-            &applicable_entities_per_visualizer,
+            &maybe_visualizable_entities,
             entity_db,
             &ctx.visualizer_collection,
             &view.space_origin,

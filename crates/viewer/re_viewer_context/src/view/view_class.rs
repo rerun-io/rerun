@@ -5,7 +5,7 @@ use re_log_types::EntityPath;
 use re_types::{ComponentName, ViewClassIdentifier};
 
 use crate::{
-    ApplicableEntities, IndicatedEntities, PerVisualizer, QueryRange, SmallVisualizerSet,
+    IndicatedEntities, MaybeVisualizableEntities, PerVisualizer, QueryRange, SmallVisualizerSet,
     SystemExecutionOutput, ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics,
     ViewSystemExecutionError, ViewSystemRegistrator, ViewerContext, VisualizableEntities,
 };
@@ -141,7 +141,7 @@ pub trait ViewClass: Send + Sync {
     fn choose_default_visualizers(
         &self,
         entity_path: &EntityPath,
-        _applicable_entities_per_visualizer: &PerVisualizer<ApplicableEntities>,
+        _maybe_visualizable_entities_per_visualizer: &PerVisualizer<MaybeVisualizableEntities>,
         visualizable_entities_per_visualizer: &PerVisualizer<VisualizableEntities>,
         indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
     ) -> SmallVisualizerSet {
@@ -219,10 +219,10 @@ pub trait ViewClass: Send + Sync {
 pub trait ViewClassExt<'a>: ViewClass + 'a {
     /// Determines the set of visible entities for a given view.
     // TODO(andreas): This should be part of the View's (non-blueprint) state.
-    // Updated whenever `applicable_entities_per_visualizer` or the view blueprint changes.
+    // Updated whenever `maybe_visualizable_entities_per_visualizer` or the view blueprint changes.
     fn determine_visualizable_entities(
         &self,
-        applicable_entities_per_visualizer: &PerVisualizer<ApplicableEntities>,
+        maybe_visualizable_entities_per_visualizer: &PerVisualizer<MaybeVisualizableEntities>,
         entity_db: &EntityDb,
         visualizers: &crate::VisualizerCollection,
         space_origin: &EntityPath,
@@ -235,11 +235,11 @@ pub trait ViewClassExt<'a>: ViewClass + 'a {
             visualizers
                 .iter_with_identifiers()
                 .map(|(visualizer_identifier, visualizer_system)| {
-                    let entities = if let Some(applicable_entities) =
-                        applicable_entities_per_visualizer.get(&visualizer_identifier)
+                    let entities = if let Some(maybe_visualizable_entities) =
+                        maybe_visualizable_entities_per_visualizer.get(&visualizer_identifier)
                     {
                         visualizer_system.filter_visualizable_entities(
-                            applicable_entities.clone(),
+                            maybe_visualizable_entities.clone(),
                             filter_ctx.as_ref(),
                         )
                     } else {
