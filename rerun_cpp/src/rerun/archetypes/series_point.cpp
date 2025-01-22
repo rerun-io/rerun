@@ -5,7 +5,21 @@
 
 #include "../collection_adapter_builtins.hpp"
 
-namespace rerun::archetypes {}
+namespace rerun::archetypes {
+    SeriesPoint SeriesPoint::clear_fields() {
+        auto archetype = SeriesPoint();
+        archetype.color =
+            ComponentBatch::empty<rerun::components::Color>(Descriptor_color).value_or_throw();
+        archetype.marker = ComponentBatch::empty<rerun::components::MarkerShape>(Descriptor_marker)
+                               .value_or_throw();
+        archetype.name =
+            ComponentBatch::empty<rerun::components::Name>(Descriptor_name).value_or_throw();
+        archetype.marker_size =
+            ComponentBatch::empty<rerun::components::MarkerSize>(Descriptor_marker_size)
+                .value_or_throw();
+        return archetype;
+    }
+} // namespace rerun::archetypes
 
 namespace rerun {
 
@@ -17,48 +31,16 @@ namespace rerun {
         cells.reserve(5);
 
         if (archetype.color.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.color.value(),
-                ComponentDescriptor(
-                    "rerun.archetypes.SeriesPoint",
-                    "color",
-                    "rerun.components.Color"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.color.value());
         }
         if (archetype.marker.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.marker.value(),
-                ComponentDescriptor(
-                    "rerun.archetypes.SeriesPoint",
-                    "marker",
-                    "rerun.components.MarkerShape"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.marker.value());
         }
         if (archetype.name.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.name.value(),
-                ComponentDescriptor("rerun.archetypes.SeriesPoint", "name", "rerun.components.Name")
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.name.value());
         }
         if (archetype.marker_size.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.marker_size.value(),
-                ComponentDescriptor(
-                    "rerun.archetypes.SeriesPoint",
-                    "marker_size",
-                    "rerun.components.MarkerSize"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.marker_size.value());
         }
         {
             auto indicator = SeriesPoint::IndicatorComponent();
