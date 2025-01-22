@@ -49,7 +49,7 @@ namespace rerun::archetypes {
     /// ```
     struct EncodedImage {
         /// The encoded content of some image file, e.g. a PNG or JPEG.
-        rerun::components::Blob blob;
+        std::optional<ComponentBatch> blob;
 
         /// The Media Type of the asset.
         ///
@@ -59,17 +59,17 @@ namespace rerun::archetypes {
         ///
         /// If omitted, the viewer will try to guess from the data blob.
         /// If it cannot guess, it won't be able to render the asset.
-        std::optional<rerun::components::MediaType> media_type;
+        std::optional<ComponentBatch> media_type;
 
         /// Opacity of the image, useful for layering several images.
         ///
         /// Defaults to 1.0 (fully opaque).
-        std::optional<rerun::components::Opacity> opacity;
+        std::optional<ComponentBatch> opacity;
 
         /// An optional floating point value that specifies the 2D drawing order.
         ///
         /// Objects with higher values are drawn on top of those with lower values.
-        std::optional<rerun::components::DrawOrder> draw_order;
+        std::optional<ComponentBatch> draw_order;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -79,6 +79,26 @@ namespace rerun::archetypes {
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.EncodedImage";
+
+        /// `ComponentDescriptor` for the `blob` field.
+        static constexpr auto Descriptor_blob = ComponentDescriptor(
+            ArchetypeName, "blob", Loggable<rerun::components::Blob>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `media_type` field.
+        static constexpr auto Descriptor_media_type = ComponentDescriptor(
+            ArchetypeName, "media_type",
+            Loggable<rerun::components::MediaType>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `opacity` field.
+        static constexpr auto Descriptor_opacity = ComponentDescriptor(
+            ArchetypeName, "opacity",
+            Loggable<rerun::components::Opacity>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `draw_order` field.
+        static constexpr auto Descriptor_draw_order = ComponentDescriptor(
+            ArchetypeName, "draw_order",
+            Loggable<rerun::components::DrawOrder>::Descriptor.component_name
+        );
 
       public: // START of extensions from encoded_image_ext.cpp:
         /// Create a new `EncodedImage` from the contents of a file on disk, e.g. a PNG or JPEG.
@@ -92,10 +112,11 @@ namespace rerun::archetypes {
             rerun::Collection<uint8_t> image_contents,
             std::optional<rerun::components::MediaType> media_type = {}
         ) {
-            EncodedImage image;
-            image.blob = image_contents;
-            image.media_type = media_type;
-            return image;
+            auto encoded_image = EncodedImage().with_blob(image_contents);
+            if (media_type.has_value()) {
+                return std::move(encoded_image).with_media_type(media_type.value());
+            }
+            return encoded_image;
         }
 
         // END of extensions from encoded_image_ext.cpp, start of generated code:
@@ -107,6 +128,21 @@ namespace rerun::archetypes {
         EncodedImage& operator=(const EncodedImage& other) = default;
         EncodedImage& operator=(EncodedImage&& other) = default;
 
+        /// Update only some specific fields of a `EncodedImage`.
+        static EncodedImage update_fields() {
+            return EncodedImage();
+        }
+
+        /// Clear all the fields of a `EncodedImage`.
+        static EncodedImage clear_fields();
+
+        /// The encoded content of some image file, e.g. a PNG or JPEG.
+        EncodedImage with_blob(const rerun::components::Blob& _blob) && {
+            blob = ComponentBatch::from_loggable(_blob, Descriptor_blob).value_or_throw();
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
         /// The Media Type of the asset.
         ///
         /// Supported values:
@@ -115,8 +151,9 @@ namespace rerun::archetypes {
         ///
         /// If omitted, the viewer will try to guess from the data blob.
         /// If it cannot guess, it won't be able to render the asset.
-        EncodedImage with_media_type(rerun::components::MediaType _media_type) && {
-            media_type = std::move(_media_type);
+        EncodedImage with_media_type(const rerun::components::MediaType& _media_type) && {
+            media_type =
+                ComponentBatch::from_loggable(_media_type, Descriptor_media_type).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
@@ -124,8 +161,8 @@ namespace rerun::archetypes {
         /// Opacity of the image, useful for layering several images.
         ///
         /// Defaults to 1.0 (fully opaque).
-        EncodedImage with_opacity(rerun::components::Opacity _opacity) && {
-            opacity = std::move(_opacity);
+        EncodedImage with_opacity(const rerun::components::Opacity& _opacity) && {
+            opacity = ComponentBatch::from_loggable(_opacity, Descriptor_opacity).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
@@ -133,8 +170,9 @@ namespace rerun::archetypes {
         /// An optional floating point value that specifies the 2D drawing order.
         ///
         /// Objects with higher values are drawn on top of those with lower values.
-        EncodedImage with_draw_order(rerun::components::DrawOrder _draw_order) && {
-            draw_order = std::move(_draw_order);
+        EncodedImage with_draw_order(const rerun::components::DrawOrder& _draw_order) && {
+            draw_order =
+                ComponentBatch::from_loggable(_draw_order, Descriptor_draw_order).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

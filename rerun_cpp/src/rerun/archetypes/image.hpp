@@ -143,20 +143,20 @@ namespace rerun::archetypes {
     /// ```
     struct Image {
         /// The raw image data.
-        rerun::components::ImageBuffer buffer;
+        std::optional<ComponentBatch> buffer;
 
         /// The format of the image.
-        rerun::components::ImageFormat format;
+        std::optional<ComponentBatch> format;
 
         /// Opacity of the image, useful for layering several images.
         ///
         /// Defaults to 1.0 (fully opaque).
-        std::optional<rerun::components::Opacity> opacity;
+        std::optional<ComponentBatch> opacity;
 
         /// An optional floating point value that specifies the 2D drawing order.
         ///
         /// Objects with higher values are drawn on top of those with lower values.
-        std::optional<rerun::components::DrawOrder> draw_order;
+        std::optional<ComponentBatch> draw_order;
 
       public:
         static constexpr const char IndicatorComponentName[] = "rerun.components.ImageIndicator";
@@ -166,6 +166,27 @@ namespace rerun::archetypes {
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.Image";
 
+        /// `ComponentDescriptor` for the `buffer` field.
+        static constexpr auto Descriptor_buffer = ComponentDescriptor(
+            ArchetypeName, "buffer",
+            Loggable<rerun::components::ImageBuffer>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `format` field.
+        static constexpr auto Descriptor_format = ComponentDescriptor(
+            ArchetypeName, "format",
+            Loggable<rerun::components::ImageFormat>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `opacity` field.
+        static constexpr auto Descriptor_opacity = ComponentDescriptor(
+            ArchetypeName, "opacity",
+            Loggable<rerun::components::Opacity>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `draw_order` field.
+        static constexpr auto Descriptor_draw_order = ComponentDescriptor(
+            ArchetypeName, "draw_order",
+            Loggable<rerun::components::DrawOrder>::Descriptor.component_name
+        );
+
       public: // START of extensions from image_ext.cpp:
         /// Construct an image from bytes and image format.
         ///
@@ -174,16 +195,16 @@ namespace rerun::archetypes {
         /// explicitly ahead of time with `rerun::Collection::take_ownership`.
         /// The length of the data should be `W * H * image_format.bytes_per_pixel`.
         /// @param format_ How the data should be interpreted.
-        Image(Collection<uint8_t> bytes, components::ImageFormat format_)
-            : buffer(std::move(bytes)), format(format_) {
-            if (buffer.size() != format.image_format.num_bytes()) {
+        Image(Collection<uint8_t> bytes, components::ImageFormat format_) {
+            if (bytes.size() != format_.image_format.num_bytes()) {
                 Error(
                     ErrorCode::InvalidTensorDimension,
-                    "Image buffer has the wrong size. Got " + std::to_string(buffer.size()) +
-                        " bytes, expected " + std::to_string(format.image_format.num_bytes())
+                    "Image buffer has the wrong size. Got " + std::to_string(bytes.size()) +
+                        " bytes, expected " + std::to_string(format_.image_format.num_bytes())
                 )
                     .handle();
             }
+            *this = std::move(*this).with_buffer(bytes).with_format(format_);
         }
 
         /// Construct an image from resolution, pixel format and bytes.
@@ -304,11 +325,33 @@ namespace rerun::archetypes {
         Image& operator=(const Image& other) = default;
         Image& operator=(Image&& other) = default;
 
+        /// Update only some specific fields of a `Image`.
+        static Image update_fields() {
+            return Image();
+        }
+
+        /// Clear all the fields of a `Image`.
+        static Image clear_fields();
+
+        /// The raw image data.
+        Image with_buffer(const rerun::components::ImageBuffer& _buffer) && {
+            buffer = ComponentBatch::from_loggable(_buffer, Descriptor_buffer).value_or_throw();
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// The format of the image.
+        Image with_format(const rerun::components::ImageFormat& _format) && {
+            format = ComponentBatch::from_loggable(_format, Descriptor_format).value_or_throw();
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
         /// Opacity of the image, useful for layering several images.
         ///
         /// Defaults to 1.0 (fully opaque).
-        Image with_opacity(rerun::components::Opacity _opacity) && {
-            opacity = std::move(_opacity);
+        Image with_opacity(const rerun::components::Opacity& _opacity) && {
+            opacity = ComponentBatch::from_loggable(_opacity, Descriptor_opacity).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
@@ -316,8 +359,9 @@ namespace rerun::archetypes {
         /// An optional floating point value that specifies the 2D drawing order.
         ///
         /// Objects with higher values are drawn on top of those with lower values.
-        Image with_draw_order(rerun::components::DrawOrder _draw_order) && {
-            draw_order = std::move(_draw_order);
+        Image with_draw_order(const rerun::components::DrawOrder& _draw_order) && {
+            draw_order =
+                ComponentBatch::from_loggable(_draw_order, Descriptor_draw_order).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

@@ -39,11 +39,12 @@ namespace rerun::archetypes {
     /// The byte size of the data is assumed to be `W * H * datatype.size`
     /// @param resolution The resolution of the image as {width, height}.
     /// @param datatype How the data should be interpreted.
-    DepthImage(
-        const void* bytes, WidthHeight resolution,
-        datatypes::ChannelDatatype datatype
-    )
-        : DepthImage{Collection<uint8_t>::borrow(bytes, num_bytes(resolution, datatype)), resolution, datatype} {}
+    DepthImage(const void* bytes, WidthHeight resolution, datatypes::ChannelDatatype datatype)
+        : DepthImage{
+              Collection<uint8_t>::borrow(bytes, num_bytes(resolution, datatype)),
+              resolution,
+              datatype
+          } {}
 
     /// Constructs image from pixel data + resolution + datatype.
     ///
@@ -54,18 +55,19 @@ namespace rerun::archetypes {
     /// @param resolution The resolution of the image as {width, height}.
     /// @param datatype How the data should be interpreted.
     DepthImage(
-        Collection<uint8_t> bytes, WidthHeight resolution,
-        datatypes::ChannelDatatype datatype
-    )
-        : buffer{bytes}, format{datatypes::ImageFormat{resolution, datatype}} {
-            if (buffer.size() != format.image_format.num_bytes()) {
-                Error(
-                    ErrorCode::InvalidTensorDimension,
-                    "DepthnImage buffer has the wrong size. Got " + std::to_string(buffer.size()) +
-                        " bytes, expected " + std::to_string(format.image_format.num_bytes())
-                )
-                    .handle();
-            }}
+        Collection<uint8_t> bytes, WidthHeight resolution, datatypes::ChannelDatatype datatype
+    ) {
+        auto image_format = datatypes::ImageFormat{resolution, datatype};
+        if (bytes.size() != image_format.num_bytes()) {
+            Error(
+                ErrorCode::InvalidTensorDimension,
+                "DepthImage buffer has the wrong size. Got " + std::to_string(bytes.size()) +
+                    " bytes, expected " + std::to_string(image_format.num_bytes())
+            )
+                .handle();
+        }
+        *this = std::move(*this).with_buffer(bytes).with_format(image_format);
+    }
 
     // </CODEGEN_COPY_TO_HEADER>
 

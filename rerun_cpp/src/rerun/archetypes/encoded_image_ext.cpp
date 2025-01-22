@@ -34,10 +34,11 @@ namespace rerun::archetypes {
         rerun::Collection<uint8_t> image_contents,
         std::optional<rerun::components::MediaType> media_type = {}
     ) {
-        EncodedImage image;
-        image.blob = image_contents;
-        image.media_type = media_type;
-        return image;
+        auto encoded_image = EncodedImage().with_blob(image_contents);
+        if (media_type.has_value()) {
+            return std::move(encoded_image).with_media_type(media_type.value());
+        }
+        return encoded_image;
     }
 
     // </CODEGEN_COPY_TO_HEADER>
