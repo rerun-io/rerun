@@ -117,7 +117,7 @@ namespace rerun::archetypes {
     /// ```
     struct AssetVideo {
         /// The asset's bytes.
-        rerun::components::Blob blob;
+        std::optional<ComponentBatch> blob;
 
         /// The Media Type of the asset.
         ///
@@ -126,7 +126,7 @@ namespace rerun::archetypes {
         ///
         /// If omitted, the viewer will try to guess from the data blob.
         /// If it cannot guess, it won't be able to render the asset.
-        std::optional<rerun::components::MediaType> media_type;
+        std::optional<ComponentBatch> media_type;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -136,6 +136,16 @@ namespace rerun::archetypes {
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.AssetVideo";
+
+        /// `ComponentDescriptor` for the `blob` field.
+        static constexpr auto Descriptor_blob = ComponentDescriptor(
+            ArchetypeName, "blob", Loggable<rerun::components::Blob>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `media_type` field.
+        static constexpr auto Descriptor_media_type = ComponentDescriptor(
+            ArchetypeName, "media_type",
+            Loggable<rerun::components::MediaType>::Descriptor.component_name
+        );
 
       public: // START of extensions from asset_video_ext.cpp:
         /// Creates a new `AssetVideo` from the file contents at `path`.
@@ -154,9 +164,11 @@ namespace rerun::archetypes {
             rerun::Collection<uint8_t> bytes,
             std::optional<rerun::components::MediaType> media_type = {}
         ) {
-            // TODO(jan): we could try and guess using magic bytes here, like rust does.
             AssetVideo asset = AssetVideo(std::move(bytes));
-            asset.media_type = media_type;
+            // TODO(jan): we could try and guess using magic bytes here, like rust does.
+            if (media_type.has_value()) {
+                return std::move(asset).with_media_type(media_type.value());
+            }
             return asset;
         }
 
@@ -174,7 +186,24 @@ namespace rerun::archetypes {
         AssetVideo& operator=(const AssetVideo& other) = default;
         AssetVideo& operator=(AssetVideo&& other) = default;
 
-        explicit AssetVideo(rerun::components::Blob _blob) : blob(std::move(_blob)) {}
+        explicit AssetVideo(rerun::components::Blob _blob)
+            : blob(ComponentBatch::from_loggable(std::move(_blob), Descriptor_blob).value_or_throw()
+              ) {}
+
+        /// Update only some specific fields of a `AssetVideo`.
+        static AssetVideo update_fields() {
+            return AssetVideo();
+        }
+
+        /// Clear all the fields of a `AssetVideo`.
+        static AssetVideo clear_fields();
+
+        /// The asset's bytes.
+        AssetVideo with_blob(const rerun::components::Blob& _blob) && {
+            blob = ComponentBatch::from_loggable(_blob, Descriptor_blob).value_or_throw();
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
 
         /// The Media Type of the asset.
         ///
@@ -183,8 +212,9 @@ namespace rerun::archetypes {
         ///
         /// If omitted, the viewer will try to guess from the data blob.
         /// If it cannot guess, it won't be able to render the asset.
-        AssetVideo with_media_type(rerun::components::MediaType _media_type) && {
-            media_type = std::move(_media_type);
+        AssetVideo with_media_type(const rerun::components::MediaType& _media_type) && {
+            media_type =
+                ComponentBatch::from_loggable(_media_type, Descriptor_media_type).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
