@@ -8,7 +8,6 @@ namespace rerun.archetypes;
 /// \example archetypes/arrows2d_simple title="Simple batch of 2D arrows" image="https://static.rerun.io/arrow2d_simple/59f044ccc03f7bc66ee802288f75706618b29a6e/1200w.png"
 table Arrows2D (
   "attr.rust.archetype_eager",
-  "attr.cpp.archetype_eager",
   "attr.rust.derive": "PartialEq",
   "attr.rust.new_pub_crate",
   "attr.cpp.no_field_ctors",

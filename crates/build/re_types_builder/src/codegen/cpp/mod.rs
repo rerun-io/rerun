@@ -16,8 +16,7 @@ use crate::{
     format_path,
     objects::ObjectClass,
     ArrowRegistry, Docs, ElementType, GeneratedFiles, Object, ObjectField, ObjectKind, Objects,
-    Reporter, Type, ATTR_CPP_ARCHETYPE_EAGER, ATTR_CPP_NO_DEFAULT_CTOR, ATTR_CPP_NO_FIELD_CTORS,
-    ATTR_CPP_RENAME_FIELD, ATTR_RERUN_LOG_MISSING_AS_EMPTY,
+    Reporter, Type, ATTR_CPP_NO_DEFAULT_CTOR, ATTR_CPP_NO_FIELD_CTORS, ATTR_CPP_RENAME_FIELD,
 };
 
 use self::array_builder::{arrow_array_builder_type, arrow_array_builder_type_object};
@@ -454,8 +453,6 @@ impl QuotedObject {
         let archetype_name = &obj.fqname;
         let quoted_docs = quote_obj_docs(reporter, objects, obj);
 
-        let eager_serialization = obj.is_attr_set(ATTR_CPP_ARCHETYPE_EAGER);
-
         let mut cpp_includes = Includes::new(obj.fqname.clone(), obj.scope());
         cpp_includes.insert_rerun("collection_adapter_builtins.hpp");
         hpp_includes.insert_system("utility"); // std::move
@@ -467,29 +464,11 @@ impl QuotedObject {
             .map(|obj_field| {
                 let docstring = quote_field_docs(reporter, objects, obj_field);
                 let field_name = field_name_ident(obj_field);
-
-                if eager_serialization {
-                    hpp_includes.insert_system("optional");
-                    quote! {
-                        #NEWLINE_TOKEN
-                        #docstring
-                        std::optional<ComponentBatch> #field_name
-                    }
-                } else {
-                    let field_type =
-                        quote_archetype_unserialized_type(&mut hpp_includes, obj_field);
-                    let field_type = if obj_field.is_nullable {
-                        hpp_includes.insert_system("optional");
-                        quote! { std::optional<#field_type> }
-                    } else {
-                        field_type
-                    };
-
-                    quote! {
+                hpp_includes.insert_system("optional");
+                quote! {
                     #NEWLINE_TOKEN
                     #docstring
-                    #field_type #field_name
-                    }
+                    std::optional<ComponentBatch> #field_name
                 }
             })
             .collect_vec();
@@ -512,14 +491,10 @@ impl QuotedObject {
                     let field_ident = field_name_ident(obj_field);
                     // C++ compilers give warnings for re-using the same name as the member variable.
                     let parameter_ident = format_ident!("_{}", obj_field.name);
+                    let descriptor = archetype_component_descriptor_constant_ident(obj_field);
                     (
                         quote! { #field_type #parameter_ident },
-                        if eager_serialization {
-                            let descriptor = archetype_component_descriptor_constant_ident(obj_field);
-                            quote! { #field_ident(ComponentBatch::from_loggable(std::move(#parameter_ident), #descriptor).value_or_throw()) }
-                        } else {
-                            quote! { #field_ident(std::move(#parameter_ident)) }
-                        },
+                        quote! { #field_ident(ComponentBatch::from_loggable(std::move(#parameter_ident), #descriptor).value_or_throw()) }
                     )
                 })
                 .unzip();
@@ -534,48 +509,46 @@ impl QuotedObject {
             });
         }
 
-        let descriptor_constants = if eager_serialization {
-            obj.fields
-                .iter()
-                .map(|obj_field| {
-                    let field_name = field_name(obj_field);
-                    let comment = quote_doc_comment(&format!("`ComponentDescriptor` for the `{field_name}` field."));
-                    let constant_name = archetype_component_descriptor_constant_ident(obj_field);
-                    let field_type = obj_field.typ.fqname();
-                    let field_type = quote_fqname_as_type_path(
-                        &mut hpp_includes,
-                        field_type.expect("Component field must have a non trivial type"),
+        let descriptor_constants = obj
+            .fields
+            .iter()
+            .map(|obj_field| {
+                let field_name = field_name(obj_field);
+                let comment = quote_doc_comment(&format!(
+                    "`ComponentDescriptor` for the `{field_name}` field."
+                ));
+                let constant_name = archetype_component_descriptor_constant_ident(obj_field);
+                let field_type = obj_field.typ.fqname();
+                let field_type = quote_fqname_as_type_path(
+                    &mut hpp_includes,
+                    field_type.expect("Component field must have a non trivial type"),
+                );
+                quote! {
+                    #NEWLINE_TOKEN
+                    #comment
+                    static constexpr auto #constant_name = ComponentDescriptor(
+                        ArchetypeName, #field_name, Loggable<#field_type>::Descriptor.component_name
                     );
-                    quote! {
-                        #NEWLINE_TOKEN
-                        #comment
-                        static constexpr auto #constant_name = ComponentDescriptor(
-                            ArchetypeName, #field_name, Loggable<#field_type>::Descriptor.component_name
-                        );
-                    }
-                })
-                .collect_vec()
-        } else {
-            Vec::new()
-        };
+                }
+            })
+            .collect_vec();
 
-        if eager_serialization {
-            // update_fields method - this is equivalent to the default constructor.
-            methods.push(Method {
-                docs: format!("Update only some specific fields of a `{type_ident}`.").into(),
-                declaration: MethodDeclaration {
-                    is_static: true,
-                    return_type: quote!(#type_ident),
-                    name_and_parameters: quote! { update_fields() },
-                },
-                definition_body: quote! {
-                    return #type_ident();
-                },
-                inline: true,
-            });
+        // update_fields method - this is equivalent to the default constructor.
+        methods.push(Method {
+            docs: format!("Update only some specific fields of a `{type_ident}`.").into(),
+            declaration: MethodDeclaration {
+                is_static: true,
+                return_type: quote!(#type_ident),
+                name_and_parameters: quote! { update_fields() },
+            },
+            definition_body: quote! {
+                return #type_ident();
+            },
+            inline: true,
+        });
 
-            // clear_fields method.
-            methods.push(Method {
+        // clear_fields method.
+        methods.push(Method {
                 docs: format!("Clear all the fields of a `{type_ident}`.").into(),
                 declaration: MethodDeclaration {
                     is_static: true,
@@ -605,21 +578,21 @@ impl QuotedObject {
                 inline: false,
             });
 
-            // Builder methods for all components.
-            for obj_field in &obj.fields {
-                let field_ident = field_name_ident(obj_field);
-                // C++ compilers give warnings for re-using the same name as the member variable.
-                let parameter_ident = format_ident!("_{}", obj_field.name);
-                let method_ident = format_ident!("with_{}", obj_field.name);
-                let field_type = quote_archetype_unserialized_type(&mut hpp_includes, obj_field);
-                let descriptor = archetype_component_descriptor_constant_ident(obj_field);
+        // Builder methods for all components.
+        for obj_field in &obj.fields {
+            let field_ident = field_name_ident(obj_field);
+            // C++ compilers give warnings for re-using the same name as the member variable.
+            let parameter_ident = format_ident!("_{}", obj_field.name);
+            let method_ident = format_ident!("with_{}", obj_field.name);
+            let field_type = quote_archetype_unserialized_type(&mut hpp_includes, obj_field);
+            let descriptor = archetype_component_descriptor_constant_ident(obj_field);
 
-                // TODO(andreas): Haven't tested this again since introducing eager serialization.
-                hpp_includes.insert_rerun("compiler_utils.hpp");
-                let gcc_ignore_comment =
-                    quote_comment("See: https://github.com/rerun-io/rerun/issues/4027");
+            // TODO: Haven't tested this again since introducing eager serialization.
+            hpp_includes.insert_rerun("compiler_utils.hpp");
+            let gcc_ignore_comment =
+                quote_comment("See: https://github.com/rerun-io/rerun/issues/4027");
 
-                methods.push(Method {
+            methods.push(Method {
                     docs: obj_field.docs.clone().into(),
                     declaration: MethodDeclaration {
                         is_static: false,
@@ -636,38 +609,6 @@ impl QuotedObject {
                     },
                     inline: true,
                 });
-            }
-        } else {
-            // Builder methods for all optional components.
-            for obj_field in obj.fields.iter().filter(|field| field.is_nullable) {
-                let field_ident = field_name_ident(obj_field);
-                // C++ compilers give warnings for re-using the same name as the member variable.
-                let parameter_ident = format_ident!("_{}", obj_field.name);
-                let method_ident = format_ident!("with_{}", obj_field.name);
-                let field_type = quote_archetype_unserialized_type(&mut hpp_includes, obj_field);
-
-                hpp_includes.insert_rerun("compiler_utils.hpp");
-                let gcc_ignore_comment =
-                    quote_comment("See: https://github.com/rerun-io/rerun/issues/4027");
-
-                methods.push(Method {
-                    docs: obj_field.docs.clone().into(),
-                    declaration: MethodDeclaration {
-                        is_static: false,
-                        return_type: quote!(#type_ident),
-                        name_and_parameters: quote! {
-                            #method_ident(#field_type #parameter_ident) &&
-                        },
-                    },
-                    definition_body: quote! {
-                        #field_ident = std::move(#parameter_ident);
-                        #NEWLINE_TOKEN
-                        #gcc_ignore_comment
-                        RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
-                    },
-                    inline: true,
-                });
-            }
         }
 
         let quoted_namespace = if let Some(scope) = obj.scope() {
@@ -1760,47 +1701,13 @@ fn archetype_serialize(type_ident: &Ident, obj: &Object, hpp_includes: &mut Incl
         quote!(archetypes)
     };
 
-    let archetype_name = &obj.fqname;
-    let eager_serialization = obj.is_attr_set(ATTR_CPP_ARCHETYPE_EAGER);
-
     let num_fields = quote_integer(obj.fields.len() + 1); // Plus one for the indicator.
     let push_batches = obj.fields.iter().map(|field| {
-        let archetype_field_name = field_name(field);
         let field_name_ident = field_name_ident(field);
 
-        if eager_serialization {
-            quote! {
-                if (archetype.#field_name_ident.has_value()) {
-                    cells.push_back(archetype.#field_name_ident.value());
-                }
-            }
-        } else {
-            let field_fqname = &field.typ.fqname();
-            let push_back = quote! {
-                RR_RETURN_NOT_OK(result.error);
-                cells.push_back(std::move(result.value));
-            };
-
-            if field.is_nullable && !obj.attrs.has(ATTR_RERUN_LOG_MISSING_AS_EMPTY) {
-                quote! {
-                    if (archetype.#field_name_ident.has_value()) {
-                        auto result = ComponentBatch::from_loggable(
-                            archetype.#field_name_ident.value(),
-                            ComponentDescriptor(#archetype_name, #archetype_field_name, #field_fqname)
-                        );
-                        #push_back
-                    }
-                }
-            } else {
-                quote! {
-                    {
-                        auto result = ComponentBatch::from_loggable(
-                            archetype.#field_name_ident,
-                            ComponentDescriptor(#archetype_name, #archetype_field_name, #field_fqname)
-                        );
-                        #push_back
-                    }
-                }
+        quote! {
+            if (archetype.#field_name_ident.has_value()) {
+                cells.push_back(archetype.#field_name_ident.value());
             }
         }
     });
