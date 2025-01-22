@@ -256,7 +256,10 @@ rfd = { version = "0.15", default-features = false, features = [
 ] }
 rmp-serde = "1"
 ron = "0.8.0"
+roxmltree = "0.19.0"
 rust-format = "0.3"
+rustdoc-json = "0.9.2"
+rustdoc-types = "0.29.1"
 seq-macro = "0.3"
 serde = { version = "1", features = ["derive"] }
 serde_bytes = "0.11"
