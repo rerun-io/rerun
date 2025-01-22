@@ -5,7 +5,27 @@
 
 #include "../collection_adapter_builtins.hpp"
 
-namespace rerun::archetypes {}
+namespace rerun::archetypes {
+    Pinhole Pinhole::clear_fields() {
+        auto archetype = Pinhole();
+        archetype.image_from_camera =
+            ComponentBatch::empty<rerun::components::PinholeProjection>(Descriptor_image_from_camera
+            )
+                .value_or_throw();
+        archetype.resolution =
+            ComponentBatch::empty<rerun::components::Resolution>(Descriptor_resolution)
+                .value_or_throw();
+        archetype.camera_xyz =
+            ComponentBatch::empty<rerun::components::ViewCoordinates>(Descriptor_camera_xyz)
+                .value_or_throw();
+        archetype.image_plane_distance =
+            ComponentBatch::empty<rerun::components::ImagePlaneDistance>(
+                Descriptor_image_plane_distance
+            )
+                .value_or_throw();
+        return archetype;
+    }
+} // namespace rerun::archetypes
 
 namespace rerun {
 
@@ -16,53 +36,17 @@ namespace rerun {
         std::vector<ComponentBatch> cells;
         cells.reserve(5);
 
-        {
-            auto result = ComponentBatch::from_loggable(
-                archetype.image_from_camera,
-                ComponentDescriptor(
-                    "rerun.archetypes.Pinhole",
-                    "image_from_camera",
-                    "rerun.components.PinholeProjection"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+        if (archetype.image_from_camera.has_value()) {
+            cells.push_back(archetype.image_from_camera.value());
         }
         if (archetype.resolution.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.resolution.value(),
-                ComponentDescriptor(
-                    "rerun.archetypes.Pinhole",
-                    "resolution",
-                    "rerun.components.Resolution"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.resolution.value());
         }
         if (archetype.camera_xyz.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.camera_xyz.value(),
-                ComponentDescriptor(
-                    "rerun.archetypes.Pinhole",
-                    "camera_xyz",
-                    "rerun.components.ViewCoordinates"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.camera_xyz.value());
         }
         if (archetype.image_plane_distance.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.image_plane_distance.value(),
-                ComponentDescriptor(
-                    "rerun.archetypes.Pinhole",
-                    "image_plane_distance",
-                    "rerun.components.ImagePlaneDistance"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.image_plane_distance.value());
         }
         {
             auto indicator = Pinhole::IndicatorComponent();
