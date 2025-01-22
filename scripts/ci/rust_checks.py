@@ -31,13 +31,15 @@ import time
 from glob import glob
 
 
-class Timing:
+class Result:
+    """The result of running one test."""
+
     def __init__(self, command: str, duration: float) -> None:
         self.command = command
         self.duration = duration
 
 
-def run_cargo(cargo_cmd: str, cargo_args: str, clippy_conf: str | None = None) -> Timing:
+def run_cargo(cargo_cmd: str, cargo_args: str, clippy_conf: str | None = None) -> Result:
     args = ["cargo", cargo_cmd]
     if cargo_cmd not in ["deny", "fmt", "format"]:
         args.append("--quiet")
@@ -69,7 +71,7 @@ def run_cargo(cargo_cmd: str, cargo_args: str, clippy_conf: str | None = None) -
         )
         sys.exit(result.returncode)
 
-    return Timing(cmd_str, time.time() - start_time)
+    return Result(cmd_str, time.time() - start_time)
 
 
 def package_name_from_cargo_toml(cargo_toml_path: str) -> str:
@@ -126,55 +128,57 @@ def main() -> None:
 
     # NOTE: a lot of these jobs use very little CPU, but we cannot parallelize them because they all take a lock on the `target` directory.
 
-    timings: list[Timing] = []
+    results: list[Result] = []
 
     for enabled_check_name in enabled_check_names:
-        checks[check_names.index(enabled_check_name)][1](timings)
+        checks[check_names.index(enabled_check_name)][1](results)
+
+    # ----------------------
 
     # Print timings overview
     print("-----------------")
     print("Timings:")
-    timings.sort(key=lambda timing: timing.duration, reverse=True)
-    for timing in timings:
-        print(f"{timing.duration:.2f}s \t {timing.command}")
+    results.sort(key=lambda result: result.duration, reverse=True)
+    for result in results:
+        print(f"{result.duration:.2f}s \t {result.command}")
 
 
-def base_checks(timings: list[Timing]) -> None:
+def base_checks(results: list[Result]) -> None:
     # First check with --locked to make sure Cargo.lock is up to date.
-    timings.append(run_cargo("check", "--locked --all-features"))
-    timings.append(run_cargo("fmt", "--all -- --check"))
-    timings.append(run_cargo("clippy", "--all-targets --all-features -- --deny warnings"))
+    results.append(run_cargo("check", "--locked --all-features"))
+    results.append(run_cargo("fmt", "--all -- --check"))
+    results.append(run_cargo("clippy", "--all-targets --all-features -- --deny warnings"))
 
 
-def sdk_variations(timings: list[Timing]) -> None:
+def sdk_variations(results: list[Result]) -> None:
     # Check a few important permutations of the feature flags for our `rerun` library:
-    timings.append(run_cargo("check", "-p rerun --no-default-features"))
-    timings.append(run_cargo("check", "-p rerun --no-default-features --features sdk"))
+    results.append(run_cargo("check", "-p rerun --no-default-features"))
+    results.append(run_cargo("check", "-p rerun --no-default-features --features sdk"))
 
 
-def cargo_deny(timings: list[Timing]) -> None:
+def cargo_deny(results: list[Result]) -> None:
     # Note: running just `cargo deny check` without a `--target` can result in
     # false positives due to https://github.com/EmbarkStudios/cargo-deny/issues/324
     # Installing is quite quick if it's already installed.
     #
     # `cargo-deny` 0.16.2 raises MSRV 1.81.0, we're not there yet.
-    timings.append(run_cargo("install", "--locked cargo-deny@0.16.1"))
-    timings.append(run_cargo("deny", "--all-features --log-level error --target aarch64-apple-darwin check"))
-    timings.append(run_cargo("deny", "--all-features --log-level error --target i686-pc-windows-gnu check"))
-    timings.append(run_cargo("deny", "--all-features --log-level error --target i686-pc-windows-msvc check"))
-    timings.append(run_cargo("deny", "--all-features --log-level error --target i686-unknown-linux-gnu check"))
-    timings.append(run_cargo("deny", "--all-features --log-level error --target wasm32-unknown-unknown check"))
-    timings.append(run_cargo("deny", "--all-features --log-level error --target x86_64-apple-darwin check"))
-    timings.append(run_cargo("deny", "--all-features --log-level error --target x86_64-pc-windows-gnu check"))
-    timings.append(run_cargo("deny", "--all-features --log-level error --target x86_64-pc-windows-msvc check"))
-    timings.append(run_cargo("deny", "--all-features --log-level error --target x86_64-unknown-linux-gnu check"))
-    timings.append(run_cargo("deny", "--all-features --log-level error --target x86_64-unknown-linux-musl check"))
-    timings.append(run_cargo("deny", "--all-features --log-level error --target x86_64-unknown-redox check"))
+    results.append(run_cargo("install", "--locked cargo-deny@0.16.1"))
+    results.append(run_cargo("deny", "--all-features --log-level error --target aarch64-apple-darwin check"))
+    results.append(run_cargo("deny", "--all-features --log-level error --target i686-pc-windows-gnu check"))
+    results.append(run_cargo("deny", "--all-features --log-level error --target i686-pc-windows-msvc check"))
+    results.append(run_cargo("deny", "--all-features --log-level error --target i686-unknown-linux-gnu check"))
+    results.append(run_cargo("deny", "--all-features --log-level error --target wasm32-unknown-unknown check"))
+    results.append(run_cargo("deny", "--all-features --log-level error --target x86_64-apple-darwin check"))
+    results.append(run_cargo("deny", "--all-features --log-level error --target x86_64-pc-windows-gnu check"))
+    results.append(run_cargo("deny", "--all-features --log-level error --target x86_64-pc-windows-msvc check"))
+    results.append(run_cargo("deny", "--all-features --log-level error --target x86_64-unknown-linux-gnu check"))
+    results.append(run_cargo("deny", "--all-features --log-level error --target x86_64-unknown-linux-musl check"))
+    results.append(run_cargo("deny", "--all-features --log-level error --target x86_64-unknown-redox check"))
 
 
-def wasm(timings: list[Timing]) -> None:
+def wasm(results: list[Result]) -> None:
     # Check viewer for wasm32
-    timings.append(
+    results.append(
         run_cargo(
             "clippy",
             "--all-features --target wasm32-unknown-unknown --target-dir target_wasm -p re_viewer -- --deny warnings",
@@ -182,26 +186,26 @@ def wasm(timings: list[Timing]) -> None:
         )
     )
     # Check re_renderer examples for wasm32.
-    timings.append(
+    results.append(
         run_cargo("check", "--target wasm32-unknown-unknown --target-dir target_wasm -p re_renderer --examples")
     )
 
 
-def individual_examples(timings: list[Timing]) -> None:
+def individual_examples(results: list[Result]) -> None:
     for cargo_toml_path in glob("./examples/rust/**/Cargo.toml", recursive=True):
         package_name = package_name_from_cargo_toml(cargo_toml_path)
-        timings.append(run_cargo("check", f"--no-default-features -p {package_name}"))
-        timings.append(run_cargo("check", f"--all-features -p {package_name}"))
+        results.append(run_cargo("check", f"--no-default-features -p {package_name}"))
+        results.append(run_cargo("check", f"--all-features -p {package_name}"))
 
 
-def individual_crates(timings: list[Timing]) -> None:
+def individual_crates(results: list[Result]) -> None:
     for cargo_toml_path in glob("./crates/**/Cargo.toml", recursive=True):
         package_name = package_name_from_cargo_toml(cargo_toml_path)
-        timings.append(run_cargo("check", f"--no-default-features -p {package_name}"))
-        timings.append(run_cargo("check", f"--all-features -p {package_name}"))
+        results.append(run_cargo("check", f"--no-default-features -p {package_name}"))
+        results.append(run_cargo("check", f"--all-features -p {package_name}"))
 
 
-def docs(timings: list[Timing]) -> None:
+def docs(results: list[Result]) -> None:
     # ⚠️ This version skips the `rerun` crate itself
     # Presumably due to https://github.com/rust-lang/rust/issues/114891, checking the `rerun` crate
     # takes about 20minutes on CI (per command).
@@ -210,17 +214,17 @@ def docs(timings: list[Timing]) -> None:
     # For details see https://github.com/rerun-io/rerun/issues/7387
 
     # These take a few minutes each on CI, but very useful for catching broken doclinks.
-    timings.append(run_cargo("doc", "--no-deps --all-features --workspace --exclude rerun"))
-    timings.append(run_cargo("doc", "--document-private-items --no-deps --all-features --workspace --exclude rerun"))
+    results.append(run_cargo("doc", "--no-deps --all-features --workspace --exclude rerun"))
+    results.append(run_cargo("doc", "--document-private-items --no-deps --all-features --workspace --exclude rerun"))
 
 
-def docs_slow(timings: list[Timing]) -> None:
+def docs_slow(results: list[Result]) -> None:
     # See `docs` above, this may take 20min each due to issues in cargo doc.
-    timings.append(run_cargo("doc", "--no-deps --all-features -p rerun"))
-    timings.append(run_cargo("doc", "--document-private-items --no-deps --all-features -p rerun"))
+    results.append(run_cargo("doc", "--no-deps --all-features -p rerun"))
+    results.append(run_cargo("doc", "--document-private-items --no-deps --all-features -p rerun"))
 
 
-def tests(timings: list[Timing]) -> None:
+def tests(results: list[Result]) -> None:
     # We first use `--no-run` to measure the time of compiling vs actually running
 
     # Make sure we have the test assets first.
@@ -228,12 +232,12 @@ def tests(timings: list[Timing]) -> None:
     subprocess.run([sys.executable, "tests/assets/download_test_assets.py"])
 
     # Just a normal `cargo test` should always work:
-    timings.append(run_cargo("test", "--all-targets --no-run"))
-    timings.append(run_cargo("test", "--all-targets"))
+    results.append(run_cargo("test", "--all-targets --no-run"))
+    results.append(run_cargo("test", "--all-targets"))
 
     # Full test of everything:
-    timings.append(run_cargo("test", "--all-targets --all-features --no-run"))
-    timings.append(run_cargo("test", "--all-targets --all-features"))
+    results.append(run_cargo("test", "--all-targets --all-features --no-run"))
+    results.append(run_cargo("test", "--all-targets --all-features"))
 
 
 if __name__ == "__main__":
