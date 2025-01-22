@@ -38,8 +38,8 @@ url.workspace = true
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-tonic = { workspace = true, default-features = false, features = ["transport"] }
 tokio.workspace = true
+tonic = { workspace = true, default-features = false, features = ["transport"] }
 
 # Web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
