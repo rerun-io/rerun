@@ -137,15 +137,19 @@ def main() -> None:
     # NOTE: a lot of these jobs use very little CPU, but we cannot parallelize them because they all take a lock on the `target` directory.
 
     results: list[Result] = []
+    start_time = time.time()
 
     for enabled_check_name in enabled_check_names:
         checks[check_names.index(enabled_check_name)][1](results)
+
+    time.time() - start_time
 
     # ----------------------
 
     # Print timings overview
     print("-----------------")
-    print("Timings:")
+    print("Ran {len(results)} checks in {total_duration:.0f}s")
+    print("Individual timings, slowest first:")
     results.sort(key=lambda result: result.duration, reverse=True)
     for result in results:
         print(f"{result.duration:.2f}s \t {result.command}")
