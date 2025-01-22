@@ -36,7 +36,7 @@ pub enum DataSource {
     #[cfg(feature = "grpc")]
     RerunGrpcUrl { url: String },
 
-    /// A stream of messages over gRPC.
+    /// A stream of messages over gRPC, relayed from the SDK.
     #[cfg(feature = "grpc")]
     MessageProxy { url: String },
 }
@@ -99,6 +99,7 @@ impl DataSource {
             return Self::RerunGrpcUrl { url: uri };
         }
 
+        // TODO(#8761): URL prefix
         #[cfg(feature = "grpc")]
         if uri.starts_with("temp://") {
             return Self::MessageProxy { url: uri };
