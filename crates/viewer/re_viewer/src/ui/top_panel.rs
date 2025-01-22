@@ -161,16 +161,16 @@ fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::LogMsg>
                 SmartChannelSource::File(_)
                 | SmartChannelSource::RrdHttpStream { .. }
                 | SmartChannelSource::RerunGrpcStream { .. }
-                | SmartChannelSource::MessageProxy { .. }
                 | SmartChannelSource::Stdin => {
                     false // These show up in the recordings panel as a "Loading…" in `recordings_panel.rs`
                 }
 
-                re_smart_channel::SmartChannelSource::RrdWebEventListener
-                | re_smart_channel::SmartChannelSource::Sdk
-                | re_smart_channel::SmartChannelSource::WsClient { .. }
-                | re_smart_channel::SmartChannelSource::TcpServer { .. }
-                | re_smart_channel::SmartChannelSource::JsChannel { .. } => true,
+                SmartChannelSource::RrdWebEventListener
+                | SmartChannelSource::Sdk
+                | SmartChannelSource::WsClient { .. }
+                | SmartChannelSource::TcpServer { .. }
+                | SmartChannelSource::MessageProxy { .. }
+                | SmartChannelSource::JsChannel { .. } => true,
             }
         })
         .collect_vec();
