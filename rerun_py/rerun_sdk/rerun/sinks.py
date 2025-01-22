@@ -135,6 +135,33 @@ def connect_tcp(
     )
 
 
+_is_connect_grpc_available = hasattr(bindings, "connect_grpc")
+
+
+def connect_grpc(
+    addr: str | None = None,
+    *,
+    recording: RecordingStream | None = None,
+) -> None:
+    if not _is_connect_grpc_available:
+        raise NotImplementedError("`rerun_sdk` was compiled without `remote` feature, connect_grpc is not available")
+
+    if not is_recording_enabled(recording):
+        logging.warning("Rerun is disabled - connect() call ignored")
+        return
+
+    application_id = get_application_id(recording=recording)  # NOLINT
+    if application_id is None:
+        raise ValueError(
+            "No application id found. You must call rerun.init before connecting to a viewer, or provide a recording."
+        )
+
+    bindings.connect_grpc(
+        addr=addr,
+        recording=recording.to_native() if recording is not None else None,
+    )
+
+
 def save(
     path: str | pathlib.Path, default_blueprint: BlueprintLike | None = None, recording: RecordingStream | None = None
 ) -> None:

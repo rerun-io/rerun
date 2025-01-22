@@ -157,6 +157,7 @@ arrow = { version = "53.4", default-features = false }
 arrow-schema = { version = "53.4", default-features = false }
 arrow2 = { package = "re_arrow2", version = "0.18", features = ["arrow"] }
 async-executor = "1.0"
+async-stream = "0.3"
 backtrace = "0.3"
 base64 = "0.22"
 bincode = "1.3"

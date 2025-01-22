@@ -172,6 +172,7 @@ from .script_helpers import (
 )
 from .sinks import (
     connect as connect,
+    connect_grpc as connect_grpc,
     connect_tcp as connect_tcp,
     disconnect as disconnect,
     save as save,

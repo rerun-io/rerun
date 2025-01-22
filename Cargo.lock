@@ -6039,6 +6039,7 @@ name = "re_grpc_client"
 version = "0.22.0-alpha.1+dev"
 dependencies = [
  "arrow",
+ "async-stream",
  "re_arrow_util",
  "re_chunk",
  "re_error",
@@ -6396,6 +6397,7 @@ dependencies = [
  "re_chunk",
  "re_chunk_store",
  "re_data_loader",
+ "re_grpc_client",
  "re_log",
  "re_log_encoding",
  "re_log_types",
