@@ -5,7 +5,27 @@
 
 #include "../collection_adapter_builtins.hpp"
 
-namespace rerun::archetypes {}
+namespace rerun::archetypes {
+    GraphNodes GraphNodes::clear_fields() {
+        auto archetype = GraphNodes();
+        archetype.node_ids =
+            ComponentBatch::empty<rerun::components::GraphNode>(Descriptor_node_ids)
+                .value_or_throw();
+        archetype.positions =
+            ComponentBatch::empty<rerun::components::Position2D>(Descriptor_positions)
+                .value_or_throw();
+        archetype.colors =
+            ComponentBatch::empty<rerun::components::Color>(Descriptor_colors).value_or_throw();
+        archetype.labels =
+            ComponentBatch::empty<rerun::components::Text>(Descriptor_labels).value_or_throw();
+        archetype.show_labels =
+            ComponentBatch::empty<rerun::components::ShowLabels>(Descriptor_show_labels)
+                .value_or_throw();
+        archetype.radii =
+            ComponentBatch::empty<rerun::components::Radius>(Descriptor_radii).value_or_throw();
+        return archetype;
+    }
+} // namespace rerun::archetypes
 
 namespace rerun {
 
@@ -16,77 +36,23 @@ namespace rerun {
         std::vector<ComponentBatch> cells;
         cells.reserve(7);
 
-        {
-            auto result = ComponentBatch::from_loggable(
-                archetype.node_ids,
-                ComponentDescriptor(
-                    "rerun.archetypes.GraphNodes",
-                    "node_ids",
-                    "rerun.components.GraphNode"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+        if (archetype.node_ids.has_value()) {
+            cells.push_back(archetype.node_ids.value());
         }
         if (archetype.positions.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.positions.value(),
-                ComponentDescriptor(
-                    "rerun.archetypes.GraphNodes",
-                    "positions",
-                    "rerun.components.Position2D"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.positions.value());
         }
         if (archetype.colors.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.colors.value(),
-                ComponentDescriptor(
-                    "rerun.archetypes.GraphNodes",
-                    "colors",
-                    "rerun.components.Color"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.colors.value());
         }
         if (archetype.labels.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.labels.value(),
-                ComponentDescriptor(
-                    "rerun.archetypes.GraphNodes",
-                    "labels",
-                    "rerun.components.Text"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.labels.value());
         }
         if (archetype.show_labels.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.show_labels.value(),
-                ComponentDescriptor(
-                    "rerun.archetypes.GraphNodes",
-                    "show_labels",
-                    "rerun.components.ShowLabels"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.show_labels.value());
         }
         if (archetype.radii.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.radii.value(),
-                ComponentDescriptor(
-                    "rerun.archetypes.GraphNodes",
-                    "radii",
-                    "rerun.components.Radius"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.radii.value());
         }
         {
             auto indicator = GraphNodes::IndicatorComponent();

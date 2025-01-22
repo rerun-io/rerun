@@ -5,7 +5,17 @@
 
 #include "../collection_adapter_builtins.hpp"
 
-namespace rerun::archetypes {}
+namespace rerun::archetypes {
+    GraphEdges GraphEdges::clear_fields() {
+        auto archetype = GraphEdges();
+        archetype.edges =
+            ComponentBatch::empty<rerun::components::GraphEdge>(Descriptor_edges).value_or_throw();
+        archetype.graph_type =
+            ComponentBatch::empty<rerun::components::GraphType>(Descriptor_graph_type)
+                .value_or_throw();
+        return archetype;
+    }
+} // namespace rerun::archetypes
 
 namespace rerun {
 
@@ -16,29 +26,11 @@ namespace rerun {
         std::vector<ComponentBatch> cells;
         cells.reserve(3);
 
-        {
-            auto result = ComponentBatch::from_loggable(
-                archetype.edges,
-                ComponentDescriptor(
-                    "rerun.archetypes.GraphEdges",
-                    "edges",
-                    "rerun.components.GraphEdge"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+        if (archetype.edges.has_value()) {
+            cells.push_back(archetype.edges.value());
         }
         if (archetype.graph_type.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.graph_type.value(),
-                ComponentDescriptor(
-                    "rerun.archetypes.GraphEdges",
-                    "graph_type",
-                    "rerun.components.GraphType"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.graph_type.value());
         }
         {
             auto indicator = GraphEdges::IndicatorComponent();
