@@ -5,6 +5,8 @@
 mod auto_layout;
 mod container;
 mod entity_add_info;
+#[cfg(feature = "testing")]
+pub mod test_context_ext;
 pub mod ui;
 mod view;
 mod view_contents;

@@ -53,6 +53,11 @@ pub struct BlueprintTree {
 }
 
 impl BlueprintTree {
+    /// Activates the search filter (for e.g. test purposes).
+    pub fn activate_filter(&mut self, query: &str) {
+        self.filter_state.activate(query);
+    }
+
     /// Show the Blueprint section of the left panel based on the current [`ViewportBlueprint`]
     pub fn show(
         &mut self,

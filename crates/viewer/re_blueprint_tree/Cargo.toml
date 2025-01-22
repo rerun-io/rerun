@@ -33,3 +33,12 @@ re_viewport_blueprint.workspace = true
 egui.workspace = true
 itertools.workspace = true
 smallvec.workspace = true
+
+
+[dev-dependencies]
+re_viewer_context = { workspace = true, features = ["testing"] }
+re_viewport_blueprint = { workspace = true, features = ["testing"] }
+re_chunk_store.workspace = true
+re_view_spatial.workspace = true
+
+egui_kittest.workspace = true
