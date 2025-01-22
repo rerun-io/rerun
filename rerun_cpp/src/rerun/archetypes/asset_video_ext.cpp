@@ -90,10 +90,7 @@ namespace rerun::archetypes {
         auto blob_array =
             std::dynamic_pointer_cast<arrow::PrimitiveArray>(blob_list_array->values());
         if (!blob_array) {
-            return Error(
-                ErrorCode::ArrowStatusCode_TypeError,
-                "Blob array is not a primitive array"
-            );
+            return Error(ErrorCode::InvalidArchetypeField, "Blob array is not a primitive array");
         }
         auto blob_array_data = blob_array->values();
 

@@ -5,7 +5,17 @@
 
 #include "../collection_adapter_builtins.hpp"
 
-namespace rerun::archetypes {}
+namespace rerun::archetypes {
+    Tensor Tensor::clear_fields() {
+        auto archetype = Tensor();
+        archetype.data =
+            ComponentBatch::empty<rerun::components::TensorData>(Descriptor_data).value_or_throw();
+        archetype.value_range =
+            ComponentBatch::empty<rerun::components::ValueRange>(Descriptor_value_range)
+                .value_or_throw();
+        return archetype;
+    }
+} // namespace rerun::archetypes
 
 namespace rerun {
 
@@ -16,29 +26,11 @@ namespace rerun {
         std::vector<ComponentBatch> cells;
         cells.reserve(3);
 
-        {
-            auto result = ComponentBatch::from_loggable(
-                archetype.data,
-                ComponentDescriptor(
-                    "rerun.archetypes.Tensor",
-                    "data",
-                    "rerun.components.TensorData"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+        if (archetype.data.has_value()) {
+            cells.push_back(archetype.data.value());
         }
         if (archetype.value_range.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.value_range.value(),
-                ComponentDescriptor(
-                    "rerun.archetypes.Tensor",
-                    "value_range",
-                    "rerun.components.ValueRange"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.value_range.value());
         }
         {
             auto indicator = Tensor::IndicatorComponent();
