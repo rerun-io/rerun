@@ -239,8 +239,8 @@ py-lint = "mypy --install-types --non-interactive --no-warn-unused-ignore"
 
 rs-plot-dashboard = { cmd = "cargo r -p plot_dashboard_stress --release --" }
 
-dev-tools = "cargo run -q --locked --quiet -p re_dev_tools --"
-build-examples = "cargo run -q --locked --quiet -p re_dev_tools -- build-examples"
+dev-tools = "cargo run --quiet --locked -p re_dev_tools --"
+build-examples = "cargo run --quiet --locked -p re_dev_tools -- build-examples"
 
 # Start a local meilisearch instance at `localhost:7700` with master key `test`.
 # This should only be used for testing the search index locally.
