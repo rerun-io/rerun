@@ -250,6 +250,35 @@ impl Chunk {
             })
     }
 
+    /// Returns `true` if both chunks share the same descriptors for the components that
+    /// _they have in common_.
+    #[inline]
+    pub fn same_descriptors(&self, rhs: &Self) -> bool {
+        self.components.values().all(|lhs_per_desc| {
+            if lhs_per_desc.len() > 1 {
+                // If it's already in UB land, we might as well give up immediately.
+                return false;
+            }
+
+            lhs_per_desc.keys().all(|lhs_desc| {
+                let Some(rhs_per_desc) = rhs.components.get(&lhs_desc.component_name) else {
+                    return true;
+                };
+
+                if rhs_per_desc.len() > 1 {
+                    // If it's already in UB land, we might as well give up immediately.
+                    return false;
+                }
+
+                if let Some(rhs_desc) = rhs_per_desc.keys().next() {
+                    lhs_desc == rhs_desc
+                } else {
+                    true
+                }
+            })
+        })
+    }
+
     /// Returns true if two chunks are concatenable.
     ///
     /// To be concatenable, two chunks must:
@@ -258,7 +287,10 @@ impl Chunk {
     /// * Use the same datatypes for the components they have in common.
     #[inline]
     pub fn concatenable(&self, rhs: &Self) -> bool {
-        self.same_entity_paths(rhs) && self.same_timelines(rhs) && self.same_datatypes(rhs)
+        self.same_entity_paths(rhs)
+            && self.same_timelines(rhs)
+            && self.same_datatypes(rhs)
+            && self.same_descriptors(rhs)
     }
 }
 
