@@ -16,8 +16,8 @@ use crate::{
     format_path,
     objects::ObjectClass,
     ArrowRegistry, Docs, ElementType, GeneratedFiles, Object, ObjectField, ObjectKind, Objects,
-    Reporter, Type, ATTR_CPP_ARCHETYPE_EAGER, ATTR_CPP_NO_FIELD_CTORS, ATTR_CPP_RENAME_FIELD,
-    ATTR_RERUN_LOG_MISSING_AS_EMPTY,
+    Reporter, Type, ATTR_CPP_ARCHETYPE_EAGER, ATTR_CPP_NO_DEFAULT_CTOR, ATTR_CPP_NO_FIELD_CTORS,
+    ATTR_CPP_RENAME_FIELD, ATTR_RERUN_LOG_MISSING_AS_EMPTY,
 };
 
 use self::array_builder::{arrow_array_builder_type, arrow_array_builder_type_object};
@@ -710,6 +710,12 @@ impl QuotedObject {
                 obj.deprecation_notice().is_some() || has_any_deprecated_fields,
             );
 
+        let default_ctor = if obj.is_attr_set(ATTR_CPP_NO_DEFAULT_CTOR) {
+            quote! {}
+        } else {
+            quote! { #type_ident() = default; }
+        };
+
         // Note that we run into "rule of five": https://en.cppreference.com/w/cpp/language/rule_of_three
         // * we have to manually opt-in to default ctor because we (most of the time) have a user defined constructor
         //   -> this means that there's no non-move constructors/assignments
@@ -743,7 +749,7 @@ impl QuotedObject {
                     #hpp_type_extensions
 
                 public:
-                    #type_ident() = default;
+                    #default_ctor
                     #type_ident(#type_ident&& other) = default;
                     #type_ident(const #type_ident& other) = default;
                     #type_ident& operator=(const #type_ident& other) = default;

@@ -3,6 +3,11 @@ namespace cpp.attributes;
 /// Don't emit parameterized constructors for fields, only copy, move and default constructors.
 attribute "attr.cpp.no_field_ctors";
 
+/// Don't emit default constructor, only copy and move.
+///
+/// This requires a custom default constructor in the extensions.
+attribute "attr.cpp.no_default_ctor";
+
 /// Changes the name of a field in the generated C++ code.
 /// This can be used to avoid name clashes with C++ keywords or methods.
 attribute "attr.cpp.rename_field";
