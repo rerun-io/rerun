@@ -14,6 +14,7 @@ namespace rerun.archetypes;
 ///
 /// \example archetypes/ellipsoids3d_simple title="Covariance ellipsoid" image="https://static.rerun.io/elliopsoid3d_simple/bd5d46e61b80ae44792b52ee07d750a7137002ea/1200w.png"
 table Ellipsoids3D (
+  "attr.cpp.archetype_eager",
   "attr.rust.archetype_eager",
   "attr.rust.derive": "PartialEq",
   "attr.rust.new_pub_crate",
