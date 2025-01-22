@@ -47,7 +47,7 @@ re_tuid.workspace = true
 anyhow.workspace = true
 arrow.workspace = true
 backtrace.workspace = true
-bytemuck.workspace = true
+bytemuck = { workspace = true, features = ["derive"] }
 document-features.workspace = true
 half.workspace = true
 itertools.workspace = true

@@ -32,9 +32,9 @@ glob.workspace = true
 indicatif.workspace = true
 itertools.workspace = true
 rayon.workspace = true
-roxmltree = "0.19.0"
-rustdoc-json = "0.9.2"
-rustdoc-types = "0.29.1"
+roxmltree.workspace = true
+rustdoc-json.workspace = true
+rustdoc-types.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 serde_yaml.workspace = true
