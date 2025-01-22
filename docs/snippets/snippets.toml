@@ -15,8 +15,13 @@
 # These arbitrary feature names will be indexed exactly as written down.
 # Add anything you can think about!
 [snippets_ref.features]
-"Dataframes" = ["reference/dataframe_query", "reference/dataframe_view_query"]
-"`AnyValue`" = [
+"Get dataframes out" = ["reference/dataframe_query", "reference/dataframe_view_query"]
+"Send partial updates" = [
+  "archetypes/mesh3d_partial_updates",
+  "archetypes/points3d_partial_updates",
+  "archetypes/transform3d_partial_updates",
+]
+"Send custom data" = [
   "tutorials/any_values",
   "tutorials/extra_values",
   "howto/any_values_send_columns",
