@@ -194,6 +194,19 @@ impl MapBackground {
         Ok(columns.into_iter().chain([indicator_column]).flatten())
     }
 
+    /// Helper to partition the component data into unit-length sub-batches.
+    ///
+    /// This is semantically similar to calling [`Self::columns`] with `std::iter::take(1).repeat(n)`,
+    /// where `n` is automatically guessed.
+    #[inline]
+    pub fn unary_columns(
+        self,
+    ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
+        let len_provider = self.provider.as_ref().map(|b| b.array.len());
+        let len = None.or(len_provider).unwrap_or(0);
+        self.columns(std::iter::repeat(1).take(len))
+    }
+
     /// Map provider and style to use.
     ///
     /// **Note**: Requires a Mapbox API key in the `RERUN_MAPBOX_ACCESS_TOKEN` environment variable.

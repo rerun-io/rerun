@@ -633,6 +633,35 @@ impl ContainerBlueprint {
         Ok(columns.into_iter().chain([indicator_column]).flatten())
     }
 
+    /// Helper to partition the component data into unit-length sub-batches.
+    ///
+    /// This is semantically similar to calling [`Self::columns`] with `std::iter::take(1).repeat(n)`,
+    /// where `n` is automatically guessed.
+    #[inline]
+    pub fn unary_columns(
+        self,
+    ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
+        let len_container_kind = self.container_kind.as_ref().map(|b| b.array.len());
+        let len_display_name = self.display_name.as_ref().map(|b| b.array.len());
+        let len_contents = self.contents.as_ref().map(|b| b.array.len());
+        let len_col_shares = self.col_shares.as_ref().map(|b| b.array.len());
+        let len_row_shares = self.row_shares.as_ref().map(|b| b.array.len());
+        let len_active_tab = self.active_tab.as_ref().map(|b| b.array.len());
+        let len_visible = self.visible.as_ref().map(|b| b.array.len());
+        let len_grid_columns = self.grid_columns.as_ref().map(|b| b.array.len());
+        let len = None
+            .or(len_container_kind)
+            .or(len_display_name)
+            .or(len_contents)
+            .or(len_col_shares)
+            .or(len_row_shares)
+            .or(len_active_tab)
+            .or(len_visible)
+            .or(len_grid_columns)
+            .unwrap_or(0);
+        self.columns(std::iter::repeat(1).take(len))
+    }
+
     /// The class of the view.
     #[inline]
     pub fn with_container_kind(

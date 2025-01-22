@@ -231,6 +231,20 @@ impl PlotLegend {
         Ok(columns.into_iter().chain([indicator_column]).flatten())
     }
 
+    /// Helper to partition the component data into unit-length sub-batches.
+    ///
+    /// This is semantically similar to calling [`Self::columns`] with `std::iter::take(1).repeat(n)`,
+    /// where `n` is automatically guessed.
+    #[inline]
+    pub fn unary_columns(
+        self,
+    ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
+        let len_corner = self.corner.as_ref().map(|b| b.array.len());
+        let len_visible = self.visible.as_ref().map(|b| b.array.len());
+        let len = None.or(len_corner).or(len_visible).unwrap_or(0);
+        self.columns(std::iter::repeat(1).take(len))
+    }
+
     /// To what corner the legend is aligned.
     ///
     /// Defaults to the right bottom corner.

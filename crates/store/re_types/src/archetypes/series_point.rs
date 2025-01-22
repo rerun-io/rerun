@@ -342,6 +342,27 @@ impl SeriesPoint {
         Ok(columns.into_iter().chain([indicator_column]).flatten())
     }
 
+    /// Helper to partition the component data into unit-length sub-batches.
+    ///
+    /// This is semantically similar to calling [`Self::columns`] with `std::iter::take(1).repeat(n)`,
+    /// where `n` is automatically guessed.
+    #[inline]
+    pub fn unary_columns(
+        self,
+    ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
+        let len_color = self.color.as_ref().map(|b| b.array.len());
+        let len_marker = self.marker.as_ref().map(|b| b.array.len());
+        let len_name = self.name.as_ref().map(|b| b.array.len());
+        let len_marker_size = self.marker_size.as_ref().map(|b| b.array.len());
+        let len = None
+            .or(len_color)
+            .or(len_marker)
+            .or(len_name)
+            .or(len_marker_size)
+            .unwrap_or(0);
+        self.columns(std::iter::repeat(1).take(len))
+    }
+
     /// Color for the corresponding series.
     #[inline]
     pub fn with_color(mut self, color: impl Into<crate::components::Color>) -> Self {

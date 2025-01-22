@@ -504,6 +504,35 @@ impl Points2D {
         Ok(columns.into_iter().chain([indicator_column]).flatten())
     }
 
+    /// Helper to partition the component data into unit-length sub-batches.
+    ///
+    /// This is semantically similar to calling [`Self::columns`] with `std::iter::take(1).repeat(n)`,
+    /// where `n` is automatically guessed.
+    #[inline]
+    pub fn unary_columns(
+        self,
+    ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
+        let len_positions = self.positions.as_ref().map(|b| b.array.len());
+        let len_radii = self.radii.as_ref().map(|b| b.array.len());
+        let len_colors = self.colors.as_ref().map(|b| b.array.len());
+        let len_labels = self.labels.as_ref().map(|b| b.array.len());
+        let len_show_labels = self.show_labels.as_ref().map(|b| b.array.len());
+        let len_draw_order = self.draw_order.as_ref().map(|b| b.array.len());
+        let len_class_ids = self.class_ids.as_ref().map(|b| b.array.len());
+        let len_keypoint_ids = self.keypoint_ids.as_ref().map(|b| b.array.len());
+        let len = None
+            .or(len_positions)
+            .or(len_radii)
+            .or(len_colors)
+            .or(len_labels)
+            .or(len_show_labels)
+            .or(len_draw_order)
+            .or(len_class_ids)
+            .or(len_keypoint_ids)
+            .unwrap_or(0);
+        self.columns(std::iter::repeat(1).take(len))
+    }
+
     /// All the 2D positions at which the point cloud shows points.
     #[inline]
     pub fn with_positions(

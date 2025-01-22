@@ -341,6 +341,32 @@ impl ViewportBlueprint {
         Ok(columns.into_iter().chain([indicator_column]).flatten())
     }
 
+    /// Helper to partition the component data into unit-length sub-batches.
+    ///
+    /// This is semantically similar to calling [`Self::columns`] with `std::iter::take(1).repeat(n)`,
+    /// where `n` is automatically guessed.
+    #[inline]
+    pub fn unary_columns(
+        self,
+    ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
+        let len_root_container = self.root_container.as_ref().map(|b| b.array.len());
+        let len_maximized = self.maximized.as_ref().map(|b| b.array.len());
+        let len_auto_layout = self.auto_layout.as_ref().map(|b| b.array.len());
+        let len_auto_views = self.auto_views.as_ref().map(|b| b.array.len());
+        let len_past_viewer_recommendations = self
+            .past_viewer_recommendations
+            .as_ref()
+            .map(|b| b.array.len());
+        let len = None
+            .or(len_root_container)
+            .or(len_maximized)
+            .or(len_auto_layout)
+            .or(len_auto_views)
+            .or(len_past_viewer_recommendations)
+            .unwrap_or(0);
+        self.columns(std::iter::repeat(1).take(len))
+    }
+
     /// The layout of the views
     #[inline]
     pub fn with_root_container(

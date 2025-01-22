@@ -297,6 +297,27 @@ impl TensorSliceSelection {
         Ok(columns.into_iter().chain([indicator_column]).flatten())
     }
 
+    /// Helper to partition the component data into unit-length sub-batches.
+    ///
+    /// This is semantically similar to calling [`Self::columns`] with `std::iter::take(1).repeat(n)`,
+    /// where `n` is automatically guessed.
+    #[inline]
+    pub fn unary_columns(
+        self,
+    ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
+        let len_width = self.width.as_ref().map(|b| b.array.len());
+        let len_height = self.height.as_ref().map(|b| b.array.len());
+        let len_indices = self.indices.as_ref().map(|b| b.array.len());
+        let len_slider = self.slider.as_ref().map(|b| b.array.len());
+        let len = None
+            .or(len_width)
+            .or(len_height)
+            .or(len_indices)
+            .or(len_slider)
+            .unwrap_or(0);
+        self.columns(std::iter::repeat(1).take(len))
+    }
+
     /// Which dimension to map to width.
     ///
     /// If not specified, the height will be determined automatically based on the name and index of the dimension.

@@ -229,6 +229,20 @@ impl ForceCenter {
         Ok(columns.into_iter().chain([indicator_column]).flatten())
     }
 
+    /// Helper to partition the component data into unit-length sub-batches.
+    ///
+    /// This is semantically similar to calling [`Self::columns`] with `std::iter::take(1).repeat(n)`,
+    /// where `n` is automatically guessed.
+    #[inline]
+    pub fn unary_columns(
+        self,
+    ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
+        let len_enabled = self.enabled.as_ref().map(|b| b.array.len());
+        let len_strength = self.strength.as_ref().map(|b| b.array.len());
+        let len = None.or(len_enabled).or(len_strength).unwrap_or(0);
+        self.columns(std::iter::repeat(1).take(len))
+    }
+
     /// Whether the center force is enabled.
     ///
     /// The center force tries to move the center of mass of the graph towards the origin.

@@ -328,6 +328,29 @@ impl LineGrid3D {
         Ok(columns.into_iter().chain([indicator_column]).flatten())
     }
 
+    /// Helper to partition the component data into unit-length sub-batches.
+    ///
+    /// This is semantically similar to calling [`Self::columns`] with `std::iter::take(1).repeat(n)`,
+    /// where `n` is automatically guessed.
+    #[inline]
+    pub fn unary_columns(
+        self,
+    ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
+        let len_visible = self.visible.as_ref().map(|b| b.array.len());
+        let len_spacing = self.spacing.as_ref().map(|b| b.array.len());
+        let len_plane = self.plane.as_ref().map(|b| b.array.len());
+        let len_stroke_width = self.stroke_width.as_ref().map(|b| b.array.len());
+        let len_color = self.color.as_ref().map(|b| b.array.len());
+        let len = None
+            .or(len_visible)
+            .or(len_spacing)
+            .or(len_plane)
+            .or(len_stroke_width)
+            .or(len_color)
+            .unwrap_or(0);
+        self.columns(std::iter::repeat(1).take(len))
+    }
+
     /// Whether the grid is visible.
     ///
     /// Defaults to true.
