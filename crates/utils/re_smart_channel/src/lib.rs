@@ -71,6 +71,7 @@ pub enum SmartChannelSource {
 
     /// A stream of messages over message proxy gRPC interface.
     MessageProxy {
+        // TODO(#8761): URL prefix
         /// Should include `temp://` prefix.
         url: String,
     },
@@ -167,6 +168,7 @@ pub enum SmartMessageSource {
 
     /// A stream of messages over message proxy gRPC interface.
     MessageProxy {
+        // TODO(#8761): URL prefix
         /// Should include `temp://` prefix.
         url: String,
     },
