@@ -267,10 +267,54 @@ impl TextDocument {
         }
     }
 
+    /// Partitions the component data into multiple sub-batches.
+    ///
+    /// Specifically, this transforms the existing [`SerializedComponentBatch`]es data into [`SerializedComponentColumn`]s
+    /// instead, via [`SerializedComponentBatch::partitioned`].
+    ///
+    /// This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
+    ///
+    /// The specified `lengths` must sum to the total length of the component batch.
+    ///
+    /// [`SerializedComponentColumn`]: [::re_types_core::SerializedComponentColumn]
+    #[inline]
+    pub fn columns<I>(
+        self,
+        _lengths: I,
+    ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>>
+    where
+        I: IntoIterator<Item = usize> + Clone,
+    {
+        let columns = [
+            self.text
+                .map(|text| text.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.media_type
+                .map(|media_type| media_type.partitioned(_lengths.clone()))
+                .transpose()?,
+        ];
+        let indicator_column =
+            ::re_types_core::indicator_column::<Self>(_lengths.into_iter().count())?;
+        Ok(columns.into_iter().chain([indicator_column]).flatten())
+    }
+
     /// Contents of the text document.
     #[inline]
     pub fn with_text(mut self, text: impl Into<crate::components::Text>) -> Self {
         self.text = try_serialize_field(Self::descriptor_text(), [text]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::Text`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_text`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_text(
+        mut self,
+        text: impl IntoIterator<Item = impl Into<crate::components::Text>>,
+    ) -> Self {
+        self.text = try_serialize_field(Self::descriptor_text(), text);
         self
     }
 
@@ -284,6 +328,19 @@ impl TextDocument {
     #[inline]
     pub fn with_media_type(mut self, media_type: impl Into<crate::components::MediaType>) -> Self {
         self.media_type = try_serialize_field(Self::descriptor_media_type(), [media_type]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::MediaType`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_media_type`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_media_type(
+        mut self,
+        media_type: impl IntoIterator<Item = impl Into<crate::components::MediaType>>,
+    ) -> Self {
+        self.media_type = try_serialize_field(Self::descriptor_media_type(), media_type);
         self
     }
 }

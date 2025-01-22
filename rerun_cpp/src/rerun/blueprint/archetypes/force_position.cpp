@@ -5,7 +5,21 @@
 
 #include "../../collection_adapter_builtins.hpp"
 
-namespace rerun::blueprint::archetypes {}
+namespace rerun::blueprint::archetypes {
+    ForcePosition ForcePosition::clear_fields() {
+        auto archetype = ForcePosition();
+        archetype.enabled =
+            ComponentBatch::empty<rerun::blueprint::components::Enabled>(Descriptor_enabled)
+                .value_or_throw();
+        archetype.strength =
+            ComponentBatch::empty<rerun::blueprint::components::ForceStrength>(Descriptor_strength)
+                .value_or_throw();
+        archetype.position =
+            ComponentBatch::empty<rerun::components::Position2D>(Descriptor_position)
+                .value_or_throw();
+        return archetype;
+    }
+} // namespace rerun::blueprint::archetypes
 
 namespace rerun {
 
@@ -18,40 +32,13 @@ namespace rerun {
         cells.reserve(4);
 
         if (archetype.enabled.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.enabled.value(),
-                ComponentDescriptor(
-                    "rerun.blueprint.archetypes.ForcePosition",
-                    "enabled",
-                    "rerun.blueprint.components.Enabled"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.enabled.value());
         }
         if (archetype.strength.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.strength.value(),
-                ComponentDescriptor(
-                    "rerun.blueprint.archetypes.ForcePosition",
-                    "strength",
-                    "rerun.blueprint.components.ForceStrength"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.strength.value());
         }
         if (archetype.position.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.position.value(),
-                ComponentDescriptor(
-                    "rerun.blueprint.archetypes.ForcePosition",
-                    "position",
-                    "rerun.components.Position2D"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.position.value());
         }
         {
             auto indicator = ForcePosition::IndicatorComponent();

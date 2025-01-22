@@ -89,6 +89,8 @@ namespace rerun::archetypes {
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+        /// The name of the archetype as used in `ComponentDescriptor`s.
+        static constexpr const char ArchetypeName[] = "rerun.archetypes.Clear";
 
       public: // START of extensions from clear_ext.cpp:
         RERUN_SDK_EXPORT static const Clear FLAT;
@@ -102,6 +104,9 @@ namespace rerun::archetypes {
       public:
         Clear() = default;
         Clear(Clear&& other) = default;
+        Clear(const Clear& other) = default;
+        Clear& operator=(const Clear& other) = default;
+        Clear& operator=(Clear&& other) = default;
 
         explicit Clear(rerun::components::ClearIsRecursive _is_recursive)
             : is_recursive(std::move(_is_recursive)) {}

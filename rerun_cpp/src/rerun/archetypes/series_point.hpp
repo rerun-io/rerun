@@ -91,10 +91,15 @@ namespace rerun::archetypes {
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+        /// The name of the archetype as used in `ComponentDescriptor`s.
+        static constexpr const char ArchetypeName[] = "rerun.archetypes.SeriesPoint";
 
       public:
         SeriesPoint() = default;
         SeriesPoint(SeriesPoint&& other) = default;
+        SeriesPoint(const SeriesPoint& other) = default;
+        SeriesPoint& operator=(const SeriesPoint& other) = default;
+        SeriesPoint& operator=(SeriesPoint&& other) = default;
 
         /// Color for the corresponding series.
         SeriesPoint with_color(rerun::components::Color _color) && {

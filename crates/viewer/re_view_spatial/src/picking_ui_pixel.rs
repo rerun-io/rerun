@@ -584,7 +584,7 @@ fn pixel_value_string_from_gpu_texture(
         let mut encoder = render_ctx.active_frame.before_view_builder_encoder.lock();
         if let Err(err) = readback_buffer.read_texture2d(
             encoder.get(),
-            wgpu::ImageCopyTexture {
+            wgpu::TexelCopyTextureInfo {
                 texture: &texture.texture,
                 mip_level: 0,
                 origin: readback_rect.wgpu_origin(),

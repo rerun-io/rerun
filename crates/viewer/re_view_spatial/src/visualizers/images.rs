@@ -6,7 +6,7 @@ use re_types::{
 };
 use re_view::HybridResults;
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, ImageInfo, QueryContext,
+    IdentifiedViewSystem, ImageInfo, MaybeVisualizableEntities, QueryContext,
     TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewQuery,
     ViewSystemExecutionError, VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo,
     VisualizerSystem,
@@ -51,7 +51,7 @@ impl VisualizerSystem for ImageVisualizer {
 
     fn filter_visualizable_entities(
         &self,
-        entities: ApplicableEntities,
+        entities: MaybeVisualizableEntities,
         context: &dyn VisualizableFilterContext,
     ) -> VisualizableEntities {
         re_tracing::profile_function!();

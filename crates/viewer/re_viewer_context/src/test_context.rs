@@ -5,15 +5,16 @@ use ahash::HashMap;
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 
+use re_chunk::{Chunk, ChunkBuilder};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
-use re_log_types::{StoreId, StoreKind};
+use re_log_types::{EntityPath, StoreId, StoreKind};
 use re_types_core::reflection::Reflection;
 
 use crate::{
     blueprint_timeline, command_channel, ApplicationSelectionState, CommandReceiver, CommandSender,
     ComponentUiRegistry, DataQueryResult, ItemCollection, RecordingConfig, StoreContext,
-    SystemCommand, ViewClassRegistry, ViewId, ViewerContext,
+    SystemCommand, ViewClass, ViewClassRegistry, ViewId, ViewerContext,
 };
 
 /// Harness to execute code that rely on [`crate::ViewerContext`].
@@ -149,20 +150,20 @@ fn create_egui_renderstate() -> egui_wgpu::RenderState {
 
 /// Instance & adapter
 struct SharedWgpuResources {
-    instance: Arc<wgpu::Instance>,
-    adapter: Arc<wgpu::Adapter>,
-    device: Arc<wgpu::Device>,
+    instance: wgpu::Instance,
+    adapter: wgpu::Adapter,
+    device: wgpu::Device,
 
     // Sharing the queue across parallel running tests should work fine in theory - it's obviously threadsafe.
     // Note though that this becomes an odd sync point that is shared with all tests that put in work here.
-    queue: Arc<wgpu::Queue>,
+    queue: wgpu::Queue,
 }
 
 static SHARED_WGPU_RENDERER_SETUP: Lazy<SharedWgpuResources> =
     Lazy::new(init_shared_renderer_setup);
 
 fn init_shared_renderer_setup() -> SharedWgpuResources {
-    let instance = wgpu::Instance::new(re_renderer::config::testing_instance_descriptor());
+    let instance = wgpu::Instance::new(&re_renderer::config::testing_instance_descriptor());
     let adapter = re_renderer::config::select_testing_adapter(&instance);
     let device_caps = re_renderer::config::DeviceCaps::from_adapter(&adapter)
         .expect("Failed to determine device capabilities");
@@ -171,10 +172,10 @@ fn init_shared_renderer_setup() -> SharedWgpuResources {
             .expect("Failed to request device.");
 
     SharedWgpuResources {
-        instance: Arc::new(instance),
-        adapter: Arc::new(adapter),
-        device: Arc::new(device),
-        queue: Arc::new(queue),
+        instance,
+        adapter,
+        device,
+        queue,
     }
 }
 
@@ -205,6 +206,29 @@ impl TestContext {
 
         // the selection state is double-buffered, so let's ensure it's updated
         self.selection_state.on_frame_start(|_| true, None);
+    }
+
+    /// Log an entity to the recording store.
+    ///
+    /// The provided closure should add content using the [`ChunkBuilder`] passed as argument.
+    pub fn log_entity(
+        &mut self,
+        entity_path: EntityPath,
+        build_chunk: impl FnOnce(ChunkBuilder) -> ChunkBuilder,
+    ) {
+        let builder = build_chunk(Chunk::builder(entity_path));
+        self.recording_store
+            .add_chunk(&Arc::new(
+                builder.build().expect("chunk should be successfully built"),
+            ))
+            .expect("chunk should be successfully added");
+    }
+
+    /// Register a view class.
+    pub fn register_view_class<T: ViewClass + Default + 'static>(&mut self) {
+        self.view_class_registry
+            .add_class::<T>()
+            .expect("registering a class should succeed");
     }
 
     /// Run the provided closure with a [`ViewerContext`] produced by the [`Self`].
@@ -244,7 +268,7 @@ impl TestContext {
             component_ui_registry: &self.component_ui_registry,
             view_class_registry: &self.view_class_registry,
             store_context: &store_context,
-            applicable_entities_per_visualizer: &Default::default(),
+            maybe_visualizable_entities_per_visualizer: &Default::default(),
             indicated_entities_per_visualizer: &Default::default(),
             query_results: &self.query_results,
             rec_cfg: &self.recording_config,

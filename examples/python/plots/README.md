@@ -52,7 +52,7 @@ It also adjusts the width and color of the plotted line based on the calculated 
 ```python
 def log_parabola() -> None:
     # Name never changes, log it only once.
-    rr.log("curves/parabola", rr.SeriesLine(name="f(t) = (0.01t - 3)³ + 1"), timeless=True)
+    rr.log("curves/parabola", rr.SeriesLine(name="f(t) = (0.01t - 3)³ + 1"), static=True)
 
     # Log a parabola as a time series
     for t in range(0, 1000, 10):
@@ -76,9 +76,9 @@ Then, it iterates over a range of time steps, calculates the sin and cos values 
 
  ```python
 def log_trig() -> None:
-    # Styling doesn't change over time, log it once with timeless=True.
-    rr.log("trig/sin", rr.SeriesLine(color=[255, 0, 0], name="sin(0.01t)"), timeless=True)
-    rr.log("trig/cos", rr.SeriesLine(color=[0, 255, 0], name="cos(0.01t)"), timeless=True)
+    # Styling doesn't change over time, log it once with static=True.
+    rr.log("trig/sin", rr.SeriesLine(color=[255, 0, 0], name="sin(0.01t)"), static=True)
+    rr.log("trig/cos", rr.SeriesLine(color=[0, 255, 0], name="cos(0.01t)"), static=True)
 
     for t in range(0, int(tau * 2 * 100.0)):
         rr.set_time_sequence("frame_nr", t)
@@ -101,7 +101,7 @@ Additionally, it generates random samples around the line function and logs them
  ```python
 def log_classification() -> None:
     # Log components that don't change only once:
-    rr.log("classification/line", rr.SeriesLine(color=[255, 255, 0], width=3.0), timeless=True)
+    rr.log("classification/line", rr.SeriesLine(color=[255, 255, 0], width=3.0), static=True)
 
     for t in range(0, 1000, 2):
         rr.set_time_sequence("frame_nr", t)

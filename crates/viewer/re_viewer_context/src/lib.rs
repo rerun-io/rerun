@@ -12,7 +12,6 @@ mod command_sender;
 mod component_fallbacks;
 mod component_ui_registry;
 mod contents;
-mod data_result_node_or_path;
 mod drag_and_drop;
 mod file_dialog;
 mod image_info;
@@ -54,7 +53,6 @@ pub use self::{
     },
     component_ui_registry::{ComponentUiRegistry, ComponentUiTypes},
     contents::{blueprint_id_to_tile_id, Contents, ContentsName},
-    data_result_node_or_path::DataResultNodeOrPath,
     drag_and_drop::{DragAndDropFeedback, DragAndDropManager, DragAndDropPayload},
     file_dialog::santitize_file_name,
     image_info::{ColormapWithRange, ImageInfo},
@@ -74,20 +72,19 @@ pub use self::{
     time_control::{Looping, PlayState, TimeControl, TimeView, TimelineCallbacks},
     time_drag_value::TimeDragValue,
     typed_entity_collections::{
-        ApplicableEntities, IndicatedEntities, PerVisualizer, VisualizableEntities,
+        IndicatedEntities, MaybeVisualizableEntities, PerVisualizer, VisualizableEntities,
     },
     undo::BlueprintUndoState,
     utils::{auto_color_egui, auto_color_for_entity_path, level_to_rich_text},
     view::{
-        DataResult, IdentifiedViewSystem, OptionalViewEntityHighlight, OverridePath,
-        PerSystemDataResults, PerSystemEntities, PropertyOverrides, RecommendedView,
-        SmallVisualizerSet, SystemExecutionOutput, ViewClass, ViewClassExt,
-        ViewClassLayoutPriority, ViewClassRegistry, ViewClassRegistryError, ViewContext,
-        ViewContextCollection, ViewContextSystem, ViewEntityHighlight, ViewHighlights,
+        DataBasedVisualizabilityFilter, DataResult, IdentifiedViewSystem,
+        OptionalViewEntityHighlight, OverridePath, PerSystemDataResults, PerSystemEntities,
+        PropertyOverrides, RecommendedView, SmallVisualizerSet, SystemExecutionOutput, ViewClass,
+        ViewClassExt, ViewClassLayoutPriority, ViewClassRegistry, ViewClassRegistryError,
+        ViewContext, ViewContextCollection, ViewContextSystem, ViewEntityHighlight, ViewHighlights,
         ViewOutlineMasks, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt, ViewStates,
         ViewSystemExecutionError, ViewSystemIdentifier, ViewSystemRegistrator,
-        VisualizableFilterContext, VisualizerAdditionalApplicabilityFilter, VisualizerCollection,
-        VisualizerQueryInfo, VisualizerSystem,
+        VisualizableFilterContext, VisualizerCollection, VisualizerQueryInfo, VisualizerSystem,
     },
     viewer_context::{RecordingConfig, ViewerContext},
 };

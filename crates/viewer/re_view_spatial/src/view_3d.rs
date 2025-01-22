@@ -12,10 +12,10 @@ use re_types::{
 use re_ui::{list_item, UiExt as _};
 use re_view::view_property_ui;
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, IndicatedEntities, PerVisualizer, RecommendedView,
-    SmallVisualizerSet, ViewClass, ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics,
-    ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext,
-    VisualizableEntities, VisualizableFilterContext,
+    IdentifiedViewSystem, IndicatedEntities, MaybeVisualizableEntities, PerVisualizer,
+    RecommendedView, SmallVisualizerSet, ViewClass, ViewClassRegistryError, ViewId, ViewQuery,
+    ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
+    ViewSystemIdentifier, ViewerContext, VisualizableEntities, VisualizableFilterContext,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -195,7 +195,7 @@ impl ViewClass for SpatialView3D {
     fn choose_default_visualizers(
         &self,
         entity_path: &EntityPath,
-        applicable_entities_per_visualizer: &PerVisualizer<ApplicableEntities>,
+        maybe_visualizable_entities_per_visualizer: &PerVisualizer<MaybeVisualizableEntities>,
         visualizable_entities_per_visualizer: &PerVisualizer<VisualizableEntities>,
         indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
     ) -> SmallVisualizerSet {
@@ -203,16 +203,17 @@ impl ViewClass for SpatialView3D {
         let axis_detector = AxisLengthDetector::identifier();
         let camera_viz = CamerasVisualizer::identifier();
 
-        let applicable: HashSet<&ViewSystemIdentifier> = applicable_entities_per_visualizer
-            .iter()
-            .filter_map(|(visualizer, ents)| {
-                if ents.contains(entity_path) {
-                    Some(visualizer)
-                } else {
-                    None
-                }
-            })
-            .collect();
+        let maybe_visualizable: HashSet<&ViewSystemIdentifier> =
+            maybe_visualizable_entities_per_visualizer
+                .iter()
+                .filter_map(|(visualizer, ents)| {
+                    if ents.contains(entity_path) {
+                        Some(visualizer)
+                    } else {
+                        None
+                    }
+                })
+                .collect();
 
         let visualizable: HashSet<&ViewSystemIdentifier> = visualizable_entities_per_visualizer
             .iter()
@@ -251,7 +252,9 @@ impl ViewClass for SpatialView3D {
             // … then we enable it if either:
             // - If someone set an axis_length explicitly, so [`AxisLengthDetector`] is applicable.
             // - If we already have the [`CamerasVisualizer`] active.
-            if applicable.contains(&axis_detector) || enabled_visualizers.contains(&camera_viz) {
+            if maybe_visualizable.contains(&axis_detector)
+                || enabled_visualizers.contains(&camera_viz)
+            {
                 enabled_visualizers.push(arrows_viz);
             }
         }

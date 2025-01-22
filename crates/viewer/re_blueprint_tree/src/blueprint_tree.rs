@@ -12,12 +12,14 @@ use re_ui::{
 };
 use re_viewer_context::{
     contents_name_style, icon_for_container_kind, CollapseScope, ContainerId, Contents,
-    DataQueryResult, DataResultNode, DataResultNodeOrPath, DragAndDropFeedback, DragAndDropPayload,
-    HoverHighlight, Item, ItemContext, SystemCommandSender, ViewId, ViewerContext,
+    DataQueryResult, DataResultNode, DragAndDropFeedback, DragAndDropPayload, HoverHighlight, Item,
+    ItemContext, SystemCommandSender, ViewId, ViewerContext,
 };
 use re_viewport_blueprint::{
     ui::show_add_view_or_container_modal, ViewBlueprint, ViewportBlueprint,
 };
+
+use crate::data_result_node_or_path::DataResultNodeOrPath;
 
 /// Holds the state of the blueprint tree UI.
 #[derive(Default)]
@@ -51,6 +53,11 @@ pub struct BlueprintTree {
 }
 
 impl BlueprintTree {
+    /// Activates the search filter (for e.g. test purposes).
+    pub fn activate_filter(&mut self, query: &str) {
+        self.filter_state.activate(query);
+    }
+
     /// Show the Blueprint section of the left panel based on the current [`ViewportBlueprint`]
     pub fn show(
         &mut self,

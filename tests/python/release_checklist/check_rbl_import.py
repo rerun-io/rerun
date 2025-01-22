@@ -18,7 +18,7 @@ You should be seeing a **dataframe view of a plot** on your left, instead of an 
 
 
 def log_readme() -> None:
-    rr.log("readme", rr.TextDocument(README, media_type=rr.MediaType.MARKDOWN), timeless=True)
+    rr.log("readme", rr.TextDocument(README, media_type=rr.MediaType.MARKDOWN), static=True)
 
 
 def log_external_blueprint() -> None:

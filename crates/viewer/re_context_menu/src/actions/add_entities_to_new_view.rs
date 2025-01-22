@@ -86,8 +86,8 @@ fn recommended_views_for_selection(ctx: &ContextMenuContext<'_>) -> IntSet<ViewC
 
     let view_class_registry = ctx.viewer_context.view_class_registry;
     let recording = ctx.viewer_context.recording();
-    let applicable_entities_per_visualizer =
-        view_class_registry.applicable_entities_for_visualizer_systems(&recording.store_id());
+    let maybe_visualizable_entities = view_class_registry
+        .maybe_visualizable_entities_for_visualizer_systems(&recording.store_id());
 
     for entry in view_class_registry.iter_registry() {
         let Some(suggested_root) = entry
@@ -98,7 +98,7 @@ fn recommended_views_for_selection(ctx: &ContextMenuContext<'_>) -> IntSet<ViewC
         };
 
         let visualizable_entities = entry.class.determine_visualizable_entities(
-            &applicable_entities_per_visualizer,
+            &maybe_visualizable_entities,
             recording,
             &view_class_registry.new_visualizer_collection(entry.identifier),
             &suggested_root,

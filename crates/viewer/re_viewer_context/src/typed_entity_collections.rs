@@ -5,13 +5,17 @@ use re_log_types::EntityPath;
 
 use crate::ViewSystemIdentifier;
 
-/// List of entities that are *applicable* to a given visualizer.
+/// List of entities that are *maybe* visualizable with a given visualizer.
 ///
-/// An entity is applicable if it at any point in time on any timeline has all required components.
+/// Note that this filter latches:
+/// An entity is "maybe visualizable" if it at any point in time on any timeline has all required components.
+///
+/// We evaluate this filtering step entirely by store subscriber.
+/// This in turn implies that this can *not* be influenced by individual view setups.
 #[derive(Default, Clone, Debug)]
-pub struct ApplicableEntities(pub IntSet<EntityPath>);
+pub struct MaybeVisualizableEntities(pub IntSet<EntityPath>);
 
-impl std::ops::Deref for ApplicableEntities {
+impl std::ops::Deref for MaybeVisualizableEntities {
     type Target = IntSet<EntityPath>;
 
     #[inline]
@@ -43,8 +47,7 @@ impl std::ops::Deref for IndicatedEntities {
 /// change, e.g. its origin.
 /// TODO(andreas): Unclear if any of the view's configuring blueprint entities are included in this!
 ///
-/// This is a subset of [`ApplicableEntities`] and differs on a
-/// per view instance base.
+/// This is a subset of [`MaybeVisualizableEntities`] and may differs on a per view instance base!
 #[derive(Default, Clone, Debug)]
 pub struct VisualizableEntities(pub IntSet<EntityPath>);
 

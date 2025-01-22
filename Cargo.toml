@@ -257,7 +257,10 @@ rfd = { version = "0.15", default-features = false, features = [
 ] }
 rmp-serde = "1"
 ron = "0.8.0"
+roxmltree = "0.19.0"
 rust-format = "0.3"
+rustdoc-json = "0.9.2"
+rustdoc-types = "0.29.1"
 seq-macro = "0.3"
 serde = { version = "1", features = ["derive"] }
 serde_bytes = "0.11"
@@ -303,14 +306,15 @@ uuid = "1.1"
 vec1 = "1.8"
 walkdir = "2.0"
 walkers = "0.32"
-# NOTE: `rerun_js/web-viewer/build-wasm.mjs` is HIGHLY sensitive to changes in `wasm-bindgen`.
+# TODO(#8766): `rerun_js/web-viewer/build-wasm.mjs` is HIGHLY sensitive to changes in `wasm-bindgen`.
 #       Whenever updating `wasm-bindgen`, update this and the narrower dependency specifications in
 #       `crates/viewer/re_viewer/Cargo.toml`, and make sure that the build script still works.
 #       Do not make this an `=` dependency, because that may break Rust users’ builds when a newer
 #       version is released, even if they are not building the web viewer.
-wasm-bindgen = "0.2.95"
-wasm-bindgen-cli-support = "=0.2.95"
-wasm-bindgen-futures = "0.4.33"
+#       For details see https://github.com/rerun-io/rerun/issues/8766
+wasm-bindgen = "0.2.100"
+wasm-bindgen-cli-support = "=0.2.100"
+wasm-bindgen-futures = "0.4.50"
 wayland-sys = "0.31.5"
 web-sys = "0.3"
 web-time = "1.1.0"
@@ -318,7 +322,7 @@ webbrowser = "1.0"
 winit = { version = "0.30.5", default-features = false }
 # TODO(andreas): Try to get rid of `fragile-send-sync-non-atomic-wasm`. This requires re_renderer being aware of single-thread restriction on resources.
 # See also https://gpuweb.github.io/gpuweb/explainer/#multithreading-transfer (unsolved part of the Spec as of writing!)
-wgpu = { version = "23.0", default-features = false, features = [
+wgpu = { version = "24.0", default-features = false, features = [
   # Backends (see https://docs.rs/wgpu/latest/wgpu/#feature-flags)
   "webgl",
   "metal",
@@ -332,7 +336,8 @@ wgpu = { version = "23.0", default-features = false, features = [
   # Other:
   "fragile-send-sync-non-atomic-wasm",
 ] }
-wgpu-core = "23.0"
+# TODO(gfx-rs/wgpu#6962): There's a type export missing in 24.0.0, so we need to get it directly from wgpu-types.
+wgpu-types = "24.0"
 xshell = "0.2"
 zip = { version = "0.6", default-features = false } # We're stuck on 0.6 because https://crates.io/crates/protoc-prebuilt is still using 0.6
 
@@ -568,13 +573,13 @@ significant_drop_tightening = "allow" # An update of parking_lot made this trigg
 # Prefer patching with `branch` over `rev` and let `Cargo.lock` handle the commit hash.
 # That makes it easy to upade with `cargo update -p $CRATE`.
 
-ecolor = { git = "https://github.com/emilk/egui.git", rev = "f0d7c74e838b8e8920a22e7515990fbe057ec218" }       # egui master 2025-01-08
-eframe = { git = "https://github.com/emilk/egui.git", rev = "f0d7c74e838b8e8920a22e7515990fbe057ec218" }       # egui master 2025-01-08
-egui = { git = "https://github.com/emilk/egui.git", rev = "f0d7c74e838b8e8920a22e7515990fbe057ec218" }         # egui master 2025-01-08
-egui_extras = { git = "https://github.com/emilk/egui.git", rev = "f0d7c74e838b8e8920a22e7515990fbe057ec218" }  # egui master 2025-01-08
-egui_kittest = { git = "https://github.com/emilk/egui.git", rev = "f0d7c74e838b8e8920a22e7515990fbe057ec218" } # egui master 2025-01-08
-egui-wgpu = { git = "https://github.com/emilk/egui.git", rev = "f0d7c74e838b8e8920a22e7515990fbe057ec218" }    # egui master 2025-01-08
-emath = { git = "https://github.com/emilk/egui.git", rev = "f0d7c74e838b8e8920a22e7515990fbe057ec218" }        # egui master 2025-01-08
+ecolor = { git = "https://github.com/emilk/egui.git", rev = "30e66e457575096bd60e95800e7dd9fd755c0046" }       # egui master 2025-01-20
+eframe = { git = "https://github.com/emilk/egui.git", rev = "30e66e457575096bd60e95800e7dd9fd755c0046" }       # egui master 2025-01-20
+egui = { git = "https://github.com/emilk/egui.git", rev = "30e66e457575096bd60e95800e7dd9fd755c0046" }         # egui master 2025-01-20
+egui_extras = { git = "https://github.com/emilk/egui.git", rev = "30e66e457575096bd60e95800e7dd9fd755c0046" }  # egui master 2025-01-20
+egui_kittest = { git = "https://github.com/emilk/egui.git", rev = "30e66e457575096bd60e95800e7dd9fd755c0046" } # egui master 2025-01-20
+egui-wgpu = { git = "https://github.com/emilk/egui.git", rev = "30e66e457575096bd60e95800e7dd9fd755c0046" }    # egui master 2025-01-20
+emath = { git = "https://github.com/emilk/egui.git", rev = "30e66e457575096bd60e95800e7dd9fd755c0046" }        # egui master 2025-01-20
 
 # Useful while developing:
 # ecolor = { path = "../../egui/crates/ecolor" }

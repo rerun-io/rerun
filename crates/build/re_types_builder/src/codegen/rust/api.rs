@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 
 use anyhow::Context as _;
 use camino::{Utf8Path, Utf8PathBuf};
-use itertools::Itertools as _;
+use itertools::Itertools;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
@@ -1876,6 +1876,26 @@ fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) 
                 }
             }
         } else {
+            let quoted_many = obj.scope().is_none().then(|| {
+                let method_name_many = format_ident!("with_many_{field_name}");
+                let docstring_many = unindent::unindent(&format!("\
+                This method makes it possible to pack multiple [`{typ}`] in a single component batch.
+
+                This only makes sense when used in conjunction with [`Self::columns`]. [`Self::{method_name}`] should
+                be used when logging a single row's worth of data.
+                "));
+                let docstring_many = quote_doc_lines(&docstring_many.lines().map(|l| l.to_owned()).collect_vec());
+
+                quote !{
+                    #docstring_many
+                    #[inline]
+                    pub fn #method_name_many(mut self, #field_name: impl IntoIterator<Item = impl Into<#typ>>) -> Self {
+                        self.#field_name = try_serialize_field(Self::#descr_fn_name(), #field_name);
+                        self
+                    }
+                }
+            });
+
             quote! {
                 #docstring
                 #[inline]
@@ -1883,6 +1903,8 @@ fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) 
                     self.#field_name = try_serialize_field(Self::#descr_fn_name(), [#field_name]);
                     self
                 }
+
+                #quoted_many
             }
         }
     });
@@ -1922,10 +1944,58 @@ fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) 
         }
     });
 
+    let columnar_methods = obj.is_eager_rust_archetype().then(|| {
+        let columns_doc = unindent::unindent("\
+        Partitions the component data into multiple sub-batches.
+
+        Specifically, this transforms the existing [`SerializedComponentBatch`]es data into [`SerializedComponentColumn`]s
+        instead, via [`SerializedComponentBatch::partitioned`].
+
+        This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
+
+        The specified `lengths` must sum to the total length of the component batch.
+
+        [`SerializedComponentColumn`]: [::re_types_core::SerializedComponentColumn]
+        ");
+        let columns_doc = quote_doc_lines(&columns_doc.lines().map(|l| l.to_owned()).collect_vec());
+
+        let has_indicator = obj.fqname.as_str() != "rerun.archetypes.Scalar";
+
+        let num_fields = required.iter().chain(optional.iter()).count();
+        let fields = required.iter().chain(optional.iter()).map(|field| {
+            let field_name = format_ident!("{}", field.name);
+            let clone = if num_fields == 1 && !has_indicator { quote!(.into_iter()) } else { quote!(.clone()) };
+            quote!(self.#field_name.map(|#field_name| #field_name.partitioned(_lengths #clone)).transpose()?)
+        });
+
+        let indicator_column = if !has_indicator {
+            // NOTE(#8768): Scalar indicators are extremely wasteful, and not actually used for anything.
+            quote!(None)
+        } else {
+            quote!(::re_types_core::indicator_column::<Self>(_lengths.into_iter().count())?)
+        };
+
+        quote! {
+            #columns_doc
+            #[inline]
+            pub fn columns<I>(
+                self,
+                _lengths: I, // prefixed so it doesn't conflict with fields of the same name
+            ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>>
+            where
+                I: IntoIterator<Item = usize> + Clone,
+            {
+                let columns = [ #(#fields),* ];
+                let indicator_column = #indicator_column;
+                Ok(columns.into_iter().chain([indicator_column]).flatten())
+            }
+        }
+    });
+
     let with_methods = if obj.is_eager_rust_archetype() {
         quote! {
             #partial_update_methods
-
+            #columnar_methods
             #(#eager_with_methods)*
         }
     } else {

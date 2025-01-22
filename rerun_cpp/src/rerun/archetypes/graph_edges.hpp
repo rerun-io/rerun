@@ -59,10 +59,15 @@ namespace rerun::archetypes {
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+        /// The name of the archetype as used in `ComponentDescriptor`s.
+        static constexpr const char ArchetypeName[] = "rerun.archetypes.GraphEdges";
 
       public:
         GraphEdges() = default;
         GraphEdges(GraphEdges&& other) = default;
+        GraphEdges(const GraphEdges& other) = default;
+        GraphEdges& operator=(const GraphEdges& other) = default;
+        GraphEdges& operator=(GraphEdges&& other) = default;
 
         explicit GraphEdges(Collection<rerun::components::GraphEdge> _edges)
             : edges(std::move(_edges)) {}

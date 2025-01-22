@@ -283,7 +283,7 @@ def main() -> None:
     end_point = np.array([1.8, 0.5])
 
     rr.set_time_sequence("step", 0)
-    rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), timeless=True)
+    rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), static=True)
     rr.log(
         "map/start",
         rr.Points2D([start_point], radii=0.02, colors=[[255, 255, 255, 255]]),

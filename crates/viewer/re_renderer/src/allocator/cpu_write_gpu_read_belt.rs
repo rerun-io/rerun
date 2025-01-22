@@ -274,7 +274,7 @@ where
     ) -> Result<(), CpuWriteGpuReadError> {
         self.copy_to_texture2d(
             encoder,
-            wgpu::ImageCopyTexture {
+            wgpu::TexelCopyTextureInfo {
                 texture: &destination.texture,
                 mip_level: 0,
                 origin: wgpu::Origin3d::ZERO,
@@ -294,7 +294,7 @@ where
     pub fn copy_to_texture2d(
         self,
         encoder: &mut wgpu::CommandEncoder,
-        destination: wgpu::ImageCopyTexture<'_>,
+        destination: wgpu::TexelCopyTextureInfo<'_>,
         copy_size: wgpu::Extent3d,
     ) -> Result<(), CpuWriteGpuReadError> {
         let buffer_info = Texture2DBufferInfo::new(destination.texture.format(), copy_size);
@@ -310,9 +310,9 @@ where
         }
 
         encoder.copy_buffer_to_texture(
-            wgpu::ImageCopyBuffer {
+            wgpu::TexelCopyBufferInfo {
                 buffer: &self.chunk_buffer,
-                layout: wgpu::ImageDataLayout {
+                layout: wgpu::TexelCopyBufferLayout {
                     offset: self.byte_offset_in_chunk_buffer,
                     bytes_per_row: Some(buffer_info.bytes_per_row_padded),
                     rows_per_image: None,

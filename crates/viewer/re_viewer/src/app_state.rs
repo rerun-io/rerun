@@ -220,8 +220,8 @@ impl AppState {
             viewport_ui.blueprint.root_container,
         ));
 
-        let applicable_entities_per_visualizer =
-            view_class_registry.applicable_entities_for_visualizer_systems(&recording.store_id());
+        let maybe_visualizable_entities_per_visualizer = view_class_registry
+            .maybe_visualizable_entities_for_visualizer_systems(&recording.store_id());
         let indicated_entities_per_visualizer =
             view_class_registry.indicated_entities_per_visualizer(&recording.store_id());
 
@@ -239,7 +239,7 @@ impl AppState {
                     let visualizable_entities = view
                         .class(view_class_registry)
                         .determine_visualizable_entities(
-                            &applicable_entities_per_visualizer,
+                            &maybe_visualizable_entities_per_visualizer,
                             recording,
                             &view_class_registry.new_visualizer_collection(view.class_identifier()),
                             &view.space_origin,
@@ -269,7 +269,7 @@ impl AppState {
             reflection,
             component_ui_registry,
             store_context,
-            applicable_entities_per_visualizer: &applicable_entities_per_visualizer,
+            maybe_visualizable_entities_per_visualizer: &maybe_visualizable_entities_per_visualizer,
             indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
             query_results: &query_results,
             rec_cfg,
@@ -308,7 +308,7 @@ impl AppState {
                     let visualizable_entities = view
                         .class(view_class_registry)
                         .determine_visualizable_entities(
-                            &applicable_entities_per_visualizer,
+                            &maybe_visualizable_entities_per_visualizer,
                             recording,
                             &view_class_registry.new_visualizer_collection(view.class_identifier()),
                             &view.space_origin,
@@ -317,7 +317,7 @@ impl AppState {
                     let resolver = view.contents.build_resolver(
                         view_class_registry,
                         view,
-                        &applicable_entities_per_visualizer,
+                        &maybe_visualizable_entities_per_visualizer,
                         &visualizable_entities,
                         &indicated_entities_per_visualizer,
                     );
@@ -348,7 +348,7 @@ impl AppState {
             reflection,
             component_ui_registry,
             store_context,
-            applicable_entities_per_visualizer: &applicable_entities_per_visualizer,
+            maybe_visualizable_entities_per_visualizer: &maybe_visualizable_entities_per_visualizer,
             indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
             query_results: &query_results,
             rec_cfg,

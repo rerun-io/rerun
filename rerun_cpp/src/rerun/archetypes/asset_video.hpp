@@ -134,6 +134,8 @@ namespace rerun::archetypes {
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+        /// The name of the archetype as used in `ComponentDescriptor`s.
+        static constexpr const char ArchetypeName[] = "rerun.archetypes.AssetVideo";
 
       public: // START of extensions from asset_video_ext.cpp:
         /// Creates a new `AssetVideo` from the file contents at `path`.
@@ -168,6 +170,9 @@ namespace rerun::archetypes {
       public:
         AssetVideo() = default;
         AssetVideo(AssetVideo&& other) = default;
+        AssetVideo(const AssetVideo& other) = default;
+        AssetVideo& operator=(const AssetVideo& other) = default;
+        AssetVideo& operator=(AssetVideo&& other) = default;
 
         explicit AssetVideo(rerun::components::Blob _blob) : blob(std::move(_blob)) {}
 

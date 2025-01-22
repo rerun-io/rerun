@@ -5,11 +5,13 @@
 
 #include "../../blueprint/components/near_clip_plane.hpp"
 #include "../../collection.hpp"
+#include "../../compiler_utils.hpp"
 #include "../../component_batch.hpp"
 #include "../../indicator_component.hpp"
 #include "../../result.hpp"
 
 #include <cstdint>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -19,7 +21,7 @@ namespace rerun::blueprint::archetypes {
         /// Controls the distance to the near clip plane in 3D scene units.
         ///
         /// Content closer than this distance will not be visible.
-        rerun::blueprint::components::NearClipPlane near_clip_plane;
+        std::optional<ComponentBatch> near_clip_plane;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -27,13 +29,48 @@ namespace rerun::blueprint::archetypes {
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+        /// The name of the archetype as used in `ComponentDescriptor`s.
+        static constexpr const char ArchetypeName[] = "rerun.blueprint.archetypes.NearClipPlane";
+
+        /// `ComponentDescriptor` for the `near_clip_plane` field.
+        static constexpr auto Descriptor_near_clip_plane = ComponentDescriptor(
+            ArchetypeName, "near_clip_plane",
+            Loggable<rerun::blueprint::components::NearClipPlane>::Descriptor.component_name
+        );
 
       public:
         NearClipPlane() = default;
         NearClipPlane(NearClipPlane&& other) = default;
+        NearClipPlane(const NearClipPlane& other) = default;
+        NearClipPlane& operator=(const NearClipPlane& other) = default;
+        NearClipPlane& operator=(NearClipPlane&& other) = default;
 
         explicit NearClipPlane(rerun::blueprint::components::NearClipPlane _near_clip_plane)
-            : near_clip_plane(std::move(_near_clip_plane)) {}
+            : near_clip_plane(ComponentBatch::from_loggable(
+                                  std::move(_near_clip_plane), Descriptor_near_clip_plane
+              )
+                                  .value_or_throw()) {}
+
+        /// Update only some specific fields of a `NearClipPlane`.
+        static NearClipPlane update_fields() {
+            return NearClipPlane();
+        }
+
+        /// Clear all the fields of a `NearClipPlane`.
+        static NearClipPlane clear_fields();
+
+        /// Controls the distance to the near clip plane in 3D scene units.
+        ///
+        /// Content closer than this distance will not be visible.
+        NearClipPlane with_near_clip_plane(
+            const rerun::blueprint::components::NearClipPlane& _near_clip_plane
+        ) && {
+            near_clip_plane =
+                ComponentBatch::from_loggable(_near_clip_plane, Descriptor_near_clip_plane)
+                    .value_or_throw();
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
     };
 
 } // namespace rerun::blueprint::archetypes

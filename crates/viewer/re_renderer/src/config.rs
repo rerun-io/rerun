@@ -348,7 +348,6 @@ pub fn instance_descriptor(force_backend: Option<&str>) -> wgpu::InstanceDescrip
 
     wgpu::InstanceDescriptor {
         backends,
-
         flags: wgpu::InstanceFlags::default()
             // Allow adapters that aren't compliant with the backend they're implementing.
             // A concrete example of this is the latest Vulkan drivers on WSL which (as of writing)
@@ -357,16 +356,11 @@ pub fn instance_descriptor(force_backend: Option<&str>) -> wgpu::InstanceDescrip
             // In the future we might consider enabling this _only_ for WSL as this might otherwise
             // cause us to run with arbitrary development versions of drivers.
             // (then again, if a user has such a driver they likely *want* us to run with it anyways!)
-            .union(wgpu::InstanceFlags::ALLOW_UNDERLYING_NONCOMPLIANT_ADAPTER)
-            // Allow manipulation via environment variables.
-            .with_env(),
-
-        // FXC isn't great (slow & outdated), but DXC is painful to ship as it has to be provided separately.
-        // (Note though that we generally prefer running with Vulkan)
-        dx12_shader_compiler: wgpu::Dx12Compiler::Fxc,
-
-        gles_minor_version: wgpu::Gles3MinorVersion::Automatic,
+            .union(wgpu::InstanceFlags::ALLOW_UNDERLYING_NONCOMPLIANT_ADAPTER),
+        backend_options: wgpu::BackendOptions::default(),
     }
+    // Allow manipulation of all options via environment variables.
+    .with_env()
 }
 
 /// Returns an instance descriptor that is suitable for testing.
@@ -450,7 +444,7 @@ pub fn supported_backends() -> wgpu::Backends {
         //   with old hardware or bad/missing drivers. Wgpu automatically prefers Vulkan over GL when possible.
         //
         // For changing the backend we use standard wgpu env var, i.e. WGPU_BACKEND.
-        wgpu::util::backend_bits_from_env()
+        wgpu::Backends::from_env()
             .unwrap_or(wgpu::Backends::VULKAN | wgpu::Backends::METAL | wgpu::Backends::GL)
     } else {
         wgpu::Backends::GL | wgpu::Backends::BROWSER_WEBGPU

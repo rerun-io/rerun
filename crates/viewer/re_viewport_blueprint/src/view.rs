@@ -148,7 +148,7 @@ impl ViewBlueprint {
 
         let space_env = EntityPathSubs::new_with_origin(&space_origin);
 
-        let content =
+        let contents =
             ViewContents::from_db_or_default(id, blueprint_db, query, class_identifier, &space_env);
         let visible = visible.map_or(true, |v| *v.0);
         let defaults_path = id.as_entity_path().join(&"defaults".into());
@@ -158,7 +158,7 @@ impl ViewBlueprint {
             display_name,
             class_identifier,
             space_origin,
-            contents: content,
+            contents,
             visible,
             defaults_path,
             pending_writes: Default::default(),
@@ -444,8 +444,8 @@ mod tests {
     };
     use re_types::{Component as _, ComponentName};
     use re_viewer_context::{
-        test_context::TestContext, ApplicableEntities, DataResult, IndicatedEntities, OverridePath,
-        PerVisualizer, StoreContext, VisualizableEntities,
+        test_context::TestContext, DataResult, IndicatedEntities, MaybeVisualizableEntities,
+        OverridePath, PerVisualizer, StoreContext, VisualizableEntities,
     };
 
     use crate::view_contents::DataQueryPropertyResolver;
@@ -487,11 +487,16 @@ mod tests {
                 .or_insert_with(|| VisualizableEntities(entity_paths.into_iter().collect()));
         }
 
-        let applicable_entities = PerVisualizer::<ApplicableEntities>(
+        let maybe_visualizable_entities = PerVisualizer::<MaybeVisualizableEntities>(
             visualizable_entities
                 .0
                 .iter()
-                .map(|(id, entities)| (*id, ApplicableEntities(entities.iter().cloned().collect())))
+                .map(|(id, entities)| {
+                    (
+                        *id,
+                        MaybeVisualizableEntities(entities.iter().cloned().collect()),
+                    )
+                })
                 .collect(),
         );
 
@@ -511,7 +516,7 @@ mod tests {
         let resolver = view.contents.build_resolver(
             &test_ctx.view_class_registry,
             &view,
-            &applicable_entities,
+            &maybe_visualizable_entities,
             &visualizable_entities,
             &indicated_entities_per_visualizer,
         );

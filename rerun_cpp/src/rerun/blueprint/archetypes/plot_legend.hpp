@@ -22,12 +22,12 @@ namespace rerun::blueprint::archetypes {
         /// To what corner the legend is aligned.
         ///
         /// Defaults to the right bottom corner.
-        std::optional<rerun::blueprint::components::Corner2D> corner;
+        std::optional<ComponentBatch> corner;
 
         /// Whether the legend is shown at all.
         ///
         /// True by default.
-        std::optional<rerun::blueprint::components::Visible> visible;
+        std::optional<ComponentBatch> visible;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -35,16 +35,40 @@ namespace rerun::blueprint::archetypes {
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+        /// The name of the archetype as used in `ComponentDescriptor`s.
+        static constexpr const char ArchetypeName[] = "rerun.blueprint.archetypes.PlotLegend";
+
+        /// `ComponentDescriptor` for the `corner` field.
+        static constexpr auto Descriptor_corner = ComponentDescriptor(
+            ArchetypeName, "corner",
+            Loggable<rerun::blueprint::components::Corner2D>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `visible` field.
+        static constexpr auto Descriptor_visible = ComponentDescriptor(
+            ArchetypeName, "visible",
+            Loggable<rerun::blueprint::components::Visible>::Descriptor.component_name
+        );
 
       public:
         PlotLegend() = default;
         PlotLegend(PlotLegend&& other) = default;
+        PlotLegend(const PlotLegend& other) = default;
+        PlotLegend& operator=(const PlotLegend& other) = default;
+        PlotLegend& operator=(PlotLegend&& other) = default;
+
+        /// Update only some specific fields of a `PlotLegend`.
+        static PlotLegend update_fields() {
+            return PlotLegend();
+        }
+
+        /// Clear all the fields of a `PlotLegend`.
+        static PlotLegend clear_fields();
 
         /// To what corner the legend is aligned.
         ///
         /// Defaults to the right bottom corner.
-        PlotLegend with_corner(rerun::blueprint::components::Corner2D _corner) && {
-            corner = std::move(_corner);
+        PlotLegend with_corner(const rerun::blueprint::components::Corner2D& _corner) && {
+            corner = ComponentBatch::from_loggable(_corner, Descriptor_corner).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
@@ -52,8 +76,8 @@ namespace rerun::blueprint::archetypes {
         /// Whether the legend is shown at all.
         ///
         /// True by default.
-        PlotLegend with_visible(rerun::blueprint::components::Visible _visible) && {
-            visible = std::move(_visible);
+        PlotLegend with_visible(const rerun::blueprint::components::Visible& _visible) && {
+            visible = ComponentBatch::from_loggable(_visible, Descriptor_visible).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

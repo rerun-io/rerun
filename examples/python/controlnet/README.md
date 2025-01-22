@@ -30,19 +30,19 @@ The visualizations in this example were created with the following Rerun code.
 
 ### Images
 ```python
-rr.log("input/raw", rr.Image(image), timeless=True)
-rr.log("input/canny", rr.Image(canny_image), timeless=True)
+rr.log("input/raw", rr.Image(image), static=True)
+rr.log("input/canny", rr.Image(canny_image), static=True)
 ```
-The input image and control canny_image are marked as timeless and logged in rerun.
+The input image and control canny_image are marked as static and logged in rerun.
 
-Timeless entities belong to all timelines (existing ones, and ones not yet created) and are shown leftmost in the time panel in the viewer. This is useful for entities that aren't part of normal data capture, but set the scene for how they are shown.
+Static entities belong to all timelines (existing ones, and ones not yet created) and are shown leftmost in the time panel in the viewer. This is useful for entities that aren't part of normal data capture, but set the scene for how they are shown.
 
 This designation ensures their constant availability across all timelines in Rerun, aiding in consistent comparison and documentation.
 
 ### Prompts
 ```python
-rr.log("positive_prompt", rr.TextDocument(prompt), timeless=True)
-rr.log("negative_prompt", rr.TextDocument(negative_prompt), timeless=True)
+rr.log("positive_prompt", rr.TextDocument(prompt), static=True)
+rr.log("negative_prompt", rr.TextDocument(negative_prompt), static=True)
 ```
 The positive and negative prompt used for generation is logged to Rerun.
 

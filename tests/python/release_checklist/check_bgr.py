@@ -45,7 +45,7 @@ def blueprint() -> rrb.BlueprintLike:
 
 
 def log_readme() -> None:
-    rr.log("readme", rr.TextDocument(README, media_type=rr.MediaType.MARKDOWN), timeless=True)
+    rr.log("readme", rr.TextDocument(README, media_type=rr.MediaType.MARKDOWN), static=True)
 
 
 def run_bgr_images(sample_image_rgb_u8: np.ndarray) -> None:

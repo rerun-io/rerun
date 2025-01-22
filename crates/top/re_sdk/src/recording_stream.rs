@@ -18,7 +18,7 @@ use re_log_types::{
     StoreId, StoreInfo, StoreKind, StoreSource, Time, TimeInt, TimePoint, TimeType, Timeline,
     TimelineName,
 };
-use re_types_core::{AsComponents, SerializationError};
+use re_types_core::{AsComponents, SerializationError, SerializedComponentColumn};
 
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
@@ -1030,15 +1030,39 @@ impl RecordingStream {
         Ok(())
     }
 
-    #[deprecated(since = "0.16.0", note = "use `log_static` instead")]
-    #[doc(hidden)]
-    #[inline]
-    pub fn log_timeless<AS: ?Sized + AsComponents>(
+    /// Lower-level logging API to provide data spanning multiple timepoints.
+    ///
+    /// Unlike the regular `log` API, which is row-oriented, this API lets you submit the data
+    /// in a columnar form. The lengths of all of the [`TimeColumn`] and the component columns
+    /// must match. All data that occurs at the same index across the different time and components
+    /// arrays will act as a single logical row.
+    ///
+    /// Note that this API ignores any stateful time set on the log stream via the
+    /// [`Self::set_timepoint`]/[`Self::set_time_nanos`]/etc. APIs.
+    /// Furthermore, this will _not_ inject the default timelines `log_tick` and `log_time` timeline columns.
+    pub fn send_columns_v2(
         &self,
         ent_path: impl Into<EntityPath>,
-        arch: &AS,
+        indexes: impl IntoIterator<Item = TimeColumn>,
+        columns: impl IntoIterator<Item = SerializedComponentColumn>,
     ) -> RecordingStreamResult<()> {
-        self.log_static(ent_path, arch)
+        let id = ChunkId::new();
+
+        let indexes = indexes
+            .into_iter()
+            .map(|timeline| (*timeline.timeline(), timeline))
+            .collect::<IntMap<_, _>>();
+
+        let components: ChunkComponents = columns
+            .into_iter()
+            .map(|column| (column.descriptor, column.list_array))
+            .collect();
+
+        let chunk = Chunk::from_auto_row_ids(id, ent_path.into(), indexes, components)?;
+
+        self.send_chunk(chunk);
+
+        Ok(())
     }
 
     /// Log data to Rerun.
@@ -1069,18 +1093,6 @@ impl RecordingStream {
         as_components: &AS,
     ) -> RecordingStreamResult<()> {
         self.log_with_static(ent_path, true, as_components)
-    }
-
-    #[deprecated(since = "0.16.0", note = "use `log_static` instead")]
-    #[doc(hidden)]
-    #[inline]
-    pub fn log_with_timeless<AS: ?Sized + AsComponents>(
-        &self,
-        ent_path: impl Into<EntityPath>,
-        static_: bool,
-        arch: &AS,
-    ) -> RecordingStreamResult<()> {
-        self.log_with_static(ent_path, static_, arch)
     }
 
     /// Logs the contents of a [component bundle] into Rerun.
@@ -2585,14 +2597,14 @@ mod tests {
             .unwrap();
     }
 
-    fn example_rows(timeless: bool) -> Vec<PendingRow> {
+    fn example_rows(static_: bool) -> Vec<PendingRow> {
         use re_log_types::example_components::{MyColor, MyLabel, MyPoint};
         use re_types_core::{Component as _, Loggable};
 
         let mut tick = 0i64;
         let mut timepoint = |frame_nr: i64| {
             let mut tp = TimePoint::default();
-            if !timeless {
+            if !static_ {
                 tp.insert(Timeline::log_time(), Time::now());
                 tp.insert(Timeline::log_tick(), tick);
                 tp.insert(Timeline::new_sequence("frame_nr"), frame_nr);

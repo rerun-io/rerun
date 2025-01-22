@@ -128,6 +128,8 @@ namespace rerun::archetypes {
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+        /// The name of the archetype as used in `ComponentDescriptor`s.
+        static constexpr const char ArchetypeName[] = "rerun.archetypes.DepthImage";
 
       public: // START of extensions from depth_image_ext.cpp:
         /// Constructs image from pointer + resolution, inferring the datatype from the pointer type.
@@ -192,6 +194,9 @@ namespace rerun::archetypes {
       public:
         DepthImage() = default;
         DepthImage(DepthImage&& other) = default;
+        DepthImage(const DepthImage& other) = default;
+        DepthImage& operator=(const DepthImage& other) = default;
+        DepthImage& operator=(DepthImage&& other) = default;
 
         /// An optional floating point value that specifies how long a meter is in the native depth units.
         ///
