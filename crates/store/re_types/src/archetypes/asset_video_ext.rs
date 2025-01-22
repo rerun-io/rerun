@@ -32,30 +32,52 @@ impl AssetVideo {
     #[inline]
     pub fn from_file_contents(contents: Vec<u8>, media_type: Option<impl Into<MediaType>>) -> Self {
         let media_type = media_type.map(Into::into);
-        let media_type = MediaType::or_guess_from_data(media_type, &contents);
-        Self {
-            blob: contents.into(),
-            media_type,
+        if let Some(media_type) = MediaType::or_guess_from_data(media_type, &contents) {
+            Self::new(contents).with_media_type(media_type)
+        } else {
+            Self::new(contents)
         }
     }
 
     /// Determines the presentation timestamps of all frames inside the video.
     ///
     /// Returned timestamps are in nanoseconds since start and are guaranteed to be monotonically increasing.
+    ///
+    /// Panics if the serialized blob data doesn't have the right datatype.
     #[cfg(feature = "video")]
     pub fn read_frame_timestamps_ns(&self) -> Result<Vec<i64>, re_video::VideoLoadError> {
+        use re_types_core::Loggable;
+
         re_tracing::profile_function!();
+
+        let Some(blob) = self.blob.as_ref() else {
+            return Ok(Vec::new());
+        };
+
+        // Grab blob data without a copy.
+        let blob_list_array = blob
+            .array
+            .as_any()
+            .downcast_ref::<arrow::array::ListArray>()
+            .expect("Video blob data is not a ListArray");
+        let blob_data = blob_list_array.values().to_data();
+        let blob_bytes = blob_data.buffer(0);
 
         let Some(media_type) = self
             .media_type
-            .clone()
-            .or_else(|| MediaType::guess_from_data(&self.blob))
+            .as_ref()
+            .and_then(|mt| {
+                MediaType::from_arrow(&mt.array)
+                    .ok()
+                    .and_then(|mt| mt.first().cloned())
+            })
+            .or_else(|| MediaType::guess_from_data(blob_bytes))
         else {
             return Err(re_video::VideoLoadError::UnrecognizedMimeType);
         };
 
         Ok(
-            re_video::VideoData::load_from_bytes(self.blob.as_slice(), media_type.as_str())?
+            re_video::VideoData::load_from_bytes(blob_bytes, media_type.as_str())?
                 .frame_timestamps_ns()
                 .collect(),
         )
