@@ -34,8 +34,9 @@ from glob import glob
 class Result:
     """The result of running one test."""
 
-    def __init__(self, command: str, duration: float) -> None:
+    def __init__(self, command: str, success: bool, duration: float) -> None:
         self.command = command
+        self.success = success
         self.duration = duration
 
 
@@ -46,7 +47,7 @@ def run_cargo(cargo_cmd: str, cargo_args: str, clippy_conf: str | None = None) -
     args += cargo_args.split(" ")
 
     cmd_str = subprocess.list2cmdline(args)
-    print(f"> {cmd_str}")
+    print(f"> {cmd_str} ", end="", flush=True)
     start_time = time.time()
 
     additional_env_vars = {}
@@ -64,14 +65,20 @@ def run_cargo(cargo_cmd: str, cargo_args: str, clippy_conf: str | None = None) -
     env.update(additional_env_vars)
 
     result = subprocess.run(args, env=env, check=False, capture_output=True, text=True)
-    if result.returncode != 0:
+    success = result.returncode == 0
+
+    if success:
+        print("✅")
+    else:
+        print("❌")
+        # Print output right away, so the user can start fixing it while waiting for the rest of the checks to run:
         env_var_string = " ".join([f'{env_var}="{value}"' for env_var, value in additional_env_vars.items()])
         print(
             f"'{env_var_string} {cmd_str}' failed with exit-code {result.returncode}. Output:\n{result.stdout}\n{result.stderr}"
         )
-        sys.exit(result.returncode)
 
-    return Result(cmd_str, time.time() - start_time)
+    duration = time.time() - start_time
+    return Result(cmd_str, success, duration)
 
 
 def package_name_from_cargo_toml(cargo_toml_path: str) -> str:
@@ -123,6 +130,7 @@ def main() -> None:
     print("Enabled checks:")
     for check in enabled_check_names:
         print(f" - {check}")
+    print()
 
     # ----------------------
 
@@ -141,6 +149,20 @@ def main() -> None:
     results.sort(key=lambda result: result.duration, reverse=True)
     for result in results:
         print(f"{result.duration:.2f}s \t {result.command}")
+
+    # ----------------------
+
+    # Count failures
+    num_failures = sum(1 for result in results if not result.success)
+
+    if num_failures == 0:
+        print()
+        print("✅ All checks passed!")
+        sys.exit(0)
+    else:
+        print()
+        print(f"❌ {num_failures} checks / {len(results)} failed!")
+        sys.exit(1)
 
 
 def base_checks(results: list[Result]) -> None:
