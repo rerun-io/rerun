@@ -986,6 +986,53 @@ impl RecordingStream {
     /// Lower-level logging API to provide data spanning multiple timepoints.
     ///
     /// Unlike the regular `log` API, which is row-oriented, this API lets you submit the data
+    /// in a columnar form. The lengths of all of the [`TimeColumn`] and the component batches
+    /// must match. All data that occurs at the same index across the different time and components
+    /// arrays will act as a single logical row.
+    ///
+    /// Note that this API ignores any stateful time set on the log stream via the
+    /// [`Self::set_timepoint`]/[`Self::set_time_nanos`]/etc. APIs.
+    /// Furthermore, this will _not_ inject the default timelines `log_tick` and `log_time` timeline columns.
+    ///
+    /// TODO(#7167): Unlike Python and C++, this API does not yet support arbitrary partitions of the incoming
+    /// component arrays. Each component will be individually associated with a single timepoint, rather
+    /// than offering how big the component arrays are that are associated with each timepoint.
+    #[inline]
+    pub fn send_columns<'a>(
+        &self,
+        ent_path: impl Into<EntityPath>,
+        timelines: impl IntoIterator<Item = TimeColumn>,
+        components: impl IntoIterator<Item = &'a dyn re_types_core::ComponentBatch>,
+    ) -> RecordingStreamResult<()> {
+        let id = ChunkId::new();
+
+        let timelines = timelines
+            .into_iter()
+            .map(|timeline| (*timeline.timeline(), timeline))
+            .collect::<IntMap<_, _>>();
+
+        let components: Result<Vec<_>, ChunkError> = components
+            .into_iter()
+            .map(|batch| {
+                Ok((
+                    batch.descriptor().into_owned(),
+                    batch.to_arrow_list_array()?,
+                ))
+            })
+            .collect();
+
+        let components: ChunkComponents = components?.into_iter().collect();
+
+        let chunk = Chunk::from_auto_row_ids(id, ent_path.into(), timelines, components)?;
+
+        self.send_chunk(chunk);
+
+        Ok(())
+    }
+
+    /// Lower-level logging API to provide data spanning multiple timepoints.
+    ///
+    /// Unlike the regular `log` API, which is row-oriented, this API lets you submit the data
     /// in a columnar form. The lengths of all of the [`TimeColumn`] and the component columns
     /// must match. All data that occurs at the same index across the different time and components
     /// arrays will act as a single logical row.
