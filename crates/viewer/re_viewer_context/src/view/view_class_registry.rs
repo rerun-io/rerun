@@ -238,7 +238,7 @@ impl ViewClassRegistry {
     }
 
     /// Queries a View type by class name, returning `None` if it is not registered.
-    fn get_class(&self, name: ViewClassIdentifier) -> Option<&dyn ViewClass> {
+    pub fn class(&self, name: ViewClassIdentifier) -> Option<&dyn ViewClass> {
         self.view_classes
             .get(&name)
             .map(|boxed| boxed.class.as_ref())
@@ -255,7 +255,7 @@ impl ViewClassRegistry {
 
     /// Queries a View type by class name and logs if it fails, returning a placeholder class.
     pub fn get_class_or_log_error(&self, name: ViewClassIdentifier) -> &dyn ViewClass {
-        if let Some(result) = self.get_class(name) {
+        if let Some(result) = self.class(name) {
             result
         } else {
             re_log::error_once!("Unknown view class {:?}", name);

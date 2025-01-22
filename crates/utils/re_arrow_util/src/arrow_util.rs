@@ -32,7 +32,7 @@ pub fn into_arrow_ref(array: impl Array + 'static) -> ArrayRef {
     std::sync::Arc::new(array)
 }
 
-/// Returns an iterator with the lengths of the offsets
+/// Returns an iterator with the lengths of the offsets.
 pub fn offsets_lengths(
     offsets: &arrow::buffer::OffsetBuffer<i32>,
 ) -> impl Iterator<Item = usize> + '_ {
@@ -46,6 +46,24 @@ pub fn offsets_lengths(
         );
         end.saturating_sub(start).max(0) as usize
     })
+}
+
+/// Repartitions a [`ListArray`] according to the specified `lengths`, ignoring previous partitioning.
+///
+/// The specified `lengths` must sum to the total length underlying values (i.e. the child array).
+///
+/// The validity of the values is ignored.
+#[inline]
+pub fn repartition_list_array(
+    list_array: ListArray,
+    lengths: impl IntoIterator<Item = usize>,
+) -> arrow::error::Result<ListArray> {
+    let (field, _offsets, values, _nulls) = list_array.into_parts();
+
+    let offsets = OffsetBuffer::from_lengths(lengths);
+    let nulls = None;
+
+    ListArray::try_new(field, offsets, values, nulls)
 }
 
 /// Returns true if the given `list_array` is semantically empty.

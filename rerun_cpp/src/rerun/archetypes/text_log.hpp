@@ -95,10 +95,15 @@ namespace rerun::archetypes {
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+        /// The name of the archetype as used in `ComponentDescriptor`s.
+        static constexpr const char ArchetypeName[] = "rerun.archetypes.TextLog";
 
       public:
         TextLog() = default;
         TextLog(TextLog&& other) = default;
+        TextLog(const TextLog& other) = default;
+        TextLog& operator=(const TextLog& other) = default;
+        TextLog& operator=(TextLog&& other) = default;
 
         explicit TextLog(rerun::components::Text _text) : text(std::move(_text)) {}
 

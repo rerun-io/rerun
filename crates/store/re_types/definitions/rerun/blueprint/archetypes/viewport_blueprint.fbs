@@ -4,6 +4,7 @@ namespace rerun.blueprint.archetypes;
 
 /// The top-level description of the viewport.
 table ViewportBlueprint (
+    "attr.cpp.archetype_eager",
     "attr.rust.archetype_eager",
     "attr.rerun.scope": "blueprint",
     "attr.rust.derive": "Default"

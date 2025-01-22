@@ -115,6 +115,8 @@ namespace rerun::archetypes {
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+        /// The name of the archetype as used in `ComponentDescriptor`s.
+        static constexpr const char ArchetypeName[] = "rerun.archetypes.Boxes3D";
 
       public: // START of extensions from boxes3d_ext.cpp:
         /// Creates new `Boxes3D` with `half_sizes` centered around the local origin.
@@ -172,6 +174,9 @@ namespace rerun::archetypes {
       public:
         Boxes3D() = default;
         Boxes3D(Boxes3D&& other) = default;
+        Boxes3D(const Boxes3D& other) = default;
+        Boxes3D& operator=(const Boxes3D& other) = default;
+        Boxes3D& operator=(Boxes3D&& other) = default;
 
         /// Optional center positions of the boxes.
         ///

@@ -19,7 +19,7 @@ namespace rerun::blueprint::archetypes {
     /// **Archetype**: Shared state for the 3 collapsible panels.
     struct PanelBlueprint {
         /// Current state of the panels.
-        std::optional<rerun::blueprint::components::PanelState> state;
+        std::optional<ComponentBatch> state;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -27,14 +27,33 @@ namespace rerun::blueprint::archetypes {
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+        /// The name of the archetype as used in `ComponentDescriptor`s.
+        static constexpr const char ArchetypeName[] = "rerun.blueprint.archetypes.PanelBlueprint";
+
+        /// `ComponentDescriptor` for the `state` field.
+        static constexpr auto Descriptor_state = ComponentDescriptor(
+            ArchetypeName, "state",
+            Loggable<rerun::blueprint::components::PanelState>::Descriptor.component_name
+        );
 
       public:
         PanelBlueprint() = default;
         PanelBlueprint(PanelBlueprint&& other) = default;
+        PanelBlueprint(const PanelBlueprint& other) = default;
+        PanelBlueprint& operator=(const PanelBlueprint& other) = default;
+        PanelBlueprint& operator=(PanelBlueprint&& other) = default;
+
+        /// Update only some specific fields of a `PanelBlueprint`.
+        static PanelBlueprint update_fields() {
+            return PanelBlueprint();
+        }
+
+        /// Clear all the fields of a `PanelBlueprint`.
+        static PanelBlueprint clear_fields();
 
         /// Current state of the panels.
-        PanelBlueprint with_state(rerun::blueprint::components::PanelState _state) && {
-            state = std::move(_state);
+        PanelBlueprint with_state(const rerun::blueprint::components::PanelState& _state) && {
+            state = ComponentBatch::from_loggable(_state, Descriptor_state).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

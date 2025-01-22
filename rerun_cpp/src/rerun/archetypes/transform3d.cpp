@@ -5,7 +5,33 @@
 
 #include "../collection_adapter_builtins.hpp"
 
-namespace rerun::archetypes {}
+namespace rerun::archetypes {
+    Transform3D Transform3D::clear_fields() {
+        auto archetype = Transform3D();
+        archetype.translation =
+            ComponentBatch::empty<rerun::components::Translation3D>(Descriptor_translation)
+                .value_or_throw();
+        archetype.rotation_axis_angle = ComponentBatch::empty<rerun::components::RotationAxisAngle>(
+                                            Descriptor_rotation_axis_angle
+        )
+                                            .value_or_throw();
+        archetype.quaternion =
+            ComponentBatch::empty<rerun::components::RotationQuat>(Descriptor_quaternion)
+                .value_or_throw();
+        archetype.scale =
+            ComponentBatch::empty<rerun::components::Scale3D>(Descriptor_scale).value_or_throw();
+        archetype.mat3x3 =
+            ComponentBatch::empty<rerun::components::TransformMat3x3>(Descriptor_mat3x3)
+                .value_or_throw();
+        archetype.relation =
+            ComponentBatch::empty<rerun::components::TransformRelation>(Descriptor_relation)
+                .value_or_throw();
+        archetype.axis_length =
+            ComponentBatch::empty<rerun::components::AxisLength>(Descriptor_axis_length)
+                .value_or_throw();
+        return archetype;
+    }
+} // namespace rerun::archetypes
 
 namespace rerun {
 
@@ -16,89 +42,26 @@ namespace rerun {
         std::vector<ComponentBatch> cells;
         cells.reserve(8);
 
-        {
-            auto result = ComponentBatch::from_loggable(
-                archetype.translation,
-                ComponentDescriptor(
-                    "rerun.archetypes.Transform3D",
-                    "translation",
-                    "rerun.components.Translation3D"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+        if (archetype.translation.has_value()) {
+            cells.push_back(archetype.translation.value());
         }
-        {
-            auto result = ComponentBatch::from_loggable(
-                archetype.rotation_axis_angle,
-                ComponentDescriptor(
-                    "rerun.archetypes.Transform3D",
-                    "rotation_axis_angle",
-                    "rerun.components.RotationAxisAngle"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+        if (archetype.rotation_axis_angle.has_value()) {
+            cells.push_back(archetype.rotation_axis_angle.value());
         }
-        {
-            auto result = ComponentBatch::from_loggable(
-                archetype.quaternion,
-                ComponentDescriptor(
-                    "rerun.archetypes.Transform3D",
-                    "quaternion",
-                    "rerun.components.RotationQuat"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+        if (archetype.quaternion.has_value()) {
+            cells.push_back(archetype.quaternion.value());
         }
-        {
-            auto result = ComponentBatch::from_loggable(
-                archetype.scale,
-                ComponentDescriptor(
-                    "rerun.archetypes.Transform3D",
-                    "scale",
-                    "rerun.components.Scale3D"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+        if (archetype.scale.has_value()) {
+            cells.push_back(archetype.scale.value());
         }
-        {
-            auto result = ComponentBatch::from_loggable(
-                archetype.mat3x3,
-                ComponentDescriptor(
-                    "rerun.archetypes.Transform3D",
-                    "mat3x3",
-                    "rerun.components.TransformMat3x3"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+        if (archetype.mat3x3.has_value()) {
+            cells.push_back(archetype.mat3x3.value());
         }
-        {
-            auto result = ComponentBatch::from_loggable(
-                archetype.relation,
-                ComponentDescriptor(
-                    "rerun.archetypes.Transform3D",
-                    "relation",
-                    "rerun.components.TransformRelation"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+        if (archetype.relation.has_value()) {
+            cells.push_back(archetype.relation.value());
         }
-        {
-            auto result = ComponentBatch::from_loggable(
-                archetype.axis_length,
-                ComponentDescriptor(
-                    "rerun.archetypes.Transform3D",
-                    "axis_length",
-                    "rerun.components.AxisLength"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+        if (archetype.axis_length.has_value()) {
+            cells.push_back(archetype.axis_length.value());
         }
         {
             auto indicator = Transform3D::IndicatorComponent();

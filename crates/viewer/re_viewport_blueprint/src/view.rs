@@ -148,7 +148,7 @@ impl ViewBlueprint {
 
         let space_env = EntityPathSubs::new_with_origin(&space_origin);
 
-        let content =
+        let contents =
             ViewContents::from_db_or_default(id, blueprint_db, query, class_identifier, &space_env);
         let visible = visible.map_or(true, |v| *v.0);
         let defaults_path = id.as_entity_path().join(&"defaults".into());
@@ -158,7 +158,7 @@ impl ViewBlueprint {
             display_name,
             class_identifier,
             space_origin,
-            contents: content,
+            contents,
             visible,
             defaults_path,
             pending_writes: Default::default(),

@@ -94,6 +94,53 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/point3d_ui_radius/e051a65b4317438bcaea8d0eee016ac9460b5336/full.png" width="640">
 /// </picture>
 /// </center>
+///
+/// ### Send several point clouds with varying point count over time in a single call
+/// ```ignore
+/// use rerun::TimeColumn;
+///
+/// fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_points3d_send_columns").spawn()?;
+///
+///     // Prepare a point cloud that evolves over 5 timesteps, changing the number of points in the process.
+///     let times = TimeColumn::new_seconds("time", 10..15);
+///
+///     #[rustfmt::skip]
+///     let positions = [
+///         [1.0, 0.0, 1.0], [0.5, 0.5, 2.0],
+///         [1.5, -0.5, 1.5], [1.0, 1.0, 2.5], [-0.5, 1.5, 1.0], [-1.5, 0.0, 2.0],
+///         [2.0, 0.0, 2.0], [1.5, -1.5, 3.0], [0.0, -2.0, 2.5], [1.0, -1.0, 3.5],
+///         [-2.0, 0.0, 2.0], [-1.5, 1.5, 3.0], [-1.0, 1.0, 3.5],
+///         [1.0, -1.0, 1.0], [2.0, -2.0, 2.0], [3.0, -1.0, 3.0], [2.0, 0.0, 4.0],
+///     ];
+///
+///     // At each timestep, all points in the cloud share the same but changing color and radius.
+///     let colors = [0xFF0000FF, 0x00FF00FF, 0x0000FFFF, 0xFFFF00FF, 0x00FFFFFF];
+///     let radii = [0.05, 0.01, 0.2, 0.1, 0.3];
+///
+///     // Partition our data as expected across the 5 timesteps.
+///     let position = rerun::Points3D::update_fields()
+///         .with_positions(positions)
+///         .columns([2, 4, 4, 3, 4])?;
+///     let color_and_radius = rerun::Points3D::update_fields()
+///         .with_colors(colors)
+///         .with_radii(radii)
+///         .columns([1, 1, 1, 1, 1])?;
+///
+///     rec.send_columns_v2("points", [times], position.chain(color_and_radius))?;
+///
+///     Ok(())
+/// }
+/// ```
+/// <center>
+/// <picture>
+///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/points3d_send_columns/633b524a2ee439b0e3afc3f894f4927ce938a3ec/480w.png">
+///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/points3d_send_columns/633b524a2ee439b0e3afc3f894f4927ce938a3ec/768w.png">
+///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/points3d_send_columns/633b524a2ee439b0e3afc3f894f4927ce938a3ec/1024w.png">
+///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/points3d_send_columns/633b524a2ee439b0e3afc3f894f4927ce938a3ec/1200w.png">
+///   <img src="https://static.rerun.io/points3d_send_columns/633b524a2ee439b0e3afc3f894f4927ce938a3ec/full.png" width="640">
+/// </picture>
+/// </center>
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct Points3D {
     /// All the 3D positions at which the point cloud shows points.
@@ -422,6 +469,52 @@ impl Points3D {
                 Self::descriptor_keypoint_ids(),
             )),
         }
+    }
+
+    /// Partitions the component data into multiple sub-batches.
+    ///
+    /// Specifically, this transforms the existing [`SerializedComponentBatch`]es data into [`SerializedComponentColumn`]s
+    /// instead, via [`SerializedComponentBatch::partitioned`].
+    ///
+    /// This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
+    ///
+    /// The specified `lengths` must sum to the total length of the component batch.
+    ///
+    /// [`SerializedComponentColumn`]: [::re_types_core::SerializedComponentColumn]
+    #[inline]
+    pub fn columns<I>(
+        self,
+        _lengths: I,
+    ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>>
+    where
+        I: IntoIterator<Item = usize> + Clone,
+    {
+        let columns = [
+            self.positions
+                .map(|positions| positions.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.radii
+                .map(|radii| radii.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.colors
+                .map(|colors| colors.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.labels
+                .map(|labels| labels.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.show_labels
+                .map(|show_labels| show_labels.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.class_ids
+                .map(|class_ids| class_ids.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.keypoint_ids
+                .map(|keypoint_ids| keypoint_ids.partitioned(_lengths.clone()))
+                .transpose()?,
+        ];
+        let indicator_column =
+            ::re_types_core::indicator_column::<Self>(_lengths.into_iter().count())?;
+        Ok(columns.into_iter().chain([indicator_column]).flatten())
     }
 
     /// All the 3D positions at which the point cloud shows points.

@@ -5,7 +5,15 @@
 
 #include "../collection_adapter_builtins.hpp"
 
-namespace rerun::archetypes {}
+namespace rerun::archetypes {
+    AnnotationContext AnnotationContext::clear_fields() {
+        auto archetype = AnnotationContext();
+        archetype.context =
+            ComponentBatch::empty<rerun::components::AnnotationContext>(Descriptor_context)
+                .value_or_throw();
+        return archetype;
+    }
+} // namespace rerun::archetypes
 
 namespace rerun {
 
@@ -16,17 +24,8 @@ namespace rerun {
         std::vector<ComponentBatch> cells;
         cells.reserve(2);
 
-        {
-            auto result = ComponentBatch::from_loggable(
-                archetype.context,
-                ComponentDescriptor(
-                    "rerun.archetypes.AnnotationContext",
-                    "context",
-                    "rerun.components.AnnotationContext"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+        if (archetype.context.has_value()) {
+            cells.push_back(archetype.context.value());
         }
         {
             auto indicator = AnnotationContext::IndicatorComponent();

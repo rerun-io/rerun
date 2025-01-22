@@ -22,10 +22,10 @@ namespace rerun::blueprint::archetypes {
     /// **Archetype**: The description of a single view.
     struct ViewBlueprint {
         /// The class of the view.
-        rerun::blueprint::components::ViewClass class_identifier;
+        std::optional<ComponentBatch> class_identifier;
 
         /// The name of the view.
-        std::optional<rerun::components::Name> display_name;
+        std::optional<ComponentBatch> display_name;
 
         /// The "anchor point" of this view.
         ///
@@ -34,12 +34,12 @@ namespace rerun::blueprint::archetypes {
         /// The transform at this path forms the reference point for all scene->world transforms in this view.
         /// I.e. the position of this entity path in space forms the origin of the coordinate system in this view.
         /// Furthermore, this is the primary indicator for heuristics on what entities we show in this view.
-        std::optional<rerun::blueprint::components::ViewOrigin> space_origin;
+        std::optional<ComponentBatch> space_origin;
 
         /// Whether this view is visible.
         ///
         /// Defaults to true if not specified.
-        std::optional<rerun::blueprint::components::Visible> visible;
+        std::optional<ComponentBatch> visible;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -47,17 +47,66 @@ namespace rerun::blueprint::archetypes {
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+        /// The name of the archetype as used in `ComponentDescriptor`s.
+        static constexpr const char ArchetypeName[] = "rerun.blueprint.archetypes.ViewBlueprint";
+
+        /// `ComponentDescriptor` for the `class_identifier` field.
+        static constexpr auto Descriptor_class_identifier = ComponentDescriptor(
+            ArchetypeName, "class_identifier",
+            Loggable<rerun::blueprint::components::ViewClass>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `display_name` field.
+        static constexpr auto Descriptor_display_name = ComponentDescriptor(
+            ArchetypeName, "display_name",
+            Loggable<rerun::components::Name>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `space_origin` field.
+        static constexpr auto Descriptor_space_origin = ComponentDescriptor(
+            ArchetypeName, "space_origin",
+            Loggable<rerun::blueprint::components::ViewOrigin>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `visible` field.
+        static constexpr auto Descriptor_visible = ComponentDescriptor(
+            ArchetypeName, "visible",
+            Loggable<rerun::blueprint::components::Visible>::Descriptor.component_name
+        );
 
       public:
         ViewBlueprint() = default;
         ViewBlueprint(ViewBlueprint&& other) = default;
+        ViewBlueprint(const ViewBlueprint& other) = default;
+        ViewBlueprint& operator=(const ViewBlueprint& other) = default;
+        ViewBlueprint& operator=(ViewBlueprint&& other) = default;
 
         explicit ViewBlueprint(rerun::blueprint::components::ViewClass _class_identifier)
-            : class_identifier(std::move(_class_identifier)) {}
+            : class_identifier(ComponentBatch::from_loggable(
+                                   std::move(_class_identifier), Descriptor_class_identifier
+              )
+                                   .value_or_throw()) {}
+
+        /// Update only some specific fields of a `ViewBlueprint`.
+        static ViewBlueprint update_fields() {
+            return ViewBlueprint();
+        }
+
+        /// Clear all the fields of a `ViewBlueprint`.
+        static ViewBlueprint clear_fields();
+
+        /// The class of the view.
+        ViewBlueprint with_class_identifier(
+            const rerun::blueprint::components::ViewClass& _class_identifier
+        ) && {
+            class_identifier =
+                ComponentBatch::from_loggable(_class_identifier, Descriptor_class_identifier)
+                    .value_or_throw();
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
 
         /// The name of the view.
-        ViewBlueprint with_display_name(rerun::components::Name _display_name) && {
-            display_name = std::move(_display_name);
+        ViewBlueprint with_display_name(const rerun::components::Name& _display_name) && {
+            display_name = ComponentBatch::from_loggable(_display_name, Descriptor_display_name)
+                               .value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
@@ -69,8 +118,11 @@ namespace rerun::blueprint::archetypes {
         /// The transform at this path forms the reference point for all scene->world transforms in this view.
         /// I.e. the position of this entity path in space forms the origin of the coordinate system in this view.
         /// Furthermore, this is the primary indicator for heuristics on what entities we show in this view.
-        ViewBlueprint with_space_origin(rerun::blueprint::components::ViewOrigin _space_origin) && {
-            space_origin = std::move(_space_origin);
+        ViewBlueprint with_space_origin(
+            const rerun::blueprint::components::ViewOrigin& _space_origin
+        ) && {
+            space_origin = ComponentBatch::from_loggable(_space_origin, Descriptor_space_origin)
+                               .value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
@@ -78,8 +130,8 @@ namespace rerun::blueprint::archetypes {
         /// Whether this view is visible.
         ///
         /// Defaults to true if not specified.
-        ViewBlueprint with_visible(rerun::blueprint::components::Visible _visible) && {
-            visible = std::move(_visible);
+        ViewBlueprint with_visible(const rerun::blueprint::components::Visible& _visible) && {
+            visible = ComponentBatch::from_loggable(_visible, Descriptor_visible).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

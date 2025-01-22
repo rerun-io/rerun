@@ -5,7 +5,15 @@
 
 #include "../../collection_adapter_builtins.hpp"
 
-namespace rerun::blueprint::archetypes {}
+namespace rerun::blueprint::archetypes {
+    PanelBlueprint PanelBlueprint::clear_fields() {
+        auto archetype = PanelBlueprint();
+        archetype.state =
+            ComponentBatch::empty<rerun::blueprint::components::PanelState>(Descriptor_state)
+                .value_or_throw();
+        return archetype;
+    }
+} // namespace rerun::blueprint::archetypes
 
 namespace rerun {
 
@@ -18,16 +26,7 @@ namespace rerun {
         cells.reserve(2);
 
         if (archetype.state.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.state.value(),
-                ComponentDescriptor(
-                    "rerun.blueprint.archetypes.PanelBlueprint",
-                    "state",
-                    "rerun.blueprint.components.PanelState"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.state.value());
         }
         {
             auto indicator = PanelBlueprint::IndicatorComponent();

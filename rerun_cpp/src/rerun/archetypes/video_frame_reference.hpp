@@ -139,10 +139,15 @@ namespace rerun::archetypes {
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+        /// The name of the archetype as used in `ComponentDescriptor`s.
+        static constexpr const char ArchetypeName[] = "rerun.archetypes.VideoFrameReference";
 
       public:
         VideoFrameReference() = default;
         VideoFrameReference(VideoFrameReference&& other) = default;
+        VideoFrameReference(const VideoFrameReference& other) = default;
+        VideoFrameReference& operator=(const VideoFrameReference& other) = default;
+        VideoFrameReference& operator=(VideoFrameReference&& other) = default;
 
         explicit VideoFrameReference(rerun::components::VideoTimestamp _timestamp)
             : timestamp(std::move(_timestamp)) {}

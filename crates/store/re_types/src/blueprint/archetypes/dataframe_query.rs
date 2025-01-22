@@ -284,6 +284,46 @@ impl DataframeQuery {
         }
     }
 
+    /// Partitions the component data into multiple sub-batches.
+    ///
+    /// Specifically, this transforms the existing [`SerializedComponentBatch`]es data into [`SerializedComponentColumn`]s
+    /// instead, via [`SerializedComponentBatch::partitioned`].
+    ///
+    /// This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
+    ///
+    /// The specified `lengths` must sum to the total length of the component batch.
+    ///
+    /// [`SerializedComponentColumn`]: [::re_types_core::SerializedComponentColumn]
+    #[inline]
+    pub fn columns<I>(
+        self,
+        _lengths: I,
+    ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>>
+    where
+        I: IntoIterator<Item = usize> + Clone,
+    {
+        let columns = [
+            self.timeline
+                .map(|timeline| timeline.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.filter_by_range
+                .map(|filter_by_range| filter_by_range.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.filter_is_not_null
+                .map(|filter_is_not_null| filter_is_not_null.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.apply_latest_at
+                .map(|apply_latest_at| apply_latest_at.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.select
+                .map(|select| select.partitioned(_lengths.clone()))
+                .transpose()?,
+        ];
+        let indicator_column =
+            ::re_types_core::indicator_column::<Self>(_lengths.into_iter().count())?;
+        Ok(columns.into_iter().chain([indicator_column]).flatten())
+    }
+
     /// The timeline for this query.
     ///
     /// If unset, the timeline currently active on the time panel is used.

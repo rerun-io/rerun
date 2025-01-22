@@ -74,6 +74,8 @@ namespace rerun::archetypes {
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+        /// The name of the archetype as used in `ComponentDescriptor`s.
+        static constexpr const char ArchetypeName[] = "rerun.archetypes.Tensor";
 
       public: // START of extensions from tensor_ext.cpp:
         /// New Tensor from dimensions and tensor buffer.
@@ -104,6 +106,9 @@ namespace rerun::archetypes {
       public:
         Tensor() = default;
         Tensor(Tensor&& other) = default;
+        Tensor(const Tensor& other) = default;
+        Tensor& operator=(const Tensor& other) = default;
+        Tensor& operator=(Tensor&& other) = default;
 
         explicit Tensor(rerun::components::TensorData _data) : data(std::move(_data)) {}
 

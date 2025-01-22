@@ -37,26 +37,12 @@ int main() {
         }
 
         rec.set_time_sequence("frame", i);
-        rec.log("points", rerun::Points3D::IndicatorComponent(), colors, radii);
-        // TODO(cmc): implement new APIs and use them!
-        // rec.log("points", rerun::Points3D::update_fields().with_radii(radii).with_colors(colors));
+        rec.log("points", rerun::Points3D::update_fields().with_radii(radii).with_colors(colors));
     }
 
     std::vector<rerun::Radius> radii;
     radii.emplace_back(0.3f);
 
     rec.set_time_sequence("frame", 20);
-    rec.log(
-        "points",
-        rerun::Points3D::IndicatorComponent(),
-        positions,
-        radii,
-        std::vector<rerun::components::Color>(),
-        std::vector<rerun::components::Text>(),
-        std::vector<rerun::components::ShowLabels>(),
-        std::vector<rerun::components::ClassId>(),
-        std::vector<rerun::components::KeypointId>()
-    );
-    // TODO(cmc): implement new APIs and use them!
-    // rec.log("points", rerun::Points3D::clear_fields().with_radii(radii).with_colors(colors));
+    rec.log("points", rerun::Points3D::clear_fields().with_positions(positions).with_radii(radii));
 }

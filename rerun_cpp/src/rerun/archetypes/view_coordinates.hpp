@@ -58,6 +58,8 @@ namespace rerun::archetypes {
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+        /// The name of the archetype as used in `ComponentDescriptor`s.
+        static constexpr const char ArchetypeName[] = "rerun.archetypes.ViewCoordinates";
 
       public: // START of extensions from view_coordinates_ext.cpp:
         /// Construct Vec3D from x/y/z values.
@@ -313,6 +315,9 @@ namespace rerun::archetypes {
       public:
         ViewCoordinates() = default;
         ViewCoordinates(ViewCoordinates&& other) = default;
+        ViewCoordinates(const ViewCoordinates& other) = default;
+        ViewCoordinates& operator=(const ViewCoordinates& other) = default;
+        ViewCoordinates& operator=(ViewCoordinates&& other) = default;
 
         explicit ViewCoordinates(rerun::components::ViewCoordinates _xyz) : xyz(std::move(_xyz)) {}
     };

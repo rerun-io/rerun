@@ -5,15 +5,16 @@ use ahash::HashMap;
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 
+use re_chunk::{Chunk, ChunkBuilder};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
-use re_log_types::{StoreId, StoreKind};
+use re_log_types::{EntityPath, StoreId, StoreKind};
 use re_types_core::reflection::Reflection;
 
 use crate::{
     blueprint_timeline, command_channel, ApplicationSelectionState, CommandReceiver, CommandSender,
     ComponentUiRegistry, DataQueryResult, ItemCollection, RecordingConfig, StoreContext,
-    SystemCommand, ViewClassRegistry, ViewId, ViewerContext,
+    SystemCommand, ViewClass, ViewClassRegistry, ViewId, ViewerContext,
 };
 
 /// Harness to execute code that rely on [`crate::ViewerContext`].
@@ -205,6 +206,29 @@ impl TestContext {
 
         // the selection state is double-buffered, so let's ensure it's updated
         self.selection_state.on_frame_start(|_| true, None);
+    }
+
+    /// Log an entity to the recording store.
+    ///
+    /// The provided closure should add content using the [`ChunkBuilder`] passed as argument.
+    pub fn log_entity(
+        &mut self,
+        entity_path: EntityPath,
+        build_chunk: impl FnOnce(ChunkBuilder) -> ChunkBuilder,
+    ) {
+        let builder = build_chunk(Chunk::builder(entity_path));
+        self.recording_store
+            .add_chunk(&Arc::new(
+                builder.build().expect("chunk should be successfully built"),
+            ))
+            .expect("chunk should be successfully added");
+    }
+
+    /// Register a view class.
+    pub fn register_view_class<T: ViewClass + Default + 'static>(&mut self) {
+        self.view_class_registry
+            .add_class::<T>()
+            .expect("registering a class should succeed");
     }
 
     /// Run the provided closure with a [`ViewerContext`] produced by the [`Self`].

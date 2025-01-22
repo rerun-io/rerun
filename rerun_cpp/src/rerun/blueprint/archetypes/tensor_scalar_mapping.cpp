@@ -5,7 +5,20 @@
 
 #include "../../collection_adapter_builtins.hpp"
 
-namespace rerun::blueprint::archetypes {}
+namespace rerun::blueprint::archetypes {
+    TensorScalarMapping TensorScalarMapping::clear_fields() {
+        auto archetype = TensorScalarMapping();
+        archetype.mag_filter =
+            ComponentBatch::empty<rerun::components::MagnificationFilter>(Descriptor_mag_filter)
+                .value_or_throw();
+        archetype.colormap = ComponentBatch::empty<rerun::components::Colormap>(Descriptor_colormap)
+                                 .value_or_throw();
+        archetype.gamma =
+            ComponentBatch::empty<rerun::components::GammaCorrection>(Descriptor_gamma)
+                .value_or_throw();
+        return archetype;
+    }
+} // namespace rerun::blueprint::archetypes
 
 namespace rerun {
 
@@ -18,40 +31,13 @@ namespace rerun {
         cells.reserve(4);
 
         if (archetype.mag_filter.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.mag_filter.value(),
-                ComponentDescriptor(
-                    "rerun.blueprint.archetypes.TensorScalarMapping",
-                    "mag_filter",
-                    "rerun.components.MagnificationFilter"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.mag_filter.value());
         }
         if (archetype.colormap.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.colormap.value(),
-                ComponentDescriptor(
-                    "rerun.blueprint.archetypes.TensorScalarMapping",
-                    "colormap",
-                    "rerun.components.Colormap"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.colormap.value());
         }
         if (archetype.gamma.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.gamma.value(),
-                ComponentDescriptor(
-                    "rerun.blueprint.archetypes.TensorScalarMapping",
-                    "gamma",
-                    "rerun.components.GammaCorrection"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.gamma.value());
         }
         {
             auto indicator = TensorScalarMapping::IndicatorComponent();
