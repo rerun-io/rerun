@@ -12,9 +12,7 @@ namespace rerun {
 
         /// Creates new `Boxes3D` with `half_sizes` centered around the local origin.
         static Boxes3D from_half_sizes(Collection<components::HalfSize3D> half_sizes) {
-            Boxes3D boxes;
-            boxes.half_sizes = std::move(half_sizes);
-            return boxes;
+            return Boxes3D().with_half_sizes(std::move(half_sizes));
         }
 
         /// Creates new `Boxes3D` with `centers` and `half_sizes`.
@@ -22,10 +20,9 @@ namespace rerun {
             Collection<components::PoseTranslation3D> centers,
             Collection<components::HalfSize3D> half_sizes
         ) {
-            Boxes3D boxes;
-            boxes.half_sizes = std::move(half_sizes);
-            boxes.centers = std::move(centers);
-            return boxes;
+            return Boxes3D()
+                .with_half_sizes(std::move(half_sizes))
+                .with_centers(std::move(centers));
         }
 
         /// Creates new `Boxes3D` with `half_sizes` created from (full) sizes.
@@ -45,9 +42,7 @@ namespace rerun {
             Collection<components::PoseTranslation3D> centers,
             const std::vector<datatypes::Vec3D>& sizes
         ) {
-            Boxes3D boxes = from_sizes(std::move(sizes));
-            boxes.centers = std::move(centers);
-            return boxes;
+            return from_sizes(std::move(sizes)).with_centers(std::move(centers));
         }
 
         /// Creates new `Boxes3D` with `half_sizes` and `centers` created from minimums and (full)
@@ -96,10 +91,9 @@ namespace rerun {
                 );
             }
 
-            Boxes3D boxes;
-            boxes.half_sizes = std::move(half_sizes);
-            boxes.centers = std::move(centers);
-            return boxes;
+            return Boxes3D()
+                .with_half_sizes(std::move(half_sizes))
+                .with_centers(std::move(centers));
         }
     } // namespace archetypes
 } // namespace rerun
