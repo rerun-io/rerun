@@ -52,16 +52,16 @@ namespace rerun::archetypes {
     /// ```
     struct GeoLineStrings {
         /// The line strings, expressed in [EPSG:4326](https://epsg.io/4326) coordinates (North/East-positive degrees).
-        Collection<rerun::components::GeoLineString> line_strings;
+        std::optional<ComponentBatch> line_strings;
 
         /// Optional radii for the line strings.
         ///
         /// *Note*: scene units radiii are interpreted as meters. Currently, the display scale only considers the latitude of
         /// the first vertex of each line string (see [this issue](https://github.com/rerun-io/rerun/issues/8013)).
-        std::optional<Collection<rerun::components::Radius>> radii;
+        std::optional<ComponentBatch> radii;
 
         /// Optional colors for the line strings.
-        std::optional<Collection<rerun::components::Color>> colors;
+        std::optional<ComponentBatch> colors;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -72,6 +72,20 @@ namespace rerun::archetypes {
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.GeoLineStrings";
 
+        /// `ComponentDescriptor` for the `line_strings` field.
+        static constexpr auto Descriptor_line_strings = ComponentDescriptor(
+            ArchetypeName, "line_strings",
+            Loggable<rerun::components::GeoLineString>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `radii` field.
+        static constexpr auto Descriptor_radii = ComponentDescriptor(
+            ArchetypeName, "radii", Loggable<rerun::components::Radius>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `colors` field.
+        static constexpr auto Descriptor_colors = ComponentDescriptor(
+            ArchetypeName, "colors", Loggable<rerun::components::Color>::Descriptor.component_name
+        );
+
       public:
         GeoLineStrings() = default;
         GeoLineStrings(GeoLineStrings&& other) = default;
@@ -80,21 +94,42 @@ namespace rerun::archetypes {
         GeoLineStrings& operator=(GeoLineStrings&& other) = default;
 
         explicit GeoLineStrings(Collection<rerun::components::GeoLineString> _line_strings)
-            : line_strings(std::move(_line_strings)) {}
+            : line_strings(
+                  ComponentBatch::from_loggable(std::move(_line_strings), Descriptor_line_strings)
+                      .value_or_throw()
+              ) {}
+
+        /// Update only some specific fields of a `GeoLineStrings`.
+        static GeoLineStrings update_fields() {
+            return GeoLineStrings();
+        }
+
+        /// Clear all the fields of a `GeoLineStrings`.
+        static GeoLineStrings clear_fields();
+
+        /// The line strings, expressed in [EPSG:4326](https://epsg.io/4326) coordinates (North/East-positive degrees).
+        GeoLineStrings with_line_strings(
+            const Collection<rerun::components::GeoLineString>& _line_strings
+        ) && {
+            line_strings = ComponentBatch::from_loggable(_line_strings, Descriptor_line_strings)
+                               .value_or_throw();
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
 
         /// Optional radii for the line strings.
         ///
         /// *Note*: scene units radiii are interpreted as meters. Currently, the display scale only considers the latitude of
         /// the first vertex of each line string (see [this issue](https://github.com/rerun-io/rerun/issues/8013)).
-        GeoLineStrings with_radii(Collection<rerun::components::Radius> _radii) && {
-            radii = std::move(_radii);
+        GeoLineStrings with_radii(const Collection<rerun::components::Radius>& _radii) && {
+            radii = ComponentBatch::from_loggable(_radii, Descriptor_radii).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Optional colors for the line strings.
-        GeoLineStrings with_colors(Collection<rerun::components::Color> _colors) && {
-            colors = std::move(_colors);
+        GeoLineStrings with_colors(const Collection<rerun::components::Color>& _colors) && {
+            colors = ComponentBatch::from_loggable(_colors, Descriptor_colors).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

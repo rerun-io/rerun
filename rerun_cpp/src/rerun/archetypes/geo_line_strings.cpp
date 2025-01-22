@@ -5,7 +5,19 @@
 
 #include "../collection_adapter_builtins.hpp"
 
-namespace rerun::archetypes {}
+namespace rerun::archetypes {
+    GeoLineStrings GeoLineStrings::clear_fields() {
+        auto archetype = GeoLineStrings();
+        archetype.line_strings =
+            ComponentBatch::empty<rerun::components::GeoLineString>(Descriptor_line_strings)
+                .value_or_throw();
+        archetype.radii =
+            ComponentBatch::empty<rerun::components::Radius>(Descriptor_radii).value_or_throw();
+        archetype.colors =
+            ComponentBatch::empty<rerun::components::Color>(Descriptor_colors).value_or_throw();
+        return archetype;
+    }
+} // namespace rerun::archetypes
 
 namespace rerun {
 
@@ -16,41 +28,14 @@ namespace rerun {
         std::vector<ComponentBatch> cells;
         cells.reserve(4);
 
-        {
-            auto result = ComponentBatch::from_loggable(
-                archetype.line_strings,
-                ComponentDescriptor(
-                    "rerun.archetypes.GeoLineStrings",
-                    "line_strings",
-                    "rerun.components.GeoLineString"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+        if (archetype.line_strings.has_value()) {
+            cells.push_back(archetype.line_strings.value());
         }
         if (archetype.radii.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.radii.value(),
-                ComponentDescriptor(
-                    "rerun.archetypes.GeoLineStrings",
-                    "radii",
-                    "rerun.components.Radius"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.radii.value());
         }
         if (archetype.colors.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.colors.value(),
-                ComponentDescriptor(
-                    "rerun.archetypes.GeoLineStrings",
-                    "colors",
-                    "rerun.components.Color"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.colors.value());
         }
         {
             auto indicator = GeoLineStrings::IndicatorComponent();

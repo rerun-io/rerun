@@ -5,7 +5,21 @@
 
 #include "../collection_adapter_builtins.hpp"
 
-namespace rerun::archetypes {}
+namespace rerun::archetypes {
+    GeoPoints GeoPoints::clear_fields() {
+        auto archetype = GeoPoints();
+        archetype.positions =
+            ComponentBatch::empty<rerun::components::LatLon>(Descriptor_positions).value_or_throw();
+        archetype.radii =
+            ComponentBatch::empty<rerun::components::Radius>(Descriptor_radii).value_or_throw();
+        archetype.colors =
+            ComponentBatch::empty<rerun::components::Color>(Descriptor_colors).value_or_throw();
+        archetype.class_ids =
+            ComponentBatch::empty<rerun::components::ClassId>(Descriptor_class_ids)
+                .value_or_throw();
+        return archetype;
+    }
+} // namespace rerun::archetypes
 
 namespace rerun {
 
@@ -16,53 +30,17 @@ namespace rerun {
         std::vector<ComponentBatch> cells;
         cells.reserve(5);
 
-        {
-            auto result = ComponentBatch::from_loggable(
-                archetype.positions,
-                ComponentDescriptor(
-                    "rerun.archetypes.GeoPoints",
-                    "positions",
-                    "rerun.components.LatLon"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+        if (archetype.positions.has_value()) {
+            cells.push_back(archetype.positions.value());
         }
         if (archetype.radii.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.radii.value(),
-                ComponentDescriptor(
-                    "rerun.archetypes.GeoPoints",
-                    "radii",
-                    "rerun.components.Radius"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.radii.value());
         }
         if (archetype.colors.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.colors.value(),
-                ComponentDescriptor(
-                    "rerun.archetypes.GeoPoints",
-                    "colors",
-                    "rerun.components.Color"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.colors.value());
         }
         if (archetype.class_ids.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.class_ids.value(),
-                ComponentDescriptor(
-                    "rerun.archetypes.GeoPoints",
-                    "class_ids",
-                    "rerun.components.ClassId"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.class_ids.value());
         }
         {
             auto indicator = GeoPoints::IndicatorComponent();
