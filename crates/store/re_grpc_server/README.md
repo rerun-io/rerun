@@ -8,3 +8,13 @@ Part of the [`rerun`](https://github.com/rerun-io/rerun) family of crates.
 ![Apache](https://img.shields.io/badge/license-Apache-blue.svg)
 
 Server implementation of an in-memory Storage Node.
+
+## Usage
+
+To run the server locally:
+
+1. Install [Envoy](https://www.envoyproxy.io/docs/envoy/latest/start/install)
+2. `cargo run -p re_grpc_server --release`
+3. `envoy -c envoy.yml`
+
+The server is available on `127.0.0.1:1853`.
