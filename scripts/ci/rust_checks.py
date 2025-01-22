@@ -142,7 +142,7 @@ def main() -> None:
     for enabled_check_name in enabled_check_names:
         checks[check_names.index(enabled_check_name)][1](results)
 
-    time.time() - start_time
+    total_duration = time.time() - start_time
 
     # ----------------------
 
