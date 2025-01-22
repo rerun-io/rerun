@@ -20,6 +20,7 @@
   "tutorials/any_values",
   "tutorials/extra_values",
   "howto/any_values_send_columns",
+  "howto/any_batch_value_send_columns",
 ]
 
 # These entries won't run at all.
@@ -90,7 +91,6 @@
 ]
 "howto/any_values_send_columns" = [
   "cpp",  # Not implemented
-  "rust", # Not implemented
 ]
 "migration/log_line" = [ # Not a complete example -- just a single log line
   "cpp",

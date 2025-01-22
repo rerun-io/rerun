@@ -24,8 +24,9 @@ Use it to quickly find copy-pastable snippets of code for any Rerun feature you'
 | ------- | ------- | ----------- | ------ | ---- | --- |
 | **Dataframes** | `dataframe_query` | Query and display the first 10 rows of a recording | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/reference/dataframe_query.py) | [🦀](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/reference/dataframe_query.rs) |  |
 | **Dataframes** | `dataframe_view_query` | Query and display the first 10 rows of a recording in a dataframe view | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/reference/dataframe_view_query.py) |  |  |
+| **`AnyValue`** | `any_batch_value_send_columns` | Use `AnyBatchValue` and `send_column` to send an entire column of custom data to Rerun | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/howto/any_batch_value_send_columns.py) |  |  |
 | **`AnyValue`** | `any_values` | Log arbitrary data | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/tutorials/any_values.py) | [🦀](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/tutorials/any_values.rs) |  |
-| **`AnyValue`** | `any_values_send_columns` | Use `AnyValues` and `send_column` to send entire columns of custom data to Rerun | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/howto/any_values_send_columns.py) |  |  |
+| **`AnyValue`** | `any_values_send_columns` | Use `AnyValues` and `send_column` to send entire columns of custom data to Rerun | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/howto/any_values_send_columns.py) | [🦀](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/howto/any_values_send_columns.rs) |  |
 | **`AnyValue`** | `extra_values` | Log extra values with a `Points2D` | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/tutorials/extra_values.py) | [🦀](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/tutorials/extra_values.rs) |  |
 
 
