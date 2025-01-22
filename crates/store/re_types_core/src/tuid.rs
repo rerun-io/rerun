@@ -80,6 +80,7 @@ impl Loggable for Tuid {
         // NOTE: Unwrap is safe everywhere below, datatype is checked above.
         // NOTE: We don't even look at the validity, our datatype says we don't care.
 
+        #[allow(clippy::unwrap_used)]
         let array = array.downcast_array_ref::<StructArray>().unwrap();
 
         // TODO(cmc): Can we rely on the fields ordering from the datatype? I would assume not
@@ -95,10 +96,12 @@ impl Loggable for Tuid {
                     inc_index = Some(i);
                 }
             }
+            #[allow(clippy::unwrap_used)]
             (time_ns_index.unwrap(), inc_index.unwrap())
         };
 
         let get_buffer = |field_index: usize| {
+            #[allow(clippy::unwrap_used)]
             array.columns()[field_index]
                 .downcast_array_ref::<UInt64Array>()
                 .unwrap()
