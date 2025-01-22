@@ -120,7 +120,7 @@ namespace rerun::archetypes {
         /// Timestamps are relative to the start of the video, i.e. a timestamp of 0 always corresponds to the first frame.
         /// This is oftentimes equivalent to presentation timestamps (known as PTS), but in the presence of B-frames
         /// (bidirectionally predicted frames) there may be an offset on the first presentation timestamp in the video.
-        rerun::components::VideoTimestamp timestamp;
+        std::optional<ComponentBatch> timestamp;
 
         /// Optional reference to an entity with a `archetypes::AssetVideo`.
         ///
@@ -131,7 +131,7 @@ namespace rerun::archetypes {
         /// For a series of video frame references, it is recommended to specify this path only once
         /// at the beginning of the series and then rely on latest-at query semantics to
         /// keep the video reference active.
-        std::optional<rerun::components::EntityPath> video_reference;
+        std::optional<ComponentBatch> video_reference;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -142,6 +142,17 @@ namespace rerun::archetypes {
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.VideoFrameReference";
 
+        /// `ComponentDescriptor` for the `timestamp` field.
+        static constexpr auto Descriptor_timestamp = ComponentDescriptor(
+            ArchetypeName, "timestamp",
+            Loggable<rerun::components::VideoTimestamp>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `video_reference` field.
+        static constexpr auto Descriptor_video_reference = ComponentDescriptor(
+            ArchetypeName, "video_reference",
+            Loggable<rerun::components::EntityPath>::Descriptor.component_name
+        );
+
       public:
         VideoFrameReference() = default;
         VideoFrameReference(VideoFrameReference&& other) = default;
@@ -150,7 +161,31 @@ namespace rerun::archetypes {
         VideoFrameReference& operator=(VideoFrameReference&& other) = default;
 
         explicit VideoFrameReference(rerun::components::VideoTimestamp _timestamp)
-            : timestamp(std::move(_timestamp)) {}
+            : timestamp(ComponentBatch::from_loggable(std::move(_timestamp), Descriptor_timestamp)
+                            .value_or_throw()) {}
+
+        /// Update only some specific fields of a `VideoFrameReference`.
+        static VideoFrameReference update_fields() {
+            return VideoFrameReference();
+        }
+
+        /// Clear all the fields of a `VideoFrameReference`.
+        static VideoFrameReference clear_fields();
+
+        /// References the closest video frame to this timestamp.
+        ///
+        /// Note that this uses the closest video frame instead of the latest at this timestamp
+        /// in order to be more forgiving of rounding errors for inprecise timestamp types.
+        ///
+        /// Timestamps are relative to the start of the video, i.e. a timestamp of 0 always corresponds to the first frame.
+        /// This is oftentimes equivalent to presentation timestamps (known as PTS), but in the presence of B-frames
+        /// (bidirectionally predicted frames) there may be an offset on the first presentation timestamp in the video.
+        VideoFrameReference with_timestamp(const rerun::components::VideoTimestamp& _timestamp) && {
+            timestamp =
+                ComponentBatch::from_loggable(_timestamp, Descriptor_timestamp).value_or_throw();
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
 
         /// Optional reference to an entity with a `archetypes::AssetVideo`.
         ///
@@ -161,9 +196,12 @@ namespace rerun::archetypes {
         /// For a series of video frame references, it is recommended to specify this path only once
         /// at the beginning of the series and then rely on latest-at query semantics to
         /// keep the video reference active.
-        VideoFrameReference with_video_reference(rerun::components::EntityPath _video_reference
+        VideoFrameReference with_video_reference(
+            const rerun::components::EntityPath& _video_reference
         ) && {
-            video_reference = std::move(_video_reference);
+            video_reference =
+                ComponentBatch::from_loggable(_video_reference, Descriptor_video_reference)
+                    .value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
