@@ -28,7 +28,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let color_and_radius = rerun::Points3D::update_fields()
         .with_colors(colors)
         .with_radii(radii)
-        .columns([1, 1, 1, 1, 1])?;
+        .unary_columns()?;
 
     rec.send_columns_v2("points", [times], position.chain(color_and_radius))?;
 
