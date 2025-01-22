@@ -214,6 +214,11 @@ impl SnippetsRefCodeGenerator {
                 String::new()
             };
 
+            // NOTE: `/` is written with a UTF8 zero-width word joiner (<https://unicode-explorer.com/c/2060>)
+            // on both sides in order to force the markdown renderer to *not* split it into two lines ("archetype/\nthing").
+            #[allow(clippy::invisible_characters)]
+            let snippet_name_qualified = &snippet.name_qualified.replace('/', "⁠/⁠");
+
             let row = format!("| **{obj_name_rendered}** | `{snippet_name_qualified}` | {snippet_descr} | {link_py} | {link_rs} | {link_cpp} |");
 
             Ok(row)
