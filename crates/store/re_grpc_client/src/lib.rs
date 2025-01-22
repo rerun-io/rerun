@@ -341,8 +341,7 @@ async fn stream_catalog_async(
         #[cfg(target_arch = "wasm32")]
         let tonic_client = tonic_web_wasm_client::Client::new_with_options(
             redap_endpoint.to_string(),
-            tonic_web_wasm_client::options::FetchOptions::new()
-                .mode(tonic_web_wasm_client::options::Mode::Cors), // I'm not 100% sure this is needed, but it felt right.
+            tonic_web_wasm_client::options::FetchOptions::new(),
         );
 
         #[cfg(not(target_arch = "wasm32"))]
