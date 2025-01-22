@@ -63,51 +63,51 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/box3d_batch/5aac5b5d29c9f2ecd572c93f6970fcec17f4984b/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub struct Boxes3D {
     /// All half-extents that make up the batch of boxes.
-    pub half_sizes: Vec<crate::components::HalfSize3D>,
+    pub half_sizes: Option<SerializedComponentBatch>,
 
     /// Optional center positions of the boxes.
     ///
     /// If not specified, the centers will be at (0, 0, 0).
     /// Note that this uses a [`components::PoseTranslation3D`][crate::components::PoseTranslation3D] which is also used by [`archetypes::InstancePoses3D`][crate::archetypes::InstancePoses3D].
-    pub centers: Option<Vec<crate::components::PoseTranslation3D>>,
+    pub centers: Option<SerializedComponentBatch>,
 
     /// Rotations via axis + angle.
     ///
     /// If no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.
     /// Note that this uses a [`components::PoseRotationAxisAngle`][crate::components::PoseRotationAxisAngle] which is also used by [`archetypes::InstancePoses3D`][crate::archetypes::InstancePoses3D].
-    pub rotation_axis_angles: Option<Vec<crate::components::PoseRotationAxisAngle>>,
+    pub rotation_axis_angles: Option<SerializedComponentBatch>,
 
     /// Rotations via quaternion.
     ///
     /// If no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.
     /// Note that this uses a [`components::PoseRotationQuat`][crate::components::PoseRotationQuat] which is also used by [`archetypes::InstancePoses3D`][crate::archetypes::InstancePoses3D].
-    pub quaternions: Option<Vec<crate::components::PoseRotationQuat>>,
+    pub quaternions: Option<SerializedComponentBatch>,
 
     /// Optional colors for the boxes.
-    pub colors: Option<Vec<crate::components::Color>>,
+    pub colors: Option<SerializedComponentBatch>,
 
     /// Optional radii for the lines that make up the boxes.
-    pub radii: Option<Vec<crate::components::Radius>>,
+    pub radii: Option<SerializedComponentBatch>,
 
     /// Optionally choose whether the boxes are drawn with lines or solid.
-    pub fill_mode: Option<crate::components::FillMode>,
+    pub fill_mode: Option<SerializedComponentBatch>,
 
     /// Optional text labels for the boxes.
     ///
     /// If there's a single label present, it will be placed at the center of the entity.
     /// Otherwise, each instance will have its own label.
-    pub labels: Option<Vec<crate::components::Text>>,
+    pub labels: Option<SerializedComponentBatch>,
 
     /// Optional choice of whether the text labels should be shown by default.
-    pub show_labels: Option<crate::components::ShowLabels>,
+    pub show_labels: Option<SerializedComponentBatch>,
 
     /// Optional [`components::ClassId`][crate::components::ClassId]s for the boxes.
     ///
     /// The [`components::ClassId`][crate::components::ClassId] provides colors and labels if not specified explicitly.
-    pub class_ids: Option<Vec<crate::components::ClassId>>,
+    pub class_ids: Option<SerializedComponentBatch>,
 }
 
 impl Boxes3D {
@@ -318,123 +318,51 @@ impl ::re_types_core::Archetype for Boxes3D {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
         let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
-        let half_sizes = {
-            let array = arrays_by_descr
-                .get(&Self::descriptor_half_sizes())
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.Boxes3D#half_sizes")?;
-            <crate::components::HalfSize3D>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Boxes3D#half_sizes")?
-                .into_iter()
-                .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                .collect::<DeserializationResult<Vec<_>>>()
-                .with_context("rerun.archetypes.Boxes3D#half_sizes")?
-        };
-        let centers = if let Some(array) = arrays_by_descr.get(&Self::descriptor_centers()) {
-            Some({
-                <crate::components::PoseTranslation3D>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Boxes3D#centers")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                    .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.Boxes3D#centers")?
-            })
-        } else {
-            None
-        };
-        let rotation_axis_angles =
-            if let Some(array) = arrays_by_descr.get(&Self::descriptor_rotation_axis_angles()) {
-                Some({
-                    <crate::components::PoseRotationAxisAngle>::from_arrow_opt(&**array)
-                        .with_context("rerun.archetypes.Boxes3D#rotation_axis_angles")?
-                        .into_iter()
-                        .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                        .collect::<DeserializationResult<Vec<_>>>()
-                        .with_context("rerun.archetypes.Boxes3D#rotation_axis_angles")?
-                })
-            } else {
-                None
-            };
-        let quaternions = if let Some(array) = arrays_by_descr.get(&Self::descriptor_quaternions())
-        {
-            Some({
-                <crate::components::PoseRotationQuat>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Boxes3D#quaternions")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                    .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.Boxes3D#quaternions")?
-            })
-        } else {
-            None
-        };
-        let colors = if let Some(array) = arrays_by_descr.get(&Self::descriptor_colors()) {
-            Some({
-                <crate::components::Color>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Boxes3D#colors")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                    .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.Boxes3D#colors")?
-            })
-        } else {
-            None
-        };
-        let radii = if let Some(array) = arrays_by_descr.get(&Self::descriptor_radii()) {
-            Some({
-                <crate::components::Radius>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Boxes3D#radii")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                    .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.Boxes3D#radii")?
-            })
-        } else {
-            None
-        };
-        let fill_mode = if let Some(array) = arrays_by_descr.get(&Self::descriptor_fill_mode()) {
-            <crate::components::FillMode>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Boxes3D#fill_mode")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
-        let labels = if let Some(array) = arrays_by_descr.get(&Self::descriptor_labels()) {
-            Some({
-                <crate::components::Text>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Boxes3D#labels")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                    .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.Boxes3D#labels")?
-            })
-        } else {
-            None
-        };
-        let show_labels = if let Some(array) = arrays_by_descr.get(&Self::descriptor_show_labels())
-        {
-            <crate::components::ShowLabels>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Boxes3D#show_labels")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
-        let class_ids = if let Some(array) = arrays_by_descr.get(&Self::descriptor_class_ids()) {
-            Some({
-                <crate::components::ClassId>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Boxes3D#class_ids")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                    .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.Boxes3D#class_ids")?
-            })
-        } else {
-            None
-        };
+        let half_sizes = arrays_by_descr
+            .get(&Self::descriptor_half_sizes())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_half_sizes())
+            });
+        let centers = arrays_by_descr
+            .get(&Self::descriptor_centers())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_centers()));
+        let rotation_axis_angles = arrays_by_descr
+            .get(&Self::descriptor_rotation_axis_angles())
+            .map(|array| {
+                SerializedComponentBatch::new(
+                    array.clone(),
+                    Self::descriptor_rotation_axis_angles(),
+                )
+            });
+        let quaternions = arrays_by_descr
+            .get(&Self::descriptor_quaternions())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_quaternions())
+            });
+        let colors = arrays_by_descr
+            .get(&Self::descriptor_colors())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_colors()));
+        let radii = arrays_by_descr
+            .get(&Self::descriptor_radii())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_radii()));
+        let fill_mode = arrays_by_descr
+            .get(&Self::descriptor_fill_mode())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_fill_mode())
+            });
+        let labels = arrays_by_descr
+            .get(&Self::descriptor_labels())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_labels()));
+        let show_labels = arrays_by_descr
+            .get(&Self::descriptor_show_labels())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_show_labels())
+            });
+        let class_ids = arrays_by_descr
+            .get(&Self::descriptor_class_ids())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_class_ids())
+            });
         Ok(Self {
             half_sizes,
             centers,
@@ -451,89 +379,21 @@ impl ::re_types_core::Archetype for Boxes3D {
 }
 
 impl ::re_types_core::AsComponents for Boxes3D {
-    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
-        re_tracing::profile_function!();
+    #[inline]
+    fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
-            (Some(&self.half_sizes as &dyn ComponentBatch)).map(|batch| {
-                ::re_types_core::ComponentBatchCowWithDescriptor {
-                    batch: batch.into(),
-                    descriptor_override: Some(Self::descriptor_half_sizes()),
-                }
-            }),
-            (self
-                .centers
-                .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_centers()),
-            }),
-            (self
-                .rotation_axis_angles
-                .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_rotation_axis_angles()),
-            }),
-            (self
-                .quaternions
-                .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_quaternions()),
-            }),
-            (self
-                .colors
-                .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_colors()),
-            }),
-            (self
-                .radii
-                .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_radii()),
-            }),
-            (self
-                .fill_mode
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_fill_mode()),
-            }),
-            (self
-                .labels
-                .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_labels()),
-            }),
-            (self
-                .show_labels
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_show_labels()),
-            }),
-            (self
-                .class_ids
-                .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_class_ids()),
-            }),
+            Self::indicator().serialized(),
+            self.half_sizes.clone(),
+            self.centers.clone(),
+            self.rotation_axis_angles.clone(),
+            self.quaternions.clone(),
+            self.colors.clone(),
+            self.radii.clone(),
+            self.fill_mode.clone(),
+            self.labels.clone(),
+            self.show_labels.clone(),
+            self.class_ids.clone(),
         ]
         .into_iter()
         .flatten()
@@ -550,7 +410,7 @@ impl Boxes3D {
         half_sizes: impl IntoIterator<Item = impl Into<crate::components::HalfSize3D>>,
     ) -> Self {
         Self {
-            half_sizes: half_sizes.into_iter().map(Into::into).collect(),
+            half_sizes: try_serialize_field(Self::descriptor_half_sizes(), half_sizes),
             centers: None,
             rotation_axis_angles: None,
             quaternions: None,
@@ -563,6 +423,125 @@ impl Boxes3D {
         }
     }
 
+    /// Update only some specific fields of a `Boxes3D`.
+    #[inline]
+    pub fn update_fields() -> Self {
+        Self::default()
+    }
+
+    /// Clear all the fields of a `Boxes3D`.
+    #[inline]
+    pub fn clear_fields() -> Self {
+        use ::re_types_core::Loggable as _;
+        Self {
+            half_sizes: Some(SerializedComponentBatch::new(
+                crate::components::HalfSize3D::arrow_empty(),
+                Self::descriptor_half_sizes(),
+            )),
+            centers: Some(SerializedComponentBatch::new(
+                crate::components::PoseTranslation3D::arrow_empty(),
+                Self::descriptor_centers(),
+            )),
+            rotation_axis_angles: Some(SerializedComponentBatch::new(
+                crate::components::PoseRotationAxisAngle::arrow_empty(),
+                Self::descriptor_rotation_axis_angles(),
+            )),
+            quaternions: Some(SerializedComponentBatch::new(
+                crate::components::PoseRotationQuat::arrow_empty(),
+                Self::descriptor_quaternions(),
+            )),
+            colors: Some(SerializedComponentBatch::new(
+                crate::components::Color::arrow_empty(),
+                Self::descriptor_colors(),
+            )),
+            radii: Some(SerializedComponentBatch::new(
+                crate::components::Radius::arrow_empty(),
+                Self::descriptor_radii(),
+            )),
+            fill_mode: Some(SerializedComponentBatch::new(
+                crate::components::FillMode::arrow_empty(),
+                Self::descriptor_fill_mode(),
+            )),
+            labels: Some(SerializedComponentBatch::new(
+                crate::components::Text::arrow_empty(),
+                Self::descriptor_labels(),
+            )),
+            show_labels: Some(SerializedComponentBatch::new(
+                crate::components::ShowLabels::arrow_empty(),
+                Self::descriptor_show_labels(),
+            )),
+            class_ids: Some(SerializedComponentBatch::new(
+                crate::components::ClassId::arrow_empty(),
+                Self::descriptor_class_ids(),
+            )),
+        }
+    }
+
+    /// Partitions the component data into multiple sub-batches.
+    ///
+    /// Specifically, this transforms the existing [`SerializedComponentBatch`]es data into [`SerializedComponentColumn`]s
+    /// instead, via [`SerializedComponentBatch::partitioned`].
+    ///
+    /// This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
+    ///
+    /// The specified `lengths` must sum to the total length of the component batch.
+    ///
+    /// [`SerializedComponentColumn`]: [::re_types_core::SerializedComponentColumn]
+    #[inline]
+    pub fn columns<I>(
+        self,
+        _lengths: I,
+    ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>>
+    where
+        I: IntoIterator<Item = usize> + Clone,
+    {
+        let columns = [
+            self.half_sizes
+                .map(|half_sizes| half_sizes.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.centers
+                .map(|centers| centers.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.rotation_axis_angles
+                .map(|rotation_axis_angles| rotation_axis_angles.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.quaternions
+                .map(|quaternions| quaternions.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.colors
+                .map(|colors| colors.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.radii
+                .map(|radii| radii.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.fill_mode
+                .map(|fill_mode| fill_mode.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.labels
+                .map(|labels| labels.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.show_labels
+                .map(|show_labels| show_labels.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.class_ids
+                .map(|class_ids| class_ids.partitioned(_lengths.clone()))
+                .transpose()?,
+        ];
+        let indicator_column =
+            ::re_types_core::indicator_column::<Self>(_lengths.into_iter().count())?;
+        Ok(columns.into_iter().chain([indicator_column]).flatten())
+    }
+
+    /// All half-extents that make up the batch of boxes.
+    #[inline]
+    pub fn with_half_sizes(
+        mut self,
+        half_sizes: impl IntoIterator<Item = impl Into<crate::components::HalfSize3D>>,
+    ) -> Self {
+        self.half_sizes = try_serialize_field(Self::descriptor_half_sizes(), half_sizes);
+        self
+    }
+
     /// Optional center positions of the boxes.
     ///
     /// If not specified, the centers will be at (0, 0, 0).
@@ -572,7 +551,7 @@ impl Boxes3D {
         mut self,
         centers: impl IntoIterator<Item = impl Into<crate::components::PoseTranslation3D>>,
     ) -> Self {
-        self.centers = Some(centers.into_iter().map(Into::into).collect());
+        self.centers = try_serialize_field(Self::descriptor_centers(), centers);
         self
     }
 
@@ -587,8 +566,10 @@ impl Boxes3D {
             Item = impl Into<crate::components::PoseRotationAxisAngle>,
         >,
     ) -> Self {
-        self.rotation_axis_angles =
-            Some(rotation_axis_angles.into_iter().map(Into::into).collect());
+        self.rotation_axis_angles = try_serialize_field(
+            Self::descriptor_rotation_axis_angles(),
+            rotation_axis_angles,
+        );
         self
     }
 
@@ -601,7 +582,7 @@ impl Boxes3D {
         mut self,
         quaternions: impl IntoIterator<Item = impl Into<crate::components::PoseRotationQuat>>,
     ) -> Self {
-        self.quaternions = Some(quaternions.into_iter().map(Into::into).collect());
+        self.quaternions = try_serialize_field(Self::descriptor_quaternions(), quaternions);
         self
     }
 
@@ -611,7 +592,7 @@ impl Boxes3D {
         mut self,
         colors: impl IntoIterator<Item = impl Into<crate::components::Color>>,
     ) -> Self {
-        self.colors = Some(colors.into_iter().map(Into::into).collect());
+        self.colors = try_serialize_field(Self::descriptor_colors(), colors);
         self
     }
 
@@ -621,14 +602,27 @@ impl Boxes3D {
         mut self,
         radii: impl IntoIterator<Item = impl Into<crate::components::Radius>>,
     ) -> Self {
-        self.radii = Some(radii.into_iter().map(Into::into).collect());
+        self.radii = try_serialize_field(Self::descriptor_radii(), radii);
         self
     }
 
     /// Optionally choose whether the boxes are drawn with lines or solid.
     #[inline]
     pub fn with_fill_mode(mut self, fill_mode: impl Into<crate::components::FillMode>) -> Self {
-        self.fill_mode = Some(fill_mode.into());
+        self.fill_mode = try_serialize_field(Self::descriptor_fill_mode(), [fill_mode]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::FillMode`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_fill_mode`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_fill_mode(
+        mut self,
+        fill_mode: impl IntoIterator<Item = impl Into<crate::components::FillMode>>,
+    ) -> Self {
+        self.fill_mode = try_serialize_field(Self::descriptor_fill_mode(), fill_mode);
         self
     }
 
@@ -641,7 +635,7 @@ impl Boxes3D {
         mut self,
         labels: impl IntoIterator<Item = impl Into<crate::components::Text>>,
     ) -> Self {
-        self.labels = Some(labels.into_iter().map(Into::into).collect());
+        self.labels = try_serialize_field(Self::descriptor_labels(), labels);
         self
     }
 
@@ -651,7 +645,20 @@ impl Boxes3D {
         mut self,
         show_labels: impl Into<crate::components::ShowLabels>,
     ) -> Self {
-        self.show_labels = Some(show_labels.into());
+        self.show_labels = try_serialize_field(Self::descriptor_show_labels(), [show_labels]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::ShowLabels`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_show_labels`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_show_labels(
+        mut self,
+        show_labels: impl IntoIterator<Item = impl Into<crate::components::ShowLabels>>,
+    ) -> Self {
+        self.show_labels = try_serialize_field(Self::descriptor_show_labels(), show_labels);
         self
     }
 
@@ -663,7 +670,7 @@ impl Boxes3D {
         mut self,
         class_ids: impl IntoIterator<Item = impl Into<crate::components::ClassId>>,
     ) -> Self {
-        self.class_ids = Some(class_ids.into_iter().map(Into::into).collect());
+        self.class_ids = try_serialize_field(Self::descriptor_class_ids(), class_ids);
         self
     }
 }
@@ -681,19 +688,5 @@ impl ::re_byte_size::SizeBytes for Boxes3D {
             + self.labels.heap_size_bytes()
             + self.show_labels.heap_size_bytes()
             + self.class_ids.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <Vec<crate::components::HalfSize3D>>::is_pod()
-            && <Option<Vec<crate::components::PoseTranslation3D>>>::is_pod()
-            && <Option<Vec<crate::components::PoseRotationAxisAngle>>>::is_pod()
-            && <Option<Vec<crate::components::PoseRotationQuat>>>::is_pod()
-            && <Option<Vec<crate::components::Color>>>::is_pod()
-            && <Option<Vec<crate::components::Radius>>>::is_pod()
-            && <Option<crate::components::FillMode>>::is_pod()
-            && <Option<Vec<crate::components::Text>>>::is_pod()
-            && <Option<crate::components::ShowLabels>>::is_pod()
-            && <Option<Vec<crate::components::ClassId>>>::is_pod()
     }
 }

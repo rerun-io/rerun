@@ -27,8 +27,8 @@ impl Boxes3D {
     #[inline]
     pub fn from_sizes(sizes: impl IntoIterator<Item = impl Into<Vec3D>>) -> Self {
         Self::new(sizes.into_iter().map(|size| {
-            let wh = size.into();
-            HalfSize3D::new(wh.x() / 2.0, wh.y() / 2.0, wh.z() / 2.0)
+            let size = size.into();
+            HalfSize3D::new(size.x() / 2.0, size.y() / 2.0, size.z() / 2.0)
         }))
     }
 
@@ -50,18 +50,19 @@ impl Boxes3D {
         mins: impl IntoIterator<Item = impl Into<Vec3D>>,
         sizes: impl IntoIterator<Item = impl Into<Vec3D>>,
     ) -> Self {
-        let boxes = Self::from_sizes(sizes);
+        let half_sizes: Vec<_> = sizes
+            .into_iter()
+            .map(|size| {
+                let size = size.into();
+                HalfSize3D::new(size.x() / 2.0, size.y() / 2.0, size.z() / 2.0)
+            })
+            .collect();
 
         // The box semantics are such that the last half-size is used for all remaining boxes.
-        if let Some(last_half_size) = boxes.half_sizes.last() {
+        if let Some(last_half_size) = half_sizes.last() {
             let centers: Vec<_> = mins
                 .into_iter()
-                .zip(
-                    boxes
-                        .half_sizes
-                        .iter()
-                        .chain(std::iter::repeat(last_half_size)),
-                )
+                .zip(half_sizes.iter().chain(std::iter::repeat(last_half_size)))
                 .map(|(min, half_size)| {
                     let min = min.into();
                     PoseTranslation3D::new(
@@ -71,12 +72,13 @@ impl Boxes3D {
                     )
                 })
                 .collect();
-            boxes.with_centers(centers)
+            Self::from_half_sizes(half_sizes).with_centers(centers)
         } else {
             if mins.into_iter().next().is_some() {
                 re_log::warn_once!("Must provide at least one size to create boxes.");
             }
-            boxes.with_centers(std::iter::empty::<crate::components::PoseTranslation3D>())
+            Self::from_half_sizes(half_sizes)
+                .with_centers(std::iter::empty::<crate::components::PoseTranslation3D>())
         }
     }
 }
