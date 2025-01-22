@@ -5,7 +5,18 @@
 
 #include "../../collection_adapter_builtins.hpp"
 
-namespace rerun::blueprint::archetypes {}
+namespace rerun::blueprint::archetypes {
+    PlotLegend PlotLegend::clear_fields() {
+        auto archetype = PlotLegend();
+        archetype.corner =
+            ComponentBatch::empty<rerun::blueprint::components::Corner2D>(Descriptor_corner)
+                .value_or_throw();
+        archetype.visible =
+            ComponentBatch::empty<rerun::blueprint::components::Visible>(Descriptor_visible)
+                .value_or_throw();
+        return archetype;
+    }
+} // namespace rerun::blueprint::archetypes
 
 namespace rerun {
 
@@ -17,28 +28,10 @@ namespace rerun {
         cells.reserve(3);
 
         if (archetype.corner.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.corner.value(),
-                ComponentDescriptor(
-                    "rerun.blueprint.archetypes.PlotLegend",
-                    "corner",
-                    "rerun.blueprint.components.Corner2D"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.corner.value());
         }
         if (archetype.visible.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.visible.value(),
-                ComponentDescriptor(
-                    "rerun.blueprint.archetypes.PlotLegend",
-                    "visible",
-                    "rerun.blueprint.components.Visible"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.visible.value());
         }
         {
             auto indicator = PlotLegend::IndicatorComponent();

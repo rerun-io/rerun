@@ -12,7 +12,7 @@ use re_types::{
     Component as _,
 };
 use re_viewer_context::{
-    ApplicableEntities, ColormapWithRange, IdentifiedViewSystem, ImageInfo, ImageStatsCache,
+    ColormapWithRange, IdentifiedViewSystem, ImageInfo, ImageStatsCache, MaybeVisualizableEntities,
     QueryContext, TypedComponentFallbackProvider, ViewClass, ViewContext, ViewContextCollection,
     ViewQuery, ViewSystemExecutionError, VisualizableEntities, VisualizableFilterContext,
     VisualizerQueryInfo, VisualizerSystem,
@@ -239,7 +239,7 @@ impl VisualizerSystem for DepthImageVisualizer {
 
     fn filter_visualizable_entities(
         &self,
-        entities: ApplicableEntities,
+        entities: MaybeVisualizableEntities,
         context: &dyn VisualizableFilterContext,
     ) -> VisualizableEntities {
         re_tracing::profile_function!();

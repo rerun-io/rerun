@@ -133,13 +133,13 @@ def main() -> None:
     for symbol in symbols:
         stock = yf.Ticker(symbol)
 
-        # Log the stock info document as timeless
-        rr.log(f"stocks/{symbol}/info", info_card(**stock.info), timeless=True)
+        # Log the stock info document as static
+        rr.log(f"stocks/{symbol}/info", info_card(**stock.info), static=True)
 
         for day in dates:
-            # Log the styling data as timeless
-            rr.log(f"stocks/{symbol}/{day}", style_plot(symbol), timeless=True)
-            rr.log(f"stocks/{symbol}/peaks/{day}", style_peak(symbol), timeless=True)
+            # Log the styling data as static
+            rr.log(f"stocks/{symbol}/{day}", style_plot(symbol), static=True)
+            rr.log(f"stocks/{symbol}/peaks/{day}", style_peak(symbol), static=True)
 
             # Query the stock data during market hours
             open_time = dt.datetime.combine(day, dt.time(9, 30), et_timezone)

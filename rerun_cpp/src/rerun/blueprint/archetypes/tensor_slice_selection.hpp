@@ -24,24 +24,24 @@ namespace rerun::blueprint::archetypes {
         /// Which dimension to map to width.
         ///
         /// If not specified, the height will be determined automatically based on the name and index of the dimension.
-        std::optional<rerun::components::TensorWidthDimension> width;
+        std::optional<ComponentBatch> width;
 
         /// Which dimension to map to height.
         ///
         /// If not specified, the height will be determined automatically based on the name and index of the dimension.
-        std::optional<rerun::components::TensorHeightDimension> height;
+        std::optional<ComponentBatch> height;
 
         /// Selected indices for all other dimensions.
         ///
         /// If any of the here listed dimensions is equal to `width` or `height`, it will be ignored.
-        std::optional<Collection<rerun::components::TensorDimensionIndexSelection>> indices;
+        std::optional<ComponentBatch> indices;
 
         /// Any dimension listed here will have a slider for the index.
         ///
         /// Edits to the sliders will directly manipulate dimensions on the `indices` list.
         /// If any of the here listed dimensions is equal to `width` or `height`, it will be ignored.
         /// If not specified, adds slides for any dimension in `indices`.
-        std::optional<Collection<rerun::blueprint::components::TensorDimensionIndexSlider>> slider;
+        std::optional<ComponentBatch> slider;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -49,16 +49,52 @@ namespace rerun::blueprint::archetypes {
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+        /// The name of the archetype as used in `ComponentDescriptor`s.
+        static constexpr const char ArchetypeName[] =
+            "rerun.blueprint.archetypes.TensorSliceSelection";
+
+        /// `ComponentDescriptor` for the `width` field.
+        static constexpr auto Descriptor_width = ComponentDescriptor(
+            ArchetypeName, "width",
+            Loggable<rerun::components::TensorWidthDimension>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `height` field.
+        static constexpr auto Descriptor_height = ComponentDescriptor(
+            ArchetypeName, "height",
+            Loggable<rerun::components::TensorHeightDimension>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `indices` field.
+        static constexpr auto Descriptor_indices = ComponentDescriptor(
+            ArchetypeName, "indices",
+            Loggable<rerun::components::TensorDimensionIndexSelection>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `slider` field.
+        static constexpr auto Descriptor_slider = ComponentDescriptor(
+            ArchetypeName, "slider",
+            Loggable<rerun::blueprint::components::TensorDimensionIndexSlider>::Descriptor
+                .component_name
+        );
 
       public:
         TensorSliceSelection() = default;
         TensorSliceSelection(TensorSliceSelection&& other) = default;
+        TensorSliceSelection(const TensorSliceSelection& other) = default;
+        TensorSliceSelection& operator=(const TensorSliceSelection& other) = default;
+        TensorSliceSelection& operator=(TensorSliceSelection&& other) = default;
+
+        /// Update only some specific fields of a `TensorSliceSelection`.
+        static TensorSliceSelection update_fields() {
+            return TensorSliceSelection();
+        }
+
+        /// Clear all the fields of a `TensorSliceSelection`.
+        static TensorSliceSelection clear_fields();
 
         /// Which dimension to map to width.
         ///
         /// If not specified, the height will be determined automatically based on the name and index of the dimension.
-        TensorSliceSelection with_width(rerun::components::TensorWidthDimension _width) && {
-            width = std::move(_width);
+        TensorSliceSelection with_width(const rerun::components::TensorWidthDimension& _width) && {
+            width = ComponentBatch::from_loggable(_width, Descriptor_width).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
@@ -66,8 +102,9 @@ namespace rerun::blueprint::archetypes {
         /// Which dimension to map to height.
         ///
         /// If not specified, the height will be determined automatically based on the name and index of the dimension.
-        TensorSliceSelection with_height(rerun::components::TensorHeightDimension _height) && {
-            height = std::move(_height);
+        TensorSliceSelection with_height(const rerun::components::TensorHeightDimension& _height
+        ) && {
+            height = ComponentBatch::from_loggable(_height, Descriptor_height).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
@@ -76,9 +113,9 @@ namespace rerun::blueprint::archetypes {
         ///
         /// If any of the here listed dimensions is equal to `width` or `height`, it will be ignored.
         TensorSliceSelection with_indices(
-            Collection<rerun::components::TensorDimensionIndexSelection> _indices
+            const Collection<rerun::components::TensorDimensionIndexSelection>& _indices
         ) && {
-            indices = std::move(_indices);
+            indices = ComponentBatch::from_loggable(_indices, Descriptor_indices).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
@@ -89,9 +126,9 @@ namespace rerun::blueprint::archetypes {
         /// If any of the here listed dimensions is equal to `width` or `height`, it will be ignored.
         /// If not specified, adds slides for any dimension in `indices`.
         TensorSliceSelection with_slider(
-            Collection<rerun::blueprint::components::TensorDimensionIndexSlider> _slider
+            const Collection<rerun::blueprint::components::TensorDimensionIndexSlider>& _slider
         ) && {
-            slider = std::move(_slider);
+            slider = ComponentBatch::from_loggable(_slider, Descriptor_slider).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

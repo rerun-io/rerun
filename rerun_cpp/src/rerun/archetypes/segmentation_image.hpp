@@ -94,6 +94,8 @@ namespace rerun::archetypes {
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+        /// The name of the archetype as used in `ComponentDescriptor`s.
+        static constexpr const char ArchetypeName[] = "rerun.archetypes.SegmentationImage";
 
       public: // START of extensions from segmentation_image_ext.cpp:
         /// Constructs image from pointer + resolution, inferring the datatype from the pointer type.
@@ -161,6 +163,9 @@ namespace rerun::archetypes {
       public:
         SegmentationImage() = default;
         SegmentationImage(SegmentationImage&& other) = default;
+        SegmentationImage(const SegmentationImage& other) = default;
+        SegmentationImage& operator=(const SegmentationImage& other) = default;
+        SegmentationImage& operator=(SegmentationImage&& other) = default;
 
         /// Opacity of the image, useful for layering the segmentation image on top of another image.
         ///

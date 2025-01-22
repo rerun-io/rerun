@@ -28,7 +28,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// this by logging both archetypes to the same path, or alternatively configuring
 /// the plot-specific archetypes through the blueprint.
 ///
-/// ## Example
+/// ## Examples
 ///
 /// ### Simple line plot
 /// ```ignore
@@ -51,6 +51,39 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/scalar_simple/8bcc92f56268739f8cd24d60d1fe72a655f62a46/1024w.png">
 ///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/scalar_simple/8bcc92f56268739f8cd24d60d1fe72a655f62a46/1200w.png">
 ///   <img src="https://static.rerun.io/scalar_simple/8bcc92f56268739f8cd24d60d1fe72a655f62a46/full.png" width="640">
+/// </picture>
+/// </center>
+///
+/// ### Multiple scalars in a single `send_columns` call
+/// ```ignore
+/// use rerun::TimeColumn;
+///
+/// fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_scalar_send_columns").spawn()?;
+///
+///     const STEPS: i64 = 64;
+///
+///     let times = TimeColumn::new_sequence("step", 0..STEPS);
+///     let scalars = (0..STEPS).map(|step| (step as f64 / 10.0).sin());
+///
+///     rec.send_columns_v2(
+///         "scalars",
+///         [times],
+///         rerun::Scalar::update_fields()
+///             .with_many_scalar(scalars)
+///             .columns(std::iter::repeat(1).take(STEPS as _))?,
+///     )?;
+///
+///     Ok(())
+/// }
+/// ```
+/// <center>
+/// <picture>
+///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/scalar_send_columns/b4bf172256f521f4851dfec5c2c6e3143f5d6923/480w.png">
+///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/scalar_send_columns/b4bf172256f521f4851dfec5c2c6e3143f5d6923/768w.png">
+///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/scalar_send_columns/b4bf172256f521f4851dfec5c2c6e3143f5d6923/1024w.png">
+///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/scalar_send_columns/b4bf172256f521f4851dfec5c2c6e3143f5d6923/1200w.png">
+///   <img src="https://static.rerun.io/scalar_send_columns/b4bf172256f521f4851dfec5c2c6e3143f5d6923/full.png" width="640">
 /// </picture>
 /// </center>
 #[derive(Clone, Debug, PartialEq, Default)]
@@ -194,10 +227,49 @@ impl Scalar {
         }
     }
 
+    /// Partitions the component data into multiple sub-batches.
+    ///
+    /// Specifically, this transforms the existing [`SerializedComponentBatch`]es data into [`SerializedComponentColumn`]s
+    /// instead, via [`SerializedComponentBatch::partitioned`].
+    ///
+    /// This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
+    ///
+    /// The specified `lengths` must sum to the total length of the component batch.
+    ///
+    /// [`SerializedComponentColumn`]: [::re_types_core::SerializedComponentColumn]
+    #[inline]
+    pub fn columns<I>(
+        self,
+        _lengths: I,
+    ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>>
+    where
+        I: IntoIterator<Item = usize> + Clone,
+    {
+        let columns = [self
+            .scalar
+            .map(|scalar| scalar.partitioned(_lengths.into_iter()))
+            .transpose()?];
+        let indicator_column = None;
+        Ok(columns.into_iter().chain([indicator_column]).flatten())
+    }
+
     /// The scalar value to log.
     #[inline]
     pub fn with_scalar(mut self, scalar: impl Into<crate::components::Scalar>) -> Self {
         self.scalar = try_serialize_field(Self::descriptor_scalar(), [scalar]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::Scalar`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_scalar`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_scalar(
+        mut self,
+        scalar: impl IntoIterator<Item = impl Into<crate::components::Scalar>>,
+    ) -> Self {
+        self.scalar = try_serialize_field(Self::descriptor_scalar(), scalar);
         self
     }
 }

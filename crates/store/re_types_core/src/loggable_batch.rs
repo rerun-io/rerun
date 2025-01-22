@@ -149,6 +149,8 @@ fn assert_component_batch_object_safe() {
     let _: &dyn LoggableBatch;
 }
 
+// ---
+
 /// The serialized contents of a [`ComponentBatch`] with associated [`ComponentDescriptor`].
 ///
 /// This is what gets logged into Rerun:
@@ -226,6 +228,81 @@ impl SerializedComponentBatch {
             .descriptor
             .or_with_archetype_field_name(archetype_field_name);
         self
+    }
+}
+
+/// A column's worth of component data.
+///
+/// If a [`SerializedComponentBatch`] represents one row's worth of data
+#[derive(Debug, Clone)]
+pub struct SerializedComponentColumn {
+    pub list_array: arrow::array::ListArray,
+
+    // TODO(cmc): Maybe Cow<> this one if it grows bigger. Or intern descriptors altogether, most likely.
+    pub descriptor: ComponentDescriptor,
+}
+
+impl SerializedComponentColumn {
+    /// Repartitions the component data into multiple sub-batches, ignoring the previous partitioning.
+    ///
+    /// The specified `lengths` must sum to the total length of the component batch.
+    pub fn repartitioned(
+        self,
+        lengths: impl IntoIterator<Item = usize>,
+    ) -> SerializationResult<Self> {
+        let Self {
+            list_array,
+            descriptor,
+        } = self;
+
+        let list_array = re_arrow_util::arrow_util::repartition_list_array(list_array, lengths)?;
+
+        Ok(Self {
+            list_array,
+            descriptor,
+        })
+    }
+}
+
+impl From<SerializedComponentBatch> for SerializedComponentColumn {
+    #[inline]
+    fn from(batch: SerializedComponentBatch) -> Self {
+        use arrow::{
+            array::{Array, ListArray},
+            buffer::OffsetBuffer,
+            datatypes::Field,
+        };
+
+        let list_array = {
+            let nullable = true;
+            let field = Field::new_list_field(batch.array.data_type().clone(), nullable);
+            let offsets = OffsetBuffer::from_lengths(std::iter::once(batch.array.len()));
+            let nulls = None;
+            ListArray::new(field.into(), offsets, batch.array, nulls)
+        };
+
+        Self {
+            list_array,
+            descriptor: batch.descriptor,
+        }
+    }
+}
+
+impl SerializedComponentBatch {
+    /// Partitions the component data into multiple sub-batches.
+    ///
+    /// Specifically, this transforms the existing [`SerializedComponentBatch`] data into a [`SerializedComponentColumn`].
+    ///
+    /// This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
+    ///
+    /// The specified `lengths` must sum to the total length of the component batch.
+    #[inline]
+    pub fn partitioned(
+        self,
+        lengths: impl IntoIterator<Item = usize>,
+    ) -> SerializationResult<SerializedComponentColumn> {
+        let column: SerializedComponentColumn = self.into();
+        column.repartitioned(lengths)
     }
 }
 

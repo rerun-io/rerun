@@ -29,7 +29,7 @@ The clock's frame is logged as a 3D box using [`Boxes3D`](https://www.rerun.io/d
 rr.log(
     "world/frame",
     rr.Boxes3D(half_sizes=[LENGTH_S, LENGTH_S, 1.0], centers=[0.0, 0.0, 0.0]),
-    timeless=True,
+    static=True,
 )
  ```
 

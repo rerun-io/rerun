@@ -26,7 +26,7 @@ You should see a single 2D view with the following elements overdrawing each oth
 
 
 def log_readme() -> None:
-    rr.log("readme", rr.TextDocument(README, media_type=rr.MediaType.MARKDOWN), timeless=True)
+    rr.log("readme", rr.TextDocument(README, media_type=rr.MediaType.MARKDOWN), static=True)
 
 
 def run_2d_layering() -> None:

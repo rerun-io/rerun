@@ -108,7 +108,7 @@ impl ScreenshotProcessor {
     ) -> Result<(), GpuReadbackError> {
         self.screenshot_readback_buffer.lock().read_texture2d(
             encoder,
-            wgpu::ImageCopyTexture {
+            wgpu::TexelCopyTextureInfo {
                 texture: &self.screenshot_texture.texture,
                 mip_level: 0,
                 origin: wgpu::Origin3d::ZERO,

@@ -28,6 +28,11 @@ namespace rerun::components {
     struct TransformMat3x3 {
         rerun::datatypes::Mat3x3 matrix;
 
+      public: // START of extensions from transform_mat3x3_ext.cpp:
+        TransformMat3x3(const rerun::datatypes::Vec3D (&columns)[3]) : matrix(columns) {}
+
+        // END of extensions from transform_mat3x3_ext.cpp, start of generated code:
+
       public:
         TransformMat3x3() = default;
 

@@ -1,13 +1,11 @@
 //! Extensions for the [`RenderContext`] for testing.
-
-use std::sync::Arc;
-
+//!
 use crate::{config, RenderContext};
 
 impl RenderContext {
     /// Creates a new [`RenderContext`] for testing.
     pub fn new_test() -> Self {
-        let instance = wgpu::Instance::new(config::testing_instance_descriptor());
+        let instance = wgpu::Instance::new(&config::testing_instance_descriptor());
         let adapter = config::select_testing_adapter(&instance);
         let device_caps = config::DeviceCaps::from_adapter(&adapter)
             .expect("Failed to determine device capabilities");
@@ -15,13 +13,8 @@ impl RenderContext {
             pollster::block_on(adapter.request_device(&device_caps.device_descriptor(), None))
                 .expect("Failed to request device.");
 
-        Self::new(
-            &adapter,
-            Arc::new(device),
-            Arc::new(queue),
-            wgpu::TextureFormat::Rgba8Unorm,
-        )
-        .expect("Failed to create RenderContext")
+        Self::new(&adapter, device, queue, wgpu::TextureFormat::Rgba8Unorm)
+            .expect("Failed to create RenderContext")
     }
 
     /// Executes a test frame.

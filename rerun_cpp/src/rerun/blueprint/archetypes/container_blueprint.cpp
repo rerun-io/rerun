@@ -5,7 +5,40 @@
 
 #include "../../collection_adapter_builtins.hpp"
 
-namespace rerun::blueprint::archetypes {}
+namespace rerun::blueprint::archetypes {
+    ContainerBlueprint ContainerBlueprint::clear_fields() {
+        auto archetype = ContainerBlueprint();
+        archetype.container_kind =
+            ComponentBatch::empty<rerun::blueprint::components::ContainerKind>(
+                Descriptor_container_kind
+            )
+                .value_or_throw();
+        archetype.display_name =
+            ComponentBatch::empty<rerun::components::Name>(Descriptor_display_name)
+                .value_or_throw();
+        archetype.contents =
+            ComponentBatch::empty<rerun::blueprint::components::IncludedContent>(Descriptor_contents
+            )
+                .value_or_throw();
+        archetype.col_shares =
+            ComponentBatch::empty<rerun::blueprint::components::ColumnShare>(Descriptor_col_shares)
+                .value_or_throw();
+        archetype.row_shares =
+            ComponentBatch::empty<rerun::blueprint::components::RowShare>(Descriptor_row_shares)
+                .value_or_throw();
+        archetype.active_tab =
+            ComponentBatch::empty<rerun::blueprint::components::ActiveTab>(Descriptor_active_tab)
+                .value_or_throw();
+        archetype.visible =
+            ComponentBatch::empty<rerun::blueprint::components::Visible>(Descriptor_visible)
+                .value_or_throw();
+        archetype.grid_columns =
+            ComponentBatch::empty<rerun::blueprint::components::GridColumns>(Descriptor_grid_columns
+            )
+                .value_or_throw();
+        return archetype;
+    }
+} // namespace rerun::blueprint::archetypes
 
 namespace rerun {
 
@@ -17,101 +50,29 @@ namespace rerun {
         std::vector<ComponentBatch> cells;
         cells.reserve(9);
 
-        {
-            auto result = ComponentBatch::from_loggable(
-                archetype.container_kind,
-                ComponentDescriptor(
-                    "rerun.blueprint.archetypes.ContainerBlueprint",
-                    "container_kind",
-                    "rerun.blueprint.components.ContainerKind"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+        if (archetype.container_kind.has_value()) {
+            cells.push_back(archetype.container_kind.value());
         }
         if (archetype.display_name.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.display_name.value(),
-                ComponentDescriptor(
-                    "rerun.blueprint.archetypes.ContainerBlueprint",
-                    "display_name",
-                    "rerun.components.Name"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.display_name.value());
         }
         if (archetype.contents.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.contents.value(),
-                ComponentDescriptor(
-                    "rerun.blueprint.archetypes.ContainerBlueprint",
-                    "contents",
-                    "rerun.blueprint.components.IncludedContent"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.contents.value());
         }
         if (archetype.col_shares.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.col_shares.value(),
-                ComponentDescriptor(
-                    "rerun.blueprint.archetypes.ContainerBlueprint",
-                    "col_shares",
-                    "rerun.blueprint.components.ColumnShare"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.col_shares.value());
         }
         if (archetype.row_shares.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.row_shares.value(),
-                ComponentDescriptor(
-                    "rerun.blueprint.archetypes.ContainerBlueprint",
-                    "row_shares",
-                    "rerun.blueprint.components.RowShare"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.row_shares.value());
         }
         if (archetype.active_tab.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.active_tab.value(),
-                ComponentDescriptor(
-                    "rerun.blueprint.archetypes.ContainerBlueprint",
-                    "active_tab",
-                    "rerun.blueprint.components.ActiveTab"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.active_tab.value());
         }
         if (archetype.visible.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.visible.value(),
-                ComponentDescriptor(
-                    "rerun.blueprint.archetypes.ContainerBlueprint",
-                    "visible",
-                    "rerun.blueprint.components.Visible"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.visible.value());
         }
         if (archetype.grid_columns.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.grid_columns.value(),
-                ComponentDescriptor(
-                    "rerun.blueprint.archetypes.ContainerBlueprint",
-                    "grid_columns",
-                    "rerun.blueprint.components.GridColumns"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.grid_columns.value());
         }
         {
             auto indicator = ContainerBlueprint::IndicatorComponent();

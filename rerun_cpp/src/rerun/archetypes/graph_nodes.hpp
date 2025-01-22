@@ -71,10 +71,15 @@ namespace rerun::archetypes {
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+        /// The name of the archetype as used in `ComponentDescriptor`s.
+        static constexpr const char ArchetypeName[] = "rerun.archetypes.GraphNodes";
 
       public:
         GraphNodes() = default;
         GraphNodes(GraphNodes&& other) = default;
+        GraphNodes(const GraphNodes& other) = default;
+        GraphNodes& operator=(const GraphNodes& other) = default;
+        GraphNodes& operator=(GraphNodes&& other) = default;
 
         explicit GraphNodes(Collection<rerun::components::GraphNode> _node_ids)
             : node_ids(std::move(_node_ids)) {}

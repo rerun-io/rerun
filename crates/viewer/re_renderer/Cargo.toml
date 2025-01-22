@@ -77,7 +77,8 @@ thiserror.workspace = true
 type-map.workspace = true
 web-time.workspace = true
 wgpu.workspace = true
-wgpu-core.workspace = true                                           # Needed for error handling when wgpu-core implemented backend is used.
+# TODO(gfx-rs/wgpu#6962): There's a type export missing in 24.0.0, so we need to get it directly from wgpu-types.
+wgpu-types.workspace = true
 
 # optional
 gltf = { workspace = true, optional = true }

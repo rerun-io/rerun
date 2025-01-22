@@ -48,6 +48,8 @@ namespace rerun::archetypes {
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+        /// The name of the archetype as used in `ComponentDescriptor`s.
+        static constexpr const char ArchetypeName[] = "rerun.archetypes.BarChart";
 
       public: // START of extensions from bar_chart_ext.cpp:
         BarChart(rerun::datatypes::TensorBuffer buffer) {
@@ -165,6 +167,9 @@ namespace rerun::archetypes {
       public:
         BarChart() = default;
         BarChart(BarChart&& other) = default;
+        BarChart(const BarChart& other) = default;
+        BarChart& operator=(const BarChart& other) = default;
+        BarChart& operator=(BarChart&& other) = default;
 
         explicit BarChart(rerun::components::TensorData _values) : values(std::move(_values)) {}
 

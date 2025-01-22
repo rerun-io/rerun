@@ -32,8 +32,8 @@ pub enum RenderContextError {
 /// Any resource involving wgpu rendering which can be re-used across different scenes.
 /// I.e. render pipelines, resource pools, etc.
 pub struct RenderContext {
-    pub device: Arc<wgpu::Device>,
-    pub queue: Arc<wgpu::Queue>,
+    pub device: wgpu::Device,
+    pub queue: wgpu::Queue,
 
     device_caps: DeviceCaps,
     output_format_color: wgpu::TextureFormat,
@@ -126,8 +126,8 @@ impl RenderContext {
 
     pub fn new(
         adapter: &wgpu::Adapter,
-        device: Arc<wgpu::Device>,
-        queue: Arc<wgpu::Queue>,
+        device: wgpu::Device,
+        queue: wgpu::Queue,
         output_format_color: wgpu::TextureFormat,
     ) -> Result<Self, RenderContextError> {
         re_tracing::profile_function!();

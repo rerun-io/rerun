@@ -5,7 +5,15 @@
 
 #include "../../collection_adapter_builtins.hpp"
 
-namespace rerun::blueprint::archetypes {}
+namespace rerun::blueprint::archetypes {
+    MapZoom MapZoom::clear_fields() {
+        auto archetype = MapZoom();
+        archetype.zoom =
+            ComponentBatch::empty<rerun::blueprint::components::ZoomLevel>(Descriptor_zoom)
+                .value_or_throw();
+        return archetype;
+    }
+} // namespace rerun::blueprint::archetypes
 
 namespace rerun {
 
@@ -16,17 +24,8 @@ namespace rerun {
         std::vector<ComponentBatch> cells;
         cells.reserve(2);
 
-        {
-            auto result = ComponentBatch::from_loggable(
-                archetype.zoom,
-                ComponentDescriptor(
-                    "rerun.blueprint.archetypes.MapZoom",
-                    "zoom",
-                    "rerun.blueprint.components.ZoomLevel"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+        if (archetype.zoom.has_value()) {
+            cells.push_back(archetype.zoom.value());
         }
         {
             auto indicator = MapZoom::IndicatorComponent();

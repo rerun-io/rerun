@@ -199,7 +199,7 @@ def main() -> None:
 
     recording_path = ensure_recording_downloaded(args.recording)
 
-    rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), timeless=True)
+    rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), static=True)
 
     log_nyud_data(
         recording_path=recording_path,

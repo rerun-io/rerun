@@ -77,10 +77,15 @@ namespace rerun::archetypes {
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+        /// The name of the archetype as used in `ComponentDescriptor`s.
+        static constexpr const char ArchetypeName[] = "rerun.testing.archetypes.AffixFuzzer2";
 
       public:
         AffixFuzzer2() = default;
         AffixFuzzer2(AffixFuzzer2&& other) = default;
+        AffixFuzzer2(const AffixFuzzer2& other) = default;
+        AffixFuzzer2& operator=(const AffixFuzzer2& other) = default;
+        AffixFuzzer2& operator=(AffixFuzzer2&& other) = default;
 
         explicit AffixFuzzer2(
             Collection<rerun::components::AffixFuzzer1> _fuzz1101,

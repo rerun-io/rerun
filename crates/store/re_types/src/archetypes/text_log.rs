@@ -255,10 +255,57 @@ impl TextLog {
         }
     }
 
+    /// Partitions the component data into multiple sub-batches.
+    ///
+    /// Specifically, this transforms the existing [`SerializedComponentBatch`]es data into [`SerializedComponentColumn`]s
+    /// instead, via [`SerializedComponentBatch::partitioned`].
+    ///
+    /// This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
+    ///
+    /// The specified `lengths` must sum to the total length of the component batch.
+    ///
+    /// [`SerializedComponentColumn`]: [::re_types_core::SerializedComponentColumn]
+    #[inline]
+    pub fn columns<I>(
+        self,
+        _lengths: I,
+    ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>>
+    where
+        I: IntoIterator<Item = usize> + Clone,
+    {
+        let columns = [
+            self.text
+                .map(|text| text.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.level
+                .map(|level| level.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.color
+                .map(|color| color.partitioned(_lengths.clone()))
+                .transpose()?,
+        ];
+        let indicator_column =
+            ::re_types_core::indicator_column::<Self>(_lengths.into_iter().count())?;
+        Ok(columns.into_iter().chain([indicator_column]).flatten())
+    }
+
     /// The body of the message.
     #[inline]
     pub fn with_text(mut self, text: impl Into<crate::components::Text>) -> Self {
         self.text = try_serialize_field(Self::descriptor_text(), [text]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::Text`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_text`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_text(
+        mut self,
+        text: impl IntoIterator<Item = impl Into<crate::components::Text>>,
+    ) -> Self {
+        self.text = try_serialize_field(Self::descriptor_text(), text);
         self
     }
 
@@ -271,10 +318,36 @@ impl TextLog {
         self
     }
 
+    /// This method makes it possible to pack multiple [`crate::components::TextLogLevel`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_level`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_level(
+        mut self,
+        level: impl IntoIterator<Item = impl Into<crate::components::TextLogLevel>>,
+    ) -> Self {
+        self.level = try_serialize_field(Self::descriptor_level(), level);
+        self
+    }
+
     /// Optional color to use for the log line in the Rerun Viewer.
     #[inline]
     pub fn with_color(mut self, color: impl Into<crate::components::Color>) -> Self {
         self.color = try_serialize_field(Self::descriptor_color(), [color]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::Color`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_color`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_color(
+        mut self,
+        color: impl IntoIterator<Item = impl Into<crate::components::Color>>,
+    ) -> Self {
+        self.color = try_serialize_field(Self::descriptor_color(), color);
         self
     }
 }

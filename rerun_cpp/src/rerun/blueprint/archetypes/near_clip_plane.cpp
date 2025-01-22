@@ -5,7 +5,17 @@
 
 #include "../../collection_adapter_builtins.hpp"
 
-namespace rerun::blueprint::archetypes {}
+namespace rerun::blueprint::archetypes {
+    NearClipPlane NearClipPlane::clear_fields() {
+        auto archetype = NearClipPlane();
+        archetype.near_clip_plane =
+            ComponentBatch::empty<rerun::blueprint::components::NearClipPlane>(
+                Descriptor_near_clip_plane
+            )
+                .value_or_throw();
+        return archetype;
+    }
+} // namespace rerun::blueprint::archetypes
 
 namespace rerun {
 
@@ -17,17 +27,8 @@ namespace rerun {
         std::vector<ComponentBatch> cells;
         cells.reserve(2);
 
-        {
-            auto result = ComponentBatch::from_loggable(
-                archetype.near_clip_plane,
-                ComponentDescriptor(
-                    "rerun.blueprint.archetypes.NearClipPlane",
-                    "near_clip_plane",
-                    "rerun.blueprint.components.NearClipPlane"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+        if (archetype.near_clip_plane.has_value()) {
+            cells.push_back(archetype.near_clip_plane.value());
         }
         {
             auto indicator = NearClipPlane::IndicatorComponent();

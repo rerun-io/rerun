@@ -50,7 +50,7 @@ use ahash::HashMap;
 use re_entity_db::EntityPath;
 use re_types::datatypes::{KeypointId, KeypointPair};
 use re_viewer_context::{
-    auto_color_egui, ApplicableEntities, IdentifiedViewSystem, ViewClassRegistryError,
+    auto_color_egui, IdentifiedViewSystem, MaybeVisualizableEntities, ViewClassRegistryError,
     ViewSystemExecutionError, ViewSystemIdentifier, ViewSystemRegistrator, VisualizableEntities,
     VisualizableFilterContext, VisualizerCollection,
 };
@@ -271,7 +271,7 @@ pub fn image_view_coordinates() -> re_types::components::ViewCoordinates {
 }
 
 fn filter_visualizable_2d_entities(
-    entities: ApplicableEntities,
+    entities: MaybeVisualizableEntities,
     context: &dyn VisualizableFilterContext,
 ) -> VisualizableEntities {
     if let Some(context) = context
@@ -302,7 +302,7 @@ fn filter_visualizable_2d_entities(
 }
 
 fn filter_visualizable_3d_entities(
-    entities: ApplicableEntities,
+    entities: MaybeVisualizableEntities,
     context: &dyn VisualizableFilterContext,
 ) -> VisualizableEntities {
     if let Some(context) = context

@@ -98,10 +98,15 @@ namespace rerun::archetypes {
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+        /// The name of the archetype as used in `ComponentDescriptor`s.
+        static constexpr const char ArchetypeName[] = "rerun.archetypes.InstancePoses3D";
 
       public:
         InstancePoses3D() = default;
         InstancePoses3D(InstancePoses3D&& other) = default;
+        InstancePoses3D(const InstancePoses3D& other) = default;
+        InstancePoses3D& operator=(const InstancePoses3D& other) = default;
+        InstancePoses3D& operator=(InstancePoses3D&& other) = default;
 
         /// Translation vectors.
         InstancePoses3D with_translations(

@@ -5,7 +5,33 @@
 
 #include "../../collection_adapter_builtins.hpp"
 
-namespace rerun::blueprint::archetypes {}
+namespace rerun::blueprint::archetypes {
+    DataframeQuery DataframeQuery::clear_fields() {
+        auto archetype = DataframeQuery();
+        archetype.timeline =
+            ComponentBatch::empty<rerun::blueprint::components::TimelineName>(Descriptor_timeline)
+                .value_or_throw();
+        archetype.filter_by_range =
+            ComponentBatch::empty<rerun::blueprint::components::FilterByRange>(
+                Descriptor_filter_by_range
+            )
+                .value_or_throw();
+        archetype.filter_is_not_null =
+            ComponentBatch::empty<rerun::blueprint::components::FilterIsNotNull>(
+                Descriptor_filter_is_not_null
+            )
+                .value_or_throw();
+        archetype.apply_latest_at =
+            ComponentBatch::empty<rerun::blueprint::components::ApplyLatestAt>(
+                Descriptor_apply_latest_at
+            )
+                .value_or_throw();
+        archetype.select =
+            ComponentBatch::empty<rerun::blueprint::components::SelectedColumns>(Descriptor_select)
+                .value_or_throw();
+        return archetype;
+    }
+} // namespace rerun::blueprint::archetypes
 
 namespace rerun {
 
@@ -18,64 +44,19 @@ namespace rerun {
         cells.reserve(6);
 
         if (archetype.timeline.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.timeline.value(),
-                ComponentDescriptor(
-                    "rerun.blueprint.archetypes.DataframeQuery",
-                    "timeline",
-                    "rerun.blueprint.components.TimelineName"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.timeline.value());
         }
         if (archetype.filter_by_range.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.filter_by_range.value(),
-                ComponentDescriptor(
-                    "rerun.blueprint.archetypes.DataframeQuery",
-                    "filter_by_range",
-                    "rerun.blueprint.components.FilterByRange"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.filter_by_range.value());
         }
         if (archetype.filter_is_not_null.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.filter_is_not_null.value(),
-                ComponentDescriptor(
-                    "rerun.blueprint.archetypes.DataframeQuery",
-                    "filter_is_not_null",
-                    "rerun.blueprint.components.FilterIsNotNull"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.filter_is_not_null.value());
         }
         if (archetype.apply_latest_at.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.apply_latest_at.value(),
-                ComponentDescriptor(
-                    "rerun.blueprint.archetypes.DataframeQuery",
-                    "apply_latest_at",
-                    "rerun.blueprint.components.ApplyLatestAt"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.apply_latest_at.value());
         }
         if (archetype.select.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.select.value(),
-                ComponentDescriptor(
-                    "rerun.blueprint.archetypes.DataframeQuery",
-                    "select",
-                    "rerun.blueprint.components.SelectedColumns"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.select.value());
         }
         {
             auto indicator = DataframeQuery::IndicatorComponent();

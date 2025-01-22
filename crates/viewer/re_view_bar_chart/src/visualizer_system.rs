@@ -10,9 +10,9 @@ use re_types::{
 };
 use re_view::{diff_component_filter, DataResultQuery as _};
 use re_viewer_context::{
-    auto_color_for_entity_path, IdentifiedViewSystem, QueryContext, TypedComponentFallbackProvider,
-    ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError,
-    VisualizerAdditionalApplicabilityFilter, VisualizerQueryInfo, VisualizerSystem,
+    auto_color_for_entity_path, DataBasedVisualizabilityFilter, IdentifiedViewSystem, QueryContext,
+    TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewQuery,
+    ViewSystemExecutionError, VisualizerQueryInfo, VisualizerSystem,
 };
 
 /// A bar chart system, with everything needed to render it.
@@ -27,11 +27,11 @@ impl IdentifiedViewSystem for BarChartVisualizerSystem {
     }
 }
 
-struct BarChartVisualizerEntityFilter;
+struct BarChartVisualizabilityFilter;
 
-impl VisualizerAdditionalApplicabilityFilter for BarChartVisualizerEntityFilter {
+impl DataBasedVisualizabilityFilter for BarChartVisualizabilityFilter {
     #[inline]
-    fn update_applicability(&mut self, event: &ChunkStoreEvent) -> bool {
+    fn update_visualizability(&mut self, event: &ChunkStoreEvent) -> bool {
         diff_component_filter(event, |tensor: &re_types::components::TensorData| {
             tensor.is_vector()
         })
@@ -43,8 +43,8 @@ impl VisualizerSystem for BarChartVisualizerSystem {
         VisualizerQueryInfo::from_archetype::<BarChart>()
     }
 
-    fn applicability_filter(&self) -> Option<Box<dyn VisualizerAdditionalApplicabilityFilter>> {
-        Some(Box::new(BarChartVisualizerEntityFilter))
+    fn data_based_visualizability_filter(&self) -> Option<Box<dyn DataBasedVisualizabilityFilter>> {
+        Some(Box::new(BarChartVisualizabilityFilter))
     }
 
     fn execute(

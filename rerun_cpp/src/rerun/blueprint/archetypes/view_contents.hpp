@@ -5,11 +5,13 @@
 
 #include "../../blueprint/components/query_expression.hpp"
 #include "../../collection.hpp"
+#include "../../compiler_utils.hpp"
 #include "../../component_batch.hpp"
 #include "../../indicator_component.hpp"
 #include "../../result.hpp"
 
 #include <cstdint>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -56,7 +58,7 @@ namespace rerun::blueprint::archetypes {
         /// The `QueryExpression` that populates the contents for the view.
         ///
         /// They determine which entities are part of the view.
-        Collection<rerun::blueprint::components::QueryExpression> query;
+        std::optional<ComponentBatch> query;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -64,13 +66,44 @@ namespace rerun::blueprint::archetypes {
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+        /// The name of the archetype as used in `ComponentDescriptor`s.
+        static constexpr const char ArchetypeName[] = "rerun.blueprint.archetypes.ViewContents";
+
+        /// `ComponentDescriptor` for the `query` field.
+        static constexpr auto Descriptor_query = ComponentDescriptor(
+            ArchetypeName, "query",
+            Loggable<rerun::blueprint::components::QueryExpression>::Descriptor.component_name
+        );
 
       public:
         ViewContents() = default;
         ViewContents(ViewContents&& other) = default;
+        ViewContents(const ViewContents& other) = default;
+        ViewContents& operator=(const ViewContents& other) = default;
+        ViewContents& operator=(ViewContents&& other) = default;
 
         explicit ViewContents(Collection<rerun::blueprint::components::QueryExpression> _query)
-            : query(std::move(_query)) {}
+            : query(ComponentBatch::from_loggable(std::move(_query), Descriptor_query)
+                        .value_or_throw()) {}
+
+        /// Update only some specific fields of a `ViewContents`.
+        static ViewContents update_fields() {
+            return ViewContents();
+        }
+
+        /// Clear all the fields of a `ViewContents`.
+        static ViewContents clear_fields();
+
+        /// The `QueryExpression` that populates the contents for the view.
+        ///
+        /// They determine which entities are part of the view.
+        ViewContents with_query(
+            const Collection<rerun::blueprint::components::QueryExpression>& _query
+        ) && {
+            query = ComponentBatch::from_loggable(_query, Descriptor_query).value_or_throw();
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
     };
 
 } // namespace rerun::blueprint::archetypes

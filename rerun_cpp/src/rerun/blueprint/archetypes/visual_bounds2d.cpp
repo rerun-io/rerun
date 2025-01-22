@@ -5,7 +5,15 @@
 
 #include "../../collection_adapter_builtins.hpp"
 
-namespace rerun::blueprint::archetypes {}
+namespace rerun::blueprint::archetypes {
+    VisualBounds2D VisualBounds2D::clear_fields() {
+        auto archetype = VisualBounds2D();
+        archetype.range =
+            ComponentBatch::empty<rerun::blueprint::components::VisualBounds2D>(Descriptor_range)
+                .value_or_throw();
+        return archetype;
+    }
+} // namespace rerun::blueprint::archetypes
 
 namespace rerun {
 
@@ -17,17 +25,8 @@ namespace rerun {
         std::vector<ComponentBatch> cells;
         cells.reserve(2);
 
-        {
-            auto result = ComponentBatch::from_loggable(
-                archetype.range,
-                ComponentDescriptor(
-                    "rerun.blueprint.archetypes.VisualBounds2D",
-                    "range",
-                    "rerun.blueprint.components.VisualBounds2D"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+        if (archetype.range.has_value()) {
+            cells.push_back(archetype.range.value());
         }
         {
             auto indicator = VisualBounds2D::IndicatorComponent();

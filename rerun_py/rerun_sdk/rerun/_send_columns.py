@@ -210,7 +210,7 @@ def send_columns(
             expected_length = len(time_column)
         elif len(time_column) != expected_length:
             raise ValueError(
-                f"All times and components in a batch must have the same length. Expected length: {expected_length} but got: {len(time_column)} for timeline: {timeline_name}"
+                f"All times and components in a column must have the same length. Expected length: {expected_length} but got: {len(time_column)} for timeline: {timeline_name}"
             )
 
         timelines_args[timeline_name] = time_column

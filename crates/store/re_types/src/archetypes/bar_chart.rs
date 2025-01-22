@@ -218,6 +218,37 @@ impl BarChart {
         }
     }
 
+    /// Partitions the component data into multiple sub-batches.
+    ///
+    /// Specifically, this transforms the existing [`SerializedComponentBatch`]es data into [`SerializedComponentColumn`]s
+    /// instead, via [`SerializedComponentBatch::partitioned`].
+    ///
+    /// This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
+    ///
+    /// The specified `lengths` must sum to the total length of the component batch.
+    ///
+    /// [`SerializedComponentColumn`]: [::re_types_core::SerializedComponentColumn]
+    #[inline]
+    pub fn columns<I>(
+        self,
+        _lengths: I,
+    ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>>
+    where
+        I: IntoIterator<Item = usize> + Clone,
+    {
+        let columns = [
+            self.values
+                .map(|values| values.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.color
+                .map(|color| color.partitioned(_lengths.clone()))
+                .transpose()?,
+        ];
+        let indicator_column =
+            ::re_types_core::indicator_column::<Self>(_lengths.into_iter().count())?;
+        Ok(columns.into_iter().chain([indicator_column]).flatten())
+    }
+
     /// The values. Should always be a 1-dimensional tensor (i.e. a vector).
     #[inline]
     pub fn with_values(mut self, values: impl Into<crate::components::TensorData>) -> Self {
@@ -225,10 +256,36 @@ impl BarChart {
         self
     }
 
+    /// This method makes it possible to pack multiple [`crate::components::TensorData`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_values`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_values(
+        mut self,
+        values: impl IntoIterator<Item = impl Into<crate::components::TensorData>>,
+    ) -> Self {
+        self.values = try_serialize_field(Self::descriptor_values(), values);
+        self
+    }
+
     /// The color of the bar chart
     #[inline]
     pub fn with_color(mut self, color: impl Into<crate::components::Color>) -> Self {
         self.color = try_serialize_field(Self::descriptor_color(), [color]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::Color`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_color`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_color(
+        mut self,
+        color: impl IntoIterator<Item = impl Into<crate::components::Color>>,
+    ) -> Self {
+        self.color = try_serialize_field(Self::descriptor_color(), color);
         self
     }
 }

@@ -43,7 +43,7 @@ rr.log(
         rotation=rr.Quaternion(xyzw=rotation_xyzw),
         from_parent=False,
     ),
-    timeless=True,
+    static=True,
 )
 ```
 
@@ -55,7 +55,7 @@ rr.log(
         width=sample_data["width"],
         height=sample_data["height"],
     ),
-    timeless=True,
+    static=True,
 )
 ```
 

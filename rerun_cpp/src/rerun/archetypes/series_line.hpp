@@ -87,10 +87,15 @@ namespace rerun::archetypes {
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+        /// The name of the archetype as used in `ComponentDescriptor`s.
+        static constexpr const char ArchetypeName[] = "rerun.archetypes.SeriesLine";
 
       public:
         SeriesLine() = default;
         SeriesLine(SeriesLine&& other) = default;
+        SeriesLine(const SeriesLine& other) = default;
+        SeriesLine& operator=(const SeriesLine& other) = default;
+        SeriesLine& operator=(SeriesLine&& other) = default;
 
         /// Color for the corresponding series.
         SeriesLine with_color(rerun::components::Color _color) && {

@@ -18,9 +18,9 @@ namespace arrow {
 struct rr_component_batch;
 
 namespace rerun {
-    /// Arrow-encoded data of a single batch components for a single entity.
+    /// Arrow-encoded data of a single batch of components together with a component descriptor.
     ///
-    /// Note that this doesn't own `datatype` and `component_name`.
+    /// Component descriptors are registered when first encountered.
     struct ComponentBatch {
         /// Arrow-encoded data of the component instances.
         std::shared_ptr<arrow::Array> array;
@@ -29,6 +29,18 @@ namespace rerun {
         ComponentTypeHandle component_type;
 
       public:
+        ComponentBatch() = default;
+        ComponentBatch(ComponentBatch&& other) = default;
+        ComponentBatch(const ComponentBatch& other) = default;
+        ComponentBatch& operator=(ComponentBatch&& other) = default;
+        ComponentBatch& operator=(const ComponentBatch& other) = default;
+
+        /// Creates a new empty component batch with a given descriptor.
+        template <typename T>
+        static Result<ComponentBatch> empty(const ComponentDescriptor& descriptor) {
+            return from_loggable(Collection<T>(), descriptor);
+        }
+
         /// Creates a new component batch from a collection of component instances.
         ///
         /// Automatically registers the component type the first time this type is encountered.

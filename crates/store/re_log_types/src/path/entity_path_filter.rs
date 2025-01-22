@@ -19,6 +19,7 @@ pub enum EntityPathFilterError {
 ///
 /// Important: the same substitutions must be used in every place we resolve [`EntityPathFilter`] to
 /// [`ResolvedEntityPathFilter`].
+#[derive(Debug)]
 pub struct EntityPathSubs(HashMap<String, String>);
 
 impl EntityPathSubs {

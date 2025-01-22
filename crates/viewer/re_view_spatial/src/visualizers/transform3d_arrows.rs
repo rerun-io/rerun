@@ -8,7 +8,7 @@ use re_types::{
 };
 use re_view::{latest_at_with_blueprint_resolved_data, DataResultQuery};
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, QueryContext, TypedComponentFallbackProvider,
+    IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, TypedComponentFallbackProvider,
     ViewContext, ViewContextCollection, ViewQuery, ViewStateExt, ViewSystemExecutionError,
     VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
@@ -33,19 +33,19 @@ impl IdentifiedViewSystem for Transform3DArrowsVisualizer {
     }
 }
 
-struct Transform3DApplicabilityFilter {
-    applicability_trigger_components: IntSet<ComponentName>,
+struct Transform3DVisualizabilityFilter {
+    visualizability_trigger_components: IntSet<ComponentName>,
 }
 
-impl re_viewer_context::VisualizerAdditionalApplicabilityFilter for Transform3DApplicabilityFilter {
-    fn update_applicability(&mut self, event: &re_chunk_store::ChunkStoreEvent) -> bool {
-        // There's no required component on `Transform3D` archetype, so by default it would always be applicable.
+impl re_viewer_context::DataBasedVisualizabilityFilter for Transform3DVisualizabilityFilter {
+    fn update_visualizability(&mut self, event: &re_chunk_store::ChunkStoreEvent) -> bool {
+        // There's no required component on `Transform3D` archetype, so by default it would always be visualizable.
         // That's not entirely wrong, after all, the transform arrows make always sense!
         // But today, this notion messes with a lot of things:
         // * it means everything can be visualized in a 3D view!
-        // * if there's no indicated visualizer, we show any visualizer that is applicable (that would be this one always then)
+        // * if there's no indicated visualizer, we show any visualizer that is visualizable (that would be this one always then)
         event.diff.chunk.component_names().any(|component_name| {
-            self.applicability_trigger_components
+            self.visualizability_trigger_components
                 .contains(&component_name)
         })
     }
@@ -56,11 +56,11 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
         VisualizerQueryInfo::from_archetype::<Transform3D>()
     }
 
-    fn applicability_filter(
+    fn data_based_visualizability_filter(
         &self,
-    ) -> Option<Box<dyn re_viewer_context::VisualizerAdditionalApplicabilityFilter>> {
-        Some(Box::new(Transform3DApplicabilityFilter {
-            applicability_trigger_components: Transform3D::all_components()
+    ) -> Option<Box<dyn re_viewer_context::DataBasedVisualizabilityFilter>> {
+        Some(Box::new(Transform3DVisualizabilityFilter {
+            visualizability_trigger_components: Transform3D::all_components()
                 .iter()
                 .map(|descr| descr.component_name)
                 .collect(),
@@ -69,7 +69,7 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
 
     fn filter_visualizable_entities(
         &self,
-        entities: ApplicableEntities,
+        entities: MaybeVisualizableEntities,
         context: &dyn VisualizableFilterContext,
     ) -> VisualizableEntities {
         filter_visualizable_3d_entities(entities, context)
@@ -310,7 +310,7 @@ impl VisualizerSystem for AxisLengthDetector {
     #[inline]
     fn filter_visualizable_entities(
         &self,
-        _entities: ApplicableEntities,
+        _entities: MaybeVisualizableEntities,
         _context: &dyn VisualizableFilterContext,
     ) -> VisualizableEntities {
         // Never actually visualize this detector
