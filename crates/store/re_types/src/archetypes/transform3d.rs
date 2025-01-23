@@ -514,6 +514,33 @@ impl Transform3D {
         Ok(columns.into_iter().chain([indicator_column]).flatten())
     }
 
+    /// Helper to partition the component data into unit-length sub-batches.
+    ///
+    /// This is semantically similar to calling [`Self::columns`] with `std::iter::take(1).repeat(n)`,
+    /// where `n` is automatically guessed.
+    #[inline]
+    pub fn columns_of_unit_batches(
+        self,
+    ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
+        let len_translation = self.translation.as_ref().map(|b| b.array.len());
+        let len_rotation_axis_angle = self.rotation_axis_angle.as_ref().map(|b| b.array.len());
+        let len_quaternion = self.quaternion.as_ref().map(|b| b.array.len());
+        let len_scale = self.scale.as_ref().map(|b| b.array.len());
+        let len_mat3x3 = self.mat3x3.as_ref().map(|b| b.array.len());
+        let len_relation = self.relation.as_ref().map(|b| b.array.len());
+        let len_axis_length = self.axis_length.as_ref().map(|b| b.array.len());
+        let len = None
+            .or(len_translation)
+            .or(len_rotation_axis_angle)
+            .or(len_quaternion)
+            .or(len_scale)
+            .or(len_mat3x3)
+            .or(len_relation)
+            .or(len_axis_length)
+            .unwrap_or(0);
+        self.columns(std::iter::repeat(1).take(len))
+    }
+
     /// Translation vector.
     #[inline]
     pub fn with_translation(

@@ -249,6 +249,20 @@ impl BarChart {
         Ok(columns.into_iter().chain([indicator_column]).flatten())
     }
 
+    /// Helper to partition the component data into unit-length sub-batches.
+    ///
+    /// This is semantically similar to calling [`Self::columns`] with `std::iter::take(1).repeat(n)`,
+    /// where `n` is automatically guessed.
+    #[inline]
+    pub fn columns_of_unit_batches(
+        self,
+    ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
+        let len_values = self.values.as_ref().map(|b| b.array.len());
+        let len_color = self.color.as_ref().map(|b| b.array.len());
+        let len = None.or(len_values).or(len_color).unwrap_or(0);
+        self.columns(std::iter::repeat(1).take(len))
+    }
+
     /// The values. Should always be a 1-dimensional tensor (i.e. a vector).
     #[inline]
     pub fn with_values(mut self, values: impl Into<crate::components::TensorData>) -> Self {

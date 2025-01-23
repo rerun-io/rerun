@@ -1944,7 +1944,7 @@ fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) 
         }
     });
 
-    let columnar_methods = obj.is_eager_rust_archetype().then(|| {
+    let columnar_methods = (obj.is_eager_rust_archetype() && obj.scope().is_none()).then(|| {
         let columns_doc = unindent::unindent("\
         Partitions the component data into multiple sub-batches.
 
@@ -1959,13 +1959,30 @@ fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) 
         ");
         let columns_doc = quote_doc_lines(&columns_doc.lines().map(|l| l.to_owned()).collect_vec());
 
-        let has_indicator = obj.fqname.as_str() != "rerun.archetypes.Scalar";
+        let columns_unary_doc = unindent::unindent("\
+        Helper to partition the component data into unit-length sub-batches.
 
+        This is semantically similar to calling [`Self::columns`] with `std::iter::take(1).repeat(n)`,
+        where `n` is automatically guessed.
+        ");
+        let columns_unary_doc = quote_doc_lines(&columns_unary_doc.lines().map(|l| l.to_owned()).collect_vec());
+
+        let has_indicator = obj.fqname.as_str() != "rerun.archetypes.Scalar";
         let num_fields = required.iter().chain(optional.iter()).count();
+
         let fields = required.iter().chain(optional.iter()).map(|field| {
             let field_name = format_ident!("{}", field.name);
             let clone = if num_fields == 1 && !has_indicator { quote!(.into_iter()) } else { quote!(.clone()) };
             quote!(self.#field_name.map(|#field_name| #field_name.partitioned(_lengths #clone)).transpose()?)
+        });
+
+        let field_lengths = required.iter().chain(optional.iter()).map(|field| {
+            format_ident!("len_{}", field.name)
+        }).collect_vec();
+        let unary_fields = required.iter().chain(optional.iter()).map(|field| {
+            let field_name = format_ident!("{}", field.name);
+            let len_field_name = format_ident!("len_{}", field.name);
+            quote!(let #len_field_name = self.#field_name.as_ref().map(|b| b.array.len()))
         });
 
         let indicator_column = if !has_indicator {
@@ -1988,6 +2005,23 @@ fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) 
                 let columns = [ #(#fields),* ];
                 let indicator_column = #indicator_column;
                 Ok(columns.into_iter().chain([indicator_column]).flatten())
+            }
+
+            #columns_unary_doc
+            #[inline]
+            pub fn columns_of_unit_batches(
+                self,
+            ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>>
+            {
+                #(#unary_fields);*;
+
+                let len = None
+                    #(.or(#field_lengths))*
+                    .unwrap_or(0);
+
+                // NOTE: This will return an error if the different batches have different lengths,
+                // which is fine.
+                self.columns(std::iter::repeat(1).take(len))
             }
         }
     });

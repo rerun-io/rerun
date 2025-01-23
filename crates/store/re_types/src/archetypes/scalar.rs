@@ -71,7 +71,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///         [times],
 ///         rerun::Scalar::update_fields()
 ///             .with_many_scalar(scalars)
-///             .columns(std::iter::repeat(1).take(STEPS as _))?,
+///             .columns_of_unit_batches()?,
 ///     )?;
 ///
 ///     Ok(())
@@ -251,6 +251,19 @@ impl Scalar {
             .transpose()?];
         let indicator_column = None;
         Ok(columns.into_iter().chain([indicator_column]).flatten())
+    }
+
+    /// Helper to partition the component data into unit-length sub-batches.
+    ///
+    /// This is semantically similar to calling [`Self::columns`] with `std::iter::take(1).repeat(n)`,
+    /// where `n` is automatically guessed.
+    #[inline]
+    pub fn columns_of_unit_batches(
+        self,
+    ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
+        let len_scalar = self.scalar.as_ref().map(|b| b.array.len());
+        let len = None.or(len_scalar).unwrap_or(0);
+        self.columns(std::iter::repeat(1).take(len))
     }
 
     /// The scalar value to log.

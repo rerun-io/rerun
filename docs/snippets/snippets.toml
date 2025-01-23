@@ -14,12 +14,29 @@
 
 # These arbitrary feature names will be indexed exactly as written down.
 # Add anything you can think about!
+#
+# Tip: use UTF8 NBSPs (https://unicode-explorer.com/c/00A0) as needed.
 [snippets_ref.features]
-"Dataframes" = ["reference/dataframe_query", "reference/dataframe_view_query"]
-"`AnyValue`" = [
+"Query dataframes" = [
+  "reference/dataframe_query",
+  "reference/dataframe_view_query",
+]
+"Send partial updates" = [
+  "archetypes/mesh3d_partial_updates",
+  "archetypes/points3d_partial_updates",
+  "archetypes/transform3d_partial_updates",
+]
+"Send columnar data" = [
+  "archetypes/image_send_columns",
+  "archetypes/points3d_send_columns",
+  "archetypes/scalar_send_columns",
+  "howto/any_values_send_columns",
+  "howto/any_batch_value_send_columns",
+]
+"Send custom data" = [
   "tutorials/any_values",
   "tutorials/extra_values",
-  "howto/any_values_send_columns",
+  "tutorials/custom_data",
 ]
 
 # These entries won't run at all.
@@ -86,11 +103,9 @@
 ]
 "howto/any_batch_value_send_columns" = [
   "cpp",  # Not implemented
-  "rust", # Not implemented
 ]
 "howto/any_values_send_columns" = [
   "cpp",  # Not implemented
-  "rust", # Not implemented
 ]
 "migration/log_line" = [ # Not a complete example -- just a single log line
   "cpp",
