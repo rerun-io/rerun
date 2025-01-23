@@ -122,64 +122,22 @@ Displays text from a text component, as raw text or markdown."
         let state = state.downcast_mut::<TextDocumentViewState>()?;
         let text_document = system_output.view_systems.get::<TextDocumentSystem>()?;
 
-        let response = egui::Frame {
-            inner_margin: re_ui::DesignTokens::view_padding().into(),
-            ..egui::Frame::default()
-        }
-        .show(ui, |ui| {
-            ui.with_layout(egui::Layout::top_down(egui::Align::LEFT), |ui| {
-                egui::ScrollArea::both()
-                    .auto_shrink([false, false])
-                    .show(ui, |ui| {
-                        if text_document.text_entries.is_empty() {
-                            // We get here if we scroll back time to before the first text document was logged.
-                            ui.weak("(empty)");
-                        } else if text_document.text_entries.len() == 1 {
-                            let TextDocumentEntry { body, media_type } =
-                                &text_document.text_entries[0];
+        let frame = egui::Frame::new().inner_margin(re_ui::DesignTokens::view_padding());
+        let response = frame
+            .show(ui, |ui| {
+                let inner_ui_builder = egui::UiBuilder::new()
+                    .layout(egui::Layout::top_down(egui::Align::LEFT))
+                    .sense(Sense::click());
+                ui.allocate_new_ui(inner_ui_builder, |ui| {
+                    egui::ScrollArea::both()
+                        .auto_shrink([false, false])
+                        .show(ui, |ui| text_document_ui(ui, state, text_document));
 
-                            if media_type == &re_types::components::MediaType::markdown() {
-                                re_tracing::profile_scope!("egui_commonmark");
-
-                                // Make sure headers are big:
-                                ui.style_mut()
-                                    .text_styles
-                                    .entry(egui::TextStyle::Heading)
-                                    .or_insert(egui::FontId::proportional(32.0))
-                                    .size = 24.0;
-
-                                egui_commonmark::CommonMarkViewer::new()
-                                    .max_image_width(Some(ui.available_width().floor() as _))
-                                    .show(ui, &mut state.commonmark_cache, body);
-                                return;
-                            }
-
-                            let mut text = egui::RichText::new(body.as_str());
-
-                            if state.monospace {
-                                text = text.monospace();
-                            }
-
-                            ui.add(Label::new(text).wrap_mode(if state.word_wrap {
-                                egui::TextWrapMode::Wrap
-                            } else {
-                                egui::TextWrapMode::Extend
-                            }));
-                        } else {
-                            // TODO(jleibs): better handling for multiple results
-                            ui.error_label(format!(
-                                "Can only show one text document at a time; was given {}. Update \
-                                the query so that it returns a single text document and create \
-                                additional views for the others.",
-                                text_document.text_entries.len()
-                            ));
-                        }
-                    })
+                    ui.response()
+                })
+                .inner
             })
-            .response
-        })
-        .response
-        .interact(Sense::click());
+            .inner;
 
         if response.hovered() {
             ctx.selection_state().set_hovered(Item::View(query.view_id));
@@ -191,5 +149,53 @@ Displays text from a text component, as raw text or markdown."
         }
 
         Ok(())
+    }
+}
+
+fn text_document_ui(
+    ui: &mut egui::Ui,
+    state: &mut TextDocumentViewState,
+    text_document: &TextDocumentSystem,
+) {
+    if text_document.text_entries.is_empty() {
+        // We get here if we scroll back time to before the first text document was logged.
+        ui.weak("(empty)");
+    } else if text_document.text_entries.len() == 1 {
+        let TextDocumentEntry { body, media_type } = &text_document.text_entries[0];
+
+        if media_type == &re_types::components::MediaType::markdown() {
+            re_tracing::profile_scope!("egui_commonmark");
+
+            // Make sure headers are big:
+            ui.style_mut()
+                .text_styles
+                .entry(egui::TextStyle::Heading)
+                .or_insert(egui::FontId::proportional(32.0))
+                .size = 24.0;
+
+            egui_commonmark::CommonMarkViewer::new()
+                .max_image_width(Some(ui.available_width().floor() as _))
+                .show(ui, &mut state.commonmark_cache, body);
+        } else {
+            let mut text = egui::RichText::new(body.as_str());
+
+            if state.monospace {
+                text = text.monospace();
+            }
+
+            ui.add(Label::new(text).wrap_mode(if state.word_wrap {
+                egui::TextWrapMode::Wrap
+            } else {
+                egui::TextWrapMode::Extend
+            }));
+        }
+    } else {
+        // TODO(jleibs): better handling for multiple results
+        ui.error_label(format!(
+            "Can only show one text document at a time; was given {}. Update \
+                                    the query so that it returns a single text document and create \
+                                    additional views for the others.",
+            text_document.text_entries.len()
+        ));
     }
 }
