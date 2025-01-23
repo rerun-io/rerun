@@ -33,7 +33,7 @@ pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array
             }
         }
 
-        let num_bytes = array.get_array_memory_size();
+        let num_bytes = array.get_buffer_memory_size();
         if num_bytes < 3_000 {
             let instance_count = array.len();
 

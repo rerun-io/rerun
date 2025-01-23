@@ -179,7 +179,7 @@ fn component_ui(
 fn format_arrow(array: &dyn arrow::array::Array) -> String {
     use arrow::util::display::{ArrayFormatter, FormatOptions};
 
-    let num_bytes = array.get_array_memory_size();
+    let num_bytes = array.get_buffer_memory_size();
     if array.len() == 1 && num_bytes < 256 {
         // Print small items:
         let options = FormatOptions::default();
