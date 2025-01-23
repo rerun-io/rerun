@@ -111,7 +111,14 @@ impl EndpointCategory {
             Self::WebEventListener(uri)
         } else if uri.starts_with("temp:") {
             // TODO(#8761): URL prefix
-            Self::MessageProxy(uri)
+            #[cfg(feature = "grpc")]
+            {
+                Self::MessageProxy(uri)
+            }
+            #[cfg(not(feature = "grpc"))]
+            {
+                panic!("Required the 'grpc' feature flag to be enabled");
+            }
         } else {
             // If this is something like `foo.com` we can't know what it is until we connect to it.
             // We could/should connect and see what it is, but for now we just take a wild guess instead:
