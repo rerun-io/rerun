@@ -111,22 +111,22 @@ namespace rerun::archetypes {
         /// The positions of each vertex.
         ///
         /// If no `triangle_indices` are specified, then each triplet of positions is interpreted as a triangle.
-        Collection<rerun::components::Position3D> vertex_positions;
+        std::optional<ComponentBatch> vertex_positions;
 
         /// Optional indices for the triangles that make up the mesh.
-        std::optional<Collection<rerun::components::TriangleIndices>> triangle_indices;
+        std::optional<ComponentBatch> triangle_indices;
 
         /// An optional normal for each vertex.
-        std::optional<Collection<rerun::components::Vector3D>> vertex_normals;
+        std::optional<ComponentBatch> vertex_normals;
 
         /// An optional color for each vertex.
-        std::optional<Collection<rerun::components::Color>> vertex_colors;
+        std::optional<ComponentBatch> vertex_colors;
 
         /// An optional uv texture coordinate for each vertex.
-        std::optional<Collection<rerun::components::Texcoord2D>> vertex_texcoords;
+        std::optional<ComponentBatch> vertex_texcoords;
 
         /// A color multiplier applied to the whole mesh.
-        std::optional<rerun::components::AlbedoFactor> albedo_factor;
+        std::optional<ComponentBatch> albedo_factor;
 
         /// Optional albedo texture.
         ///
@@ -134,15 +134,15 @@ namespace rerun::archetypes {
         ///
         /// Currently supports only sRGB(A) textures, ignoring alpha.
         /// (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
-        std::optional<rerun::components::ImageBuffer> albedo_texture_buffer;
+        std::optional<ComponentBatch> albedo_texture_buffer;
 
         /// The format of the `albedo_texture_buffer`, if any.
-        std::optional<rerun::components::ImageFormat> albedo_texture_format;
+        std::optional<ComponentBatch> albedo_texture_format;
 
         /// Optional class Ids for the vertices.
         ///
         /// The `components::ClassId` provides colors and labels if not specified explicitly.
-        std::optional<Collection<rerun::components::ClassId>> class_ids;
+        std::optional<ComponentBatch> class_ids;
 
       public:
         static constexpr const char IndicatorComponentName[] = "rerun.components.Mesh3DIndicator";
@@ -152,6 +152,52 @@ namespace rerun::archetypes {
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.Mesh3D";
 
+        /// `ComponentDescriptor` for the `vertex_positions` field.
+        static constexpr auto Descriptor_vertex_positions = ComponentDescriptor(
+            ArchetypeName, "vertex_positions",
+            Loggable<rerun::components::Position3D>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `triangle_indices` field.
+        static constexpr auto Descriptor_triangle_indices = ComponentDescriptor(
+            ArchetypeName, "triangle_indices",
+            Loggable<rerun::components::TriangleIndices>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `vertex_normals` field.
+        static constexpr auto Descriptor_vertex_normals = ComponentDescriptor(
+            ArchetypeName, "vertex_normals",
+            Loggable<rerun::components::Vector3D>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `vertex_colors` field.
+        static constexpr auto Descriptor_vertex_colors = ComponentDescriptor(
+            ArchetypeName, "vertex_colors",
+            Loggable<rerun::components::Color>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `vertex_texcoords` field.
+        static constexpr auto Descriptor_vertex_texcoords = ComponentDescriptor(
+            ArchetypeName, "vertex_texcoords",
+            Loggable<rerun::components::Texcoord2D>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `albedo_factor` field.
+        static constexpr auto Descriptor_albedo_factor = ComponentDescriptor(
+            ArchetypeName, "albedo_factor",
+            Loggable<rerun::components::AlbedoFactor>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `albedo_texture_buffer` field.
+        static constexpr auto Descriptor_albedo_texture_buffer = ComponentDescriptor(
+            ArchetypeName, "albedo_texture_buffer",
+            Loggable<rerun::components::ImageBuffer>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `albedo_texture_format` field.
+        static constexpr auto Descriptor_albedo_texture_format = ComponentDescriptor(
+            ArchetypeName, "albedo_texture_format",
+            Loggable<rerun::components::ImageFormat>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `class_ids` field.
+        static constexpr auto Descriptor_class_ids = ComponentDescriptor(
+            ArchetypeName, "class_ids",
+            Loggable<rerun::components::ClassId>::Descriptor.component_name
+        );
+
       public:
         Mesh3D() = default;
         Mesh3D(Mesh3D&& other) = default;
@@ -160,42 +206,76 @@ namespace rerun::archetypes {
         Mesh3D& operator=(Mesh3D&& other) = default;
 
         explicit Mesh3D(Collection<rerun::components::Position3D> _vertex_positions)
-            : vertex_positions(std::move(_vertex_positions)) {}
+            : vertex_positions(ComponentBatch::from_loggable(
+                                   std::move(_vertex_positions), Descriptor_vertex_positions
+              )
+                                   .value_or_throw()) {}
+
+        /// Update only some specific fields of a `Mesh3D`.
+        static Mesh3D update_fields() {
+            return Mesh3D();
+        }
+
+        /// Clear all the fields of a `Mesh3D`.
+        static Mesh3D clear_fields();
+
+        /// The positions of each vertex.
+        ///
+        /// If no `triangle_indices` are specified, then each triplet of positions is interpreted as a triangle.
+        Mesh3D with_vertex_positions(
+            const Collection<rerun::components::Position3D>& _vertex_positions
+        ) && {
+            vertex_positions =
+                ComponentBatch::from_loggable(_vertex_positions, Descriptor_vertex_positions)
+                    .value_or_throw();
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
 
         /// Optional indices for the triangles that make up the mesh.
         Mesh3D with_triangle_indices(
-            Collection<rerun::components::TriangleIndices> _triangle_indices
+            const Collection<rerun::components::TriangleIndices>& _triangle_indices
         ) && {
-            triangle_indices = std::move(_triangle_indices);
+            triangle_indices =
+                ComponentBatch::from_loggable(_triangle_indices, Descriptor_triangle_indices)
+                    .value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// An optional normal for each vertex.
-        Mesh3D with_vertex_normals(Collection<rerun::components::Vector3D> _vertex_normals) && {
-            vertex_normals = std::move(_vertex_normals);
+        Mesh3D with_vertex_normals(const Collection<rerun::components::Vector3D>& _vertex_normals
+        ) && {
+            vertex_normals =
+                ComponentBatch::from_loggable(_vertex_normals, Descriptor_vertex_normals)
+                    .value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// An optional color for each vertex.
-        Mesh3D with_vertex_colors(Collection<rerun::components::Color> _vertex_colors) && {
-            vertex_colors = std::move(_vertex_colors);
+        Mesh3D with_vertex_colors(const Collection<rerun::components::Color>& _vertex_colors) && {
+            vertex_colors = ComponentBatch::from_loggable(_vertex_colors, Descriptor_vertex_colors)
+                                .value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// An optional uv texture coordinate for each vertex.
-        Mesh3D with_vertex_texcoords(Collection<rerun::components::Texcoord2D> _vertex_texcoords
+        Mesh3D with_vertex_texcoords(
+            const Collection<rerun::components::Texcoord2D>& _vertex_texcoords
         ) && {
-            vertex_texcoords = std::move(_vertex_texcoords);
+            vertex_texcoords =
+                ComponentBatch::from_loggable(_vertex_texcoords, Descriptor_vertex_texcoords)
+                    .value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// A color multiplier applied to the whole mesh.
-        Mesh3D with_albedo_factor(rerun::components::AlbedoFactor _albedo_factor) && {
-            albedo_factor = std::move(_albedo_factor);
+        Mesh3D with_albedo_factor(const rerun::components::AlbedoFactor& _albedo_factor) && {
+            albedo_factor = ComponentBatch::from_loggable(_albedo_factor, Descriptor_albedo_factor)
+                                .value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
@@ -206,17 +286,27 @@ namespace rerun::archetypes {
         ///
         /// Currently supports only sRGB(A) textures, ignoring alpha.
         /// (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
-        Mesh3D with_albedo_texture_buffer(rerun::components::ImageBuffer _albedo_texture_buffer
+        Mesh3D with_albedo_texture_buffer(
+            const rerun::components::ImageBuffer& _albedo_texture_buffer
         ) && {
-            albedo_texture_buffer = std::move(_albedo_texture_buffer);
+            albedo_texture_buffer = ComponentBatch::from_loggable(
+                                        _albedo_texture_buffer,
+                                        Descriptor_albedo_texture_buffer
+            )
+                                        .value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// The format of the `albedo_texture_buffer`, if any.
-        Mesh3D with_albedo_texture_format(rerun::components::ImageFormat _albedo_texture_format
+        Mesh3D with_albedo_texture_format(
+            const rerun::components::ImageFormat& _albedo_texture_format
         ) && {
-            albedo_texture_format = std::move(_albedo_texture_format);
+            albedo_texture_format = ComponentBatch::from_loggable(
+                                        _albedo_texture_format,
+                                        Descriptor_albedo_texture_format
+            )
+                                        .value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
@@ -224,8 +314,9 @@ namespace rerun::archetypes {
         /// Optional class Ids for the vertices.
         ///
         /// The `components::ClassId` provides colors and labels if not specified explicitly.
-        Mesh3D with_class_ids(Collection<rerun::components::ClassId> _class_ids) && {
-            class_ids = std::move(_class_ids);
+        Mesh3D with_class_ids(const Collection<rerun::components::ClassId>& _class_ids) && {
+            class_ids =
+                ComponentBatch::from_loggable(_class_ids, Descriptor_class_ids).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

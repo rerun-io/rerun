@@ -64,22 +64,22 @@ namespace rerun::archetypes {
     /// ```
     struct SeriesLine {
         /// Color for the corresponding series.
-        std::optional<rerun::components::Color> color;
+        std::optional<ComponentBatch> color;
 
         /// Stroke width for the corresponding series.
-        std::optional<rerun::components::StrokeWidth> width;
+        std::optional<ComponentBatch> width;
 
         /// Display name of the series.
         ///
         /// Used in the legend.
-        std::optional<rerun::components::Name> name;
+        std::optional<ComponentBatch> name;
 
         /// Configures the zoom-dependent scalar aggregation.
         ///
         /// This is done only if steps on the X axis go below a single pixel,
         /// i.e. a single pixel covers more than one tick worth of data. It can greatly improve performance
         /// (and readability) in such situations as it prevents overdraw.
-        std::optional<rerun::components::AggregationPolicy> aggregation_policy;
+        std::optional<ComponentBatch> aggregation_policy;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -90,6 +90,25 @@ namespace rerun::archetypes {
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.SeriesLine";
 
+        /// `ComponentDescriptor` for the `color` field.
+        static constexpr auto Descriptor_color = ComponentDescriptor(
+            ArchetypeName, "color", Loggable<rerun::components::Color>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `width` field.
+        static constexpr auto Descriptor_width = ComponentDescriptor(
+            ArchetypeName, "width",
+            Loggable<rerun::components::StrokeWidth>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `name` field.
+        static constexpr auto Descriptor_name = ComponentDescriptor(
+            ArchetypeName, "name", Loggable<rerun::components::Name>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `aggregation_policy` field.
+        static constexpr auto Descriptor_aggregation_policy = ComponentDescriptor(
+            ArchetypeName, "aggregation_policy",
+            Loggable<rerun::components::AggregationPolicy>::Descriptor.component_name
+        );
+
       public:
         SeriesLine() = default;
         SeriesLine(SeriesLine&& other) = default;
@@ -97,16 +116,24 @@ namespace rerun::archetypes {
         SeriesLine& operator=(const SeriesLine& other) = default;
         SeriesLine& operator=(SeriesLine&& other) = default;
 
+        /// Update only some specific fields of a `SeriesLine`.
+        static SeriesLine update_fields() {
+            return SeriesLine();
+        }
+
+        /// Clear all the fields of a `SeriesLine`.
+        static SeriesLine clear_fields();
+
         /// Color for the corresponding series.
-        SeriesLine with_color(rerun::components::Color _color) && {
-            color = std::move(_color);
+        SeriesLine with_color(const rerun::components::Color& _color) && {
+            color = ComponentBatch::from_loggable(_color, Descriptor_color).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Stroke width for the corresponding series.
-        SeriesLine with_width(rerun::components::StrokeWidth _width) && {
-            width = std::move(_width);
+        SeriesLine with_width(const rerun::components::StrokeWidth& _width) && {
+            width = ComponentBatch::from_loggable(_width, Descriptor_width).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
@@ -114,8 +141,8 @@ namespace rerun::archetypes {
         /// Display name of the series.
         ///
         /// Used in the legend.
-        SeriesLine with_name(rerun::components::Name _name) && {
-            name = std::move(_name);
+        SeriesLine with_name(const rerun::components::Name& _name) && {
+            name = ComponentBatch::from_loggable(_name, Descriptor_name).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
@@ -125,9 +152,12 @@ namespace rerun::archetypes {
         /// This is done only if steps on the X axis go below a single pixel,
         /// i.e. a single pixel covers more than one tick worth of data. It can greatly improve performance
         /// (and readability) in such situations as it prevents overdraw.
-        SeriesLine with_aggregation_policy(rerun::components::AggregationPolicy _aggregation_policy
+        SeriesLine with_aggregation_policy(
+            const rerun::components::AggregationPolicy& _aggregation_policy
         ) && {
-            aggregation_policy = std::move(_aggregation_policy);
+            aggregation_policy =
+                ComponentBatch::from_loggable(_aggregation_policy, Descriptor_aggregation_policy)
+                    .value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

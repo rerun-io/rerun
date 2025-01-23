@@ -426,21 +426,11 @@ SCENARIO("Collection creation via a custom adapter for a datalayout compatible t
         THEN("A Point2D archetype can be directly created from this container") {
             const rerun::archetypes::Points2D from_custom_container(container);
 
-            CHECK(from_custom_container.positions.size() == 2);
-            CHECK(
-                from_custom_container.positions.get_ownership() ==
-                rerun::CollectionOwnership::Borrowed
-            );
+            CHECK(from_custom_container.positions.has_value());
 
             AND_THEN("it can be serialized and is identical to creation from rerun types directly"
             ) {
                 const rerun::archetypes::Points2D from_rerun_vector({{0.0f, 1.0f}, {2.0f, 3.0f}});
-
-                CHECK(from_rerun_vector.positions.size() == 2);
-                CHECK(
-                    from_rerun_vector.positions.get_ownership() ==
-                    rerun::CollectionOwnership::VectorOwned
-                );
 
                 test_compare_archetype_serialization(from_custom_container, from_rerun_vector);
             }

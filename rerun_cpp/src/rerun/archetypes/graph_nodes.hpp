@@ -48,22 +48,22 @@ namespace rerun::archetypes {
     /// ```
     struct GraphNodes {
         /// A list of node IDs.
-        Collection<rerun::components::GraphNode> node_ids;
+        std::optional<ComponentBatch> node_ids;
 
         /// Optional center positions of the nodes.
-        std::optional<Collection<rerun::components::Position2D>> positions;
+        std::optional<ComponentBatch> positions;
 
         /// Optional colors for the boxes.
-        std::optional<Collection<rerun::components::Color>> colors;
+        std::optional<ComponentBatch> colors;
 
         /// Optional text labels for the node.
-        std::optional<Collection<rerun::components::Text>> labels;
+        std::optional<ComponentBatch> labels;
 
         /// Optional choice of whether the text labels should be shown by default.
-        std::optional<rerun::components::ShowLabels> show_labels;
+        std::optional<ComponentBatch> show_labels;
 
         /// Optional radii for nodes.
-        std::optional<Collection<rerun::components::Radius>> radii;
+        std::optional<ComponentBatch> radii;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -74,6 +74,34 @@ namespace rerun::archetypes {
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.GraphNodes";
 
+        /// `ComponentDescriptor` for the `node_ids` field.
+        static constexpr auto Descriptor_node_ids = ComponentDescriptor(
+            ArchetypeName, "node_ids",
+            Loggable<rerun::components::GraphNode>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `positions` field.
+        static constexpr auto Descriptor_positions = ComponentDescriptor(
+            ArchetypeName, "positions",
+            Loggable<rerun::components::Position2D>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `colors` field.
+        static constexpr auto Descriptor_colors = ComponentDescriptor(
+            ArchetypeName, "colors", Loggable<rerun::components::Color>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `labels` field.
+        static constexpr auto Descriptor_labels = ComponentDescriptor(
+            ArchetypeName, "labels", Loggable<rerun::components::Text>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `show_labels` field.
+        static constexpr auto Descriptor_show_labels = ComponentDescriptor(
+            ArchetypeName, "show_labels",
+            Loggable<rerun::components::ShowLabels>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `radii` field.
+        static constexpr auto Descriptor_radii = ComponentDescriptor(
+            ArchetypeName, "radii", Loggable<rerun::components::Radius>::Descriptor.component_name
+        );
+
       public:
         GraphNodes() = default;
         GraphNodes(GraphNodes&& other) = default;
@@ -82,39 +110,58 @@ namespace rerun::archetypes {
         GraphNodes& operator=(GraphNodes&& other) = default;
 
         explicit GraphNodes(Collection<rerun::components::GraphNode> _node_ids)
-            : node_ids(std::move(_node_ids)) {}
+            : node_ids(ComponentBatch::from_loggable(std::move(_node_ids), Descriptor_node_ids)
+                           .value_or_throw()) {}
+
+        /// Update only some specific fields of a `GraphNodes`.
+        static GraphNodes update_fields() {
+            return GraphNodes();
+        }
+
+        /// Clear all the fields of a `GraphNodes`.
+        static GraphNodes clear_fields();
+
+        /// A list of node IDs.
+        GraphNodes with_node_ids(const Collection<rerun::components::GraphNode>& _node_ids) && {
+            node_ids =
+                ComponentBatch::from_loggable(_node_ids, Descriptor_node_ids).value_or_throw();
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
 
         /// Optional center positions of the nodes.
-        GraphNodes with_positions(Collection<rerun::components::Position2D> _positions) && {
-            positions = std::move(_positions);
+        GraphNodes with_positions(const Collection<rerun::components::Position2D>& _positions) && {
+            positions =
+                ComponentBatch::from_loggable(_positions, Descriptor_positions).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Optional colors for the boxes.
-        GraphNodes with_colors(Collection<rerun::components::Color> _colors) && {
-            colors = std::move(_colors);
+        GraphNodes with_colors(const Collection<rerun::components::Color>& _colors) && {
+            colors = ComponentBatch::from_loggable(_colors, Descriptor_colors).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Optional text labels for the node.
-        GraphNodes with_labels(Collection<rerun::components::Text> _labels) && {
-            labels = std::move(_labels);
+        GraphNodes with_labels(const Collection<rerun::components::Text>& _labels) && {
+            labels = ComponentBatch::from_loggable(_labels, Descriptor_labels).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Optional choice of whether the text labels should be shown by default.
-        GraphNodes with_show_labels(rerun::components::ShowLabels _show_labels) && {
-            show_labels = std::move(_show_labels);
+        GraphNodes with_show_labels(const rerun::components::ShowLabels& _show_labels) && {
+            show_labels = ComponentBatch::from_loggable(_show_labels, Descriptor_show_labels)
+                              .value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Optional radii for nodes.
-        GraphNodes with_radii(Collection<rerun::components::Radius> _radii) && {
-            radii = std::move(_radii);
+        GraphNodes with_radii(const Collection<rerun::components::Radius>& _radii) && {
+            radii = ComponentBatch::from_loggable(_radii, Descriptor_radii).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

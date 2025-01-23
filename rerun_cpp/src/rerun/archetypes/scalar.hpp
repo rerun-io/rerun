@@ -4,12 +4,14 @@
 #pragma once
 
 #include "../collection.hpp"
+#include "../compiler_utils.hpp"
 #include "../component_batch.hpp"
 #include "../components/scalar.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -78,7 +80,7 @@ namespace rerun::archetypes {
     /// ```
     struct Scalar {
         /// The scalar value to log.
-        rerun::components::Scalar scalar;
+        std::optional<ComponentBatch> scalar;
 
       public:
         static constexpr const char IndicatorComponentName[] = "rerun.components.ScalarIndicator";
@@ -88,6 +90,11 @@ namespace rerun::archetypes {
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.Scalar";
 
+        /// `ComponentDescriptor` for the `scalar` field.
+        static constexpr auto Descriptor_scalar = ComponentDescriptor(
+            ArchetypeName, "scalar", Loggable<rerun::components::Scalar>::Descriptor.component_name
+        );
+
       public:
         Scalar() = default;
         Scalar(Scalar&& other) = default;
@@ -95,7 +102,24 @@ namespace rerun::archetypes {
         Scalar& operator=(const Scalar& other) = default;
         Scalar& operator=(Scalar&& other) = default;
 
-        explicit Scalar(rerun::components::Scalar _scalar) : scalar(std::move(_scalar)) {}
+        explicit Scalar(rerun::components::Scalar _scalar)
+            : scalar(ComponentBatch::from_loggable(std::move(_scalar), Descriptor_scalar)
+                         .value_or_throw()) {}
+
+        /// Update only some specific fields of a `Scalar`.
+        static Scalar update_fields() {
+            return Scalar();
+        }
+
+        /// Clear all the fields of a `Scalar`.
+        static Scalar clear_fields();
+
+        /// The scalar value to log.
+        Scalar with_scalar(const rerun::components::Scalar& _scalar) && {
+            scalar = ComponentBatch::from_loggable(_scalar, Descriptor_scalar).value_or_throw();
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
     };
 
 } // namespace rerun::archetypes

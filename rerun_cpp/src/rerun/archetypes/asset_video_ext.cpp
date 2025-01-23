@@ -6,6 +6,9 @@
 #include "../string_utils.hpp"
 #include "asset_video.hpp"
 
+#include <arrow/array/array_binary.h>
+#include <arrow/array/array_nested.h>
+
 // It's undefined behavior to pre-declare std types, see http://www.gotw.ca/gotw/034.htm
 // We want to use `std::filesystem::path`, so we have it include it in the header.
 // <CODEGEN_COPY_TO_HEADER>
@@ -35,9 +38,11 @@ namespace rerun::archetypes {
         static AssetVideo from_bytes(
             rerun::Collection<uint8_t> bytes, std::optional<rerun::components::MediaType> media_type = {}
         ) {
-            // TODO(jan): we could try and guess using magic bytes here, like rust does.
             AssetVideo asset = AssetVideo(std::move(bytes));
-            asset.media_type = media_type;
+            // TODO(jan): we could try and guess using magic bytes here, like rust does.
+            if (media_type.has_value()) {
+                return std::move(asset).with_media_type(media_type.value());
+            }
             return asset;
         }
 
@@ -78,17 +83,32 @@ namespace rerun::archetypes {
     Result<std::vector<std::chrono::nanoseconds>> AssetVideo::read_frame_timestamps_ns() const {
         static_assert(sizeof(int64_t) == sizeof(std::chrono::nanoseconds::rep));
 
+        if (!blob.has_value()) {
+            return std::vector<std::chrono::nanoseconds>();
+        }
+        auto blob_list_array = std::dynamic_pointer_cast<arrow::ListArray>(blob.value().array);
+        auto blob_array =
+            std::dynamic_pointer_cast<arrow::PrimitiveArray>(blob_list_array->values());
+        if (!blob_array) {
+            return Error(ErrorCode::InvalidArchetypeField, "Blob array is not a primitive array");
+        }
+        auto blob_array_data = blob_array->values();
+
         rr_string media_type_c = detail::to_rr_string(std::nullopt);
         if (media_type.has_value()) {
-            media_type_c = detail::to_rr_string(media_type.value().value.value);
+            auto media_type_array =
+                std::dynamic_pointer_cast<arrow::StringArray>(media_type.value().array);
+            if (media_type_array) {
+                media_type_c = detail::to_rr_string(media_type_array->GetView(0));
+            }
         }
 
         std::vector<std::chrono::nanoseconds> frame_timestamps;
 
         rr_error status = {};
         rr_video_asset_read_frame_timestamps_ns(
-            blob.data.data.begin(),
-            blob.data.data.size(),
+            blob_array_data->data(),
+            static_cast<uint64_t>(blob_array_data->size()),
             media_type_c,
             &frame_timestamps,
             &alloc_timestamps,

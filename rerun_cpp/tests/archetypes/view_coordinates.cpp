@@ -20,11 +20,15 @@ SCENARIO(
         );
 
         ViewCoordinates from_manual;
-        from_manual.xyz = {
-            rerun::components::ViewCoordinates::Right,
-            rerun::components::ViewCoordinates::Down,
-            rerun::components::ViewCoordinates::Forward,
-        };
+        from_manual.xyz = rerun::ComponentBatch::from_loggable<rerun::components::ViewCoordinates>(
+                              {
+                                  rerun::components::ViewCoordinates::Right,
+                                  rerun::components::ViewCoordinates::Down,
+                                  rerun::components::ViewCoordinates::Forward,
+                              },
+                              ViewCoordinates::Descriptor_xyz
+        )
+                              .value_or_throw();
 
         test_compare_archetype_serialization(from_manual, from_builder);
     }

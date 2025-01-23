@@ -72,18 +72,18 @@ namespace rerun::archetypes {
     /// ```
     struct SeriesPoint {
         /// Color for the corresponding series.
-        std::optional<rerun::components::Color> color;
+        std::optional<ComponentBatch> color;
 
         /// What shape to use to represent the point
-        std::optional<rerun::components::MarkerShape> marker;
+        std::optional<ComponentBatch> marker;
 
         /// Display name of the series.
         ///
         /// Used in the legend.
-        std::optional<rerun::components::Name> name;
+        std::optional<ComponentBatch> name;
 
         /// Size of the marker.
-        std::optional<rerun::components::MarkerSize> marker_size;
+        std::optional<ComponentBatch> marker_size;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -94,6 +94,25 @@ namespace rerun::archetypes {
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.SeriesPoint";
 
+        /// `ComponentDescriptor` for the `color` field.
+        static constexpr auto Descriptor_color = ComponentDescriptor(
+            ArchetypeName, "color", Loggable<rerun::components::Color>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `marker` field.
+        static constexpr auto Descriptor_marker = ComponentDescriptor(
+            ArchetypeName, "marker",
+            Loggable<rerun::components::MarkerShape>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `name` field.
+        static constexpr auto Descriptor_name = ComponentDescriptor(
+            ArchetypeName, "name", Loggable<rerun::components::Name>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `marker_size` field.
+        static constexpr auto Descriptor_marker_size = ComponentDescriptor(
+            ArchetypeName, "marker_size",
+            Loggable<rerun::components::MarkerSize>::Descriptor.component_name
+        );
+
       public:
         SeriesPoint() = default;
         SeriesPoint(SeriesPoint&& other) = default;
@@ -101,16 +120,24 @@ namespace rerun::archetypes {
         SeriesPoint& operator=(const SeriesPoint& other) = default;
         SeriesPoint& operator=(SeriesPoint&& other) = default;
 
+        /// Update only some specific fields of a `SeriesPoint`.
+        static SeriesPoint update_fields() {
+            return SeriesPoint();
+        }
+
+        /// Clear all the fields of a `SeriesPoint`.
+        static SeriesPoint clear_fields();
+
         /// Color for the corresponding series.
-        SeriesPoint with_color(rerun::components::Color _color) && {
-            color = std::move(_color);
+        SeriesPoint with_color(const rerun::components::Color& _color) && {
+            color = ComponentBatch::from_loggable(_color, Descriptor_color).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// What shape to use to represent the point
-        SeriesPoint with_marker(rerun::components::MarkerShape _marker) && {
-            marker = std::move(_marker);
+        SeriesPoint with_marker(const rerun::components::MarkerShape& _marker) && {
+            marker = ComponentBatch::from_loggable(_marker, Descriptor_marker).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
@@ -118,15 +145,16 @@ namespace rerun::archetypes {
         /// Display name of the series.
         ///
         /// Used in the legend.
-        SeriesPoint with_name(rerun::components::Name _name) && {
-            name = std::move(_name);
+        SeriesPoint with_name(const rerun::components::Name& _name) && {
+            name = ComponentBatch::from_loggable(_name, Descriptor_name).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Size of the marker.
-        SeriesPoint with_marker_size(rerun::components::MarkerSize _marker_size) && {
-            marker_size = std::move(_marker_size);
+        SeriesPoint with_marker_size(const rerun::components::MarkerSize& _marker_size) && {
+            marker_size = ComponentBatch::from_loggable(_marker_size, Descriptor_marker_size)
+                              .value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

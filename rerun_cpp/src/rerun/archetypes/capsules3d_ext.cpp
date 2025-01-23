@@ -1,27 +1,24 @@
+#if 0
+
 #include "capsules3d.hpp"
 
-#include "../collection_adapter_builtins.hpp"
+namespace rerun::archetypes {
+    // <CODEGEN_COPY_TO_HEADER>
 
-// #define EDIT_EXTENSION
+    /// Creates a new `Capsules3D` with the given axis-aligned lengths and radii.
+    ///
+    /// For multiple capsules, you should generally follow this with
+    /// `Capsules3D::with_translations()` and one of the rotation methods, in order to move them
+    /// apart from each other.
+    //
+    // TODO(andreas): This should not take an std::vector.
+    static Capsules3D from_lengths_and_radii(
+        const std::vector<float>& lengths, const std::vector<float>& radii
+    ) {
+        return Capsules3D().with_lengths(std::move(lengths)).with_radii(std::move(radii));
+    }
 
-namespace rerun {
-    namespace archetypes {
-
-#ifdef EDIT_EXTENSION
-        // <CODEGEN_COPY_TO_HEADER>
-
-        /// Creates a new `Capsules3D` with the given axis-aligned lengths and radii.
-        ///
-        /// For multiple capsules, you should generally follow this with
-        /// `Capsules3D::with_translations()` and one of the rotation methods, in order to move them
-        /// apart from each other.
-        //
-        // TODO(andreas): This should not take an std::vector.
-        static Capsules3D from_lengths_and_radii(
-            const std::vector<float>& lengths, const std::vector<float>& radii
-        );
-
-        /* TODO(kpreid): This should exist for parity with Rust, but actually implementing this
+    /* TODO(kpreid): This should exist for parity with Rust, but actually implementing this
            needs a bit of quaternion math.
 
         /// Creates a new `Capsules3D` where each capsule extends between the given pairs of points.
@@ -35,15 +32,7 @@ namespace rerun {
         );
         */
 
-        // </CODEGEN_COPY_TO_HEADER>
+    // </CODEGEN_COPY_TO_HEADER>
+} // namespace rerun::archetypes
+
 #endif
-        Capsules3D Capsules3D::from_lengths_and_radii(
-            const std::vector<float>& lengths, const std::vector<float>& radii
-        ) {
-            Capsules3D capsules;
-            capsules.lengths = std::move(lengths);
-            capsules.radii = std::move(radii);
-            return capsules;
-        }
-    } // namespace archetypes
-} // namespace rerun

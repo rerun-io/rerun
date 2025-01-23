@@ -20,18 +20,17 @@ namespace rerun::archetypes {
     /// @param format_ How the data should be interpreted.
     Image(
         Collection<uint8_t> bytes, components::ImageFormat format_
-    )
-        : buffer(std::move(bytes)), format(format_) {
-            if (buffer.size() != format.image_format.num_bytes()) {
-                Error(
-                    ErrorCode::InvalidTensorDimension,
-                    "Image buffer has the wrong size. Got " + std::to_string(buffer.size()) +
-                        " bytes, expected " + std::to_string(format.image_format.num_bytes())
-                )
-                    .handle();
-            }
+    ) {
+        if (bytes.size() != format_.image_format.num_bytes()) {
+            Error(
+                ErrorCode::InvalidTensorDimension,
+                "Image buffer has the wrong size. Got " + std::to_string(bytes.size()) +
+                    " bytes, expected " + std::to_string(format_.image_format.num_bytes())
+            )
+                .handle();
         }
-
+        *this = std::move(*this).with_buffer(bytes).with_format(format_);
+    }
     /// Construct an image from resolution, pixel format and bytes.
     ///
     /// @param bytes The raw image data as bytes.

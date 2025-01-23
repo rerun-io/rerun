@@ -56,17 +56,19 @@ namespace rerun::archetypes {
     SegmentationImage(
         Collection<uint8_t> bytes, WidthHeight resolution,
         datatypes::ChannelDatatype datatype
-    )
-        : buffer{bytes}, format{datatypes::ImageFormat{resolution, datatype}} {
-            if (buffer.size() != format.image_format.num_bytes()) {
-                Error(
-                    ErrorCode::InvalidTensorDimension,
-                    "SegmentationImage buffer has the wrong size. Got " + std::to_string(buffer.size()) +
-                        " bytes, expected " + std::to_string(format.image_format.num_bytes())
-                )
-                    .handle();
-            }
+    ) {
+        auto image_format = datatypes::ImageFormat{resolution, datatype};
+        if (bytes.size() != image_format.num_bytes()) {
+            Error(
+                ErrorCode::InvalidTensorDimension,
+                "SegmentationImage buffer has the wrong size. Got " + std::to_string(bytes.size()) +
+                    " bytes, expected " + std::to_string(image_format.num_bytes())
+            )
+                .handle();
         }
+        *this = std::move(*this).with_buffer(bytes).with_format(image_format);
+    }
+
 
     // </CODEGEN_COPY_TO_HEADER>
 

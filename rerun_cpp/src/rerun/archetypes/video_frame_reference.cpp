@@ -5,7 +5,18 @@
 
 #include "../collection_adapter_builtins.hpp"
 
-namespace rerun::archetypes {}
+namespace rerun::archetypes {
+    VideoFrameReference VideoFrameReference::clear_fields() {
+        auto archetype = VideoFrameReference();
+        archetype.timestamp =
+            ComponentBatch::empty<rerun::components::VideoTimestamp>(Descriptor_timestamp)
+                .value_or_throw();
+        archetype.video_reference =
+            ComponentBatch::empty<rerun::components::EntityPath>(Descriptor_video_reference)
+                .value_or_throw();
+        return archetype;
+    }
+} // namespace rerun::archetypes
 
 namespace rerun {
 
@@ -16,29 +27,11 @@ namespace rerun {
         std::vector<ComponentBatch> cells;
         cells.reserve(3);
 
-        {
-            auto result = ComponentBatch::from_loggable(
-                archetype.timestamp,
-                ComponentDescriptor(
-                    "rerun.archetypes.VideoFrameReference",
-                    "timestamp",
-                    "rerun.components.VideoTimestamp"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+        if (archetype.timestamp.has_value()) {
+            cells.push_back(archetype.timestamp.value());
         }
         if (archetype.video_reference.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.video_reference.value(),
-                ComponentDescriptor(
-                    "rerun.archetypes.VideoFrameReference",
-                    "video_reference",
-                    "rerun.components.EntityPath"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.video_reference.value());
         }
         {
             auto indicator = VideoFrameReference::IndicatorComponent();

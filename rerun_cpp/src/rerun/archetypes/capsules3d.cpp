@@ -5,7 +5,37 @@
 
 #include "../collection_adapter_builtins.hpp"
 
-namespace rerun::archetypes {}
+namespace rerun::archetypes {
+    Capsules3D Capsules3D::clear_fields() {
+        auto archetype = Capsules3D();
+        archetype.lengths =
+            ComponentBatch::empty<rerun::components::Length>(Descriptor_lengths).value_or_throw();
+        archetype.radii =
+            ComponentBatch::empty<rerun::components::Radius>(Descriptor_radii).value_or_throw();
+        archetype.translations =
+            ComponentBatch::empty<rerun::components::PoseTranslation3D>(Descriptor_translations)
+                .value_or_throw();
+        archetype.rotation_axis_angles =
+            ComponentBatch::empty<rerun::components::PoseRotationAxisAngle>(
+                Descriptor_rotation_axis_angles
+            )
+                .value_or_throw();
+        archetype.quaternions =
+            ComponentBatch::empty<rerun::components::PoseRotationQuat>(Descriptor_quaternions)
+                .value_or_throw();
+        archetype.colors =
+            ComponentBatch::empty<rerun::components::Color>(Descriptor_colors).value_or_throw();
+        archetype.labels =
+            ComponentBatch::empty<rerun::components::Text>(Descriptor_labels).value_or_throw();
+        archetype.show_labels =
+            ComponentBatch::empty<rerun::components::ShowLabels>(Descriptor_show_labels)
+                .value_or_throw();
+        archetype.class_ids =
+            ComponentBatch::empty<rerun::components::ClassId>(Descriptor_class_ids)
+                .value_or_throw();
+        return archetype;
+    }
+} // namespace rerun::archetypes
 
 namespace rerun {
 
@@ -16,113 +46,32 @@ namespace rerun {
         std::vector<ComponentBatch> cells;
         cells.reserve(10);
 
-        {
-            auto result = ComponentBatch::from_loggable(
-                archetype.lengths,
-                ComponentDescriptor(
-                    "rerun.archetypes.Capsules3D",
-                    "lengths",
-                    "rerun.components.Length"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+        if (archetype.lengths.has_value()) {
+            cells.push_back(archetype.lengths.value());
         }
-        {
-            auto result = ComponentBatch::from_loggable(
-                archetype.radii,
-                ComponentDescriptor(
-                    "rerun.archetypes.Capsules3D",
-                    "radii",
-                    "rerun.components.Radius"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+        if (archetype.radii.has_value()) {
+            cells.push_back(archetype.radii.value());
         }
         if (archetype.translations.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.translations.value(),
-                ComponentDescriptor(
-                    "rerun.archetypes.Capsules3D",
-                    "translations",
-                    "rerun.components.PoseTranslation3D"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.translations.value());
         }
         if (archetype.rotation_axis_angles.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.rotation_axis_angles.value(),
-                ComponentDescriptor(
-                    "rerun.archetypes.Capsules3D",
-                    "rotation_axis_angles",
-                    "rerun.components.PoseRotationAxisAngle"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.rotation_axis_angles.value());
         }
         if (archetype.quaternions.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.quaternions.value(),
-                ComponentDescriptor(
-                    "rerun.archetypes.Capsules3D",
-                    "quaternions",
-                    "rerun.components.PoseRotationQuat"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.quaternions.value());
         }
         if (archetype.colors.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.colors.value(),
-                ComponentDescriptor(
-                    "rerun.archetypes.Capsules3D",
-                    "colors",
-                    "rerun.components.Color"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.colors.value());
         }
         if (archetype.labels.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.labels.value(),
-                ComponentDescriptor(
-                    "rerun.archetypes.Capsules3D",
-                    "labels",
-                    "rerun.components.Text"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.labels.value());
         }
         if (archetype.show_labels.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.show_labels.value(),
-                ComponentDescriptor(
-                    "rerun.archetypes.Capsules3D",
-                    "show_labels",
-                    "rerun.components.ShowLabels"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.show_labels.value());
         }
         if (archetype.class_ids.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.class_ids.value(),
-                ComponentDescriptor(
-                    "rerun.archetypes.Capsules3D",
-                    "class_ids",
-                    "rerun.components.ClassId"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.class_ids.value());
         }
         {
             auto indicator = Capsules3D::IndicatorComponent();

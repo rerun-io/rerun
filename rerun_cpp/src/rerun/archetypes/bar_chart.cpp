@@ -5,7 +5,16 @@
 
 #include "../collection_adapter_builtins.hpp"
 
-namespace rerun::archetypes {}
+namespace rerun::archetypes {
+    BarChart BarChart::clear_fields() {
+        auto archetype = BarChart();
+        archetype.values = ComponentBatch::empty<rerun::components::TensorData>(Descriptor_values)
+                               .value_or_throw();
+        archetype.color =
+            ComponentBatch::empty<rerun::components::Color>(Descriptor_color).value_or_throw();
+        return archetype;
+    }
+} // namespace rerun::archetypes
 
 namespace rerun {
 
@@ -16,25 +25,11 @@ namespace rerun {
         std::vector<ComponentBatch> cells;
         cells.reserve(3);
 
-        {
-            auto result = ComponentBatch::from_loggable(
-                archetype.values,
-                ComponentDescriptor(
-                    "rerun.archetypes.BarChart",
-                    "values",
-                    "rerun.components.TensorData"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+        if (archetype.values.has_value()) {
+            cells.push_back(archetype.values.value());
         }
         if (archetype.color.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.color.value(),
-                ComponentDescriptor("rerun.archetypes.BarChart", "color", "rerun.components.Color")
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.color.value());
         }
         {
             auto indicator = BarChart::IndicatorComponent();

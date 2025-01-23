@@ -76,10 +76,10 @@ namespace rerun::archetypes {
     /// ```
     struct DepthImage {
         /// The raw depth image data.
-        rerun::components::ImageBuffer buffer;
+        std::optional<ComponentBatch> buffer;
 
         /// The format of the image.
-        rerun::components::ImageFormat format;
+        std::optional<ComponentBatch> format;
 
         /// An optional floating point value that specifies how long a meter is in the native depth units.
         ///
@@ -88,12 +88,12 @@ namespace rerun::archetypes {
         ///
         /// Note that the only effect on 2D views is the physical depth values shown when hovering the image.
         /// In 3D views on the other hand, this affects where the points of the point cloud are placed.
-        std::optional<rerun::components::DepthMeter> meter;
+        std::optional<ComponentBatch> meter;
 
         /// Colormap to use for rendering the depth image.
         ///
         /// If not set, the depth image will be rendered using the Turbo colormap.
-        std::optional<rerun::components::Colormap> colormap;
+        std::optional<ComponentBatch> colormap;
 
         /// The expected range of depth values.
         ///
@@ -106,7 +106,7 @@ namespace rerun::archetypes {
         /// in the contents of the depth image.
         /// E.g. if all values are positive, some bigger than 1.0 and all smaller than 255.0,
         /// the Viewer will guess that the data likely came from an 8bit image, thus assuming a range of 0-255.
-        std::optional<rerun::components::ValueRange> depth_range;
+        std::optional<ComponentBatch> depth_range;
 
         /// Scale the radii of the points in the point cloud generated from this image.
         ///
@@ -115,12 +115,12 @@ namespace rerun::archetypes {
         /// A fill ratio of 0.5 means that each point touches the edge of its neighbor if it has the same depth.
         ///
         /// TODO(#6744): This applies only to 3D views!
-        std::optional<rerun::components::FillRatio> point_fill_ratio;
+        std::optional<ComponentBatch> point_fill_ratio;
 
         /// An optional floating point value that specifies the 2D drawing order, used only if the depth image is shown as a 2D image.
         ///
         /// Objects with higher values are drawn on top of those with lower values.
-        std::optional<rerun::components::DrawOrder> draw_order;
+        std::optional<ComponentBatch> draw_order;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -130,6 +130,42 @@ namespace rerun::archetypes {
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.DepthImage";
+
+        /// `ComponentDescriptor` for the `buffer` field.
+        static constexpr auto Descriptor_buffer = ComponentDescriptor(
+            ArchetypeName, "buffer",
+            Loggable<rerun::components::ImageBuffer>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `format` field.
+        static constexpr auto Descriptor_format = ComponentDescriptor(
+            ArchetypeName, "format",
+            Loggable<rerun::components::ImageFormat>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `meter` field.
+        static constexpr auto Descriptor_meter = ComponentDescriptor(
+            ArchetypeName, "meter",
+            Loggable<rerun::components::DepthMeter>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `colormap` field.
+        static constexpr auto Descriptor_colormap = ComponentDescriptor(
+            ArchetypeName, "colormap",
+            Loggable<rerun::components::Colormap>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `depth_range` field.
+        static constexpr auto Descriptor_depth_range = ComponentDescriptor(
+            ArchetypeName, "depth_range",
+            Loggable<rerun::components::ValueRange>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `point_fill_ratio` field.
+        static constexpr auto Descriptor_point_fill_ratio = ComponentDescriptor(
+            ArchetypeName, "point_fill_ratio",
+            Loggable<rerun::components::FillRatio>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `draw_order` field.
+        static constexpr auto Descriptor_draw_order = ComponentDescriptor(
+            ArchetypeName, "draw_order",
+            Loggable<rerun::components::DrawOrder>::Descriptor.component_name
+        );
 
       public: // START of extensions from depth_image_ext.cpp:
         /// Constructs image from pointer + resolution, inferring the datatype from the pointer type.
@@ -177,16 +213,17 @@ namespace rerun::archetypes {
         /// @param datatype How the data should be interpreted.
         DepthImage(
             Collection<uint8_t> bytes, WidthHeight resolution, datatypes::ChannelDatatype datatype
-        )
-            : buffer{bytes}, format{datatypes::ImageFormat{resolution, datatype}} {
-            if (buffer.size() != format.image_format.num_bytes()) {
+        ) {
+            auto image_format = datatypes::ImageFormat{resolution, datatype};
+            if (bytes.size() != image_format.num_bytes()) {
                 Error(
                     ErrorCode::InvalidTensorDimension,
-                    "DepthnImage buffer has the wrong size. Got " + std::to_string(buffer.size()) +
-                        " bytes, expected " + std::to_string(format.image_format.num_bytes())
+                    "DepthImage buffer has the wrong size. Got " + std::to_string(bytes.size()) +
+                        " bytes, expected " + std::to_string(image_format.num_bytes())
                 )
                     .handle();
             }
+            *this = std::move(*this).with_buffer(bytes).with_format(image_format);
         }
 
         // END of extensions from depth_image_ext.cpp, start of generated code:
@@ -198,6 +235,28 @@ namespace rerun::archetypes {
         DepthImage& operator=(const DepthImage& other) = default;
         DepthImage& operator=(DepthImage&& other) = default;
 
+        /// Update only some specific fields of a `DepthImage`.
+        static DepthImage update_fields() {
+            return DepthImage();
+        }
+
+        /// Clear all the fields of a `DepthImage`.
+        static DepthImage clear_fields();
+
+        /// The raw depth image data.
+        DepthImage with_buffer(const rerun::components::ImageBuffer& _buffer) && {
+            buffer = ComponentBatch::from_loggable(_buffer, Descriptor_buffer).value_or_throw();
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// The format of the image.
+        DepthImage with_format(const rerun::components::ImageFormat& _format) && {
+            format = ComponentBatch::from_loggable(_format, Descriptor_format).value_or_throw();
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
         /// An optional floating point value that specifies how long a meter is in the native depth units.
         ///
         /// For instance: with uint16, perhaps meter=1000 which would mean you have millimeter precision
@@ -205,8 +264,8 @@ namespace rerun::archetypes {
         ///
         /// Note that the only effect on 2D views is the physical depth values shown when hovering the image.
         /// In 3D views on the other hand, this affects where the points of the point cloud are placed.
-        DepthImage with_meter(rerun::components::DepthMeter _meter) && {
-            meter = std::move(_meter);
+        DepthImage with_meter(const rerun::components::DepthMeter& _meter) && {
+            meter = ComponentBatch::from_loggable(_meter, Descriptor_meter).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
@@ -214,8 +273,9 @@ namespace rerun::archetypes {
         /// Colormap to use for rendering the depth image.
         ///
         /// If not set, the depth image will be rendered using the Turbo colormap.
-        DepthImage with_colormap(rerun::components::Colormap _colormap) && {
-            colormap = std::move(_colormap);
+        DepthImage with_colormap(const rerun::components::Colormap& _colormap) && {
+            colormap =
+                ComponentBatch::from_loggable(_colormap, Descriptor_colormap).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
@@ -231,8 +291,9 @@ namespace rerun::archetypes {
         /// in the contents of the depth image.
         /// E.g. if all values are positive, some bigger than 1.0 and all smaller than 255.0,
         /// the Viewer will guess that the data likely came from an 8bit image, thus assuming a range of 0-255.
-        DepthImage with_depth_range(rerun::components::ValueRange _depth_range) && {
-            depth_range = std::move(_depth_range);
+        DepthImage with_depth_range(const rerun::components::ValueRange& _depth_range) && {
+            depth_range = ComponentBatch::from_loggable(_depth_range, Descriptor_depth_range)
+                              .value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
@@ -244,8 +305,10 @@ namespace rerun::archetypes {
         /// A fill ratio of 0.5 means that each point touches the edge of its neighbor if it has the same depth.
         ///
         /// TODO(#6744): This applies only to 3D views!
-        DepthImage with_point_fill_ratio(rerun::components::FillRatio _point_fill_ratio) && {
-            point_fill_ratio = std::move(_point_fill_ratio);
+        DepthImage with_point_fill_ratio(const rerun::components::FillRatio& _point_fill_ratio) && {
+            point_fill_ratio =
+                ComponentBatch::from_loggable(_point_fill_ratio, Descriptor_point_fill_ratio)
+                    .value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
@@ -253,8 +316,9 @@ namespace rerun::archetypes {
         /// An optional floating point value that specifies the 2D drawing order, used only if the depth image is shown as a 2D image.
         ///
         /// Objects with higher values are drawn on top of those with lower values.
-        DepthImage with_draw_order(rerun::components::DrawOrder _draw_order) && {
-            draw_order = std::move(_draw_order);
+        DepthImage with_draw_order(const rerun::components::DrawOrder& _draw_order) && {
+            draw_order =
+                ComponentBatch::from_loggable(_draw_order, Descriptor_draw_order).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

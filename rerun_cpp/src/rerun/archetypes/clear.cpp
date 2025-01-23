@@ -5,7 +5,15 @@
 
 #include "../collection_adapter_builtins.hpp"
 
-namespace rerun::archetypes {}
+namespace rerun::archetypes {
+    Clear Clear::clear_fields() {
+        auto archetype = Clear();
+        archetype.is_recursive =
+            ComponentBatch::empty<rerun::components::ClearIsRecursive>(Descriptor_is_recursive)
+                .value_or_throw();
+        return archetype;
+    }
+} // namespace rerun::archetypes
 
 namespace rerun {
 
@@ -16,17 +24,8 @@ namespace rerun {
         std::vector<ComponentBatch> cells;
         cells.reserve(2);
 
-        {
-            auto result = ComponentBatch::from_loggable(
-                archetype.is_recursive,
-                ComponentDescriptor(
-                    "rerun.archetypes.Clear",
-                    "is_recursive",
-                    "rerun.components.ClearIsRecursive"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+        if (archetype.is_recursive.has_value()) {
+            cells.push_back(archetype.is_recursive.value());
         }
         {
             auto indicator = Clear::IndicatorComponent();

@@ -5,7 +5,14 @@
 
 #include "../collection_adapter_builtins.hpp"
 
-namespace rerun::archetypes {}
+namespace rerun::archetypes {
+    ViewCoordinates ViewCoordinates::clear_fields() {
+        auto archetype = ViewCoordinates();
+        archetype.xyz = ComponentBatch::empty<rerun::components::ViewCoordinates>(Descriptor_xyz)
+                            .value_or_throw();
+        return archetype;
+    }
+} // namespace rerun::archetypes
 
 namespace rerun {
 
@@ -16,17 +23,8 @@ namespace rerun {
         std::vector<ComponentBatch> cells;
         cells.reserve(2);
 
-        {
-            auto result = ComponentBatch::from_loggable(
-                archetype.xyz,
-                ComponentDescriptor(
-                    "rerun.archetypes.ViewCoordinates",
-                    "xyz",
-                    "rerun.components.ViewCoordinates"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+        if (archetype.xyz.has_value()) {
+            cells.push_back(archetype.xyz.value());
         }
         {
             auto indicator = ViewCoordinates::IndicatorComponent();

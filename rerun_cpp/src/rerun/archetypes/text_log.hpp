@@ -80,15 +80,15 @@ namespace rerun::archetypes {
     /// ```
     struct TextLog {
         /// The body of the message.
-        rerun::components::Text text;
+        std::optional<ComponentBatch> text;
 
         /// The verbosity level of the message.
         ///
         /// This can be used to filter the log messages in the Rerun Viewer.
-        std::optional<rerun::components::TextLogLevel> level;
+        std::optional<ComponentBatch> level;
 
         /// Optional color to use for the log line in the Rerun Viewer.
-        std::optional<rerun::components::Color> color;
+        std::optional<ComponentBatch> color;
 
       public:
         static constexpr const char IndicatorComponentName[] = "rerun.components.TextLogIndicator";
@@ -98,6 +98,20 @@ namespace rerun::archetypes {
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.TextLog";
 
+        /// `ComponentDescriptor` for the `text` field.
+        static constexpr auto Descriptor_text = ComponentDescriptor(
+            ArchetypeName, "text", Loggable<rerun::components::Text>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `level` field.
+        static constexpr auto Descriptor_level = ComponentDescriptor(
+            ArchetypeName, "level",
+            Loggable<rerun::components::TextLogLevel>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `color` field.
+        static constexpr auto Descriptor_color = ComponentDescriptor(
+            ArchetypeName, "color", Loggable<rerun::components::Color>::Descriptor.component_name
+        );
+
       public:
         TextLog() = default;
         TextLog(TextLog&& other) = default;
@@ -105,20 +119,37 @@ namespace rerun::archetypes {
         TextLog& operator=(const TextLog& other) = default;
         TextLog& operator=(TextLog&& other) = default;
 
-        explicit TextLog(rerun::components::Text _text) : text(std::move(_text)) {}
+        explicit TextLog(rerun::components::Text _text)
+            : text(ComponentBatch::from_loggable(std::move(_text), Descriptor_text).value_or_throw()
+              ) {}
+
+        /// Update only some specific fields of a `TextLog`.
+        static TextLog update_fields() {
+            return TextLog();
+        }
+
+        /// Clear all the fields of a `TextLog`.
+        static TextLog clear_fields();
+
+        /// The body of the message.
+        TextLog with_text(const rerun::components::Text& _text) && {
+            text = ComponentBatch::from_loggable(_text, Descriptor_text).value_or_throw();
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
 
         /// The verbosity level of the message.
         ///
         /// This can be used to filter the log messages in the Rerun Viewer.
-        TextLog with_level(rerun::components::TextLogLevel _level) && {
-            level = std::move(_level);
+        TextLog with_level(const rerun::components::TextLogLevel& _level) && {
+            level = ComponentBatch::from_loggable(_level, Descriptor_level).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Optional color to use for the log line in the Rerun Viewer.
-        TextLog with_color(rerun::components::Color _color) && {
-            color = std::move(_color);
+        TextLog with_color(const rerun::components::Color& _color) && {
+            color = ComponentBatch::from_loggable(_color, Descriptor_color).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

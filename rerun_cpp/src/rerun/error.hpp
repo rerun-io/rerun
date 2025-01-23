@@ -41,6 +41,7 @@ namespace rerun {
         InvalidSocketAddress,
         InvalidComponentTypeHandle,
         InvalidTensorDimension,
+        InvalidArchetypeField,
         FileRead,
 
         // Recording stream errors

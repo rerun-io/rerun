@@ -75,42 +75,42 @@ namespace rerun::archetypes {
     /// ```
     struct Capsules3D {
         /// Lengths of the capsules, defined as the distance between the centers of the endcaps.
-        Collection<rerun::components::Length> lengths;
+        std::optional<ComponentBatch> lengths;
 
         /// Radii of the capsules.
-        Collection<rerun::components::Radius> radii;
+        std::optional<ComponentBatch> radii;
 
         /// Optional translations of the capsules.
         ///
         /// If not specified, one end of each capsule will be at (0, 0, 0).
         /// Note that this uses a `components::PoseTranslation3D` which is also used by `archetypes::InstancePoses3D`.
-        std::optional<Collection<rerun::components::PoseTranslation3D>> translations;
+        std::optional<ComponentBatch> translations;
 
         /// Rotations via axis + angle.
         ///
         /// If no rotation is specified, the capsules align with the +Z axis of the local coordinate system.
         /// Note that this uses a `components::PoseRotationAxisAngle` which is also used by `archetypes::InstancePoses3D`.
-        std::optional<Collection<rerun::components::PoseRotationAxisAngle>> rotation_axis_angles;
+        std::optional<ComponentBatch> rotation_axis_angles;
 
         /// Rotations via quaternion.
         ///
         /// If no rotation is specified, the capsules align with the +Z axis of the local coordinate system.
         /// Note that this uses a `components::PoseRotationQuat` which is also used by `archetypes::InstancePoses3D`.
-        std::optional<Collection<rerun::components::PoseRotationQuat>> quaternions;
+        std::optional<ComponentBatch> quaternions;
 
         /// Optional colors for the capsules.
-        std::optional<Collection<rerun::components::Color>> colors;
+        std::optional<ComponentBatch> colors;
 
         /// Optional text labels for the capsules, which will be located at their centers.
-        std::optional<Collection<rerun::components::Text>> labels;
+        std::optional<ComponentBatch> labels;
 
         /// Optional choice of whether the text labels should be shown by default.
-        std::optional<rerun::components::ShowLabels> show_labels;
+        std::optional<ComponentBatch> show_labels;
 
         /// Optional class ID for the ellipsoids.
         ///
         /// The class ID provides colors and labels if not specified explicitly.
-        std::optional<Collection<rerun::components::ClassId>> class_ids;
+        std::optional<ComponentBatch> class_ids;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -120,6 +120,48 @@ namespace rerun::archetypes {
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.Capsules3D";
+
+        /// `ComponentDescriptor` for the `lengths` field.
+        static constexpr auto Descriptor_lengths = ComponentDescriptor(
+            ArchetypeName, "lengths", Loggable<rerun::components::Length>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `radii` field.
+        static constexpr auto Descriptor_radii = ComponentDescriptor(
+            ArchetypeName, "radii", Loggable<rerun::components::Radius>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `translations` field.
+        static constexpr auto Descriptor_translations = ComponentDescriptor(
+            ArchetypeName, "translations",
+            Loggable<rerun::components::PoseTranslation3D>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `rotation_axis_angles` field.
+        static constexpr auto Descriptor_rotation_axis_angles = ComponentDescriptor(
+            ArchetypeName, "rotation_axis_angles",
+            Loggable<rerun::components::PoseRotationAxisAngle>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `quaternions` field.
+        static constexpr auto Descriptor_quaternions = ComponentDescriptor(
+            ArchetypeName, "quaternions",
+            Loggable<rerun::components::PoseRotationQuat>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `colors` field.
+        static constexpr auto Descriptor_colors = ComponentDescriptor(
+            ArchetypeName, "colors", Loggable<rerun::components::Color>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `labels` field.
+        static constexpr auto Descriptor_labels = ComponentDescriptor(
+            ArchetypeName, "labels", Loggable<rerun::components::Text>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `show_labels` field.
+        static constexpr auto Descriptor_show_labels = ComponentDescriptor(
+            ArchetypeName, "show_labels",
+            Loggable<rerun::components::ShowLabels>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `class_ids` field.
+        static constexpr auto Descriptor_class_ids = ComponentDescriptor(
+            ArchetypeName, "class_ids",
+            Loggable<rerun::components::ClassId>::Descriptor.component_name
+        );
 
       public: // START of extensions from capsules3d_ext.cpp:
         /// Creates a new `Capsules3D` with the given axis-aligned lengths and radii.
@@ -131,7 +173,9 @@ namespace rerun::archetypes {
         // TODO(andreas): This should not take an std::vector.
         static Capsules3D from_lengths_and_radii(
             const std::vector<float>& lengths, const std::vector<float>& radii
-        );
+        ) {
+            return Capsules3D().with_lengths(std::move(lengths)).with_radii(std::move(radii));
+        }
 
         /* TODO(kpreid): This should exist for parity with Rust, but actually implementing this
            needs a bit of quaternion math.
@@ -156,13 +200,37 @@ namespace rerun::archetypes {
         Capsules3D& operator=(const Capsules3D& other) = default;
         Capsules3D& operator=(Capsules3D&& other) = default;
 
+        /// Update only some specific fields of a `Capsules3D`.
+        static Capsules3D update_fields() {
+            return Capsules3D();
+        }
+
+        /// Clear all the fields of a `Capsules3D`.
+        static Capsules3D clear_fields();
+
+        /// Lengths of the capsules, defined as the distance between the centers of the endcaps.
+        Capsules3D with_lengths(const Collection<rerun::components::Length>& _lengths) && {
+            lengths = ComponentBatch::from_loggable(_lengths, Descriptor_lengths).value_or_throw();
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// Radii of the capsules.
+        Capsules3D with_radii(const Collection<rerun::components::Radius>& _radii) && {
+            radii = ComponentBatch::from_loggable(_radii, Descriptor_radii).value_or_throw();
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
         /// Optional translations of the capsules.
         ///
         /// If not specified, one end of each capsule will be at (0, 0, 0).
         /// Note that this uses a `components::PoseTranslation3D` which is also used by `archetypes::InstancePoses3D`.
-        Capsules3D with_translations(Collection<rerun::components::PoseTranslation3D> _translations
+        Capsules3D with_translations(
+            const Collection<rerun::components::PoseTranslation3D>& _translations
         ) && {
-            translations = std::move(_translations);
+            translations = ComponentBatch::from_loggable(_translations, Descriptor_translations)
+                               .value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
@@ -172,9 +240,13 @@ namespace rerun::archetypes {
         /// If no rotation is specified, the capsules align with the +Z axis of the local coordinate system.
         /// Note that this uses a `components::PoseRotationAxisAngle` which is also used by `archetypes::InstancePoses3D`.
         Capsules3D with_rotation_axis_angles(
-            Collection<rerun::components::PoseRotationAxisAngle> _rotation_axis_angles
+            const Collection<rerun::components::PoseRotationAxisAngle>& _rotation_axis_angles
         ) && {
-            rotation_axis_angles = std::move(_rotation_axis_angles);
+            rotation_axis_angles = ComponentBatch::from_loggable(
+                                       _rotation_axis_angles,
+                                       Descriptor_rotation_axis_angles
+            )
+                                       .value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
@@ -183,30 +255,33 @@ namespace rerun::archetypes {
         ///
         /// If no rotation is specified, the capsules align with the +Z axis of the local coordinate system.
         /// Note that this uses a `components::PoseRotationQuat` which is also used by `archetypes::InstancePoses3D`.
-        Capsules3D with_quaternions(Collection<rerun::components::PoseRotationQuat> _quaternions
+        Capsules3D with_quaternions(
+            const Collection<rerun::components::PoseRotationQuat>& _quaternions
         ) && {
-            quaternions = std::move(_quaternions);
+            quaternions = ComponentBatch::from_loggable(_quaternions, Descriptor_quaternions)
+                              .value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Optional colors for the capsules.
-        Capsules3D with_colors(Collection<rerun::components::Color> _colors) && {
-            colors = std::move(_colors);
+        Capsules3D with_colors(const Collection<rerun::components::Color>& _colors) && {
+            colors = ComponentBatch::from_loggable(_colors, Descriptor_colors).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Optional text labels for the capsules, which will be located at their centers.
-        Capsules3D with_labels(Collection<rerun::components::Text> _labels) && {
-            labels = std::move(_labels);
+        Capsules3D with_labels(const Collection<rerun::components::Text>& _labels) && {
+            labels = ComponentBatch::from_loggable(_labels, Descriptor_labels).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Optional choice of whether the text labels should be shown by default.
-        Capsules3D with_show_labels(rerun::components::ShowLabels _show_labels) && {
-            show_labels = std::move(_show_labels);
+        Capsules3D with_show_labels(const rerun::components::ShowLabels& _show_labels) && {
+            show_labels = ComponentBatch::from_loggable(_show_labels, Descriptor_show_labels)
+                              .value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
@@ -214,8 +289,9 @@ namespace rerun::archetypes {
         /// Optional class ID for the ellipsoids.
         ///
         /// The class ID provides colors and labels if not specified explicitly.
-        Capsules3D with_class_ids(Collection<rerun::components::ClassId> _class_ids) && {
-            class_ids = std::move(_class_ids);
+        Capsules3D with_class_ids(const Collection<rerun::components::ClassId>& _class_ids) && {
+            class_ids =
+                ComponentBatch::from_loggable(_class_ids, Descriptor_class_ids).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

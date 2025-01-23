@@ -46,12 +46,12 @@ namespace rerun::archetypes {
     /// ```
     struct GraphEdges {
         /// A list of node tuples.
-        Collection<rerun::components::GraphEdge> edges;
+        std::optional<ComponentBatch> edges;
 
         /// Specifies if the graph is directed or undirected.
         ///
         /// If no `components::GraphType` is provided, the graph is assumed to be undirected.
-        std::optional<rerun::components::GraphType> graph_type;
+        std::optional<ComponentBatch> graph_type;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -62,6 +62,17 @@ namespace rerun::archetypes {
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.GraphEdges";
 
+        /// `ComponentDescriptor` for the `edges` field.
+        static constexpr auto Descriptor_edges = ComponentDescriptor(
+            ArchetypeName, "edges",
+            Loggable<rerun::components::GraphEdge>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `graph_type` field.
+        static constexpr auto Descriptor_graph_type = ComponentDescriptor(
+            ArchetypeName, "graph_type",
+            Loggable<rerun::components::GraphType>::Descriptor.component_name
+        );
+
       public:
         GraphEdges() = default;
         GraphEdges(GraphEdges&& other) = default;
@@ -70,13 +81,30 @@ namespace rerun::archetypes {
         GraphEdges& operator=(GraphEdges&& other) = default;
 
         explicit GraphEdges(Collection<rerun::components::GraphEdge> _edges)
-            : edges(std::move(_edges)) {}
+            : edges(ComponentBatch::from_loggable(std::move(_edges), Descriptor_edges)
+                        .value_or_throw()) {}
+
+        /// Update only some specific fields of a `GraphEdges`.
+        static GraphEdges update_fields() {
+            return GraphEdges();
+        }
+
+        /// Clear all the fields of a `GraphEdges`.
+        static GraphEdges clear_fields();
+
+        /// A list of node tuples.
+        GraphEdges with_edges(const Collection<rerun::components::GraphEdge>& _edges) && {
+            edges = ComponentBatch::from_loggable(_edges, Descriptor_edges).value_or_throw();
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
 
         /// Specifies if the graph is directed or undirected.
         ///
         /// If no `components::GraphType` is provided, the graph is assumed to be undirected.
-        GraphEdges with_graph_type(rerun::components::GraphType _graph_type) && {
-            graph_type = std::move(_graph_type);
+        GraphEdges with_graph_type(const rerun::components::GraphType& _graph_type) && {
+            graph_type =
+                ComponentBatch::from_loggable(_graph_type, Descriptor_graph_type).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

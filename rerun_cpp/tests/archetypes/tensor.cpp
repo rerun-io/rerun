@@ -16,5 +16,24 @@ SCENARIO("Tensor archetype can be created from tensor data." TEST_TAG) {
                 test_compare_archetype_serialization(image_from_ptr, image_from_vector);
             }
         }
+
+        THEN(
+            "adding tensor dimension names after the fact is the same as creating them from the start"
+        ) {
+            auto tensor_with_dim_names_with =
+                Tensor({2, 2, 2, 2}, data).with_dim_names({"height", "width", "channel", "batch"});
+
+            rerun::datatypes::TensorData tensor_with_dim_names_ctor_dt;
+            tensor_with_dim_names_ctor_dt.buffer = data;
+            tensor_with_dim_names_ctor_dt.shape = {2, 2, 2, 2};
+            tensor_with_dim_names_ctor_dt.names = {"height", "width", "channel", "batch"};
+            auto tensor_with_dim_names_ctor =
+                rerun::archetypes::Tensor(tensor_with_dim_names_ctor_dt);
+
+            test_compare_archetype_serialization(
+                tensor_with_dim_names_ctor,
+                tensor_with_dim_names_with
+            );
+        }
     }
 }

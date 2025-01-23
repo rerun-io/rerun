@@ -76,7 +76,7 @@ namespace rerun::archetypes {
     /// ```
     struct TextDocument {
         /// Contents of the text document.
-        rerun::components::Text text;
+        std::optional<ComponentBatch> text;
 
         /// The Media Type of the text.
         ///
@@ -85,7 +85,7 @@ namespace rerun::archetypes {
         /// * `text/markdown`
         ///
         /// If omitted, `text/plain` is assumed.
-        std::optional<rerun::components::MediaType> media_type;
+        std::optional<ComponentBatch> media_type;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -96,6 +96,16 @@ namespace rerun::archetypes {
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.TextDocument";
 
+        /// `ComponentDescriptor` for the `text` field.
+        static constexpr auto Descriptor_text = ComponentDescriptor(
+            ArchetypeName, "text", Loggable<rerun::components::Text>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `media_type` field.
+        static constexpr auto Descriptor_media_type = ComponentDescriptor(
+            ArchetypeName, "media_type",
+            Loggable<rerun::components::MediaType>::Descriptor.component_name
+        );
+
       public:
         TextDocument() = default;
         TextDocument(TextDocument&& other) = default;
@@ -103,7 +113,24 @@ namespace rerun::archetypes {
         TextDocument& operator=(const TextDocument& other) = default;
         TextDocument& operator=(TextDocument&& other) = default;
 
-        explicit TextDocument(rerun::components::Text _text) : text(std::move(_text)) {}
+        explicit TextDocument(rerun::components::Text _text)
+            : text(ComponentBatch::from_loggable(std::move(_text), Descriptor_text).value_or_throw()
+              ) {}
+
+        /// Update only some specific fields of a `TextDocument`.
+        static TextDocument update_fields() {
+            return TextDocument();
+        }
+
+        /// Clear all the fields of a `TextDocument`.
+        static TextDocument clear_fields();
+
+        /// Contents of the text document.
+        TextDocument with_text(const rerun::components::Text& _text) && {
+            text = ComponentBatch::from_loggable(_text, Descriptor_text).value_or_throw();
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
 
         /// The Media Type of the text.
         ///
@@ -112,8 +139,9 @@ namespace rerun::archetypes {
         /// * `text/markdown`
         ///
         /// If omitted, `text/plain` is assumed.
-        TextDocument with_media_type(rerun::components::MediaType _media_type) && {
-            media_type = std::move(_media_type);
+        TextDocument with_media_type(const rerun::components::MediaType& _media_type) && {
+            media_type =
+                ComponentBatch::from_loggable(_media_type, Descriptor_media_type).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

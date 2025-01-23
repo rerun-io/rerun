@@ -93,45 +93,45 @@ namespace rerun::archetypes {
         /// For each ellipsoid, half of its size on its three axes.
         ///
         /// If all components are equal, then it is a sphere with that radius.
-        Collection<rerun::components::HalfSize3D> half_sizes;
+        std::optional<ComponentBatch> half_sizes;
 
         /// Optional center positions of the ellipsoids.
         ///
         /// If not specified, the centers will be at (0, 0, 0).
         /// Note that this uses a `components::PoseTranslation3D` which is also used by `archetypes::InstancePoses3D`.
-        std::optional<Collection<rerun::components::PoseTranslation3D>> centers;
+        std::optional<ComponentBatch> centers;
 
         /// Rotations via axis + angle.
         ///
         /// If no rotation is specified, the axes of the ellipsoid align with the axes of the local coordinate system.
         /// Note that this uses a `components::PoseRotationAxisAngle` which is also used by `archetypes::InstancePoses3D`.
-        std::optional<Collection<rerun::components::PoseRotationAxisAngle>> rotation_axis_angles;
+        std::optional<ComponentBatch> rotation_axis_angles;
 
         /// Rotations via quaternion.
         ///
         /// If no rotation is specified, the axes of the ellipsoid align with the axes of the local coordinate system.
         /// Note that this uses a `components::PoseRotationQuat` which is also used by `archetypes::InstancePoses3D`.
-        std::optional<Collection<rerun::components::PoseRotationQuat>> quaternions;
+        std::optional<ComponentBatch> quaternions;
 
         /// Optional colors for the ellipsoids.
-        std::optional<Collection<rerun::components::Color>> colors;
+        std::optional<ComponentBatch> colors;
 
         /// Optional radii for the lines used when the ellipsoid is rendered as a wireframe.
-        std::optional<Collection<rerun::components::Radius>> line_radii;
+        std::optional<ComponentBatch> line_radii;
 
         /// Optionally choose whether the ellipsoids are drawn with lines or solid.
-        std::optional<rerun::components::FillMode> fill_mode;
+        std::optional<ComponentBatch> fill_mode;
 
         /// Optional text labels for the ellipsoids.
-        std::optional<Collection<rerun::components::Text>> labels;
+        std::optional<ComponentBatch> labels;
 
         /// Optional choice of whether the text labels should be shown by default.
-        std::optional<rerun::components::ShowLabels> show_labels;
+        std::optional<ComponentBatch> show_labels;
 
         /// Optional class ID for the ellipsoids.
         ///
         /// The class ID provides colors and labels if not specified explicitly.
-        std::optional<Collection<rerun::components::ClassId>> class_ids;
+        std::optional<ComponentBatch> class_ids;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -141,6 +141,55 @@ namespace rerun::archetypes {
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.Ellipsoids3D";
+
+        /// `ComponentDescriptor` for the `half_sizes` field.
+        static constexpr auto Descriptor_half_sizes = ComponentDescriptor(
+            ArchetypeName, "half_sizes",
+            Loggable<rerun::components::HalfSize3D>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `centers` field.
+        static constexpr auto Descriptor_centers = ComponentDescriptor(
+            ArchetypeName, "centers",
+            Loggable<rerun::components::PoseTranslation3D>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `rotation_axis_angles` field.
+        static constexpr auto Descriptor_rotation_axis_angles = ComponentDescriptor(
+            ArchetypeName, "rotation_axis_angles",
+            Loggable<rerun::components::PoseRotationAxisAngle>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `quaternions` field.
+        static constexpr auto Descriptor_quaternions = ComponentDescriptor(
+            ArchetypeName, "quaternions",
+            Loggable<rerun::components::PoseRotationQuat>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `colors` field.
+        static constexpr auto Descriptor_colors = ComponentDescriptor(
+            ArchetypeName, "colors", Loggable<rerun::components::Color>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `line_radii` field.
+        static constexpr auto Descriptor_line_radii = ComponentDescriptor(
+            ArchetypeName, "line_radii",
+            Loggable<rerun::components::Radius>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `fill_mode` field.
+        static constexpr auto Descriptor_fill_mode = ComponentDescriptor(
+            ArchetypeName, "fill_mode",
+            Loggable<rerun::components::FillMode>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `labels` field.
+        static constexpr auto Descriptor_labels = ComponentDescriptor(
+            ArchetypeName, "labels", Loggable<rerun::components::Text>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `show_labels` field.
+        static constexpr auto Descriptor_show_labels = ComponentDescriptor(
+            ArchetypeName, "show_labels",
+            Loggable<rerun::components::ShowLabels>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `class_ids` field.
+        static constexpr auto Descriptor_class_ids = ComponentDescriptor(
+            ArchetypeName, "class_ids",
+            Loggable<rerun::components::ClassId>::Descriptor.component_name
+        );
 
       public: // START of extensions from ellipsoids3d_ext.cpp:
         /// Creates new `Ellipsoids3D` that are spheres, with `half_sizes` created from radii.
@@ -158,9 +207,7 @@ namespace rerun::archetypes {
 
         /// Creates new `Ellipsoids3D` with `half_sizes` centered around the local origin.
         static Ellipsoids3D from_half_sizes(Collection<components::HalfSize3D> half_sizes) {
-            Ellipsoids3D ellipsoids;
-            ellipsoids.half_sizes = std::move(half_sizes);
-            return ellipsoids;
+            return Ellipsoids3D().with_half_sizes(std::move(half_sizes));
         }
 
         /// Creates new `Ellipsoids3D` with `centers` and `half_sizes`.
@@ -168,10 +215,9 @@ namespace rerun::archetypes {
             Collection<components::PoseTranslation3D> centers,
             Collection<components::HalfSize3D> half_sizes
         ) {
-            Ellipsoids3D ellipsoids;
-            ellipsoids.half_sizes = std::move(half_sizes);
-            ellipsoids.centers = std::move(centers);
-            return ellipsoids;
+            return Ellipsoids3D()
+                .with_half_sizes(std::move(half_sizes))
+                .with_centers(std::move(centers));
         }
 
         // END of extensions from ellipsoids3d_ext.cpp, start of generated code:
@@ -183,12 +229,32 @@ namespace rerun::archetypes {
         Ellipsoids3D& operator=(const Ellipsoids3D& other) = default;
         Ellipsoids3D& operator=(Ellipsoids3D&& other) = default;
 
+        /// Update only some specific fields of a `Ellipsoids3D`.
+        static Ellipsoids3D update_fields() {
+            return Ellipsoids3D();
+        }
+
+        /// Clear all the fields of a `Ellipsoids3D`.
+        static Ellipsoids3D clear_fields();
+
+        /// For each ellipsoid, half of its size on its three axes.
+        ///
+        /// If all components are equal, then it is a sphere with that radius.
+        Ellipsoids3D with_half_sizes(const Collection<rerun::components::HalfSize3D>& _half_sizes
+        ) && {
+            half_sizes =
+                ComponentBatch::from_loggable(_half_sizes, Descriptor_half_sizes).value_or_throw();
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
         /// Optional center positions of the ellipsoids.
         ///
         /// If not specified, the centers will be at (0, 0, 0).
         /// Note that this uses a `components::PoseTranslation3D` which is also used by `archetypes::InstancePoses3D`.
-        Ellipsoids3D with_centers(Collection<rerun::components::PoseTranslation3D> _centers) && {
-            centers = std::move(_centers);
+        Ellipsoids3D with_centers(const Collection<rerun::components::PoseTranslation3D>& _centers
+        ) && {
+            centers = ComponentBatch::from_loggable(_centers, Descriptor_centers).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
@@ -198,9 +264,13 @@ namespace rerun::archetypes {
         /// If no rotation is specified, the axes of the ellipsoid align with the axes of the local coordinate system.
         /// Note that this uses a `components::PoseRotationAxisAngle` which is also used by `archetypes::InstancePoses3D`.
         Ellipsoids3D with_rotation_axis_angles(
-            Collection<rerun::components::PoseRotationAxisAngle> _rotation_axis_angles
+            const Collection<rerun::components::PoseRotationAxisAngle>& _rotation_axis_angles
         ) && {
-            rotation_axis_angles = std::move(_rotation_axis_angles);
+            rotation_axis_angles = ComponentBatch::from_loggable(
+                                       _rotation_axis_angles,
+                                       Descriptor_rotation_axis_angles
+            )
+                                       .value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
@@ -209,44 +279,49 @@ namespace rerun::archetypes {
         ///
         /// If no rotation is specified, the axes of the ellipsoid align with the axes of the local coordinate system.
         /// Note that this uses a `components::PoseRotationQuat` which is also used by `archetypes::InstancePoses3D`.
-        Ellipsoids3D with_quaternions(Collection<rerun::components::PoseRotationQuat> _quaternions
+        Ellipsoids3D with_quaternions(
+            const Collection<rerun::components::PoseRotationQuat>& _quaternions
         ) && {
-            quaternions = std::move(_quaternions);
+            quaternions = ComponentBatch::from_loggable(_quaternions, Descriptor_quaternions)
+                              .value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Optional colors for the ellipsoids.
-        Ellipsoids3D with_colors(Collection<rerun::components::Color> _colors) && {
-            colors = std::move(_colors);
+        Ellipsoids3D with_colors(const Collection<rerun::components::Color>& _colors) && {
+            colors = ComponentBatch::from_loggable(_colors, Descriptor_colors).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Optional radii for the lines used when the ellipsoid is rendered as a wireframe.
-        Ellipsoids3D with_line_radii(Collection<rerun::components::Radius> _line_radii) && {
-            line_radii = std::move(_line_radii);
+        Ellipsoids3D with_line_radii(const Collection<rerun::components::Radius>& _line_radii) && {
+            line_radii =
+                ComponentBatch::from_loggable(_line_radii, Descriptor_line_radii).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Optionally choose whether the ellipsoids are drawn with lines or solid.
-        Ellipsoids3D with_fill_mode(rerun::components::FillMode _fill_mode) && {
-            fill_mode = std::move(_fill_mode);
+        Ellipsoids3D with_fill_mode(const rerun::components::FillMode& _fill_mode) && {
+            fill_mode =
+                ComponentBatch::from_loggable(_fill_mode, Descriptor_fill_mode).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Optional text labels for the ellipsoids.
-        Ellipsoids3D with_labels(Collection<rerun::components::Text> _labels) && {
-            labels = std::move(_labels);
+        Ellipsoids3D with_labels(const Collection<rerun::components::Text>& _labels) && {
+            labels = ComponentBatch::from_loggable(_labels, Descriptor_labels).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Optional choice of whether the text labels should be shown by default.
-        Ellipsoids3D with_show_labels(rerun::components::ShowLabels _show_labels) && {
-            show_labels = std::move(_show_labels);
+        Ellipsoids3D with_show_labels(const rerun::components::ShowLabels& _show_labels) && {
+            show_labels = ComponentBatch::from_loggable(_show_labels, Descriptor_show_labels)
+                              .value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
@@ -254,8 +329,9 @@ namespace rerun::archetypes {
         /// Optional class ID for the ellipsoids.
         ///
         /// The class ID provides colors and labels if not specified explicitly.
-        Ellipsoids3D with_class_ids(Collection<rerun::components::ClassId> _class_ids) && {
-            class_ids = std::move(_class_ids);
+        Ellipsoids3D with_class_ids(const Collection<rerun::components::ClassId>& _class_ids) && {
+            class_ids =
+                ComponentBatch::from_loggable(_class_ids, Descriptor_class_ids).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

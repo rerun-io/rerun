@@ -78,7 +78,7 @@ namespace rerun::archetypes {
     /// ```
     struct Pinhole {
         /// Camera projection, from image coordinates to view coordinates.
-        rerun::components::PinholeProjection image_from_camera;
+        std::optional<ComponentBatch> image_from_camera;
 
         /// Pixel resolution (usually integers) of child image space. Width and height.
         ///
@@ -88,7 +88,7 @@ namespace rerun::archetypes {
         /// ```
         ///
         /// `image_from_camera` project onto the space spanned by `(0,0)` and `resolution - 1`.
-        std::optional<rerun::components::Resolution> resolution;
+        std::optional<ComponentBatch> resolution;
 
         /// Sets the view coordinates for the camera.
         ///
@@ -117,12 +117,12 @@ namespace rerun::archetypes {
         ///
         /// The pinhole matrix (the `image_from_camera` argument) always project along the third (Z) axis,
         /// but will be re-oriented to project along the forward axis of the `camera_xyz` argument.
-        std::optional<rerun::components::ViewCoordinates> camera_xyz;
+        std::optional<ComponentBatch> camera_xyz;
 
         /// The distance from the camera origin to the image plane when the projection is shown in a 3D viewer.
         ///
         /// This is only used for visualization purposes, and does not affect the projection itself.
-        std::optional<rerun::components::ImagePlaneDistance> image_plane_distance;
+        std::optional<ComponentBatch> image_plane_distance;
 
       public:
         static constexpr const char IndicatorComponentName[] = "rerun.components.PinholeIndicator";
@@ -131,6 +131,27 @@ namespace rerun::archetypes {
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.Pinhole";
+
+        /// `ComponentDescriptor` for the `image_from_camera` field.
+        static constexpr auto Descriptor_image_from_camera = ComponentDescriptor(
+            ArchetypeName, "image_from_camera",
+            Loggable<rerun::components::PinholeProjection>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `resolution` field.
+        static constexpr auto Descriptor_resolution = ComponentDescriptor(
+            ArchetypeName, "resolution",
+            Loggable<rerun::components::Resolution>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `camera_xyz` field.
+        static constexpr auto Descriptor_camera_xyz = ComponentDescriptor(
+            ArchetypeName, "camera_xyz",
+            Loggable<rerun::components::ViewCoordinates>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `image_plane_distance` field.
+        static constexpr auto Descriptor_image_plane_distance = ComponentDescriptor(
+            ArchetypeName, "image_plane_distance",
+            Loggable<rerun::components::ImagePlaneDistance>::Descriptor.component_name
+        );
 
       public: // START of extensions from pinhole_ext.cpp:
         /// Creates a pinhole from the camera focal length and resolution, both specified in pixels.
@@ -173,16 +194,14 @@ namespace rerun::archetypes {
         ///
         /// `image_from_camera` project onto the space spanned by `(0,0)` and `resolution - 1`.
         Pinhole with_resolution(float width, float height) && {
-            resolution = rerun::components::Resolution(width, height);
-            return std::move(*this);
+            return std::move(*this).with_resolution(rerun::components::Resolution(width, height));
         }
 
         /// Pixel resolution (usually integers) of child image space. Width and height.
         ///
         /// `image_from_camera` project onto the space spanned by `(0,0)` and `resolution - 1`.
         Pinhole with_resolution(int width, int height) && {
-            resolution = rerun::components::Resolution(width, height);
-            return std::move(*this);
+            return std::move(*this).with_resolution(rerun::components::Resolution(width, height));
         }
 
         // END of extensions from pinhole_ext.cpp, start of generated code:
@@ -195,7 +214,29 @@ namespace rerun::archetypes {
         Pinhole& operator=(Pinhole&& other) = default;
 
         explicit Pinhole(rerun::components::PinholeProjection _image_from_camera)
-            : image_from_camera(std::move(_image_from_camera)) {}
+            : image_from_camera(ComponentBatch::from_loggable(
+                                    std::move(_image_from_camera), Descriptor_image_from_camera
+              )
+                                    .value_or_throw()) {}
+
+        /// Update only some specific fields of a `Pinhole`.
+        static Pinhole update_fields() {
+            return Pinhole();
+        }
+
+        /// Clear all the fields of a `Pinhole`.
+        static Pinhole clear_fields();
+
+        /// Camera projection, from image coordinates to view coordinates.
+        Pinhole with_image_from_camera(
+            const rerun::components::PinholeProjection& _image_from_camera
+        ) && {
+            image_from_camera =
+                ComponentBatch::from_loggable(_image_from_camera, Descriptor_image_from_camera)
+                    .value_or_throw();
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
 
         /// Pixel resolution (usually integers) of child image space. Width and height.
         ///
@@ -205,8 +246,9 @@ namespace rerun::archetypes {
         /// ```
         ///
         /// `image_from_camera` project onto the space spanned by `(0,0)` and `resolution - 1`.
-        Pinhole with_resolution(rerun::components::Resolution _resolution) && {
-            resolution = std::move(_resolution);
+        Pinhole with_resolution(const rerun::components::Resolution& _resolution) && {
+            resolution =
+                ComponentBatch::from_loggable(_resolution, Descriptor_resolution).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
@@ -238,8 +280,9 @@ namespace rerun::archetypes {
         ///
         /// The pinhole matrix (the `image_from_camera` argument) always project along the third (Z) axis,
         /// but will be re-oriented to project along the forward axis of the `camera_xyz` argument.
-        Pinhole with_camera_xyz(rerun::components::ViewCoordinates _camera_xyz) && {
-            camera_xyz = std::move(_camera_xyz);
+        Pinhole with_camera_xyz(const rerun::components::ViewCoordinates& _camera_xyz) && {
+            camera_xyz =
+                ComponentBatch::from_loggable(_camera_xyz, Descriptor_camera_xyz).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
@@ -248,9 +291,13 @@ namespace rerun::archetypes {
         ///
         /// This is only used for visualization purposes, and does not affect the projection itself.
         Pinhole with_image_plane_distance(
-            rerun::components::ImagePlaneDistance _image_plane_distance
+            const rerun::components::ImagePlaneDistance& _image_plane_distance
         ) && {
-            image_plane_distance = std::move(_image_plane_distance);
+            image_plane_distance = ComponentBatch::from_loggable(
+                                       _image_plane_distance,
+                                       Descriptor_image_plane_distance
+            )
+                                       .value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

@@ -20,12 +20,37 @@ SCENARIO(
                                 .with_keypoint_ids({1, 2});
 
         Points2D from_manual;
-        from_manual.positions = {{1.0, 2.0}, {10.0, 20.0}};
-        from_manual.radii = {1.0, 10.0};
-        from_manual.colors = {{0xAA, 0x00, 0x00, 0xCC}, {0x00, 0xBB, 0x00, 0xDD}};
-        from_manual.labels = {"hello", "friend"};
-        from_manual.keypoint_ids = {1, 2};
-        from_manual.class_ids = {126, 127};
+        from_manual.positions = rerun::ComponentBatch::from_loggable<rerun::components::Position2D>(
+                                    {{1.0, 2.0}, {10.0, 20.0}},
+                                    Points2D::Descriptor_positions
+        )
+                                    .value_or_throw();
+        from_manual.radii = rerun::ComponentBatch::from_loggable<rerun::components::Radius>(
+                                {1.0, 10.0},
+                                Points2D::Descriptor_radii
+        )
+                                .value_or_throw();
+        from_manual.colors = rerun::ComponentBatch::from_loggable<rerun::components::Color>(
+                                 {{0xAA, 0x00, 0x00, 0xCC}, {0x00, 0xBB, 0x00, 0xDD}},
+                                 Points2D::Descriptor_colors
+        )
+                                 .value_or_throw();
+        from_manual.labels = rerun::ComponentBatch::from_loggable<rerun::components::Text>(
+                                 {"hello", "friend"},
+                                 Points2D::Descriptor_labels
+        )
+                                 .value_or_throw();
+        from_manual.keypoint_ids =
+            rerun::ComponentBatch::from_loggable<rerun::components::KeypointId>(
+                {1, 2},
+                Points2D::Descriptor_keypoint_ids
+            )
+                .value_or_throw();
+        from_manual.class_ids = rerun::ComponentBatch::from_loggable<rerun::components::ClassId>(
+                                    {126, 127},
+                                    Points2D::Descriptor_class_ids
+        )
+                                    .value_or_throw();
 
         test_compare_archetype_serialization(from_manual, from_builder);
     }

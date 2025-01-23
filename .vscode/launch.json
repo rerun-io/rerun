@@ -176,5 +176,18 @@
                 "RAYON_NUM_THREADS": "1" // less confusing debugging experience
             }
         },
+        {
+            "name": "(Windows) Launch & debug C++ snippet",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/debug/docs/snippets/video_auto_frames.exe",
+            "args": [
+                "${workspaceFolder}/tests/assets/video/Big_Buck_Bunny_1080_10s_av1.mp4"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${fileDirname}",
+            "environment": [],
+            "console": "externalTerminal"
+        },
     ]
 }

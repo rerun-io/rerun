@@ -5,7 +5,21 @@
 
 #include "../collection_adapter_builtins.hpp"
 
-namespace rerun::archetypes {}
+namespace rerun::archetypes {
+    Image Image::clear_fields() {
+        auto archetype = Image();
+        archetype.buffer = ComponentBatch::empty<rerun::components::ImageBuffer>(Descriptor_buffer)
+                               .value_or_throw();
+        archetype.format = ComponentBatch::empty<rerun::components::ImageFormat>(Descriptor_format)
+                               .value_or_throw();
+        archetype.opacity =
+            ComponentBatch::empty<rerun::components::Opacity>(Descriptor_opacity).value_or_throw();
+        archetype.draw_order =
+            ComponentBatch::empty<rerun::components::DrawOrder>(Descriptor_draw_order)
+                .value_or_throw();
+        return archetype;
+    }
+} // namespace rerun::archetypes
 
 namespace rerun {
 
@@ -16,49 +30,17 @@ namespace rerun {
         std::vector<ComponentBatch> cells;
         cells.reserve(5);
 
-        {
-            auto result = ComponentBatch::from_loggable(
-                archetype.buffer,
-                ComponentDescriptor(
-                    "rerun.archetypes.Image",
-                    "buffer",
-                    "rerun.components.ImageBuffer"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+        if (archetype.buffer.has_value()) {
+            cells.push_back(archetype.buffer.value());
         }
-        {
-            auto result = ComponentBatch::from_loggable(
-                archetype.format,
-                ComponentDescriptor(
-                    "rerun.archetypes.Image",
-                    "format",
-                    "rerun.components.ImageFormat"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+        if (archetype.format.has_value()) {
+            cells.push_back(archetype.format.value());
         }
         if (archetype.opacity.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.opacity.value(),
-                ComponentDescriptor("rerun.archetypes.Image", "opacity", "rerun.components.Opacity")
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.opacity.value());
         }
         if (archetype.draw_order.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.draw_order.value(),
-                ComponentDescriptor(
-                    "rerun.archetypes.Image",
-                    "draw_order",
-                    "rerun.components.DrawOrder"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.draw_order.value());
         }
         {
             auto indicator = Image::IndicatorComponent();

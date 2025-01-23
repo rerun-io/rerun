@@ -4,6 +4,7 @@ namespace rerun.archetypes;
 ///
 /// \example archetypes/geo_points_simple title="Log a geospatial point" image="https://static.rerun.io/geopoint_simple/b86ce83e5871837587bd33a0ad639358b96e9010/1200w.png"
 table GeoPoints (
+  "attr.cpp.archetype_eager",
   "attr.rust.archetype_eager",
   "attr.rust.derive": "PartialEq",
   "attr.rust.new_pub_crate",

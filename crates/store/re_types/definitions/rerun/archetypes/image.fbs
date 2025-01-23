@@ -24,6 +24,7 @@ namespace rerun.archetypes;
 /// \example archetypes/image_formats title="Logging images with various formats" image="https://static.rerun.io/image_formats/7b8a162fcfd266f303980439beea997dc8544c24/full.png"
 /// \example archetypes/image_send_columns !api title="Image from file, PIL & OpenCV" image="https://static.rerun.io/image_advanced/81fc8a255488615510790ee41be314e054978d51/full.png"
 table Image (
+  "attr.cpp.archetype_eager",
   // TODO(#7245): "attr.rust.archetype_eager",
   "attr.rust.derive": "PartialEq",
   "attr.cpp.no_field_ctors",

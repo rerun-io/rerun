@@ -4,6 +4,7 @@
 #pragma once
 
 #include "../collection.hpp"
+#include "../compiler_utils.hpp"
 #include "../component_batch.hpp"
 #include "../components/clear_is_recursive.hpp"
 #include "../indicator_component.hpp"
@@ -11,6 +12,7 @@
 #include "../result.hpp"
 
 #include <cstdint>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -82,7 +84,7 @@ namespace rerun::archetypes {
     /// }
     /// ```
     struct Clear {
-        rerun::components::ClearIsRecursive is_recursive;
+        std::optional<ComponentBatch> is_recursive;
 
       public:
         static constexpr const char IndicatorComponentName[] = "rerun.components.ClearIndicator";
@@ -91,6 +93,12 @@ namespace rerun::archetypes {
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.Clear";
+
+        /// `ComponentDescriptor` for the `is_recursive` field.
+        static constexpr auto Descriptor_is_recursive = ComponentDescriptor(
+            ArchetypeName, "is_recursive",
+            Loggable<rerun::components::ClearIsRecursive>::Descriptor.component_name
+        );
 
       public: // START of extensions from clear_ext.cpp:
         RERUN_SDK_EXPORT static const Clear FLAT;
@@ -102,14 +110,31 @@ namespace rerun::archetypes {
         // END of extensions from clear_ext.cpp, start of generated code:
 
       public:
-        Clear() = default;
         Clear(Clear&& other) = default;
         Clear(const Clear& other) = default;
         Clear& operator=(const Clear& other) = default;
         Clear& operator=(Clear&& other) = default;
 
         explicit Clear(rerun::components::ClearIsRecursive _is_recursive)
-            : is_recursive(std::move(_is_recursive)) {}
+            : is_recursive(
+                  ComponentBatch::from_loggable(std::move(_is_recursive), Descriptor_is_recursive)
+                      .value_or_throw()
+              ) {}
+
+        /// Update only some specific fields of a `Clear`.
+        static Clear update_fields() {
+            return Clear();
+        }
+
+        /// Clear all the fields of a `Clear`.
+        static Clear clear_fields();
+
+        Clear with_is_recursive(const rerun::components::ClearIsRecursive& _is_recursive) && {
+            is_recursive = ComponentBatch::from_loggable(_is_recursive, Descriptor_is_recursive)
+                               .value_or_throw();
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
     };
 
 } // namespace rerun::archetypes

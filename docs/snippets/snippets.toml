@@ -206,7 +206,7 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "py",
   "rust",
 ]
-"archetypes/mesh3d_partial_updates" = [
+"archetypes/mesh3d_partial_updates" = [ # TODO(andreas): use new partial update api
   "cpp",
   "py",
   "rust",
@@ -221,11 +221,8 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "py",
   "rust",
 ]
-"archetypes/points3d_partial_updates" = [ # TODO(cmc): revert once C++ has tagged partial updates
-  "cpp",
-]
 "archetypes/points3d_send_columns" = [
-  "py", # TODO(#8752): needs tagged columnar APIs
+  "py",  # TODO(#8752): needs tagged columnar APIs
   "cpp", # TODO(#8754): needs tagged columnar APIs
 ]
 "archetypes/points3d_random" = [ # TODO(#3206): examples use different RNGs
@@ -237,7 +234,7 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "cpp",
 ]
 "archetypes/scalar_send_columns" = [
-  "py", # TODO(#8752): needs tagged columnar APIs
+  "py",  # TODO(#8752): needs tagged columnar APIs
   "cpp", # TODO(#8754): needs tagged columnar APIs
 ]
 "archetypes/tensor_simple" = [ # TODO(#3206): examples use different RNGs

@@ -78,19 +78,19 @@ namespace rerun::archetypes {
     /// ```
     struct InstancePoses3D {
         /// Translation vectors.
-        std::optional<Collection<rerun::components::PoseTranslation3D>> translations;
+        std::optional<ComponentBatch> translations;
 
         /// Rotations via axis + angle.
-        std::optional<Collection<rerun::components::PoseRotationAxisAngle>> rotation_axis_angles;
+        std::optional<ComponentBatch> rotation_axis_angles;
 
         /// Rotations via quaternion.
-        std::optional<Collection<rerun::components::PoseRotationQuat>> quaternions;
+        std::optional<ComponentBatch> quaternions;
 
         /// Scaling factors.
-        std::optional<Collection<rerun::components::PoseScale3D>> scales;
+        std::optional<ComponentBatch> scales;
 
         /// 3x3 transformation matrices.
-        std::optional<Collection<rerun::components::PoseTransformMat3x3>> mat3x3;
+        std::optional<ComponentBatch> mat3x3;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -101,6 +101,32 @@ namespace rerun::archetypes {
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.InstancePoses3D";
 
+        /// `ComponentDescriptor` for the `translations` field.
+        static constexpr auto Descriptor_translations = ComponentDescriptor(
+            ArchetypeName, "translations",
+            Loggable<rerun::components::PoseTranslation3D>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `rotation_axis_angles` field.
+        static constexpr auto Descriptor_rotation_axis_angles = ComponentDescriptor(
+            ArchetypeName, "rotation_axis_angles",
+            Loggable<rerun::components::PoseRotationAxisAngle>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `quaternions` field.
+        static constexpr auto Descriptor_quaternions = ComponentDescriptor(
+            ArchetypeName, "quaternions",
+            Loggable<rerun::components::PoseRotationQuat>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `scales` field.
+        static constexpr auto Descriptor_scales = ComponentDescriptor(
+            ArchetypeName, "scales",
+            Loggable<rerun::components::PoseScale3D>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `mat3x3` field.
+        static constexpr auto Descriptor_mat3x3 = ComponentDescriptor(
+            ArchetypeName, "mat3x3",
+            Loggable<rerun::components::PoseTransformMat3x3>::Descriptor.component_name
+        );
+
       public:
         InstancePoses3D() = default;
         InstancePoses3D(InstancePoses3D&& other) = default;
@@ -108,43 +134,59 @@ namespace rerun::archetypes {
         InstancePoses3D& operator=(const InstancePoses3D& other) = default;
         InstancePoses3D& operator=(InstancePoses3D&& other) = default;
 
+        /// Update only some specific fields of a `InstancePoses3D`.
+        static InstancePoses3D update_fields() {
+            return InstancePoses3D();
+        }
+
+        /// Clear all the fields of a `InstancePoses3D`.
+        static InstancePoses3D clear_fields();
+
         /// Translation vectors.
         InstancePoses3D with_translations(
-            Collection<rerun::components::PoseTranslation3D> _translations
+            const Collection<rerun::components::PoseTranslation3D>& _translations
         ) && {
-            translations = std::move(_translations);
+            translations = ComponentBatch::from_loggable(_translations, Descriptor_translations)
+                               .value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Rotations via axis + angle.
         InstancePoses3D with_rotation_axis_angles(
-            Collection<rerun::components::PoseRotationAxisAngle> _rotation_axis_angles
+            const Collection<rerun::components::PoseRotationAxisAngle>& _rotation_axis_angles
         ) && {
-            rotation_axis_angles = std::move(_rotation_axis_angles);
+            rotation_axis_angles = ComponentBatch::from_loggable(
+                                       _rotation_axis_angles,
+                                       Descriptor_rotation_axis_angles
+            )
+                                       .value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Rotations via quaternion.
         InstancePoses3D with_quaternions(
-            Collection<rerun::components::PoseRotationQuat> _quaternions
+            const Collection<rerun::components::PoseRotationQuat>& _quaternions
         ) && {
-            quaternions = std::move(_quaternions);
+            quaternions = ComponentBatch::from_loggable(_quaternions, Descriptor_quaternions)
+                              .value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Scaling factors.
-        InstancePoses3D with_scales(Collection<rerun::components::PoseScale3D> _scales) && {
-            scales = std::move(_scales);
+        InstancePoses3D with_scales(const Collection<rerun::components::PoseScale3D>& _scales) && {
+            scales = ComponentBatch::from_loggable(_scales, Descriptor_scales).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// 3x3 transformation matrices.
-        InstancePoses3D with_mat3x3(Collection<rerun::components::PoseTransformMat3x3> _mat3x3) && {
-            mat3x3 = std::move(_mat3x3);
+        InstancePoses3D with_mat3x3(
+            const Collection<rerun::components::PoseTransformMat3x3>& _mat3x3
+        ) && {
+            mat3x3 = ComponentBatch::from_loggable(_mat3x3, Descriptor_mat3x3).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

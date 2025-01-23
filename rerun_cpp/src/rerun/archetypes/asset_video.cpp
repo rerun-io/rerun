@@ -5,7 +5,17 @@
 
 #include "../collection_adapter_builtins.hpp"
 
-namespace rerun::archetypes {}
+namespace rerun::archetypes {
+    AssetVideo AssetVideo::clear_fields() {
+        auto archetype = AssetVideo();
+        archetype.blob =
+            ComponentBatch::empty<rerun::components::Blob>(Descriptor_blob).value_or_throw();
+        archetype.media_type =
+            ComponentBatch::empty<rerun::components::MediaType>(Descriptor_media_type)
+                .value_or_throw();
+        return archetype;
+    }
+} // namespace rerun::archetypes
 
 namespace rerun {
 
@@ -16,25 +26,11 @@ namespace rerun {
         std::vector<ComponentBatch> cells;
         cells.reserve(3);
 
-        {
-            auto result = ComponentBatch::from_loggable(
-                archetype.blob,
-                ComponentDescriptor("rerun.archetypes.AssetVideo", "blob", "rerun.components.Blob")
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+        if (archetype.blob.has_value()) {
+            cells.push_back(archetype.blob.value());
         }
         if (archetype.media_type.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.media_type.value(),
-                ComponentDescriptor(
-                    "rerun.archetypes.AssetVideo",
-                    "media_type",
-                    "rerun.components.MediaType"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.media_type.value());
         }
         {
             auto indicator = AssetVideo::IndicatorComponent();

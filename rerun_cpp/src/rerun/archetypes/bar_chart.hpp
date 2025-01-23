@@ -38,10 +38,10 @@ namespace rerun::archetypes {
     /// ```
     struct BarChart {
         /// The values. Should always be a 1-dimensional tensor (i.e. a vector).
-        rerun::components::TensorData values;
+        std::optional<ComponentBatch> values;
 
         /// The color of the bar chart
-        std::optional<rerun::components::Color> color;
+        std::optional<ComponentBatch> color;
 
       public:
         static constexpr const char IndicatorComponentName[] = "rerun.components.BarChartIndicator";
@@ -51,10 +51,25 @@ namespace rerun::archetypes {
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.BarChart";
 
+        /// `ComponentDescriptor` for the `values` field.
+        static constexpr auto Descriptor_values = ComponentDescriptor(
+            ArchetypeName, "values",
+            Loggable<rerun::components::TensorData>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `color` field.
+        static constexpr auto Descriptor_color = ComponentDescriptor(
+            ArchetypeName, "color", Loggable<rerun::components::Color>::Descriptor.component_name
+        );
+
       public: // START of extensions from bar_chart_ext.cpp:
         BarChart(rerun::datatypes::TensorBuffer buffer) {
+            // Forwarding like this can spuriously fail, since the move might be evaluated before `num_elems`:
+            //BarChart(rerun::components::TensorData({buffer.num_elems()}, std::move(buffer)));
+
             auto num_elems = buffer.num_elems();
-            this->values = rerun::components::TensorData({num_elems}, std::move(buffer));
+            *this = std::move(*this).with_values(
+                rerun::components::TensorData({num_elems}, std::move(buffer))
+            );
         }
 
         // --------------------------------------------------------------------
@@ -171,11 +186,28 @@ namespace rerun::archetypes {
         BarChart& operator=(const BarChart& other) = default;
         BarChart& operator=(BarChart&& other) = default;
 
-        explicit BarChart(rerun::components::TensorData _values) : values(std::move(_values)) {}
+        explicit BarChart(rerun::components::TensorData _values)
+            : values(ComponentBatch::from_loggable(std::move(_values), Descriptor_values)
+                         .value_or_throw()) {}
+
+        /// Update only some specific fields of a `BarChart`.
+        static BarChart update_fields() {
+            return BarChart();
+        }
+
+        /// Clear all the fields of a `BarChart`.
+        static BarChart clear_fields();
+
+        /// The values. Should always be a 1-dimensional tensor (i.e. a vector).
+        BarChart with_values(const rerun::components::TensorData& _values) && {
+            values = ComponentBatch::from_loggable(_values, Descriptor_values).value_or_throw();
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
 
         /// The color of the bar chart
-        BarChart with_color(rerun::components::Color _color) && {
-            color = std::move(_color);
+        BarChart with_color(const rerun::components::Color& _color) && {
+            color = ComponentBatch::from_loggable(_color, Descriptor_color).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

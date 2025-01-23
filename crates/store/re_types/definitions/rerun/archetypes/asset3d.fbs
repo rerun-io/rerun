@@ -11,6 +11,7 @@ namespace rerun.archetypes;
 ///
 /// \example archetypes/asset3d_simple title="Simple 3D asset" image="https://static.rerun.io/asset3d_simple/af238578188d3fd0de3e330212120e2842a8ddb2/1200w.png"
 table Asset3D (
+  "attr.cpp.archetype_eager",
   // TODO(#7245): "attr.rust.archetype_eager",
   "attr.rust.derive": "PartialEq, Eq",
   "attr.docs.category": "Spatial 3D",

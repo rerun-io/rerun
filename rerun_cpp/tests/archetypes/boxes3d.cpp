@@ -2,6 +2,7 @@
 
 #include <rerun/archetypes/boxes3d.hpp>
 
+using namespace rerun;
 using namespace rerun::archetypes;
 using namespace rerun::datatypes;
 
@@ -24,15 +25,42 @@ SCENARIO(
                                 .with_class_ids({126, 127});
 
         Boxes3D from_manual;
-        from_manual.half_sizes = {{10.f, 9.f, 8.f}, {5.f, -5.f, 5.f}};
-        from_manual.centers = {{0.f, 0.f, 0.f}, {-1.f, 1.f, -2.f}};
-        from_manual.quaternions = {
-            Quaternion::from_xyzw(0.f, 1.f, 2.f, 3.f),
-        };
-        from_manual.colors = {{0xAA, 0x00, 0x00, 0xCC}, {0x00, 0xBB, 0x00, 0xDD}};
-        from_manual.labels = {"hello", "friend"};
-        from_manual.radii = {0.1f, 1.0f};
-        from_manual.class_ids = {126, 127};
+        from_manual.half_sizes = ComponentBatch::from_loggable<components::HalfSize3D>(
+                                     {{10.f, 9.f, 8.f}, {5.f, -5.f, 5.f}},
+                                     Boxes3D::Descriptor_half_sizes
+        )
+                                     .value_or_throw();
+        from_manual.centers = ComponentBatch::from_loggable<components::PoseTranslation3D>(
+                                  {{0.f, 0.f, 0.f}, {-1.f, 1.f, -2.f}},
+                                  Boxes3D::Descriptor_centers
+        )
+                                  .value_or_throw();
+        from_manual.quaternions =
+            ComponentBatch::from_loggable(
+                components::PoseRotationQuat(Quaternion::from_xyzw(0.f, 1.f, 2.f, 3.f)),
+                Boxes3D::Descriptor_quaternions
+            )
+                .value_or_throw();
+        from_manual.colors = ComponentBatch::from_loggable<components::Color>(
+                                 {{0xAA, 0x00, 0x00, 0xCC}, {0x00, 0xBB, 0x00, 0xDD}},
+                                 Boxes3D::Descriptor_colors
+        )
+                                 .value_or_throw();
+        from_manual.labels = ComponentBatch::from_loggable<components::Text>(
+                                 {"hello", "friend"},
+                                 Boxes3D::Descriptor_labels
+        )
+                                 .value_or_throw();
+        from_manual.radii = ComponentBatch::from_loggable<components::Radius>(
+                                {0.1f, 1.0f},
+                                Boxes3D::Descriptor_radii
+        )
+                                .value_or_throw();
+        from_manual.class_ids = ComponentBatch::from_loggable<components::ClassId>(
+                                    {126, 127},
+                                    Boxes3D::Descriptor_class_ids
+        )
+                                    .value_or_throw();
 
         test_compare_archetype_serialization(from_manual, from_builder);
     }
@@ -42,8 +70,16 @@ SCENARIO(
             Boxes3D::from_centers_and_half_sizes({{1.f, 2.f, 3.f}}, {{4.f, 6.f, 8.f}});
 
         Boxes3D from_manual;
-        from_manual.centers = {{1.f, 2.f, 3.f}};
-        from_manual.half_sizes = {{4.f, 6.f, 8.f}};
+        from_manual.centers = ComponentBatch::from_loggable(
+                                  components::PoseTranslation3D(1.f, 2.f, 3.f),
+                                  Boxes3D::Descriptor_centers
+        )
+                                  .value_or_throw();
+        from_manual.half_sizes = ComponentBatch::from_loggable<components::HalfSize3D>(
+                                     components::HalfSize3D(4.f, 6.f, 8.f),
+                                     Boxes3D::Descriptor_half_sizes
+        )
+                                     .value_or_throw();
 
         test_compare_archetype_serialization(from_manual, from_builder);
     }
@@ -52,7 +88,11 @@ SCENARIO(
         auto from_builder = Boxes3D::from_sizes({{1.f, 2.f, 3.f}});
 
         Boxes3D from_manual;
-        from_manual.half_sizes = {{0.5f, 1.f, 1.5f}};
+        from_manual.half_sizes = ComponentBatch::from_loggable(
+                                     components::HalfSize3D(0.5f, 1.f, 1.5f),
+                                     Boxes3D::Descriptor_half_sizes
+        )
+                                     .value_or_throw();
 
         test_compare_archetype_serialization(from_manual, from_builder);
     }
@@ -61,8 +101,16 @@ SCENARIO(
         auto from_builder = Boxes3D::from_centers_and_sizes({{1.f, 2.f, 3.f}}, {{4.f, 6.f, 8.f}});
 
         Boxes3D from_manual;
-        from_manual.centers = {{1.f, 2.f, 3.f}};
-        from_manual.half_sizes = {{2.f, 3.f, 4.f}};
+        from_manual.centers = ComponentBatch::from_loggable(
+                                  components::PoseTranslation3D(1.f, 2.f, 3.f),
+                                  Boxes3D::Descriptor_centers
+        )
+                                  .value_or_throw();
+        from_manual.half_sizes = ComponentBatch::from_loggable(
+                                     components::HalfSize3D(2.f, 3.f, 4.f),
+                                     Boxes3D::Descriptor_half_sizes
+        )
+                                     .value_or_throw();
 
         test_compare_archetype_serialization(from_manual, from_builder);
     }
@@ -71,8 +119,16 @@ SCENARIO(
         auto from_builder = Boxes3D::from_mins_and_sizes({{-1.f, -1.f, -1.f}}, {{2.f, 4.f, 2.f}});
 
         Boxes3D from_manual;
-        from_manual.centers = {{0.f, 1.f, 0.f}};
-        from_manual.half_sizes = {{1.f, 2.f, 1.f}};
+        from_manual.centers = ComponentBatch::from_loggable(
+                                  components::PoseTranslation3D(0.f, 1.f, 0.f),
+                                  Boxes3D::Descriptor_centers
+        )
+                                  .value_or_throw();
+        from_manual.half_sizes = ComponentBatch::from_loggable(
+                                     components::HalfSize3D(1.f, 2.f, 1.f),
+                                     Boxes3D::Descriptor_half_sizes
+        )
+                                     .value_or_throw();
 
         test_compare_archetype_serialization(from_manual, from_builder);
     }

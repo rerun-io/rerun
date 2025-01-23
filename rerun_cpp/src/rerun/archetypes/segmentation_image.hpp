@@ -73,20 +73,20 @@ namespace rerun::archetypes {
     /// ```
     struct SegmentationImage {
         /// The raw image data.
-        rerun::components::ImageBuffer buffer;
+        std::optional<ComponentBatch> buffer;
 
         /// The format of the image.
-        rerun::components::ImageFormat format;
+        std::optional<ComponentBatch> format;
 
         /// Opacity of the image, useful for layering the segmentation image on top of another image.
         ///
         /// Defaults to 0.5 if there's any other images in the scene, otherwise 1.0.
-        std::optional<rerun::components::Opacity> opacity;
+        std::optional<ComponentBatch> opacity;
 
         /// An optional floating point value that specifies the 2D drawing order.
         ///
         /// Objects with higher values are drawn on top of those with lower values.
-        std::optional<rerun::components::DrawOrder> draw_order;
+        std::optional<ComponentBatch> draw_order;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -96,6 +96,27 @@ namespace rerun::archetypes {
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.SegmentationImage";
+
+        /// `ComponentDescriptor` for the `buffer` field.
+        static constexpr auto Descriptor_buffer = ComponentDescriptor(
+            ArchetypeName, "buffer",
+            Loggable<rerun::components::ImageBuffer>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `format` field.
+        static constexpr auto Descriptor_format = ComponentDescriptor(
+            ArchetypeName, "format",
+            Loggable<rerun::components::ImageFormat>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `opacity` field.
+        static constexpr auto Descriptor_opacity = ComponentDescriptor(
+            ArchetypeName, "opacity",
+            Loggable<rerun::components::Opacity>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `draw_order` field.
+        static constexpr auto Descriptor_draw_order = ComponentDescriptor(
+            ArchetypeName, "draw_order",
+            Loggable<rerun::components::DrawOrder>::Descriptor.component_name
+        );
 
       public: // START of extensions from segmentation_image_ext.cpp:
         /// Constructs image from pointer + resolution, inferring the datatype from the pointer type.
@@ -145,17 +166,18 @@ namespace rerun::archetypes {
         /// @param datatype How the data should be interpreted.
         SegmentationImage(
             Collection<uint8_t> bytes, WidthHeight resolution, datatypes::ChannelDatatype datatype
-        )
-            : buffer{bytes}, format{datatypes::ImageFormat{resolution, datatype}} {
-            if (buffer.size() != format.image_format.num_bytes()) {
+        ) {
+            auto image_format = datatypes::ImageFormat{resolution, datatype};
+            if (bytes.size() != image_format.num_bytes()) {
                 Error(
                     ErrorCode::InvalidTensorDimension,
                     "SegmentationImage buffer has the wrong size. Got " +
-                        std::to_string(buffer.size()) + " bytes, expected " +
-                        std::to_string(format.image_format.num_bytes())
+                        std::to_string(bytes.size()) + " bytes, expected " +
+                        std::to_string(image_format.num_bytes())
                 )
                     .handle();
             }
+            *this = std::move(*this).with_buffer(bytes).with_format(image_format);
         }
 
         // END of extensions from segmentation_image_ext.cpp, start of generated code:
@@ -167,11 +189,33 @@ namespace rerun::archetypes {
         SegmentationImage& operator=(const SegmentationImage& other) = default;
         SegmentationImage& operator=(SegmentationImage&& other) = default;
 
+        /// Update only some specific fields of a `SegmentationImage`.
+        static SegmentationImage update_fields() {
+            return SegmentationImage();
+        }
+
+        /// Clear all the fields of a `SegmentationImage`.
+        static SegmentationImage clear_fields();
+
+        /// The raw image data.
+        SegmentationImage with_buffer(const rerun::components::ImageBuffer& _buffer) && {
+            buffer = ComponentBatch::from_loggable(_buffer, Descriptor_buffer).value_or_throw();
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// The format of the image.
+        SegmentationImage with_format(const rerun::components::ImageFormat& _format) && {
+            format = ComponentBatch::from_loggable(_format, Descriptor_format).value_or_throw();
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
         /// Opacity of the image, useful for layering the segmentation image on top of another image.
         ///
         /// Defaults to 0.5 if there's any other images in the scene, otherwise 1.0.
-        SegmentationImage with_opacity(rerun::components::Opacity _opacity) && {
-            opacity = std::move(_opacity);
+        SegmentationImage with_opacity(const rerun::components::Opacity& _opacity) && {
+            opacity = ComponentBatch::from_loggable(_opacity, Descriptor_opacity).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
@@ -179,8 +223,9 @@ namespace rerun::archetypes {
         /// An optional floating point value that specifies the 2D drawing order.
         ///
         /// Objects with higher values are drawn on top of those with lower values.
-        SegmentationImage with_draw_order(rerun::components::DrawOrder _draw_order) && {
-            draw_order = std::move(_draw_order);
+        SegmentationImage with_draw_order(const rerun::components::DrawOrder& _draw_order) && {
+            draw_order =
+                ComponentBatch::from_loggable(_draw_order, Descriptor_draw_order).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

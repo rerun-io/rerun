@@ -54,7 +54,7 @@ namespace rerun::archetypes {
     /// ```
     struct Tensor {
         /// The tensor data
-        rerun::components::TensorData data;
+        std::optional<ComponentBatch> data;
 
         /// The expected range of values.
         ///
@@ -67,7 +67,7 @@ namespace rerun::archetypes {
         /// in the contents of the tensor.
         /// E.g. if all values are positive, some bigger than 1.0 and all smaller than 255.0,
         /// the Viewer will guess that the data likely came from an 8bit image, thus assuming a range of 0-255.
-        std::optional<rerun::components::ValueRange> value_range;
+        std::optional<ComponentBatch> value_range;
 
       public:
         static constexpr const char IndicatorComponentName[] = "rerun.components.TensorIndicator";
@@ -77,10 +77,25 @@ namespace rerun::archetypes {
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.Tensor";
 
+        /// `ComponentDescriptor` for the `data` field.
+        static constexpr auto Descriptor_data = ComponentDescriptor(
+            ArchetypeName, "data",
+            Loggable<rerun::components::TensorData>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `value_range` field.
+        static constexpr auto Descriptor_value_range = ComponentDescriptor(
+            ArchetypeName, "value_range",
+            Loggable<rerun::components::ValueRange>::Descriptor.component_name
+        );
+
       public: // START of extensions from tensor_ext.cpp:
+        RR_DISABLE_MAYBE_UNINITIALIZED_PUSH
+
         /// New Tensor from dimensions and tensor buffer.
         Tensor(Collection<uint64_t> shape, datatypes::TensorBuffer buffer)
             : Tensor(datatypes::TensorData(std::move(shape), std::move(buffer))) {}
+
+        RR_DISABLE_MAYBE_UNINITIALIZED_POP
 
         /// New tensor from dimensions and pointer to tensor data.
         ///
@@ -110,7 +125,24 @@ namespace rerun::archetypes {
         Tensor& operator=(const Tensor& other) = default;
         Tensor& operator=(Tensor&& other) = default;
 
-        explicit Tensor(rerun::components::TensorData _data) : data(std::move(_data)) {}
+        explicit Tensor(rerun::components::TensorData _data)
+            : data(ComponentBatch::from_loggable(std::move(_data), Descriptor_data).value_or_throw()
+              ) {}
+
+        /// Update only some specific fields of a `Tensor`.
+        static Tensor update_fields() {
+            return Tensor();
+        }
+
+        /// Clear all the fields of a `Tensor`.
+        static Tensor clear_fields();
+
+        /// The tensor data
+        Tensor with_data(const rerun::components::TensorData& _data) && {
+            data = ComponentBatch::from_loggable(_data, Descriptor_data).value_or_throw();
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
 
         /// The expected range of values.
         ///
@@ -123,8 +155,9 @@ namespace rerun::archetypes {
         /// in the contents of the tensor.
         /// E.g. if all values are positive, some bigger than 1.0 and all smaller than 255.0,
         /// the Viewer will guess that the data likely came from an 8bit image, thus assuming a range of 0-255.
-        Tensor with_value_range(rerun::components::ValueRange _value_range) && {
-            value_range = std::move(_value_range);
+        Tensor with_value_range(const rerun::components::ValueRange& _value_range) && {
+            value_range = ComponentBatch::from_loggable(_value_range, Descriptor_value_range)
+                              .value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

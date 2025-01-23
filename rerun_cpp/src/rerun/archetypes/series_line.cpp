@@ -5,7 +5,22 @@
 
 #include "../collection_adapter_builtins.hpp"
 
-namespace rerun::archetypes {}
+namespace rerun::archetypes {
+    SeriesLine SeriesLine::clear_fields() {
+        auto archetype = SeriesLine();
+        archetype.color =
+            ComponentBatch::empty<rerun::components::Color>(Descriptor_color).value_or_throw();
+        archetype.width = ComponentBatch::empty<rerun::components::StrokeWidth>(Descriptor_width)
+                              .value_or_throw();
+        archetype.name =
+            ComponentBatch::empty<rerun::components::Name>(Descriptor_name).value_or_throw();
+        archetype.aggregation_policy = ComponentBatch::empty<rerun::components::AggregationPolicy>(
+                                           Descriptor_aggregation_policy
+        )
+                                           .value_or_throw();
+        return archetype;
+    }
+} // namespace rerun::archetypes
 
 namespace rerun {
 
@@ -17,48 +32,16 @@ namespace rerun {
         cells.reserve(5);
 
         if (archetype.color.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.color.value(),
-                ComponentDescriptor(
-                    "rerun.archetypes.SeriesLine",
-                    "color",
-                    "rerun.components.Color"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.color.value());
         }
         if (archetype.width.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.width.value(),
-                ComponentDescriptor(
-                    "rerun.archetypes.SeriesLine",
-                    "width",
-                    "rerun.components.StrokeWidth"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.width.value());
         }
         if (archetype.name.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.name.value(),
-                ComponentDescriptor("rerun.archetypes.SeriesLine", "name", "rerun.components.Name")
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.name.value());
         }
         if (archetype.aggregation_policy.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.aggregation_policy.value(),
-                ComponentDescriptor(
-                    "rerun.archetypes.SeriesLine",
-                    "aggregation_policy",
-                    "rerun.components.AggregationPolicy"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.aggregation_policy.value());
         }
         {
             auto indicator = SeriesLine::IndicatorComponent();

@@ -106,32 +106,32 @@ namespace rerun::archetypes {
     /// ```
     struct Points2D {
         /// All the 2D positions at which the point cloud shows points.
-        Collection<rerun::components::Position2D> positions;
+        std::optional<ComponentBatch> positions;
 
         /// Optional radii for the points, effectively turning them into circles.
-        std::optional<Collection<rerun::components::Radius>> radii;
+        std::optional<ComponentBatch> radii;
 
         /// Optional colors for the points.
-        std::optional<Collection<rerun::components::Color>> colors;
+        std::optional<ComponentBatch> colors;
 
         /// Optional text labels for the points.
         ///
         /// If there's a single label present, it will be placed at the center of the entity.
         /// Otherwise, each instance will have its own label.
-        std::optional<Collection<rerun::components::Text>> labels;
+        std::optional<ComponentBatch> labels;
 
         /// Optional choice of whether the text labels should be shown by default.
-        std::optional<rerun::components::ShowLabels> show_labels;
+        std::optional<ComponentBatch> show_labels;
 
         /// An optional floating point value that specifies the 2D drawing order.
         ///
         /// Objects with higher values are drawn on top of those with lower values.
-        std::optional<rerun::components::DrawOrder> draw_order;
+        std::optional<ComponentBatch> draw_order;
 
         /// Optional class Ids for the points.
         ///
         /// The `components::ClassId` provides colors and labels if not specified explicitly.
-        std::optional<Collection<rerun::components::ClassId>> class_ids;
+        std::optional<ComponentBatch> class_ids;
 
         /// Optional keypoint IDs for the points, identifying them within a class.
         ///
@@ -141,7 +141,7 @@ namespace rerun::archetypes {
         /// with `class_id`).
         /// E.g. the classification might be 'Person' and the keypoints refer to joints on a
         /// detected skeleton.
-        std::optional<Collection<rerun::components::KeypointId>> keypoint_ids;
+        std::optional<ComponentBatch> keypoint_ids;
 
       public:
         static constexpr const char IndicatorComponentName[] = "rerun.components.Points2DIndicator";
@@ -151,6 +151,44 @@ namespace rerun::archetypes {
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.Points2D";
 
+        /// `ComponentDescriptor` for the `positions` field.
+        static constexpr auto Descriptor_positions = ComponentDescriptor(
+            ArchetypeName, "positions",
+            Loggable<rerun::components::Position2D>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `radii` field.
+        static constexpr auto Descriptor_radii = ComponentDescriptor(
+            ArchetypeName, "radii", Loggable<rerun::components::Radius>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `colors` field.
+        static constexpr auto Descriptor_colors = ComponentDescriptor(
+            ArchetypeName, "colors", Loggable<rerun::components::Color>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `labels` field.
+        static constexpr auto Descriptor_labels = ComponentDescriptor(
+            ArchetypeName, "labels", Loggable<rerun::components::Text>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `show_labels` field.
+        static constexpr auto Descriptor_show_labels = ComponentDescriptor(
+            ArchetypeName, "show_labels",
+            Loggable<rerun::components::ShowLabels>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `draw_order` field.
+        static constexpr auto Descriptor_draw_order = ComponentDescriptor(
+            ArchetypeName, "draw_order",
+            Loggable<rerun::components::DrawOrder>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `class_ids` field.
+        static constexpr auto Descriptor_class_ids = ComponentDescriptor(
+            ArchetypeName, "class_ids",
+            Loggable<rerun::components::ClassId>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `keypoint_ids` field.
+        static constexpr auto Descriptor_keypoint_ids = ComponentDescriptor(
+            ArchetypeName, "keypoint_ids",
+            Loggable<rerun::components::KeypointId>::Descriptor.component_name
+        );
+
       public:
         Points2D() = default;
         Points2D(Points2D&& other) = default;
@@ -159,18 +197,35 @@ namespace rerun::archetypes {
         Points2D& operator=(Points2D&& other) = default;
 
         explicit Points2D(Collection<rerun::components::Position2D> _positions)
-            : positions(std::move(_positions)) {}
+            : positions(ComponentBatch::from_loggable(std::move(_positions), Descriptor_positions)
+                            .value_or_throw()) {}
+
+        /// Update only some specific fields of a `Points2D`.
+        static Points2D update_fields() {
+            return Points2D();
+        }
+
+        /// Clear all the fields of a `Points2D`.
+        static Points2D clear_fields();
+
+        /// All the 2D positions at which the point cloud shows points.
+        Points2D with_positions(const Collection<rerun::components::Position2D>& _positions) && {
+            positions =
+                ComponentBatch::from_loggable(_positions, Descriptor_positions).value_or_throw();
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
 
         /// Optional radii for the points, effectively turning them into circles.
-        Points2D with_radii(Collection<rerun::components::Radius> _radii) && {
-            radii = std::move(_radii);
+        Points2D with_radii(const Collection<rerun::components::Radius>& _radii) && {
+            radii = ComponentBatch::from_loggable(_radii, Descriptor_radii).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Optional colors for the points.
-        Points2D with_colors(Collection<rerun::components::Color> _colors) && {
-            colors = std::move(_colors);
+        Points2D with_colors(const Collection<rerun::components::Color>& _colors) && {
+            colors = ComponentBatch::from_loggable(_colors, Descriptor_colors).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
@@ -179,15 +234,16 @@ namespace rerun::archetypes {
         ///
         /// If there's a single label present, it will be placed at the center of the entity.
         /// Otherwise, each instance will have its own label.
-        Points2D with_labels(Collection<rerun::components::Text> _labels) && {
-            labels = std::move(_labels);
+        Points2D with_labels(const Collection<rerun::components::Text>& _labels) && {
+            labels = ComponentBatch::from_loggable(_labels, Descriptor_labels).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Optional choice of whether the text labels should be shown by default.
-        Points2D with_show_labels(rerun::components::ShowLabels _show_labels) && {
-            show_labels = std::move(_show_labels);
+        Points2D with_show_labels(const rerun::components::ShowLabels& _show_labels) && {
+            show_labels = ComponentBatch::from_loggable(_show_labels, Descriptor_show_labels)
+                              .value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
@@ -195,8 +251,9 @@ namespace rerun::archetypes {
         /// An optional floating point value that specifies the 2D drawing order.
         ///
         /// Objects with higher values are drawn on top of those with lower values.
-        Points2D with_draw_order(rerun::components::DrawOrder _draw_order) && {
-            draw_order = std::move(_draw_order);
+        Points2D with_draw_order(const rerun::components::DrawOrder& _draw_order) && {
+            draw_order =
+                ComponentBatch::from_loggable(_draw_order, Descriptor_draw_order).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
@@ -204,8 +261,9 @@ namespace rerun::archetypes {
         /// Optional class Ids for the points.
         ///
         /// The `components::ClassId` provides colors and labels if not specified explicitly.
-        Points2D with_class_ids(Collection<rerun::components::ClassId> _class_ids) && {
-            class_ids = std::move(_class_ids);
+        Points2D with_class_ids(const Collection<rerun::components::ClassId>& _class_ids) && {
+            class_ids =
+                ComponentBatch::from_loggable(_class_ids, Descriptor_class_ids).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
@@ -218,8 +276,10 @@ namespace rerun::archetypes {
         /// with `class_id`).
         /// E.g. the classification might be 'Person' and the keypoints refer to joints on a
         /// detected skeleton.
-        Points2D with_keypoint_ids(Collection<rerun::components::KeypointId> _keypoint_ids) && {
-            keypoint_ids = std::move(_keypoint_ids);
+        Points2D with_keypoint_ids(const Collection<rerun::components::KeypointId>& _keypoint_ids
+        ) && {
+            keypoint_ids = ComponentBatch::from_loggable(_keypoint_ids, Descriptor_keypoint_ids)
+                               .value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

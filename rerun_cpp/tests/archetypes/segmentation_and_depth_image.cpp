@@ -3,6 +3,7 @@
 
 #include <rerun/archetypes/depth_image.hpp>
 #include <rerun/archetypes/segmentation_image.hpp>
+#include <rerun/components/blob.hpp>
 
 using namespace rerun::archetypes;
 using namespace rerun::datatypes;
@@ -14,9 +15,16 @@ void run_image_tests() {
     GIVEN("a vector of u8 data") {
         std::vector<uint8_t> data(10 * 10, 0);
         ImageType reference_image;
-        reference_image.buffer = rerun::borrow(data);
-        reference_image.format = ImageFormat({10, 10}, ChannelDatatype::U8);
-        INFO("Format byte size: " << reference_image.format.image_format.num_bytes());
+        reference_image.buffer = rerun::ComponentBatch::from_loggable(
+                                     rerun::components::ImageBuffer(data),
+                                     ImageType::Descriptor_buffer
+        )
+                                     .value_or_throw();
+        reference_image.format = rerun::ComponentBatch::from_loggable(
+                                     rerun::components::ImageFormat({10, 10}, ChannelDatatype::U8),
+                                     ImageType::Descriptor_format
+        )
+                                     .value_or_throw();
 
         THEN("no error occurs on image construction from a pointer") {
             auto image_from_ptr = check_logged_error([&] {

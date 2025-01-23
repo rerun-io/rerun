@@ -5,7 +5,18 @@
 
 #include "../collection_adapter_builtins.hpp"
 
-namespace rerun::archetypes {}
+namespace rerun::archetypes {
+    TextLog TextLog::clear_fields() {
+        auto archetype = TextLog();
+        archetype.text =
+            ComponentBatch::empty<rerun::components::Text>(Descriptor_text).value_or_throw();
+        archetype.level = ComponentBatch::empty<rerun::components::TextLogLevel>(Descriptor_level)
+                              .value_or_throw();
+        archetype.color =
+            ComponentBatch::empty<rerun::components::Color>(Descriptor_color).value_or_throw();
+        return archetype;
+    }
+} // namespace rerun::archetypes
 
 namespace rerun {
 
@@ -16,33 +27,14 @@ namespace rerun {
         std::vector<ComponentBatch> cells;
         cells.reserve(4);
 
-        {
-            auto result = ComponentBatch::from_loggable(
-                archetype.text,
-                ComponentDescriptor("rerun.archetypes.TextLog", "text", "rerun.components.Text")
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+        if (archetype.text.has_value()) {
+            cells.push_back(archetype.text.value());
         }
         if (archetype.level.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.level.value(),
-                ComponentDescriptor(
-                    "rerun.archetypes.TextLog",
-                    "level",
-                    "rerun.components.TextLogLevel"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.level.value());
         }
         if (archetype.color.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.color.value(),
-                ComponentDescriptor("rerun.archetypes.TextLog", "color", "rerun.components.Color")
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.color.value());
         }
         {
             auto indicator = TextLog::IndicatorComponent();

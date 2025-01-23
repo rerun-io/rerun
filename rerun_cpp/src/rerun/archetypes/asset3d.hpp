@@ -53,7 +53,7 @@ namespace rerun::archetypes {
     /// ```
     struct Asset3D {
         /// The asset's bytes.
-        rerun::components::Blob blob;
+        std::optional<ComponentBatch> blob;
 
         /// The Media Type of the asset.
         ///
@@ -65,13 +65,13 @@ namespace rerun::archetypes {
         ///
         /// If omitted, the viewer will try to guess from the data blob.
         /// If it cannot guess, it won't be able to render the asset.
-        std::optional<rerun::components::MediaType> media_type;
+        std::optional<ComponentBatch> media_type;
 
         /// A color multiplier applied to the whole asset.
         ///
         /// For mesh who already have `albedo_factor` in materials,
         /// it will be overwritten by actual `albedo_factor` of `archetypes::Asset3D` (if specified).
-        std::optional<rerun::components::AlbedoFactor> albedo_factor;
+        std::optional<ComponentBatch> albedo_factor;
 
       public:
         static constexpr const char IndicatorComponentName[] = "rerun.components.Asset3DIndicator";
@@ -80,6 +80,21 @@ namespace rerun::archetypes {
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.Asset3D";
+
+        /// `ComponentDescriptor` for the `blob` field.
+        static constexpr auto Descriptor_blob = ComponentDescriptor(
+            ArchetypeName, "blob", Loggable<rerun::components::Blob>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `media_type` field.
+        static constexpr auto Descriptor_media_type = ComponentDescriptor(
+            ArchetypeName, "media_type",
+            Loggable<rerun::components::MediaType>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `albedo_factor` field.
+        static constexpr auto Descriptor_albedo_factor = ComponentDescriptor(
+            ArchetypeName, "albedo_factor",
+            Loggable<rerun::components::AlbedoFactor>::Descriptor.component_name
+        );
 
       public: // START of extensions from asset3d_ext.cpp:
         /// Creates a new `Asset3D` from the file contents at `path`.
@@ -98,9 +113,11 @@ namespace rerun::archetypes {
             rerun::Collection<uint8_t> bytes,
             std::optional<rerun::components::MediaType> media_type = {}
         ) {
-            // TODO(cmc): we could try and guess using magic bytes here, like rust does.
             Asset3D asset = Asset3D(std::move(bytes));
-            asset.media_type = media_type;
+            // TODO(cmc): we could try and guess using magic bytes here, like rust does.
+            if (media_type.has_value()) {
+                return std::move(asset).with_media_type(media_type.value());
+            }
             return asset;
         }
 
@@ -113,7 +130,24 @@ namespace rerun::archetypes {
         Asset3D& operator=(const Asset3D& other) = default;
         Asset3D& operator=(Asset3D&& other) = default;
 
-        explicit Asset3D(rerun::components::Blob _blob) : blob(std::move(_blob)) {}
+        explicit Asset3D(rerun::components::Blob _blob)
+            : blob(ComponentBatch::from_loggable(std::move(_blob), Descriptor_blob).value_or_throw()
+              ) {}
+
+        /// Update only some specific fields of a `Asset3D`.
+        static Asset3D update_fields() {
+            return Asset3D();
+        }
+
+        /// Clear all the fields of a `Asset3D`.
+        static Asset3D clear_fields();
+
+        /// The asset's bytes.
+        Asset3D with_blob(const rerun::components::Blob& _blob) && {
+            blob = ComponentBatch::from_loggable(_blob, Descriptor_blob).value_or_throw();
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
 
         /// The Media Type of the asset.
         ///
@@ -125,8 +159,9 @@ namespace rerun::archetypes {
         ///
         /// If omitted, the viewer will try to guess from the data blob.
         /// If it cannot guess, it won't be able to render the asset.
-        Asset3D with_media_type(rerun::components::MediaType _media_type) && {
-            media_type = std::move(_media_type);
+        Asset3D with_media_type(const rerun::components::MediaType& _media_type) && {
+            media_type =
+                ComponentBatch::from_loggable(_media_type, Descriptor_media_type).value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
@@ -135,8 +170,9 @@ namespace rerun::archetypes {
         ///
         /// For mesh who already have `albedo_factor` in materials,
         /// it will be overwritten by actual `albedo_factor` of `archetypes::Asset3D` (if specified).
-        Asset3D with_albedo_factor(rerun::components::AlbedoFactor _albedo_factor) && {
-            albedo_factor = std::move(_albedo_factor);
+        Asset3D with_albedo_factor(const rerun::components::AlbedoFactor& _albedo_factor) && {
+            albedo_factor = ComponentBatch::from_loggable(_albedo_factor, Descriptor_albedo_factor)
+                                .value_or_throw();
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

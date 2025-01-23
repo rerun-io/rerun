@@ -5,7 +5,42 @@
 
 #include "../collection_adapter_builtins.hpp"
 
-namespace rerun::archetypes {}
+namespace rerun::archetypes {
+    Ellipsoids3D Ellipsoids3D::clear_fields() {
+        auto archetype = Ellipsoids3D();
+        archetype.half_sizes =
+            ComponentBatch::empty<rerun::components::HalfSize3D>(Descriptor_half_sizes)
+                .value_or_throw();
+        archetype.centers =
+            ComponentBatch::empty<rerun::components::PoseTranslation3D>(Descriptor_centers)
+                .value_or_throw();
+        archetype.rotation_axis_angles =
+            ComponentBatch::empty<rerun::components::PoseRotationAxisAngle>(
+                Descriptor_rotation_axis_angles
+            )
+                .value_or_throw();
+        archetype.quaternions =
+            ComponentBatch::empty<rerun::components::PoseRotationQuat>(Descriptor_quaternions)
+                .value_or_throw();
+        archetype.colors =
+            ComponentBatch::empty<rerun::components::Color>(Descriptor_colors).value_or_throw();
+        archetype.line_radii =
+            ComponentBatch::empty<rerun::components::Radius>(Descriptor_line_radii)
+                .value_or_throw();
+        archetype.fill_mode =
+            ComponentBatch::empty<rerun::components::FillMode>(Descriptor_fill_mode)
+                .value_or_throw();
+        archetype.labels =
+            ComponentBatch::empty<rerun::components::Text>(Descriptor_labels).value_or_throw();
+        archetype.show_labels =
+            ComponentBatch::empty<rerun::components::ShowLabels>(Descriptor_show_labels)
+                .value_or_throw();
+        archetype.class_ids =
+            ComponentBatch::empty<rerun::components::ClassId>(Descriptor_class_ids)
+                .value_or_throw();
+        return archetype;
+    }
+} // namespace rerun::archetypes
 
 namespace rerun {
 
@@ -16,125 +51,35 @@ namespace rerun {
         std::vector<ComponentBatch> cells;
         cells.reserve(11);
 
-        {
-            auto result = ComponentBatch::from_loggable(
-                archetype.half_sizes,
-                ComponentDescriptor(
-                    "rerun.archetypes.Ellipsoids3D",
-                    "half_sizes",
-                    "rerun.components.HalfSize3D"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+        if (archetype.half_sizes.has_value()) {
+            cells.push_back(archetype.half_sizes.value());
         }
         if (archetype.centers.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.centers.value(),
-                ComponentDescriptor(
-                    "rerun.archetypes.Ellipsoids3D",
-                    "centers",
-                    "rerun.components.PoseTranslation3D"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.centers.value());
         }
         if (archetype.rotation_axis_angles.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.rotation_axis_angles.value(),
-                ComponentDescriptor(
-                    "rerun.archetypes.Ellipsoids3D",
-                    "rotation_axis_angles",
-                    "rerun.components.PoseRotationAxisAngle"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.rotation_axis_angles.value());
         }
         if (archetype.quaternions.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.quaternions.value(),
-                ComponentDescriptor(
-                    "rerun.archetypes.Ellipsoids3D",
-                    "quaternions",
-                    "rerun.components.PoseRotationQuat"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.quaternions.value());
         }
         if (archetype.colors.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.colors.value(),
-                ComponentDescriptor(
-                    "rerun.archetypes.Ellipsoids3D",
-                    "colors",
-                    "rerun.components.Color"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.colors.value());
         }
         if (archetype.line_radii.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.line_radii.value(),
-                ComponentDescriptor(
-                    "rerun.archetypes.Ellipsoids3D",
-                    "line_radii",
-                    "rerun.components.Radius"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.line_radii.value());
         }
         if (archetype.fill_mode.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.fill_mode.value(),
-                ComponentDescriptor(
-                    "rerun.archetypes.Ellipsoids3D",
-                    "fill_mode",
-                    "rerun.components.FillMode"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.fill_mode.value());
         }
         if (archetype.labels.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.labels.value(),
-                ComponentDescriptor(
-                    "rerun.archetypes.Ellipsoids3D",
-                    "labels",
-                    "rerun.components.Text"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.labels.value());
         }
         if (archetype.show_labels.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.show_labels.value(),
-                ComponentDescriptor(
-                    "rerun.archetypes.Ellipsoids3D",
-                    "show_labels",
-                    "rerun.components.ShowLabels"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.show_labels.value());
         }
         if (archetype.class_ids.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.class_ids.value(),
-                ComponentDescriptor(
-                    "rerun.archetypes.Ellipsoids3D",
-                    "class_ids",
-                    "rerun.components.ClassId"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.class_ids.value());
         }
         {
             auto indicator = Ellipsoids3D::IndicatorComponent();
