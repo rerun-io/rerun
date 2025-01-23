@@ -575,13 +575,13 @@ significant_drop_tightening = "allow" # An update of parking_lot made this trigg
 # Prefer patching with `branch` over `rev` and let `Cargo.lock` handle the commit hash.
 # That makes it easy to upade with `cargo update -p $CRATE`.
 
-ecolor = { git = "https://github.com/emilk/egui.git", rev = "30e66e457575096bd60e95800e7dd9fd755c0046" }       # egui master 2025-01-20
-eframe = { git = "https://github.com/emilk/egui.git", rev = "30e66e457575096bd60e95800e7dd9fd755c0046" }       # egui master 2025-01-20
-egui = { git = "https://github.com/emilk/egui.git", rev = "30e66e457575096bd60e95800e7dd9fd755c0046" }         # egui master 2025-01-20
-egui_extras = { git = "https://github.com/emilk/egui.git", rev = "30e66e457575096bd60e95800e7dd9fd755c0046" }  # egui master 2025-01-20
-egui_kittest = { git = "https://github.com/emilk/egui.git", rev = "30e66e457575096bd60e95800e7dd9fd755c0046" } # egui master 2025-01-20
-egui-wgpu = { git = "https://github.com/emilk/egui.git", rev = "30e66e457575096bd60e95800e7dd9fd755c0046" }    # egui master 2025-01-20
-emath = { git = "https://github.com/emilk/egui.git", rev = "30e66e457575096bd60e95800e7dd9fd755c0046" }        # egui master 2025-01-20
+ecolor = { git = "https://github.com/emilk/egui.git", branch = "master" }
+eframe = { git = "https://github.com/emilk/egui.git", branch = "master" }
+egui = { git = "https://github.com/emilk/egui.git", branch = "master" }
+egui_extras = { git = "https://github.com/emilk/egui.git", branch = "master" }
+egui_kittest = { git = "https://github.com/emilk/egui.git", branch = "master" }
+egui-wgpu = { git = "https://github.com/emilk/egui.git", branch = "master" }
+emath = { git = "https://github.com/emilk/egui.git", branch = "master" }
 
 # Useful while developing:
 # ecolor = { path = "../../egui/crates/ecolor" }
