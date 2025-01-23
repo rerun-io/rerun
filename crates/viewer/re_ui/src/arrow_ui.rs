@@ -43,9 +43,10 @@ pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array
                     ui.monospace(formatter.value(0).to_string());
                     return;
                 } else {
-                    ui_layout
-                        .label(ui, format!("{instance_count} items"))
-                        .on_hover_ui(|ui| {
+                    let response = ui_layout.label(ui, format!("{instance_count} items"));
+
+                    if instance_count < 100 {
+                        response.on_hover_ui(|ui| {
                             ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
                             ui.monospace(format!(
                                 "[{}]",
@@ -54,6 +55,7 @@ pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array
                                     .join(", ")
                             ));
                         });
+                    }
                 }
             }
             return;
