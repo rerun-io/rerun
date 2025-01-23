@@ -133,6 +133,25 @@ class DescribedComponentBatch:
         """
         return self._batch.as_arrow_array()
 
+    def partition(self, lengths: npt.ArrayLike) -> ComponentColumn:
+        """
+        Partitions the component into multiple sub-batches. This wraps the inner arrow
+        array in a `pyarrow.ListArray` where the different lists have the lengths specified.
+
+        Lengths must sum to the total length of the component batch.
+
+        Parameters
+        ----------
+        lengths : npt.ArrayLike
+            The offsets to partition the component at.
+
+        Returns
+        -------
+        The partitioned component.
+
+        """  # noqa: D205
+        return ComponentColumn(self, lengths)
+
 
 class ComponentBatchLike(Protocol):
     """Describes interface for objects that can be converted to batch of rerun Components."""

@@ -101,12 +101,13 @@ class AnyBatchValue(ComponentBatchLike):
     def as_arrow_array(self) -> pa.Array | None:
         return self.pa_array
 
-    def partition(self, lengths: npt.ArrayLike) -> ComponentColumn:
+    def partition(self, lengths: npt.ArrayLike | None = None) -> ComponentColumn:
         """
         Partitions the component into multiple sub-batches. This wraps the inner arrow
         array in a `pyarrow.ListArray` where the different lists have the lengths specified.
 
-        Lengths must sum to the total length of the component batch.
+        If specified, `lengths` must sum to the total length of the component batch.
+        If left unspecified, it will default to unit-length batches.
 
         Parameters
         ----------
@@ -118,6 +119,11 @@ class AnyBatchValue(ComponentBatchLike):
         The partitioned component.
 
         """  # noqa: D205
+        if lengths is None:
+            if self.pa_array is not None:
+                lengths = np.ones(len(self.pa_array))
+            else:
+                lengths = []
         return ComponentColumn(self, lengths)
 
 
@@ -195,3 +201,23 @@ class AnyValues(AsComponents):
 
     def as_component_batches(self) -> Iterable[ComponentBatchLike]:
         return self.component_batches
+
+    def partition(self, lengths: npt.ArrayLike | None = None) -> list[ComponentColumn]:
+        """
+        Partitions the components into multiple sub-batches. This wraps the inner arrow
+        array in a `pyarrow.ListArray` where the different lists have the lengths specified.
+
+        If specified, `lengths` must sum to the total length of the component batch.
+        If left unspecified, it will default to unit-length batches.
+
+        Parameters
+        ----------
+        lengths : npt.ArrayLike
+            The offsets to partition the components at.
+
+        Returns
+        -------
+        The partitioned components.
+
+        """  # noqa: D205
+        return [batch.partition(lengths) for batch in self.component_batches]
