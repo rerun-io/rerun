@@ -450,8 +450,8 @@ cpp-prepare-msvc = "cmake -G 'Visual Studio 17 2022' -B build-msvc -S ."
 
 aiohttp = ">=3.9.3,<3.10"         # For `zombie_todos.py`
 attrs = ">=23.1.0"
-clang-tools = "16.0.6"            # clang-format
-cmake = "3.27.6"
+clang-tools = "16.0.6.*"            # clang-format
+cmake = "3.27.6.*"
 colorama = ">=0.4.6,<0.5"
 doxygen = "1.9.7.*"               # Make sure to use a version that is compatible with the theme we're using, see https://github.com/jothepro/doxygen-awesome-css/blob/v2.2.1/README.md
 fd-find = ">=10.1.0"              # Used by `cpp-fmt` to find C++ files
@@ -459,16 +459,16 @@ flatbuffers = ">=23"
 gitignore-parser = ">=0.1.9"
 gitpython = ">=3.1.40"
 jinja2 = ">=3.1.3,<3.2"           # For `build_screenshot_compare.py` and other utilities that build websites.
-mypy = "1.14.1"
+mypy = "1.14.1.*"
 nasm = ">=2.16"                   # Required by https://github.com/memorysafety/rav1d for native video support
-ninja = "1.11.1"
+ninja = "1.11.1.*"
 numpy = ">=1.23,<2"
 prettier = "3.2.5.*"
-pyarrow = "18.0.0"
+pyarrow = "18.0.0.*"
 pytest = ">=7"
 pytest-benchmark = ">=4.0.0,<4.1"
 python = "=3.11"                  # We use the latest Python version here, so we get the latest mypy etc, EXCEPT 3.12 is too new for some of our examples. We run our CI tests on ALL supported versions though.
-ruff = "0.3.5"
+ruff = "0.3.5.*"
 semver = ">=2.13,<2.14"
 taplo = "=0.9.1"
 tomlkit = "0.12.3.*"
@@ -490,10 +490,10 @@ parso = ">=0.8.4, <0.9"
 
 [feature.wheel-build.dependencies]
 binaryen = "117.*"       # for `wasm-opt`
-maturin = "1.5.1"
+maturin = "1.5.1.*"
 packaging = ">=24.0,<25" # For `publish_wheels.py`
 pip = ">=23"
-pyarrow = "18.0.0"
+pyarrow = "18.0.0.*"
 nodejs = ">=20.12"       # rerun_notebook needs nodejs to build the wheel
 wheel = ">=0.38,<0.39"
 
@@ -511,13 +511,13 @@ sysroot_linux-64 = ">=2.17,<3" # rustc 1.64+ requires glibc 2.17+, see https://b
 sysroot_linux-aarch64 = ">=2.17,<3" # rustc 1.64+ requires glibc 2.17+, see https://blog.rust-lang.org/2022/08/01/Increasing-glibc-kernel-requirements.html
 
 [feature.cpp.target.unix.dependencies]
-clang = "16.0.6"
-ninja = "1.11.1"
+clang = "16.0.6.*"
+ninja = "1.11.1.*"
 c-compiler = "1.6.0.*"
 cxx-compiler = "1.6.0.*"
 
 [feature.cpp.target.win-64.dependencies]
-vs2022_win-64 = "19.37.32822"
+vs2022_win-64 = "19.37.32822.*"
 
 [feature.cpp.pypi-dependencies]
 ghp-import = "==2.1.0" # for CI documentation handling
