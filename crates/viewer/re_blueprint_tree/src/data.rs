@@ -315,7 +315,7 @@ impl DataResultData {
         //
 
         // TODO(ab): we're currently only matching on the last part of `hierarchy`. Technically,
-        // this means that `herarchy` is not needed at all. It will however be needed when we match
+        // this means that `hierarchy` is not needed at all. It will however be needed when we match
         // across multiple parts, so it's good to have it already.
         let (entity_part_matches, highlight_sections) = if filter_matcher.matches_everything() {
             // fast path (filter is inactive)

@@ -45,7 +45,9 @@ smallvec.workspace = true
 [dev-dependencies]
 # Trick to reliably auto-enable the testing feature when running tests
 # see: https://github.com/rust-lang/cargo/issues/2911#issuecomment-1483256987
-re_blueprint_tree = { path = ".", default-features = false, features = ["testing"] }
+re_blueprint_tree = { path = ".", default-features = false, features = [
+  "testing",
+] }
 
 re_chunk_store.workspace = true
 re_view_spatial.workspace = true
@@ -54,4 +56,3 @@ re_viewport_blueprint = { workspace = true, features = ["testing"] }
 
 egui_kittest.workspace = true
 insta = { workspace = true, features = ["redactions", "yaml"] }
-

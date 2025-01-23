@@ -22,7 +22,7 @@ const VIEW_ID: &str = "this-is-a-view-id";
 #[derive(Debug, Clone, Copy)]
 enum RecordingKind {
     /// No entities are logged.
-    Emtpy,
+    Empty,
 
     /// Some placeholder entity hierarchy is logged.
     Regular,
@@ -43,7 +43,7 @@ fn base_test_cases() -> impl Iterator<Item = TestCase> {
             name: "empty",
             origin: EntityPath::root(),
             entity_filter: "$origin/**",
-            recording_kind: RecordingKind::Emtpy,
+            recording_kind: RecordingKind::Empty,
         },
         TestCase {
             name: "root_origin",
@@ -96,7 +96,7 @@ fn test_context(test_case: &TestCase) -> TestContext {
     test_context.register_view_class::<re_view_spatial::SpatialView3D>();
 
     match test_case.recording_kind {
-        RecordingKind::Emtpy => {}
+        RecordingKind::Empty => {}
         RecordingKind::Regular => {
             test_context.log_entity("/path/to/left".into(), add_point_to_chunk_builder);
             test_context.log_entity("/path/to/right".into(), add_point_to_chunk_builder);
