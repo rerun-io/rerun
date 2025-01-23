@@ -405,6 +405,27 @@ impl Pinhole {
         Ok(columns.into_iter().chain([indicator_column]).flatten())
     }
 
+    /// Helper to partition the component data into unit-length sub-batches.
+    ///
+    /// This is semantically similar to calling [`Self::columns`] with `std::iter::take(1).repeat(n)`,
+    /// where `n` is automatically guessed.
+    #[inline]
+    pub fn columns_of_unit_batches(
+        self,
+    ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
+        let len_image_from_camera = self.image_from_camera.as_ref().map(|b| b.array.len());
+        let len_resolution = self.resolution.as_ref().map(|b| b.array.len());
+        let len_camera_xyz = self.camera_xyz.as_ref().map(|b| b.array.len());
+        let len_image_plane_distance = self.image_plane_distance.as_ref().map(|b| b.array.len());
+        let len = None
+            .or(len_image_from_camera)
+            .or(len_resolution)
+            .or(len_camera_xyz)
+            .or(len_image_plane_distance)
+            .unwrap_or(0);
+        self.columns(std::iter::repeat(1).take(len))
+    }
+
     /// Camera projection, from image coordinates to view coordinates.
     #[inline]
     pub fn with_image_from_camera(
