@@ -7,6 +7,7 @@ use re_log_types::EntityPath;
 use re_types::blueprint::archetypes as blueprint_archetypes;
 use re_types::blueprint::components::{ContainerKind, GridColumns};
 use re_types::components::Name;
+use re_types::Loggable as _;
 use re_types::{blueprint::components::Visible, Archetype as _};
 use re_viewer_context::{ContainerId, Contents, ContentsName, ViewId, ViewerContext};
 
@@ -202,8 +203,10 @@ impl ContainerBlueprint {
         if let Some(cols) = grid_columns {
             arch = arch.with_grid_columns(*cols);
         } else {
-            // TODO(#3381): Archetypes should provide a convenience API for this
-            ctx.save_empty_blueprint_component::<GridColumns>(&id.as_entity_path());
+            arch.grid_columns = Some(re_types::SerializedComponentBatch::new(
+                re_types::blueprint::components::ContainerKind::arrow_empty(),
+                re_types::blueprint::archetypes::ContainerBlueprint::descriptor_container_kind(),
+            ));
         }
 
         ctx.save_blueprint_archetype(&id.as_entity_path(), &arch);

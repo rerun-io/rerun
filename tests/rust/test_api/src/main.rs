@@ -191,11 +191,7 @@ fn test_rects(rec: &RecordingStream) -> anyhow::Result<()> {
 
     // Clear the rectangles by logging an empty set
     rec.set_time_seconds("sim_time", 3f64);
-    rec.log(
-        "rects_test/rects",
-        // TODO(#3381): Should be &Boxes2D::empty()
-        &Boxes2D::from_half_sizes(std::iter::empty::<HalfSize2D>()),
-    )?;
+    rec.log("rects_test/rects", &Boxes2D::clear_fields())?;
 
     Ok(())
 }
