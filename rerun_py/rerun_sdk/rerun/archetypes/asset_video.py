@@ -55,11 +55,12 @@ class AssetVideo(AssetVideoExt, Archetype):
 
     # Send automatically determined video frame timestamps.
     frame_timestamps_ns = video_asset.read_frame_timestamps_ns()
-    rr.send_columns(
+    rr.send_columns_v2(
         "video",
         # Note timeline values don't have to be the same as the video timestamps.
-        times=[rr.TimeNanosColumn("video_time", frame_timestamps_ns)],
-        components=[rr.VideoFrameReference.indicator(), rr.components.VideoTimestamp.nanoseconds(frame_timestamps_ns)],
+        indexes=[rr.TimeNanosColumn("video_time", frame_timestamps_ns)],
+        # TODO: some archetype extension shenanigans
+        columns=rr.VideoFrameReference.columns(timestamp=frame_timestamps_ns),
     )
     ```
     <center>

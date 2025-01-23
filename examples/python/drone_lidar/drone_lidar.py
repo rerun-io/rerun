@@ -110,20 +110,16 @@ def log_lidar_data() -> None:
     non_repeating_times, partitions = compute_partitions(times)
 
     # log all positions at once using the computed partitions
-    rr.send_columns(
+    rr.send_columns_v2(
         "/lidar",
         [rr.TimeSecondsColumn("time", non_repeating_times)],
-        [rr.components.Position3DBatch(positions).partition(partitions)],
+        rr.Points3D.columns(positions=positions).partition(partitions),
     )
 
     rr.log(
         "/lidar",
-        [
-            # TODO(#6889): indicator component no longer needed not needed when we have tagged components
-            rr.Points3D.indicator(),
-            rr.components.Radius(-0.1),  # negative radii are interpreted in UI units (instead of scene units)
-            rr.components.Color((128, 128, 255)),
-        ],
+        # negative radii are interpreted in UI units (instead of scene units)
+        rr.Points3D.update_fields(colors=(128, 128, 255), radii=-0.1),
         static=True,
     )
 
@@ -133,20 +129,15 @@ def log_drone_trajectory() -> None:
     timestamp = data[:, 0]
     positions = data[:, 1:4]
 
-    rr.send_columns(
+    rr.send_columns_v2(
         "/drone",
         [rr.TimeSecondsColumn("time", timestamp)],
-        [rr.components.Position3DBatch(positions)],
+        rr.Points3D.columns(positions=positions),
     )
 
     rr.log(
         "/drone",
-        [
-            # TODO(#6889): indicator component no longer needed not needed when we have tagged components
-            rr.Points3D.indicator(),
-            rr.components.Radius(0.5),
-            rr.components.Color([255, 0, 0]),
-        ],
+        rr.Points3D.update_fields(colors=(255, 0, 0), radii=0.5),
         static=True,
     )
 

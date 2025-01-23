@@ -94,15 +94,15 @@ def test_bench_transforms_over_time_batched(
         end = (i + 1) * num_transforms_per_batch
         times = np.arange(start, end)
 
-        rr.send_columns(
+        # TODO: that is an issue then
+        rr.send_columns_v2(
             "test_transform",
-            times=[rr.TimeSequenceBatch("frame", times)],
-            components=[
-                rr.Transform3D.indicator(),
-                rr.components.Translation3DBatch(rand_trans[start:end]),
-                rr.components.RotationQuatBatch(rand_quats[start:end]),
-                rr.components.Scale3DBatch(rand_scales[start:end]),
-            ],
+            indexes=[rr.TimeSequenceColumn("frame", times)],
+            columns=rr.Transform3D.columns(
+                translation=rand_trans[start:end],
+                rotation_axis_angle=rand_quats[start:end],
+                scale=rand_scales[start:end],
+            ),
         )
 
 

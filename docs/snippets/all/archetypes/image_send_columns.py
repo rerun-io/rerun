@@ -17,16 +17,16 @@ for t in times:
 
 # Log the ImageFormat and indicator once, as static.
 format_static = rr.components.ImageFormat(width=width, height=height, color_model="RGB", channel_datatype="U8")
-rr.log("images", [format_static, rr.Image.indicator()], static=True)
+rr.send_columns_v2("images", indexes=[], columns=rr.Image.columns(format=format_static))
 
 # Send all images at once.
-rr.send_columns(
+rr.send_columns_v2(
     "images",
-    times=[rr.TimeSequenceColumn("step", times)],
+    indexes=[rr.TimeSequenceColumn("step", times)],
     # Reshape the images so `ImageBufferBatch` can tell that this is several blobs.
     #
     # Note that the `ImageBufferBatch` consumes arrays of bytes,
     # so if you have a different channel datatype than `U8`, you need to make sure
     # that the data is converted to arrays of bytes before passing it to `ImageBufferBatch`.
-    components=[rr.components.ImageBufferBatch(images.reshape(len(times), -1))],
+    columns=rr.Image.columns(buffer=images.reshape(len(times), -1)),
 )

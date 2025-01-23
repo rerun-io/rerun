@@ -23,7 +23,7 @@ This example demonstrates multiple aspects of the Rerun viewer:
 - Use of the [map view](https://rerun.io/docs/reference/types/views/map_view).
 - Use of [pyproj](https://pyproj4.github.io/pyproj/stable/) to transform geospatial data from one coordinate system to another.
 - Use [GeoPandas](https://geopandas.org/en/stable/) to load geospatial data into a 3D view.
-- Use [Polars]https://pola.rs) to batch data to be sent via [`rr.send_columns()`](https://rerun.io/docs/howto/logging/send-columns) (use `--batch`).
+- Use [Polars]https://pola.rs) to batch data to be sent via [`rr.send_columns_v2()`](https://rerun.io/docs/howto/logging/send-columns) (use `--batch`).
 
 
 ## Run the code

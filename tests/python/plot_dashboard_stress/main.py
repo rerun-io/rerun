@@ -182,11 +182,10 @@ def main() -> None:
                     rr.log(f"{plot_path}/{series_path}", rr.Scalar(value))
                 else:
                     value_index = slice(index, index + args.temporal_batch_size)
-                    value_batch = rr.components.ScalarBatch(values[value_index, plot_idx, series_idx])
-                    rr.send_columns(
+                    rr.send_columns_v2(
                         f"{plot_path}/{series_path}",
-                        times=[time_column],
-                        components=[value_batch],
+                        indexes=[time_column],
+                        columns=rr.Scalar.columns(scalar=values[value_index, plot_idx, series_idx]),
                     )
 
         # Measure how long this took and how high the load was.

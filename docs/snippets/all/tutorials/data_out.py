@@ -30,21 +30,17 @@ rr.init(recording.application_id(), recording_id=recording.recording_id())
 rr.connect_tcp()
 
 # log the jaw open state signal as a scalar
-rr.send_columns(
+rr.send_columns_v2(
     "/jaw_open_state",
-    times=[rr.TimeSequenceColumn("frame_nr", df["frame_nr"])],
-    components=[
-        rr.components.ScalarBatch(df["jawOpenState"]),
-    ],
+    indexes=[rr.TimeSequenceColumn("frame_nr", df["frame_nr"])],
+    columns=rr.Scalar.columns(scalar=df["jawOpenState"]),
 )
 
 # log a `Label` component to the face bounding box entity
 target_entity = "/video/detector/faces/0/bbox"
-rr.log(target_entity, [rr.components.ShowLabels(True)], static=True)
-rr.send_columns(
+rr.log(target_entity, rr.Boxes2D.update_fields(show_labels=True), static=True)
+rr.send_columns_v2(
     target_entity,
-    times=[rr.TimeSequenceColumn("frame_nr", df["frame_nr"])],
-    components=[
-        rr.components.TextBatch(np.where(df["jawOpenState"], "OPEN", "CLOSE")),
-    ],
+    indexes=[rr.TimeSequenceColumn("frame_nr", df["frame_nr"])],
+    columns=rr.Boxes2D.columns(labels=np.where(df["jawOpenState"], "OPEN", "CLOSE")),
 )

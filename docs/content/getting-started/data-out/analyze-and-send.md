@@ -44,12 +44,10 @@ We will send our jaw open state data in two forms:
 Here is how to send the data as a scalar:
 
 ```python
-rr.send_columns(
+rr.send_columns_v2(
     "/jaw_open_state",
-    times=[rr.TimeSequenceColumn("frame_nr", df["frame_nr"])],
-    components=[
-        rr.components.ScalarBatch(df["jawOpenState"]),
-    ],
+    indexes=[rr.TimeSequenceColumn("frame_nr", df["frame_nr"])],
+    columns=rr.Scalar.columns(scalar=df["jawOpenState"]),
 )
 ```
 
@@ -59,17 +57,15 @@ Next, let's send the same data as `Text` component:
 
 ```python
 target_entity = "/video/detector/faces/0/bbox"
-rr.log(target_entity, [rr.components.ShowLabels(True)], static=True)
-rr.send_columns(
+rr.log(target_entity, rr.Boxes2D.update_fields(show_labels=True), static=True)
+rr.send_columns_v2(
     target_entity,
-    times=[rr.TimeSequenceColumn("frame_nr", df["frame_nr"])],
-    components=[
-        rr.components.TextBatch(np.where(df["jawOpenState"], "OPEN", "CLOSE")),
-    ],
+    indexes=[rr.TimeSequenceColumn("frame_nr", df["frame_nr"])],
+    columns=rr.Boxes2D.columns(labels=np.where(df["jawOpenState"], "OPEN", "CLOSE")),
 )
 ```
 
-Here we first log the [`ShowLabel`](../../reference/types/components/show_labels.md) component as static to enable the display of the label. Then, we use `rr.send_column()` again to send an entire batch of text labels. We use the [`np.where()`](https://numpy.org/doc/stable/reference/generated/numpy.where.html) to produce a label matching the state for each timestamp.
+Here we first log the [`ShowLabel`](../../reference/types/components/show_labels.md) component as static to enable the display of the label. Then, we use `rr.send_column()` again to send an entire batch of text labels. We use [`np.where()`](https://numpy.org/doc/stable/reference/generated/numpy.where.html) to produce a label matching the state for each timestamp.
 
 ### Final result
 

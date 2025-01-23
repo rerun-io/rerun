@@ -4,6 +4,7 @@ namespace rerun.components;
 /// Timestamp inside a [archetypes.AssetVideo].
 struct VideoTimestamp (
   "attr.arrow.transparent",
+  "attr.python.array_aliases": "npt.NDArray[np.int64]",
   "attr.rust.derive": "Copy, PartialEq, Eq, Default",
   "attr.rust.repr": "transparent"
 ) {

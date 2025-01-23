@@ -318,17 +318,16 @@ class MeasurementBatchLogger:
             color = rr.components.Color.from_string(entity_path)
             rr.log(
                 entity_path,
-                [rr.archetypes.Points3D.indicator(), rr.archetypes.GeoPoints.indicator(), color],
+                rr.Points3D.update_fields(colors=color),
+                # TODO(cmc): That would be UB right now (and doesn't matter as long as we are on the untagged index).
+                # rr.GeoPoints.update_fields(colors=color),
                 static=True,
             )
-            rr.log(entity_path + "/barometric_altitude", [rr.archetypes.SeriesLine.indicator(), color], static=True)
+            rr.log(entity_path + "/barometric_altitude", rr.SeriesLine.update_fields(color=color), static=True)
             self._position_indicators.add(icao_id)
 
         timestamps = rr.TimeSecondsColumn("unix_time", df["timestamp"].to_numpy())
         pos = self._proj.transform(df["longitude"], df["latitude"], df["barometric_altitude"])
-        positions = rr.components.Position3DBatch(np.vstack(pos).T)
-
-        lat_lon = rr.components.LatLonBatch(np.vstack((df["latitude"], df["longitude"])).T)
 
         raw_coordinates = rr.AnyValues(
             latitude=df["latitude"].to_numpy(),
@@ -336,20 +335,20 @@ class MeasurementBatchLogger:
             barometric_altitude=df["barometric_altitude"].to_numpy(),
         )
 
-        rr.send_columns(
+        rr.send_columns_v2(
             entity_path,
             [timestamps],
             [
-                positions,
-                lat_lon,
-                *raw_coordinates.as_component_batches(),
+                *rr.Points3D.columns(positions=np.vstack(pos).T),
+                *rr.GeoPoints.columns(positions=np.vstack((df["latitude"], df["longitude"])).T),
+                *raw_coordinates.columns(),
             ],
         )
 
-        rr.send_columns(
+        rr.send_columns_v2(
             entity_path + "/barometric_altitude",
             [timestamps],
-            [rr.components.ScalarBatch(df["barometric_altitude"].to_numpy())],
+            rr.Scalar.columns(scalar=df["barometric_altitude"].to_numpy()),
         )
 
     def log_ground_status(self, df: polars.DataFrame, icao_id: str) -> None:
@@ -357,24 +356,24 @@ class MeasurementBatchLogger:
         df = df["timestamp", "ground_status"].drop_nulls()
 
         timestamps = rr.TimeSecondsColumn("unix_time", df["timestamp"].to_numpy())
-        batches = rr.AnyValues(ground_status=df["ground_status"].to_numpy())
+        columns = rr.AnyValues.columns(ground_status=df["ground_status"].to_numpy())
 
-        rr.send_columns(entity_path, [timestamps], batches.as_component_batches())
+        rr.send_columns_v2(entity_path, [timestamps], columns)
 
     def log_metadata(self, df: polars.DataFrame, icao_id: str) -> None:
         entity_path = f"aircraft/{icao_id}"
         df = df["timestamp", "course", "ground_speed", "vertical_speed"].drop_nulls()
 
-        metadata = rr.AnyValues(
+        metadata = rr.AnyValues.columns(
             course=df["course"].to_numpy(),
             ground_speed=df["ground_speed"].to_numpy(),
             vertical_speed=df["vertical_speed"].to_numpy(),
         )
 
-        rr.send_columns(
+        rr.send_columns_v2(
             entity_path,
             [rr.TimeSecondsColumn("unix_time", df["timestamp"].to_numpy())],
-            metadata.component_batches,
+            metadata,
         )
 
 
