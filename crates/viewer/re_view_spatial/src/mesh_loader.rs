@@ -22,7 +22,7 @@ pub struct NativeMesh3D<'a> {
 
     pub triangle_indices: Option<&'a [glam::UVec3]>,
 
-    pub albedo_factor: Option<re_renderer::Rgba>,
+    pub albedo_factor: Option<re_renderer::Color32>,
 
     pub albedo_texture_buffer: Option<re_types::datatypes::Blob>,
     pub albedo_texture_format: Option<re_types::datatypes::ImageFormat>,
@@ -183,7 +183,7 @@ impl LoadedMesh {
                 label: name.clone().into(),
                 index_range: 0..num_indices as _,
                 albedo,
-                albedo_factor: albedo_factor.unwrap_or(re_renderer::Rgba::WHITE),
+                albedo_factor: albedo_factor.unwrap_or(re_renderer::Color32::WHITE).into(),
             }],
         };
 

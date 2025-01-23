@@ -1,4 +1,4 @@
-use arrow::{array, datatypes::UInt32Type};
+use arrow::array::{self, Array};
 
 use crate::{
     archetypes,
@@ -23,13 +23,6 @@ pub enum Mesh3DError {
 }
 
 impl Mesh3D {
-    /// Iterates over all individual indices.
-    fn iter_indices(&self) -> Option<array::PrimitiveIter<'_, UInt32Type>> {
-        self.triangle_indices
-            .as_ref()
-            .map(|indices| array::as_primitive_array::<UInt32Type>(&indices.array).iter())
-    }
-
     /// Use this image as the albedo texture.
     pub fn with_albedo_texture_image(mut self, image: impl Into<archetypes::Image>) -> Self {
         let image = image.into();
@@ -60,16 +53,17 @@ impl Mesh3D {
     pub fn sanity_check(&self) -> Result<(), Mesh3DError> {
         let num_vertices = self.num_vertices();
 
-        if let Some(indices) = self.iter_indices() {
-            // TODO: test this again
-            for index in indices {
-                let Some(index) = index else {
-                    // TODO: check with Clement or Emil how to cast this so we don't have to deal with this.
-                    continue;
-                };
-                if num_vertices <= index as usize {
+        let index_data = self.triangle_indices.as_ref().map(|indices| {
+            array::as_fixed_size_list_array(&indices.array)
+                .values()
+                .to_data()
+        });
+
+        if let Some(index_data) = index_data {
+            for index in index_data.buffer::<u32>(0) {
+                if num_vertices <= *index as usize {
                     return Err(Mesh3DError::IndexOutOfBounds {
-                        index,
+                        index: *index,
                         num_vertices,
                     });
                 }
