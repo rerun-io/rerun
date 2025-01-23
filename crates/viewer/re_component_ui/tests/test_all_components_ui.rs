@@ -1,8 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
-use std::collections::HashSet;
-use std::fmt::Formatter;
-use std::fs;
+use std::{collections::HashSet, fmt::Formatter, fs, sync::Arc};
 
 use arrow::array::ArrayRef;
 use egui::Vec2;
@@ -69,6 +67,17 @@ fn test_cases(reflection: &Reflection) -> Vec<TestCase> {
             "simple",
         ),
         TestCase::from_component(Text::from("Hello World!"), "simple"),
+        TestCase::from_arrow(
+            ComponentName::from("any_value"),
+            arrow::array::ListArray::new(
+                arrow::datatypes::Field::new("item", arrow::datatypes::DataType::Float64, false)
+                    .into(),
+                arrow::buffer::OffsetBuffer::from_lengths([3]),
+                Arc::new(arrow::array::Float64Array::from(vec![1.2, 3.4, 5.6])),
+                None,
+            ),
+            "any_value_f64",
+        ),
     ];
 
     //
@@ -261,6 +270,18 @@ impl TestCase {
             label,
             component_name,
             component_data,
+        }
+    }
+
+    fn from_arrow(
+        component_name: ComponentName,
+        component_data: impl arrow::array::Array + 'static,
+        label: &'static str,
+    ) -> Self {
+        Self {
+            label,
+            component_name,
+            component_data: Arc::new(component_data),
         }
     }
 }
