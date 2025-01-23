@@ -1,7 +1,4 @@
-use crate::{
-    datatypes::ColorModel,
-    image::{ImageChannelType, ImageConversionError},
-};
+use crate::{datatypes::ColorModel, image::ImageChannelType};
 
 use super::{ImageBuffer, ImageFormat};
 
@@ -33,7 +30,7 @@ impl ImageBuffer {
     /// Requires the `image` feature.
     pub fn from_image(
         image: impl Into<image::DynamicImage>,
-    ) -> Result<(Self, ImageFormat), ImageConversionError> {
+    ) -> Result<(Self, ImageFormat), crate::image::ImageConversionError> {
         Self::from_dynamic_image(image.into())
     }
 
@@ -42,7 +39,7 @@ impl ImageBuffer {
     /// Requires the `image` feature.
     pub fn from_dynamic_image(
         image: image::DynamicImage,
-    ) -> Result<(Self, ImageFormat), ImageConversionError> {
+    ) -> Result<(Self, ImageFormat), crate::image::ImageConversionError> {
         re_tracing::profile_function!();
 
         let res = [image.width(), image.height()];
@@ -90,9 +87,7 @@ impl ImageBuffer {
 
             _ => {
                 // It is very annoying that DynamicImage is #[non_exhaustive]
-                Err(ImageConversionError::UnsupportedImageColorType(
-                    image.color(),
-                ))
+                Err(crate::image::ImageConversionError::UnsupportedImageColorType(image.color()))
             }
         }
     }
