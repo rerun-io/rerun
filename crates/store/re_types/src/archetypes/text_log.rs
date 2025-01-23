@@ -289,6 +289,21 @@ impl TextLog {
         Ok(columns.into_iter().chain([indicator_column]).flatten())
     }
 
+    /// Helper to partition the component data into unit-length sub-batches.
+    ///
+    /// This is semantically similar to calling [`Self::columns`] with `std::iter::take(1).repeat(n)`,
+    /// where `n` is automatically guessed.
+    #[inline]
+    pub fn columns_of_unit_batches(
+        self,
+    ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
+        let len_text = self.text.as_ref().map(|b| b.array.len());
+        let len_level = self.level.as_ref().map(|b| b.array.len());
+        let len_color = self.color.as_ref().map(|b| b.array.len());
+        let len = None.or(len_text).or(len_level).or(len_color).unwrap_or(0);
+        self.columns(std::iter::repeat(1).take(len))
+    }
+
     /// The body of the message.
     #[inline]
     pub fn with_text(mut self, text: impl Into<crate::components::Text>) -> Self {

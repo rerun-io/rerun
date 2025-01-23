@@ -549,6 +549,39 @@ impl Ellipsoids3D {
         Ok(columns.into_iter().chain([indicator_column]).flatten())
     }
 
+    /// Helper to partition the component data into unit-length sub-batches.
+    ///
+    /// This is semantically similar to calling [`Self::columns`] with `std::iter::take(1).repeat(n)`,
+    /// where `n` is automatically guessed.
+    #[inline]
+    pub fn columns_of_unit_batches(
+        self,
+    ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
+        let len_half_sizes = self.half_sizes.as_ref().map(|b| b.array.len());
+        let len_centers = self.centers.as_ref().map(|b| b.array.len());
+        let len_rotation_axis_angles = self.rotation_axis_angles.as_ref().map(|b| b.array.len());
+        let len_quaternions = self.quaternions.as_ref().map(|b| b.array.len());
+        let len_colors = self.colors.as_ref().map(|b| b.array.len());
+        let len_line_radii = self.line_radii.as_ref().map(|b| b.array.len());
+        let len_fill_mode = self.fill_mode.as_ref().map(|b| b.array.len());
+        let len_labels = self.labels.as_ref().map(|b| b.array.len());
+        let len_show_labels = self.show_labels.as_ref().map(|b| b.array.len());
+        let len_class_ids = self.class_ids.as_ref().map(|b| b.array.len());
+        let len = None
+            .or(len_half_sizes)
+            .or(len_centers)
+            .or(len_rotation_axis_angles)
+            .or(len_quaternions)
+            .or(len_colors)
+            .or(len_line_radii)
+            .or(len_fill_mode)
+            .or(len_labels)
+            .or(len_show_labels)
+            .or(len_class_ids)
+            .unwrap_or(0);
+        self.columns(std::iter::repeat(1).take(len))
+    }
+
     /// For each ellipsoid, half of its size on its three axes.
     ///
     /// If all components are equal, then it is a sphere with that radius.
