@@ -408,8 +408,10 @@ impl PythonCodeGenerator {
                 Archetype,
                 BaseBatch,
                 ComponentBatchMixin,
+                ComponentColumn,
                 ComponentDescriptor,
                 ComponentMixin,
+                DescribedComponentBatch,
             )
             from {rerun_path}_converters import (
                 int_or_none,
@@ -695,6 +697,9 @@ fn code_for_struct(
     if obj.kind == ObjectKind::Archetype {
         code.push_indented(1, quote_clear_methods(obj), 2);
         code.push_indented(1, quote_partial_update_methods(reporter, obj, objects), 2);
+        if obj.scope().is_none() {
+            code.push_indented(1, quote_columnar_methods(reporter, obj, objects), 2);
+        }
     }
 
     if obj.is_delegating_component() {
@@ -2511,7 +2516,8 @@ fn quote_partial_update_methods(reporter: &Reporter, obj: &Object, objects: &Obj
             quote_init_parameter_from_field(&field, objects, &obj.fqname)
         })
         .collect_vec()
-        .join(",                          ");
+        .join(",\n");
+    let parameters = indent::indent_by(8, parameters);
 
     let kwargs = obj
         .fields
@@ -2521,7 +2527,8 @@ fn quote_partial_update_methods(reporter: &Reporter, obj: &Object, objects: &Obj
             format!("'{field_name}': {field_name}")
         })
         .collect_vec()
-        .join(",                          ");
+        .join(",\n");
+    let kwargs = indent::indent_by(12, kwargs);
 
     let parameter_docs = compute_init_parameter_docs(reporter, obj, objects);
     let mut doc_string_lines = vec![format!("Update only some specific fields of a `{name}`.")];
@@ -2536,11 +2543,7 @@ fn quote_partial_update_methods(reporter: &Reporter, obj: &Object, objects: &Obj
             doc_string_lines.push(doc);
         }
     };
-    let doc_block = quote_doc_lines(doc_string_lines)
-        .lines()
-        .map(|line| format!("            {line}"))
-        .collect_vec()
-        .join("\n");
+    let doc_block = indent::indent_by(12, quote_doc_lines(doc_string_lines));
 
     let field_clears = obj
         .fields
@@ -2550,8 +2553,8 @@ fn quote_partial_update_methods(reporter: &Reporter, obj: &Object, objects: &Obj
             format!("{field_name}=[],")
         })
         .collect_vec()
-        .join("\n                          ");
-    let field_clears = indent::indent_by(4, field_clears);
+        .join("\n");
+    let field_clears = indent::indent_by(12, field_clears);
 
     unindent(&format!(
         r#"
@@ -2562,20 +2565,19 @@ fn quote_partial_update_methods(reporter: &Reporter, obj: &Object, objects: &Obj
             clear: bool = False,
             {parameters},
         ) -> {name}:
-
-{doc_block}
+            {doc_block}
             inst = cls.__new__(cls)
             with catch_and_log_exceptions(context=cls.__name__):
                 kwargs = {{
                     {kwargs},
                 }}
-    
+
                 if clear:
                     kwargs = {{k: v if v is not None else [] for k, v in kwargs.items()}}  # type: ignore[misc]
-    
+
                 inst.__attrs_init__(**kwargs)
                 return inst
-            
+
             inst.__attrs_clear__()
             return inst
 
@@ -2587,6 +2589,100 @@ fn quote_partial_update_methods(reporter: &Reporter, obj: &Object, objects: &Obj
                 {field_clears}
             )
             return inst
+        "#
+    ))
+}
+
+fn quote_columnar_methods(reporter: &Reporter, obj: &Object, objects: &Objects) -> String {
+    let parameters = obj
+        .fields
+        .iter()
+        .filter_map(|field| {
+            let mut field = field.make_plural()?;
+            field.is_nullable = true;
+            Some(quote_init_parameter_from_field(
+                &field,
+                objects,
+                &obj.fqname,
+            ))
+        })
+        .collect_vec()
+        .join(",\n");
+    let parameters = indent::indent_by(8, parameters);
+
+    let init_args = obj
+        .fields
+        .iter()
+        .map(|field| {
+            let field_name = field.snake_case_name();
+            format!("{field_name}={field_name}")
+        })
+        .collect_vec()
+        .join(",\n");
+    let init_args = indent::indent_by(12, init_args);
+
+    let parameter_docs = compute_init_parameter_docs(reporter, obj, objects);
+    let doc = unindent(
+        "\
+        Partitions the component data into multiple sub-batches.
+
+        This makes it possible to use `rr.send_columns` to send columnar data directly into Rerun.
+
+        If specified, `_lengths` must sum to the total length of the component batch.
+        If left unspecified, it will default to unit-length batches.
+        ",
+    );
+    let mut doc_string_lines = doc.lines().map(|s| s.to_owned()).collect_vec();
+    if !parameter_docs.is_empty() {
+        doc_string_lines.push("Parameters".to_owned());
+        doc_string_lines.push("----------".to_owned());
+        for doc in parameter_docs {
+            doc_string_lines.push(doc);
+        }
+    };
+    let doc_block = indent::indent_by(12, quote_doc_lines(doc_string_lines));
+
+    // NOTE(#8768): Scalar indicators are extremely wasteful, and not actually used for anything.
+    let has_indicator = obj.fqname.as_str() != "rerun.archetypes.Scalar";
+    let pack_and_return = if has_indicator {
+        indent::indent_by(12, unindent("\
+        indicator_batch = DescribedComponentBatch(cls.indicator(), cls.indicator().component_descriptor())
+        indicator_column = indicator_batch.partition(np.zeros(len(_lengths)))  # type: ignore[arg-type]
+
+        return [indicator_column] + columns
+        "))
+    } else {
+        "return columns".to_owned()
+    };
+
+    // NOTE: Calling `update_fields` is not an option: we need to be able to pass
+    // plural data, even to singular fields (mono-components).
+    unindent(&format!(
+        r#"
+        @classmethod
+        def columns(
+            cls,
+            *,
+            _lengths: npt.ArrayLike | None = None,
+            {parameters},
+        ) -> list[ComponentColumn]:
+            {doc_block}
+            inst = cls.__new__(cls)
+            with catch_and_log_exceptions(context=cls.__name__):
+                inst.__attrs_init__(
+                    {init_args},
+                )
+
+            batches = [batch for batch in inst.as_component_batches() if isinstance(batch, DescribedComponentBatch)]
+            if len(batches) == 0:
+                return []
+
+            if _lengths is None:
+                _lengths = np.ones(len(batches[0]._batch.as_arrow_array()))
+
+            columns = [batch.partition(_lengths) for batch in batches]
+
+            {pack_and_return}
         "#
     ))
 }
