@@ -18,6 +18,11 @@ workspace = true
 [package.metadata.docs.rs]
 all-features = true
 
+[features]
+default = []
+testing = ["dep:serde"]
+
+
 [dependencies]
 re_context_menu.workspace = true
 re_data_ui.workspace = true
@@ -33,13 +38,20 @@ re_viewport_blueprint.workspace = true
 egui.workspace = true
 egui_tiles.workspace = true
 itertools.workspace = true
+serde = { workspace = true, optional = true }
 smallvec.workspace = true
 
 
 [dev-dependencies]
-re_viewer_context = { workspace = true, features = ["testing"] }
-re_viewport_blueprint = { workspace = true, features = ["testing"] }
+# Trick to reliably auto-enable the testing feature when running tests
+# see: https://github.com/rust-lang/cargo/issues/2911#issuecomment-1483256987
+re_blueprint_tree = { path = ".", default-features = false, features = ["testing"] }
+
 re_chunk_store.workspace = true
 re_view_spatial.workspace = true
+re_viewer_context = { workspace = true, features = ["testing"] }
+re_viewport_blueprint = { workspace = true, features = ["testing"] }
 
 egui_kittest.workspace = true
+insta = { workspace = true, features = ["redactions", "yaml"] }
+

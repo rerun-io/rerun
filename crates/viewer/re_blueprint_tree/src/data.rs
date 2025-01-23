@@ -25,6 +25,7 @@ use re_viewport_blueprint::{ContainerBlueprint, ViewBlueprint, ViewportBlueprint
 use crate::data_result_node_or_path::DataResultNodeOrPath;
 
 #[derive(Debug, Default)]
+#[cfg_attr(feature = "testing", derive(serde::Serialize, serde::Deserialize))]
 pub struct BlueprintTreeData {
     pub root_container: Option<ContainerData>,
 }
@@ -55,12 +56,14 @@ impl BlueprintTreeData {
 // ---
 
 #[derive(Debug)]
+#[cfg_attr(feature = "testing", derive(serde::Serialize, serde::Deserialize))]
 pub enum ContentsData {
     Container(ContainerData),
     View(ViewData),
 }
 
 #[derive(Debug)]
+#[cfg_attr(feature = "testing", derive(serde::Serialize, serde::Deserialize))]
 pub struct ContainerData {
     pub id: ContainerId,
     pub name: ContentsName,
@@ -129,6 +132,7 @@ impl ContainerData {
 // ---
 
 #[derive(Debug)]
+#[cfg_attr(feature = "testing", derive(serde::Serialize, serde::Deserialize))]
 pub struct ViewData {
     pub id: ViewId,
 
@@ -250,6 +254,7 @@ impl ViewData {
 
 /// The kind of thing we may be displaying in the tree
 #[derive(Debug)]
+#[cfg_attr(feature = "testing", derive(serde::Serialize, serde::Deserialize))]
 pub enum DataResultKind {
     EmptyOriginPlaceholder,
 
@@ -259,6 +264,7 @@ pub enum DataResultKind {
 }
 
 #[derive(Debug)]
+#[cfg_attr(feature = "testing", derive(serde::Serialize, serde::Deserialize))]
 pub struct DataResultData {
     pub kind: DataResultKind,
     pub entity_path: EntityPath,

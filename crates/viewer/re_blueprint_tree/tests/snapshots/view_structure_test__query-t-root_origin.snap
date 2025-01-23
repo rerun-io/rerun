@@ -1,0 +1,135 @@
+---
+source: crates/viewer/re_blueprint_tree/tests/view_structure_test.rs
+expression: blueprint_tree_data
+---
+root_container:
+  id:
+    id: "<container-id>"
+  name:
+    Placeholder: Grid
+  kind: Grid
+  visible: true
+  default_open: true
+  children:
+    - View:
+        id:
+          id: 0864e1b8-cec4-1b82-5b17-b9d628b8f4fe
+        class_identifier: 3D
+        name:
+          Placeholder: /
+        visible: true
+        default_open: true
+        origin_tree:
+          kind: DataResult
+          entity_path: []
+          visible: true
+          view_id:
+            id: 0864e1b8-cec4-1b82-5b17-b9d628b8f4fe
+          label: / (root)
+          highlight_sections: []
+          default_open: true
+          children:
+            - kind: DataResult
+              entity_path:
+                - center
+              visible: true
+              view_id:
+                id: 0864e1b8-cec4-1b82-5b17-b9d628b8f4fe
+              label: center
+              highlight_sections:
+                - start: 3
+                  end: 4
+              default_open: true
+              children:
+                - kind: DataResult
+                  entity_path:
+                    - center
+                    - way
+                  visible: true
+                  view_id:
+                    id: 0864e1b8-cec4-1b82-5b17-b9d628b8f4fe
+                  label: way
+                  highlight_sections: []
+                  default_open: true
+                  children: []
+            - kind: DataResult
+              entity_path:
+                - path
+              visible: true
+              view_id:
+                id: 0864e1b8-cec4-1b82-5b17-b9d628b8f4fe
+              label: path
+              highlight_sections:
+                - start: 2
+                  end: 3
+              default_open: true
+              children:
+                - kind: DataResult
+                  entity_path:
+                    - path
+                    - to
+                  visible: true
+                  view_id:
+                    id: 0864e1b8-cec4-1b82-5b17-b9d628b8f4fe
+                  label: to
+                  highlight_sections:
+                    - start: 0
+                      end: 1
+                  default_open: true
+                  children:
+                    - kind: DataResult
+                      entity_path:
+                        - path
+                        - to
+                        - left
+                      visible: true
+                      view_id:
+                        id: 0864e1b8-cec4-1b82-5b17-b9d628b8f4fe
+                      label: left
+                      highlight_sections:
+                        - start: 3
+                          end: 4
+                      default_open: true
+                      children: []
+                    - kind: DataResult
+                      entity_path:
+                        - path
+                        - to
+                        - right
+                      visible: true
+                      view_id:
+                        id: 0864e1b8-cec4-1b82-5b17-b9d628b8f4fe
+                      label: right
+                      highlight_sections:
+                        - start: 4
+                          end: 5
+                      default_open: true
+                      children: []
+                    - kind: DataResult
+                      entity_path:
+                        - path
+                        - to
+                        - the
+                      visible: true
+                      view_id:
+                        id: 0864e1b8-cec4-1b82-5b17-b9d628b8f4fe
+                      label: the
+                      highlight_sections:
+                        - start: 0
+                          end: 1
+                      default_open: true
+                      children:
+                        - kind: DataResult
+                          entity_path:
+                            - path
+                            - to
+                            - the
+                            - void
+                          visible: true
+                          view_id:
+                            id: 0864e1b8-cec4-1b82-5b17-b9d628b8f4fe
+                          label: void
+                          highlight_sections: []
+                          default_open: true
+                          children: []
+        projection_trees: []

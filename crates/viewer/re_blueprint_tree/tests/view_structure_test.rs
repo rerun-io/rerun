@@ -4,15 +4,20 @@
 use egui::Vec2;
 use egui_kittest::{SnapshotError, SnapshotOptions};
 use itertools::Itertools;
+
+use re_blueprint_tree::data::BlueprintTreeData;
 use re_blueprint_tree::BlueprintTree;
 use re_chunk_store::external::re_chunk::ChunkBuilder;
 use re_chunk_store::RowId;
 use re_log_types::{build_frame_nr, EntityPath};
 use re_types::archetypes::Points3D;
+use re_ui::filter_widget::FilterState;
 use re_viewer_context::test_context::TestContext;
-use re_viewer_context::{RecommendedView, ViewClass};
+use re_viewer_context::{RecommendedView, ViewClass, ViewId};
 use re_viewport_blueprint::test_context_ext::TestContextExt;
 use re_viewport_blueprint::{ViewBlueprint, ViewportBlueprint};
+
+const VIEW_ID: &str = "this-is-a-view-id";
 
 #[derive(Debug, Clone, Copy)]
 enum RecordingKind {
@@ -81,12 +86,16 @@ fn base_test_cases() -> impl Iterator<Item = TestCase> {
     .into_iter()
 }
 
-fn test_context(kind: RecordingKind) -> TestContext {
+fn filter_queries() -> impl Iterator<Item = Option<&'static str>> {
+    [None, Some("t"), Some("void"), Some("path")].into_iter()
+}
+
+fn test_context(test_case: &TestCase) -> TestContext {
     let mut test_context = TestContext::default();
 
     test_context.register_view_class::<re_view_spatial::SpatialView3D>();
 
-    match kind {
+    match test_case.recording_kind {
         RecordingKind::Emtpy => {}
         RecordingKind::Regular => {
             test_context.log_entity("/path/to/left".into(), add_point_to_chunk_builder);
@@ -95,6 +104,22 @@ fn test_context(kind: RecordingKind) -> TestContext {
             test_context.log_entity("/center/way".into(), add_point_to_chunk_builder);
         }
     }
+
+    test_context.setup_viewport_blueprint(|_, blueprint| {
+        let view = ViewBlueprint::new_with_id(
+            re_view_spatial::SpatialView3D::identifier(),
+            RecommendedView {
+                origin: test_case.origin.clone(),
+                query_filter: test_case
+                    .entity_filter
+                    .try_into()
+                    .expect("invalid entity filter"),
+            },
+            ViewId::hashed_from_str(VIEW_ID),
+        );
+
+        blueprint.add_views(std::iter::once(view), None, None);
+    });
 
     test_context
 }
@@ -108,12 +133,11 @@ fn add_point_to_chunk_builder(builder: ChunkBuilder) -> ChunkBuilder {
 }
 
 #[test]
-fn run_all_test_cases() {
-    let errors = [None, Some("t"), Some("void"), Some("path")]
-        .into_iter()
+fn test_all_snapshot_test_cases() {
+    let errors = filter_queries()
         .flat_map(|filter_query| {
             base_test_cases()
-                .map(move |test_case| (filter_query, run_test_case(test_case, filter_query)))
+                .map(move |test_case| (filter_query, run_test_case(&test_case, filter_query)))
         })
         .filter_map(|(filter_query, result)| result.err().map(|err| (filter_query, err)))
         .collect_vec();
@@ -125,29 +149,9 @@ fn run_all_test_cases() {
     assert!(errors.is_empty(), "Some test cases failed");
 }
 
-fn run_test_case(test_case: TestCase, filter_query: Option<&str>) -> Result<(), SnapshotError> {
-    let mut test_context = test_context(test_case.recording_kind);
-
-    let view_id = test_context.setup_viewport_blueprint(|_, blueprint| {
-        let view = ViewBlueprint::new(
-            re_view_spatial::SpatialView3D::identifier(),
-            RecommendedView {
-                origin: test_case.origin,
-                query_filter: test_case
-                    .entity_filter
-                    .try_into()
-                    .expect("invalid entity filter"),
-            },
-        );
-
-        let view_id = view.id;
-        blueprint.add_views(std::iter::once(view), None, None);
-
-        // TODO(ab): add containers in the hierarchy (requires work on the container API,
-        // currently very cumbersome to use for testing purposes).
-
-        view_id
-    });
+fn run_test_case(test_case: &TestCase, filter_query: Option<&str>) -> Result<(), SnapshotError> {
+    let mut test_context = test_context(test_case);
+    let view_id = ViewId::hashed_from_str(VIEW_ID);
 
     let mut blueprint_tree = BlueprintTree::default();
 
@@ -197,4 +201,47 @@ fn run_test_case(test_case: TestCase, filter_query: Option<&str>) -> Result<(), 
             .unwrap_or("no-query".to_owned())
     ));
     harness.try_snapshot_options(test_case.name, &options)
+}
+
+// ---
+
+#[test]
+fn test_all_insta_test_cases() {
+    for test_case in base_test_cases() {
+        for filter_query in filter_queries() {
+            let test_context = test_context(&test_case);
+
+            let blueprint_tree_data =
+                test_context.run_once_in_egui_central_panel(|viewer_ctx, _| {
+                    let blueprint = ViewportBlueprint::try_from_db(
+                        viewer_ctx.store_context.blueprint,
+                        viewer_ctx.blueprint_query,
+                    );
+
+                    let mut filter_state = FilterState::default();
+
+                    if let Some(filter_query) = filter_query {
+                        filter_state.activate(filter_query);
+                    }
+
+                    BlueprintTreeData::from_blueprint_and_filter(
+                        viewer_ctx,
+                        &blueprint,
+                        &filter_state.filter(),
+                    )
+                });
+
+            let snapshot_name = format!(
+                "{}-{}",
+                filter_query
+                    .map(|query| format!("query-{query}"))
+                    .unwrap_or("no-query".to_owned()),
+                test_case.name
+            );
+
+            insta::assert_yaml_snapshot!(snapshot_name, blueprint_tree_data, {
+                ".root_container.id.id" => "<container-id>"
+            });
+        }
+    }
 }
