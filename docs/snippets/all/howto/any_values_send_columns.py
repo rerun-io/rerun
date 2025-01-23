@@ -15,8 +15,8 @@ values = rr.AnyValues(
     cos=np.cos(timestamps / 10.0),
 )
 
-rr.send_columns(
+rr.send_columns_v2(
     "/",
-    times=[rr.TimeSequenceColumn("step", timestamps)],
-    components=values.as_component_batches(),
+    indexes=[rr.TimeSequenceColumn("step", timestamps)],
+    columns=values.partition(),
 )
