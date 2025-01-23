@@ -7,11 +7,15 @@ from __future__ import annotations
 
 from typing import Any
 
+import numpy as np
+import numpy.typing as npt
 from attrs import define, field
 
 from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
+    ComponentColumn,
+    DescribedComponentBatch,
 )
 from ..error_utils import catch_and_log_exceptions
 
@@ -137,6 +141,54 @@ class GraphEdges(Archetype):
             graph_type=[],
         )
         return inst
+
+    @classmethod
+    def columns(
+        cls,
+        *,
+        _lengths: npt.ArrayLike | None = None,
+        edges: datatypes.Utf8PairArrayLike | None = None,
+        graph_type: components.GraphTypeArrayLike | None = None,
+    ) -> list[ComponentColumn]:
+        """
+        Partitions the component data into multiple sub-batches.
+
+        This makes it possible to use `rr.send_columns` to send columnar data directly into Rerun.
+
+        If specified, `_lengths` must sum to the total length of the component batch.
+        If left unspecified, it will default to unit-length batches.
+
+        Parameters
+        ----------
+        edges:
+            A list of node tuples.
+        graph_type:
+            Specifies if the graph is directed or undirected.
+
+            If no [`components.GraphType`][rerun.components.GraphType] is provided, the graph is assumed to be undirected.
+
+        """
+
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            inst.__attrs_init__(
+                edges=edges,
+                graph_type=graph_type,
+            )
+
+        batches = [batch for batch in inst.as_component_batches() if isinstance(batch, DescribedComponentBatch)]
+        if len(batches) == 0:
+            return []
+
+        if _lengths is None:
+            _lengths = np.ones(len(batches[0]._batch.as_arrow_array()))
+
+        columns = [batch.partition(_lengths) for batch in batches]
+
+        indicator_batch = DescribedComponentBatch(cls.indicator(), cls.indicator().component_descriptor())
+        indicator_column = indicator_batch.partition(np.zeros(len(_lengths)))  # type: ignore[arg-type]
+
+        return [indicator_column] + columns
 
     edges: components.GraphEdgeBatch | None = field(
         metadata={"component": True},

@@ -5,11 +5,15 @@
 
 from __future__ import annotations
 
+import numpy as np
+import numpy.typing as npt
 from attrs import define, field
 
 from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
+    ComponentColumn,
+    DescribedComponentBatch,
 )
 from ..error_utils import catch_and_log_exceptions
 from .video_frame_reference_ext import VideoFrameReferenceExt
@@ -189,6 +193,67 @@ class VideoFrameReference(VideoFrameReferenceExt, Archetype):
             video_reference=[],
         )
         return inst
+
+    @classmethod
+    def columns(
+        cls,
+        *,
+        _lengths: npt.ArrayLike | None = None,
+        timestamp: datatypes.VideoTimestampArrayLike | None = None,
+        video_reference: datatypes.EntityPathArrayLike | None = None,
+    ) -> list[ComponentColumn]:
+        """
+        Partitions the component data into multiple sub-batches.
+
+        This makes it possible to use `rr.send_columns` to send columnar data directly into Rerun.
+
+        If specified, `_lengths` must sum to the total length of the component batch.
+        If left unspecified, it will default to unit-length batches.
+
+        Parameters
+        ----------
+        timestamp:
+            References the closest video frame to this timestamp.
+
+            Note that this uses the closest video frame instead of the latest at this timestamp
+            in order to be more forgiving of rounding errors for inprecise timestamp types.
+
+            Timestamps are relative to the start of the video, i.e. a timestamp of 0 always corresponds to the first frame.
+            This is oftentimes equivalent to presentation timestamps (known as PTS), but in the presence of B-frames
+            (bidirectionally predicted frames) there may be an offset on the first presentation timestamp in the video.
+        video_reference:
+            Optional reference to an entity with a [`archetypes.AssetVideo`][rerun.archetypes.AssetVideo].
+
+            If none is specified, the video is assumed to be at the same entity.
+            Note that blueprint overrides on the referenced video will be ignored regardless,
+            as this is always interpreted as a reference to the data store.
+
+            For a series of video frame references, it is recommended to specify this path only once
+            at the beginning of the series and then rely on latest-at query semantics to
+            keep the video reference active.
+
+        """
+
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            inst.__attrs_init__(
+                timestamp=timestamp,
+                video_reference=video_reference,
+            )
+
+        batches = [batch for batch in inst.as_component_batches() if isinstance(batch, DescribedComponentBatch)]
+        if len(batches) == 0:
+            return []
+
+        if _lengths is None:
+            _lengths = np.ones(len(batches[0]._batch.as_arrow_array()))
+
+        columns = [batch.partition(_lengths) for batch in batches]
+
+        indicator_batch = DescribedComponentBatch(cls.indicator(), cls.indicator().component_descriptor())
+        indicator_column = indicator_batch.partition(np.zeros(len(_lengths)))  # type: ignore[arg-type]
+
+        return [indicator_column] + columns
 
     timestamp: components.VideoTimestampBatch | None = field(
         metadata={"component": True},

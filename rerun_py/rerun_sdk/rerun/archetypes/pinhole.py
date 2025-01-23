@@ -5,11 +5,15 @@
 
 from __future__ import annotations
 
+import numpy as np
+import numpy.typing as npt
 from attrs import define, field
 
 from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
+    ComponentColumn,
+    DescribedComponentBatch,
 )
 from ..error_utils import catch_and_log_exceptions
 from .pinhole_ext import PinholeExt
@@ -181,6 +185,95 @@ class Pinhole(PinholeExt, Archetype):
             image_plane_distance=[],
         )
         return inst
+
+    @classmethod
+    def columns(
+        cls,
+        *,
+        _lengths: npt.ArrayLike | None = None,
+        image_from_camera: datatypes.Mat3x3ArrayLike | None = None,
+        resolution: datatypes.Vec2DArrayLike | None = None,
+        camera_xyz: datatypes.ViewCoordinatesArrayLike | None = None,
+        image_plane_distance: datatypes.Float32ArrayLike | None = None,
+    ) -> list[ComponentColumn]:
+        """
+        Partitions the component data into multiple sub-batches.
+
+        This makes it possible to use `rr.send_columns` to send columnar data directly into Rerun.
+
+        If specified, `_lengths` must sum to the total length of the component batch.
+        If left unspecified, it will default to unit-length batches.
+
+        Parameters
+        ----------
+        image_from_camera:
+            Camera projection, from image coordinates to view coordinates.
+        resolution:
+            Pixel resolution (usually integers) of child image space. Width and height.
+
+            Example:
+            ```text
+            [1920.0, 1440.0]
+            ```
+
+            `image_from_camera` project onto the space spanned by `(0,0)` and `resolution - 1`.
+        camera_xyz:
+            Sets the view coordinates for the camera.
+
+            All common values are available as constants on the [`components.ViewCoordinates`][rerun.components.ViewCoordinates] class.
+
+            The default is `ViewCoordinates::RDF`, i.e. X=Right, Y=Down, Z=Forward, and this is also the recommended setting.
+            This means that the camera frustum will point along the positive Z axis of the parent space,
+            and the cameras "up" direction will be along the negative Y axis of the parent space.
+
+            The camera frustum will point whichever axis is set to `F` (or the opposite of `B`).
+            When logging a depth image under this entity, this is the direction the point cloud will be projected.
+            With `RDF`, the default forward is +Z.
+
+            The frustum's "up" direction will be whichever axis is set to `U` (or the opposite of `D`).
+            This will match the negative Y direction of pixel space (all images are assumed to have xyz=RDF).
+            With `RDF`, the default is up is -Y.
+
+            The frustum's "right" direction will be whichever axis is set to `R` (or the opposite of `L`).
+            This will match the positive X direction of pixel space (all images are assumed to have xyz=RDF).
+            With `RDF`, the default right is +x.
+
+            Other common formats are `RUB` (X=Right, Y=Up, Z=Back) and `FLU` (X=Forward, Y=Left, Z=Up).
+
+            NOTE: setting this to something else than `RDF` (the default) will change the orientation of the camera frustum,
+            and make the pinhole matrix not match up with the coordinate system of the pinhole entity.
+
+            The pinhole matrix (the `image_from_camera` argument) always project along the third (Z) axis,
+            but will be re-oriented to project along the forward axis of the `camera_xyz` argument.
+        image_plane_distance:
+            The distance from the camera origin to the image plane when the projection is shown in a 3D viewer.
+
+            This is only used for visualization purposes, and does not affect the projection itself.
+
+        """
+
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            inst.__attrs_init__(
+                image_from_camera=image_from_camera,
+                resolution=resolution,
+                camera_xyz=camera_xyz,
+                image_plane_distance=image_plane_distance,
+            )
+
+        batches = [batch for batch in inst.as_component_batches() if isinstance(batch, DescribedComponentBatch)]
+        if len(batches) == 0:
+            return []
+
+        if _lengths is None:
+            _lengths = np.ones(len(batches[0]._batch.as_arrow_array()))
+
+        columns = [batch.partition(_lengths) for batch in batches]
+
+        indicator_batch = DescribedComponentBatch(cls.indicator(), cls.indicator().component_descriptor())
+        indicator_column = indicator_batch.partition(np.zeros(len(_lengths)))  # type: ignore[arg-type]
+
+        return [indicator_column] + columns
 
     image_from_camera: components.PinholeProjectionBatch | None = field(
         metadata={"component": True},

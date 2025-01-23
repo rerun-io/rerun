@@ -5,11 +5,15 @@
 
 from __future__ import annotations
 
+import numpy as np
+import numpy.typing as npt
 from attrs import define, field
 
 from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
+    ComponentColumn,
+    DescribedComponentBatch,
 )
 from ..error_utils import catch_and_log_exceptions
 from .boxes2d_ext import Boxes2DExt
@@ -152,6 +156,85 @@ class Boxes2D(Boxes2DExt, Archetype):
             class_ids=[],
         )
         return inst
+
+    @classmethod
+    def columns(
+        cls,
+        *,
+        _lengths: npt.ArrayLike | None = None,
+        half_sizes: datatypes.Vec2DArrayLike | None = None,
+        centers: datatypes.Vec2DArrayLike | None = None,
+        colors: datatypes.Rgba32ArrayLike | None = None,
+        radii: datatypes.Float32ArrayLike | None = None,
+        labels: datatypes.Utf8ArrayLike | None = None,
+        show_labels: datatypes.BoolArrayLike | None = None,
+        draw_order: datatypes.Float32ArrayLike | None = None,
+        class_ids: datatypes.ClassIdArrayLike | None = None,
+    ) -> list[ComponentColumn]:
+        """
+        Partitions the component data into multiple sub-batches.
+
+        This makes it possible to use `rr.send_columns` to send columnar data directly into Rerun.
+
+        If specified, `_lengths` must sum to the total length of the component batch.
+        If left unspecified, it will default to unit-length batches.
+
+        Parameters
+        ----------
+        half_sizes:
+            All half-extents that make up the batch of boxes.
+        centers:
+            Optional center positions of the boxes.
+        colors:
+            Optional colors for the boxes.
+        radii:
+            Optional radii for the lines that make up the boxes.
+        labels:
+            Optional text labels for the boxes.
+
+            If there's a single label present, it will be placed at the center of the entity.
+            Otherwise, each instance will have its own label.
+        show_labels:
+            Optional choice of whether the text labels should be shown by default.
+        draw_order:
+            An optional floating point value that specifies the 2D drawing order.
+
+            Objects with higher values are drawn on top of those with lower values.
+
+            The default for 2D boxes is 10.0.
+        class_ids:
+            Optional [`components.ClassId`][rerun.components.ClassId]s for the boxes.
+
+            The [`components.ClassId`][rerun.components.ClassId] provides colors and labels if not specified explicitly.
+
+        """
+
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            inst.__attrs_init__(
+                half_sizes=half_sizes,
+                centers=centers,
+                colors=colors,
+                radii=radii,
+                labels=labels,
+                show_labels=show_labels,
+                draw_order=draw_order,
+                class_ids=class_ids,
+            )
+
+        batches = [batch for batch in inst.as_component_batches() if isinstance(batch, DescribedComponentBatch)]
+        if len(batches) == 0:
+            return []
+
+        if _lengths is None:
+            _lengths = np.ones(len(batches[0]._batch.as_arrow_array()))
+
+        columns = [batch.partition(_lengths) for batch in batches]
+
+        indicator_batch = DescribedComponentBatch(cls.indicator(), cls.indicator().component_descriptor())
+        indicator_column = indicator_batch.partition(np.zeros(len(_lengths)))  # type: ignore[arg-type]
+
+        return [indicator_column] + columns
 
     half_sizes: components.HalfSize2DBatch | None = field(
         metadata={"component": True},

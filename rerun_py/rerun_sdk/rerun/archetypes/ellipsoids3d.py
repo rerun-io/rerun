@@ -5,11 +5,15 @@
 
 from __future__ import annotations
 
+import numpy as np
+import numpy.typing as npt
 from attrs import define, field
 
 from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
+    ComponentColumn,
+    DescribedComponentBatch,
 )
 from ..error_utils import catch_and_log_exceptions
 from .ellipsoids3d_ext import Ellipsoids3DExt
@@ -189,6 +193,97 @@ class Ellipsoids3D(Ellipsoids3DExt, Archetype):
             class_ids=[],
         )
         return inst
+
+    @classmethod
+    def columns(
+        cls,
+        *,
+        _lengths: npt.ArrayLike | None = None,
+        half_sizes: datatypes.Vec3DArrayLike | None = None,
+        centers: datatypes.Vec3DArrayLike | None = None,
+        rotation_axis_angles: datatypes.RotationAxisAngleArrayLike | None = None,
+        quaternions: datatypes.QuaternionArrayLike | None = None,
+        colors: datatypes.Rgba32ArrayLike | None = None,
+        line_radii: datatypes.Float32ArrayLike | None = None,
+        fill_mode: components.FillModeArrayLike | None = None,
+        labels: datatypes.Utf8ArrayLike | None = None,
+        show_labels: datatypes.BoolArrayLike | None = None,
+        class_ids: datatypes.ClassIdArrayLike | None = None,
+    ) -> list[ComponentColumn]:
+        """
+        Partitions the component data into multiple sub-batches.
+
+        This makes it possible to use `rr.send_columns` to send columnar data directly into Rerun.
+
+        If specified, `_lengths` must sum to the total length of the component batch.
+        If left unspecified, it will default to unit-length batches.
+
+        Parameters
+        ----------
+        half_sizes:
+            For each ellipsoid, half of its size on its three axes.
+
+            If all components are equal, then it is a sphere with that radius.
+        centers:
+            Optional center positions of the ellipsoids.
+
+            If not specified, the centers will be at (0, 0, 0).
+            Note that this uses a [`components.PoseTranslation3D`][rerun.components.PoseTranslation3D] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
+        rotation_axis_angles:
+            Rotations via axis + angle.
+
+            If no rotation is specified, the axes of the ellipsoid align with the axes of the local coordinate system.
+            Note that this uses a [`components.PoseRotationAxisAngle`][rerun.components.PoseRotationAxisAngle] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
+        quaternions:
+            Rotations via quaternion.
+
+            If no rotation is specified, the axes of the ellipsoid align with the axes of the local coordinate system.
+            Note that this uses a [`components.PoseRotationQuat`][rerun.components.PoseRotationQuat] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
+        colors:
+            Optional colors for the ellipsoids.
+        line_radii:
+            Optional radii for the lines used when the ellipsoid is rendered as a wireframe.
+        fill_mode:
+            Optionally choose whether the ellipsoids are drawn with lines or solid.
+        labels:
+            Optional text labels for the ellipsoids.
+        show_labels:
+            Optional choice of whether the text labels should be shown by default.
+        class_ids:
+            Optional class ID for the ellipsoids.
+
+            The class ID provides colors and labels if not specified explicitly.
+
+        """
+
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            inst.__attrs_init__(
+                half_sizes=half_sizes,
+                centers=centers,
+                rotation_axis_angles=rotation_axis_angles,
+                quaternions=quaternions,
+                colors=colors,
+                line_radii=line_radii,
+                fill_mode=fill_mode,
+                labels=labels,
+                show_labels=show_labels,
+                class_ids=class_ids,
+            )
+
+        batches = [batch for batch in inst.as_component_batches() if isinstance(batch, DescribedComponentBatch)]
+        if len(batches) == 0:
+            return []
+
+        if _lengths is None:
+            _lengths = np.ones(len(batches[0]._batch.as_arrow_array()))
+
+        columns = [batch.partition(_lengths) for batch in batches]
+
+        indicator_batch = DescribedComponentBatch(cls.indicator(), cls.indicator().component_descriptor())
+        indicator_column = indicator_batch.partition(np.zeros(len(_lengths)))  # type: ignore[arg-type]
+
+        return [indicator_column] + columns
 
     half_sizes: components.HalfSize3DBatch | None = field(
         metadata={"component": True},

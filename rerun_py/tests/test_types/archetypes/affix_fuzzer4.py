@@ -7,9 +7,13 @@ from __future__ import annotations
 
 from typing import Any
 
+import numpy as np
+import numpy.typing as npt
 from attrs import define, field
 from rerun._baseclasses import (
     Archetype,
+    ComponentColumn,
+    DescribedComponentBatch,
 )
 from rerun.error_utils import catch_and_log_exceptions
 
@@ -182,6 +186,76 @@ class AffixFuzzer4(Archetype):
             fuzz2118=[],
         )
         return inst
+
+    @classmethod
+    def columns(
+        cls,
+        *,
+        _lengths: npt.ArrayLike | None = None,
+        fuzz2101: datatypes.AffixFuzzer1ArrayLike | None = None,
+        fuzz2102: datatypes.AffixFuzzer1ArrayLike | None = None,
+        fuzz2103: datatypes.AffixFuzzer1ArrayLike | None = None,
+        fuzz2104: datatypes.AffixFuzzer1ArrayLike | None = None,
+        fuzz2105: datatypes.AffixFuzzer1ArrayLike | None = None,
+        fuzz2106: datatypes.AffixFuzzer1ArrayLike | None = None,
+        fuzz2107: components.AffixFuzzer7ArrayLike | None = None,
+        fuzz2108: components.AffixFuzzer8ArrayLike | None = None,
+        fuzz2109: components.AffixFuzzer9ArrayLike | None = None,
+        fuzz2110: components.AffixFuzzer10ArrayLike | None = None,
+        fuzz2111: components.AffixFuzzer11ArrayLike | None = None,
+        fuzz2112: components.AffixFuzzer12ArrayLike | None = None,
+        fuzz2113: components.AffixFuzzer13ArrayLike | None = None,
+        fuzz2114: datatypes.AffixFuzzer3ArrayLike | None = None,
+        fuzz2115: datatypes.AffixFuzzer3ArrayLike | None = None,
+        fuzz2116: components.AffixFuzzer16ArrayLike | None = None,
+        fuzz2117: components.AffixFuzzer17ArrayLike | None = None,
+        fuzz2118: components.AffixFuzzer18ArrayLike | None = None,
+    ) -> list[ComponentColumn]:
+        """
+        Partitions the component data into multiple sub-batches.
+
+        This makes it possible to use `rr.send_columns` to send columnar data directly into Rerun.
+
+        If specified, `_lengths` must sum to the total length of the component batch.
+        If left unspecified, it will default to unit-length batches.
+        """
+
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            inst.__attrs_init__(
+                fuzz2101=fuzz2101,
+                fuzz2102=fuzz2102,
+                fuzz2103=fuzz2103,
+                fuzz2104=fuzz2104,
+                fuzz2105=fuzz2105,
+                fuzz2106=fuzz2106,
+                fuzz2107=fuzz2107,
+                fuzz2108=fuzz2108,
+                fuzz2109=fuzz2109,
+                fuzz2110=fuzz2110,
+                fuzz2111=fuzz2111,
+                fuzz2112=fuzz2112,
+                fuzz2113=fuzz2113,
+                fuzz2114=fuzz2114,
+                fuzz2115=fuzz2115,
+                fuzz2116=fuzz2116,
+                fuzz2117=fuzz2117,
+                fuzz2118=fuzz2118,
+            )
+
+        batches = [batch for batch in inst.as_component_batches() if isinstance(batch, DescribedComponentBatch)]
+        if len(batches) == 0:
+            return []
+
+        if _lengths is None:
+            _lengths = np.ones(len(batches[0]._batch.as_arrow_array()))
+
+        columns = [batch.partition(_lengths) for batch in batches]
+
+        indicator_batch = DescribedComponentBatch(cls.indicator(), cls.indicator().component_descriptor())
+        indicator_column = indicator_batch.partition(np.zeros(len(_lengths)))  # type: ignore[arg-type]
+
+        return [indicator_column] + columns
 
     fuzz2101: components.AffixFuzzer1Batch | None = field(
         metadata={"component": True},
