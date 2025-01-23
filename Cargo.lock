@@ -5636,6 +5636,7 @@ name = "re_blueprint_tree"
 version = "0.22.0-alpha.1+dev"
 dependencies = [
  "egui",
+ "egui_kittest",
  "egui_tiles",
  "itertools 0.13.0",
  "re_chunk_store",

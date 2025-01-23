@@ -1030,7 +1030,7 @@ impl BlueprintTree {
         self.candidate_drop_parent_container_id.as_ref() == Some(container_id)
     }
 
-    fn collapse_scope(&self) -> CollapseScope {
+    pub fn collapse_scope(&self) -> CollapseScope {
         match self.filter_state.session_id() {
             None => CollapseScope::BlueprintTree,
             Some(session_id) => CollapseScope::BlueprintTreeFiltered { session_id },
