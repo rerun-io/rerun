@@ -4,7 +4,6 @@
 #pragma once
 
 #include "../collection.hpp"
-#include "../compiler_utils.hpp"
 #include "../component_batch.hpp"
 #include "../components/aggregation_policy.hpp"
 #include "../components/color.hpp"
@@ -127,15 +126,13 @@ namespace rerun::archetypes {
         /// Color for the corresponding series.
         SeriesLine with_color(const rerun::components::Color& _color) && {
             color = ComponentBatch::from_loggable(_color, Descriptor_color).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// Stroke width for the corresponding series.
         SeriesLine with_width(const rerun::components::StrokeWidth& _width) && {
             width = ComponentBatch::from_loggable(_width, Descriptor_width).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// Display name of the series.
@@ -143,8 +140,7 @@ namespace rerun::archetypes {
         /// Used in the legend.
         SeriesLine with_name(const rerun::components::Name& _name) && {
             name = ComponentBatch::from_loggable(_name, Descriptor_name).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// Configures the zoom-dependent scalar aggregation.
@@ -158,8 +154,7 @@ namespace rerun::archetypes {
             aggregation_policy =
                 ComponentBatch::from_loggable(_aggregation_policy, Descriptor_aggregation_policy)
                     .value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
     };
 

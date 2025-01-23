@@ -5,7 +5,6 @@
 
 #include "../../blueprint/components/view_fit.hpp"
 #include "../../collection.hpp"
-#include "../../compiler_utils.hpp"
 #include "../../component_batch.hpp"
 #include "../../indicator_component.hpp"
 #include "../../result.hpp"
@@ -54,8 +53,7 @@ namespace rerun::blueprint::archetypes {
         /// How the image is scaled to fit the view.
         TensorViewFit with_scaling(const rerun::blueprint::components::ViewFit& _scaling) && {
             scaling = ComponentBatch::from_loggable(_scaling, Descriptor_scaling).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
     };
 

@@ -5,7 +5,6 @@
 
 #include "../../blueprint/components/tensor_dimension_index_slider.hpp"
 #include "../../collection.hpp"
-#include "../../compiler_utils.hpp"
 #include "../../component_batch.hpp"
 #include "../../components/tensor_dimension_index_selection.hpp"
 #include "../../components/tensor_height_dimension.hpp"
@@ -95,8 +94,7 @@ namespace rerun::blueprint::archetypes {
         /// If not specified, the height will be determined automatically based on the name and index of the dimension.
         TensorSliceSelection with_width(const rerun::components::TensorWidthDimension& _width) && {
             width = ComponentBatch::from_loggable(_width, Descriptor_width).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// Which dimension to map to height.
@@ -105,8 +103,7 @@ namespace rerun::blueprint::archetypes {
         TensorSliceSelection with_height(const rerun::components::TensorHeightDimension& _height
         ) && {
             height = ComponentBatch::from_loggable(_height, Descriptor_height).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// Selected indices for all other dimensions.
@@ -116,8 +113,7 @@ namespace rerun::blueprint::archetypes {
             const Collection<rerun::components::TensorDimensionIndexSelection>& _indices
         ) && {
             indices = ComponentBatch::from_loggable(_indices, Descriptor_indices).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// Any dimension listed here will have a slider for the index.
@@ -129,8 +125,7 @@ namespace rerun::blueprint::archetypes {
             const Collection<rerun::blueprint::components::TensorDimensionIndexSlider>& _slider
         ) && {
             slider = ComponentBatch::from_loggable(_slider, Descriptor_slider).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
     };
 

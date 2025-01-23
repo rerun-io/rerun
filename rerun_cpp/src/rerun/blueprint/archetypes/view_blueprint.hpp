@@ -7,7 +7,6 @@
 #include "../../blueprint/components/view_origin.hpp"
 #include "../../blueprint/components/visible.hpp"
 #include "../../collection.hpp"
-#include "../../compiler_utils.hpp"
 #include "../../component_batch.hpp"
 #include "../../components/name.hpp"
 #include "../../indicator_component.hpp"
@@ -99,16 +98,14 @@ namespace rerun::blueprint::archetypes {
             class_identifier =
                 ComponentBatch::from_loggable(_class_identifier, Descriptor_class_identifier)
                     .value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// The name of the view.
         ViewBlueprint with_display_name(const rerun::components::Name& _display_name) && {
             display_name = ComponentBatch::from_loggable(_display_name, Descriptor_display_name)
                                .value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// The "anchor point" of this view.
@@ -123,8 +120,7 @@ namespace rerun::blueprint::archetypes {
         ) && {
             space_origin = ComponentBatch::from_loggable(_space_origin, Descriptor_space_origin)
                                .value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// Whether this view is visible.
@@ -132,8 +128,7 @@ namespace rerun::blueprint::archetypes {
         /// Defaults to true if not specified.
         ViewBlueprint with_visible(const rerun::blueprint::components::Visible& _visible) && {
             visible = ComponentBatch::from_loggable(_visible, Descriptor_visible).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
     };
 

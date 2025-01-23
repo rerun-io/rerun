@@ -3,8 +3,7 @@ namespace rerun.blueprint.archetypes;
 
 /// The query for the dataframe view.
 table DataframeQuery (
-    "attr.cpp.archetype_eager",
-    "attr.rust.archetype_eager",
+      "attr.rust.archetype_eager",
     "attr.rerun.scope": "blueprint"
 ) {
     // --- Optional ---

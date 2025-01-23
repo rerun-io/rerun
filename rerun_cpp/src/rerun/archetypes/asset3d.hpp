@@ -4,7 +4,6 @@
 #pragma once
 
 #include "../collection.hpp"
-#include "../compiler_utils.hpp"
 #include "../component_batch.hpp"
 #include "../components/albedo_factor.hpp"
 #include "../components/blob.hpp"
@@ -145,8 +144,7 @@ namespace rerun::archetypes {
         /// The asset's bytes.
         Asset3D with_blob(const rerun::components::Blob& _blob) && {
             blob = ComponentBatch::from_loggable(_blob, Descriptor_blob).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// The Media Type of the asset.
@@ -162,8 +160,7 @@ namespace rerun::archetypes {
         Asset3D with_media_type(const rerun::components::MediaType& _media_type) && {
             media_type =
                 ComponentBatch::from_loggable(_media_type, Descriptor_media_type).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// A color multiplier applied to the whole asset.
@@ -173,8 +170,7 @@ namespace rerun::archetypes {
         Asset3D with_albedo_factor(const rerun::components::AlbedoFactor& _albedo_factor) && {
             albedo_factor = ComponentBatch::from_loggable(_albedo_factor, Descriptor_albedo_factor)
                                 .value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
     };
 

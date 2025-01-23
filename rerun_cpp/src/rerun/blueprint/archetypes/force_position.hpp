@@ -6,7 +6,6 @@
 #include "../../blueprint/components/enabled.hpp"
 #include "../../blueprint/components/force_strength.hpp"
 #include "../../collection.hpp"
-#include "../../compiler_utils.hpp"
 #include "../../component_batch.hpp"
 #include "../../components/position2d.hpp"
 #include "../../indicator_component.hpp"
@@ -76,8 +75,7 @@ namespace rerun::blueprint::archetypes {
         /// The position force pulls nodes towards a specific position, similar to gravity.
         ForcePosition with_enabled(const rerun::blueprint::components::Enabled& _enabled) && {
             enabled = ComponentBatch::from_loggable(_enabled, Descriptor_enabled).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// The strength of the force.
@@ -85,16 +83,14 @@ namespace rerun::blueprint::archetypes {
         ) && {
             strength =
                 ComponentBatch::from_loggable(_strength, Descriptor_strength).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// The position where the nodes should be pulled towards.
         ForcePosition with_position(const rerun::components::Position2D& _position) && {
             position =
                 ComponentBatch::from_loggable(_position, Descriptor_position).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
     };
 

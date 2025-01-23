@@ -4,7 +4,6 @@
 #pragma once
 
 #include "../collection.hpp"
-#include "../compiler_utils.hpp"
 #include "../component_batch.hpp"
 #include "../components/class_id.hpp"
 #include "../components/color.hpp"
@@ -183,29 +182,25 @@ namespace rerun::archetypes {
         Boxes2D with_half_sizes(const Collection<rerun::components::HalfSize2D>& _half_sizes) && {
             half_sizes =
                 ComponentBatch::from_loggable(_half_sizes, Descriptor_half_sizes).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// Optional center positions of the boxes.
         Boxes2D with_centers(const Collection<rerun::components::Position2D>& _centers) && {
             centers = ComponentBatch::from_loggable(_centers, Descriptor_centers).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// Optional colors for the boxes.
         Boxes2D with_colors(const Collection<rerun::components::Color>& _colors) && {
             colors = ComponentBatch::from_loggable(_colors, Descriptor_colors).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// Optional radii for the lines that make up the boxes.
         Boxes2D with_radii(const Collection<rerun::components::Radius>& _radii) && {
             radii = ComponentBatch::from_loggable(_radii, Descriptor_radii).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// Optional text labels for the boxes.
@@ -214,16 +209,14 @@ namespace rerun::archetypes {
         /// Otherwise, each instance will have its own label.
         Boxes2D with_labels(const Collection<rerun::components::Text>& _labels) && {
             labels = ComponentBatch::from_loggable(_labels, Descriptor_labels).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// Optional choice of whether the text labels should be shown by default.
         Boxes2D with_show_labels(const rerun::components::ShowLabels& _show_labels) && {
             show_labels = ComponentBatch::from_loggable(_show_labels, Descriptor_show_labels)
                               .value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// An optional floating point value that specifies the 2D drawing order.
@@ -234,8 +227,7 @@ namespace rerun::archetypes {
         Boxes2D with_draw_order(const rerun::components::DrawOrder& _draw_order) && {
             draw_order =
                 ComponentBatch::from_loggable(_draw_order, Descriptor_draw_order).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// Optional `components::ClassId`s for the boxes.
@@ -244,8 +236,7 @@ namespace rerun::archetypes {
         Boxes2D with_class_ids(const Collection<rerun::components::ClassId>& _class_ids) && {
             class_ids =
                 ComponentBatch::from_loggable(_class_ids, Descriptor_class_ids).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
     };
 

@@ -25,7 +25,6 @@
 #include <cstdint>
 #include <optional>
 #include <rerun/collection.hpp>
-#include <rerun/compiler_utils.hpp>
 #include <rerun/component_batch.hpp>
 #include <rerun/indicator_component.hpp>
 #include <rerun/result.hpp>
@@ -34,41 +33,41 @@
 
 namespace rerun::archetypes {
     struct AffixFuzzer4 {
-        std::optional<Collection<rerun::components::AffixFuzzer1>> fuzz2101;
+        std::optional<ComponentBatch> fuzz2101;
 
-        std::optional<Collection<rerun::components::AffixFuzzer2>> fuzz2102;
+        std::optional<ComponentBatch> fuzz2102;
 
-        std::optional<Collection<rerun::components::AffixFuzzer3>> fuzz2103;
+        std::optional<ComponentBatch> fuzz2103;
 
-        std::optional<Collection<rerun::components::AffixFuzzer4>> fuzz2104;
+        std::optional<ComponentBatch> fuzz2104;
 
-        std::optional<Collection<rerun::components::AffixFuzzer5>> fuzz2105;
+        std::optional<ComponentBatch> fuzz2105;
 
-        std::optional<Collection<rerun::components::AffixFuzzer6>> fuzz2106;
+        std::optional<ComponentBatch> fuzz2106;
 
-        std::optional<Collection<rerun::components::AffixFuzzer7>> fuzz2107;
+        std::optional<ComponentBatch> fuzz2107;
 
-        std::optional<Collection<rerun::components::AffixFuzzer8>> fuzz2108;
+        std::optional<ComponentBatch> fuzz2108;
 
-        std::optional<Collection<rerun::components::AffixFuzzer9>> fuzz2109;
+        std::optional<ComponentBatch> fuzz2109;
 
-        std::optional<Collection<rerun::components::AffixFuzzer10>> fuzz2110;
+        std::optional<ComponentBatch> fuzz2110;
 
-        std::optional<Collection<rerun::components::AffixFuzzer11>> fuzz2111;
+        std::optional<ComponentBatch> fuzz2111;
 
-        std::optional<Collection<rerun::components::AffixFuzzer12>> fuzz2112;
+        std::optional<ComponentBatch> fuzz2112;
 
-        std::optional<Collection<rerun::components::AffixFuzzer13>> fuzz2113;
+        std::optional<ComponentBatch> fuzz2113;
 
-        std::optional<Collection<rerun::components::AffixFuzzer14>> fuzz2114;
+        std::optional<ComponentBatch> fuzz2114;
 
-        std::optional<Collection<rerun::components::AffixFuzzer15>> fuzz2115;
+        std::optional<ComponentBatch> fuzz2115;
 
-        std::optional<Collection<rerun::components::AffixFuzzer16>> fuzz2116;
+        std::optional<ComponentBatch> fuzz2116;
 
-        std::optional<Collection<rerun::components::AffixFuzzer17>> fuzz2117;
+        std::optional<ComponentBatch> fuzz2117;
 
-        std::optional<Collection<rerun::components::AffixFuzzer18>> fuzz2118;
+        std::optional<ComponentBatch> fuzz2118;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -79,6 +78,97 @@ namespace rerun::archetypes {
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.testing.archetypes.AffixFuzzer4";
 
+        /// `ComponentDescriptor` for the `fuzz2101` field.
+        static constexpr auto Descriptor_fuzz2101 = ComponentDescriptor(
+            ArchetypeName, "fuzz2101",
+            Loggable<rerun::components::AffixFuzzer1>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `fuzz2102` field.
+        static constexpr auto Descriptor_fuzz2102 = ComponentDescriptor(
+            ArchetypeName, "fuzz2102",
+            Loggable<rerun::components::AffixFuzzer2>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `fuzz2103` field.
+        static constexpr auto Descriptor_fuzz2103 = ComponentDescriptor(
+            ArchetypeName, "fuzz2103",
+            Loggable<rerun::components::AffixFuzzer3>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `fuzz2104` field.
+        static constexpr auto Descriptor_fuzz2104 = ComponentDescriptor(
+            ArchetypeName, "fuzz2104",
+            Loggable<rerun::components::AffixFuzzer4>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `fuzz2105` field.
+        static constexpr auto Descriptor_fuzz2105 = ComponentDescriptor(
+            ArchetypeName, "fuzz2105",
+            Loggable<rerun::components::AffixFuzzer5>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `fuzz2106` field.
+        static constexpr auto Descriptor_fuzz2106 = ComponentDescriptor(
+            ArchetypeName, "fuzz2106",
+            Loggable<rerun::components::AffixFuzzer6>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `fuzz2107` field.
+        static constexpr auto Descriptor_fuzz2107 = ComponentDescriptor(
+            ArchetypeName, "fuzz2107",
+            Loggable<rerun::components::AffixFuzzer7>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `fuzz2108` field.
+        static constexpr auto Descriptor_fuzz2108 = ComponentDescriptor(
+            ArchetypeName, "fuzz2108",
+            Loggable<rerun::components::AffixFuzzer8>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `fuzz2109` field.
+        static constexpr auto Descriptor_fuzz2109 = ComponentDescriptor(
+            ArchetypeName, "fuzz2109",
+            Loggable<rerun::components::AffixFuzzer9>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `fuzz2110` field.
+        static constexpr auto Descriptor_fuzz2110 = ComponentDescriptor(
+            ArchetypeName, "fuzz2110",
+            Loggable<rerun::components::AffixFuzzer10>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `fuzz2111` field.
+        static constexpr auto Descriptor_fuzz2111 = ComponentDescriptor(
+            ArchetypeName, "fuzz2111",
+            Loggable<rerun::components::AffixFuzzer11>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `fuzz2112` field.
+        static constexpr auto Descriptor_fuzz2112 = ComponentDescriptor(
+            ArchetypeName, "fuzz2112",
+            Loggable<rerun::components::AffixFuzzer12>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `fuzz2113` field.
+        static constexpr auto Descriptor_fuzz2113 = ComponentDescriptor(
+            ArchetypeName, "fuzz2113",
+            Loggable<rerun::components::AffixFuzzer13>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `fuzz2114` field.
+        static constexpr auto Descriptor_fuzz2114 = ComponentDescriptor(
+            ArchetypeName, "fuzz2114",
+            Loggable<rerun::components::AffixFuzzer14>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `fuzz2115` field.
+        static constexpr auto Descriptor_fuzz2115 = ComponentDescriptor(
+            ArchetypeName, "fuzz2115",
+            Loggable<rerun::components::AffixFuzzer15>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `fuzz2116` field.
+        static constexpr auto Descriptor_fuzz2116 = ComponentDescriptor(
+            ArchetypeName, "fuzz2116",
+            Loggable<rerun::components::AffixFuzzer16>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `fuzz2117` field.
+        static constexpr auto Descriptor_fuzz2117 = ComponentDescriptor(
+            ArchetypeName, "fuzz2117",
+            Loggable<rerun::components::AffixFuzzer17>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `fuzz2118` field.
+        static constexpr auto Descriptor_fuzz2118 = ComponentDescriptor(
+            ArchetypeName, "fuzz2118",
+            Loggable<rerun::components::AffixFuzzer18>::Descriptor.component_name
+        );
+
       public:
         AffixFuzzer4() = default;
         AffixFuzzer4(AffixFuzzer4&& other) = default;
@@ -86,112 +176,138 @@ namespace rerun::archetypes {
         AffixFuzzer4& operator=(const AffixFuzzer4& other) = default;
         AffixFuzzer4& operator=(AffixFuzzer4&& other) = default;
 
-        AffixFuzzer4 with_fuzz2101(Collection<rerun::components::AffixFuzzer1> _fuzz2101) && {
-            fuzz2101 = std::move(_fuzz2101);
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        /// Update only some specific fields of a `AffixFuzzer4`.
+        static AffixFuzzer4 update_fields() {
+            return AffixFuzzer4();
         }
 
-        AffixFuzzer4 with_fuzz2102(Collection<rerun::components::AffixFuzzer2> _fuzz2102) && {
-            fuzz2102 = std::move(_fuzz2102);
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        /// Clear all the fields of a `AffixFuzzer4`.
+        static AffixFuzzer4 clear_fields();
+
+        AffixFuzzer4 with_fuzz2101(const Collection<rerun::components::AffixFuzzer1>& _fuzz2101
+        ) && {
+            fuzz2101 =
+                ComponentBatch::from_loggable(_fuzz2101, Descriptor_fuzz2101).value_or_throw();
+            return std::move(*this);
         }
 
-        AffixFuzzer4 with_fuzz2103(Collection<rerun::components::AffixFuzzer3> _fuzz2103) && {
-            fuzz2103 = std::move(_fuzz2103);
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        AffixFuzzer4 with_fuzz2102(const Collection<rerun::components::AffixFuzzer2>& _fuzz2102
+        ) && {
+            fuzz2102 =
+                ComponentBatch::from_loggable(_fuzz2102, Descriptor_fuzz2102).value_or_throw();
+            return std::move(*this);
         }
 
-        AffixFuzzer4 with_fuzz2104(Collection<rerun::components::AffixFuzzer4> _fuzz2104) && {
-            fuzz2104 = std::move(_fuzz2104);
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        AffixFuzzer4 with_fuzz2103(const Collection<rerun::components::AffixFuzzer3>& _fuzz2103
+        ) && {
+            fuzz2103 =
+                ComponentBatch::from_loggable(_fuzz2103, Descriptor_fuzz2103).value_or_throw();
+            return std::move(*this);
         }
 
-        AffixFuzzer4 with_fuzz2105(Collection<rerun::components::AffixFuzzer5> _fuzz2105) && {
-            fuzz2105 = std::move(_fuzz2105);
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        AffixFuzzer4 with_fuzz2104(const Collection<rerun::components::AffixFuzzer4>& _fuzz2104
+        ) && {
+            fuzz2104 =
+                ComponentBatch::from_loggable(_fuzz2104, Descriptor_fuzz2104).value_or_throw();
+            return std::move(*this);
         }
 
-        AffixFuzzer4 with_fuzz2106(Collection<rerun::components::AffixFuzzer6> _fuzz2106) && {
-            fuzz2106 = std::move(_fuzz2106);
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        AffixFuzzer4 with_fuzz2105(const Collection<rerun::components::AffixFuzzer5>& _fuzz2105
+        ) && {
+            fuzz2105 =
+                ComponentBatch::from_loggable(_fuzz2105, Descriptor_fuzz2105).value_or_throw();
+            return std::move(*this);
         }
 
-        AffixFuzzer4 with_fuzz2107(Collection<rerun::components::AffixFuzzer7> _fuzz2107) && {
-            fuzz2107 = std::move(_fuzz2107);
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        AffixFuzzer4 with_fuzz2106(const Collection<rerun::components::AffixFuzzer6>& _fuzz2106
+        ) && {
+            fuzz2106 =
+                ComponentBatch::from_loggable(_fuzz2106, Descriptor_fuzz2106).value_or_throw();
+            return std::move(*this);
         }
 
-        AffixFuzzer4 with_fuzz2108(Collection<rerun::components::AffixFuzzer8> _fuzz2108) && {
-            fuzz2108 = std::move(_fuzz2108);
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        AffixFuzzer4 with_fuzz2107(const Collection<rerun::components::AffixFuzzer7>& _fuzz2107
+        ) && {
+            fuzz2107 =
+                ComponentBatch::from_loggable(_fuzz2107, Descriptor_fuzz2107).value_or_throw();
+            return std::move(*this);
         }
 
-        AffixFuzzer4 with_fuzz2109(Collection<rerun::components::AffixFuzzer9> _fuzz2109) && {
-            fuzz2109 = std::move(_fuzz2109);
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        AffixFuzzer4 with_fuzz2108(const Collection<rerun::components::AffixFuzzer8>& _fuzz2108
+        ) && {
+            fuzz2108 =
+                ComponentBatch::from_loggable(_fuzz2108, Descriptor_fuzz2108).value_or_throw();
+            return std::move(*this);
         }
 
-        AffixFuzzer4 with_fuzz2110(Collection<rerun::components::AffixFuzzer10> _fuzz2110) && {
-            fuzz2110 = std::move(_fuzz2110);
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        AffixFuzzer4 with_fuzz2109(const Collection<rerun::components::AffixFuzzer9>& _fuzz2109
+        ) && {
+            fuzz2109 =
+                ComponentBatch::from_loggable(_fuzz2109, Descriptor_fuzz2109).value_or_throw();
+            return std::move(*this);
         }
 
-        AffixFuzzer4 with_fuzz2111(Collection<rerun::components::AffixFuzzer11> _fuzz2111) && {
-            fuzz2111 = std::move(_fuzz2111);
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        AffixFuzzer4 with_fuzz2110(const Collection<rerun::components::AffixFuzzer10>& _fuzz2110
+        ) && {
+            fuzz2110 =
+                ComponentBatch::from_loggable(_fuzz2110, Descriptor_fuzz2110).value_or_throw();
+            return std::move(*this);
         }
 
-        AffixFuzzer4 with_fuzz2112(Collection<rerun::components::AffixFuzzer12> _fuzz2112) && {
-            fuzz2112 = std::move(_fuzz2112);
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        AffixFuzzer4 with_fuzz2111(const Collection<rerun::components::AffixFuzzer11>& _fuzz2111
+        ) && {
+            fuzz2111 =
+                ComponentBatch::from_loggable(_fuzz2111, Descriptor_fuzz2111).value_or_throw();
+            return std::move(*this);
         }
 
-        AffixFuzzer4 with_fuzz2113(Collection<rerun::components::AffixFuzzer13> _fuzz2113) && {
-            fuzz2113 = std::move(_fuzz2113);
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        AffixFuzzer4 with_fuzz2112(const Collection<rerun::components::AffixFuzzer12>& _fuzz2112
+        ) && {
+            fuzz2112 =
+                ComponentBatch::from_loggable(_fuzz2112, Descriptor_fuzz2112).value_or_throw();
+            return std::move(*this);
         }
 
-        AffixFuzzer4 with_fuzz2114(Collection<rerun::components::AffixFuzzer14> _fuzz2114) && {
-            fuzz2114 = std::move(_fuzz2114);
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        AffixFuzzer4 with_fuzz2113(const Collection<rerun::components::AffixFuzzer13>& _fuzz2113
+        ) && {
+            fuzz2113 =
+                ComponentBatch::from_loggable(_fuzz2113, Descriptor_fuzz2113).value_or_throw();
+            return std::move(*this);
         }
 
-        AffixFuzzer4 with_fuzz2115(Collection<rerun::components::AffixFuzzer15> _fuzz2115) && {
-            fuzz2115 = std::move(_fuzz2115);
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        AffixFuzzer4 with_fuzz2114(const Collection<rerun::components::AffixFuzzer14>& _fuzz2114
+        ) && {
+            fuzz2114 =
+                ComponentBatch::from_loggable(_fuzz2114, Descriptor_fuzz2114).value_or_throw();
+            return std::move(*this);
         }
 
-        AffixFuzzer4 with_fuzz2116(Collection<rerun::components::AffixFuzzer16> _fuzz2116) && {
-            fuzz2116 = std::move(_fuzz2116);
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        AffixFuzzer4 with_fuzz2115(const Collection<rerun::components::AffixFuzzer15>& _fuzz2115
+        ) && {
+            fuzz2115 =
+                ComponentBatch::from_loggable(_fuzz2115, Descriptor_fuzz2115).value_or_throw();
+            return std::move(*this);
         }
 
-        AffixFuzzer4 with_fuzz2117(Collection<rerun::components::AffixFuzzer17> _fuzz2117) && {
-            fuzz2117 = std::move(_fuzz2117);
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        AffixFuzzer4 with_fuzz2116(const Collection<rerun::components::AffixFuzzer16>& _fuzz2116
+        ) && {
+            fuzz2116 =
+                ComponentBatch::from_loggable(_fuzz2116, Descriptor_fuzz2116).value_or_throw();
+            return std::move(*this);
         }
 
-        AffixFuzzer4 with_fuzz2118(Collection<rerun::components::AffixFuzzer18> _fuzz2118) && {
-            fuzz2118 = std::move(_fuzz2118);
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        AffixFuzzer4 with_fuzz2117(const Collection<rerun::components::AffixFuzzer17>& _fuzz2117
+        ) && {
+            fuzz2117 =
+                ComponentBatch::from_loggable(_fuzz2117, Descriptor_fuzz2117).value_or_throw();
+            return std::move(*this);
+        }
+
+        AffixFuzzer4 with_fuzz2118(const Collection<rerun::components::AffixFuzzer18>& _fuzz2118
+        ) && {
+            fuzz2118 =
+                ComponentBatch::from_loggable(_fuzz2118, Descriptor_fuzz2118).value_or_throw();
+            return std::move(*this);
         }
     };
 

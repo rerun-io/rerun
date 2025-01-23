@@ -4,7 +4,6 @@
 #pragma once
 
 #include "../collection.hpp"
-#include "../compiler_utils.hpp"
 #include "../component_batch.hpp"
 #include "../components/clear_is_recursive.hpp"
 #include "../indicator_component.hpp"
@@ -132,8 +131,7 @@ namespace rerun::archetypes {
         Clear with_is_recursive(const rerun::components::ClearIsRecursive& _is_recursive) && {
             is_recursive = ComponentBatch::from_loggable(_is_recursive, Descriptor_is_recursive)
                                .value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
     };
 

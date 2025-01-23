@@ -4,7 +4,6 @@
 #pragma once
 
 #include "../../collection.hpp"
-#include "../../compiler_utils.hpp"
 #include "../../component_batch.hpp"
 #include "../../components/colormap.hpp"
 #include "../../components/gamma_correction.hpp"
@@ -86,16 +85,14 @@ namespace rerun::blueprint::archetypes {
         ) && {
             mag_filter =
                 ComponentBatch::from_loggable(_mag_filter, Descriptor_mag_filter).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// How scalar values map to colors.
         TensorScalarMapping with_colormap(const rerun::components::Colormap& _colormap) && {
             colormap =
                 ComponentBatch::from_loggable(_colormap, Descriptor_colormap).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// Gamma exponent applied to normalized values before mapping to color.
@@ -107,8 +104,7 @@ namespace rerun::blueprint::archetypes {
         /// `colormap( ((value - data_display_range.min) / (data_display_range.max - data_display_range.min)) ** gamma )`
         TensorScalarMapping with_gamma(const rerun::components::GammaCorrection& _gamma) && {
             gamma = ComponentBatch::from_loggable(_gamma, Descriptor_gamma).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
     };
 

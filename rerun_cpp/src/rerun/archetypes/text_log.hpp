@@ -4,7 +4,6 @@
 #pragma once
 
 #include "../collection.hpp"
-#include "../compiler_utils.hpp"
 #include "../component_batch.hpp"
 #include "../components/color.hpp"
 #include "../components/text.hpp"
@@ -134,8 +133,7 @@ namespace rerun::archetypes {
         /// The body of the message.
         TextLog with_text(const rerun::components::Text& _text) && {
             text = ComponentBatch::from_loggable(_text, Descriptor_text).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// The verbosity level of the message.
@@ -143,15 +141,13 @@ namespace rerun::archetypes {
         /// This can be used to filter the log messages in the Rerun Viewer.
         TextLog with_level(const rerun::components::TextLogLevel& _level) && {
             level = ComponentBatch::from_loggable(_level, Descriptor_level).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// Optional color to use for the log line in the Rerun Viewer.
         TextLog with_color(const rerun::components::Color& _color) && {
             color = ComponentBatch::from_loggable(_color, Descriptor_color).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
     };
 

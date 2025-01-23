@@ -9,7 +9,6 @@
 #include "../../blueprint/components/view_maximized.hpp"
 #include "../../blueprint/components/viewer_recommendation_hash.hpp"
 #include "../../collection.hpp"
-#include "../../compiler_utils.hpp"
 #include "../../component_batch.hpp"
 #include "../../indicator_component.hpp"
 #include "../../result.hpp"
@@ -108,8 +107,7 @@ namespace rerun::blueprint::archetypes {
             root_container =
                 ComponentBatch::from_loggable(_root_container, Descriptor_root_container)
                     .value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// Show one tab as maximized?
@@ -118,8 +116,7 @@ namespace rerun::blueprint::archetypes {
         ) && {
             maximized =
                 ComponentBatch::from_loggable(_maximized, Descriptor_maximized).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// Whether the viewport layout is determined automatically.
@@ -131,8 +128,7 @@ namespace rerun::blueprint::archetypes {
         ) && {
             auto_layout = ComponentBatch::from_loggable(_auto_layout, Descriptor_auto_layout)
                               .value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// Whether or not views should be created automatically.
@@ -144,8 +140,7 @@ namespace rerun::blueprint::archetypes {
         ) && {
             auto_views =
                 ComponentBatch::from_loggable(_auto_views, Descriptor_auto_views).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// Hashes of all recommended views the viewer has already added and that should not be added again.
@@ -163,8 +158,7 @@ namespace rerun::blueprint::archetypes {
                                               Descriptor_past_viewer_recommendations
             )
                                               .value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
     };
 

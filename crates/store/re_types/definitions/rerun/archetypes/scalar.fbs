@@ -16,7 +16,6 @@ namespace rerun.archetypes;
 /// \example archetypes/scalar_multiple_plots !api title="Multiple time series plots" image="https://static.rerun.io/scalar_multiple/15845c2a348f875248fbd694e03eabd922741c4c/1200w.png"
 /// \example archetypes/scalar_send_columns title="Multiple scalars in a single `send_columns` call" image="https://static.rerun.io/scalar_send_columns/b4bf172256f521f4851dfec5c2c6e3143f5d6923/1200w.png"
 table Scalar (
-  "attr.cpp.archetype_eager",
   "attr.rust.archetype_eager",
   "attr.rust.derive": "PartialEq",
   "attr.docs.category": "Plotting",

@@ -11,9 +11,3 @@ attribute "attr.cpp.no_default_ctor";
 /// Changes the name of a field in the generated C++ code.
 /// This can be used to avoid name clashes with C++ keywords or methods.
 attribute "attr.cpp.rename_field";
-
-/// The generated C++ object should be eagerly serialized, i.e. only comprised of Arrow arrays.
-///
-/// Applies only to archetypes. No-op otherwise.
-// TODO(#7245): This should be always enabled.
-attribute "attr.cpp.archetype_eager";

@@ -4,7 +4,6 @@
 #pragma once
 
 #include "../collection.hpp"
-#include "../compiler_utils.hpp"
 #include "../component_batch.hpp"
 #include "../components/graph_edge.hpp"
 #include "../components/graph_type.hpp"
@@ -95,8 +94,7 @@ namespace rerun::archetypes {
         /// A list of node tuples.
         GraphEdges with_edges(const Collection<rerun::components::GraphEdge>& _edges) && {
             edges = ComponentBatch::from_loggable(_edges, Descriptor_edges).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// Specifies if the graph is directed or undirected.
@@ -105,8 +103,7 @@ namespace rerun::archetypes {
         GraphEdges with_graph_type(const rerun::components::GraphType& _graph_type) && {
             graph_type =
                 ComponentBatch::from_loggable(_graph_type, Descriptor_graph_type).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
     };
 

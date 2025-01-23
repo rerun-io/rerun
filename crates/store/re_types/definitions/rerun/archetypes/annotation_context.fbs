@@ -16,7 +16,6 @@ namespace rerun.archetypes;
 /// \example archetypes/annotation_context_connections !api title="Connections" image="https://static.rerun.io/annotation_context_connections/4a8422bc154699c5334f574ff01b55c5cd1748e3/1200w.png"
 table AnnotationContext (
   // TODO(#7245): "attr.rust.archetype_eager",
-  "attr.cpp.archetype_eager",
   "attr.rust.derive": "Eq, PartialEq",
   "attr.docs.view_types": "Spatial2DView, Spatial3DView"
 ) {

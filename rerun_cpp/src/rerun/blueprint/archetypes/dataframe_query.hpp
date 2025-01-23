@@ -9,7 +9,6 @@
 #include "../../blueprint/components/selected_columns.hpp"
 #include "../../blueprint/components/timeline_name.hpp"
 #include "../../collection.hpp"
-#include "../../compiler_utils.hpp"
 #include "../../component_batch.hpp"
 #include "../../indicator_component.hpp"
 #include "../../result.hpp"
@@ -98,8 +97,7 @@ namespace rerun::blueprint::archetypes {
         ) && {
             timeline =
                 ComponentBatch::from_loggable(_timeline, Descriptor_timeline).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// If provided, only rows whose timestamp is within this range will be shown.
@@ -111,8 +109,7 @@ namespace rerun::blueprint::archetypes {
             filter_by_range =
                 ComponentBatch::from_loggable(_filter_by_range, Descriptor_filter_by_range)
                     .value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// If provided, only show rows which contains a logged event for the specified component.
@@ -122,8 +119,7 @@ namespace rerun::blueprint::archetypes {
             filter_is_not_null =
                 ComponentBatch::from_loggable(_filter_is_not_null, Descriptor_filter_is_not_null)
                     .value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// Should empty cells be filled with latest-at queries?
@@ -133,16 +129,14 @@ namespace rerun::blueprint::archetypes {
             apply_latest_at =
                 ComponentBatch::from_loggable(_apply_latest_at, Descriptor_apply_latest_at)
                     .value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// Selected columns. If unset, all columns are selected.
         DataframeQuery with_select(const rerun::blueprint::components::SelectedColumns& _select
         ) && {
             select = ComponentBatch::from_loggable(_select, Descriptor_select).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
     };
 

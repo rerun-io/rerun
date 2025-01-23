@@ -11,7 +11,6 @@
 #include "../../blueprint/components/row_share.hpp"
 #include "../../blueprint/components/visible.hpp"
 #include "../../collection.hpp"
-#include "../../compiler_utils.hpp"
 #include "../../component_batch.hpp"
 #include "../../components/name.hpp"
 #include "../../indicator_component.hpp"
@@ -144,16 +143,14 @@ namespace rerun::blueprint::archetypes {
             container_kind =
                 ComponentBatch::from_loggable(_container_kind, Descriptor_container_kind)
                     .value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// The name of the container.
         ContainerBlueprint with_display_name(const rerun::components::Name& _display_name) && {
             display_name = ComponentBatch::from_loggable(_display_name, Descriptor_display_name)
                                .value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// `ContainerId`s or `ViewId`s that are children of this container.
@@ -162,8 +159,7 @@ namespace rerun::blueprint::archetypes {
         ) && {
             contents =
                 ComponentBatch::from_loggable(_contents, Descriptor_contents).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// The layout shares of each column in the container.
@@ -176,8 +172,7 @@ namespace rerun::blueprint::archetypes {
         ) && {
             col_shares =
                 ComponentBatch::from_loggable(_col_shares, Descriptor_col_shares).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// The layout shares of each row of the container.
@@ -190,8 +185,7 @@ namespace rerun::blueprint::archetypes {
         ) && {
             row_shares =
                 ComponentBatch::from_loggable(_row_shares, Descriptor_row_shares).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// Which tab is active.
@@ -202,8 +196,7 @@ namespace rerun::blueprint::archetypes {
         ) && {
             active_tab =
                 ComponentBatch::from_loggable(_active_tab, Descriptor_active_tab).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// Whether this container is visible.
@@ -211,8 +204,7 @@ namespace rerun::blueprint::archetypes {
         /// Defaults to true if not specified.
         ContainerBlueprint with_visible(const rerun::blueprint::components::Visible& _visible) && {
             visible = ComponentBatch::from_loggable(_visible, Descriptor_visible).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// How many columns this grid should have.
@@ -225,8 +217,7 @@ namespace rerun::blueprint::archetypes {
         ) && {
             grid_columns = ComponentBatch::from_loggable(_grid_columns, Descriptor_grid_columns)
                                .value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
     };
 

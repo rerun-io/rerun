@@ -8,7 +8,6 @@ namespace rerun.archetypes;
 ///
 /// \example archetypes/text_document title="Markdown text document" image="https://static.rerun.io/textdocument/babda19558ee32ed8d730495b595aee7a5e2c174/1200w.png"
 table TextDocument (
-  "attr.cpp.archetype_eager",
   "attr.rust.archetype_eager",
   "attr.rust.derive": "PartialEq",
   "attr.docs.category": "Text",

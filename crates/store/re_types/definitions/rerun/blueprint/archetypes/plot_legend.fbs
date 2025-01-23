@@ -5,8 +5,7 @@ namespace rerun.blueprint.archetypes;
 
 /// Configuration for the legend of a plot.
 table PlotLegend (
-    "attr.cpp.archetype_eager",
-    "attr.rust.archetype_eager",
+      "attr.rust.archetype_eager",
     "attr.rerun.scope": "blueprint",
     "attr.rust.derive": "Default",
     "attr.python.aliases": "blueprint_components.Corner2D"

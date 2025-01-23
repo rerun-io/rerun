@@ -5,7 +5,66 @@
 
 #include <rerun/collection_adapter_builtins.hpp>
 
-namespace rerun::archetypes {}
+namespace rerun::archetypes {
+    AffixFuzzer4 AffixFuzzer4::clear_fields() {
+        auto archetype = AffixFuzzer4();
+        archetype.fuzz2101 =
+            ComponentBatch::empty<rerun::components::AffixFuzzer1>(Descriptor_fuzz2101)
+                .value_or_throw();
+        archetype.fuzz2102 =
+            ComponentBatch::empty<rerun::components::AffixFuzzer2>(Descriptor_fuzz2102)
+                .value_or_throw();
+        archetype.fuzz2103 =
+            ComponentBatch::empty<rerun::components::AffixFuzzer3>(Descriptor_fuzz2103)
+                .value_or_throw();
+        archetype.fuzz2104 =
+            ComponentBatch::empty<rerun::components::AffixFuzzer4>(Descriptor_fuzz2104)
+                .value_or_throw();
+        archetype.fuzz2105 =
+            ComponentBatch::empty<rerun::components::AffixFuzzer5>(Descriptor_fuzz2105)
+                .value_or_throw();
+        archetype.fuzz2106 =
+            ComponentBatch::empty<rerun::components::AffixFuzzer6>(Descriptor_fuzz2106)
+                .value_or_throw();
+        archetype.fuzz2107 =
+            ComponentBatch::empty<rerun::components::AffixFuzzer7>(Descriptor_fuzz2107)
+                .value_or_throw();
+        archetype.fuzz2108 =
+            ComponentBatch::empty<rerun::components::AffixFuzzer8>(Descriptor_fuzz2108)
+                .value_or_throw();
+        archetype.fuzz2109 =
+            ComponentBatch::empty<rerun::components::AffixFuzzer9>(Descriptor_fuzz2109)
+                .value_or_throw();
+        archetype.fuzz2110 =
+            ComponentBatch::empty<rerun::components::AffixFuzzer10>(Descriptor_fuzz2110)
+                .value_or_throw();
+        archetype.fuzz2111 =
+            ComponentBatch::empty<rerun::components::AffixFuzzer11>(Descriptor_fuzz2111)
+                .value_or_throw();
+        archetype.fuzz2112 =
+            ComponentBatch::empty<rerun::components::AffixFuzzer12>(Descriptor_fuzz2112)
+                .value_or_throw();
+        archetype.fuzz2113 =
+            ComponentBatch::empty<rerun::components::AffixFuzzer13>(Descriptor_fuzz2113)
+                .value_or_throw();
+        archetype.fuzz2114 =
+            ComponentBatch::empty<rerun::components::AffixFuzzer14>(Descriptor_fuzz2114)
+                .value_or_throw();
+        archetype.fuzz2115 =
+            ComponentBatch::empty<rerun::components::AffixFuzzer15>(Descriptor_fuzz2115)
+                .value_or_throw();
+        archetype.fuzz2116 =
+            ComponentBatch::empty<rerun::components::AffixFuzzer16>(Descriptor_fuzz2116)
+                .value_or_throw();
+        archetype.fuzz2117 =
+            ComponentBatch::empty<rerun::components::AffixFuzzer17>(Descriptor_fuzz2117)
+                .value_or_throw();
+        archetype.fuzz2118 =
+            ComponentBatch::empty<rerun::components::AffixFuzzer18>(Descriptor_fuzz2118)
+                .value_or_throw();
+        return archetype;
+    }
+} // namespace rerun::archetypes
 
 namespace rerun {
 
@@ -17,220 +76,58 @@ namespace rerun {
         cells.reserve(19);
 
         if (archetype.fuzz2101.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.fuzz2101.value(),
-                ComponentDescriptor(
-                    "rerun.testing.archetypes.AffixFuzzer4",
-                    "fuzz2101",
-                    "rerun.testing.components.AffixFuzzer1"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.fuzz2101.value());
         }
         if (archetype.fuzz2102.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.fuzz2102.value(),
-                ComponentDescriptor(
-                    "rerun.testing.archetypes.AffixFuzzer4",
-                    "fuzz2102",
-                    "rerun.testing.components.AffixFuzzer2"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.fuzz2102.value());
         }
         if (archetype.fuzz2103.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.fuzz2103.value(),
-                ComponentDescriptor(
-                    "rerun.testing.archetypes.AffixFuzzer4",
-                    "fuzz2103",
-                    "rerun.testing.components.AffixFuzzer3"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.fuzz2103.value());
         }
         if (archetype.fuzz2104.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.fuzz2104.value(),
-                ComponentDescriptor(
-                    "rerun.testing.archetypes.AffixFuzzer4",
-                    "fuzz2104",
-                    "rerun.testing.components.AffixFuzzer4"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.fuzz2104.value());
         }
         if (archetype.fuzz2105.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.fuzz2105.value(),
-                ComponentDescriptor(
-                    "rerun.testing.archetypes.AffixFuzzer4",
-                    "fuzz2105",
-                    "rerun.testing.components.AffixFuzzer5"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.fuzz2105.value());
         }
         if (archetype.fuzz2106.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.fuzz2106.value(),
-                ComponentDescriptor(
-                    "rerun.testing.archetypes.AffixFuzzer4",
-                    "fuzz2106",
-                    "rerun.testing.components.AffixFuzzer6"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.fuzz2106.value());
         }
         if (archetype.fuzz2107.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.fuzz2107.value(),
-                ComponentDescriptor(
-                    "rerun.testing.archetypes.AffixFuzzer4",
-                    "fuzz2107",
-                    "rerun.testing.components.AffixFuzzer7"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.fuzz2107.value());
         }
         if (archetype.fuzz2108.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.fuzz2108.value(),
-                ComponentDescriptor(
-                    "rerun.testing.archetypes.AffixFuzzer4",
-                    "fuzz2108",
-                    "rerun.testing.components.AffixFuzzer8"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.fuzz2108.value());
         }
         if (archetype.fuzz2109.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.fuzz2109.value(),
-                ComponentDescriptor(
-                    "rerun.testing.archetypes.AffixFuzzer4",
-                    "fuzz2109",
-                    "rerun.testing.components.AffixFuzzer9"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.fuzz2109.value());
         }
         if (archetype.fuzz2110.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.fuzz2110.value(),
-                ComponentDescriptor(
-                    "rerun.testing.archetypes.AffixFuzzer4",
-                    "fuzz2110",
-                    "rerun.testing.components.AffixFuzzer10"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.fuzz2110.value());
         }
         if (archetype.fuzz2111.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.fuzz2111.value(),
-                ComponentDescriptor(
-                    "rerun.testing.archetypes.AffixFuzzer4",
-                    "fuzz2111",
-                    "rerun.testing.components.AffixFuzzer11"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.fuzz2111.value());
         }
         if (archetype.fuzz2112.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.fuzz2112.value(),
-                ComponentDescriptor(
-                    "rerun.testing.archetypes.AffixFuzzer4",
-                    "fuzz2112",
-                    "rerun.testing.components.AffixFuzzer12"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.fuzz2112.value());
         }
         if (archetype.fuzz2113.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.fuzz2113.value(),
-                ComponentDescriptor(
-                    "rerun.testing.archetypes.AffixFuzzer4",
-                    "fuzz2113",
-                    "rerun.testing.components.AffixFuzzer13"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.fuzz2113.value());
         }
         if (archetype.fuzz2114.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.fuzz2114.value(),
-                ComponentDescriptor(
-                    "rerun.testing.archetypes.AffixFuzzer4",
-                    "fuzz2114",
-                    "rerun.testing.components.AffixFuzzer14"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.fuzz2114.value());
         }
         if (archetype.fuzz2115.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.fuzz2115.value(),
-                ComponentDescriptor(
-                    "rerun.testing.archetypes.AffixFuzzer4",
-                    "fuzz2115",
-                    "rerun.testing.components.AffixFuzzer15"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.fuzz2115.value());
         }
         if (archetype.fuzz2116.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.fuzz2116.value(),
-                ComponentDescriptor(
-                    "rerun.testing.archetypes.AffixFuzzer4",
-                    "fuzz2116",
-                    "rerun.testing.components.AffixFuzzer16"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.fuzz2116.value());
         }
         if (archetype.fuzz2117.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.fuzz2117.value(),
-                ComponentDescriptor(
-                    "rerun.testing.archetypes.AffixFuzzer4",
-                    "fuzz2117",
-                    "rerun.testing.components.AffixFuzzer17"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.fuzz2117.value());
         }
         if (archetype.fuzz2118.has_value()) {
-            auto result = ComponentBatch::from_loggable(
-                archetype.fuzz2118.value(),
-                ComponentDescriptor(
-                    "rerun.testing.archetypes.AffixFuzzer4",
-                    "fuzz2118",
-                    "rerun.testing.components.AffixFuzzer18"
-                )
-            );
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
+            cells.push_back(archetype.fuzz2118.value());
         }
         {
             auto indicator = AffixFuzzer4::IndicatorComponent();

@@ -7,7 +7,6 @@
 #include "../../blueprint/components/force_distance.hpp"
 #include "../../blueprint/components/force_iterations.hpp"
 #include "../../collection.hpp"
-#include "../../compiler_utils.hpp"
 #include "../../component_batch.hpp"
 #include "../../indicator_component.hpp"
 #include "../../result.hpp"
@@ -78,16 +77,14 @@ namespace rerun::blueprint::archetypes {
         /// The link force aims to achieve a target distance between two nodes that are connected by one ore more edges.
         ForceLink with_enabled(const rerun::blueprint::components::Enabled& _enabled) && {
             enabled = ComponentBatch::from_loggable(_enabled, Descriptor_enabled).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// The target distance between two nodes.
         ForceLink with_distance(const rerun::blueprint::components::ForceDistance& _distance) && {
             distance =
                 ComponentBatch::from_loggable(_distance, Descriptor_distance).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
 
         /// Specifies how often this force should be applied per iteration.
@@ -97,8 +94,7 @@ namespace rerun::blueprint::archetypes {
         ) && {
             iterations =
                 ComponentBatch::from_loggable(_iterations, Descriptor_iterations).value_or_throw();
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            return std::move(*this);
         }
     };
 

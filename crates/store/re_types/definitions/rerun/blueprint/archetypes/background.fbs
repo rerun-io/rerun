@@ -3,8 +3,7 @@ namespace rerun.blueprint.archetypes;
 
 /// Configuration for the background of a view.
 table Background (
-    "attr.cpp.archetype_eager",
-    "attr.rust.archetype_eager",
+      "attr.rust.archetype_eager",
     "attr.python.aliases": "datatypes.Rgba32Like, blueprint_components.BackgroundKindLike",
     "attr.rerun.scope": "blueprint"
 ) {
