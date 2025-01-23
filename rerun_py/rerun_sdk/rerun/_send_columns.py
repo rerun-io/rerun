@@ -116,6 +116,7 @@ class TimeNanosColumn(TimeColumnLike):
 
 TArchetype = TypeVar("TArchetype", bound=Archetype)
 
+
 @catch_and_log_exceptions()
 def send_columns(
     entity_path: str,
