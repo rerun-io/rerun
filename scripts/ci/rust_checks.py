@@ -186,7 +186,7 @@ def cargo_deny(results: list[Result]) -> None:
     # Note: running just `cargo deny check` without a `--target` can result in
     # false positives due to https://github.com/EmbarkStudios/cargo-deny/issues/324
     # Installing is quite quick if it's already installed.
-    results.append(run_cargo("install", "--locked cargo-deny@0.16"))
+    results.append(run_cargo("install", "--locked cargo-deny"))
     results.append(run_cargo("deny", "--all-features --log-level error --target aarch64-apple-darwin check"))
     results.append(run_cargo("deny", "--all-features --log-level error --target i686-pc-windows-gnu check"))
     results.append(run_cargo("deny", "--all-features --log-level error --target i686-pc-windows-msvc check"))
