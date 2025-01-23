@@ -340,6 +340,20 @@ impl AssetVideo {
         Ok(columns.into_iter().chain([indicator_column]).flatten())
     }
 
+    /// Helper to partition the component data into unit-length sub-batches.
+    ///
+    /// This is semantically similar to calling [`Self::columns`] with `std::iter::take(1).repeat(n)`,
+    /// where `n` is automatically guessed.
+    #[inline]
+    pub fn columns_of_unit_batches(
+        self,
+    ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
+        let len_blob = self.blob.as_ref().map(|b| b.array.len());
+        let len_media_type = self.media_type.as_ref().map(|b| b.array.len());
+        let len = None.or(len_blob).or(len_media_type).unwrap_or(0);
+        self.columns(std::iter::repeat(1).take(len))
+    }
+
     /// The asset's bytes.
     #[inline]
     pub fn with_blob(mut self, blob: impl Into<crate::components::Blob>) -> Self {
