@@ -46,7 +46,6 @@ use re_types::{
     archetypes,
     blueprint::components::BackgroundKind,
     components::{self, Color, ImageFormat, MediaType, Resolution},
-    static_assert_struct_has_fields,
 };
 use re_viewport_blueprint::{ViewProperty, ViewPropertyQueryError};
 
@@ -64,7 +63,7 @@ fn resolution_of_image_at(
     entity_path: &re_log_types::EntityPath,
 ) -> Option<Resolution> {
     // First check assumptions:
-    static_assert_struct_has_fields!(archetypes::Image, format: components::ImageFormat);
+    debug_assert_archetype_has_components!(archetypes::Image, format: components::ImageFormat);
     debug_assert_archetype_has_components!(archetypes::EncodedImage, blob: components::Blob);
 
     let db = ctx.recording();

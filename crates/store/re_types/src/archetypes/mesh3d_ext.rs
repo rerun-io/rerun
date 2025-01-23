@@ -1,7 +1,8 @@
+use arrow::{array, datatypes::UInt32Type};
+
 use crate::{
     archetypes,
-    components::{self, TriangleIndices},
-    datatypes::UVec3D,
+    components::{self},
 };
 
 use super::Mesh3D;
@@ -22,11 +23,24 @@ pub enum Mesh3DError {
 }
 
 impl Mesh3D {
+    /// Iterates over all individual indices.
+    fn iter_indices(&self) -> Option<array::PrimitiveIter<'_, UInt32Type>> {
+        self.triangle_indices
+            .as_ref()
+            .map(|indices| array::as_primitive_array::<UInt32Type>(&indices.array).iter())
+    }
+
     /// Use this image as the albedo texture.
-    pub fn with_albedo_texture_image(self, image: impl Into<archetypes::Image>) -> Self {
+    pub fn with_albedo_texture_image(mut self, image: impl Into<archetypes::Image>) -> Self {
         let image = image.into();
-        self.with_albedo_texture_format(image.format)
-            .with_albedo_texture_buffer(image.buffer)
+
+        self.albedo_texture_format = image
+            .format
+            .map(|batch| batch.with_descriptor_override(Self::descriptor_albedo_texture_format()));
+        self.albedo_texture_buffer = image
+            .buffer
+            .map(|batch| batch.with_descriptor_override(Self::descriptor_albedo_texture_buffer()));
+        self
     }
 
     /// Use this image as the albedo texture.
@@ -41,41 +55,34 @@ impl Mesh3D {
 
     /// Check that this is a valid mesh, e.g. that the vertex indices are within bounds
     /// and that we have the same number of positions and normals (if any).
+    ///
+    /// Only use this when logging a whole new mesh. Not meaningful for field updates!
     pub fn sanity_check(&self) -> Result<(), Mesh3DError> {
         let num_vertices = self.num_vertices();
 
-        if let Some(indices) = self.triangle_indices.as_ref() {
-            for &TriangleIndices(UVec3D([x, y, z])) in indices {
-                if num_vertices <= x as usize {
+        if let Some(indices) = self.iter_indices() {
+            // TODO: test this again
+            for index in indices {
+                let Some(index) = index else {
+                    // TODO: check with Clement or Emil how to cast this so we don't have to deal with this.
+                    continue;
+                };
+                if num_vertices <= index as usize {
                     return Err(Mesh3DError::IndexOutOfBounds {
-                        index: x,
-                        num_vertices,
-                    });
-                }
-                if num_vertices <= y as usize {
-                    return Err(Mesh3DError::IndexOutOfBounds {
-                        index: y,
-                        num_vertices,
-                    });
-                }
-                if num_vertices <= z as usize {
-                    return Err(Mesh3DError::IndexOutOfBounds {
-                        index: z,
+                        index,
                         num_vertices,
                     });
                 }
             }
-        } else if self.vertex_positions.len() % 9 != 0 {
-            return Err(Mesh3DError::PositionsAreNotTriangles(
-                self.vertex_positions.len(),
-            ));
+        } else if num_vertices % 9 != 0 {
+            return Err(Mesh3DError::PositionsAreNotTriangles(num_vertices));
         }
 
         if let Some(normals) = &self.vertex_normals {
-            if normals.len() != self.vertex_positions.len() {
+            if normals.array.len() != num_vertices {
                 return Err(Mesh3DError::MismatchedPositionsNormals(
-                    self.vertex_positions.len(),
-                    normals.len(),
+                    num_vertices,
+                    normals.array.len(),
                 ));
             }
         }
@@ -86,14 +93,16 @@ impl Mesh3D {
     /// The total number of vertices.
     #[inline]
     pub fn num_vertices(&self) -> usize {
-        self.vertex_positions.len()
+        self.vertex_positions
+            .as_ref()
+            .map_or(0, |positions| positions.array.len())
     }
 
     /// The total number of triangles.
     #[inline]
     pub fn num_triangles(&self) -> usize {
-        if let Some(indices) = self.triangle_indices.as_ref() {
-            indices.len()
+        if let Some(triangle_indices) = self.triangle_indices.as_ref() {
+            triangle_indices.array.len()
         } else {
             self.num_vertices() / 3
         }

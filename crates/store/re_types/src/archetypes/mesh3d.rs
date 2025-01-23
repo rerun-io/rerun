@@ -106,27 +106,27 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/mesh3d_leaf_transforms3d/c2d0ee033129da53168f5705625a9b033f3a3d61/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub struct Mesh3D {
     /// The positions of each vertex.
     ///
     /// If no `triangle_indices` are specified, then each triplet of positions is interpreted as a triangle.
-    pub vertex_positions: Vec<crate::components::Position3D>,
+    pub vertex_positions: Option<SerializedComponentBatch>,
 
     /// Optional indices for the triangles that make up the mesh.
-    pub triangle_indices: Option<Vec<crate::components::TriangleIndices>>,
+    pub triangle_indices: Option<SerializedComponentBatch>,
 
     /// An optional normal for each vertex.
-    pub vertex_normals: Option<Vec<crate::components::Vector3D>>,
+    pub vertex_normals: Option<SerializedComponentBatch>,
 
     /// An optional color for each vertex.
-    pub vertex_colors: Option<Vec<crate::components::Color>>,
+    pub vertex_colors: Option<SerializedComponentBatch>,
 
     /// An optional uv texture coordinate for each vertex.
-    pub vertex_texcoords: Option<Vec<crate::components::Texcoord2D>>,
+    pub vertex_texcoords: Option<SerializedComponentBatch>,
 
     /// A color multiplier applied to the whole mesh.
-    pub albedo_factor: Option<crate::components::AlbedoFactor>,
+    pub albedo_factor: Option<SerializedComponentBatch>,
 
     /// Optional albedo texture.
     ///
@@ -134,15 +134,15 @@ pub struct Mesh3D {
     ///
     /// Currently supports only sRGB(A) textures, ignoring alpha.
     /// (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
-    pub albedo_texture_buffer: Option<crate::components::ImageBuffer>,
+    pub albedo_texture_buffer: Option<SerializedComponentBatch>,
 
     /// The format of the `albedo_texture_buffer`, if any.
-    pub albedo_texture_format: Option<crate::components::ImageFormat>,
+    pub albedo_texture_format: Option<SerializedComponentBatch>,
 
     /// Optional class Ids for the vertices.
     ///
     /// The [`components::ClassId`][crate::components::ClassId] provides colors and labels if not specified explicitly.
-    pub class_ids: Option<Vec<crate::components::ClassId>>,
+    pub class_ids: Option<SerializedComponentBatch>,
 }
 
 impl Mesh3D {
@@ -341,112 +341,57 @@ impl ::re_types_core::Archetype for Mesh3D {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
         let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
-        let vertex_positions = {
-            let array = arrays_by_descr
-                .get(&Self::descriptor_vertex_positions())
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.Mesh3D#vertex_positions")?;
-            <crate::components::Position3D>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Mesh3D#vertex_positions")?
-                .into_iter()
-                .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                .collect::<DeserializationResult<Vec<_>>>()
-                .with_context("rerun.archetypes.Mesh3D#vertex_positions")?
-        };
-        let triangle_indices =
-            if let Some(array) = arrays_by_descr.get(&Self::descriptor_triangle_indices()) {
-                Some({
-                    <crate::components::TriangleIndices>::from_arrow_opt(&**array)
-                        .with_context("rerun.archetypes.Mesh3D#triangle_indices")?
-                        .into_iter()
-                        .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                        .collect::<DeserializationResult<Vec<_>>>()
-                        .with_context("rerun.archetypes.Mesh3D#triangle_indices")?
-                })
-            } else {
-                None
-            };
-        let vertex_normals =
-            if let Some(array) = arrays_by_descr.get(&Self::descriptor_vertex_normals()) {
-                Some({
-                    <crate::components::Vector3D>::from_arrow_opt(&**array)
-                        .with_context("rerun.archetypes.Mesh3D#vertex_normals")?
-                        .into_iter()
-                        .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                        .collect::<DeserializationResult<Vec<_>>>()
-                        .with_context("rerun.archetypes.Mesh3D#vertex_normals")?
-                })
-            } else {
-                None
-            };
-        let vertex_colors =
-            if let Some(array) = arrays_by_descr.get(&Self::descriptor_vertex_colors()) {
-                Some({
-                    <crate::components::Color>::from_arrow_opt(&**array)
-                        .with_context("rerun.archetypes.Mesh3D#vertex_colors")?
-                        .into_iter()
-                        .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                        .collect::<DeserializationResult<Vec<_>>>()
-                        .with_context("rerun.archetypes.Mesh3D#vertex_colors")?
-                })
-            } else {
-                None
-            };
-        let vertex_texcoords =
-            if let Some(array) = arrays_by_descr.get(&Self::descriptor_vertex_texcoords()) {
-                Some({
-                    <crate::components::Texcoord2D>::from_arrow_opt(&**array)
-                        .with_context("rerun.archetypes.Mesh3D#vertex_texcoords")?
-                        .into_iter()
-                        .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                        .collect::<DeserializationResult<Vec<_>>>()
-                        .with_context("rerun.archetypes.Mesh3D#vertex_texcoords")?
-                })
-            } else {
-                None
-            };
-        let albedo_factor =
-            if let Some(array) = arrays_by_descr.get(&Self::descriptor_albedo_factor()) {
-                <crate::components::AlbedoFactor>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Mesh3D#albedo_factor")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-            } else {
-                None
-            };
-        let albedo_texture_buffer =
-            if let Some(array) = arrays_by_descr.get(&Self::descriptor_albedo_texture_buffer()) {
-                <crate::components::ImageBuffer>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Mesh3D#albedo_texture_buffer")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-            } else {
-                None
-            };
-        let albedo_texture_format =
-            if let Some(array) = arrays_by_descr.get(&Self::descriptor_albedo_texture_format()) {
-                <crate::components::ImageFormat>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Mesh3D#albedo_texture_format")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-            } else {
-                None
-            };
-        let class_ids = if let Some(array) = arrays_by_descr.get(&Self::descriptor_class_ids()) {
-            Some({
-                <crate::components::ClassId>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Mesh3D#class_ids")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                    .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.Mesh3D#class_ids")?
-            })
-        } else {
-            None
-        };
+        let vertex_positions = arrays_by_descr
+            .get(&Self::descriptor_vertex_positions())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_vertex_positions())
+            });
+        let triangle_indices = arrays_by_descr
+            .get(&Self::descriptor_triangle_indices())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_triangle_indices())
+            });
+        let vertex_normals = arrays_by_descr
+            .get(&Self::descriptor_vertex_normals())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_vertex_normals())
+            });
+        let vertex_colors = arrays_by_descr
+            .get(&Self::descriptor_vertex_colors())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_vertex_colors())
+            });
+        let vertex_texcoords = arrays_by_descr
+            .get(&Self::descriptor_vertex_texcoords())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_vertex_texcoords())
+            });
+        let albedo_factor = arrays_by_descr
+            .get(&Self::descriptor_albedo_factor())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_albedo_factor())
+            });
+        let albedo_texture_buffer = arrays_by_descr
+            .get(&Self::descriptor_albedo_texture_buffer())
+            .map(|array| {
+                SerializedComponentBatch::new(
+                    array.clone(),
+                    Self::descriptor_albedo_texture_buffer(),
+                )
+            });
+        let albedo_texture_format = arrays_by_descr
+            .get(&Self::descriptor_albedo_texture_format())
+            .map(|array| {
+                SerializedComponentBatch::new(
+                    array.clone(),
+                    Self::descriptor_albedo_texture_format(),
+                )
+            });
+        let class_ids = arrays_by_descr
+            .get(&Self::descriptor_class_ids())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_class_ids())
+            });
         Ok(Self {
             vertex_positions,
             triangle_indices,
@@ -462,81 +407,20 @@ impl ::re_types_core::Archetype for Mesh3D {
 }
 
 impl ::re_types_core::AsComponents for Mesh3D {
-    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
-        re_tracing::profile_function!();
+    #[inline]
+    fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
-            (Some(&self.vertex_positions as &dyn ComponentBatch)).map(|batch| {
-                ::re_types_core::ComponentBatchCowWithDescriptor {
-                    batch: batch.into(),
-                    descriptor_override: Some(Self::descriptor_vertex_positions()),
-                }
-            }),
-            (self
-                .triangle_indices
-                .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_triangle_indices()),
-            }),
-            (self
-                .vertex_normals
-                .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_vertex_normals()),
-            }),
-            (self
-                .vertex_colors
-                .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_vertex_colors()),
-            }),
-            (self
-                .vertex_texcoords
-                .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_vertex_texcoords()),
-            }),
-            (self
-                .albedo_factor
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_albedo_factor()),
-            }),
-            (self
-                .albedo_texture_buffer
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_albedo_texture_buffer()),
-            }),
-            (self
-                .albedo_texture_format
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_albedo_texture_format()),
-            }),
-            (self
-                .class_ids
-                .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_class_ids()),
-            }),
+            Self::indicator().serialized(),
+            self.vertex_positions.clone(),
+            self.triangle_indices.clone(),
+            self.vertex_normals.clone(),
+            self.vertex_colors.clone(),
+            self.vertex_texcoords.clone(),
+            self.albedo_factor.clone(),
+            self.albedo_texture_buffer.clone(),
+            self.albedo_texture_format.clone(),
+            self.class_ids.clone(),
         ]
         .into_iter()
         .flatten()
@@ -553,7 +437,10 @@ impl Mesh3D {
         vertex_positions: impl IntoIterator<Item = impl Into<crate::components::Position3D>>,
     ) -> Self {
         Self {
-            vertex_positions: vertex_positions.into_iter().map(Into::into).collect(),
+            vertex_positions: try_serialize_field(
+                Self::descriptor_vertex_positions(),
+                vertex_positions,
+            ),
             triangle_indices: None,
             vertex_normals: None,
             vertex_colors: None,
@@ -565,13 +452,160 @@ impl Mesh3D {
         }
     }
 
+    /// Update only some specific fields of a `Mesh3D`.
+    #[inline]
+    pub fn update_fields() -> Self {
+        Self::default()
+    }
+
+    /// Clear all the fields of a `Mesh3D`.
+    #[inline]
+    pub fn clear_fields() -> Self {
+        use ::re_types_core::Loggable as _;
+        Self {
+            vertex_positions: Some(SerializedComponentBatch::new(
+                crate::components::Position3D::arrow_empty(),
+                Self::descriptor_vertex_positions(),
+            )),
+            triangle_indices: Some(SerializedComponentBatch::new(
+                crate::components::TriangleIndices::arrow_empty(),
+                Self::descriptor_triangle_indices(),
+            )),
+            vertex_normals: Some(SerializedComponentBatch::new(
+                crate::components::Vector3D::arrow_empty(),
+                Self::descriptor_vertex_normals(),
+            )),
+            vertex_colors: Some(SerializedComponentBatch::new(
+                crate::components::Color::arrow_empty(),
+                Self::descriptor_vertex_colors(),
+            )),
+            vertex_texcoords: Some(SerializedComponentBatch::new(
+                crate::components::Texcoord2D::arrow_empty(),
+                Self::descriptor_vertex_texcoords(),
+            )),
+            albedo_factor: Some(SerializedComponentBatch::new(
+                crate::components::AlbedoFactor::arrow_empty(),
+                Self::descriptor_albedo_factor(),
+            )),
+            albedo_texture_buffer: Some(SerializedComponentBatch::new(
+                crate::components::ImageBuffer::arrow_empty(),
+                Self::descriptor_albedo_texture_buffer(),
+            )),
+            albedo_texture_format: Some(SerializedComponentBatch::new(
+                crate::components::ImageFormat::arrow_empty(),
+                Self::descriptor_albedo_texture_format(),
+            )),
+            class_ids: Some(SerializedComponentBatch::new(
+                crate::components::ClassId::arrow_empty(),
+                Self::descriptor_class_ids(),
+            )),
+        }
+    }
+
+    /// Partitions the component data into multiple sub-batches.
+    ///
+    /// Specifically, this transforms the existing [`SerializedComponentBatch`]es data into [`SerializedComponentColumn`]s
+    /// instead, via [`SerializedComponentBatch::partitioned`].
+    ///
+    /// This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
+    ///
+    /// The specified `lengths` must sum to the total length of the component batch.
+    ///
+    /// [`SerializedComponentColumn`]: [::re_types_core::SerializedComponentColumn]
+    #[inline]
+    pub fn columns<I>(
+        self,
+        _lengths: I,
+    ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>>
+    where
+        I: IntoIterator<Item = usize> + Clone,
+    {
+        let columns = [
+            self.vertex_positions
+                .map(|vertex_positions| vertex_positions.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.triangle_indices
+                .map(|triangle_indices| triangle_indices.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.vertex_normals
+                .map(|vertex_normals| vertex_normals.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.vertex_colors
+                .map(|vertex_colors| vertex_colors.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.vertex_texcoords
+                .map(|vertex_texcoords| vertex_texcoords.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.albedo_factor
+                .map(|albedo_factor| albedo_factor.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.albedo_texture_buffer
+                .map(|albedo_texture_buffer| albedo_texture_buffer.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.albedo_texture_format
+                .map(|albedo_texture_format| albedo_texture_format.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.class_ids
+                .map(|class_ids| class_ids.partitioned(_lengths.clone()))
+                .transpose()?,
+        ];
+        let indicator_column =
+            ::re_types_core::indicator_column::<Self>(_lengths.into_iter().count())?;
+        Ok(columns.into_iter().chain([indicator_column]).flatten())
+    }
+
+    /// Helper to partition the component data into unit-length sub-batches.
+    ///
+    /// This is semantically similar to calling [`Self::columns`] with `std::iter::take(1).repeat(n)`,
+    /// where `n` is automatically guessed.
+    #[inline]
+    pub fn columns_of_unit_batches(
+        self,
+    ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
+        let len_vertex_positions = self.vertex_positions.as_ref().map(|b| b.array.len());
+        let len_triangle_indices = self.triangle_indices.as_ref().map(|b| b.array.len());
+        let len_vertex_normals = self.vertex_normals.as_ref().map(|b| b.array.len());
+        let len_vertex_colors = self.vertex_colors.as_ref().map(|b| b.array.len());
+        let len_vertex_texcoords = self.vertex_texcoords.as_ref().map(|b| b.array.len());
+        let len_albedo_factor = self.albedo_factor.as_ref().map(|b| b.array.len());
+        let len_albedo_texture_buffer = self.albedo_texture_buffer.as_ref().map(|b| b.array.len());
+        let len_albedo_texture_format = self.albedo_texture_format.as_ref().map(|b| b.array.len());
+        let len_class_ids = self.class_ids.as_ref().map(|b| b.array.len());
+        let len = None
+            .or(len_vertex_positions)
+            .or(len_triangle_indices)
+            .or(len_vertex_normals)
+            .or(len_vertex_colors)
+            .or(len_vertex_texcoords)
+            .or(len_albedo_factor)
+            .or(len_albedo_texture_buffer)
+            .or(len_albedo_texture_format)
+            .or(len_class_ids)
+            .unwrap_or(0);
+        self.columns(std::iter::repeat(1).take(len))
+    }
+
+    /// The positions of each vertex.
+    ///
+    /// If no `triangle_indices` are specified, then each triplet of positions is interpreted as a triangle.
+    #[inline]
+    pub fn with_vertex_positions(
+        mut self,
+        vertex_positions: impl IntoIterator<Item = impl Into<crate::components::Position3D>>,
+    ) -> Self {
+        self.vertex_positions =
+            try_serialize_field(Self::descriptor_vertex_positions(), vertex_positions);
+        self
+    }
+
     /// Optional indices for the triangles that make up the mesh.
     #[inline]
     pub fn with_triangle_indices(
         mut self,
         triangle_indices: impl IntoIterator<Item = impl Into<crate::components::TriangleIndices>>,
     ) -> Self {
-        self.triangle_indices = Some(triangle_indices.into_iter().map(Into::into).collect());
+        self.triangle_indices =
+            try_serialize_field(Self::descriptor_triangle_indices(), triangle_indices);
         self
     }
 
@@ -581,7 +615,8 @@ impl Mesh3D {
         mut self,
         vertex_normals: impl IntoIterator<Item = impl Into<crate::components::Vector3D>>,
     ) -> Self {
-        self.vertex_normals = Some(vertex_normals.into_iter().map(Into::into).collect());
+        self.vertex_normals =
+            try_serialize_field(Self::descriptor_vertex_normals(), vertex_normals);
         self
     }
 
@@ -591,7 +626,7 @@ impl Mesh3D {
         mut self,
         vertex_colors: impl IntoIterator<Item = impl Into<crate::components::Color>>,
     ) -> Self {
-        self.vertex_colors = Some(vertex_colors.into_iter().map(Into::into).collect());
+        self.vertex_colors = try_serialize_field(Self::descriptor_vertex_colors(), vertex_colors);
         self
     }
 
@@ -601,7 +636,8 @@ impl Mesh3D {
         mut self,
         vertex_texcoords: impl IntoIterator<Item = impl Into<crate::components::Texcoord2D>>,
     ) -> Self {
-        self.vertex_texcoords = Some(vertex_texcoords.into_iter().map(Into::into).collect());
+        self.vertex_texcoords =
+            try_serialize_field(Self::descriptor_vertex_texcoords(), vertex_texcoords);
         self
     }
 
@@ -611,7 +647,20 @@ impl Mesh3D {
         mut self,
         albedo_factor: impl Into<crate::components::AlbedoFactor>,
     ) -> Self {
-        self.albedo_factor = Some(albedo_factor.into());
+        self.albedo_factor = try_serialize_field(Self::descriptor_albedo_factor(), [albedo_factor]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::AlbedoFactor`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_albedo_factor`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_albedo_factor(
+        mut self,
+        albedo_factor: impl IntoIterator<Item = impl Into<crate::components::AlbedoFactor>>,
+    ) -> Self {
+        self.albedo_factor = try_serialize_field(Self::descriptor_albedo_factor(), albedo_factor);
         self
     }
 
@@ -626,7 +675,26 @@ impl Mesh3D {
         mut self,
         albedo_texture_buffer: impl Into<crate::components::ImageBuffer>,
     ) -> Self {
-        self.albedo_texture_buffer = Some(albedo_texture_buffer.into());
+        self.albedo_texture_buffer = try_serialize_field(
+            Self::descriptor_albedo_texture_buffer(),
+            [albedo_texture_buffer],
+        );
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::ImageBuffer`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_albedo_texture_buffer`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_albedo_texture_buffer(
+        mut self,
+        albedo_texture_buffer: impl IntoIterator<Item = impl Into<crate::components::ImageBuffer>>,
+    ) -> Self {
+        self.albedo_texture_buffer = try_serialize_field(
+            Self::descriptor_albedo_texture_buffer(),
+            albedo_texture_buffer,
+        );
         self
     }
 
@@ -636,7 +704,26 @@ impl Mesh3D {
         mut self,
         albedo_texture_format: impl Into<crate::components::ImageFormat>,
     ) -> Self {
-        self.albedo_texture_format = Some(albedo_texture_format.into());
+        self.albedo_texture_format = try_serialize_field(
+            Self::descriptor_albedo_texture_format(),
+            [albedo_texture_format],
+        );
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::ImageFormat`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_albedo_texture_format`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_albedo_texture_format(
+        mut self,
+        albedo_texture_format: impl IntoIterator<Item = impl Into<crate::components::ImageFormat>>,
+    ) -> Self {
+        self.albedo_texture_format = try_serialize_field(
+            Self::descriptor_albedo_texture_format(),
+            albedo_texture_format,
+        );
         self
     }
 
@@ -648,7 +735,7 @@ impl Mesh3D {
         mut self,
         class_ids: impl IntoIterator<Item = impl Into<crate::components::ClassId>>,
     ) -> Self {
-        self.class_ids = Some(class_ids.into_iter().map(Into::into).collect());
+        self.class_ids = try_serialize_field(Self::descriptor_class_ids(), class_ids);
         self
     }
 }
@@ -665,18 +752,5 @@ impl ::re_byte_size::SizeBytes for Mesh3D {
             + self.albedo_texture_buffer.heap_size_bytes()
             + self.albedo_texture_format.heap_size_bytes()
             + self.class_ids.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <Vec<crate::components::Position3D>>::is_pod()
-            && <Option<Vec<crate::components::TriangleIndices>>>::is_pod()
-            && <Option<Vec<crate::components::Vector3D>>>::is_pod()
-            && <Option<Vec<crate::components::Color>>>::is_pod()
-            && <Option<Vec<crate::components::Texcoord2D>>>::is_pod()
-            && <Option<crate::components::AlbedoFactor>>::is_pod()
-            && <Option<crate::components::ImageBuffer>>::is_pod()
-            && <Option<crate::components::ImageFormat>>::is_pod()
-            && <Option<Vec<crate::components::ClassId>>>::is_pod()
     }
 }

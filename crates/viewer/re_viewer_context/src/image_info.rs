@@ -399,11 +399,14 @@ mod tests {
         elements: &[T],
     ) -> ImageInfo {
         assert_eq!(elements.len(), 2 * 2);
-        let image = re_types::archetypes::Image::from_elements(elements, [2, 2], color_model);
         ImageInfo {
             buffer_row_id: RowId::ZERO, // unused
-            buffer: image.buffer.0,
-            format: image.format.0,
+            buffer: re_types::datatypes::Blob(bytemuck::cast_slice::<_, u8>(elements).into()),
+            format: re_types::datatypes::ImageFormat::from_color_model(
+                [2, 2],
+                color_model,
+                T::CHANNEL_TYPE,
+            ),
             kind: re_types::image::ImageKind::Color,
         }
     }
