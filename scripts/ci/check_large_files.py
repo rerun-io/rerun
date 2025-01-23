@@ -7,7 +7,7 @@ import subprocess
 FILES_ALLOWED_TO_BE_LARGE = {
     "CHANGELOG.md",
     "Cargo.lock",
-    "crates/build/re_types_builder/src/codegen/cpp/mod.rs",  # TODO(andreas, #7245): This file should really be split up. Might get shorter after removing non-eager serialization path.
+    "crates/build/re_types_builder/src/codegen/cpp/mod.rs",  # TODO(andreas): This file should really be split up.
     "crates/build/re_types_builder/src/reflection.rs",
     "crates/store/re_dataframe/src/query.rs",
     "crates/store/re_types/src/datatypes/tensor_buffer.rs",
