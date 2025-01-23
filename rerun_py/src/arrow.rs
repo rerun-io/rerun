@@ -18,7 +18,7 @@ use pyo3::{
 };
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
-use re_chunk::{Chunk, ChunkError, ChunkId, PendingRow, RowId, TimeColumn, TransportChunk};
+use re_chunk::{Chunk, ChunkError, ChunkId, PendingRow, RowId, TimeColumn};
 use re_log_types::TimePoint;
 use re_sdk::{external::nohash_hasher::IntMap, ComponentDescriptor, EntityPath, Timeline};
 
@@ -54,23 +54,9 @@ pub fn descriptor_to_rust(component_descr: &Bound<'_, PyAny>) -> PyResult<Compon
 /// Perform conversion between a pyarrow array to arrow types.
 ///
 /// `name` is the name of the Rerun component, and the name of the pyarrow `Field` (column name).
-pub fn array_to_rust(
-    arrow_array: &Bound<'_, PyAny>,
-    component_descr: &ComponentDescriptor,
-) -> PyResult<(ArrowArrayRef, ArrowField)> {
+pub fn array_to_rust(arrow_array: &Bound<'_, PyAny>) -> PyResult<ArrowArrayRef> {
     let py_array: PyArrowType<ArrowArrayData> = arrow_array.extract()?;
-    let array = make_array(py_array.0);
-
-    let datatype = array.data_type();
-    let metadata = TransportChunk::field_metadata_component_descriptor(component_descr);
-    let field = ArrowField::new(
-        component_descr.component_name.to_string(),
-        datatype.clone(),
-        true,
-    )
-    .with_metadata(metadata);
-
-    Ok((array, field))
+    Ok(make_array(py_array.0))
 }
 
 /// Build a [`PendingRow`] given a '**kwargs'-style dictionary of component arrays.
@@ -85,8 +71,7 @@ pub fn build_row_from_components(
     let mut components = IntMap::default();
     for (component_descr, array) in components_per_descr {
         let component_descr = descriptor_to_rust(&component_descr)?;
-        let (list_array, _field) = array_to_rust(&array, &component_descr)?;
-
+        let list_array = array_to_rust(&array)?;
         components.insert(component_descr, list_array);
     }
 
@@ -107,36 +92,39 @@ pub fn build_chunk_from_components(
     let chunk_id = ChunkId::new();
 
     // Extract the timeline data
-    let (arrays, fields): (Vec<ArrowArrayRef>, Vec<ArrowField>) = itertools::process_results(
-        timelines.iter().map(|(name, array)| {
-            let py_name = name.downcast::<PyString>()?;
-            let name: std::borrow::Cow<'_, str> = py_name.extract()?;
-            array_to_rust(&array, &ComponentDescriptor::new(name.to_string()))
-        }),
-        |iter| iter.unzip(),
-    )?;
+    let (arrays, timeline_descrs): (Vec<ArrowArrayRef>, Vec<ComponentDescriptor>) =
+        itertools::process_results(
+            timelines.iter().map(|(name, array)| {
+                let py_name = name.downcast::<PyString>()?;
+                let name: std::borrow::Cow<'_, str> = py_name.extract()?;
+                let timeline_descr = ComponentDescriptor::new(name.to_string());
+                array_to_rust(&array).map(|array| (array, timeline_descr))
+            }),
+            |iter| iter.unzip(),
+        )?;
 
     let timelines: Result<Vec<_>, ChunkError> = arrays
         .into_iter()
-        .zip(fields)
-        .map(|(array, field)| {
+        .zip(timeline_descrs)
+        .map(|(array, timeline_descr)| {
+            let timeline_name = timeline_descr.component_name;
+            let timeline = match array.data_type() {
+                arrow::datatypes::DataType::Int64 => {
+                    Ok(Timeline::new_sequence(timeline_name.to_string()))
+                }
+                arrow::datatypes::DataType::Timestamp(_, _) => {
+                    Ok(Timeline::new_temporal(timeline_name.to_string()))
+                }
+                _ => Err(ChunkError::Malformed {
+                    reason: format!("Invalid data_type for timeline: {timeline_name}"),
+                }),
+            }?;
             let timeline_data =
                 TimeColumn::read_array(&ArrowArrayRef::from(array)).map_err(|err| {
                     ChunkError::Malformed {
-                        reason: format!("Invalid timeline {}: {err}", field.name()),
+                        reason: format!("Invalid timeline {timeline_name}: {err}"),
                     }
                 })?;
-            let timeline = match field.data_type() {
-                arrow::datatypes::DataType::Int64 => {
-                    Ok(Timeline::new_sequence(field.name().clone()))
-                }
-                arrow::datatypes::DataType::Timestamp(_, _) => {
-                    Ok(Timeline::new_temporal(field.name().clone()))
-                }
-                _ => Err(ChunkError::Malformed {
-                    reason: format!("Invalid data_type for timeline: {}", field.name()),
-                }),
-            }?;
             Ok((timeline, timeline_data))
         })
         .collect();
@@ -148,31 +136,33 @@ pub fn build_chunk_from_components(
         .collect();
 
     // Extract the component data
-    let (arrays, fields): (Vec<ArrowArrayRef>, Vec<ArrowField>) = itertools::process_results(
-        components_per_descr.iter().map(|(component_descr, array)| {
-            array_to_rust(&array, &descriptor_to_rust(&component_descr)?)
-        }),
-        |iter| iter.unzip(),
-    )?;
+    let (arrays, component_descrs): (Vec<ArrowArrayRef>, Vec<ComponentDescriptor>) =
+        itertools::process_results(
+            components_per_descr.iter().map(|(component_descr, array)| {
+                let component_descr = descriptor_to_rust(&component_descr)?;
+                array_to_rust(&array).map(|array| (array, component_descr))
+            }),
+            |iter| iter.unzip(),
+        )?;
 
     let components: Result<Vec<(ComponentDescriptor, _)>, ChunkError> = arrays
         .into_iter()
-        .zip(fields)
-        .map(|(value, field)| {
-            let batch = if let Some(batch) = value.downcast_array_ref::<ArrowListArray>() {
+        .zip(component_descrs)
+        .map(|(list_array, descr)| {
+            let batch = if let Some(batch) = list_array.downcast_array_ref::<ArrowListArray>() {
                 batch.clone()
             } else {
                 let offsets =
-                    ArrowOffsetBuffer::from_lengths(std::iter::repeat(1).take(value.len()));
-                let field = ArrowField::new("item", value.data_type().clone(), true).into();
-                ArrowListArray::try_new(field, offsets, value, None).map_err(|err| {
+                    ArrowOffsetBuffer::from_lengths(std::iter::repeat(1).take(list_array.len()));
+                let field = ArrowField::new("item", list_array.data_type().clone(), true).into();
+                ArrowListArray::try_new(field, offsets, list_array, None).map_err(|err| {
                     ChunkError::Malformed {
                         reason: format!("Failed to wrap in List array: {err}"),
                     }
                 })?
             };
 
-            Ok((ComponentDescriptor::new(field.name().clone()), batch))
+            Ok((descr, batch))
         })
         .collect();
 
