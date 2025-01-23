@@ -18,7 +18,7 @@ use pyo3::{
 };
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
-use re_chunk::{Chunk, ChunkError, ChunkId, PendingRow, RowId, TimeColumn};
+use re_chunk::{Chunk, ChunkError, ChunkId, PendingRow, RowId, TimeColumn, TimelineName};
 use re_log_types::TimePoint;
 use re_sdk::{external::nohash_hasher::IntMap, ComponentDescriptor, EntityPath, Timeline};
 
@@ -92,28 +92,25 @@ pub fn build_chunk_from_components(
     let chunk_id = ChunkId::new();
 
     // Extract the timeline data
-    let (arrays, timeline_descrs): (Vec<ArrowArrayRef>, Vec<ComponentDescriptor>) =
+    let (arrays, timeline_names): (Vec<ArrowArrayRef>, Vec<TimelineName>) =
         itertools::process_results(
             timelines.iter().map(|(name, array)| {
                 let py_name = name.downcast::<PyString>()?;
                 let name: std::borrow::Cow<'_, str> = py_name.extract()?;
-                let timeline_descr = ComponentDescriptor::new(name.to_string());
-                array_to_rust(&array).map(|array| (array, timeline_descr))
+                let timeline_name: TimelineName = name.as_ref().into();
+                array_to_rust(&array).map(|array| (array, timeline_name))
             }),
             |iter| iter.unzip(),
         )?;
 
     let timelines: Result<Vec<_>, ChunkError> = arrays
         .into_iter()
-        .zip(timeline_descrs)
-        .map(|(array, timeline_descr)| {
-            let timeline_name = timeline_descr.component_name;
+        .zip(timeline_names)
+        .map(|(array, timeline_name)| {
             let timeline = match array.data_type() {
-                arrow::datatypes::DataType::Int64 => {
-                    Ok(Timeline::new_sequence(timeline_name.to_string()))
-                }
+                arrow::datatypes::DataType::Int64 => Ok(Timeline::new_sequence(timeline_name)),
                 arrow::datatypes::DataType::Timestamp(_, _) => {
-                    Ok(Timeline::new_temporal(timeline_name.to_string()))
+                    Ok(Timeline::new_temporal(timeline_name))
                 }
                 _ => Err(ChunkError::Malformed {
                     reason: format!("Invalid data_type for timeline: {timeline_name}"),
