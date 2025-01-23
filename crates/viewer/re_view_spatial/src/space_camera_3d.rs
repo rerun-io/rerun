@@ -2,10 +2,9 @@ use glam::Vec3;
 use re_math::IsoTransform;
 
 use re_log_types::EntityPath;
-use re_types::archetypes::Pinhole;
 use re_types::components::ViewCoordinates;
 
-use crate::visualizers::image_view_coordinates;
+use crate::{visualizers::image_view_coordinates, Pinhole};
 
 /// A logged camera that connects spaces.
 #[derive(Clone, PartialEq)]

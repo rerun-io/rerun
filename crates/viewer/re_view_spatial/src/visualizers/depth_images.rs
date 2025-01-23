@@ -20,7 +20,6 @@ use re_viewer_context::{
 
 use crate::{
     contexts::{SpatialSceneEntityContext, TwoDInThreeDTransformInfo},
-    query_pinhole_legacy,
     view_kind::SpatialViewKind,
     visualizers::filter_visualizable_2d_entities,
     PickableRectSourceData, PickableTexturedRect, SpatialView3D,
@@ -172,11 +171,15 @@ impl DepthImageVisualizer {
     ) -> anyhow::Result<DepthCloud> {
         re_tracing::profile_function!();
 
-        let Some(intrinsics) = query_pinhole_legacy(
-            ctx.viewer_ctx,
-            ctx.query,
-            &twod_in_threed_info.parent_pinhole,
-        ) else {
+        // TODO(andreas): We actually _do_ have a data result here, we should instead do a regular query.
+        // Consequently we should also advertise the components on the archetype!
+        let Some((pinhole, camera_xyz)) =
+            crate::pinhole::query_pinhole_and_view_coordinates_from_store_without_blueprint(
+                ctx.viewer_ctx,
+                ctx.query,
+                &twod_in_threed_info.parent_pinhole,
+            )
+        else {
             anyhow::bail!(
                 "Couldn't fetch pinhole intrinsics at {:?}",
                 twod_in_threed_info.parent_pinhole
@@ -185,13 +188,7 @@ impl DepthImageVisualizer {
 
         // Place the cloud at the pinhole's location. Note that this means we ignore any 2D transforms that might be there.
         let world_from_view = twod_in_threed_info.reference_from_pinhole_entity;
-        let world_from_rdf = world_from_view
-            * glam::Affine3A::from_mat3(
-                intrinsics
-                    .camera_xyz
-                    .unwrap_or(re_types::archetypes::Pinhole::DEFAULT_CAMERA_XYZ)
-                    .from_rdf(),
-            );
+        let world_from_rdf = world_from_view * glam::Affine3A::from_mat3(camera_xyz.from_rdf());
 
         let dimensions = glam::UVec2::from_array(depth_texture.texture.width_height());
 
@@ -199,7 +196,7 @@ impl DepthImageVisualizer {
 
         // We want point radius to be defined in a scale where the radius of a point
         // is a factor of the diameter of a pixel projected at that distance.
-        let fov_y = intrinsics.fov_y().unwrap_or(1.0);
+        let fov_y = pinhole.fov_y();
         let pixel_width_from_depth = (0.5 * fov_y).tan() / (0.5 * dimensions.y as f32);
         let point_radius_from_world_depth = *radius_scale.0 * pixel_width_from_depth;
 
@@ -210,7 +207,7 @@ impl DepthImageVisualizer {
 
         Ok(DepthCloud {
             world_from_rdf,
-            depth_camera_intrinsics: intrinsics.image_from_camera.0.into(),
+            depth_camera_intrinsics: pinhole.image_from_camera,
             world_depth_from_texture_depth,
             point_radius_from_world_depth,
             min_max_depth_in_world,
