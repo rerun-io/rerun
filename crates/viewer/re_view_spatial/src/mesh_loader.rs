@@ -7,7 +7,7 @@ use re_viewer_context::{gpu_bridge::texture_creation_desc_from_color_image, Imag
 use crate::mesh_cache::AnyMesh;
 
 #[derive(Debug, Clone)]
-pub struct Asset3D<'a> {
+pub struct NativeAsset3D<'a> {
     pub bytes: &'a [u8],
     pub media_type: Option<MediaType>,
     pub albedo_factor: Option<re_renderer::Rgba>,
@@ -40,12 +40,12 @@ impl LoadedMesh {
 
     fn load_asset3d(
         name: String,
-        asset: Asset3D<'_>,
+        asset: NativeAsset3D<'_>,
         render_ctx: &RenderContext,
     ) -> anyhow::Result<Self> {
         re_tracing::profile_function!();
 
-        let Asset3D {
+        let NativeAsset3D {
             bytes,
             media_type,
             albedo_factor,

@@ -29,6 +29,6 @@ For logging custom components, use [`rr.AnyValue`](https://ref.rerun.io/docs/pyt
 
 ### Rust's `ViewCoordinates` archetype now has static methods instead of constants
 
-As part of the switch to "eager archetype serialization" (serialization of archetype components now occurs at time if archetype instantiation rather than logging), we can no longer offer constants
-for the `ViewCoordinates` archetype like `ViewCoordinates::RUB`.
+As part of the switch to "eager archetype serialization" (serialization of archetype components now occurs at time of archetype instantiation rather than logging), we can no longer offer constants for the `ViewCoordinates` archetype like `ViewCoordinates::RUB`.
+
 Instead, there's now methods with the same name, i.e. `ViewCoordinates::RUB()`.
