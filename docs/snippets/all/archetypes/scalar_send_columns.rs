@@ -15,7 +15,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         [times],
         rerun::Scalar::update_fields()
             .with_many_scalar(scalars)
-            .unary_columns()?,
+            .columns_of_unit_batches()?,
     )?;
 
     Ok(())

@@ -436,7 +436,7 @@ impl Arrows3D {
     /// This is semantically similar to calling [`Self::columns`] with `std::iter::take(1).repeat(n)`,
     /// where `n` is automatically guessed.
     #[inline]
-    pub fn unary_columns(
+    pub fn columns_of_unit_batches(
         self,
     ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
         let len_vectors = self.vectors.as_ref().map(|b| b.array.len());

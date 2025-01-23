@@ -251,7 +251,7 @@ impl Clear {
     /// This is semantically similar to calling [`Self::columns`] with `std::iter::take(1).repeat(n)`,
     /// where `n` is automatically guessed.
     #[inline]
-    pub fn unary_columns(
+    pub fn columns_of_unit_batches(
         self,
     ) -> SerializationResult<impl Iterator<Item = crate::SerializedComponentColumn>> {
         let len_is_recursive = self.is_recursive.as_ref().map(|b| b.array.len());

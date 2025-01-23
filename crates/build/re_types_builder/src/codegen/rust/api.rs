@@ -2009,7 +2009,7 @@ fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) 
 
             #columns_unary_doc
             #[inline]
-            pub fn unary_columns(
+            pub fn columns_of_unit_batches(
                 self,
             ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>>
             {
