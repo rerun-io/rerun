@@ -116,7 +116,6 @@ class TimeNanosColumn(TimeColumnLike):
 
 TArchetype = TypeVar("TArchetype", bound=Archetype)
 
-
 @catch_and_log_exceptions()
 def send_columns(
     entity_path: str,
@@ -258,5 +257,86 @@ def send_columns(
         entity_path,
         timelines={t.timeline_name(): t.as_arrow_array() for t in times},
         components=components_args,
+        recording=recording.to_native() if recording is not None else None,
+    )
+
+
+@catch_and_log_exceptions()
+def send_columns_v2(
+    entity_path: str,
+    indexes: Iterable[TimeColumnLike],
+    columns: Iterable[ComponentColumn],
+    recording: RecordingStream | None = None,
+    strict: bool | None = None,
+) -> None:
+    r"""
+    Send columnar data to Rerun.
+
+    Unlike the regular `log` API, which is row-oriented, this API lets you submit the data
+    in a columnar form. Each `TimeColumnLike` and `ComponentColumn` object represents a column
+    of data that will be sent to Rerun. The lengths of all of these columns must match, and all
+    data that shares the same index across the different columns will act as a single logical row,
+    equivalent to a single call to `rr.log()`.
+
+    Note that this API ignores any stateful time set on the log stream via the `rerun.set_time_*` APIs.
+    Furthermore, this will _not_ inject the default timelines `log_tick` and `log_time` timeline columns.
+
+    Parameters
+    ----------
+    entity_path:
+        Path to the entity in the space hierarchy.
+
+        See <https://www.rerun.io/docs/concepts/entity-path> for more on entity paths.
+    indexes:
+        The time values of this batch of data. Each `TimeColumnLike` object represents a single column
+        of timestamps. Generally, you should use one of the provided classes: [`TimeSequenceColumn`][rerun.TimeSequenceColumn],
+        [`TimeSecondsColumn`][rerun.TimeSecondsColumn], or [`TimeNanosColumn`][rerun.TimeNanosColumn].
+    columns:
+        The columns of components to log. Each object represents a single column of data.
+
+        In order to send multiple components per time value, explicitly create a [`ComponentColumn`][rerun.ComponentColumn]
+        either by constructing it directly, or by calling the `.columns()` method on an `Archetype` type.
+    recording:
+        Specifies the [`rerun.RecordingStream`][] to use.
+        If left unspecified, defaults to the current active data recording, if there is one.
+        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
+    strict:
+        If True, raise exceptions on non-loggable data.
+        If False, warn on non-loggable data.
+        if None, use the global default from `rerun.strict_mode()`
+
+    """
+    expected_length = None
+
+    timelines_args = {}
+    for t in indexes:
+        timeline_name = t.timeline_name()
+        time_column = t.as_arrow_array()
+        if expected_length is None:
+            expected_length = len(time_column)
+        elif len(time_column) != expected_length:
+            raise ValueError(
+                f"All times and components in a column must have the same length. Expected length: {expected_length} but got: {len(time_column)} for timeline: {timeline_name}"
+            )
+
+        timelines_args[timeline_name] = time_column
+
+    columns_args: dict[ComponentDescriptor, pa.Array] = {}
+    for component_column in columns:
+        component_descr = component_column.component_descriptor()
+        arrow_list_array = component_column.as_arrow_array()
+        if expected_length is None:
+            expected_length = len(arrow_list_array)
+        elif len(arrow_list_array) != expected_length:
+            raise ValueError(
+                f"All times and components in a column must have the same length. Expected length: {expected_length} but got: {len(arrow_list_array)} for component: {component_descr}"
+            )
+
+        columns_args[component_descr] = arrow_list_array
+
+    bindings.send_arrow_chunk(
+        entity_path,
+        timelines={t.timeline_name(): t.as_arrow_array() for t in indexes},
+        components=columns_args,
         recording=recording.to_native() if recording is not None else None,
     )
