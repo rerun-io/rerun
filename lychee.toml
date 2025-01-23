@@ -164,6 +164,8 @@ exclude = [
   'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/transform3d_partial_updates.cpp',
   'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/transform3d_partial_updates.py',
   'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/transform3d_partial_updates.rs',
+  'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/howto/any_batch_value_send_columns.rs',
+  'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/howto/any_values_send_columns.rs',
   'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/tutorials/any_values.rs',
   'https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/tutorials/extra_values.rs',
 ]
