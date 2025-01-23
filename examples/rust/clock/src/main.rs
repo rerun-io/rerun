@@ -39,7 +39,7 @@ fn run(rec: &rerun::RecordingStream, args: &Args) -> anyhow::Result<()> {
     const WIDTH_M: f32 = 0.4;
     const WIDTH_H: f32 = 0.6;
 
-    rec.log_static("world", &rerun::ViewCoordinates::RIGHT_HAND_Y_UP)?;
+    rec.log_static("world", &rerun::ViewCoordinates::RIGHT_HAND_Y_UP())?;
 
     rec.log_static(
         "world/frame",

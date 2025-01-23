@@ -69,10 +69,10 @@ impl Asset3DVisualizer {
                     &entity_path.to_string(),
                     key.clone(),
                     AnyMesh::Asset {
-                        asset: &Asset3D {
-                            blob: data.blob.clone().into(),
+                        asset: crate::mesh_loader::NativeAsset3D {
+                            bytes: data.blob.as_slice(),
                             media_type: data.media_type.clone().map(Into::into),
-                            albedo_factor: data.albedo_factor.copied(),
+                            albedo_factor: data.albedo_factor.map(|a| a.0.into()),
                         },
                     },
                     ctx.viewer_ctx.render_ctx,

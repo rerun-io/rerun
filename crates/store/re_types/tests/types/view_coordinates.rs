@@ -1,15 +1,17 @@
 use re_types::{
     archetypes::ViewCoordinates, components, view_coordinates::ViewDir, Archetype as _,
-    AsComponents as _,
+    AsComponents as _, ComponentBatch,
 };
 
 #[test]
 fn roundtrip() {
     let expected = ViewCoordinates {
-        xyz: components::ViewCoordinates::new(ViewDir::Right, ViewDir::Down, ViewDir::Forward),
+        xyz: components::ViewCoordinates::new(ViewDir::Right, ViewDir::Down, ViewDir::Forward)
+            .serialized()
+            .map(|xyz| xyz.with_descriptor_override(ViewCoordinates::descriptor_xyz())),
     };
 
-    let arch = ViewCoordinates::RDF;
+    let arch = ViewCoordinates::RDF();
 
     similar_asserts::assert_eq!(expected, arch);
 
@@ -34,8 +36,10 @@ fn view_coordinates() {
     use glam::{vec3, Mat3};
     use re_types::view_coordinates::{Handedness, SignedAxis3};
 
-    assert_eq!(ViewCoordinates::RUB.xyz.to_rub(), Mat3::IDENTITY);
-    assert_eq!(ViewCoordinates::RUB.xyz.from_rub(), Mat3::IDENTITY);
+    let rub_component =
+        components::ViewCoordinates::new(ViewDir::Right, ViewDir::Up, ViewDir::Back);
+    assert_eq!(rub_component.to_rub(), Mat3::IDENTITY);
+    assert_eq!(rub_component.from_rub(), Mat3::IDENTITY);
 
     {
         assert!("UUDDLRLRBAStart"
@@ -46,7 +50,7 @@ fn view_coordinates() {
         let rub = "RUB".parse::<components::ViewCoordinates>().unwrap();
         let bru = "BRU".parse::<components::ViewCoordinates>().unwrap();
 
-        assert_eq!(rub, ViewCoordinates::RUB.xyz);
+        assert_eq!(rub, rub_component);
 
         assert_eq!(rub.to_rub(), Mat3::IDENTITY);
         assert_eq!(

@@ -10,7 +10,7 @@ use re_renderer::RenderContext;
 use re_types::{components::MediaType, Component as _};
 use re_viewer_context::Cache;
 
-use crate::mesh_loader::LoadedMesh;
+use crate::mesh_loader::{LoadedMesh, NativeAsset3D};
 
 // ----------------------------------------------------------------------------
 
@@ -34,10 +34,10 @@ pub struct MeshCacheKey {
 pub struct MeshCache(HashMap<RowId, HashMap<MeshCacheKey, Option<Arc<LoadedMesh>>>>);
 
 /// Either a [`re_types::archetypes::Asset3D`] or [`re_types::archetypes::Mesh3D`] to be cached.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub enum AnyMesh<'a> {
     Asset {
-        asset: &'a re_types::archetypes::Asset3D,
+        asset: NativeAsset3D<'a>,
     },
     Mesh {
         mesh: &'a re_types::archetypes::Mesh3D,

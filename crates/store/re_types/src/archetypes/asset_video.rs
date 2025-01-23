@@ -124,10 +124,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/video_manual_frames/9f41c00f84a98cc3f26875fba7c1d2fa2bad7151/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct AssetVideo {
     /// The asset's bytes.
-    pub blob: crate::components::Blob,
+    pub blob: Option<SerializedComponentBatch>,
 
     /// The Media Type of the asset.
     ///
@@ -136,7 +136,7 @@ pub struct AssetVideo {
     ///
     /// If omitted, the viewer will try to guess from the data blob.
     /// If it cannot guess, it won't be able to render the asset.
-    pub media_type: Option<crate::components::MediaType>,
+    pub media_type: Option<SerializedComponentBatch>,
 }
 
 impl AssetVideo {
@@ -248,52 +248,26 @@ impl ::re_types_core::Archetype for AssetVideo {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
         let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
-        let blob = {
-            let array = arrays_by_descr
-                .get(&Self::descriptor_blob())
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.AssetVideo#blob")?;
-            <crate::components::Blob>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.AssetVideo#blob")?
-                .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.AssetVideo#blob")?
-        };
-        let media_type = if let Some(array) = arrays_by_descr.get(&Self::descriptor_media_type()) {
-            <crate::components::MediaType>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.AssetVideo#media_type")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
+        let blob = arrays_by_descr
+            .get(&Self::descriptor_blob())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_blob()));
+        let media_type = arrays_by_descr
+            .get(&Self::descriptor_media_type())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_media_type())
+            });
         Ok(Self { blob, media_type })
     }
 }
 
 impl ::re_types_core::AsComponents for AssetVideo {
-    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
-        re_tracing::profile_function!();
+    #[inline]
+    fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
-            (Some(&self.blob as &dyn ComponentBatch)).map(|batch| {
-                ::re_types_core::ComponentBatchCowWithDescriptor {
-                    batch: batch.into(),
-                    descriptor_override: Some(Self::descriptor_blob()),
-                }
-            }),
-            (self
-                .media_type
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_media_type()),
-            }),
+            Self::indicator().serialized(),
+            self.blob.clone(),
+            self.media_type.clone(),
         ]
         .into_iter()
         .flatten()
@@ -308,9 +282,96 @@ impl AssetVideo {
     #[inline]
     pub fn new(blob: impl Into<crate::components::Blob>) -> Self {
         Self {
-            blob: blob.into(),
+            blob: try_serialize_field(Self::descriptor_blob(), [blob]),
             media_type: None,
         }
+    }
+
+    /// Update only some specific fields of a `AssetVideo`.
+    #[inline]
+    pub fn update_fields() -> Self {
+        Self::default()
+    }
+
+    /// Clear all the fields of a `AssetVideo`.
+    #[inline]
+    pub fn clear_fields() -> Self {
+        use ::re_types_core::Loggable as _;
+        Self {
+            blob: Some(SerializedComponentBatch::new(
+                crate::components::Blob::arrow_empty(),
+                Self::descriptor_blob(),
+            )),
+            media_type: Some(SerializedComponentBatch::new(
+                crate::components::MediaType::arrow_empty(),
+                Self::descriptor_media_type(),
+            )),
+        }
+    }
+
+    /// Partitions the component data into multiple sub-batches.
+    ///
+    /// Specifically, this transforms the existing [`SerializedComponentBatch`]es data into [`SerializedComponentColumn`]s
+    /// instead, via [`SerializedComponentBatch::partitioned`].
+    ///
+    /// This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
+    ///
+    /// The specified `lengths` must sum to the total length of the component batch.
+    ///
+    /// [`SerializedComponentColumn`]: [::re_types_core::SerializedComponentColumn]
+    #[inline]
+    pub fn columns<I>(
+        self,
+        _lengths: I,
+    ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>>
+    where
+        I: IntoIterator<Item = usize> + Clone,
+    {
+        let columns = [
+            self.blob
+                .map(|blob| blob.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.media_type
+                .map(|media_type| media_type.partitioned(_lengths.clone()))
+                .transpose()?,
+        ];
+        let indicator_column =
+            ::re_types_core::indicator_column::<Self>(_lengths.into_iter().count())?;
+        Ok(columns.into_iter().chain([indicator_column]).flatten())
+    }
+
+    /// Helper to partition the component data into unit-length sub-batches.
+    ///
+    /// This is semantically similar to calling [`Self::columns`] with `std::iter::take(1).repeat(n)`,
+    /// where `n` is automatically guessed.
+    #[inline]
+    pub fn columns_of_unit_batches(
+        self,
+    ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
+        let len_blob = self.blob.as_ref().map(|b| b.array.len());
+        let len_media_type = self.media_type.as_ref().map(|b| b.array.len());
+        let len = None.or(len_blob).or(len_media_type).unwrap_or(0);
+        self.columns(std::iter::repeat(1).take(len))
+    }
+
+    /// The asset's bytes.
+    #[inline]
+    pub fn with_blob(mut self, blob: impl Into<crate::components::Blob>) -> Self {
+        self.blob = try_serialize_field(Self::descriptor_blob(), [blob]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::Blob`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_blob`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_blob(
+        mut self,
+        blob: impl IntoIterator<Item = impl Into<crate::components::Blob>>,
+    ) -> Self {
+        self.blob = try_serialize_field(Self::descriptor_blob(), blob);
+        self
     }
 
     /// The Media Type of the asset.
@@ -322,7 +383,20 @@ impl AssetVideo {
     /// If it cannot guess, it won't be able to render the asset.
     #[inline]
     pub fn with_media_type(mut self, media_type: impl Into<crate::components::MediaType>) -> Self {
-        self.media_type = Some(media_type.into());
+        self.media_type = try_serialize_field(Self::descriptor_media_type(), [media_type]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::MediaType`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_media_type`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_media_type(
+        mut self,
+        media_type: impl IntoIterator<Item = impl Into<crate::components::MediaType>>,
+    ) -> Self {
+        self.media_type = try_serialize_field(Self::descriptor_media_type(), media_type);
         self
     }
 }
@@ -331,10 +405,5 @@ impl ::re_byte_size::SizeBytes for AssetVideo {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.blob.heap_size_bytes() + self.media_type.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::components::Blob>::is_pod() && <Option<crate::components::MediaType>>::is_pod()
     }
 }

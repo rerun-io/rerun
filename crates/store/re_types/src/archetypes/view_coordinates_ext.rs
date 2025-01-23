@@ -1,3 +1,5 @@
+#![allow(non_snake_case)]
+
 use crate::{components, view_coordinates::ViewDir};
 
 use super::ViewCoordinates;
@@ -5,9 +7,13 @@ use super::ViewCoordinates;
 macro_rules! define_coordinates {
     ($docstring:literal, $name:ident => ($x:ident, $y:ident, $z:ident) ) => {
         #[doc = $docstring]
-        pub const $name: Self = Self {
-            xyz: components::ViewCoordinates::new(ViewDir::$x, ViewDir::$y, ViewDir::$z),
-        };
+        pub fn $name() -> Self {
+            Self::new(components::ViewCoordinates::new(
+                ViewDir::$x,
+                ViewDir::$y,
+                ViewDir::$z,
+            ))
+        }
     };
 }
 

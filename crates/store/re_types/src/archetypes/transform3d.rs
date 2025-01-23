@@ -84,7 +84,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///     rec.set_time_seconds("sim_time", 0.0);
 ///
 ///     // Planetary motion is typically in the XY plane.
-///     rec.log_static("/", &rerun::ViewCoordinates::RIGHT_HAND_Z_UP)?;
+///     rec.log_static("/", &rerun::ViewCoordinates::RIGHT_HAND_Z_UP())?;
 ///
 ///     // Setup points, all are in the center of their own space:
 ///     rec.log(

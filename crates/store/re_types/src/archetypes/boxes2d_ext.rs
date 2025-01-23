@@ -50,29 +50,31 @@ impl Boxes2D {
         mins: impl IntoIterator<Item = impl Into<Vec2D>>,
         sizes: impl IntoIterator<Item = impl Into<Vec2D>>,
     ) -> Self {
-        let boxes = Self::from_sizes(sizes);
+        let half_sizes: Vec<_> = sizes
+            .into_iter()
+            .map(|size| {
+                let size = size.into();
+                HalfSize2D::new(size.x() / 2.0, size.y() / 2.0)
+            })
+            .collect();
 
         // The box semantics are such that the last half-size is used for all remaining boxes.
-        if let Some(last_half_size) = boxes.half_sizes.last() {
+        if let Some(last_half_size) = half_sizes.last() {
             let centers: Vec<_> = mins
                 .into_iter()
-                .zip(
-                    boxes
-                        .half_sizes
-                        .iter()
-                        .chain(std::iter::repeat(last_half_size)),
-                )
+                .zip(half_sizes.iter().chain(std::iter::repeat(last_half_size)))
                 .map(|(min, half_size)| {
                     let min = min.into();
                     Position2D::new(min.x() + half_size.x(), min.y() + half_size.y())
                 })
                 .collect();
-            boxes.with_centers(centers)
+            Self::from_half_sizes(half_sizes).with_centers(centers)
         } else {
             if mins.into_iter().next().is_some() {
                 re_log::warn_once!("Must provide at least one size to create boxes.");
             }
-            boxes.with_centers(std::iter::empty::<crate::components::Position2D>())
+            Self::from_half_sizes(half_sizes)
+                .with_centers(std::iter::empty::<crate::components::Position2D>())
         }
     }
 }

@@ -330,7 +330,7 @@ fn run(rec: &rerun::RecordingStream, args: &Args) -> anyhow::Result<()> {
     let annotations = read_annotations(&store_info.path_annotations)?;
 
     // See https://github.com/google-research-datasets/Objectron/issues/39 for coordinate systems
-    rec.log_static("world", &rerun::ViewCoordinates::RUB)?;
+    rec.log_static("world", &rerun::ViewCoordinates::RUB())?;
 
     log_baseline_objects(rec, &annotations.objects)?;
 

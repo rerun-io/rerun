@@ -1193,7 +1193,7 @@ mod tests {
                 .with_archetype(
                     RowId::new(),
                     [(timeline, 1)],
-                    &archetypes::ViewCoordinates::BLU,
+                    &archetypes::ViewCoordinates::BLU(),
                 )
                 .build()
                 .unwrap();
@@ -1265,7 +1265,7 @@ mod tests {
                     .with_archetype(
                         RowId::new(),
                         TimePoint::default(),
-                        &archetypes::ViewCoordinates::BRU,
+                        &archetypes::ViewCoordinates::BRU(),
                     )
                     .build()
                     .unwrap();
@@ -1274,7 +1274,7 @@ mod tests {
                     .with_archetype(
                         RowId::new(),
                         TimePoint::default(),
-                        &archetypes::ViewCoordinates::BLU,
+                        &archetypes::ViewCoordinates::BLU(),
                     )
                     .build()
                     .unwrap();
@@ -1523,7 +1523,7 @@ mod tests {
             .with_archetype(
                 RowId::new(),
                 [(timeline, 3)],
-                &archetypes::ViewCoordinates::BLU,
+                &archetypes::ViewCoordinates::BLU(),
             )
             // Clear out the pinhole projection (this should yield nothing then for the remaining view coordinates.)
             .with_serialized_batch(

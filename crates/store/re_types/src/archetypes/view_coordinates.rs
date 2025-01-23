@@ -38,7 +38,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_view_coordinates").spawn()?;
 ///
-///     rec.log_static("world", &rerun::ViewCoordinates::RIGHT_HAND_Z_UP)?; // Set an up-axis
+///     rec.log_static("world", &rerun::ViewCoordinates::RIGHT_HAND_Z_UP())?; // Set an up-axis
 ///     rec.log(
 ///         "world/xyz",
 ///         &rerun::Arrows3D::from_vectors(
@@ -59,11 +59,11 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/viewcoordinates/0833f0dc8616a676b7b2c566f2a6f613363680c5/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, Copy, PartialEq, Eq, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Clone, Debug, PartialEq, Default)]
 #[repr(transparent)]
 pub struct ViewCoordinates {
     /// The directions of the [x, y, z] axes.
-    pub xyz: crate::components::ViewCoordinates,
+    pub xyz: Option<SerializedComponentBatch>,
 }
 
 impl ViewCoordinates {
@@ -159,39 +159,21 @@ impl ::re_types_core::Archetype for ViewCoordinates {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
         let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
-        let xyz = {
-            let array = arrays_by_descr
-                .get(&Self::descriptor_xyz())
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.ViewCoordinates#xyz")?;
-            <crate::components::ViewCoordinates>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.ViewCoordinates#xyz")?
-                .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.ViewCoordinates#xyz")?
-        };
+        let xyz = arrays_by_descr
+            .get(&Self::descriptor_xyz())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_xyz()));
         Ok(Self { xyz })
     }
 }
 
 impl ::re_types_core::AsComponents for ViewCoordinates {
-    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
-        re_tracing::profile_function!();
+    #[inline]
+    fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
-        [
-            Some(Self::indicator()),
-            (Some(&self.xyz as &dyn ComponentBatch)).map(|batch| {
-                ::re_types_core::ComponentBatchCowWithDescriptor {
-                    batch: batch.into(),
-                    descriptor_override: Some(Self::descriptor_xyz()),
-                }
-            }),
-        ]
-        .into_iter()
-        .flatten()
-        .collect()
+        [Self::indicator().serialized(), self.xyz.clone()]
+            .into_iter()
+            .flatten()
+            .collect()
     }
 }
 
@@ -201,7 +183,87 @@ impl ViewCoordinates {
     /// Create a new `ViewCoordinates`.
     #[inline]
     pub fn new(xyz: impl Into<crate::components::ViewCoordinates>) -> Self {
-        Self { xyz: xyz.into() }
+        Self {
+            xyz: try_serialize_field(Self::descriptor_xyz(), [xyz]),
+        }
+    }
+
+    /// Update only some specific fields of a `ViewCoordinates`.
+    #[inline]
+    pub fn update_fields() -> Self {
+        Self::default()
+    }
+
+    /// Clear all the fields of a `ViewCoordinates`.
+    #[inline]
+    pub fn clear_fields() -> Self {
+        use ::re_types_core::Loggable as _;
+        Self {
+            xyz: Some(SerializedComponentBatch::new(
+                crate::components::ViewCoordinates::arrow_empty(),
+                Self::descriptor_xyz(),
+            )),
+        }
+    }
+
+    /// Partitions the component data into multiple sub-batches.
+    ///
+    /// Specifically, this transforms the existing [`SerializedComponentBatch`]es data into [`SerializedComponentColumn`]s
+    /// instead, via [`SerializedComponentBatch::partitioned`].
+    ///
+    /// This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
+    ///
+    /// The specified `lengths` must sum to the total length of the component batch.
+    ///
+    /// [`SerializedComponentColumn`]: [::re_types_core::SerializedComponentColumn]
+    #[inline]
+    pub fn columns<I>(
+        self,
+        _lengths: I,
+    ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>>
+    where
+        I: IntoIterator<Item = usize> + Clone,
+    {
+        let columns = [self
+            .xyz
+            .map(|xyz| xyz.partitioned(_lengths.clone()))
+            .transpose()?];
+        let indicator_column =
+            ::re_types_core::indicator_column::<Self>(_lengths.into_iter().count())?;
+        Ok(columns.into_iter().chain([indicator_column]).flatten())
+    }
+
+    /// Helper to partition the component data into unit-length sub-batches.
+    ///
+    /// This is semantically similar to calling [`Self::columns`] with `std::iter::take(1).repeat(n)`,
+    /// where `n` is automatically guessed.
+    #[inline]
+    pub fn columns_of_unit_batches(
+        self,
+    ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
+        let len_xyz = self.xyz.as_ref().map(|b| b.array.len());
+        let len = None.or(len_xyz).unwrap_or(0);
+        self.columns(std::iter::repeat(1).take(len))
+    }
+
+    /// The directions of the [x, y, z] axes.
+    #[inline]
+    pub fn with_xyz(mut self, xyz: impl Into<crate::components::ViewCoordinates>) -> Self {
+        self.xyz = try_serialize_field(Self::descriptor_xyz(), [xyz]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::ViewCoordinates`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_xyz`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_xyz(
+        mut self,
+        xyz: impl IntoIterator<Item = impl Into<crate::components::ViewCoordinates>>,
+    ) -> Self {
+        self.xyz = try_serialize_field(Self::descriptor_xyz(), xyz);
+        self
     }
 }
 
@@ -209,10 +271,5 @@ impl ::re_byte_size::SizeBytes for ViewCoordinates {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.xyz.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::components::ViewCoordinates>::is_pod()
     }
 }
