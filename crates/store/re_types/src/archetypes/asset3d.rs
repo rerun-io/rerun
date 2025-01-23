@@ -54,10 +54,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/asset3d_simple/af238578188d3fd0de3e330212120e2842a8ddb2/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub struct Asset3D {
     /// The asset's bytes.
-    pub blob: crate::components::Blob,
+    pub blob: Option<SerializedComponentBatch>,
 
     /// The Media Type of the asset.
     ///
@@ -69,13 +69,13 @@ pub struct Asset3D {
     ///
     /// If omitted, the viewer will try to guess from the data blob.
     /// If it cannot guess, it won't be able to render the asset.
-    pub media_type: Option<crate::components::MediaType>,
+    pub media_type: Option<SerializedComponentBatch>,
 
     /// A color multiplier applied to the whole asset.
     ///
     /// For mesh who already have `albedo_factor` in materials,
     /// it will be overwritten by actual `albedo_factor` of [`archetypes::Asset3D`][crate::archetypes::Asset3D] (if specified).
-    pub albedo_factor: Option<crate::components::AlbedoFactor>,
+    pub albedo_factor: Option<SerializedComponentBatch>,
 }
 
 impl Asset3D {
@@ -198,38 +198,19 @@ impl ::re_types_core::Archetype for Asset3D {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
         let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
-        let blob = {
-            let array = arrays_by_descr
-                .get(&Self::descriptor_blob())
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.Asset3D#blob")?;
-            <crate::components::Blob>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Asset3D#blob")?
-                .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.Asset3D#blob")?
-        };
-        let media_type = if let Some(array) = arrays_by_descr.get(&Self::descriptor_media_type()) {
-            <crate::components::MediaType>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Asset3D#media_type")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
-        let albedo_factor =
-            if let Some(array) = arrays_by_descr.get(&Self::descriptor_albedo_factor()) {
-                <crate::components::AlbedoFactor>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Asset3D#albedo_factor")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-            } else {
-                None
-            };
+        let blob = arrays_by_descr
+            .get(&Self::descriptor_blob())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_blob()));
+        let media_type = arrays_by_descr
+            .get(&Self::descriptor_media_type())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_media_type())
+            });
+        let albedo_factor = arrays_by_descr
+            .get(&Self::descriptor_albedo_factor())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_albedo_factor())
+            });
         Ok(Self {
             blob,
             media_type,
@@ -239,33 +220,14 @@ impl ::re_types_core::Archetype for Asset3D {
 }
 
 impl ::re_types_core::AsComponents for Asset3D {
-    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
-        re_tracing::profile_function!();
+    #[inline]
+    fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
-            (Some(&self.blob as &dyn ComponentBatch)).map(|batch| {
-                ::re_types_core::ComponentBatchCowWithDescriptor {
-                    batch: batch.into(),
-                    descriptor_override: Some(Self::descriptor_blob()),
-                }
-            }),
-            (self
-                .media_type
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_media_type()),
-            }),
-            (self
-                .albedo_factor
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_albedo_factor()),
-            }),
+            Self::indicator().serialized(),
+            self.blob.clone(),
+            self.media_type.clone(),
+            self.albedo_factor.clone(),
         ]
         .into_iter()
         .flatten()
@@ -280,10 +242,90 @@ impl Asset3D {
     #[inline]
     pub fn new(blob: impl Into<crate::components::Blob>) -> Self {
         Self {
-            blob: blob.into(),
+            blob: try_serialize_field(Self::descriptor_blob(), [blob]),
             media_type: None,
             albedo_factor: None,
         }
+    }
+
+    /// Update only some specific fields of a `Asset3D`.
+    #[inline]
+    pub fn update_fields() -> Self {
+        Self::default()
+    }
+
+    /// Clear all the fields of a `Asset3D`.
+    #[inline]
+    pub fn clear_fields() -> Self {
+        use ::re_types_core::Loggable as _;
+        Self {
+            blob: Some(SerializedComponentBatch::new(
+                crate::components::Blob::arrow_empty(),
+                Self::descriptor_blob(),
+            )),
+            media_type: Some(SerializedComponentBatch::new(
+                crate::components::MediaType::arrow_empty(),
+                Self::descriptor_media_type(),
+            )),
+            albedo_factor: Some(SerializedComponentBatch::new(
+                crate::components::AlbedoFactor::arrow_empty(),
+                Self::descriptor_albedo_factor(),
+            )),
+        }
+    }
+
+    /// Partitions the component data into multiple sub-batches.
+    ///
+    /// Specifically, this transforms the existing [`SerializedComponentBatch`]es data into [`SerializedComponentColumn`]s
+    /// instead, via [`SerializedComponentBatch::partitioned`].
+    ///
+    /// This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
+    ///
+    /// The specified `lengths` must sum to the total length of the component batch.
+    ///
+    /// [`SerializedComponentColumn`]: [::re_types_core::SerializedComponentColumn]
+    #[inline]
+    pub fn columns<I>(
+        self,
+        _lengths: I,
+    ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>>
+    where
+        I: IntoIterator<Item = usize> + Clone,
+    {
+        let columns = [
+            self.blob
+                .map(|blob| blob.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.media_type
+                .map(|media_type| media_type.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.albedo_factor
+                .map(|albedo_factor| albedo_factor.partitioned(_lengths.clone()))
+                .transpose()?,
+        ];
+        let indicator_column =
+            ::re_types_core::indicator_column::<Self>(_lengths.into_iter().count())?;
+        Ok(columns.into_iter().chain([indicator_column]).flatten())
+    }
+
+    /// The asset's bytes.
+    #[inline]
+    pub fn with_blob(mut self, blob: impl Into<crate::components::Blob>) -> Self {
+        self.blob = try_serialize_field(Self::descriptor_blob(), [blob]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::Blob`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_blob`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_blob(
+        mut self,
+        blob: impl IntoIterator<Item = impl Into<crate::components::Blob>>,
+    ) -> Self {
+        self.blob = try_serialize_field(Self::descriptor_blob(), blob);
+        self
     }
 
     /// The Media Type of the asset.
@@ -298,7 +340,20 @@ impl Asset3D {
     /// If it cannot guess, it won't be able to render the asset.
     #[inline]
     pub fn with_media_type(mut self, media_type: impl Into<crate::components::MediaType>) -> Self {
-        self.media_type = Some(media_type.into());
+        self.media_type = try_serialize_field(Self::descriptor_media_type(), [media_type]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::MediaType`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_media_type`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_media_type(
+        mut self,
+        media_type: impl IntoIterator<Item = impl Into<crate::components::MediaType>>,
+    ) -> Self {
+        self.media_type = try_serialize_field(Self::descriptor_media_type(), media_type);
         self
     }
 
@@ -311,7 +366,20 @@ impl Asset3D {
         mut self,
         albedo_factor: impl Into<crate::components::AlbedoFactor>,
     ) -> Self {
-        self.albedo_factor = Some(albedo_factor.into());
+        self.albedo_factor = try_serialize_field(Self::descriptor_albedo_factor(), [albedo_factor]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::AlbedoFactor`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_albedo_factor`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_albedo_factor(
+        mut self,
+        albedo_factor: impl IntoIterator<Item = impl Into<crate::components::AlbedoFactor>>,
+    ) -> Self {
+        self.albedo_factor = try_serialize_field(Self::descriptor_albedo_factor(), albedo_factor);
         self
     }
 }
@@ -322,12 +390,5 @@ impl ::re_byte_size::SizeBytes for Asset3D {
         self.blob.heap_size_bytes()
             + self.media_type.heap_size_bytes()
             + self.albedo_factor.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::components::Blob>::is_pod()
-            && <Option<crate::components::MediaType>>::is_pod()
-            && <Option<crate::components::AlbedoFactor>>::is_pod()
     }
 }

@@ -32,11 +32,10 @@ impl Asset3D {
     #[inline]
     pub fn from_file_contents(contents: Vec<u8>, media_type: Option<impl Into<MediaType>>) -> Self {
         let media_type = media_type.map(Into::into);
-        let media_type = MediaType::or_guess_from_data(media_type, &contents);
-        Self {
-            blob: contents.into(),
-            media_type,
-            albedo_factor: None,
+        if let Some(media_type) = MediaType::or_guess_from_data(media_type, &contents) {
+            Self::new(contents).with_media_type(media_type)
+        } else {
+            Self::new(contents)
         }
     }
 }
