@@ -12,7 +12,10 @@ mod ptr;
 mod recording_streams;
 mod video;
 
-use std::ffi::{c_char, c_uchar, CString};
+use std::{
+    collections::BTreeMap,
+    ffi::{c_char, c_uchar, CString},
+};
 
 use arrow::array::{ArrayRef as ArrowArrayRef, ListArray as ArrowListArray};
 use arrow_utils::arrow_array_from_c_ffi;
@@ -811,7 +814,7 @@ fn rr_recording_stream_log_impl(
 
     let batches = unsafe { std::slice::from_raw_parts_mut(batches, num_data_cells) };
 
-    let mut components = IntMap::default();
+    let mut components = BTreeMap::default();
     {
         let component_type_registry = COMPONENT_TYPES.read();
 

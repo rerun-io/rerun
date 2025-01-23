@@ -1,6 +1,6 @@
 //! Methods for handling Arrow datamodel log ingest
 
-use std::borrow::Cow;
+use std::{borrow::Cow, collections::BTreeMap};
 
 use arrow::{
     array::{
@@ -82,7 +82,7 @@ pub fn build_row_from_components(
     // TODO(emilk): move to before we arrow-serialize the data
     let row_id = RowId::new();
 
-    let mut components = IntMap::default();
+    let mut components = BTreeMap::default();
     for (component_descr, array) in components_per_descr {
         let component_descr = descriptor_to_rust(&component_descr)?;
         let (list_array, _field) = array_to_rust(&array, &component_descr)?;

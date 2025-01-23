@@ -1,4 +1,5 @@
 use std::{
+    collections::BTreeMap,
     hash::{Hash as _, Hasher},
     sync::Arc,
     time::{Duration, Instant},
@@ -681,12 +682,12 @@ pub struct PendingRow {
     /// The component data.
     ///
     /// Each array is a single component, i.e. _not_ a list array.
-    pub components: IntMap<ComponentDescriptor, ArrayRef>,
+    pub components: BTreeMap<ComponentDescriptor, ArrayRef>,
 }
 
 impl PendingRow {
     #[inline]
-    pub fn new(timepoint: TimePoint, components: IntMap<ComponentDescriptor, ArrayRef>) -> Self {
+    pub fn new(timepoint: TimePoint, components: BTreeMap<ComponentDescriptor, ArrayRef>) -> Self {
         Self {
             row_id: RowId::new(),
             timepoint,

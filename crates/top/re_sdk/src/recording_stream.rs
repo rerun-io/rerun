@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::fmt;
 use std::io::IsTerminal;
 use std::sync::Weak;
@@ -1188,7 +1189,7 @@ impl RecordingStream {
                     .map(|array| (comp_batch.descriptor().into_owned(), array))
             })
             .collect();
-        let components: IntMap<_, _> = comp_batches?.into_iter().collect();
+        let components: BTreeMap<_, _> = comp_batches?.into_iter().collect();
 
         // NOTE: The timepoint is irrelevant, the `RecordingStream` will overwrite it using its
         // internal clock.
@@ -1261,7 +1262,7 @@ impl RecordingStream {
             .into_iter()
             .map(|comp_batch| (comp_batch.descriptor, comp_batch.array))
             .collect();
-        let components: IntMap<_, _> = comp_batches.into_iter().collect();
+        let components: BTreeMap<_, _> = comp_batches.into_iter().collect();
 
         // NOTE: The timepoint is irrelevant, the `RecordingStream` will overwrite it using its
         // internal clock.
