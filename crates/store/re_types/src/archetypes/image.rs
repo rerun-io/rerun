@@ -126,23 +126,23 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/image_formats/7b8a162fcfd266f303980439beea997dc8544c24/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub struct Image {
     /// The raw image data.
-    pub buffer: crate::components::ImageBuffer,
+    pub buffer: Option<SerializedComponentBatch>,
 
     /// The format of the image.
-    pub format: crate::components::ImageFormat,
+    pub format: Option<SerializedComponentBatch>,
 
     /// Opacity of the image, useful for layering several images.
     ///
     /// Defaults to 1.0 (fully opaque).
-    pub opacity: Option<crate::components::Opacity>,
+    pub opacity: Option<SerializedComponentBatch>,
 
     /// An optional floating point value that specifies the 2D drawing order.
     ///
     /// Objects with higher values are drawn on top of those with lower values.
-    pub draw_order: Option<crate::components::DrawOrder>,
+    pub draw_order: Option<SerializedComponentBatch>,
 }
 
 impl Image {
@@ -271,50 +271,20 @@ impl ::re_types_core::Archetype for Image {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
         let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
-        let buffer = {
-            let array = arrays_by_descr
-                .get(&Self::descriptor_buffer())
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.Image#buffer")?;
-            <crate::components::ImageBuffer>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Image#buffer")?
-                .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.Image#buffer")?
-        };
-        let format = {
-            let array = arrays_by_descr
-                .get(&Self::descriptor_format())
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.Image#format")?;
-            <crate::components::ImageFormat>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Image#format")?
-                .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.Image#format")?
-        };
-        let opacity = if let Some(array) = arrays_by_descr.get(&Self::descriptor_opacity()) {
-            <crate::components::Opacity>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Image#opacity")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
-        let draw_order = if let Some(array) = arrays_by_descr.get(&Self::descriptor_draw_order()) {
-            <crate::components::DrawOrder>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Image#draw_order")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
+        let buffer = arrays_by_descr
+            .get(&Self::descriptor_buffer())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_buffer()));
+        let format = arrays_by_descr
+            .get(&Self::descriptor_format())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_format()));
+        let opacity = arrays_by_descr
+            .get(&Self::descriptor_opacity())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_opacity()));
+        let draw_order = arrays_by_descr
+            .get(&Self::descriptor_draw_order())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_draw_order())
+            });
         Ok(Self {
             buffer,
             format,
@@ -325,39 +295,15 @@ impl ::re_types_core::Archetype for Image {
 }
 
 impl ::re_types_core::AsComponents for Image {
-    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
-        re_tracing::profile_function!();
+    #[inline]
+    fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
-            (Some(&self.buffer as &dyn ComponentBatch)).map(|batch| {
-                ::re_types_core::ComponentBatchCowWithDescriptor {
-                    batch: batch.into(),
-                    descriptor_override: Some(Self::descriptor_buffer()),
-                }
-            }),
-            (Some(&self.format as &dyn ComponentBatch)).map(|batch| {
-                ::re_types_core::ComponentBatchCowWithDescriptor {
-                    batch: batch.into(),
-                    descriptor_override: Some(Self::descriptor_format()),
-                }
-            }),
-            (self
-                .opacity
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_opacity()),
-            }),
-            (self
-                .draw_order
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_draw_order()),
-            }),
+            Self::indicator().serialized(),
+            self.buffer.clone(),
+            self.format.clone(),
+            self.opacity.clone(),
+            self.draw_order.clone(),
         ]
         .into_iter()
         .flatten()
@@ -375,11 +321,139 @@ impl Image {
         format: impl Into<crate::components::ImageFormat>,
     ) -> Self {
         Self {
-            buffer: buffer.into(),
-            format: format.into(),
+            buffer: try_serialize_field(Self::descriptor_buffer(), [buffer]),
+            format: try_serialize_field(Self::descriptor_format(), [format]),
             opacity: None,
             draw_order: None,
         }
+    }
+
+    /// Update only some specific fields of a `Image`.
+    #[inline]
+    pub fn update_fields() -> Self {
+        Self::default()
+    }
+
+    /// Clear all the fields of a `Image`.
+    #[inline]
+    pub fn clear_fields() -> Self {
+        use ::re_types_core::Loggable as _;
+        Self {
+            buffer: Some(SerializedComponentBatch::new(
+                crate::components::ImageBuffer::arrow_empty(),
+                Self::descriptor_buffer(),
+            )),
+            format: Some(SerializedComponentBatch::new(
+                crate::components::ImageFormat::arrow_empty(),
+                Self::descriptor_format(),
+            )),
+            opacity: Some(SerializedComponentBatch::new(
+                crate::components::Opacity::arrow_empty(),
+                Self::descriptor_opacity(),
+            )),
+            draw_order: Some(SerializedComponentBatch::new(
+                crate::components::DrawOrder::arrow_empty(),
+                Self::descriptor_draw_order(),
+            )),
+        }
+    }
+
+    /// Partitions the component data into multiple sub-batches.
+    ///
+    /// Specifically, this transforms the existing [`SerializedComponentBatch`]es data into [`SerializedComponentColumn`]s
+    /// instead, via [`SerializedComponentBatch::partitioned`].
+    ///
+    /// This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
+    ///
+    /// The specified `lengths` must sum to the total length of the component batch.
+    ///
+    /// [`SerializedComponentColumn`]: [::re_types_core::SerializedComponentColumn]
+    #[inline]
+    pub fn columns<I>(
+        self,
+        _lengths: I,
+    ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>>
+    where
+        I: IntoIterator<Item = usize> + Clone,
+    {
+        let columns = [
+            self.buffer
+                .map(|buffer| buffer.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.format
+                .map(|format| format.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.opacity
+                .map(|opacity| opacity.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.draw_order
+                .map(|draw_order| draw_order.partitioned(_lengths.clone()))
+                .transpose()?,
+        ];
+        let indicator_column =
+            ::re_types_core::indicator_column::<Self>(_lengths.into_iter().count())?;
+        Ok(columns.into_iter().chain([indicator_column]).flatten())
+    }
+
+    /// Helper to partition the component data into unit-length sub-batches.
+    ///
+    /// This is semantically similar to calling [`Self::columns`] with `std::iter::take(1).repeat(n)`,
+    /// where `n` is automatically guessed.
+    #[inline]
+    pub fn columns_of_unit_batches(
+        self,
+    ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
+        let len_buffer = self.buffer.as_ref().map(|b| b.array.len());
+        let len_format = self.format.as_ref().map(|b| b.array.len());
+        let len_opacity = self.opacity.as_ref().map(|b| b.array.len());
+        let len_draw_order = self.draw_order.as_ref().map(|b| b.array.len());
+        let len = None
+            .or(len_buffer)
+            .or(len_format)
+            .or(len_opacity)
+            .or(len_draw_order)
+            .unwrap_or(0);
+        self.columns(std::iter::repeat(1).take(len))
+    }
+
+    /// The raw image data.
+    #[inline]
+    pub fn with_buffer(mut self, buffer: impl Into<crate::components::ImageBuffer>) -> Self {
+        self.buffer = try_serialize_field(Self::descriptor_buffer(), [buffer]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::ImageBuffer`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_buffer`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_buffer(
+        mut self,
+        buffer: impl IntoIterator<Item = impl Into<crate::components::ImageBuffer>>,
+    ) -> Self {
+        self.buffer = try_serialize_field(Self::descriptor_buffer(), buffer);
+        self
+    }
+
+    /// The format of the image.
+    #[inline]
+    pub fn with_format(mut self, format: impl Into<crate::components::ImageFormat>) -> Self {
+        self.format = try_serialize_field(Self::descriptor_format(), [format]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::ImageFormat`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_format`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_format(
+        mut self,
+        format: impl IntoIterator<Item = impl Into<crate::components::ImageFormat>>,
+    ) -> Self {
+        self.format = try_serialize_field(Self::descriptor_format(), format);
+        self
     }
 
     /// Opacity of the image, useful for layering several images.
@@ -387,7 +461,20 @@ impl Image {
     /// Defaults to 1.0 (fully opaque).
     #[inline]
     pub fn with_opacity(mut self, opacity: impl Into<crate::components::Opacity>) -> Self {
-        self.opacity = Some(opacity.into());
+        self.opacity = try_serialize_field(Self::descriptor_opacity(), [opacity]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::Opacity`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_opacity`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_opacity(
+        mut self,
+        opacity: impl IntoIterator<Item = impl Into<crate::components::Opacity>>,
+    ) -> Self {
+        self.opacity = try_serialize_field(Self::descriptor_opacity(), opacity);
         self
     }
 
@@ -396,7 +483,20 @@ impl Image {
     /// Objects with higher values are drawn on top of those with lower values.
     #[inline]
     pub fn with_draw_order(mut self, draw_order: impl Into<crate::components::DrawOrder>) -> Self {
-        self.draw_order = Some(draw_order.into());
+        self.draw_order = try_serialize_field(Self::descriptor_draw_order(), [draw_order]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::DrawOrder`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_draw_order`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_draw_order(
+        mut self,
+        draw_order: impl IntoIterator<Item = impl Into<crate::components::DrawOrder>>,
+    ) -> Self {
+        self.draw_order = try_serialize_field(Self::descriptor_draw_order(), draw_order);
         self
     }
 }
@@ -408,13 +508,5 @@ impl ::re_byte_size::SizeBytes for Image {
             + self.format.heap_size_bytes()
             + self.opacity.heap_size_bytes()
             + self.draw_order.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::components::ImageBuffer>::is_pod()
-            && <crate::components::ImageFormat>::is_pod()
-            && <Option<crate::components::Opacity>>::is_pod()
-            && <Option<crate::components::DrawOrder>>::is_pod()
     }
 }

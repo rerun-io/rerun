@@ -35,6 +35,7 @@ mod half_size2d_ext;
 mod half_size3d;
 mod half_size3d_ext;
 mod image_buffer;
+mod image_buffer_ext;
 mod image_format;
 mod image_format_ext;
 mod image_plane_distance;

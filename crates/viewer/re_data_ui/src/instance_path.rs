@@ -8,7 +8,7 @@ use re_types::{
     archetypes, components,
     datatypes::{ChannelDatatype, ColorModel},
     image::ImageKind,
-    static_assert_struct_has_fields, Archetype, Component, ComponentName,
+    Archetype, Component, ComponentName,
 };
 use re_ui::UiExt as _;
 use re_viewer_context::{
@@ -273,7 +273,7 @@ fn preview_if_image_ui(
     component_map: &IntMap<ComponentName, UnitChunkShared>,
 ) -> Option<()> {
     // First check assumptions:
-    static_assert_struct_has_fields!(
+    debug_assert_archetype_has_components!(
         archetypes::Image,
         buffer: components::ImageBuffer,
         format: components::ImageFormat

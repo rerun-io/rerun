@@ -1,16 +1,31 @@
 use itertools::Itertools;
 use re_chunk_store::RowId;
 use re_renderer::{mesh::GpuMesh, RenderContext, Rgba32Unmul};
-use re_types::{archetypes::Mesh3D, components::MediaType};
+use re_types::components::MediaType;
 use re_viewer_context::{gpu_bridge::texture_creation_desc_from_color_image, ImageInfo};
 
-use crate::mesh_cache::AnyMesh;
+use crate::{mesh_cache::AnyMesh, visualizers::entity_iterator::clamped_vec_or};
 
 #[derive(Debug, Clone)]
 pub struct NativeAsset3D<'a> {
     pub bytes: &'a [u8],
     pub media_type: Option<MediaType>,
     pub albedo_factor: Option<re_renderer::Rgba>,
+}
+
+#[derive(Debug, Clone)]
+pub struct NativeMesh3D<'a> {
+    pub vertex_positions: &'a [glam::Vec3],
+    pub vertex_normals: Option<&'a [glam::Vec3]>,
+    pub vertex_colors: Option<&'a [re_renderer::Rgba32Unmul]>,
+    pub vertex_texcoords: Option<&'a [glam::Vec2]>,
+
+    pub triangle_indices: Option<&'a [glam::UVec3]>,
+
+    pub albedo_factor: Option<re_renderer::Color32>,
+
+    pub albedo_texture_buffer: Option<re_types::datatypes::Blob>,
+    pub albedo_texture_format: Option<re_types::datatypes::ImageFormat>,
 }
 
 pub struct LoadedMesh {
@@ -84,31 +99,28 @@ impl LoadedMesh {
 
     fn load_mesh3d(
         name: String,
-        mesh3d: &Mesh3D,
+        mesh3d: NativeMesh3D<'_>,
         texture_key: u64,
         render_ctx: &RenderContext,
     ) -> anyhow::Result<Self> {
         re_tracing::profile_function!();
 
-        let Mesh3D {
+        let NativeMesh3D {
             vertex_positions,
             vertex_normals,
             vertex_colors,
             vertex_texcoords,
             triangle_indices,
             albedo_factor,
-            class_ids: _,
             albedo_texture_buffer,
             albedo_texture_format,
         } = mesh3d;
 
-        let vertex_positions: &[glam::Vec3] = bytemuck::cast_slice(vertex_positions.as_slice());
         let num_positions = vertex_positions.len();
 
-        let triangle_indices = if let Some(indices) = triangle_indices {
+        let triangle_indices = if let Some(triangle_indices) = triangle_indices {
             re_tracing::profile_scope!("copy_indices");
-            let indices: &[glam::UVec3] = bytemuck::cast_slice(indices);
-            indices.to_vec()
+            triangle_indices.to_vec()
         } else {
             re_tracing::profile_scope!("generate_indices");
             anyhow::ensure!(num_positions % 3 == 0);
@@ -121,17 +133,14 @@ impl LoadedMesh {
 
         let vertex_colors = if let Some(vertex_colors) = vertex_colors {
             re_tracing::profile_scope!("copy_colors");
-            vertex_colors
-                .iter()
-                .map(|c| Rgba32Unmul::from_rgba_unmul_array(c.to_array()))
-                .collect()
+            clamped_vec_or(vertex_colors, num_positions, &Rgba32Unmul::WHITE)
         } else {
             vec![Rgba32Unmul::WHITE; num_positions]
         };
 
         let vertex_normals = if let Some(normals) = vertex_normals {
             re_tracing::profile_scope!("collect_normals");
-            normals.iter().map(|v| v.0.into()).collect::<Vec<_>>()
+            clamped_vec_or(normals, num_positions, &glam::Vec3::ZERO)
         } else {
             // TODO(andreas): Calculate normals
             vec![glam::Vec3::ZERO; num_positions]
@@ -139,7 +148,7 @@ impl LoadedMesh {
 
         let vertex_texcoords = if let Some(texcoords) = vertex_texcoords {
             re_tracing::profile_scope!("collect_texcoords");
-            texcoords.iter().map(|v| v.0.into()).collect::<Vec<_>>()
+            clamped_vec_or(texcoords, num_positions, &glam::Vec2::ZERO)
         } else {
             vec![glam::Vec2::ZERO; num_positions]
         };
@@ -150,8 +159,8 @@ impl LoadedMesh {
         };
 
         let albedo = try_get_or_create_albedo_texture(
-            albedo_texture_buffer,
-            albedo_texture_format,
+            &albedo_texture_buffer,
+            &albedo_texture_format,
             render_ctx,
             texture_key,
             &name,
@@ -174,7 +183,7 @@ impl LoadedMesh {
                 label: name.clone().into(),
                 index_range: 0..num_indices as _,
                 albedo,
-                albedo_factor: albedo_factor.map_or(re_renderer::Rgba::WHITE, |c| c.0.into()),
+                albedo_factor: albedo_factor.unwrap_or(re_renderer::Color32::WHITE).into(),
             }],
         };
 
@@ -200,22 +209,24 @@ impl LoadedMesh {
 }
 
 fn try_get_or_create_albedo_texture(
-    albedo_texture_buffer: &Option<re_types::components::ImageBuffer>,
-    albedo_texture_format: &Option<re_types::components::ImageFormat>,
+    albedo_texture_buffer: &Option<re_types::datatypes::Blob>,
+    albedo_texture_format: &Option<re_types::datatypes::ImageFormat>,
     render_ctx: &RenderContext,
     texture_key: u64,
     name: &str,
 ) -> Option<re_renderer::resource_managers::GpuTexture2D> {
     let (Some(albedo_texture_buffer), Some(albedo_texture_format)) =
-        (&albedo_texture_buffer, albedo_texture_format)
+        (albedo_texture_buffer, albedo_texture_format)
     else {
         return None;
     };
 
+    re_tracing::profile_function!();
+
     let image_info = ImageInfo {
-        buffer_row_id: RowId::ZERO, // unused
-        buffer: albedo_texture_buffer.0.clone(),
-        format: albedo_texture_format.0,
+        buffer_row_id: RowId::ZERO,            // unused
+        buffer: albedo_texture_buffer.clone(), // shallow clone
+        format: *albedo_texture_format,
         kind: re_types::image::ImageKind::Color,
     };
 

@@ -10,7 +10,7 @@ use re_renderer::RenderContext;
 use re_types::{components::MediaType, Component as _};
 use re_viewer_context::Cache;
 
-use crate::mesh_loader::{LoadedMesh, NativeAsset3D};
+use crate::mesh_loader::{LoadedMesh, NativeAsset3D, NativeMesh3D};
 
 // ----------------------------------------------------------------------------
 
@@ -40,7 +40,7 @@ pub enum AnyMesh<'a> {
         asset: NativeAsset3D<'a>,
     },
     Mesh {
-        mesh: &'a re_types::archetypes::Mesh3D,
+        mesh: NativeMesh3D<'a>,
 
         /// If there are any textures associated with that mesh (albedo etc), they use this
         /// hash for texture manager lookup.

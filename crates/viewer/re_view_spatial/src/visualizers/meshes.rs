@@ -4,8 +4,8 @@ use re_renderer::{renderer::GpuMeshInstance, RenderContext};
 use re_types::{
     archetypes::Mesh3D,
     components::{
-        AlbedoFactor, ClassId, Color, ImageBuffer, ImageFormat, Position3D, Texcoord2D,
-        TriangleIndices, Vector3D,
+        AlbedoFactor, Color, ImageBuffer, ImageFormat, Position3D, Texcoord2D, TriangleIndices,
+        Vector3D,
     },
     Component as _,
 };
@@ -15,14 +15,12 @@ use re_viewer_context::{
     VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
-use super::{
-    entity_iterator::clamped_vec_or_empty, filter_visualizable_3d_entities,
-    SpatialViewVisualizerData,
-};
+use super::{filter_visualizable_3d_entities, SpatialViewVisualizerData};
 
 use crate::{
     contexts::SpatialSceneEntityContext,
     mesh_cache::{AnyMesh, MeshCache, MeshCacheKey},
+    mesh_loader::NativeMesh3D,
     view_kind::SpatialViewKind,
 };
 
@@ -41,18 +39,7 @@ impl Default for Mesh3DVisualizer {
 struct Mesh3DComponentData<'a> {
     index: (TimeInt, RowId),
     query_result_hash: Hash64,
-
-    vertex_positions: &'a [Position3D],
-    vertex_normals: &'a [Vector3D],
-    vertex_colors: &'a [Color],
-    vertex_texcoords: &'a [Texcoord2D],
-
-    triangle_indices: Option<&'a [TriangleIndices]>,
-    albedo_factor: Option<&'a AlbedoFactor>,
-    albedo_buffer: Option<ImageBuffer>,
-    albedo_format: Option<ImageFormat>,
-
-    class_ids: &'a [ClassId],
+    native_mesh: NativeMesh3D<'a>,
 }
 
 // NOTE: Do not put profile scopes in these methods. They are called for all entities and all
@@ -76,7 +63,7 @@ impl Mesh3DVisualizer {
             // Skip over empty meshes.
             // Note that we can deal with zero normals/colors/texcoords/indices just fine (we generate them),
             // but re_renderer insists on having at a non-zero vertex list.
-            if data.vertex_positions.is_empty() {
+            if data.native_mesh.vertex_positions.is_empty() {
                 continue;
             }
 
@@ -87,30 +74,11 @@ impl Mesh3DVisualizer {
                     media_type: None,
                 };
 
-                let vertex_normals =
-                    clamped_vec_or_empty(data.vertex_normals, data.vertex_positions.len());
-                let vertex_colors =
-                    clamped_vec_or_empty(data.vertex_colors, data.vertex_positions.len());
-                let vertex_texcoords =
-                    clamped_vec_or_empty(data.vertex_texcoords, data.vertex_positions.len());
-
                 c.entry(
                     &entity_path.to_string(),
                     key.clone(),
                     AnyMesh::Mesh {
-                        mesh: &Mesh3D {
-                            vertex_positions: data.vertex_positions.to_owned(),
-                            triangle_indices: data.triangle_indices.map(ToOwned::to_owned),
-                            vertex_normals: (!vertex_normals.is_empty()).then_some(vertex_normals),
-                            vertex_colors: (!vertex_colors.is_empty()).then_some(vertex_colors),
-                            vertex_texcoords: (!vertex_texcoords.is_empty())
-                                .then_some(vertex_texcoords),
-                            albedo_factor: data.albedo_factor.copied(),
-                            albedo_texture_buffer: data.albedo_buffer.clone(), // shallow clone
-                            albedo_texture_format: data.albedo_format,
-                            class_ids: (!data.class_ids.is_empty())
-                                .then(|| data.class_ids.to_owned()),
-                        },
+                        mesh: data.native_mesh,
                         texture_key: re_log_types::hash::Hash64::hash(&key).hash64(),
                     },
                     render_ctx,
@@ -199,11 +167,10 @@ impl VisualizerSystem for Mesh3DVisualizer {
                 let all_albedo_factors = results.iter_as(timeline, AlbedoFactor::name());
                 let all_albedo_buffers = results.iter_as(timeline, ImageBuffer::name());
                 let all_albedo_formats = results.iter_as(timeline, ImageFormat::name());
-                let all_class_ids = results.iter_as(timeline, ClassId::name());
 
                 let query_result_hash = results.query_result_hash();
 
-                let data = re_query::range_zip_1x8(
+                let data = re_query::range_zip_1x7(
                     all_vertex_positions_indexed,
                     all_vertex_normals.slice::<[f32; 3]>(),
                     all_vertex_colors.slice::<u32>(),
@@ -213,7 +180,6 @@ impl VisualizerSystem for Mesh3DVisualizer {
                     all_albedo_buffers.slice::<&[u8]>(),
                     // Legit call to `component_slow`, `ImageFormat` is real complicated.
                     all_albedo_formats.component_slow::<ImageFormat>(),
-                    all_class_ids.slice::<u16>(),
                 )
                 .map(
                     |(
@@ -226,33 +192,32 @@ impl VisualizerSystem for Mesh3DVisualizer {
                         albedo_factors,
                         albedo_buffers,
                         albedo_formats,
-                        class_ids,
                     )| {
                         Mesh3DComponentData {
                             index,
                             query_result_hash,
-                            vertex_positions: bytemuck::cast_slice(vertex_positions),
-                            vertex_normals: vertex_normals
-                                .map_or(&[], |vertex_normals| bytemuck::cast_slice(vertex_normals)),
-                            vertex_colors: vertex_colors
-                                .map_or(&[], |vertex_colors| bytemuck::cast_slice(vertex_colors)),
-                            vertex_texcoords: vertex_texcoords.map_or(&[], |vertex_texcoords| {
-                                bytemuck::cast_slice(vertex_texcoords)
-                            }),
-                            triangle_indices: triangle_indices.map(bytemuck::cast_slice),
-                            albedo_factor: albedo_factors
-                                .map_or(&[] as &[AlbedoFactor], |albedo_factors| {
-                                    bytemuck::cast_slice(albedo_factors)
-                                })
-                                .first(),
-                            albedo_buffer: albedo_buffers
-                                .unwrap_or_default()
-                                .first()
-                                .cloned()
-                                .map(Into::into), // shallow clone
-                            albedo_format: albedo_formats.unwrap_or_default().first().copied(),
-                            class_ids: class_ids
-                                .map_or(&[], |class_ids| bytemuck::cast_slice(class_ids)),
+
+                            // Note that we rely in clamping in the mesh loader for some of these.
+                            // (which means that if we have a mesh cache hit, we don't have to bother with clamping logic here!)
+                            native_mesh: NativeMesh3D {
+                                vertex_positions: bytemuck::cast_slice(vertex_positions),
+                                vertex_normals: vertex_normals.map(bytemuck::cast_slice),
+                                vertex_colors: vertex_colors.map(bytemuck::cast_slice),
+                                vertex_texcoords: vertex_texcoords.map(bytemuck::cast_slice),
+                                triangle_indices: triangle_indices.map(bytemuck::cast_slice),
+                                albedo_factor: albedo_factors
+                                    .map(bytemuck::cast_slice)
+                                    .and_then(|albedo_factors| albedo_factors.first().copied()),
+                                albedo_texture_buffer: albedo_buffers
+                                    .unwrap_or_default()
+                                    .first()
+                                    .cloned()
+                                    .map(Into::into), // shallow clone
+                                albedo_texture_format: albedo_formats
+                                    .unwrap_or_default()
+                                    .first()
+                                    .map(|format| format.0),
+                            },
                         }
                     },
                 );
