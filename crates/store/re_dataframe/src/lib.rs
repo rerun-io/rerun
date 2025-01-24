@@ -21,11 +21,15 @@ pub use self::external::re_log_types::{
 #[doc(no_inline)]
 pub use self::external::re_query::{QueryCache, QueryCacheHandle, StorageEngine};
 
+#[doc(no_inline)]
+pub use self::external::re_types_core::ComponentName;
+
 pub mod external {
     pub use re_chunk;
     pub use re_chunk_store;
     pub use re_log_types;
     pub use re_query;
+    pub use re_types_core;
 
     pub use arrow;
 }
