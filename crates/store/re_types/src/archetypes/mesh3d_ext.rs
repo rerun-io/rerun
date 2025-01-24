@@ -24,6 +24,7 @@ pub enum Mesh3DError {
 
 impl Mesh3D {
     /// Use this image as the albedo texture.
+    #[inline]
     pub fn with_albedo_texture_image(mut self, image: impl Into<archetypes::Image>) -> Self {
         let image = image.into();
 
@@ -37,6 +38,7 @@ impl Mesh3D {
     }
 
     /// Use this image as the albedo texture.
+    #[inline]
     pub fn with_albedo_texture(
         self,
         image_format: impl Into<components::ImageFormat>,
