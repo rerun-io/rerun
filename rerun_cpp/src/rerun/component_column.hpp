@@ -35,9 +35,10 @@ namespace rerun {
         /// The sum of the lengths must be equal to the number of components in the batch.
         template <typename T>
         static Result<ComponentColumn> from_loggable_with_lengths(
-            const Collection<T>& components, const Collection<uint32_t>& lengths
+            const Collection<T>& components, const Collection<uint32_t>& lengths,
+            const ComponentDescriptor& descriptor = Loggable<T>::Descriptor
         ) {
-            auto component_batch_result = ComponentBatch::from_loggable(components);
+            auto component_batch_result = ComponentBatch::from_loggable(components, descriptor);
             if (component_batch_result.is_err()) {
                 return component_batch_result.error;
             }
@@ -57,10 +58,14 @@ namespace rerun {
         ///
         /// \param components Continuous collection of components which is about to be partitioned into runs of length one.
         template <typename T>
-        static Result<ComponentColumn> from_loggable(const Collection<T>& components) {
+        static Result<ComponentColumn> from_loggable(
+            const Collection<T>& components,
+            const ComponentDescriptor& descriptor = Loggable<T>::Descriptor
+        ) {
             return ComponentColumn::from_loggable_with_lengths(
                 components,
-                Collection<uint32_t>::take_ownership(std::vector<uint32_t>(components.size(), 1))
+                Collection<uint32_t>::take_ownership(std::vector<uint32_t>(components.size(), 1)),
+                descriptor
             );
         }
 

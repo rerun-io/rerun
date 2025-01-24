@@ -33,13 +33,16 @@ int main() {
     auto indicator_batch = rerun::ComponentColumn::from_indicators<rerun::Points3D>(5);
     auto position_batch = rerun::ComponentColumn::from_loggable_with_lengths(
         rerun::Collection<rerun::components::Position3D>(std::move(positions)),
-        {2, 4, 4, 3, 4}
+        {2, 4, 4, 3, 4},
+        rerun::Points3D::Descriptor_positions
     );
     auto color_batch = rerun::ComponentColumn::from_loggable(
-        rerun::Collection<rerun::components::Color>(std::move(colors))
+        rerun::Collection<rerun::components::Color>(std::move(colors)),
+        rerun::Points3D::Descriptor_colors
     );
     auto radius_batch = rerun::ComponentColumn::from_loggable(
-        rerun::Collection<rerun::components::Radius>(std::move(radii))
+        rerun::Collection<rerun::components::Radius>(std::move(radii)),
+        rerun::Points3D::Descriptor_radii
     );
 
     // TODO(#8754) : use tagged columnar APIs
