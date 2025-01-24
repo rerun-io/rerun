@@ -1,6 +1,6 @@
 use itertools::Itertools;
 use re_chunk_store::RowId;
-use re_renderer::{mesh::GpuMesh, RenderContext, Rgba32Unmul};
+use re_renderer::{mesh::GpuMesh, RenderContext};
 use re_types::{components::MediaType, datatypes};
 use re_viewer_context::{gpu_bridge::texture_creation_desc_from_color_image, ImageInfo};
 
@@ -135,12 +135,12 @@ impl LoadedMesh {
             re_tracing::profile_scope!("copy_colors");
             vertex_colors
                 .iter()
-                .map(|c| Rgba32Unmul::from_rgba_unmul_array(c.to_array()))
-                .chain(std::iter::repeat(Rgba32Unmul::WHITE))
+                .map(|c| re_renderer::Rgba32Unmul::from_rgba_unmul_array(c.to_array()))
+                .chain(std::iter::repeat(re_renderer::Rgba32Unmul::WHITE))
                 .take(num_positions)
                 .collect::<Vec<_>>()
         } else {
-            vec![Rgba32Unmul::WHITE; num_positions]
+            vec![re_renderer::Rgba32Unmul::WHITE; num_positions]
         };
 
         let vertex_normals = if let Some(normals) = vertex_normals {
