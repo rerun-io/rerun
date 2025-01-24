@@ -150,7 +150,7 @@ impl SpatialView2D {
         // Note that we can't rely on the camera being part of scene.space_cameras since that requires
         // the camera to be added to the scene!
         //
-        // TODO(jleibs, andreas): We don't have a data-result or the other pieces
+        // TODO(#6743): We don't have a data-result or the other pieces
         // necessary to properly handle overrides, defaults, or fallbacks.
         state.pinhole_at_origin =
             crate::pinhole::query_pinhole_and_view_coordinates_from_store_without_blueprint(
