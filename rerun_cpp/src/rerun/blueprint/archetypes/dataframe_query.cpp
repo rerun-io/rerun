@@ -31,6 +31,58 @@ namespace rerun::blueprint::archetypes {
                 .value_or_throw();
         return archetype;
     }
+
+    Collection<ComponentColumn> DataframeQuery::columns(const Collection<uint32_t>& lengths_) {
+        std::vector<ComponentColumn> columns;
+        columns.reserve(5);
+        if (timeline.has_value()) {
+            columns.push_back(ComponentColumn::from_batch_with_lengths(timeline.value(), lengths_)
+                                  .value_or_throw());
+        }
+        if (filter_by_range.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(filter_by_range.value(), lengths_)
+                    .value_or_throw()
+            );
+        }
+        if (filter_is_not_null.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(filter_is_not_null.value(), lengths_)
+                    .value_or_throw()
+            );
+        }
+        if (apply_latest_at.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(apply_latest_at.value(), lengths_)
+                    .value_or_throw()
+            );
+        }
+        if (select.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(select.value(), lengths_).value_or_throw()
+            );
+        }
+        return columns;
+    }
+
+    Collection<ComponentColumn> DataframeQuery::columns() {
+        if (timeline.has_value()) {
+            return columns(std::vector<uint32_t>(timeline.value().length(), 1));
+        }
+        if (filter_by_range.has_value()) {
+            return columns(std::vector<uint32_t>(filter_by_range.value().length(), 1));
+        }
+        if (filter_is_not_null.has_value()) {
+            return columns(std::vector<uint32_t>(filter_is_not_null.value().length(), 1));
+        }
+        if (apply_latest_at.has_value()) {
+            return columns(std::vector<uint32_t>(apply_latest_at.value().length(), 1));
+        }
+        if (select.has_value()) {
+            return columns(std::vector<uint32_t>(select.value().length(), 1));
+        }
+        return Collection<ComponentColumn>();
+    }
 } // namespace rerun::blueprint::archetypes
 
 namespace rerun {

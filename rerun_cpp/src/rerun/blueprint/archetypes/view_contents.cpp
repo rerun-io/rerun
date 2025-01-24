@@ -13,6 +13,24 @@ namespace rerun::blueprint::archetypes {
                 .value_or_throw();
         return archetype;
     }
+
+    Collection<ComponentColumn> ViewContents::columns(const Collection<uint32_t>& lengths_) {
+        std::vector<ComponentColumn> columns;
+        columns.reserve(1);
+        if (query.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(query.value(), lengths_).value_or_throw()
+            );
+        }
+        return columns;
+    }
+
+    Collection<ComponentColumn> ViewContents::columns() {
+        if (query.has_value()) {
+            return columns(std::vector<uint32_t>(query.value().length(), 1));
+        }
+        return Collection<ComponentColumn>();
+    }
 } // namespace rerun::blueprint::archetypes
 
 namespace rerun {

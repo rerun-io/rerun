@@ -26,6 +26,59 @@ namespace rerun::archetypes {
                 .value_or_throw();
         return archetype;
     }
+
+    Collection<ComponentColumn> InstancePoses3D::columns(const Collection<uint32_t>& lengths_) {
+        std::vector<ComponentColumn> columns;
+        columns.reserve(5);
+        if (translations.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(translations.value(), lengths_)
+                    .value_or_throw()
+            );
+        }
+        if (rotation_axis_angles.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(rotation_axis_angles.value(), lengths_)
+                    .value_or_throw()
+            );
+        }
+        if (quaternions.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(quaternions.value(), lengths_)
+                    .value_or_throw()
+            );
+        }
+        if (scales.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(scales.value(), lengths_).value_or_throw()
+            );
+        }
+        if (mat3x3.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(mat3x3.value(), lengths_).value_or_throw()
+            );
+        }
+        return columns;
+    }
+
+    Collection<ComponentColumn> InstancePoses3D::columns() {
+        if (translations.has_value()) {
+            return columns(std::vector<uint32_t>(translations.value().length(), 1));
+        }
+        if (rotation_axis_angles.has_value()) {
+            return columns(std::vector<uint32_t>(rotation_axis_angles.value().length(), 1));
+        }
+        if (quaternions.has_value()) {
+            return columns(std::vector<uint32_t>(quaternions.value().length(), 1));
+        }
+        if (scales.has_value()) {
+            return columns(std::vector<uint32_t>(scales.value().length(), 1));
+        }
+        if (mat3x3.has_value()) {
+            return columns(std::vector<uint32_t>(mat3x3.value().length(), 1));
+        }
+        return Collection<ComponentColumn>();
+    }
 } // namespace rerun::archetypes
 
 namespace rerun {

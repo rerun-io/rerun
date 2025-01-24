@@ -19,6 +19,46 @@ namespace rerun::archetypes {
                 .value_or_throw();
         return archetype;
     }
+
+    Collection<ComponentColumn> GeoPoints::columns(const Collection<uint32_t>& lengths_) {
+        std::vector<ComponentColumn> columns;
+        columns.reserve(4);
+        if (positions.has_value()) {
+            columns.push_back(ComponentColumn::from_batch_with_lengths(positions.value(), lengths_)
+                                  .value_or_throw());
+        }
+        if (radii.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(radii.value(), lengths_).value_or_throw()
+            );
+        }
+        if (colors.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(colors.value(), lengths_).value_or_throw()
+            );
+        }
+        if (class_ids.has_value()) {
+            columns.push_back(ComponentColumn::from_batch_with_lengths(class_ids.value(), lengths_)
+                                  .value_or_throw());
+        }
+        return columns;
+    }
+
+    Collection<ComponentColumn> GeoPoints::columns() {
+        if (positions.has_value()) {
+            return columns(std::vector<uint32_t>(positions.value().length(), 1));
+        }
+        if (radii.has_value()) {
+            return columns(std::vector<uint32_t>(radii.value().length(), 1));
+        }
+        if (colors.has_value()) {
+            return columns(std::vector<uint32_t>(colors.value().length(), 1));
+        }
+        if (class_ids.has_value()) {
+            return columns(std::vector<uint32_t>(class_ids.value().length(), 1));
+        }
+        return Collection<ComponentColumn>();
+    }
 } // namespace rerun::archetypes
 
 namespace rerun {

@@ -20,6 +20,49 @@ namespace rerun::archetypes {
                                            .value_or_throw();
         return archetype;
     }
+
+    Collection<ComponentColumn> SeriesLine::columns(const Collection<uint32_t>& lengths_) {
+        std::vector<ComponentColumn> columns;
+        columns.reserve(4);
+        if (color.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(color.value(), lengths_).value_or_throw()
+            );
+        }
+        if (width.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(width.value(), lengths_).value_or_throw()
+            );
+        }
+        if (name.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(name.value(), lengths_).value_or_throw()
+            );
+        }
+        if (aggregation_policy.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(aggregation_policy.value(), lengths_)
+                    .value_or_throw()
+            );
+        }
+        return columns;
+    }
+
+    Collection<ComponentColumn> SeriesLine::columns() {
+        if (color.has_value()) {
+            return columns(std::vector<uint32_t>(color.value().length(), 1));
+        }
+        if (width.has_value()) {
+            return columns(std::vector<uint32_t>(width.value().length(), 1));
+        }
+        if (name.has_value()) {
+            return columns(std::vector<uint32_t>(name.value().length(), 1));
+        }
+        if (aggregation_policy.has_value()) {
+            return columns(std::vector<uint32_t>(aggregation_policy.value().length(), 1));
+        }
+        return Collection<ComponentColumn>();
+    }
 } // namespace rerun::archetypes
 
 namespace rerun {

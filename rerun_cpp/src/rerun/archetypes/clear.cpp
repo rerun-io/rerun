@@ -13,6 +13,25 @@ namespace rerun::archetypes {
                 .value_or_throw();
         return archetype;
     }
+
+    Collection<ComponentColumn> Clear::columns(const Collection<uint32_t>& lengths_) {
+        std::vector<ComponentColumn> columns;
+        columns.reserve(1);
+        if (is_recursive.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(is_recursive.value(), lengths_)
+                    .value_or_throw()
+            );
+        }
+        return columns;
+    }
+
+    Collection<ComponentColumn> Clear::columns() {
+        if (is_recursive.has_value()) {
+            return columns(std::vector<uint32_t>(is_recursive.value().length(), 1));
+        }
+        return Collection<ComponentColumn>();
+    }
 } // namespace rerun::archetypes
 
 namespace rerun {

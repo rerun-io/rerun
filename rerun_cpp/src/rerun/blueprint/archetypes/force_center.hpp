@@ -7,6 +7,7 @@
 #include "../../blueprint/components/force_strength.hpp"
 #include "../../collection.hpp"
 #include "../../component_batch.hpp"
+#include "../../component_column.hpp"
 #include "../../indicator_component.hpp"
 #include "../../result.hpp"
 
@@ -75,6 +76,22 @@ namespace rerun::blueprint::archetypes {
                 ComponentBatch::from_loggable(_strength, Descriptor_strength).value_or_throw();
             return std::move(*this);
         }
+
+        /// Partitions the component data into multiple sub-batches.
+        ///
+        /// Specifically, this transforms the existing `ComponentBatch` data into `ComponentColumn`s
+        /// instead, via `ComponentColumn::from_batch_with_lengths`.
+        ///
+        /// This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
+        ///
+        /// The specified `lengths` must sum to the total length of the component batch.
+        Collection<ComponentColumn> columns(const Collection<uint32_t>& lengths_);
+
+        /// Partitions the component data into unit-length sub-batches.
+        ///
+        /// This is semantically similar to calling `columns` with `std::vector<uint32_t>(n, 1)`,
+        /// where `n` is automatically guessed.
+        Collection<ComponentColumn> columns();
     };
 
 } // namespace rerun::blueprint::archetypes

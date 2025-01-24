@@ -15,6 +15,31 @@ namespace rerun::archetypes {
                 .value_or_throw();
         return archetype;
     }
+
+    Collection<ComponentColumn> AssetVideo::columns(const Collection<uint32_t>& lengths_) {
+        std::vector<ComponentColumn> columns;
+        columns.reserve(2);
+        if (blob.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(blob.value(), lengths_).value_or_throw()
+            );
+        }
+        if (media_type.has_value()) {
+            columns.push_back(ComponentColumn::from_batch_with_lengths(media_type.value(), lengths_)
+                                  .value_or_throw());
+        }
+        return columns;
+    }
+
+    Collection<ComponentColumn> AssetVideo::columns() {
+        if (blob.has_value()) {
+            return columns(std::vector<uint32_t>(blob.value().length(), 1));
+        }
+        if (media_type.has_value()) {
+            return columns(std::vector<uint32_t>(media_type.value().length(), 1));
+        }
+        return Collection<ComponentColumn>();
+    }
 } // namespace rerun::archetypes
 
 namespace rerun {

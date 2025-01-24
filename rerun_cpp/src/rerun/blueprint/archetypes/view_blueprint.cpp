@@ -23,6 +23,51 @@ namespace rerun::blueprint::archetypes {
                 .value_or_throw();
         return archetype;
     }
+
+    Collection<ComponentColumn> ViewBlueprint::columns(const Collection<uint32_t>& lengths_) {
+        std::vector<ComponentColumn> columns;
+        columns.reserve(4);
+        if (class_identifier.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(class_identifier.value(), lengths_)
+                    .value_or_throw()
+            );
+        }
+        if (display_name.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(display_name.value(), lengths_)
+                    .value_or_throw()
+            );
+        }
+        if (space_origin.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(space_origin.value(), lengths_)
+                    .value_or_throw()
+            );
+        }
+        if (visible.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(visible.value(), lengths_).value_or_throw()
+            );
+        }
+        return columns;
+    }
+
+    Collection<ComponentColumn> ViewBlueprint::columns() {
+        if (class_identifier.has_value()) {
+            return columns(std::vector<uint32_t>(class_identifier.value().length(), 1));
+        }
+        if (display_name.has_value()) {
+            return columns(std::vector<uint32_t>(display_name.value().length(), 1));
+        }
+        if (space_origin.has_value()) {
+            return columns(std::vector<uint32_t>(space_origin.value().length(), 1));
+        }
+        if (visible.has_value()) {
+            return columns(std::vector<uint32_t>(visible.value().length(), 1));
+        }
+        return Collection<ComponentColumn>();
+    }
 } // namespace rerun::blueprint::archetypes
 
 namespace rerun {

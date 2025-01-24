@@ -13,6 +13,24 @@ namespace rerun::blueprint::archetypes {
                 .value_or_throw();
         return archetype;
     }
+
+    Collection<ComponentColumn> TensorViewFit::columns(const Collection<uint32_t>& lengths_) {
+        std::vector<ComponentColumn> columns;
+        columns.reserve(1);
+        if (scaling.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(scaling.value(), lengths_).value_or_throw()
+            );
+        }
+        return columns;
+    }
+
+    Collection<ComponentColumn> TensorViewFit::columns() {
+        if (scaling.has_value()) {
+            return columns(std::vector<uint32_t>(scaling.value().length(), 1));
+        }
+        return Collection<ComponentColumn>();
+    }
 } // namespace rerun::blueprint::archetypes
 
 namespace rerun {

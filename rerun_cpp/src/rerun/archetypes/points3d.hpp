@@ -5,6 +5,7 @@
 
 #include "../collection.hpp"
 #include "../component_batch.hpp"
+#include "../component_column.hpp"
 #include "../components/class_id.hpp"
 #include "../components/color.hpp"
 #include "../components/keypoint_id.hpp"
@@ -136,14 +137,21 @@ namespace rerun::archetypes {
     ///     auto indicator_batch = rerun::ComponentColumn::from_indicators<rerun::Points3D>(5);
     ///     auto position_batch = rerun::ComponentColumn::from_loggable_with_lengths(
     ///         rerun::Collection<rerun::components::Position3D>(std::move(positions)),
-    ///         {2, 4, 4, 3, 4}
+    ///         {2, 4, 4, 3, 4},
+    ///         rerun::Points3D::Descriptor_positions
     ///     );
     ///     auto color_batch = rerun::ComponentColumn::from_loggable(
-    ///         rerun::Collection<rerun::components::Color>(std::move(colors))
+    ///         rerun::Collection<rerun::components::Color>(std::move(colors)),
+    ///         rerun::Points3D::Descriptor_colors
     ///     );
     ///     auto radius_batch = rerun::ComponentColumn::from_loggable(
-    ///         rerun::Collection<rerun::components::Radius>(std::move(radii))
+    ///         rerun::Collection<rerun::components::Radius>(std::move(radii)),
+    ///         rerun::Points3D::Descriptor_radii
     ///     );
+    ///     auto position =
+    ///         rerun::Points3D::update_fields().with_positions(positions).columns({2, 4, 4, 3, 4});
+    ///     auto color_and_radius =
+    ///         rerun::Points3D::update_fields().with_colors(colors).with_radii(radii).columns();
     ///
     ///     // TODO(#8754) : use tagged columnar APIs
     ///     rec.send_columns(
@@ -310,6 +318,22 @@ namespace rerun::archetypes {
                                .value_or_throw();
             return std::move(*this);
         }
+
+        /// Partitions the component data into multiple sub-batches.
+        ///
+        /// Specifically, this transforms the existing `ComponentBatch` data into `ComponentColumn`s
+        /// instead, via `ComponentColumn::from_batch_with_lengths`.
+        ///
+        /// This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
+        ///
+        /// The specified `lengths` must sum to the total length of the component batch.
+        Collection<ComponentColumn> columns(const Collection<uint32_t>& lengths_);
+
+        /// Partitions the component data into unit-length sub-batches.
+        ///
+        /// This is semantically similar to calling `columns` with `std::vector<uint32_t>(n, 1)`,
+        /// where `n` is automatically guessed.
+        Collection<ComponentColumn> columns();
     };
 
 } // namespace rerun::archetypes

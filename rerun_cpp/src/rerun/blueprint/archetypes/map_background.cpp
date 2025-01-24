@@ -13,6 +13,23 @@ namespace rerun::blueprint::archetypes {
                 .value_or_throw();
         return archetype;
     }
+
+    Collection<ComponentColumn> MapBackground::columns(const Collection<uint32_t>& lengths_) {
+        std::vector<ComponentColumn> columns;
+        columns.reserve(1);
+        if (provider.has_value()) {
+            columns.push_back(ComponentColumn::from_batch_with_lengths(provider.value(), lengths_)
+                                  .value_or_throw());
+        }
+        return columns;
+    }
+
+    Collection<ComponentColumn> MapBackground::columns() {
+        if (provider.has_value()) {
+            return columns(std::vector<uint32_t>(provider.value().length(), 1));
+        }
+        return Collection<ComponentColumn>();
+    }
 } // namespace rerun::blueprint::archetypes
 
 namespace rerun {

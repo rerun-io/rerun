@@ -449,7 +449,7 @@ impl QuotedObject {
         mut hpp_includes: Includes,
         hpp_type_extensions: &TokenStream,
     ) -> Self {
-        let type_ident = obj.ident();
+        let archetype_type_ident = obj.ident();
         let archetype_name = &obj.fqname;
         let quoted_docs = quote_obj_docs(reporter, objects, obj);
 
@@ -503,7 +503,7 @@ impl QuotedObject {
                 // Making the constructor explicit prevents all sort of strange errors.
                 // (e.g. `Points3D({{0.0f, 0.0f, 0.0f}})` would previously be ambiguous with the move constructor?!)
                 declaration: MethodDeclaration::constructor(quote! {
-                    explicit #type_ident(#(#parameters),*) : #(#assignments),*
+                    explicit #archetype_type_ident(#(#parameters),*) : #(#assignments),*
                 }),
                 ..Method::default()
             });
@@ -535,24 +535,24 @@ impl QuotedObject {
 
         // update_fields method - this is equivalent to the default constructor.
         methods.push(Method {
-            docs: format!("Update only some specific fields of a `{type_ident}`.").into(),
+            docs: format!("Update only some specific fields of a `{archetype_type_ident}`.").into(),
             declaration: MethodDeclaration {
                 is_static: true,
-                return_type: quote!(#type_ident),
+                return_type: quote!(#archetype_type_ident),
                 name_and_parameters: quote! { update_fields() },
             },
             definition_body: quote! {
-                return #type_ident();
+                return #archetype_type_ident();
             },
             inline: true,
         });
 
         // clear_fields method.
         methods.push(Method {
-                docs: format!("Clear all the fields of a `{type_ident}`.").into(),
+                docs: format!("Clear all the fields of a `{archetype_type_ident}`.").into(),
                 declaration: MethodDeclaration {
                     is_static: true,
-                    return_type: quote!(#type_ident),
+                    return_type: quote!(#archetype_type_ident),
                     name_and_parameters: quote! { clear_fields() },
                 },
                 definition_body: {
@@ -570,7 +570,7 @@ impl QuotedObject {
                     });
 
                     quote! {
-                        auto archetype = #type_ident();
+                        auto archetype = #archetype_type_ident();
                         #(#field_assignments)*
                         return archetype;
                     }
@@ -591,7 +591,7 @@ impl QuotedObject {
                     docs: obj_field.docs.clone().into(),
                     declaration: MethodDeclaration {
                         is_static: false,
-                        return_type: quote!(#type_ident),
+                        return_type: quote!(#archetype_type_ident),
                         name_and_parameters: quote! {
                             #method_ident(const #field_type& #parameter_ident) &&
                         },
@@ -605,6 +605,77 @@ impl QuotedObject {
                 });
         }
 
+        // columns method that allows partitioning into columns
+        hpp_includes.insert_rerun("component_column.hpp");
+        methods.push(Method {
+            docs: unindent::unindent("\
+        Partitions the component data into multiple sub-batches.
+
+        Specifically, this transforms the existing `ComponentBatch` data into `ComponentColumn`s
+        instead, via `ComponentColumn::from_batch_with_lengths`.
+
+        This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
+
+        The specified `lengths` must sum to the total length of the component batch.
+        ").into(),
+            declaration: MethodDeclaration {
+                is_static: false,
+                return_type: quote!(Collection<ComponentColumn>),
+                name_and_parameters: quote! { columns(const Collection<uint32_t>& lengths_) },
+            },
+            definition_body: {
+                let num_fields = quote_integer(obj.fields.len());
+                let push_back_columns = obj.fields.iter().map(|field| {
+                    let field_ident = field_name_ident(field);
+                    quote! {
+                        if (#field_ident.has_value()) {
+                            columns.push_back(ComponentColumn::from_batch_with_lengths(
+                                #field_ident.value(), lengths_
+                            ).value_or_throw());
+                        }
+                    }
+                });
+
+                quote! {
+                    std::vector<ComponentColumn> columns;
+                    columns.reserve(#num_fields);
+                    #(#push_back_columns)*
+                    return columns;
+                }
+            },
+            inline: false,
+        });
+        methods.push(Method {
+            docs: unindent::unindent(
+                "Partitions the component data into unit-length sub-batches.
+
+        This is semantically similar to calling `columns` with `std::vector<uint32_t>(n, 1)`,
+        where `n` is automatically guessed.",
+            )
+            .into(),
+            declaration: MethodDeclaration {
+                is_static: false,
+                return_type: quote!(Collection<ComponentColumn>),
+                name_and_parameters: quote! { columns() },
+            },
+            definition_body: {
+                let set_len = obj.fields.iter().map(|field| {
+                    let field_ident = field_name_ident(field);
+                    quote! {
+                        if (#field_ident.has_value()) {
+                            return columns(std::vector<uint32_t>(#field_ident.value().length(), 1));
+                        }
+                    }
+                });
+
+                quote! {
+                    #(#set_len)*
+                    return Collection<ComponentColumn>();
+                }
+            },
+            inline: false,
+        });
+
         let quoted_namespace = if let Some(scope) = obj.scope() {
             let scope = format_ident!("{}", scope);
             quote! { #scope::archetypes }
@@ -612,15 +683,15 @@ impl QuotedObject {
             quote! {archetypes}
         };
 
-        let serialize_method = archetype_serialize(&type_ident, obj, &mut hpp_includes);
+        let serialize_method = archetype_serialize(&archetype_type_ident, obj, &mut hpp_includes);
         let serialize_hpp = serialize_method.to_hpp_tokens(reporter, objects);
-        let serialize_cpp =
-            serialize_method.to_cpp_tokens(&quote!(AsComponents<#quoted_namespace::#type_ident>));
+        let serialize_cpp = serialize_method
+            .to_cpp_tokens(&quote!(AsComponents<#quoted_namespace::#archetype_type_ident>));
 
         let methods_hpp = methods.iter().map(|m| m.to_hpp_tokens(reporter, objects));
         let methods_cpp = methods
             .iter()
-            .map(|m| m.to_cpp_tokens(&quote!(#type_ident)));
+            .map(|m| m.to_cpp_tokens(&quote!(#archetype_type_ident)));
 
         let indicator_comment = quote_doc_comment("Indicator component, used to identify the archetype when converting to a list of components.");
         let indicator_component_fqname =
@@ -648,8 +719,11 @@ impl QuotedObject {
         let default_ctor = if obj.is_attr_set(ATTR_CPP_NO_DEFAULT_CTOR) {
             quote! {}
         } else {
-            quote! { #type_ident() = default; }
+            quote! { #archetype_type_ident() = default; }
         };
+
+        // Don't add any includes that are already in the hpp anyways.
+        cpp_includes.remove_includes(&hpp_includes);
 
         // Note that we run into "rule of five": https://en.cppreference.com/w/cpp/language/rule_of_three
         // * we have to manually opt-in to default ctor because we (most of the time) have a user defined constructor
@@ -664,7 +738,7 @@ impl QuotedObject {
 
             namespace rerun::#quoted_namespace {
                 #quoted_docs
-                struct #deprecation_notice #type_ident {
+                struct #deprecation_notice #archetype_type_ident {
                     #(#field_declarations;)*
 
                 public:
@@ -685,10 +759,10 @@ impl QuotedObject {
 
                 public:
                     #default_ctor
-                    #type_ident(#type_ident&& other) = default;
-                    #type_ident(const #type_ident& other) = default;
-                    #type_ident& operator=(const #type_ident& other) = default;
-                    #type_ident& operator=(#type_ident&& other) = default;
+                    #archetype_type_ident(#archetype_type_ident&& other) = default;
+                    #archetype_type_ident(const #archetype_type_ident& other) = default;
+                    #archetype_type_ident& operator=(const #archetype_type_ident& other) = default;
+                    #archetype_type_ident& operator=(#archetype_type_ident&& other) = default;
 
                     #NEWLINE_TOKEN
                     #NEWLINE_TOKEN
@@ -708,7 +782,7 @@ impl QuotedObject {
 
                 #doc_hide_comment
                 template<>
-                struct AsComponents<#quoted_namespace::#type_ident> {
+                struct AsComponents<#quoted_namespace::#archetype_type_ident> {
                     #serialize_hpp
                 };
             }

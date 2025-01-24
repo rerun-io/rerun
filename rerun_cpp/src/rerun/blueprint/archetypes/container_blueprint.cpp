@@ -38,6 +38,79 @@ namespace rerun::blueprint::archetypes {
                 .value_or_throw();
         return archetype;
     }
+
+    Collection<ComponentColumn> ContainerBlueprint::columns(const Collection<uint32_t>& lengths_) {
+        std::vector<ComponentColumn> columns;
+        columns.reserve(8);
+        if (container_kind.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(container_kind.value(), lengths_)
+                    .value_or_throw()
+            );
+        }
+        if (display_name.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(display_name.value(), lengths_)
+                    .value_or_throw()
+            );
+        }
+        if (contents.has_value()) {
+            columns.push_back(ComponentColumn::from_batch_with_lengths(contents.value(), lengths_)
+                                  .value_or_throw());
+        }
+        if (col_shares.has_value()) {
+            columns.push_back(ComponentColumn::from_batch_with_lengths(col_shares.value(), lengths_)
+                                  .value_or_throw());
+        }
+        if (row_shares.has_value()) {
+            columns.push_back(ComponentColumn::from_batch_with_lengths(row_shares.value(), lengths_)
+                                  .value_or_throw());
+        }
+        if (active_tab.has_value()) {
+            columns.push_back(ComponentColumn::from_batch_with_lengths(active_tab.value(), lengths_)
+                                  .value_or_throw());
+        }
+        if (visible.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(visible.value(), lengths_).value_or_throw()
+            );
+        }
+        if (grid_columns.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(grid_columns.value(), lengths_)
+                    .value_or_throw()
+            );
+        }
+        return columns;
+    }
+
+    Collection<ComponentColumn> ContainerBlueprint::columns() {
+        if (container_kind.has_value()) {
+            return columns(std::vector<uint32_t>(container_kind.value().length(), 1));
+        }
+        if (display_name.has_value()) {
+            return columns(std::vector<uint32_t>(display_name.value().length(), 1));
+        }
+        if (contents.has_value()) {
+            return columns(std::vector<uint32_t>(contents.value().length(), 1));
+        }
+        if (col_shares.has_value()) {
+            return columns(std::vector<uint32_t>(col_shares.value().length(), 1));
+        }
+        if (row_shares.has_value()) {
+            return columns(std::vector<uint32_t>(row_shares.value().length(), 1));
+        }
+        if (active_tab.has_value()) {
+            return columns(std::vector<uint32_t>(active_tab.value().length(), 1));
+        }
+        if (visible.has_value()) {
+            return columns(std::vector<uint32_t>(visible.value().length(), 1));
+        }
+        if (grid_columns.has_value()) {
+            return columns(std::vector<uint32_t>(grid_columns.value().length(), 1));
+        }
+        return Collection<ComponentColumn>();
+    }
 } // namespace rerun::blueprint::archetypes
 
 namespace rerun {
