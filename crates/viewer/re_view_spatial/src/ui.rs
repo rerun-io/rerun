@@ -3,8 +3,7 @@ use egui::{epaint::util::OrderedFloat, text::TextWrapping, NumExt as _, WidgetTe
 use re_format::format_f32;
 use re_math::BoundingBox;
 use re_types::{
-    archetypes::Pinhole, blueprint::components::VisualBounds2D, components::ViewCoordinates,
-    image::ImageKind,
+    blueprint::components::VisualBounds2D, components::ViewCoordinates, image::ImageKind,
 };
 use re_ui::UiExt as _;
 use re_viewer_context::{HoverHighlight, SelectionHighlight, ViewHighlights, ViewState};
@@ -16,6 +15,7 @@ use crate::{
     scene_bounding_boxes::SceneBoundingBoxes,
     view_kind::SpatialViewKind,
     visualizers::{SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget},
+    Pinhole,
 };
 
 use super::{eye::Eye, ui_3d::View3DState};

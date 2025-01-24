@@ -3,8 +3,10 @@ use re_log_types::Instance;
 use re_renderer::renderer::LineStripFlags;
 use re_types::{
     archetypes::Pinhole,
-    components::{ImagePlaneDistance, ViewCoordinates},
+    components::{self},
+    Archetype,
 };
+use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
     DataResult, IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext,
     TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewOutlineMasks,
@@ -14,7 +16,7 @@ use re_viewer_context::{
 
 use super::{filter_visualizable_3d_entities, SpatialViewVisualizerData};
 use crate::{
-    contexts::TransformTreeContext, query_pinhole, space_camera_3d::SpaceCamera3D,
+    contexts::TransformTreeContext, resolution_of_image_at, space_camera_3d::SpaceCamera3D,
     ui::SpatialViewState,
 };
 
@@ -42,6 +44,12 @@ impl IdentifiedViewSystem for CamerasVisualizer {
     }
 }
 
+struct CameraComponentDataWithFallbacks {
+    pinhole: crate::Pinhole,
+    camera_xyz: components::ViewCoordinates,
+    image_plane_distance: f32,
+}
+
 impl CamerasVisualizer {
     #[allow(clippy::too_many_arguments)]
     fn visit_instance(
@@ -49,24 +57,21 @@ impl CamerasVisualizer {
         line_builder: &mut re_renderer::LineDrawableBuilder<'_>,
         transforms: &TransformTreeContext,
         data_result: &DataResult,
-        pinhole: &Pinhole,
-        pinhole_view_coordinates: ViewCoordinates,
+        pinhole_properties: &CameraComponentDataWithFallbacks,
         entity_highlight: &ViewOutlineMasks,
     ) {
         let instance = Instance::from(0);
         let ent_path = &data_result.entity_path;
 
         // Assuming the fallback provider did the right thing, this value should always be set.
-        let frustum_length = pinhole.image_plane_distance.unwrap_or_default().into();
-
         // If the camera is our reference, there is nothing for us to display.
         if transforms.reference_path() == ent_path {
             self.space_cameras.push(SpaceCamera3D {
                 ent_path: ent_path.clone(),
-                pinhole_view_coordinates,
+                pinhole_view_coordinates: pinhole_properties.camera_xyz,
                 world_from_camera: re_math::IsoTransform::IDENTITY,
-                pinhole: Some(pinhole.clone()),
-                picture_plane_distance: frustum_length,
+                pinhole: Some(pinhole_properties.pinhole),
+                picture_plane_distance: pinhole_properties.image_plane_distance,
             });
             return;
         }
@@ -100,32 +105,30 @@ impl CamerasVisualizer {
 
         self.space_cameras.push(SpaceCamera3D {
             ent_path: ent_path.clone(),
-            pinhole_view_coordinates,
+            pinhole_view_coordinates: pinhole_properties.camera_xyz,
             world_from_camera: world_from_camera_iso,
-            pinhole: Some(pinhole.clone()),
-            picture_plane_distance: frustum_length,
+            pinhole: Some(pinhole_properties.pinhole),
+            picture_plane_distance: pinhole_properties.image_plane_distance,
         });
 
-        let Some(resolution) = pinhole.resolution.as_ref() else {
-            return;
-        };
-
         // Setup a RDF frustum (for non-RDF we apply a transformation matrix later).
-        let w = resolution.x();
-        let h = resolution.y();
-        let z = frustum_length;
+        let w = pinhole_properties.pinhole.resolution.x;
+        let h = pinhole_properties.pinhole.resolution.y;
+        let z = pinhole_properties.image_plane_distance;
 
         let corners = [
-            pinhole.unproject(vec3(0.0, 0.0, z)),
-            pinhole.unproject(vec3(0.0, h, z)),
-            pinhole.unproject(vec3(w, h, z)),
-            pinhole.unproject(vec3(w, 0.0, z)),
+            pinhole_properties.pinhole.unproject(vec3(0.0, 0.0, z)),
+            pinhole_properties.pinhole.unproject(vec3(0.0, h, z)),
+            pinhole_properties.pinhole.unproject(vec3(w, h, z)),
+            pinhole_properties.pinhole.unproject(vec3(w, 0.0, z)),
         ];
 
         let up_triangle = [
-            pinhole.unproject(vec3(0.4 * w, 0.0, z)),
-            pinhole.unproject(vec3(0.5 * w, -0.1 * w, z)),
-            pinhole.unproject(vec3(0.6 * w, 0.0, z)),
+            pinhole_properties.pinhole.unproject(vec3(0.4 * w, 0.0, z)),
+            pinhole_properties
+                .pinhole
+                .unproject(vec3(0.5 * w, -0.1 * w, z)),
+            pinhole_properties.pinhole.unproject(vec3(0.6 * w, 0.0, z)),
         ];
 
         let strips = vec![
@@ -168,7 +171,8 @@ impl CamerasVisualizer {
             // The frustum is setup as a RDF frustum, but if the view coordinates are not RDF,
             // we need to reorient the displayed frustum so that we indicate the correct orientation in the 3D world space.
             .world_from_obj(
-                world_from_camera * glam::Affine3A::from_mat3(pinhole_view_coordinates.from_rdf()),
+                world_from_camera
+                    * glam::Affine3A::from_mat3(pinhole_properties.camera_xyz.from_rdf()),
             )
             .outline_mask_ids(entity_highlight.overall)
             .picking_object_id(instance_layer_id.object);
@@ -225,22 +229,58 @@ impl VisualizerSystem for CamerasVisualizer {
         );
 
         for data_result in query.iter_visible_data_results(ctx, Self::identifier()) {
+            let latest_at = query.latest_at_query();
+            let query_ctx = ctx.query_context(data_result, &latest_at);
             let time_query = re_chunk_store::LatestAtQuery::new(query.timeline, query.latest_at);
 
-            if let Some(pinhole) = query_pinhole(ctx, &time_query, data_result) {
-                let entity_highlight = query
-                    .highlights
-                    .entity_outline_mask(data_result.entity_path.hash());
+            let query_shadowed_components = false;
+            let query_results = latest_at_with_blueprint_resolved_data(
+                ctx,
+                None,
+                &time_query,
+                data_result,
+                Pinhole::all_components()
+                    .iter()
+                    .map(|desc| desc.component_name),
+                query_shadowed_components,
+            );
 
-                self.visit_instance(
-                    &mut line_builder,
-                    transforms,
-                    data_result,
-                    &pinhole,
-                    pinhole.camera_xyz.unwrap_or(Pinhole::DEFAULT_CAMERA_XYZ),
-                    entity_highlight,
-                );
-            }
+            let Some(pinhole_projection) =
+                query_results.get_required_mono::<components::PinholeProjection>()
+            else {
+                continue;
+            };
+
+            let resolution = query_results
+                .get_mono::<components::Resolution>()
+                .unwrap_or_else(|| self.fallback_for(&query_ctx));
+            let camera_xyz = query_results
+                .get_mono::<components::ViewCoordinates>()
+                .unwrap_or_else(|| self.fallback_for(&query_ctx));
+            let image_plane_distance = query_results
+                .get_mono::<components::ImagePlaneDistance>()
+                .unwrap_or_else(|| self.fallback_for(&query_ctx));
+
+            let component_data = CameraComponentDataWithFallbacks {
+                pinhole: crate::Pinhole {
+                    image_from_camera: pinhole_projection.0.into(),
+                    resolution: resolution.into(),
+                },
+                camera_xyz,
+                image_plane_distance: image_plane_distance.into(),
+            };
+
+            let entity_highlight = query
+                .highlights
+                .entity_outline_mask(data_result.entity_path.hash());
+
+            self.visit_instance(
+                &mut line_builder,
+                transforms,
+                data_result,
+                &component_data,
+                entity_highlight,
+            );
         }
 
         Ok(vec![(line_builder.into_draw_data()?.into())])
@@ -259,8 +299,8 @@ impl VisualizerSystem for CamerasVisualizer {
     }
 }
 
-impl TypedComponentFallbackProvider<ImagePlaneDistance> for CamerasVisualizer {
-    fn fallback_for(&self, ctx: &QueryContext<'_>) -> ImagePlaneDistance {
+impl TypedComponentFallbackProvider<components::ImagePlaneDistance> for CamerasVisualizer {
+    fn fallback_for(&self, ctx: &QueryContext<'_>) -> components::ImagePlaneDistance {
         let Ok(state) = ctx.view_state.downcast_ref::<SpatialViewState>() else {
             return Default::default();
         };
@@ -280,10 +320,23 @@ impl TypedComponentFallbackProvider<ImagePlaneDistance> for CamerasVisualizer {
     }
 }
 
-impl TypedComponentFallbackProvider<ViewCoordinates> for CamerasVisualizer {
-    fn fallback_for(&self, _ctx: &QueryContext<'_>) -> ViewCoordinates {
+impl TypedComponentFallbackProvider<components::ViewCoordinates> for CamerasVisualizer {
+    fn fallback_for(&self, _ctx: &QueryContext<'_>) -> components::ViewCoordinates {
         Pinhole::DEFAULT_CAMERA_XYZ
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(CamerasVisualizer => [ImagePlaneDistance, ViewCoordinates]);
+impl TypedComponentFallbackProvider<components::Resolution> for CamerasVisualizer {
+    fn fallback_for(&self, ctx: &QueryContext<'_>) -> components::Resolution {
+        // If the Pinhole has no resolution, use the resolution for the image logged at the same path.
+        // See https://github.com/rerun-io/rerun/issues/3852
+        resolution_of_image_at(ctx.viewer_ctx, ctx.query, ctx.target_entity_path)
+            .unwrap_or(components::Resolution::from([100.0, 100.0]))
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(CamerasVisualizer => [
+    components::ImagePlaneDistance,
+    components::ViewCoordinates,
+    components::Resolution
+]);

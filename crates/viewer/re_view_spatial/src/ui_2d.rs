@@ -4,12 +4,9 @@ use re_math::IsoTransform;
 use re_entity_db::EntityPath;
 use re_log::ResultExt as _;
 use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
-use re_types::{
-    archetypes::Pinhole,
-    blueprint::{
-        archetypes::{Background, NearClipPlane, VisualBounds2D},
-        components as blueprint_components,
-    },
+use re_types::blueprint::{
+    archetypes::{Background, NearClipPlane, VisualBounds2D},
+    components as blueprint_components,
 };
 use re_ui::{ContextExt as _, ModifiersMarkdown, MouseButtonMarkdown};
 use re_view::controls::{DRAG_PAN2D_BUTTON, ZOOM_SCROLL_MODIFIER};
@@ -20,8 +17,8 @@ use re_viewport_blueprint::ViewProperty;
 
 use super::{eye::Eye, ui::create_labels};
 use crate::{
-    query_pinhole_legacy, ui::SpatialViewState, view_kind::SpatialViewKind,
-    visualizers::collect_ui_labels, SpatialView2D,
+    ui::SpatialViewState, view_kind::SpatialViewKind, visualizers::collect_ui_labels, Pinhole,
+    SpatialView2D,
 };
 
 // ---
@@ -153,11 +150,15 @@ impl SpatialView2D {
         // Note that we can't rely on the camera being part of scene.space_cameras since that requires
         // the camera to be added to the scene!
         //
-        // TODO(jleibs): Would be nice to use `query_pinhole` here, but we don't have a data-result or the other pieces
-        // necessary to properly handle overrides, defaults, or fallbacks. We don't actually use the image_plane_distance
-        // so it doesnt technically matter.
+        // TODO(#6743): We don't have a data-result or the other pieces
+        // necessary to properly handle overrides, defaults, or fallbacks.
         state.pinhole_at_origin =
-            query_pinhole_legacy(ctx, &ctx.current_query(), query.space_origin);
+            crate::pinhole::query_pinhole_and_view_coordinates_from_store_without_blueprint(
+                ctx,
+                &ctx.current_query(),
+                query.space_origin,
+            )
+            .map(|(pinhole, _view_coordinates)| pinhole);
 
         let (response, painter) =
             ui.allocate_painter(ui.available_size(), egui::Sense::click_and_drag());
@@ -319,54 +320,38 @@ fn setup_target_config(
 
     // TODO(andreas): Support anamorphic pinhole cameras properly.
 
-    // For simplicity (and to reduce surprises!) we always render with a pinhole camera.
-    // Make up a default pinhole camera if we don't have one placing it in a way to look at the entire space.
-    let scene_bounds_size = glam::vec2(scene_bounds.width(), scene_bounds.height());
-
-    let pinhole;
-    let resolution;
-
-    if let Some(scene_pinhole) = scene_pinhole {
+    let pinhole = if let Some(scene_pinhole) = scene_pinhole {
         // The user has a pinhole, and we may want to project 3D stuff into this 2D space,
         // and we want to use that pinhole projection to do so.
-        pinhole = scene_pinhole.clone();
-
-        resolution = pinhole.resolution().unwrap_or_else(|| {
-            // This is weird - we have a projection with an unknown resolution.
-            // Let's just pick something plausible and hope for the best 😬.
-            re_log::warn_once!("Pinhole projection lacks resolution.");
-            glam::Vec2::splat(1000.0)
-        });
+        *scene_pinhole
     } else {
         // The user didn't pick a pinhole, but we still set up a 3D projection.
         // So we just pick _any_ pinhole camera, but we pick a "plausible" one so that
         // it is similar to real-life pinhole cameras, so that we get similar scales and precision.
         let focal_length = 1000.0; // Whatever, but small values can cause precision issues, noticeable on rectangle corners.
         let principal_point = glam::Vec2::splat(500.0); // Whatever
-        resolution = glam::Vec2::splat(1000.0); // Whatever
-        pinhole = Pinhole {
+        let resolution = glam::Vec2::splat(1000.0); // Whatever
+        Pinhole {
             image_from_camera: glam::Mat3::from_cols(
                 glam::vec3(focal_length, 0.0, 0.0),
                 glam::vec3(0.0, focal_length, 0.0),
                 principal_point.extend(1.0),
-            )
-            .into(),
-            resolution: Some([resolution.x, resolution.y].into()),
-            camera_xyz: Some(Pinhole::DEFAULT_CAMERA_XYZ),
-            image_plane_distance: None,
-        };
-    }
-    let pinhole_rect = Rect::from_min_size(Pos2::ZERO, egui::vec2(resolution.x, resolution.y));
+            ),
+            resolution,
+        }
+    };
+    let pinhole_rect = Rect::from_min_size(
+        Pos2::ZERO,
+        egui::vec2(pinhole.resolution.x, pinhole.resolution.y),
+    );
 
     let focal_length = pinhole.focal_length_in_pixels();
-    let focal_length = 2.0 / (1.0 / focal_length.x() + 1.0 / focal_length.y()); // harmonic mean (lack of anamorphic support)
+    let focal_length = 2.0 / (1.0 / focal_length.x + 1.0 / focal_length.y); // harmonic mean (lack of anamorphic support)
 
     let projection_from_view = re_renderer::view_builder::Projection::Perspective {
-        vertical_fov: pinhole.fov_y().unwrap_or(Eye::DEFAULT_FOV_Y),
+        vertical_fov: pinhole.fov_y(),
         near_plane_distance: near_clip_plane * focal_length / 500.0, // TODO(#8373): The need to scale this by 500 is quite hacky.
-        aspect_ratio: pinhole
-            .aspect_ratio()
-            .unwrap_or(scene_bounds_size.x / scene_bounds_size.y), // only happens if the pinhole lacks resolution
+        aspect_ratio: pinhole.aspect_ratio(),
     };
 
     // Position the camera looking straight at the principal point:
@@ -386,7 +371,7 @@ fn setup_target_config(
     // We want to look at the center of the scene bounds,
     // but we set up the camera to look at the principal point,
     // so we need to translate the view camera to compensate for that:
-    let image_center = 0.5 * resolution;
+    let image_center = 0.5 * pinhole.resolution;
     viewport_transformation.region_of_interest.min += image_center - pinhole.principal_point();
 
     // ----------------------
