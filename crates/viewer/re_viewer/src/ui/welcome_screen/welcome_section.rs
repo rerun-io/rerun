@@ -10,12 +10,18 @@ pub(super) const WELCOME_SCREEN_BULLET_TEXT: &[&str] = &[
     "Configure the viewer interactively or through code",
 ];
 
+// XXX TODO MOVE MACRO TO UTILITY MODULE OR UTILITY CRATE
+macro_rules! color_from_rgb_hex {
+    ($hex:literal) => {
+        match color_hex::color_from_hex!($hex).as_slice() {
+            [a, b, c] => Color32::from_rgb(*a, *b, *c),
+            _ => panic!("XXX"),
+        }
+    };
+}
+
 const DOC_BTN_TEXT: &str = "Go to documentation →";
-// XXX TODO MAKE & USE WRAPPER MACRO FOR THIS:
-const DOC_BTN_COLOR: Color32 = match color_hex::color_from_hex!("#60A0FF").as_slice() {
-    [a, b, c] => Color32::from_rgb(*a, *b, *c),
-    _ => panic!("XXX"),
-};
+const DOC_BTN_COLOR: Color32 = color_from_rgb_hex!("#60A0FF");
 
 /// Show the welcome section.
 pub(super) fn welcome_section_ui(ui: &mut egui::Ui) {
