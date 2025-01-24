@@ -760,6 +760,7 @@ impl TimePanel {
             ..
         } = ui
             .list_item()
+            .render_offscreen(false)
             .selected(is_selected)
             .draggable(true)
             .force_hovered(is_item_hovered)
@@ -925,6 +926,7 @@ impl TimePanel {
 
                 let response = ui
                     .list_item()
+                    .render_offscreen(false)
                     .selected(ctx.selection().contains_item(&item.to_item()))
                     .force_hovered(
                         ctx.selection_state()
@@ -975,18 +977,21 @@ impl TimePanel {
                                 format!("{} times", re_format::format_uint(num_messages))
                             };
 
-                            ui.list_item().interactive(false).show_flat(
-                                ui,
-                                list_item::LabelContent::new(format!(
-                                    "{kind} component, logged {num_messages}"
-                                ))
-                                .truncate(false)
-                                .with_icon(if is_static {
-                                    &re_ui::icons::COMPONENT_STATIC
-                                } else {
-                                    &re_ui::icons::COMPONENT_TEMPORAL
-                                }),
-                            );
+                            ui.list_item()
+                                .interactive(false)
+                                .render_offscreen(false)
+                                .show_flat(
+                                    ui,
+                                    list_item::LabelContent::new(format!(
+                                        "{kind} component, logged {num_messages}"
+                                    ))
+                                    .truncate(false)
+                                    .with_icon(if is_static {
+                                        &re_ui::icons::COMPONENT_STATIC
+                                    } else {
+                                        &re_ui::icons::COMPONENT_TEMPORAL
+                                    }),
+                                );
 
                             // Static components are not displayed at all on the timeline, so cannot be
                             // previewed there. So we display their content in this tooltip instead.
