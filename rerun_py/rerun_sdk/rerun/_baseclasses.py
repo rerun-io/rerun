@@ -395,7 +395,7 @@ class ComponentColumn:
                 self.lengths = np.ones(len(component_batch.as_arrow_array()))
             else:
                 # Normal component, lengths specified -> follow instructions
-                self.lengths = lengths
+                self.lengths = lengths  # type: ignore[assignment]
 
     def component_descriptor(self) -> ComponentDescriptor:
         """
