@@ -93,15 +93,17 @@ pub(crate) struct Payload {
 #[cfg(feature = "encoder")]
 pub(crate) fn encode_arrow(
     batch: &ArrowRecordBatch,
-    compression: crate::Compression,
-) -> Result<Payload, crate::encoder::EncodeError> {
+    compression: super::rrd::Compression,
+) -> Result<Payload, super::EncodeError> {
+    use super::rrd::Compression;
+
     let mut uncompressed = Vec::new();
     write_arrow_to_bytes(&mut uncompressed, batch)?;
     let uncompressed_size = uncompressed.len();
 
     let data = match compression {
-        crate::Compression::Off => uncompressed,
-        crate::Compression::LZ4 => lz4_flex::block::compress(&uncompressed),
+        Compression::Off => uncompressed,
+        Compression::LZ4 => lz4_flex::block::compress(&uncompressed),
     };
 
     Ok(Payload {
@@ -114,12 +116,14 @@ pub(crate) fn encode_arrow(
 pub(crate) fn decode_arrow(
     data: &[u8],
     uncompressed_size: usize,
-    compression: crate::Compression,
-) -> Result<ArrowRecordBatch, crate::decoder::DecodeError> {
+    compression: super::rrd::Compression,
+) -> Result<ArrowRecordBatch, super::DecodeError> {
+    use super::rrd::Compression;
+
     let mut uncompressed = Vec::new();
     let data = match compression {
-        crate::Compression::Off => data,
-        crate::Compression::LZ4 => {
+        Compression::Off => data,
+        Compression::LZ4 => {
             uncompressed.resize(uncompressed_size, 0);
             lz4_flex::block::decompress_into(data, &mut uncompressed)?;
             uncompressed.as_slice()

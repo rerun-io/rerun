@@ -7,12 +7,11 @@ use re_log_types::LogMsg;
 use tokio::io::{AsyncBufRead, AsyncReadExt};
 use tokio_stream::Stream;
 
-use crate::{
-    codec::file::{self},
-    Compression, EncodingOptions, VersionPolicy,
+use crate::codec::rrd::{
+    self, Compression, EncodingOptions, FileHeader, Serializer, VersionPolicy,
 };
 
-use super::{read_options, DecodeError, FileHeader};
+use super::{read_options, DecodeError, OldMessageHeader, ProtoMessageHeader};
 
 pub struct StreamingDecoder<R: AsyncBufRead> {
     version: CrateVersion,
@@ -130,8 +129,8 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
             }
 
             let (msg, processed_length) = match serializer {
-                crate::Serializer::MsgPack => {
-                    let header_size = super::MessageHeader::SIZE;
+                Serializer::MsgPack => {
+                    let header_size = OldMessageHeader::SIZE;
                     if unprocessed_bytes.len() < header_size {
                         // Not enough data to read the header, need to wait for more
                         self.expect_more_data = true;
@@ -140,10 +139,10 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
                         continue;
                     }
                     let data = &unprocessed_bytes[..header_size];
-                    let header = super::MessageHeader::from_bytes(data)?;
+                    let header = OldMessageHeader::from_bytes(data)?;
 
                     match header {
-                        super::MessageHeader::Data {
+                        OldMessageHeader::Data {
                             compressed_len,
                             uncompressed_len,
                         } => {
@@ -205,12 +204,12 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
                             }
                         }
 
-                        super::MessageHeader::EndOfStream => return std::task::Poll::Ready(None),
+                        OldMessageHeader::EndOfStream => return std::task::Poll::Ready(None),
                     }
                 }
 
-                crate::Serializer::Protobuf => {
-                    let header_size = std::mem::size_of::<file::MessageHeader>();
+                Serializer::Protobuf => {
+                    let header_size = std::mem::size_of::<rrd::MessageHeader>();
                     if unprocessed_bytes.len() < header_size {
                         // Not enough data to read the header, need to wait for more
                         self.expect_more_data = true;
@@ -219,7 +218,7 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
                         continue;
                     }
                     let data = &unprocessed_bytes[..header_size];
-                    let header = file::MessageHeader::from_bytes(data)?;
+                    let header = ProtoMessageHeader::from_bytes(data)?;
 
                     if unprocessed_bytes.len() < header.len as usize + header_size {
                         // Not enough data to read the message, need to wait for more
@@ -231,7 +230,7 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
 
                     // decode the message
                     let data = &unprocessed_bytes[header_size..header_size + header.len as usize];
-                    let msg = file::decoder::decode_bytes(header.kind, data)?;
+                    let msg = rrd::decoder::decode_bytes_to_msg(header.kind, data)?;
 
                     (msg, header.len as usize + header_size)
                 }
@@ -278,13 +277,7 @@ mod tests {
     use re_build_info::CrateVersion;
     use tokio_stream::StreamExt;
 
-    use crate::{
-        decoder::{
-            streaming::StreamingDecoder,
-            tests::{fake_log_messages, strip_arrow_extensions_from_log_messages},
-        },
-        Compression, EncodingOptions, Serializer, VersionPolicy,
-    };
+    use crate::{Compression, EncodingOptions, Serializer, VersionPolicy};
 
     #[tokio::test]
     async fn test_streaming_decoder_handles_corrupted_input_file() {

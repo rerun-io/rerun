@@ -5,12 +5,13 @@ use std::io::Read;
 use re_build_info::CrateVersion;
 use re_log_types::LogMsg;
 
-use crate::decoder::read_options;
-use crate::Compression;
-use crate::FileHeader;
-use crate::MessageHeader;
+use crate::codec::rrd::Compression;
+use crate::codec::rrd::FileHeader;
+use crate::codec::rrd::OldMessageHeader;
+use crate::codec::rrd::VersionPolicy;
 
-use super::{DecodeError, VersionPolicy};
+use super::read_options;
+use super::DecodeError;
 
 /// The stream decoder is a state machine which ingests byte chunks
 /// and outputs messages once it has enough data to deserialize one.
@@ -72,7 +73,7 @@ enum State {
     /// We need to know the full length of the message before attempting
     /// to read it, otherwise the call to `decompress_into` or the
     /// MessagePack deserialization may block or even fail.
-    Message(MessageHeader),
+    Message(OldMessageHeader),
 }
 
 impl StreamDecoder {
@@ -107,8 +108,8 @@ impl StreamDecoder {
                 }
             }
             State::MessageHeader => {
-                if let Some(mut len) = self.chunks.try_read(MessageHeader::SIZE) {
-                    let header = MessageHeader::decode(&mut len)?;
+                if let Some(mut len) = self.chunks.try_read(OldMessageHeader::SIZE) {
+                    let header = OldMessageHeader::decode(&mut len)?;
                     self.state = State::Message(header);
                     // we might have data left in the current chunk,
                     // immediately try to read the message content
@@ -117,7 +118,7 @@ impl StreamDecoder {
             }
             State::Message(header) => {
                 match header {
-                    MessageHeader::Data {
+                    OldMessageHeader::Data {
                         compressed_len,
                         uncompressed_len,
                     } => {
@@ -148,7 +149,7 @@ impl StreamDecoder {
                             };
                         }
                     }
-                    MessageHeader::EndOfStream => {
+                    OldMessageHeader::EndOfStream => {
                         // We've reached the end of the stream, but there might be concatenated streams
                         // hence we set the state as if we are about to see another new stream
                         self.state = State::StreamHeader;

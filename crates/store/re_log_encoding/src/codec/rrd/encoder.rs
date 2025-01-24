@@ -1,46 +1,67 @@
-//! Encoding of [`LogMsg`]es as a binary stream, e.g. to store in an `.rrd` file, or send over network.
-
-use crate::codec;
-use crate::codec::file::{self, encoder};
-use crate::FileHeader;
-use crate::MessageHeader;
-use crate::Serializer;
-use crate::{Compression, EncodingOptions};
+use super::{
+    Compression, EncodingOptions, FileHeader, MessageHeader as ProtoMessageHeader, MessageKind,
+    Serializer,
+};
+use crate::codec::arrow::encode_arrow;
+use crate::codec::rrd::OldMessageHeader;
+use crate::codec::EncodeError;
 use re_build_info::CrateVersion;
-use re_chunk::{ChunkError, ChunkResult};
+use re_chunk::ChunkResult;
 use re_log_types::LogMsg;
 
-// ----------------------------------------------------------------------------
+pub(crate) fn encode_msg(
+    buf: &mut Vec<u8>,
+    message: &LogMsg,
+    compression: Compression,
+) -> Result<(), EncodeError> {
+    use re_protos::external::prost::Message;
+    use re_protos::log_msg::v0::{
+        self as proto, ArrowMsg, BlueprintActivationCommand, Encoding, SetStoreInfo,
+    };
 
-/// On failure to encode or serialize a [`LogMsg`].
-#[derive(thiserror::Error, Debug)]
-pub enum EncodeError {
-    #[error("Failed to write: {0}")]
-    Write(#[from] std::io::Error),
+    match message {
+        LogMsg::SetStoreInfo(set_store_info) => {
+            let set_store_info: SetStoreInfo = set_store_info.clone().into();
+            let header = ProtoMessageHeader {
+                kind: MessageKind::SetStoreInfo,
+                len: set_store_info.encoded_len() as u64,
+            };
+            header.encode(buf)?;
+            set_store_info.encode(buf)?;
+        }
+        LogMsg::ArrowMsg(store_id, arrow_msg) => {
+            let payload = encode_arrow(&arrow_msg.batch, compression)?;
+            let arrow_msg = ArrowMsg {
+                store_id: Some(store_id.clone().into()),
+                compression: match compression {
+                    Compression::Off => proto::Compression::None as i32,
+                    Compression::LZ4 => proto::Compression::Lz4 as i32,
+                },
+                uncompressed_size: payload.uncompressed_size as i32,
+                encoding: Encoding::ArrowIpc as i32,
+                payload: payload.data,
+            };
+            let header = ProtoMessageHeader {
+                kind: MessageKind::ArrowMsg,
+                len: arrow_msg.encoded_len() as u64,
+            };
+            header.encode(buf)?;
+            arrow_msg.encode(buf)?;
+        }
+        LogMsg::BlueprintActivationCommand(blueprint_activation_command) => {
+            let blueprint_activation_command: BlueprintActivationCommand =
+                blueprint_activation_command.clone().into();
+            let header = ProtoMessageHeader {
+                kind: MessageKind::BlueprintActivationCommand,
+                len: blueprint_activation_command.encoded_len() as u64,
+            };
+            header.encode(buf)?;
+            blueprint_activation_command.encode(buf)?;
+        }
+    }
 
-    #[error("lz4 error: {0}")]
-    Lz4(#[from] lz4_flex::block::CompressError),
-
-    #[error("MsgPack error: {0}")]
-    MsgPack(#[from] rmp_serde::encode::Error),
-
-    #[error("Protobuf error: {0}")]
-    Protobuf(#[from] re_protos::external::prost::EncodeError),
-
-    #[error("Arrow error: {0}")]
-    Arrow(#[from] arrow::error::ArrowError),
-
-    #[error("{0}")]
-    Codec(#[from] codec::CodecError),
-
-    #[error("Chunk error: {0}")]
-    Chunk(#[from] ChunkError),
-
-    #[error("Called append on already finished encoder")]
-    AlreadyFinished,
+    Ok(())
 }
-
-// ----------------------------------------------------------------------------
 
 pub fn encode_to_bytes<'a>(
     version: CrateVersion,
@@ -56,8 +77,6 @@ pub fn encode_to_bytes<'a>(
     }
     Ok(bytes)
 }
-
-// ----------------------------------------------------------------------------
 
 /// An [`Encoder`] that properly closes the stream on drop.
 ///
@@ -134,7 +153,7 @@ impl<W: std::io::Write> Encoder<W> {
         mut write: W,
     ) -> Result<Self, EncodeError> {
         FileHeader {
-            magic: *crate::RRD_HEADER,
+            magic: *super::RRD_HEADER,
             version: version.to_bytes(),
             options,
         }
@@ -156,7 +175,7 @@ impl<W: std::io::Write> Encoder<W> {
         self.uncompressed.clear();
         match self.serializer {
             Serializer::Protobuf => {
-                encoder::encode(&mut self.uncompressed, message, self.compression)?;
+                encode_msg(&mut self.uncompressed, message, self.compression)?;
 
                 self.write
                     .write_all(&self.uncompressed)
@@ -168,7 +187,7 @@ impl<W: std::io::Write> Encoder<W> {
 
                 match self.compression {
                     Compression::Off => {
-                        MessageHeader::Data {
+                        OldMessageHeader::Data {
                             uncompressed_len: self.uncompressed.len() as u32,
                             compressed_len: self.uncompressed.len() as u32,
                         }
@@ -188,7 +207,7 @@ impl<W: std::io::Write> Encoder<W> {
                             &mut self.compressed,
                         )
                         .map_err(EncodeError::Lz4)?;
-                        MessageHeader::Data {
+                        OldMessageHeader::Data {
                             uncompressed_len: self.uncompressed.len() as u32,
                             compressed_len: compressed_len as u32,
                         }
@@ -209,11 +228,11 @@ impl<W: std::io::Write> Encoder<W> {
     pub fn finish(&mut self) -> Result<(), EncodeError> {
         match self.serializer {
             Serializer::MsgPack => {
-                MessageHeader::EndOfStream.encode(&mut self.write)?;
+                OldMessageHeader::EndOfStream.encode(&mut self.write)?;
             }
             Serializer::Protobuf => {
-                file::MessageHeader {
-                    kind: file::MessageKind::End,
+                super::MessageHeader {
+                    kind: super::MessageKind::End,
                     len: 0,
                 }
                 .encode(&mut self.write)?;
@@ -278,15 +297,6 @@ pub fn encode_as_bytes(
     }
     encoder.finish()?;
     Ok(bytes)
-}
-
-#[inline]
-pub fn local_encoder() -> Result<DroppableEncoder<Vec<u8>>, EncodeError> {
-    DroppableEncoder::new(
-        CrateVersion::LOCAL,
-        EncodingOptions::MSGPACK_COMPRESSED,
-        Vec::new(),
-    )
 }
 
 #[inline]

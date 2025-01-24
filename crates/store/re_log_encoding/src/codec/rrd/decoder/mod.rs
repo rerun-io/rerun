@@ -1,24 +1,90 @@
-//! Decoding [`LogMsg`]:es from `.rrd` files/streams.
+use std::io::{BufRead, Read};
+
+use super::{
+    EncodingOptions, FileHeader, MessageHeader as ProtoMessageHeader, MessageKind, Serializer,
+    VersionPolicy, OLD_RRD_HEADERS, RRD_HEADER,
+};
+use crate::codec::arrow::decode_arrow;
+use crate::codec::rrd::{Compression, OldMessageHeader};
+use crate::codec::{CodecError, DecodeError};
+use re_build_info::CrateVersion;
+use re_log_types::LogMsg;
+use re_protos::missing_field;
 
 pub mod stream;
 #[cfg(feature = "decoder")]
 pub mod streaming;
 
-use std::io::BufRead as _;
-use std::io::Read;
+pub fn decode_bytes(
+    version_policy: VersionPolicy,
+    bytes: &[u8],
+) -> Result<Vec<LogMsg>, DecodeError> {
+    re_tracing::profile_function!();
+    let decoder = Decoder::new(version_policy, std::io::Cursor::new(bytes))?;
+    let mut msgs = vec![];
+    for msg in decoder {
+        msgs.push(msg?);
+    }
+    Ok(msgs)
+}
 
-use re_build_info::CrateVersion;
-use re_log_types::LogMsg;
+pub(crate) fn decode(data: &mut impl std::io::Read) -> Result<(u64, Option<LogMsg>), DecodeError> {
+    let mut read_bytes = 0u64;
+    let header = ProtoMessageHeader::decode(data)?;
+    read_bytes += std::mem::size_of::<ProtoMessageHeader>() as u64 + header.len;
 
-use crate::codec;
-use crate::codec::file::decoder;
-use crate::FileHeader;
-use crate::MessageHeader;
-use crate::VersionPolicy;
-use crate::OLD_RRD_HEADERS;
-use crate::{Compression, EncodingOptions, Serializer};
+    let mut buf = vec![0; header.len as usize];
+    data.read_exact(&mut buf[..])?;
 
-// ----------------------------------------------------------------------------
+    let msg = decode_bytes_to_msg(header.kind, &buf)?;
+
+    Ok((read_bytes, msg))
+}
+
+pub(crate) fn decode_bytes_to_msg(
+    message_kind: MessageKind,
+    buf: &[u8],
+) -> Result<Option<LogMsg>, DecodeError> {
+    use re_protos::external::prost::Message;
+    use re_protos::log_msg::v0::{ArrowMsg, BlueprintActivationCommand, Encoding, SetStoreInfo};
+
+    let msg = match message_kind {
+        MessageKind::SetStoreInfo => {
+            let set_store_info = SetStoreInfo::decode(buf)?;
+            Some(LogMsg::SetStoreInfo(set_store_info.try_into()?))
+        }
+        MessageKind::ArrowMsg => {
+            let arrow_msg = ArrowMsg::decode(buf)?;
+            if arrow_msg.encoding() != Encoding::ArrowIpc {
+                return Err(DecodeError::Codec(CodecError::UnsupportedEncoding));
+            }
+
+            let batch = decode_arrow(
+                &arrow_msg.payload,
+                arrow_msg.uncompressed_size as usize,
+                arrow_msg.compression().into(),
+            )?;
+
+            let store_id: re_log_types::StoreId = arrow_msg
+                .store_id
+                .ok_or_else(|| missing_field!(re_protos::log_msg::v0::ArrowMsg, "store_id"))?
+                .into();
+
+            let chunk = re_chunk::Chunk::from_record_batch(batch)?;
+
+            Some(LogMsg::ArrowMsg(store_id, chunk.to_arrow_msg()?))
+        }
+        MessageKind::BlueprintActivationCommand => {
+            let blueprint_activation_command = BlueprintActivationCommand::decode(buf)?;
+            Some(LogMsg::BlueprintActivationCommand(
+                blueprint_activation_command.try_into()?,
+            ))
+        }
+        MessageKind::End => None,
+    };
+
+    Ok(msg)
+}
 
 fn warn_on_version_mismatch(
     version_policy: VersionPolicy,
@@ -52,68 +118,6 @@ fn warn_on_version_mismatch(
     }
 }
 
-// ----------------------------------------------------------------------------
-
-/// On failure to encode or serialize a [`LogMsg`].
-#[derive(thiserror::Error, Debug)]
-pub enum DecodeError {
-    #[error("Not an .rrd file")]
-    NotAnRrd,
-
-    #[error("Data was from an old, incompatible Rerun version")]
-    OldRrdVersion,
-
-    #[error("Data from Rerun version {file}, which is incompatible with the local Rerun version {local}")]
-    IncompatibleRerunVersion {
-        file: CrateVersion,
-        local: CrateVersion,
-    },
-
-    #[error("Failed to decode the options: {0}")]
-    Options(#[from] crate::OptionsError),
-
-    #[error("Failed to read: {0}")]
-    Read(#[from] std::io::Error),
-
-    #[error("lz4 error: {0}")]
-    Lz4(#[from] lz4_flex::block::DecompressError),
-
-    #[error("Protobuf error: {0}")]
-    Protobuf(#[from] re_protos::external::prost::DecodeError),
-
-    #[error("Could not convert type from protobuf: {0}")]
-    TypeConversion(#[from] re_protos::TypeConversionError),
-
-    #[error("Failed to read chunk: {0}")]
-    Chunk(#[from] re_chunk::ChunkError),
-
-    #[error("Arrow error: {0}")]
-    Arrow(#[from] arrow::error::ArrowError),
-
-    #[error("MsgPack error: {0}")]
-    MsgPack(#[from] rmp_serde::decode::Error),
-
-    #[error("Codec error: {0}")]
-    Codec(#[from] codec::CodecError),
-}
-
-// ----------------------------------------------------------------------------
-
-pub fn decode_bytes(
-    version_policy: VersionPolicy,
-    bytes: &[u8],
-) -> Result<Vec<LogMsg>, DecodeError> {
-    re_tracing::profile_function!();
-    let decoder = Decoder::new(version_policy, std::io::Cursor::new(bytes))?;
-    let mut msgs = vec![];
-    for msg in decoder {
-        msgs.push(msg?);
-    }
-    Ok(msgs)
-}
-
-// ----------------------------------------------------------------------------
-
 pub fn read_options(
     version_policy: VersionPolicy,
     bytes: &[u8],
@@ -128,7 +132,7 @@ pub fn read_options(
 
     if OLD_RRD_HEADERS.contains(&magic) {
         return Err(DecodeError::OldRrdVersion);
-    } else if &magic != crate::RRD_HEADER {
+    } else if &magic != RRD_HEADER {
         return Err(DecodeError::NotAnRrd);
     }
 
@@ -296,7 +300,7 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
         }
 
         let msg = match self.options.serializer {
-            Serializer::Protobuf => match decoder::decode(&mut self.read) {
+            Serializer::Protobuf => match decode(&mut self.read) {
                 Ok((read_bytes, msg)) => {
                     self.size_bytes += read_bytes;
                     msg
@@ -304,7 +308,7 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
                 Err(err) => return Some(Err(err)),
             },
             Serializer::MsgPack => {
-                let header = match MessageHeader::decode(&mut self.read) {
+                let header = match OldMessageHeader::decode(&mut self.read) {
                     Ok(header) => header,
                     Err(err) => match err {
                         DecodeError::Read(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
@@ -313,10 +317,10 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
                         other => return Some(Err(other)),
                     },
                 };
-                self.size_bytes += MessageHeader::SIZE as u64;
+                self.size_bytes += OldMessageHeader::SIZE as u64;
 
                 match header {
-                    MessageHeader::Data {
+                    OldMessageHeader::Data {
                         compressed_len,
                         uncompressed_len,
                     } => {
@@ -372,7 +376,7 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
                             }
                         }
                     }
-                    MessageHeader::EndOfStream => None,
+                    OldMessageHeader::EndOfStream => None,
                 }
             }
         };

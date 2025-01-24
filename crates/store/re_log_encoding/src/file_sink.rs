@@ -8,6 +8,8 @@ use parking_lot::Mutex;
 
 use re_log_types::LogMsg;
 
+use crate::codec::rrd::EncodingOptions;
+
 /// Errors that can occur when creating a [`FileSink`].
 #[derive(thiserror::Error, Debug)]
 pub enum FileSinkError {
@@ -21,7 +23,7 @@ pub enum FileSinkError {
 
     /// Error encoding a log message.
     #[error("Failed to encode LogMsg: {0}")]
-    LogMsgEncode(#[from] crate::encoder::EncodeError),
+    LogMsgEncode(#[from] crate::codec::EncodeError),
 }
 
 enum Command {
@@ -61,7 +63,7 @@ impl FileSink {
     /// Start writing log messages to a file at the given path.
     pub fn new(path: impl Into<std::path::PathBuf>) -> Result<Self, FileSinkError> {
         // We always compress on disk
-        let encoding_options = crate::EncodingOptions::MSGPACK_COMPRESSED;
+        let encoding_options = EncodingOptions::MSGPACK_COMPRESSED;
 
         let (tx, rx) = std::sync::mpsc::channel();
 
@@ -75,7 +77,7 @@ impl FileSink {
 
         let file = std::fs::File::create(&path)
             .map_err(|err| FileSinkError::CreateFile(path.clone(), err))?;
-        let encoder = crate::encoder::DroppableEncoder::new(
+        let encoder = crate::codec::rrd::encoder::DroppableEncoder::new(
             re_build_info::CrateVersion::LOCAL,
             encoding_options,
             file,
@@ -91,13 +93,13 @@ impl FileSink {
 
     /// Start writing log messages to standard output.
     pub fn stdout() -> Result<Self, FileSinkError> {
-        let encoding_options = crate::EncodingOptions::MSGPACK_COMPRESSED;
+        let encoding_options = EncodingOptions::MSGPACK_COMPRESSED;
 
         let (tx, rx) = std::sync::mpsc::channel();
 
         re_log::debug!("Writing to stdout…");
 
-        let encoder = crate::encoder::DroppableEncoder::new(
+        let encoder = crate::codec::rrd::encoder::DroppableEncoder::new(
             re_build_info::CrateVersion::LOCAL,
             encoding_options,
             std::io::stdout(),
@@ -127,7 +129,7 @@ impl FileSink {
 /// Set `filepath` to `None` to stream to standard output.
 fn spawn_and_stream<W: std::io::Write + Send + 'static>(
     filepath: Option<&std::path::Path>,
-    mut encoder: crate::encoder::DroppableEncoder<W>,
+    mut encoder: crate::codec::rrd::encoder::DroppableEncoder<W>,
     rx: Receiver<Option<Command>>,
 ) -> Result<std::thread::JoinHandle<()>, FileSinkError> {
     let (name, target) = if let Some(filepath) = filepath {
