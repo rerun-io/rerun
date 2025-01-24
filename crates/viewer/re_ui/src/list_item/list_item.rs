@@ -146,8 +146,9 @@ impl ListItem {
     /// visible.
     ///
     /// Skipping rendering can increase performances for long lists that are mostly out of view, but
-    /// this will prevent any side effects from [`ListItemContent::ui`] from occuring. For this
+    /// this will prevent any side effects from [`ListItemContent::ui`] from occurring. For this
     /// reason, this is an opt-in optimization.
+    #[inline]
     pub fn render_offscreen(mut self, render_offscreen: bool) -> Self {
         self.render_offscreen = render_offscreen;
         self
