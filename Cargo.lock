@@ -6470,6 +6470,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_sorbet"
+version = "0.22.0-alpha.1+dev"
+dependencies = [
+ "arrow",
+ "re_format_arrow",
+ "re_log",
+ "re_log_types",
+ "thiserror 1.0.65",
+]
+
+[[package]]
 name = "re_string_interner"
 version = "0.22.0-alpha.1+dev"
 dependencies = [
