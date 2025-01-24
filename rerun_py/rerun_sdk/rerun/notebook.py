@@ -172,7 +172,7 @@ class Viewer:
         nanoseconds: int
             The time in nanoseconds to set the viewer to.
         play: bool
-            Whether to start playing from the the specified time point. Defaults to paused.
+            Whether to start playing from the specified time point. Defaults to paused.
         timeline : str
             The name of the timeline to switch to. If not provided, time will remain on the current timeline.
 
