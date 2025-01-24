@@ -151,6 +151,46 @@ class Viewer:
     def _repr_keys(self):  # type: ignore[no-untyped-def]
         return self._viewer._repr_keys()
 
+    def set_time_ctrl(
+        self,
+        *,
+        sequence: int | None = None,
+        nanoseconds: int | None = None,
+        seconds: float | None = None,
+        timeline: str | None = None,
+        play: bool = False,
+    ) -> None:
+        """
+        Set the time control for the viewer.
+
+        Parameters
+        ----------
+        sequence: int
+            The sequence number to set the viewer to.
+        seconds: float
+            The time in seconds to set the viewer to.
+        nanoseconds: int
+            The time in nanoseconds to set the viewer to.
+        play: bool
+            Whether to start playing from the the specified time point. Defaults to paused.
+        timeline : str
+            The name of the timeline to switch to. If not provided, time will remain on the current timeline.
+
+        """
+        if sum([sequence is not None, nanoseconds is not None, seconds is not None]) > 1:
+            raise ValueError("At most one of sequence, nanoseconds, or seconds may be provided")
+
+        if sequence is not None:
+            time = sequence
+        elif nanoseconds is not None:
+            time = nanoseconds
+        elif seconds is not None:
+            time = int(seconds * 1e9)
+        else:
+            time = None
+
+        self._viewer.set_time_ctrl(timeline, time, play)
+
 
 def notebook_show(
     *,
