@@ -20,7 +20,7 @@ root_container:
         visible: true
         default_open: true
         origin_tree:
-          kind: DataResult
+          kind: EntityPart
           entity_path: []
           visible: true
           view_id:
@@ -29,7 +29,7 @@ root_container:
           highlight_sections: []
           default_open: true
           children:
-            - kind: DataResult
+            - kind: EntityPart
               entity_path:
                 - path
               visible: true
@@ -39,7 +39,7 @@ root_container:
               highlight_sections: []
               default_open: true
               children:
-                - kind: DataResult
+                - kind: EntityPart
                   entity_path:
                     - path
                     - to
@@ -50,7 +50,7 @@ root_container:
                   highlight_sections: []
                   default_open: true
                   children:
-                    - kind: DataResult
+                    - kind: EntityPart
                       entity_path:
                         - path
                         - to
@@ -62,7 +62,7 @@ root_container:
                       highlight_sections: []
                       default_open: true
                       children:
-                        - kind: DataResult
+                        - kind: EntityPart
                           entity_path:
                             - path
                             - to

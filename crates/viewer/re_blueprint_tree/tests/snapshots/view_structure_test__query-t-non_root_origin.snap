@@ -20,7 +20,7 @@ root_container:
         visible: true
         default_open: true
         origin_tree:
-          kind: DataResult
+          kind: EntityPart
           entity_path:
             - path
             - to
@@ -33,7 +33,7 @@ root_container:
               end: 1
           default_open: true
           children:
-            - kind: DataResult
+            - kind: EntityPart
               entity_path:
                 - path
                 - to
@@ -47,7 +47,7 @@ root_container:
                   end: 4
               default_open: true
               children: []
-            - kind: DataResult
+            - kind: EntityPart
               entity_path:
                 - path
                 - to
@@ -61,7 +61,7 @@ root_container:
                   end: 5
               default_open: true
               children: []
-            - kind: DataResult
+            - kind: EntityPart
               entity_path:
                 - path
                 - to
@@ -75,7 +75,7 @@ root_container:
                   end: 1
               default_open: true
               children:
-                - kind: DataResult
+                - kind: EntityPart
                   entity_path:
                     - path
                     - to

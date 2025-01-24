@@ -20,7 +20,7 @@ root_container:
         visible: true
         default_open: false
         origin_tree:
-          kind: DataResult
+          kind: EntityPart
           entity_path:
             - center
             - way
@@ -32,7 +32,7 @@ root_container:
           default_open: false
           children: []
         projection_trees:
-          - kind: DataResult
+          - kind: EntityPart
             entity_path:
               - path
               - to
@@ -44,7 +44,7 @@ root_container:
             highlight_sections: []
             default_open: false
             children: []
-          - kind: DataResult
+          - kind: EntityPart
             entity_path:
               - path
               - to
@@ -56,7 +56,7 @@ root_container:
             highlight_sections: []
             default_open: false
             children:
-              - kind: DataResult
+              - kind: EntityPart
                 entity_path:
                   - path
                   - to

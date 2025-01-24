@@ -21,7 +21,7 @@ root_container:
         default_open: true
         origin_tree: ~
         projection_trees:
-          - kind: DataResult
+          - kind: EntityPart
             entity_path:
               - path
               - to
@@ -35,7 +35,7 @@ root_container:
                 end: 5
             default_open: true
             children: []
-          - kind: DataResult
+          - kind: EntityPart
             entity_path:
               - path
               - to
@@ -49,7 +49,7 @@ root_container:
                 end: 1
             default_open: true
             children:
-              - kind: DataResult
+              - kind: EntityPart
                 entity_path:
                   - path
                   - to
