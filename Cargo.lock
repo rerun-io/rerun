@@ -5219,7 +5219,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c1318b19085f08681016926435853bbf7858f9c082d0999b80550ff5d9abe15"
 dependencies = [
  "bytes",
- "heck 0.4.1",
+ "heck 0.5.0",
  "itertools 0.13.0",
  "log",
  "multimap",
@@ -5584,8 +5584,9 @@ dependencies = [
 
 [[package]]
 name = "re_arrow2"
-version = "0.18.1"
-source = "git+https://github.com/rerun-io/re_arrow2.git?branch=main#61ac48418df229584155c5f669477bedf76d4505"
+version = "0.18.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6973c87de24c9de7292447fa896f229278b010cb3fb5e7f4f857447e64e1bb6f"
 dependencies = [
  "ahash",
  "arrow-array",
