@@ -993,7 +993,7 @@ impl RecordingStream {
     /// Note that this API ignores any stateful time set on the log stream via the
     /// [`Self::set_timepoint`]/[`Self::set_time_nanos`]/etc. APIs.
     /// Furthermore, this will _not_ inject the default timelines `log_tick` and `log_time` timeline columns.
-    pub fn send_columns_v2(
+    pub fn send_columns(
         &self,
         ent_path: impl Into<EntityPath>,
         indexes: impl IntoIterator<Item = TimeColumn>,

@@ -28,7 +28,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         rerun::ComponentDescriptor::new("cos"),
     );
 
-    rec.send_columns_v2(
+    rec.send_columns(
         "/",
         [times],
         [

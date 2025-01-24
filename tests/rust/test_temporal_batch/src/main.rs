@@ -8,7 +8,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let timeline_values = TimeColumn::new_sequence("step", 0..64);
     let scalar_data = (0..64).map(|step| (step as f64 / 10.0).sin());
 
-    rec.send_columns_v2(
+    rec.send_columns(
         "scalar",
         [timeline_values],
         rerun::Scalar::update_fields()

@@ -58,7 +58,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///         frame_timestamps_ns,
 ///     );
 ///
-///     rec.send_columns_v2(
+///     rec.send_columns(
 ///         "video",
 ///         [time_column],
 ///         rerun::VideoFrameReference::update_fields()

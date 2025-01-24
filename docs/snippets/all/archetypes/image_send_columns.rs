@@ -22,7 +22,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Send the ImageFormat and indicator once, as static.
     let format = rerun::components::ImageFormat::rgb8([width as _, height as _]);
-    rec.send_columns_v2(
+    rec.send_columns(
         "images",
         [],
         rerun::Image::update_fields()
@@ -34,7 +34,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let image_size_in_bytes = width * height * 3;
     let timeline_values = rerun::TimeColumn::new_sequence("step", times.clone());
     let buffer = images.into_raw_vec_and_offset().0;
-    rec.send_columns_v2(
+    rec.send_columns(
         "images",
         [timeline_values],
         rerun::Image::update_fields()
