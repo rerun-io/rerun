@@ -5,7 +5,7 @@ use super::{
     VersionPolicy, OLD_RRD_HEADERS, RRD_HEADER,
 };
 use crate::codec::arrow::decode_arrow;
-use crate::codec::rrd::{Compression, OldMessageHeader};
+use crate::codec::rrd::{Compression, MsgPackMessageHeader};
 use crate::codec::{CodecError, DecodeError};
 use re_build_info::CrateVersion;
 use re_log_types::LogMsg;
@@ -308,7 +308,7 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
                 Err(err) => return Some(Err(err)),
             },
             Serializer::MsgPack => {
-                let header = match OldMessageHeader::decode(&mut self.read) {
+                let header = match MsgPackMessageHeader::decode(&mut self.read) {
                     Ok(header) => header,
                     Err(err) => match err {
                         DecodeError::Read(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
@@ -317,10 +317,10 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
                         other => return Some(Err(other)),
                     },
                 };
-                self.size_bytes += OldMessageHeader::SIZE as u64;
+                self.size_bytes += MsgPackMessageHeader::SIZE as u64;
 
                 match header {
-                    OldMessageHeader::Data {
+                    MsgPackMessageHeader::Data {
                         compressed_len,
                         uncompressed_len,
                     } => {
@@ -376,7 +376,7 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
                             }
                         }
                     }
-                    OldMessageHeader::EndOfStream => None,
+                    MsgPackMessageHeader::EndOfStream => None,
                 }
             }
         };

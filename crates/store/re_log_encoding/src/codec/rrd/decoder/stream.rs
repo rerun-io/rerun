@@ -7,7 +7,7 @@ use re_log_types::LogMsg;
 
 use crate::codec::rrd::Compression;
 use crate::codec::rrd::FileHeader;
-use crate::codec::rrd::OldMessageHeader;
+use crate::codec::rrd::MsgPackMessageHeader;
 use crate::codec::rrd::VersionPolicy;
 
 use super::read_options;
@@ -73,7 +73,7 @@ enum State {
     /// We need to know the full length of the message before attempting
     /// to read it, otherwise the call to `decompress_into` or the
     /// MessagePack deserialization may block or even fail.
-    Message(OldMessageHeader),
+    Message(MsgPackMessageHeader),
 }
 
 impl StreamDecoder {
@@ -108,8 +108,8 @@ impl StreamDecoder {
                 }
             }
             State::MessageHeader => {
-                if let Some(mut len) = self.chunks.try_read(OldMessageHeader::SIZE) {
-                    let header = OldMessageHeader::decode(&mut len)?;
+                if let Some(mut len) = self.chunks.try_read(MsgPackMessageHeader::SIZE) {
+                    let header = MsgPackMessageHeader::decode(&mut len)?;
                     self.state = State::Message(header);
                     // we might have data left in the current chunk,
                     // immediately try to read the message content
@@ -118,7 +118,7 @@ impl StreamDecoder {
             }
             State::Message(header) => {
                 match header {
-                    OldMessageHeader::Data {
+                    MsgPackMessageHeader::Data {
                         compressed_len,
                         uncompressed_len,
                     } => {
@@ -149,7 +149,7 @@ impl StreamDecoder {
                             };
                         }
                     }
-                    OldMessageHeader::EndOfStream => {
+                    MsgPackMessageHeader::EndOfStream => {
                         // We've reached the end of the stream, but there might be concatenated streams
                         // hence we set the state as if we are about to see another new stream
                         self.state = State::StreamHeader;

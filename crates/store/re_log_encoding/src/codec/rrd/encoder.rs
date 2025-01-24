@@ -3,7 +3,7 @@ use super::{
     Serializer,
 };
 use crate::codec::arrow::encode_arrow;
-use crate::codec::rrd::OldMessageHeader;
+use crate::codec::rrd::MsgPackMessageHeader;
 use crate::codec::EncodeError;
 use re_build_info::CrateVersion;
 use re_chunk::ChunkResult;
@@ -187,7 +187,7 @@ impl<W: std::io::Write> Encoder<W> {
 
                 match self.compression {
                     Compression::Off => {
-                        OldMessageHeader::Data {
+                        MsgPackMessageHeader::Data {
                             uncompressed_len: self.uncompressed.len() as u32,
                             compressed_len: self.uncompressed.len() as u32,
                         }
@@ -207,7 +207,7 @@ impl<W: std::io::Write> Encoder<W> {
                             &mut self.compressed,
                         )
                         .map_err(EncodeError::Lz4)?;
-                        OldMessageHeader::Data {
+                        MsgPackMessageHeader::Data {
                             uncompressed_len: self.uncompressed.len() as u32,
                             compressed_len: compressed_len as u32,
                         }
@@ -228,7 +228,7 @@ impl<W: std::io::Write> Encoder<W> {
     pub fn finish(&mut self) -> Result<(), EncodeError> {
         match self.serializer {
             Serializer::MsgPack => {
-                OldMessageHeader::EndOfStream.encode(&mut self.write)?;
+                MsgPackMessageHeader::EndOfStream.encode(&mut self.write)?;
             }
             Serializer::Protobuf => {
                 super::MessageHeader {

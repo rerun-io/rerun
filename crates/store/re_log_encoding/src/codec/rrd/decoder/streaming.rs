@@ -11,7 +11,7 @@ use crate::codec::rrd::{
     self, Compression, EncodingOptions, FileHeader, Serializer, VersionPolicy,
 };
 
-use super::{read_options, DecodeError, OldMessageHeader, ProtoMessageHeader};
+use super::{read_options, DecodeError, MsgPackMessageHeader, ProtoMessageHeader};
 
 pub struct StreamingDecoder<R: AsyncBufRead> {
     version: CrateVersion,
@@ -130,7 +130,7 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
 
             let (msg, processed_length) = match serializer {
                 Serializer::MsgPack => {
-                    let header_size = OldMessageHeader::SIZE;
+                    let header_size = MsgPackMessageHeader::SIZE;
                     if unprocessed_bytes.len() < header_size {
                         // Not enough data to read the header, need to wait for more
                         self.expect_more_data = true;
@@ -139,10 +139,10 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
                         continue;
                     }
                     let data = &unprocessed_bytes[..header_size];
-                    let header = OldMessageHeader::from_bytes(data)?;
+                    let header = MsgPackMessageHeader::from_bytes(data)?;
 
                     match header {
-                        OldMessageHeader::Data {
+                        MsgPackMessageHeader::Data {
                             compressed_len,
                             uncompressed_len,
                         } => {
@@ -204,7 +204,7 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
                             }
                         }
 
-                        OldMessageHeader::EndOfStream => return std::task::Poll::Ready(None),
+                        MsgPackMessageHeader::EndOfStream => return std::task::Poll::Ready(None),
                     }
                 }
 

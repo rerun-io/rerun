@@ -236,7 +236,7 @@ impl FileHeader {
 
 #[cfg(any(feature = "encoder", feature = "decoder"))]
 #[derive(Clone, Copy)]
-pub(crate) enum OldMessageHeader {
+pub(crate) enum MsgPackMessageHeader {
     Data {
         /// `compressed_len` is equal to `uncompressed_len` for uncompressed streams
         compressed_len: u32,
@@ -246,7 +246,7 @@ pub(crate) enum OldMessageHeader {
 }
 
 #[cfg(any(feature = "encoder", feature = "decoder"))]
-impl OldMessageHeader {
+impl MsgPackMessageHeader {
     #[cfg(feature = "decoder")]
     pub const SIZE: usize = 8;
 
