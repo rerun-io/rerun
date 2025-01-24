@@ -233,15 +233,8 @@ fn generate_mod_file(
     {
         let module_name = obj.snake_case_name();
         let type_name = &obj.name;
-        let native_type_name = format!("Native{type_name}");
 
-        if obj.requires_native_rust_archetype() {
-            code.push_str(&format!(
-                "pub use self::{module_name}::{{{type_name}, {native_type_name}}};\n"
-            ));
-        } else {
-            code.push_str(&format!("pub use self::{module_name}::{type_name};\n"));
-        }
+        code.push_str(&format!("pub use self::{module_name}::{type_name};\n"));
     }
     // And then deprecated.
     if objects.iter().any(|obj| obj.deprecation_notice().is_some()) {
@@ -253,19 +246,12 @@ fn generate_mod_file(
     {
         let module_name = obj.snake_case_name();
         let type_name = &obj.name;
-        let native_type_name = format!("Native{type_name}");
 
         if obj.deprecation_notice().is_some() {
             code.push_str("#[allow(deprecated)]\n");
         }
 
-        if obj.requires_native_rust_archetype() {
-            code.push_str(&format!(
-                "pub use self::{module_name}::{{{type_name}, {native_type_name}}};\n"
-            ));
-        } else {
-            code.push_str(&format!("pub use self::{module_name}::{type_name};\n"));
-        }
+        code.push_str(&format!("pub use self::{module_name}::{type_name};\n"));
     }
 
     files_to_write.insert(path, code);
@@ -280,14 +266,6 @@ fn quote_struct(
     obj: &Object,
 ) -> TokenStream {
     assert!(obj.is_struct());
-
-    // Certain archetypes might require the generation of an associated native archetype, as
-    // the internal viewer code heavily relies on it.
-    let obj_native = obj.requires_native_rust_archetype().then(|| {
-        let mut obj_native = obj.clone();
-        obj_native.name = format!("Native{}", obj_native.name);
-        obj_native
-    });
 
     let Object { name, fields, .. } = obj;
 
@@ -333,12 +311,10 @@ fn quote_struct(
     } else {
         quote! { pub struct #name { #(#quoted_fields,)* }}
     };
-    let quoted_struct_native = quote_struct_native(reporter, objects, obj);
 
     let quoted_from_impl = quote_from_impl_from_obj(obj);
 
-    let quoted_trait_impls =
-        quote_trait_impls_from_obj(reporter, arrow_registry, objects, obj, obj_native.as_ref());
+    let quoted_trait_impls = quote_trait_impls_from_obj(reporter, arrow_registry, objects, obj);
 
     let quoted_builder = quote_builder_from_obj(reporter, objects, obj);
 
@@ -394,8 +370,6 @@ fn quote_struct(
         #quoted_deprecation_notice
         #quoted_struct
 
-        #quoted_struct_native
-
         #quoted_trait_impls
 
         #quoted_from_impl
@@ -406,98 +380,6 @@ fn quote_struct(
     };
 
     tokens
-}
-
-/// Certain eager archetypes might require the generation of an associated native archetype, as
-/// the internal viewer code heavily relies on it.
-fn quote_struct_native(
-    reporter: &Reporter,
-    objects: &Objects,
-    obj: &Object,
-) -> Option<TokenStream> {
-    assert!(obj.is_struct());
-
-    let obj_native = obj.requires_native_rust_archetype().then(|| {
-        let mut obj_native = obj.clone();
-        obj_native.name = format!("Native{}", obj_native.name);
-        obj_native
-    });
-
-    let Object { name, .. } = obj;
-
-    let name = format_ident!("{name}");
-
-    let derive_only = obj.is_attr_set(ATTR_RUST_DERIVE_ONLY);
-    let quoted_derive_clone_debug = if derive_only {
-        quote!()
-    } else {
-        quote_derive_clone_debug()
-    };
-
-    let is_tuple_struct = is_tuple_struct_from_obj(obj);
-    obj_native.as_ref().map(|obj_native| {
-        let native_name = format_ident!("{}", obj_native.name);
-
-        let quoted_fields = obj_native
-            .fields
-            .iter()
-            .map(|obj_field| ObjectFieldTokenizer(reporter, obj_native, obj_field).quoted(objects));
-        let quoted_struct = if is_tuple_struct {
-            quote! { pub struct #native_name(#(#quoted_fields,)*); }
-        } else {
-            quote! { pub struct #native_name { #(#quoted_fields,)* }}
-        };
-
-        let eager_fields_to_native_fields = obj.fields.iter().map(|field| {
-            let field_name = format_ident!("{}", field.name);
-            quote!(value.#field_name.clone().map(|batch| (batch.descriptor, batch.array)))
-        });
-        let eager_to_native = quote! {
-            impl TryFrom<&#name> for #native_name {
-                type Error = crate::DeserializationError;
-
-                #[rustfmt::skip] // so it doesn't take 1000 lines for no reason
-                fn try_from(value: &#name) -> Result<Self, Self::Error> {
-                    use ::re_types_core::Archetype as _;
-                    Self::from_arrow_components(
-                        [ #(#eager_fields_to_native_fields),* ]
-                        .into_iter()
-                        .flatten(),
-                    )
-                }
-            }
-        };
-
-        let native_fields_to_eager_fields = obj_native.fields.iter().map(|field| {
-            let field_name = format_ident!("{}", field.name);
-            if field.is_nullable {
-                quote!(#field_name: value.#field_name.as_ref().and_then(|v| v.serialized()))
-            } else {
-                quote!(#field_name: value.#field_name.serialized())
-            }
-        });
-        let native_to_eager = quote! {
-            impl From<&#native_name> for #name {
-                #[rustfmt::skip] // so it doesn't take 1000 lines for no reason
-                #[inline]
-                fn from(value: &#native_name) -> Self {
-                    Self {
-                        #(#native_fields_to_eager_fields),*
-                    }
-                }
-            }
-        };
-
-        quote! {
-            #[doc(hidden)]
-            #quoted_derive_clone_debug
-            #quoted_struct
-
-            #eager_to_native
-
-            #native_to_eager
-        }
-    })
 }
 
 fn quote_union(
@@ -546,8 +428,7 @@ fn quote_union(
         }
     });
 
-    let quoted_trait_impls =
-        quote_trait_impls_from_obj(reporter, arrow_registry, objects, obj, None);
+    let quoted_trait_impls = quote_trait_impls_from_obj(reporter, arrow_registry, objects, obj);
 
     let quoted_heap_size_bytes = {
         let quoted_matches = fields.iter().map(|obj_field| {
@@ -695,8 +576,7 @@ fn quote_enum(
         }
     });
 
-    let quoted_trait_impls =
-        quote_trait_impls_from_obj(reporter, arrow_registry, objects, obj, None);
+    let quoted_trait_impls = quote_trait_impls_from_obj(reporter, arrow_registry, objects, obj);
 
     let all = fields.iter().map(|field| {
         let name = format_ident!("{}", field.name);
@@ -965,14 +845,13 @@ fn quote_trait_impls_from_obj(
     arrow_registry: &ArrowRegistry,
     objects: &Objects,
     obj: &Object,
-    obj_native: Option<&Object>,
 ) -> TokenStream {
     match obj.kind {
         ObjectKind::Datatype | ObjectKind::Component => {
             quote_trait_impls_for_datatype_or_component(objects, arrow_registry, obj)
         }
 
-        ObjectKind::Archetype => quote_trait_impls_for_archetype(obj, obj_native),
+        ObjectKind::Archetype => quote_trait_impls_for_archetype(obj),
 
         ObjectKind::View => quote_trait_impls_for_view(reporter, obj),
     }
@@ -1172,7 +1051,7 @@ fn quote_trait_impls_for_datatype_or_component(
     }
 }
 
-fn quote_trait_impls_for_archetype(obj: &Object, obj_native: Option<&Object>) -> TokenStream {
+fn quote_trait_impls_for_archetype(obj: &Object) -> TokenStream {
     #![allow(clippy::collapsible_else_if)]
 
     let Object {
@@ -1326,28 +1205,6 @@ fn quote_trait_impls_for_archetype(obj: &Object, obj_native: Option<&Object>) ->
         })
     }.collect::<Vec<_>>();
 
-    let from_arrow_components_native = obj_native.map(|obj_native| {
-        let native_name = format_ident!("{}", obj_native.name);
-
-        quote! {
-            impl #native_name {
-                fn from_arrow_components(
-                    arrow_data: impl IntoIterator<Item = (ComponentDescriptor, arrow::array::ArrayRef)>,
-                ) -> DeserializationResult<Self> {
-                    re_tracing::profile_function!();
-                    use ::re_types_core::{Loggable as _, ResultExt as _};
-
-                    let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
-                    #(#all_deserializers;)*
-
-                    Ok(Self {
-                        #(#quoted_field_names,)*
-                    })
-                }
-            }
-        }
-    });
-
     quote! {
         impl #name {
             #(#all_descriptor_methods)*
@@ -1432,8 +1289,6 @@ fn quote_trait_impls_for_archetype(obj: &Object, obj_native: Option<&Object>) ->
                 })
             }
         }
-
-        #from_arrow_components_native
 
         impl ::re_types_core::AsComponents for #name {
             #as_components_impl
