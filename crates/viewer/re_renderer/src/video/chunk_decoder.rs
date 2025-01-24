@@ -193,8 +193,7 @@ fn copy_web_video_frame_to_texture(
         origin: wgpu::Origin2d { x: 0, y: 0 },
         flip_y: false,
     };
-    // TODO(wgpu#6962): This type is not exposed through wgpu.
-    let dest = wgpu_types::CopyExternalImageDestInfo {
+    let dest = wgpu::CopyExternalImageDestInfo {
         texture: &target_texture.texture,
         mip_level: 0,
         origin: wgpu::Origin3d { x: 0, y: 0, z: 0 },

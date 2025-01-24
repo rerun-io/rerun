@@ -338,8 +338,6 @@ wgpu = { version = "24.0", default-features = false, features = [
   # Other:
   "fragile-send-sync-non-atomic-wasm",
 ] }
-# TODO(gfx-rs/wgpu#6962): There's a type export missing in 24.0.0, so we need to get it directly from wgpu-types.
-wgpu-types = "24.0"
 xshell = "0.2"
 zip = { version = "0.6", default-features = false } # We're stuck on 0.6 because https://crates.io/crates/protoc-prebuilt is still using 0.6
 
