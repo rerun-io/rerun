@@ -1,5 +1,7 @@
-//! Test suite dedicated to snapshot the way we present various kinds of blueprint tree structures
-//! with a focus on various view contents.
+//! Snapshot testTest suite dedicated to snapshot the way we present various kinds of blueprint tree structures
+//! with a focus on various view contents and filter configuration.
+
+#![cfg(feature = "testing")]
 
 use egui::Vec2;
 use egui_kittest::{SnapshotError, SnapshotOptions};

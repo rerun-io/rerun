@@ -5688,7 +5688,6 @@ dependencies = [
  "egui_tiles",
  "insta",
  "itertools 0.13.0",
- "re_blueprint_tree",
  "re_chunk_store",
  "re_context_menu",
  "re_data_ui",
