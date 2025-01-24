@@ -1,5 +1,4 @@
 use re_types::{
-    archetypes::Pinhole,
     blueprint::{
         archetypes::Background,
         components::{BackgroundKind, VisualBounds2D},
@@ -32,14 +31,6 @@ fn valid_bound(rect: &egui::Rect) -> bool {
     rect.is_finite() && rect.is_positive()
 }
 
-/// The pinhole sensor rectangle: [0, 0] - [width, height],
-/// ignoring principal point.
-fn pinhole_resolution_rect(pinhole: &Pinhole) -> Option<egui::Rect> {
-    pinhole
-        .resolution()
-        .map(|res| egui::Rect::from_min_max(egui::Pos2::ZERO, egui::pos2(res.x, res.y)))
-}
-
 impl TypedComponentFallbackProvider<VisualBounds2D> for SpatialView2D {
     fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> VisualBounds2D {
         let Ok(view_state) = ctx.view_state.downcast_ref::<SpatialViewState>() else {
@@ -51,7 +42,7 @@ impl TypedComponentFallbackProvider<VisualBounds2D> for SpatialView2D {
         let default_scene_rect = view_state
             .pinhole_at_origin
             .as_ref()
-            .and_then(pinhole_resolution_rect)
+            .map(|pinhole| pinhole.resolution_rect())
             .unwrap_or_else(|| {
                 // TODO(emilk): if there is a single image in this view, use that as the default bounds
                 let scene_rect_smoothed = view_state.bounding_boxes.smoothed;

@@ -8,10 +8,9 @@ use std::{
 use crate::SizeBytes;
 
 impl SizeBytes for String {
-    /// Does not take capacity into account.
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.len() as u64
+        self.capacity() as u64
     }
 }
 
@@ -85,27 +84,27 @@ impl<T: SizeBytes, const N: usize> SizeBytes for [T; N] {
 }
 
 impl<T: SizeBytes> SizeBytes for Vec<T> {
-    /// Does not take capacity into account.
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         // NOTE: It's all on the heap at this point.
         if T::is_pod() {
-            (self.len() * std::mem::size_of::<T>()) as _
+            (self.capacity() * std::mem::size_of::<T>()) as _
         } else {
-            self.iter().map(SizeBytes::total_size_bytes).sum::<u64>()
+            (self.capacity() * std::mem::size_of::<T>()) as u64
+                + self.iter().map(SizeBytes::heap_size_bytes).sum::<u64>()
         }
     }
 }
 
 impl<T: SizeBytes> SizeBytes for VecDeque<T> {
-    /// Does not take capacity into account.
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         // NOTE: It's all on the heap at this point.
         if T::is_pod() {
-            (self.len() * std::mem::size_of::<T>()) as _
+            (self.capacity() * std::mem::size_of::<T>()) as _
         } else {
-            self.iter().map(SizeBytes::total_size_bytes).sum::<u64>()
+            (self.capacity() * std::mem::size_of::<T>()) as u64
+                + self.iter().map(SizeBytes::heap_size_bytes).sum::<u64>()
         }
     }
 }

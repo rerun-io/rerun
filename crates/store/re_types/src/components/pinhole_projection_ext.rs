@@ -71,6 +71,12 @@ impl PinholeProjection {
             / glam::Vec2::from(self.focal_length_in_pixels()))
         .extend(pixel.z)
     }
+
+    /// Field of View on the Y axis, i.e. the angle between top and bottom (in radians).
+    pub fn fov_y(&self, resolution: impl Into<super::Resolution>) -> f32 {
+        let resolution = resolution.into();
+        2.0 * (0.5 * resolution[1] / self.col(1)[1]).atan()
+    }
 }
 
 impl Default for PinholeProjection {

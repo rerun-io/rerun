@@ -15,6 +15,7 @@ mod pickable_textured_rect;
 mod picking;
 mod picking_ui;
 mod picking_ui_pixel;
+mod pinhole;
 mod proc_mesh;
 mod scene_bounding_boxes;
 mod space_camera_3d;
@@ -34,11 +35,11 @@ pub use view_2d::SpatialView2D;
 pub use view_3d::SpatialView3D;
 
 pub(crate) use pickable_textured_rect::{PickableRectSourceData, PickableTexturedRect};
+pub(crate) use pinhole::Pinhole;
 
 // ---
 
-use re_view::DataResultQuery as _;
-use re_viewer_context::{ImageDecodeCache, ViewContext, ViewerContext};
+use re_viewer_context::{ImageDecodeCache, ViewerContext};
 
 use re_log_types::debug_assert_archetype_has_components;
 use re_renderer::RenderContext;
@@ -96,63 +97,6 @@ fn resolution_of_image_at(
     }
 
     None
-}
-
-/// Utility for querying a pinhole archetype instance.
-fn query_pinhole(
-    ctx: &ViewContext<'_>,
-    query: &re_chunk_store::LatestAtQuery,
-    data_result: &re_viewer_context::DataResult,
-) -> Option<re_types::archetypes::Pinhole> {
-    let results = data_result
-        .latest_at_with_blueprint_resolved_data::<re_types::archetypes::Pinhole>(ctx, query);
-
-    let image_from_camera = results.get_mono()?;
-
-    let resolution = results.get_mono().or_else(|| {
-        // If the Pinhole has no resolution, use the resolution for the image logged at the same path.
-        // See https://github.com/rerun-io/rerun/issues/3852
-        resolution_of_image_at(ctx.viewer_ctx, query, &data_result.entity_path)
-    });
-
-    let camera_xyz = results.get_mono();
-
-    let image_plane_distance = Some(results.get_mono_with_fallback());
-
-    Some(re_types::archetypes::Pinhole {
-        image_from_camera,
-        resolution,
-        camera_xyz,
-        image_plane_distance,
-    })
-}
-
-/// Deprecated utility for querying a pinhole archetype instance.
-///
-/// This function won't handle fallbacks correctly.
-///
-// TODO(andreas): This is duplicated into `re_viewport`
-fn query_pinhole_legacy(
-    ctx: &ViewerContext<'_>,
-    query: &re_chunk_store::LatestAtQuery,
-    entity_path: &re_log_types::EntityPath,
-) -> Option<re_types::archetypes::Pinhole> {
-    let entity_db = ctx.recording();
-    entity_db
-        .latest_at_component::<re_types::components::PinholeProjection>(entity_path, query)
-        .map(
-            |(_index, image_from_camera)| re_types::archetypes::Pinhole {
-                image_from_camera,
-                resolution: entity_db
-                    .latest_at_component(entity_path, query)
-                    .map(|(_index, c)| c)
-                    .or_else(|| resolution_of_image_at(ctx, query, entity_path)),
-                camera_xyz: entity_db
-                    .latest_at_component(entity_path, query)
-                    .map(|(_index, c)| c),
-                image_plane_distance: None,
-            },
-        )
 }
 
 pub(crate) fn configure_background(
