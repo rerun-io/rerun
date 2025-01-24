@@ -18,27 +18,27 @@ use ::re_types_core::{ComponentBatch, ComponentBatchCowWithDescriptor, Serialize
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub struct AffixFuzzer2 {
-    pub fuzz1101: Vec<crate::testing::components::AffixFuzzer1>,
-    pub fuzz1102: Vec<crate::testing::components::AffixFuzzer2>,
-    pub fuzz1103: Vec<crate::testing::components::AffixFuzzer3>,
-    pub fuzz1104: Vec<crate::testing::components::AffixFuzzer4>,
-    pub fuzz1105: Vec<crate::testing::components::AffixFuzzer5>,
-    pub fuzz1106: Vec<crate::testing::components::AffixFuzzer6>,
-    pub fuzz1107: Vec<crate::testing::components::AffixFuzzer7>,
-    pub fuzz1108: Vec<crate::testing::components::AffixFuzzer8>,
-    pub fuzz1109: Vec<crate::testing::components::AffixFuzzer9>,
-    pub fuzz1110: Vec<crate::testing::components::AffixFuzzer10>,
-    pub fuzz1111: Vec<crate::testing::components::AffixFuzzer11>,
-    pub fuzz1112: Vec<crate::testing::components::AffixFuzzer12>,
-    pub fuzz1113: Vec<crate::testing::components::AffixFuzzer13>,
-    pub fuzz1114: Vec<crate::testing::components::AffixFuzzer14>,
-    pub fuzz1115: Vec<crate::testing::components::AffixFuzzer15>,
-    pub fuzz1116: Vec<crate::testing::components::AffixFuzzer16>,
-    pub fuzz1117: Vec<crate::testing::components::AffixFuzzer17>,
-    pub fuzz1118: Vec<crate::testing::components::AffixFuzzer18>,
-    pub fuzz1122: Vec<crate::testing::components::AffixFuzzer22>,
+    pub fuzz1101: Option<SerializedComponentBatch>,
+    pub fuzz1102: Option<SerializedComponentBatch>,
+    pub fuzz1103: Option<SerializedComponentBatch>,
+    pub fuzz1104: Option<SerializedComponentBatch>,
+    pub fuzz1105: Option<SerializedComponentBatch>,
+    pub fuzz1106: Option<SerializedComponentBatch>,
+    pub fuzz1107: Option<SerializedComponentBatch>,
+    pub fuzz1108: Option<SerializedComponentBatch>,
+    pub fuzz1109: Option<SerializedComponentBatch>,
+    pub fuzz1110: Option<SerializedComponentBatch>,
+    pub fuzz1111: Option<SerializedComponentBatch>,
+    pub fuzz1112: Option<SerializedComponentBatch>,
+    pub fuzz1113: Option<SerializedComponentBatch>,
+    pub fuzz1114: Option<SerializedComponentBatch>,
+    pub fuzz1115: Option<SerializedComponentBatch>,
+    pub fuzz1116: Option<SerializedComponentBatch>,
+    pub fuzz1117: Option<SerializedComponentBatch>,
+    pub fuzz1118: Option<SerializedComponentBatch>,
+    pub fuzz1122: Option<SerializedComponentBatch>,
 }
 
 impl AffixFuzzer2 {
@@ -354,234 +354,63 @@ impl ::re_types_core::Archetype for AffixFuzzer2 {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
         let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
-        let fuzz1101 = {
-            let array = arrays_by_descr
-                .get(&Self::descriptor_fuzz1101())
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer2#fuzz1101")?;
-            <crate::testing::components::AffixFuzzer1>::from_arrow_opt(&**array)
-                .with_context("rerun.testing.archetypes.AffixFuzzer2#fuzz1101")?
-                .into_iter()
-                .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                .collect::<DeserializationResult<Vec<_>>>()
-                .with_context("rerun.testing.archetypes.AffixFuzzer2#fuzz1101")?
-        };
-        let fuzz1102 = {
-            let array = arrays_by_descr
-                .get(&Self::descriptor_fuzz1102())
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer2#fuzz1102")?;
-            <crate::testing::components::AffixFuzzer2>::from_arrow_opt(&**array)
-                .with_context("rerun.testing.archetypes.AffixFuzzer2#fuzz1102")?
-                .into_iter()
-                .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                .collect::<DeserializationResult<Vec<_>>>()
-                .with_context("rerun.testing.archetypes.AffixFuzzer2#fuzz1102")?
-        };
-        let fuzz1103 = {
-            let array = arrays_by_descr
-                .get(&Self::descriptor_fuzz1103())
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer2#fuzz1103")?;
-            <crate::testing::components::AffixFuzzer3>::from_arrow_opt(&**array)
-                .with_context("rerun.testing.archetypes.AffixFuzzer2#fuzz1103")?
-                .into_iter()
-                .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                .collect::<DeserializationResult<Vec<_>>>()
-                .with_context("rerun.testing.archetypes.AffixFuzzer2#fuzz1103")?
-        };
-        let fuzz1104 = {
-            let array = arrays_by_descr
-                .get(&Self::descriptor_fuzz1104())
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer2#fuzz1104")?;
-            <crate::testing::components::AffixFuzzer4>::from_arrow_opt(&**array)
-                .with_context("rerun.testing.archetypes.AffixFuzzer2#fuzz1104")?
-                .into_iter()
-                .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                .collect::<DeserializationResult<Vec<_>>>()
-                .with_context("rerun.testing.archetypes.AffixFuzzer2#fuzz1104")?
-        };
-        let fuzz1105 = {
-            let array = arrays_by_descr
-                .get(&Self::descriptor_fuzz1105())
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer2#fuzz1105")?;
-            <crate::testing::components::AffixFuzzer5>::from_arrow_opt(&**array)
-                .with_context("rerun.testing.archetypes.AffixFuzzer2#fuzz1105")?
-                .into_iter()
-                .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                .collect::<DeserializationResult<Vec<_>>>()
-                .with_context("rerun.testing.archetypes.AffixFuzzer2#fuzz1105")?
-        };
-        let fuzz1106 = {
-            let array = arrays_by_descr
-                .get(&Self::descriptor_fuzz1106())
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer2#fuzz1106")?;
-            <crate::testing::components::AffixFuzzer6>::from_arrow_opt(&**array)
-                .with_context("rerun.testing.archetypes.AffixFuzzer2#fuzz1106")?
-                .into_iter()
-                .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                .collect::<DeserializationResult<Vec<_>>>()
-                .with_context("rerun.testing.archetypes.AffixFuzzer2#fuzz1106")?
-        };
-        let fuzz1107 = {
-            let array = arrays_by_descr
-                .get(&Self::descriptor_fuzz1107())
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer2#fuzz1107")?;
-            <crate::testing::components::AffixFuzzer7>::from_arrow_opt(&**array)
-                .with_context("rerun.testing.archetypes.AffixFuzzer2#fuzz1107")?
-                .into_iter()
-                .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                .collect::<DeserializationResult<Vec<_>>>()
-                .with_context("rerun.testing.archetypes.AffixFuzzer2#fuzz1107")?
-        };
-        let fuzz1108 = {
-            let array = arrays_by_descr
-                .get(&Self::descriptor_fuzz1108())
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer2#fuzz1108")?;
-            <crate::testing::components::AffixFuzzer8>::from_arrow_opt(&**array)
-                .with_context("rerun.testing.archetypes.AffixFuzzer2#fuzz1108")?
-                .into_iter()
-                .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                .collect::<DeserializationResult<Vec<_>>>()
-                .with_context("rerun.testing.archetypes.AffixFuzzer2#fuzz1108")?
-        };
-        let fuzz1109 = {
-            let array = arrays_by_descr
-                .get(&Self::descriptor_fuzz1109())
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer2#fuzz1109")?;
-            <crate::testing::components::AffixFuzzer9>::from_arrow_opt(&**array)
-                .with_context("rerun.testing.archetypes.AffixFuzzer2#fuzz1109")?
-                .into_iter()
-                .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                .collect::<DeserializationResult<Vec<_>>>()
-                .with_context("rerun.testing.archetypes.AffixFuzzer2#fuzz1109")?
-        };
-        let fuzz1110 = {
-            let array = arrays_by_descr
-                .get(&Self::descriptor_fuzz1110())
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer2#fuzz1110")?;
-            <crate::testing::components::AffixFuzzer10>::from_arrow_opt(&**array)
-                .with_context("rerun.testing.archetypes.AffixFuzzer2#fuzz1110")?
-                .into_iter()
-                .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                .collect::<DeserializationResult<Vec<_>>>()
-                .with_context("rerun.testing.archetypes.AffixFuzzer2#fuzz1110")?
-        };
-        let fuzz1111 = {
-            let array = arrays_by_descr
-                .get(&Self::descriptor_fuzz1111())
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer2#fuzz1111")?;
-            <crate::testing::components::AffixFuzzer11>::from_arrow_opt(&**array)
-                .with_context("rerun.testing.archetypes.AffixFuzzer2#fuzz1111")?
-                .into_iter()
-                .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                .collect::<DeserializationResult<Vec<_>>>()
-                .with_context("rerun.testing.archetypes.AffixFuzzer2#fuzz1111")?
-        };
-        let fuzz1112 = {
-            let array = arrays_by_descr
-                .get(&Self::descriptor_fuzz1112())
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer2#fuzz1112")?;
-            <crate::testing::components::AffixFuzzer12>::from_arrow_opt(&**array)
-                .with_context("rerun.testing.archetypes.AffixFuzzer2#fuzz1112")?
-                .into_iter()
-                .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                .collect::<DeserializationResult<Vec<_>>>()
-                .with_context("rerun.testing.archetypes.AffixFuzzer2#fuzz1112")?
-        };
-        let fuzz1113 = {
-            let array = arrays_by_descr
-                .get(&Self::descriptor_fuzz1113())
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer2#fuzz1113")?;
-            <crate::testing::components::AffixFuzzer13>::from_arrow_opt(&**array)
-                .with_context("rerun.testing.archetypes.AffixFuzzer2#fuzz1113")?
-                .into_iter()
-                .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                .collect::<DeserializationResult<Vec<_>>>()
-                .with_context("rerun.testing.archetypes.AffixFuzzer2#fuzz1113")?
-        };
-        let fuzz1114 = {
-            let array = arrays_by_descr
-                .get(&Self::descriptor_fuzz1114())
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer2#fuzz1114")?;
-            <crate::testing::components::AffixFuzzer14>::from_arrow_opt(&**array)
-                .with_context("rerun.testing.archetypes.AffixFuzzer2#fuzz1114")?
-                .into_iter()
-                .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                .collect::<DeserializationResult<Vec<_>>>()
-                .with_context("rerun.testing.archetypes.AffixFuzzer2#fuzz1114")?
-        };
-        let fuzz1115 = {
-            let array = arrays_by_descr
-                .get(&Self::descriptor_fuzz1115())
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer2#fuzz1115")?;
-            <crate::testing::components::AffixFuzzer15>::from_arrow_opt(&**array)
-                .with_context("rerun.testing.archetypes.AffixFuzzer2#fuzz1115")?
-                .into_iter()
-                .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                .collect::<DeserializationResult<Vec<_>>>()
-                .with_context("rerun.testing.archetypes.AffixFuzzer2#fuzz1115")?
-        };
-        let fuzz1116 = {
-            let array = arrays_by_descr
-                .get(&Self::descriptor_fuzz1116())
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer2#fuzz1116")?;
-            <crate::testing::components::AffixFuzzer16>::from_arrow_opt(&**array)
-                .with_context("rerun.testing.archetypes.AffixFuzzer2#fuzz1116")?
-                .into_iter()
-                .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                .collect::<DeserializationResult<Vec<_>>>()
-                .with_context("rerun.testing.archetypes.AffixFuzzer2#fuzz1116")?
-        };
-        let fuzz1117 = {
-            let array = arrays_by_descr
-                .get(&Self::descriptor_fuzz1117())
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer2#fuzz1117")?;
-            <crate::testing::components::AffixFuzzer17>::from_arrow_opt(&**array)
-                .with_context("rerun.testing.archetypes.AffixFuzzer2#fuzz1117")?
-                .into_iter()
-                .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                .collect::<DeserializationResult<Vec<_>>>()
-                .with_context("rerun.testing.archetypes.AffixFuzzer2#fuzz1117")?
-        };
-        let fuzz1118 = {
-            let array = arrays_by_descr
-                .get(&Self::descriptor_fuzz1118())
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer2#fuzz1118")?;
-            <crate::testing::components::AffixFuzzer18>::from_arrow_opt(&**array)
-                .with_context("rerun.testing.archetypes.AffixFuzzer2#fuzz1118")?
-                .into_iter()
-                .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                .collect::<DeserializationResult<Vec<_>>>()
-                .with_context("rerun.testing.archetypes.AffixFuzzer2#fuzz1118")?
-        };
-        let fuzz1122 = {
-            let array = arrays_by_descr
-                .get(&Self::descriptor_fuzz1122())
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.testing.archetypes.AffixFuzzer2#fuzz1122")?;
-            <crate::testing::components::AffixFuzzer22>::from_arrow_opt(&**array)
-                .with_context("rerun.testing.archetypes.AffixFuzzer2#fuzz1122")?
-                .into_iter()
-                .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                .collect::<DeserializationResult<Vec<_>>>()
-                .with_context("rerun.testing.archetypes.AffixFuzzer2#fuzz1122")?
-        };
+        let fuzz1101 = arrays_by_descr
+            .get(&Self::descriptor_fuzz1101())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_fuzz1101()));
+        let fuzz1102 = arrays_by_descr
+            .get(&Self::descriptor_fuzz1102())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_fuzz1102()));
+        let fuzz1103 = arrays_by_descr
+            .get(&Self::descriptor_fuzz1103())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_fuzz1103()));
+        let fuzz1104 = arrays_by_descr
+            .get(&Self::descriptor_fuzz1104())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_fuzz1104()));
+        let fuzz1105 = arrays_by_descr
+            .get(&Self::descriptor_fuzz1105())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_fuzz1105()));
+        let fuzz1106 = arrays_by_descr
+            .get(&Self::descriptor_fuzz1106())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_fuzz1106()));
+        let fuzz1107 = arrays_by_descr
+            .get(&Self::descriptor_fuzz1107())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_fuzz1107()));
+        let fuzz1108 = arrays_by_descr
+            .get(&Self::descriptor_fuzz1108())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_fuzz1108()));
+        let fuzz1109 = arrays_by_descr
+            .get(&Self::descriptor_fuzz1109())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_fuzz1109()));
+        let fuzz1110 = arrays_by_descr
+            .get(&Self::descriptor_fuzz1110())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_fuzz1110()));
+        let fuzz1111 = arrays_by_descr
+            .get(&Self::descriptor_fuzz1111())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_fuzz1111()));
+        let fuzz1112 = arrays_by_descr
+            .get(&Self::descriptor_fuzz1112())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_fuzz1112()));
+        let fuzz1113 = arrays_by_descr
+            .get(&Self::descriptor_fuzz1113())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_fuzz1113()));
+        let fuzz1114 = arrays_by_descr
+            .get(&Self::descriptor_fuzz1114())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_fuzz1114()));
+        let fuzz1115 = arrays_by_descr
+            .get(&Self::descriptor_fuzz1115())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_fuzz1115()));
+        let fuzz1116 = arrays_by_descr
+            .get(&Self::descriptor_fuzz1116())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_fuzz1116()));
+        let fuzz1117 = arrays_by_descr
+            .get(&Self::descriptor_fuzz1117())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_fuzz1117()));
+        let fuzz1118 = arrays_by_descr
+            .get(&Self::descriptor_fuzz1118())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_fuzz1118()));
+        let fuzz1122 = arrays_by_descr
+            .get(&Self::descriptor_fuzz1122())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_fuzz1122()));
         Ok(Self {
             fuzz1101,
             fuzz1102,
@@ -607,125 +436,30 @@ impl ::re_types_core::Archetype for AffixFuzzer2 {
 }
 
 impl ::re_types_core::AsComponents for AffixFuzzer2 {
-    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
-        re_tracing::profile_function!();
+    #[inline]
+    fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
-            (Some(&self.fuzz1101 as &dyn ComponentBatch)).map(|batch| {
-                ::re_types_core::ComponentBatchCowWithDescriptor {
-                    batch: batch.into(),
-                    descriptor_override: Some(Self::descriptor_fuzz1101()),
-                }
-            }),
-            (Some(&self.fuzz1102 as &dyn ComponentBatch)).map(|batch| {
-                ::re_types_core::ComponentBatchCowWithDescriptor {
-                    batch: batch.into(),
-                    descriptor_override: Some(Self::descriptor_fuzz1102()),
-                }
-            }),
-            (Some(&self.fuzz1103 as &dyn ComponentBatch)).map(|batch| {
-                ::re_types_core::ComponentBatchCowWithDescriptor {
-                    batch: batch.into(),
-                    descriptor_override: Some(Self::descriptor_fuzz1103()),
-                }
-            }),
-            (Some(&self.fuzz1104 as &dyn ComponentBatch)).map(|batch| {
-                ::re_types_core::ComponentBatchCowWithDescriptor {
-                    batch: batch.into(),
-                    descriptor_override: Some(Self::descriptor_fuzz1104()),
-                }
-            }),
-            (Some(&self.fuzz1105 as &dyn ComponentBatch)).map(|batch| {
-                ::re_types_core::ComponentBatchCowWithDescriptor {
-                    batch: batch.into(),
-                    descriptor_override: Some(Self::descriptor_fuzz1105()),
-                }
-            }),
-            (Some(&self.fuzz1106 as &dyn ComponentBatch)).map(|batch| {
-                ::re_types_core::ComponentBatchCowWithDescriptor {
-                    batch: batch.into(),
-                    descriptor_override: Some(Self::descriptor_fuzz1106()),
-                }
-            }),
-            (Some(&self.fuzz1107 as &dyn ComponentBatch)).map(|batch| {
-                ::re_types_core::ComponentBatchCowWithDescriptor {
-                    batch: batch.into(),
-                    descriptor_override: Some(Self::descriptor_fuzz1107()),
-                }
-            }),
-            (Some(&self.fuzz1108 as &dyn ComponentBatch)).map(|batch| {
-                ::re_types_core::ComponentBatchCowWithDescriptor {
-                    batch: batch.into(),
-                    descriptor_override: Some(Self::descriptor_fuzz1108()),
-                }
-            }),
-            (Some(&self.fuzz1109 as &dyn ComponentBatch)).map(|batch| {
-                ::re_types_core::ComponentBatchCowWithDescriptor {
-                    batch: batch.into(),
-                    descriptor_override: Some(Self::descriptor_fuzz1109()),
-                }
-            }),
-            (Some(&self.fuzz1110 as &dyn ComponentBatch)).map(|batch| {
-                ::re_types_core::ComponentBatchCowWithDescriptor {
-                    batch: batch.into(),
-                    descriptor_override: Some(Self::descriptor_fuzz1110()),
-                }
-            }),
-            (Some(&self.fuzz1111 as &dyn ComponentBatch)).map(|batch| {
-                ::re_types_core::ComponentBatchCowWithDescriptor {
-                    batch: batch.into(),
-                    descriptor_override: Some(Self::descriptor_fuzz1111()),
-                }
-            }),
-            (Some(&self.fuzz1112 as &dyn ComponentBatch)).map(|batch| {
-                ::re_types_core::ComponentBatchCowWithDescriptor {
-                    batch: batch.into(),
-                    descriptor_override: Some(Self::descriptor_fuzz1112()),
-                }
-            }),
-            (Some(&self.fuzz1113 as &dyn ComponentBatch)).map(|batch| {
-                ::re_types_core::ComponentBatchCowWithDescriptor {
-                    batch: batch.into(),
-                    descriptor_override: Some(Self::descriptor_fuzz1113()),
-                }
-            }),
-            (Some(&self.fuzz1114 as &dyn ComponentBatch)).map(|batch| {
-                ::re_types_core::ComponentBatchCowWithDescriptor {
-                    batch: batch.into(),
-                    descriptor_override: Some(Self::descriptor_fuzz1114()),
-                }
-            }),
-            (Some(&self.fuzz1115 as &dyn ComponentBatch)).map(|batch| {
-                ::re_types_core::ComponentBatchCowWithDescriptor {
-                    batch: batch.into(),
-                    descriptor_override: Some(Self::descriptor_fuzz1115()),
-                }
-            }),
-            (Some(&self.fuzz1116 as &dyn ComponentBatch)).map(|batch| {
-                ::re_types_core::ComponentBatchCowWithDescriptor {
-                    batch: batch.into(),
-                    descriptor_override: Some(Self::descriptor_fuzz1116()),
-                }
-            }),
-            (Some(&self.fuzz1117 as &dyn ComponentBatch)).map(|batch| {
-                ::re_types_core::ComponentBatchCowWithDescriptor {
-                    batch: batch.into(),
-                    descriptor_override: Some(Self::descriptor_fuzz1117()),
-                }
-            }),
-            (Some(&self.fuzz1118 as &dyn ComponentBatch)).map(|batch| {
-                ::re_types_core::ComponentBatchCowWithDescriptor {
-                    batch: batch.into(),
-                    descriptor_override: Some(Self::descriptor_fuzz1118()),
-                }
-            }),
-            (Some(&self.fuzz1122 as &dyn ComponentBatch)).map(|batch| {
-                ::re_types_core::ComponentBatchCowWithDescriptor {
-                    batch: batch.into(),
-                    descriptor_override: Some(Self::descriptor_fuzz1122()),
-                }
-            }),
+            Self::indicator().serialized(),
+            self.fuzz1101.clone(),
+            self.fuzz1102.clone(),
+            self.fuzz1103.clone(),
+            self.fuzz1104.clone(),
+            self.fuzz1105.clone(),
+            self.fuzz1106.clone(),
+            self.fuzz1107.clone(),
+            self.fuzz1108.clone(),
+            self.fuzz1109.clone(),
+            self.fuzz1110.clone(),
+            self.fuzz1111.clone(),
+            self.fuzz1112.clone(),
+            self.fuzz1113.clone(),
+            self.fuzz1114.clone(),
+            self.fuzz1115.clone(),
+            self.fuzz1116.clone(),
+            self.fuzz1117.clone(),
+            self.fuzz1118.clone(),
+            self.fuzz1122.clone(),
         ]
         .into_iter()
         .flatten()
@@ -760,26 +494,420 @@ impl AffixFuzzer2 {
         fuzz1122: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer22>>,
     ) -> Self {
         Self {
-            fuzz1101: fuzz1101.into_iter().map(Into::into).collect(),
-            fuzz1102: fuzz1102.into_iter().map(Into::into).collect(),
-            fuzz1103: fuzz1103.into_iter().map(Into::into).collect(),
-            fuzz1104: fuzz1104.into_iter().map(Into::into).collect(),
-            fuzz1105: fuzz1105.into_iter().map(Into::into).collect(),
-            fuzz1106: fuzz1106.into_iter().map(Into::into).collect(),
-            fuzz1107: fuzz1107.into_iter().map(Into::into).collect(),
-            fuzz1108: fuzz1108.into_iter().map(Into::into).collect(),
-            fuzz1109: fuzz1109.into_iter().map(Into::into).collect(),
-            fuzz1110: fuzz1110.into_iter().map(Into::into).collect(),
-            fuzz1111: fuzz1111.into_iter().map(Into::into).collect(),
-            fuzz1112: fuzz1112.into_iter().map(Into::into).collect(),
-            fuzz1113: fuzz1113.into_iter().map(Into::into).collect(),
-            fuzz1114: fuzz1114.into_iter().map(Into::into).collect(),
-            fuzz1115: fuzz1115.into_iter().map(Into::into).collect(),
-            fuzz1116: fuzz1116.into_iter().map(Into::into).collect(),
-            fuzz1117: fuzz1117.into_iter().map(Into::into).collect(),
-            fuzz1118: fuzz1118.into_iter().map(Into::into).collect(),
-            fuzz1122: fuzz1122.into_iter().map(Into::into).collect(),
+            fuzz1101: try_serialize_field(Self::descriptor_fuzz1101(), fuzz1101),
+            fuzz1102: try_serialize_field(Self::descriptor_fuzz1102(), fuzz1102),
+            fuzz1103: try_serialize_field(Self::descriptor_fuzz1103(), fuzz1103),
+            fuzz1104: try_serialize_field(Self::descriptor_fuzz1104(), fuzz1104),
+            fuzz1105: try_serialize_field(Self::descriptor_fuzz1105(), fuzz1105),
+            fuzz1106: try_serialize_field(Self::descriptor_fuzz1106(), fuzz1106),
+            fuzz1107: try_serialize_field(Self::descriptor_fuzz1107(), fuzz1107),
+            fuzz1108: try_serialize_field(Self::descriptor_fuzz1108(), fuzz1108),
+            fuzz1109: try_serialize_field(Self::descriptor_fuzz1109(), fuzz1109),
+            fuzz1110: try_serialize_field(Self::descriptor_fuzz1110(), fuzz1110),
+            fuzz1111: try_serialize_field(Self::descriptor_fuzz1111(), fuzz1111),
+            fuzz1112: try_serialize_field(Self::descriptor_fuzz1112(), fuzz1112),
+            fuzz1113: try_serialize_field(Self::descriptor_fuzz1113(), fuzz1113),
+            fuzz1114: try_serialize_field(Self::descriptor_fuzz1114(), fuzz1114),
+            fuzz1115: try_serialize_field(Self::descriptor_fuzz1115(), fuzz1115),
+            fuzz1116: try_serialize_field(Self::descriptor_fuzz1116(), fuzz1116),
+            fuzz1117: try_serialize_field(Self::descriptor_fuzz1117(), fuzz1117),
+            fuzz1118: try_serialize_field(Self::descriptor_fuzz1118(), fuzz1118),
+            fuzz1122: try_serialize_field(Self::descriptor_fuzz1122(), fuzz1122),
         }
+    }
+
+    /// Update only some specific fields of a `AffixFuzzer2`.
+    #[inline]
+    pub fn update_fields() -> Self {
+        Self::default()
+    }
+
+    /// Clear all the fields of a `AffixFuzzer2`.
+    #[inline]
+    pub fn clear_fields() -> Self {
+        use ::re_types_core::Loggable as _;
+        Self {
+            fuzz1101: Some(SerializedComponentBatch::new(
+                crate::testing::components::AffixFuzzer1::arrow_empty(),
+                Self::descriptor_fuzz1101(),
+            )),
+            fuzz1102: Some(SerializedComponentBatch::new(
+                crate::testing::components::AffixFuzzer2::arrow_empty(),
+                Self::descriptor_fuzz1102(),
+            )),
+            fuzz1103: Some(SerializedComponentBatch::new(
+                crate::testing::components::AffixFuzzer3::arrow_empty(),
+                Self::descriptor_fuzz1103(),
+            )),
+            fuzz1104: Some(SerializedComponentBatch::new(
+                crate::testing::components::AffixFuzzer4::arrow_empty(),
+                Self::descriptor_fuzz1104(),
+            )),
+            fuzz1105: Some(SerializedComponentBatch::new(
+                crate::testing::components::AffixFuzzer5::arrow_empty(),
+                Self::descriptor_fuzz1105(),
+            )),
+            fuzz1106: Some(SerializedComponentBatch::new(
+                crate::testing::components::AffixFuzzer6::arrow_empty(),
+                Self::descriptor_fuzz1106(),
+            )),
+            fuzz1107: Some(SerializedComponentBatch::new(
+                crate::testing::components::AffixFuzzer7::arrow_empty(),
+                Self::descriptor_fuzz1107(),
+            )),
+            fuzz1108: Some(SerializedComponentBatch::new(
+                crate::testing::components::AffixFuzzer8::arrow_empty(),
+                Self::descriptor_fuzz1108(),
+            )),
+            fuzz1109: Some(SerializedComponentBatch::new(
+                crate::testing::components::AffixFuzzer9::arrow_empty(),
+                Self::descriptor_fuzz1109(),
+            )),
+            fuzz1110: Some(SerializedComponentBatch::new(
+                crate::testing::components::AffixFuzzer10::arrow_empty(),
+                Self::descriptor_fuzz1110(),
+            )),
+            fuzz1111: Some(SerializedComponentBatch::new(
+                crate::testing::components::AffixFuzzer11::arrow_empty(),
+                Self::descriptor_fuzz1111(),
+            )),
+            fuzz1112: Some(SerializedComponentBatch::new(
+                crate::testing::components::AffixFuzzer12::arrow_empty(),
+                Self::descriptor_fuzz1112(),
+            )),
+            fuzz1113: Some(SerializedComponentBatch::new(
+                crate::testing::components::AffixFuzzer13::arrow_empty(),
+                Self::descriptor_fuzz1113(),
+            )),
+            fuzz1114: Some(SerializedComponentBatch::new(
+                crate::testing::components::AffixFuzzer14::arrow_empty(),
+                Self::descriptor_fuzz1114(),
+            )),
+            fuzz1115: Some(SerializedComponentBatch::new(
+                crate::testing::components::AffixFuzzer15::arrow_empty(),
+                Self::descriptor_fuzz1115(),
+            )),
+            fuzz1116: Some(SerializedComponentBatch::new(
+                crate::testing::components::AffixFuzzer16::arrow_empty(),
+                Self::descriptor_fuzz1116(),
+            )),
+            fuzz1117: Some(SerializedComponentBatch::new(
+                crate::testing::components::AffixFuzzer17::arrow_empty(),
+                Self::descriptor_fuzz1117(),
+            )),
+            fuzz1118: Some(SerializedComponentBatch::new(
+                crate::testing::components::AffixFuzzer18::arrow_empty(),
+                Self::descriptor_fuzz1118(),
+            )),
+            fuzz1122: Some(SerializedComponentBatch::new(
+                crate::testing::components::AffixFuzzer22::arrow_empty(),
+                Self::descriptor_fuzz1122(),
+            )),
+        }
+    }
+
+    /// Partitions the component data into multiple sub-batches.
+    ///
+    /// Specifically, this transforms the existing [`SerializedComponentBatch`]es data into [`SerializedComponentColumn`]s
+    /// instead, via [`SerializedComponentBatch::partitioned`].
+    ///
+    /// This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
+    ///
+    /// The specified `lengths` must sum to the total length of the component batch.
+    ///
+    /// [`SerializedComponentColumn`]: [::re_types_core::SerializedComponentColumn]
+    #[inline]
+    pub fn columns<I>(
+        self,
+        _lengths: I,
+    ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>>
+    where
+        I: IntoIterator<Item = usize> + Clone,
+    {
+        let columns = [
+            self.fuzz1101
+                .map(|fuzz1101| fuzz1101.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.fuzz1102
+                .map(|fuzz1102| fuzz1102.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.fuzz1103
+                .map(|fuzz1103| fuzz1103.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.fuzz1104
+                .map(|fuzz1104| fuzz1104.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.fuzz1105
+                .map(|fuzz1105| fuzz1105.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.fuzz1106
+                .map(|fuzz1106| fuzz1106.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.fuzz1107
+                .map(|fuzz1107| fuzz1107.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.fuzz1108
+                .map(|fuzz1108| fuzz1108.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.fuzz1109
+                .map(|fuzz1109| fuzz1109.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.fuzz1110
+                .map(|fuzz1110| fuzz1110.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.fuzz1111
+                .map(|fuzz1111| fuzz1111.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.fuzz1112
+                .map(|fuzz1112| fuzz1112.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.fuzz1113
+                .map(|fuzz1113| fuzz1113.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.fuzz1114
+                .map(|fuzz1114| fuzz1114.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.fuzz1115
+                .map(|fuzz1115| fuzz1115.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.fuzz1116
+                .map(|fuzz1116| fuzz1116.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.fuzz1117
+                .map(|fuzz1117| fuzz1117.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.fuzz1118
+                .map(|fuzz1118| fuzz1118.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.fuzz1122
+                .map(|fuzz1122| fuzz1122.partitioned(_lengths.clone()))
+                .transpose()?,
+        ];
+        let indicator_column =
+            ::re_types_core::indicator_column::<Self>(_lengths.into_iter().count())?;
+        Ok(columns.into_iter().chain([indicator_column]).flatten())
+    }
+
+    /// Helper to partition the component data into unit-length sub-batches.
+    ///
+    /// This is semantically similar to calling [`Self::columns`] with `std::iter::take(1).repeat(n)`,
+    /// where `n` is automatically guessed.
+    #[inline]
+    pub fn columns_of_unit_batches(
+        self,
+    ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
+        let len_fuzz1101 = self.fuzz1101.as_ref().map(|b| b.array.len());
+        let len_fuzz1102 = self.fuzz1102.as_ref().map(|b| b.array.len());
+        let len_fuzz1103 = self.fuzz1103.as_ref().map(|b| b.array.len());
+        let len_fuzz1104 = self.fuzz1104.as_ref().map(|b| b.array.len());
+        let len_fuzz1105 = self.fuzz1105.as_ref().map(|b| b.array.len());
+        let len_fuzz1106 = self.fuzz1106.as_ref().map(|b| b.array.len());
+        let len_fuzz1107 = self.fuzz1107.as_ref().map(|b| b.array.len());
+        let len_fuzz1108 = self.fuzz1108.as_ref().map(|b| b.array.len());
+        let len_fuzz1109 = self.fuzz1109.as_ref().map(|b| b.array.len());
+        let len_fuzz1110 = self.fuzz1110.as_ref().map(|b| b.array.len());
+        let len_fuzz1111 = self.fuzz1111.as_ref().map(|b| b.array.len());
+        let len_fuzz1112 = self.fuzz1112.as_ref().map(|b| b.array.len());
+        let len_fuzz1113 = self.fuzz1113.as_ref().map(|b| b.array.len());
+        let len_fuzz1114 = self.fuzz1114.as_ref().map(|b| b.array.len());
+        let len_fuzz1115 = self.fuzz1115.as_ref().map(|b| b.array.len());
+        let len_fuzz1116 = self.fuzz1116.as_ref().map(|b| b.array.len());
+        let len_fuzz1117 = self.fuzz1117.as_ref().map(|b| b.array.len());
+        let len_fuzz1118 = self.fuzz1118.as_ref().map(|b| b.array.len());
+        let len_fuzz1122 = self.fuzz1122.as_ref().map(|b| b.array.len());
+        let len = None
+            .or(len_fuzz1101)
+            .or(len_fuzz1102)
+            .or(len_fuzz1103)
+            .or(len_fuzz1104)
+            .or(len_fuzz1105)
+            .or(len_fuzz1106)
+            .or(len_fuzz1107)
+            .or(len_fuzz1108)
+            .or(len_fuzz1109)
+            .or(len_fuzz1110)
+            .or(len_fuzz1111)
+            .or(len_fuzz1112)
+            .or(len_fuzz1113)
+            .or(len_fuzz1114)
+            .or(len_fuzz1115)
+            .or(len_fuzz1116)
+            .or(len_fuzz1117)
+            .or(len_fuzz1118)
+            .or(len_fuzz1122)
+            .unwrap_or(0);
+        self.columns(std::iter::repeat(1).take(len))
+    }
+
+    #[inline]
+    pub fn with_fuzz1101(
+        mut self,
+        fuzz1101: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer1>>,
+    ) -> Self {
+        self.fuzz1101 = try_serialize_field(Self::descriptor_fuzz1101(), fuzz1101);
+        self
+    }
+
+    #[inline]
+    pub fn with_fuzz1102(
+        mut self,
+        fuzz1102: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer2>>,
+    ) -> Self {
+        self.fuzz1102 = try_serialize_field(Self::descriptor_fuzz1102(), fuzz1102);
+        self
+    }
+
+    #[inline]
+    pub fn with_fuzz1103(
+        mut self,
+        fuzz1103: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer3>>,
+    ) -> Self {
+        self.fuzz1103 = try_serialize_field(Self::descriptor_fuzz1103(), fuzz1103);
+        self
+    }
+
+    #[inline]
+    pub fn with_fuzz1104(
+        mut self,
+        fuzz1104: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer4>>,
+    ) -> Self {
+        self.fuzz1104 = try_serialize_field(Self::descriptor_fuzz1104(), fuzz1104);
+        self
+    }
+
+    #[inline]
+    pub fn with_fuzz1105(
+        mut self,
+        fuzz1105: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer5>>,
+    ) -> Self {
+        self.fuzz1105 = try_serialize_field(Self::descriptor_fuzz1105(), fuzz1105);
+        self
+    }
+
+    #[inline]
+    pub fn with_fuzz1106(
+        mut self,
+        fuzz1106: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer6>>,
+    ) -> Self {
+        self.fuzz1106 = try_serialize_field(Self::descriptor_fuzz1106(), fuzz1106);
+        self
+    }
+
+    #[inline]
+    pub fn with_fuzz1107(
+        mut self,
+        fuzz1107: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer7>>,
+    ) -> Self {
+        self.fuzz1107 = try_serialize_field(Self::descriptor_fuzz1107(), fuzz1107);
+        self
+    }
+
+    #[inline]
+    pub fn with_fuzz1108(
+        mut self,
+        fuzz1108: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer8>>,
+    ) -> Self {
+        self.fuzz1108 = try_serialize_field(Self::descriptor_fuzz1108(), fuzz1108);
+        self
+    }
+
+    #[inline]
+    pub fn with_fuzz1109(
+        mut self,
+        fuzz1109: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer9>>,
+    ) -> Self {
+        self.fuzz1109 = try_serialize_field(Self::descriptor_fuzz1109(), fuzz1109);
+        self
+    }
+
+    #[inline]
+    pub fn with_fuzz1110(
+        mut self,
+        fuzz1110: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer10>>,
+    ) -> Self {
+        self.fuzz1110 = try_serialize_field(Self::descriptor_fuzz1110(), fuzz1110);
+        self
+    }
+
+    #[inline]
+    pub fn with_fuzz1111(
+        mut self,
+        fuzz1111: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer11>>,
+    ) -> Self {
+        self.fuzz1111 = try_serialize_field(Self::descriptor_fuzz1111(), fuzz1111);
+        self
+    }
+
+    #[inline]
+    pub fn with_fuzz1112(
+        mut self,
+        fuzz1112: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer12>>,
+    ) -> Self {
+        self.fuzz1112 = try_serialize_field(Self::descriptor_fuzz1112(), fuzz1112);
+        self
+    }
+
+    #[inline]
+    pub fn with_fuzz1113(
+        mut self,
+        fuzz1113: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer13>>,
+    ) -> Self {
+        self.fuzz1113 = try_serialize_field(Self::descriptor_fuzz1113(), fuzz1113);
+        self
+    }
+
+    #[inline]
+    pub fn with_fuzz1114(
+        mut self,
+        fuzz1114: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer14>>,
+    ) -> Self {
+        self.fuzz1114 = try_serialize_field(Self::descriptor_fuzz1114(), fuzz1114);
+        self
+    }
+
+    #[inline]
+    pub fn with_fuzz1115(
+        mut self,
+        fuzz1115: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer15>>,
+    ) -> Self {
+        self.fuzz1115 = try_serialize_field(Self::descriptor_fuzz1115(), fuzz1115);
+        self
+    }
+
+    #[inline]
+    pub fn with_fuzz1116(
+        mut self,
+        fuzz1116: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer16>>,
+    ) -> Self {
+        self.fuzz1116 = try_serialize_field(Self::descriptor_fuzz1116(), fuzz1116);
+        self
+    }
+
+    #[inline]
+    pub fn with_fuzz1117(
+        mut self,
+        fuzz1117: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer17>>,
+    ) -> Self {
+        self.fuzz1117 = try_serialize_field(Self::descriptor_fuzz1117(), fuzz1117);
+        self
+    }
+
+    #[inline]
+    pub fn with_fuzz1118(
+        mut self,
+        fuzz1118: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer18>>,
+    ) -> Self {
+        self.fuzz1118 = try_serialize_field(Self::descriptor_fuzz1118(), fuzz1118);
+        self
+    }
+
+    #[inline]
+    pub fn with_fuzz1122(
+        mut self,
+        fuzz1122: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer22>>,
+    ) -> Self {
+        self.fuzz1122 = try_serialize_field(Self::descriptor_fuzz1122(), fuzz1122);
+        self
     }
 }
 
@@ -805,28 +933,5 @@ impl ::re_byte_size::SizeBytes for AffixFuzzer2 {
             + self.fuzz1117.heap_size_bytes()
             + self.fuzz1118.heap_size_bytes()
             + self.fuzz1122.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <Vec<crate::testing::components::AffixFuzzer1>>::is_pod()
-            && <Vec<crate::testing::components::AffixFuzzer2>>::is_pod()
-            && <Vec<crate::testing::components::AffixFuzzer3>>::is_pod()
-            && <Vec<crate::testing::components::AffixFuzzer4>>::is_pod()
-            && <Vec<crate::testing::components::AffixFuzzer5>>::is_pod()
-            && <Vec<crate::testing::components::AffixFuzzer6>>::is_pod()
-            && <Vec<crate::testing::components::AffixFuzzer7>>::is_pod()
-            && <Vec<crate::testing::components::AffixFuzzer8>>::is_pod()
-            && <Vec<crate::testing::components::AffixFuzzer9>>::is_pod()
-            && <Vec<crate::testing::components::AffixFuzzer10>>::is_pod()
-            && <Vec<crate::testing::components::AffixFuzzer11>>::is_pod()
-            && <Vec<crate::testing::components::AffixFuzzer12>>::is_pod()
-            && <Vec<crate::testing::components::AffixFuzzer13>>::is_pod()
-            && <Vec<crate::testing::components::AffixFuzzer14>>::is_pod()
-            && <Vec<crate::testing::components::AffixFuzzer15>>::is_pod()
-            && <Vec<crate::testing::components::AffixFuzzer16>>::is_pod()
-            && <Vec<crate::testing::components::AffixFuzzer17>>::is_pod()
-            && <Vec<crate::testing::components::AffixFuzzer18>>::is_pod()
-            && <Vec<crate::testing::components::AffixFuzzer22>>::is_pod()
     }
 }
