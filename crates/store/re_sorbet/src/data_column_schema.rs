@@ -3,12 +3,23 @@ use arrow::datatypes::{DataType as ArrowDatatype, Field as ArrowField};
 use re_log_types::{ComponentPath, EntityPath};
 use re_types_core::{ArchetypeFieldName, ArchetypeName, ComponentDescriptor, ComponentName};
 
-/// Describes a data/component column, such as `Position3D`.
+use crate::{ArrowFieldMetadata, MetadataExt as _, MissingFieldMetadata};
+
+/// Describes a data/component column, such as `Position3D`, in a dataframe.
+///
+/// This is an [`ArrowField`] that contains specific meta-data.
 //
 // TODO(#6889): Fully sorbetize this thing? `ArchetypeName` and such don't make sense in that
 // context. And whatever `archetype_field_name` ends up being, it needs interning.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ComponentColumnDescriptor {
+    /// The Arrow datatype of the stored column.
+    ///
+    /// This is the log-time datatype corresponding to how this data is encoded
+    /// in a chunk. Currently this will always be an [`arrow::array::ListArray`], but as
+    /// we introduce mono-type optimization, this might be a native type instead.
+    pub store_datatype: ArrowDatatype,
+
     /// The path of the entity.
     pub entity_path: EntityPath,
 
@@ -33,13 +44,6 @@ pub struct ComponentColumnDescriptor {
     ///
     /// Example: `rerun.components.Position3D`.
     pub component_name: ComponentName,
-
-    /// The Arrow datatype of the stored column.
-    ///
-    /// This is the log-time datatype corresponding to how this data is encoded
-    /// in a chunk. Currently this will always be an [`arrow::array::ListArray`], but as
-    /// we introduce mono-type optimization, this might be a native type instead.
-    pub store_datatype: ArrowDatatype,
 
     /// Whether this column represents static data.
     pub is_static: bool,
@@ -151,8 +155,7 @@ impl ComponentColumnDescriptor {
         &self.entity_path == entity_path && self.component_name.matches(component_name)
     }
 
-    fn metadata(&self) -> std::collections::HashMap<String, String> {
-        // TODO(#6889): This needs some proper sorbetization -- I just threw these names randomly.
+    fn metadata(&self) -> ArrowFieldMetadata {
         let Self {
             entity_path,
             archetype_name,
@@ -165,6 +168,7 @@ impl ComponentColumnDescriptor {
             is_semantically_empty,
         } = self;
 
+        // TODO(#6889): This needs some proper sorbetization -- I just threw these names randomly.
         [
             (*is_static).then_some(("sorbet.is_static".to_owned(), "yes".to_owned())),
             (*is_indicator).then_some(("sorbet.is_indicator".to_owned(), "yes".to_owned())),
@@ -215,5 +219,23 @@ impl ComponentColumnDescriptor {
             true, /* nullable */
         )
         .with_metadata(self.metadata())
+    }
+}
+
+impl TryFrom<&ArrowField> for ComponentColumnDescriptor {
+    type Error = MissingFieldMetadata;
+
+    fn try_from(field: &ArrowField) -> Result<Self, Self::Error> {
+        Ok(Self {
+            store_datatype: field.data_type().clone(),
+            entity_path: EntityPath::parse_forgiving(field.get_or_err("sorbet.path")?),
+            archetype_name: field.get_opt("sorbet.semantic_family").map(|x| x.into()),
+            archetype_field_name: field.get_opt("sorbet.logical_type").map(|x| x.into()),
+            component_name: field.get_or_err("sorbet.semantic_type")?.into(),
+            is_static: field.get_bool("sorbet.is_static"),
+            is_indicator: field.get_bool("sorbet.is_indicator"),
+            is_tombstone: field.get_bool("sorbet.is_tombstone"),
+            is_semantically_empty: field.get_bool("sorbet.is_semantically_empty"),
+        })
     }
 }
