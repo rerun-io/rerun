@@ -9,6 +9,9 @@ service StorageNode {
     rpc Query(QueryRequest) returns (stream DataframePart) {}
     rpc FetchRecording(FetchRecordingRequest) returns (stream rerun.common.v0.RerunChunk) {}
 
+    rpc IndexCollection(IndexCollectionRequest) returns (IndexCollectionResponse) {}
+    rpc QueryCollectionIndex(QueryCollectionIndexRequest) returns (QueryCollectionIndexResponse) {}
+
     // metadata API calls
     rpc QueryCatalog(QueryCatalogRequest) returns (stream DataframePart) {}
     rpc UpdateCatalog(UpdateCatalogRequest) returns (UpdateCatalogResponse) {}
@@ -31,6 +34,49 @@ message DataframePart {
     // Data payload is Arrow IPC encoded RecordBatch
     bytes payload = 1000;
 }
+
+// ---------------- IndexCollection ------------------
+
+message IndexCollectionRequest {
+    // which collection do we want to create index for
+    string collection_name = 1;
+    // what kind of index do we want to create
+    IndexType index_type = 2;
+    // Component / column we want to index
+    rerun.common.v0.ComponentColumnDescriptor column = 3;
+}
+
+enum IndexType {
+    // unused
+    _UNUSED_TYP = 0;
+
+    // index type for full text search
+    INVERTED = 1;
+
+    // index type for vector search
+    // TODO(zehiko) we can expose others when needed
+    VECTOR_IVF_PF = 2;
+
+    // B-tree index suitable for range and sorted access queries
+    // on numerical, string and binary data
+    BTREE = 3;
+
+    // TODO(zehiko) add others as needed
+}
+
+message IndexCollectionResponse {}
+
+
+// ---------------- QueryCollectionIndex ------------------
+
+message QueryCollectionIndexRequest {
+
+}
+
+message QueryCollectionIndexResponse {
+    // TODO(zehiko) we need to define the response format
+}
+
 
 // ---------------- GetRecordingSchema ------------------
 

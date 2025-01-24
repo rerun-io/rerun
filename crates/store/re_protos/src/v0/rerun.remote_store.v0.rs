@@ -20,6 +20,65 @@ impl ::prost::Name for DataframePart {
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
+pub struct IndexCollectionRequest {
+    /// which collection do we want to create index for
+    #[prost(string, tag = "1")]
+    pub collection_name: ::prost::alloc::string::String,
+    /// what kind of index do we want to create
+    #[prost(enumeration = "IndexType", tag = "2")]
+    pub index_type: i32,
+    /// Component / column we want to index
+    #[prost(message, optional, tag = "3")]
+    pub column: ::core::option::Option<super::super::common::v0::ComponentColumnDescriptor>,
+}
+impl ::prost::Name for IndexCollectionRequest {
+    const NAME: &'static str = "IndexCollectionRequest";
+    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.remote_store.v0.IndexCollectionRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.remote_store.v0.IndexCollectionRequest".into()
+    }
+}
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct IndexCollectionResponse {}
+impl ::prost::Name for IndexCollectionResponse {
+    const NAME: &'static str = "IndexCollectionResponse";
+    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.remote_store.v0.IndexCollectionResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.remote_store.v0.IndexCollectionResponse".into()
+    }
+}
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct QueryCollectionIndexRequest {}
+impl ::prost::Name for QueryCollectionIndexRequest {
+    const NAME: &'static str = "QueryCollectionIndexRequest";
+    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.remote_store.v0.QueryCollectionIndexRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.remote_store.v0.QueryCollectionIndexRequest".into()
+    }
+}
+/// TODO(zehiko) we need to define the response format
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct QueryCollectionIndexResponse {}
+impl ::prost::Name for QueryCollectionIndexResponse {
+    const NAME: &'static str = "QueryCollectionIndexResponse";
+    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.remote_store.v0.QueryCollectionIndexResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.remote_store.v0.QueryCollectionIndexResponse".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetRecordingSchemaRequest {
     #[prost(message, optional, tag = "1")]
     pub recording_id: ::core::option::Option<super::super::common::v0::RecordingId>,
@@ -306,6 +365,44 @@ impl ::prost::Name for RemoteStoreError {
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
+pub enum IndexType {
+    /// unused
+    UnusedTyp = 0,
+    /// index type for full text search
+    Inverted = 1,
+    /// index type for vector search
+    /// TODO(zehiko) we can expose others when needed
+    VectorIvfPf = 2,
+    /// B-tree index suitable for range and sorted access queries
+    /// on numerical, string and binary data
+    Btree = 3,
+}
+impl IndexType {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::UnusedTyp => "_UNUSED_TYP",
+            Self::Inverted => "INVERTED",
+            Self::VectorIvfPf => "VECTOR_IVF_PF",
+            Self::Btree => "BTREE",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "_UNUSED_TYP" => Some(Self::UnusedTyp),
+            "INVERTED" => Some(Self::Inverted),
+            "VECTOR_IVF_PF" => Some(Self::VectorIvfPf),
+            "BTREE" => Some(Self::Btree),
+            _ => None,
+        }
+    }
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
 pub enum RecordingType {
     Rrd = 0,
 }
@@ -485,6 +582,44 @@ pub mod storage_node_client {
             ));
             self.inner.server_streaming(req, path, codec).await
         }
+        pub async fn index_collection(
+            &mut self,
+            request: impl tonic::IntoRequest<super::IndexCollectionRequest>,
+        ) -> std::result::Result<tonic::Response<super::IndexCollectionResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.remote_store.v0.StorageNode/IndexCollection",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.remote_store.v0.StorageNode",
+                "IndexCollection",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+        pub async fn query_collection_index(
+            &mut self,
+            request: impl tonic::IntoRequest<super::QueryCollectionIndexRequest>,
+        ) -> std::result::Result<tonic::Response<super::QueryCollectionIndexResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.remote_store.v0.StorageNode/QueryCollectionIndex",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.remote_store.v0.StorageNode",
+                "QueryCollectionIndex",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
         /// metadata API calls
         pub async fn query_catalog(
             &mut self,
@@ -641,6 +776,14 @@ pub mod storage_node_server {
             &self,
             request: tonic::Request<super::FetchRecordingRequest>,
         ) -> std::result::Result<tonic::Response<Self::FetchRecordingStream>, tonic::Status>;
+        async fn index_collection(
+            &self,
+            request: tonic::Request<super::IndexCollectionRequest>,
+        ) -> std::result::Result<tonic::Response<super::IndexCollectionResponse>, tonic::Status>;
+        async fn query_collection_index(
+            &self,
+            request: tonic::Request<super::QueryCollectionIndexRequest>,
+        ) -> std::result::Result<tonic::Response<super::QueryCollectionIndexResponse>, tonic::Status>;
         /// Server streaming response type for the QueryCatalog method.
         type QueryCatalogStream: tonic::codegen::tokio_stream::Stream<
                 Item = std::result::Result<super::DataframePart, tonic::Status>,
@@ -829,6 +972,89 @@ pub mod storage_node_server {
                                 max_encoding_message_size,
                             );
                         let res = grpc.server_streaming(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.remote_store.v0.StorageNode/IndexCollection" => {
+                    #[allow(non_camel_case_types)]
+                    struct IndexCollectionSvc<T: StorageNode>(pub Arc<T>);
+                    impl<T: StorageNode> tonic::server::UnaryService<super::IndexCollectionRequest>
+                        for IndexCollectionSvc<T>
+                    {
+                        type Response = super::IndexCollectionResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::IndexCollectionRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as StorageNode>::index_collection(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = IndexCollectionSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.remote_store.v0.StorageNode/QueryCollectionIndex" => {
+                    #[allow(non_camel_case_types)]
+                    struct QueryCollectionIndexSvc<T: StorageNode>(pub Arc<T>);
+                    impl<T: StorageNode>
+                        tonic::server::UnaryService<super::QueryCollectionIndexRequest>
+                        for QueryCollectionIndexSvc<T>
+                    {
+                        type Response = super::QueryCollectionIndexResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::QueryCollectionIndexRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as StorageNode>::query_collection_index(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = QueryCollectionIndexSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
                         Ok(res)
                     };
                     Box::pin(fut)
