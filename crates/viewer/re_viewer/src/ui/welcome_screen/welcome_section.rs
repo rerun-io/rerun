@@ -1,4 +1,4 @@
-use egui::Ui;
+use egui::{hex_color, Color32, Ui};
 
 use re_ui::UiExt as _;
 
@@ -11,7 +11,7 @@ pub(super) const WELCOME_SCREEN_BULLET_TEXT: &[&str] = &[
 ];
 
 const DOC_BTN_TEXT: &str = "Go to documentation →";
-const DOC_BTN_COLOR: &str = "#60A0FF";
+const DOC_BTN_COLOR: Color32 = hex_color!("#60A0FF");
 
 /// Show the welcome section.
 pub(super) fn welcome_section_ui(ui: &mut egui::Ui) {
@@ -59,10 +59,7 @@ pub(super) fn welcome_section_ui(ui: &mut egui::Ui) {
         if ui
             .button(
                 egui::RichText::new(DOC_BTN_TEXT)
-                    .color(
-                        egui::Color32::from_hex(DOC_BTN_COLOR)
-                            .expect("color failure (internal error)"),
-                    )
+                    .color(DOC_BTN_COLOR)
                     .text_style(re_ui::DesignTokens::welcome_screen_body()),
             )
             .on_hover_cursor(egui::CursorIcon::PointingHand)
