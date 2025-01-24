@@ -110,7 +110,7 @@ class AnyBatchValue(ComponentBatchLike):
         This makes it possible to use `rr.send_columns` to send columnar data directly into Rerun.
 
         The returned columns will be partitioned into unit-length sub-batches by default.
-        Use [rerun.ComponentColumn.partition][] to repartition the data as needed.
+        Use `ComponentColumn.partition` to repartition the data as needed.
 
         The value will be attempted to be converted into an arrow array by first calling
         the `as_arrow_array()` method if it's defined. All Rerun Batch datatypes implement
@@ -232,7 +232,7 @@ class AnyValues(AsComponents):
         This makes it possible to use `rr.send_columns` to send columnar data directly into Rerun.
 
         The returned columns will be partitioned into unit-length sub-batches by default.
-        Use [rerun.ComponentColumnList.partition][] to repartition the data as needed.
+        Use `ComponentColumnList.partition` to repartition the data as needed.
 
         Each kwarg will be logged as a separate component column using the provided data.
          - The key will be used as the name of the component

@@ -186,7 +186,7 @@ class Image(ImageExt, Archetype):
         This makes it possible to use `rr.send_columns` to send columnar data directly into Rerun.
 
         The returned columns will be partitioned into unit-length sub-batches by default.
-        Use [rerun.ComponentColumnList.partition][] to repartition the data as needed.
+        Use `ComponentColumnList.partition` to repartition the data as needed.
 
         Parameters
         ----------

@@ -2630,7 +2630,7 @@ fn quote_columnar_methods(reporter: &Reporter, obj: &Object, objects: &Objects) 
         This makes it possible to use `rr.send_columns` to send columnar data directly into Rerun.
 
         The returned columns will be partitioned into unit-length sub-batches by default.
-        Use [rerun.ComponentColumnList.partition][] to repartition the data as needed.
+        Use `ComponentColumnList.partition` to repartition the data as needed.
         ",
     );
     let mut doc_string_lines = doc.lines().map(|s| s.to_owned()).collect_vec();

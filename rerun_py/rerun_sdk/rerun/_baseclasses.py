@@ -140,7 +140,7 @@ class DescribedComponentBatch:
         This makes it possible to use `rr.send_columns` to send columnar data directly into Rerun.
 
         The returned columns will be partitioned into unit-length sub-batches by default.
-        Use [rerun.ComponentColumn.partition][] to repartition the data as needed.
+        Use `ComponentColumn.partition` to repartition the data as needed.
 
         Parameters
         ----------
@@ -367,7 +367,7 @@ class ComponentColumn:
         This makes it possible to use `rr.send_columns` to send columnar data directly into Rerun.
 
         The returned column will be partitioned into unit-length sub-batches by default.
-        Use [rerun.ComponentColumn.partition][] to repartition the data as needed.
+        Use `ComponentColumn.partition` to repartition the data as needed.
 
         Parameters
         ----------
@@ -422,7 +422,7 @@ class ComponentColumn:
         This makes it possible to use `rr.send_columns` to send columnar data directly into Rerun.
 
         The returned columns will be partitioned into unit-length sub-batches by default.
-        Use [rerun.ComponentColumn.partition][] to repartition the data as needed.
+        Use `ComponentColumn.partition` to repartition the data as needed.
 
         Parameters
         ----------
@@ -457,7 +457,7 @@ class ComponentColumnList(Iterable[ComponentColumn]):
         This makes it possible to use `rr.send_columns` to send columnar data directly into Rerun.
 
         The returned columns will be partitioned into unit-length sub-batches by default.
-        Use [rerun.ComponentColumn.partition][] to repartition the data as needed.
+        Use `ComponentColumn.partition` to repartition the data as needed.
 
         Parameters
         ----------
@@ -528,7 +528,7 @@ class ComponentBatchMixin(ComponentBatchLike):
         This makes it possible to use `rr.send_columns` to send columnar data directly into Rerun.
 
         The returned columns will be partitioned into unit-length sub-batches by default.
-        Use [rerun.ComponentColumn.partition][] to repartition the data as needed.
+        Use `ComponentColumn.partition` to repartition the data as needed.
 
         Parameters
         ----------
