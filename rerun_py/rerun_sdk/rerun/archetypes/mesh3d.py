@@ -6,13 +6,12 @@
 from __future__ import annotations
 
 import numpy as np
-import numpy.typing as npt
 from attrs import define, field
 
 from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
-    ComponentColumn,
+    ComponentColumnList,
     DescribedComponentBatch,
 )
 from ..error_utils import catch_and_log_exceptions
@@ -221,7 +220,6 @@ class Mesh3D(Mesh3DExt, Archetype):
     def columns(
         cls,
         *,
-        _lengths: npt.ArrayLike | None = None,
         vertex_positions: datatypes.Vec3DArrayLike | None = None,
         triangle_indices: datatypes.UVec3DArrayLike | None = None,
         vertex_normals: datatypes.Vec3DArrayLike | None = None,
@@ -231,14 +229,14 @@ class Mesh3D(Mesh3DExt, Archetype):
         albedo_texture_buffer: datatypes.BlobArrayLike | None = None,
         albedo_texture_format: datatypes.ImageFormatArrayLike | None = None,
         class_ids: datatypes.ClassIdArrayLike | None = None,
-    ) -> list[ComponentColumn]:
+    ) -> ComponentColumnList:
         """
-        Partitions the component data into multiple sub-batches.
+        Construct a new column-oriented component bundle.
 
         This makes it possible to use `rr.send_columns` to send columnar data directly into Rerun.
 
-        If specified, `_lengths` must sum to the total length of the component batch.
-        If left unspecified, it will default to unit-length batches.
+        The returned columns will be partitioned into unit-length sub-batches by default.
+        Use [rerun.ComponentColumnList.partition][] to repartition the data as needed.
 
         Parameters
         ----------
@@ -288,17 +286,15 @@ class Mesh3D(Mesh3DExt, Archetype):
 
         batches = [batch for batch in inst.as_component_batches() if isinstance(batch, DescribedComponentBatch)]
         if len(batches) == 0:
-            return []
+            return ComponentColumnList([])
 
-        if _lengths is None:
-            _lengths = np.ones(len(batches[0]._batch.as_arrow_array()))
-
-        columns = [batch.partition(_lengths) for batch in batches]
+        lengths = np.ones(len(batches[0]._batch.as_arrow_array()))
+        columns = [batch.partition(lengths) for batch in batches]
 
         indicator_batch = DescribedComponentBatch(cls.indicator(), cls.indicator().component_descriptor())
-        indicator_column = indicator_batch.partition(np.zeros(len(_lengths)))  # type: ignore[arg-type]
+        indicator_column = indicator_batch.partition(np.zeros(len(lengths)))  # type: ignore[arg-type]
 
-        return [indicator_column] + columns
+        return ComponentColumnList([indicator_column] + columns)
 
     vertex_positions: components.Position3DBatch | None = field(
         metadata={"component": True},

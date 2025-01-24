@@ -27,7 +27,7 @@ rr.send_columns_v2(
     "points",
     indexes=[rr.TimeSecondsColumn("time", times)],
     columns=[
-        *rr.Points3D.columns(positions=positions, _lengths=[2, 4, 4, 3, 4]),
+        *rr.Points3D.columns(positions=positions).partition(lengths=[2, 4, 4, 3, 4]),
         *rr.Points3D.columns(colors=colors, radii=radii),
     ],
 )

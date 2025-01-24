@@ -409,6 +409,7 @@ impl PythonCodeGenerator {
                 BaseBatch,
                 ComponentBatchMixin,
                 ComponentColumn,
+                ComponentColumnList,
                 ComponentDescriptor,
                 ComponentMixin,
                 DescribedComponentBatch,
@@ -2624,12 +2625,12 @@ fn quote_columnar_methods(reporter: &Reporter, obj: &Object, objects: &Objects) 
     let parameter_docs = compute_init_parameter_docs(reporter, obj, objects);
     let doc = unindent(
         "\
-        Partitions the component data into multiple sub-batches.
+        Construct a new column-oriented component bundle.
 
         This makes it possible to use `rr.send_columns` to send columnar data directly into Rerun.
 
-        If specified, `_lengths` must sum to the total length of the component batch.
-        If left unspecified, it will default to unit-length batches.
+        The returned columns will be partitioned into unit-length sub-batches by default.
+        Use [rerun.ComponentColumnList.partition][] to repartition the data as needed.
         ",
     );
     let mut doc_string_lines = doc.lines().map(|s| s.to_owned()).collect_vec();
@@ -2647,12 +2648,12 @@ fn quote_columnar_methods(reporter: &Reporter, obj: &Object, objects: &Objects) 
     let pack_and_return = if has_indicator {
         indent::indent_by(12, unindent("\
         indicator_batch = DescribedComponentBatch(cls.indicator(), cls.indicator().component_descriptor())
-        indicator_column = indicator_batch.partition(np.zeros(len(_lengths)))  # type: ignore[arg-type]
+        indicator_column = indicator_batch.partition(np.zeros(len(lengths)))  # type: ignore[arg-type]
 
-        return [indicator_column] + columns
+        return ComponentColumnList([indicator_column] + columns)
         "))
     } else {
-        "return columns".to_owned()
+        "return ComponentColumnList(columns)".to_owned()
     };
 
     // NOTE: Calling `update_fields` is not an option: we need to be able to pass
@@ -2663,9 +2664,8 @@ fn quote_columnar_methods(reporter: &Reporter, obj: &Object, objects: &Objects) 
         def columns(
             cls,
             *,
-            _lengths: npt.ArrayLike | None = None,
             {parameters},
-        ) -> list[ComponentColumn]:
+        ) -> ComponentColumnList:
             {doc_block}
             inst = cls.__new__(cls)
             with catch_and_log_exceptions(context=cls.__name__):
@@ -2675,12 +2675,10 @@ fn quote_columnar_methods(reporter: &Reporter, obj: &Object, objects: &Objects) 
 
             batches = [batch for batch in inst.as_component_batches() if isinstance(batch, DescribedComponentBatch)]
             if len(batches) == 0:
-                return []
+                return ComponentColumnList([])
 
-            if _lengths is None:
-                _lengths = np.ones(len(batches[0]._batch.as_arrow_array()))
-
-            columns = [batch.partition(_lengths) for batch in batches]
+            lengths = np.ones(len(batches[0]._batch.as_arrow_array()))
+            columns = [batch.partition(lengths) for batch in batches]
 
             {pack_and_return}
         "#

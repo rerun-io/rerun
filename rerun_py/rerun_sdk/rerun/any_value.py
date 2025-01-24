@@ -3,12 +3,11 @@ from __future__ import annotations
 from typing import Any, Iterable
 
 import numpy as np
-import numpy.typing as npt
 import pyarrow as pa
 
 from rerun._baseclasses import ComponentDescriptor
 
-from ._baseclasses import ComponentColumn
+from ._baseclasses import ComponentColumn, ComponentColumnList
 from ._log import AsComponents, ComponentBatchLike
 from .error_utils import catch_and_log_exceptions
 
@@ -17,7 +16,7 @@ ANY_VALUE_TYPE_REGISTRY: dict[ComponentDescriptor, Any] = {}
 
 class AnyBatchValue(ComponentBatchLike):
     """
-    Helper to log arbitrary data as a component batch.
+    Helper to log arbitrary data as a component batch or column.
 
     This is a very simple helper that implements the `ComponentBatchLike` interface on top
     of the `pyarrow` library array conversion functions.
@@ -101,30 +100,53 @@ class AnyBatchValue(ComponentBatchLike):
     def as_arrow_array(self) -> pa.Array | None:
         return self.pa_array
 
-    def partition(self, lengths: npt.ArrayLike | None = None) -> ComponentColumn:
+    @classmethod
+    def column(
+        cls, descriptor: str | ComponentDescriptor, value: Any, drop_untyped_nones: bool = True
+    ) -> ComponentColumn:
         """
-        Partitions the component into multiple sub-batches. This wraps the inner arrow
-        array in a `pyarrow.ListArray` where the different lists have the lengths specified.
+        Construct a new column-oriented AnyBatchValue.
 
-        If specified, `lengths` must sum to the total length of the component batch.
-        If left unspecified, it will default to unit-length batches.
+        This makes it possible to use `rr.send_columns` to send columnar data directly into Rerun.
+
+        The returned columns will be partitioned into unit-length sub-batches by default.
+        Use [rerun.ComponentColumn.partition][] to repartition the data as needed.
+
+        The value will be attempted to be converted into an arrow array by first calling
+        the `as_arrow_array()` method if it's defined. All Rerun Batch datatypes implement
+        this function so it's possible to pass them directly to AnyValues.
+
+        If the object doesn't implement `as_arrow_array()`, it will be passed as an argument
+        to [pyarrow.array][] .
+
+        Note: rerun requires that a given component only take on a single type.
+        The first type logged will be the type that is used for all future logs
+        of that component. The API will make a best effort to do type conversion
+        if supported by numpy and arrow. Any components that can't be converted
+        will be dropped, and a warning will be sent to the log.
+
+        If you are want to inspect how your component will be converted to the
+        underlying arrow code, the following snippet is what is happening
+        internally:
+
+        ```
+        np_value = np.atleast_1d(np.array(value, copy=False))
+        pa_value = pa.array(value)
+        ```
 
         Parameters
         ----------
-        lengths : npt.ArrayLike
-            The offsets to partition the component at.
+        descriptor:
+            Either the name or the full descriptor of the component.
+        value:
+            The data to be logged as a component.
+        drop_untyped_nones:
+            If True, any components that are None will be dropped unless they have been
+            previously logged with a type.
 
-        Returns
-        -------
-        The partitioned component.
-
-        """  # noqa: D205
-        if lengths is None:
-            if self.pa_array is not None:
-                lengths = np.ones(len(self.pa_array))
-            else:
-                lengths = []
-        return ComponentColumn(self, lengths)
+        """
+        inst = cls(descriptor, value, drop_untyped_nones)
+        return ComponentColumn(inst)
 
 
 class AnyValues(AsComponents):
@@ -148,7 +170,7 @@ class AnyValues(AsComponents):
         """
         Construct a new AnyValues bundle.
 
-        Each kwarg will be logged as a separate component using the provided data.
+        Each kwarg will be logged as a separate component batch using the provided data.
          - The key will be used as the name of the component
          - The value must be able to be converted to an array of arrow types. In
            general, if you can pass it to [pyarrow.array][] you can log it as a
@@ -202,22 +224,56 @@ class AnyValues(AsComponents):
     def as_component_batches(self) -> Iterable[ComponentBatchLike]:
         return self.component_batches
 
-    def partition(self, lengths: npt.ArrayLike | None = None) -> list[ComponentColumn]:
+    @classmethod
+    def columns(cls, drop_untyped_nones: bool = True, **kwargs: Any) -> ComponentColumnList:
         """
-        Partitions the components into multiple sub-batches. This wraps the inner arrow
-        array in a `pyarrow.ListArray` where the different lists have the lengths specified.
+        Construct a new column-oriented AnyValues bundle.
 
-        If specified, `lengths` must sum to the total length of the component batch.
-        If left unspecified, it will default to unit-length batches.
+        This makes it possible to use `rr.send_columns` to send columnar data directly into Rerun.
+
+        The returned columns will be partitioned into unit-length sub-batches by default.
+        Use [rerun.ComponentColumnList.partition][] to repartition the data as needed.
+
+        Each kwarg will be logged as a separate component column using the provided data.
+         - The key will be used as the name of the component
+         - The value must be able to be converted to an array of arrow types. In
+           general, if you can pass it to [pyarrow.array][] you can log it as a
+           extension component.
+
+        Note: rerun requires that a given component only take on a single type.
+        The first type logged will be the type that is used for all future logs
+        of that component. The API will make a best effort to do type conversion
+        if supported by numpy and arrow. Any components that can't be converted
+        will result in a warning (or an exception in strict mode).
+
+        `None` values provide a particular challenge as they have no type
+        information until after the component has been logged with a particular
+        type. By default, these values are dropped. This should generally be
+        fine as logging `None` to clear the value before it has been logged is
+        meaningless unless you are logging out-of-order data. In such cases,
+        consider introducing your own typed component via
+        [rerun.ComponentBatchLike][].
+
+        You can change this behavior by setting `drop_untyped_nones` to `False`,
+        but be aware that this will result in potential warnings (or exceptions
+        in strict mode).
+
+        If you are want to inspect how your component will be converted to the
+        underlying arrow code, the following snippet is what is happening
+        internally:
+        ```
+        np_value = np.atleast_1d(np.array(value, copy=False))
+        pa_value = pa.array(value)
+        ```
 
         Parameters
         ----------
-        lengths : npt.ArrayLike
-            The offsets to partition the components at.
+        drop_untyped_nones:
+            If True, any components that are None will be dropped unless they
+            have been previously logged with a type.
+        kwargs:
+            The components to be logged.
 
-        Returns
-        -------
-        The partitioned components.
-
-        """  # noqa: D205
-        return [batch.partition(lengths) for batch in self.component_batches]
+        """
+        inst = cls(drop_untyped_nones, **kwargs)
+        return ComponentColumnList([ComponentColumn(batch) for batch in inst.component_batches])

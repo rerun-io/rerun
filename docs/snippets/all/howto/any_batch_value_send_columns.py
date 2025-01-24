@@ -17,8 +17,8 @@ rr.send_columns_v2(
     indexes=[rr.TimeSequenceColumn("step", timestamps)],
     columns=[
         # log one value per timestamp
-        rr.AnyBatchValue("custom_component_single", one_per_timestamp).partition(),
+        rr.AnyBatchValue.column("custom_component_single", one_per_timestamp),
         # log ten values per timestamp
-        rr.AnyBatchValue("custom_component_multi", ten_per_timestamp).partition([10] * N),
+        rr.AnyBatchValue.column("custom_component_multi", ten_per_timestamp).partition([10] * N),
     ],
 )
