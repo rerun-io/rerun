@@ -84,9 +84,9 @@ impl Ord for ComponentColumnDescriptor {
 
         entity_path
             .cmp(&other.entity_path)
-            .then_with(|| component_name.cmp(&other.component_name))
             .then_with(|| archetype_name.cmp(&other.archetype_name))
             .then_with(|| archetype_field_name.cmp(&other.archetype_field_name))
+            .then_with(|| component_name.cmp(&other.component_name))
     }
 }
 

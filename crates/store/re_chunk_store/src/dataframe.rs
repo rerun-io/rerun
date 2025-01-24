@@ -465,16 +465,17 @@ impl ChunkStore {
                 } = metadata;
 
                 ComponentColumnDescriptor {
-                    entity_path: entity_path.clone(),
-                    archetype_name: component_descr.archetype_name,
-                    archetype_field_name: component_descr.archetype_field_name,
-                    component_name: component_descr.component_name,
                     // NOTE: The data is always a at least a list, whether it's latest-at or range.
                     // It might be wrapped further in e.g. a dict, but at the very least
                     // it's a list.
                     store_datatype: ArrowListArray::DATA_TYPE_CONSTRUCTOR(
                         ArrowField::new("item", datatype.clone(), true).into(),
                     ),
+
+                    entity_path: entity_path.clone(),
+                    archetype_name: component_descr.archetype_name,
+                    archetype_field_name: component_descr.archetype_field_name,
+                    component_name: component_descr.component_name,
                     is_static,
                     is_indicator,
                     is_tombstone,
@@ -483,18 +484,7 @@ impl ChunkStore {
             })
             .collect_vec();
 
-        components.sort_by(|descr1, descr2| {
-            descr1
-                .entity_path
-                .cmp(&descr2.entity_path)
-                .then(descr1.archetype_name.cmp(&descr2.archetype_name))
-                .then(
-                    descr1
-                        .archetype_field_name
-                        .cmp(&descr2.archetype_field_name),
-                )
-                .then(descr1.component_name.cmp(&descr2.component_name))
-        });
+        components.sort();
 
         timelines
             .chain(components.into_iter().map(ColumnDescriptor::Component))
