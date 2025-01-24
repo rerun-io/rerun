@@ -1,6 +1,12 @@
 use arrow::datatypes::{DataType as ArrowDatatype, Field as ArrowField};
 use re_log_types::{Timeline, TimelineName};
 
+#[derive(thiserror::Error, Debug)]
+#[error("Unsupported time type: {datatype:?}")]
+pub struct UnsupportedTimeType {
+    pub datatype: ArrowDatatype,
+}
+
 /// Describes a time column, such as `log_time`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TimeColumnDescriptor {
@@ -76,5 +82,37 @@ impl TimeColumnDescriptor {
 
         ArrowField::new(timeline.name().to_string(), datatype.clone(), nullable)
             .with_metadata(metadata)
+    }
+}
+
+impl From<Timeline> for TimeColumnDescriptor {
+    fn from(timeline: Timeline) -> Self {
+        Self {
+            timeline,
+            datatype: timeline.datatype(),
+        }
+    }
+}
+
+impl TryFrom<&ArrowField> for TimeColumnDescriptor {
+    type Error = UnsupportedTimeType;
+
+    fn try_from(field: &ArrowField) -> Result<Self, Self::Error> {
+        let name = if let Some(name) = field.metadata().get("sorbet.index_name") {
+            name.to_owned()
+        } else {
+            re_log::warn_once!("Timeline '{}' is missing 'sorbet.index_name' metadata. Falling back on field/column name", field.name());
+            field.name().to_owned()
+        };
+
+        let datatype = field.data_type().clone();
+
+        let Some(time_type) = re_log_types::TimeType::from_arrow_datatype(&datatype) else {
+            return Err(UnsupportedTimeType { datatype });
+        };
+
+        let timeline = Timeline::new(name, time_type);
+
+        Ok(Self { timeline, datatype })
     }
 }

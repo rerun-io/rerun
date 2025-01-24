@@ -436,12 +436,10 @@ impl ChunkStore {
     pub fn schema(&self) -> Vec<ColumnDescriptor> {
         re_tracing::profile_function!();
 
-        let timelines = self.all_timelines_sorted().into_iter().map(|timeline| {
-            ColumnDescriptor::Time(TimeColumnDescriptor {
-                timeline,
-                datatype: timeline.datatype(),
-            })
-        });
+        let timelines = self
+            .all_timelines_sorted()
+            .into_iter()
+            .map(|timeline| ColumnDescriptor::Time(TimeColumnDescriptor::from(timeline)));
 
         let mut components = self
             .per_column_metadata
@@ -513,10 +511,7 @@ impl ChunkStore {
             .copied()
             .unwrap_or_else(|| Timeline::new_temporal(selector.timeline));
 
-        TimeColumnDescriptor {
-            timeline,
-            datatype: timeline.datatype(),
-        }
+        TimeColumnDescriptor::from(timeline)
     }
 
     /// Given a [`ComponentColumnSelector`], returns the corresponding [`ComponentColumnDescriptor`].
