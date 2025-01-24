@@ -25,8 +25,8 @@ use crate::{
     ArrowRegistry, CodeGenerator, ElementType, Object, ObjectField, ObjectKind, Objects, Reporter,
     Type, ATTR_DEFAULT, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
     ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RERUN_LOG_MISSING_AS_EMPTY, ATTR_RERUN_VIEW_IDENTIFIER,
-    ATTR_RUST_ARCHETYPE_EAGER, ATTR_RUST_CUSTOM_CLAUSE, ATTR_RUST_DERIVE, ATTR_RUST_DERIVE_ONLY,
-    ATTR_RUST_NEW_PUB_CRATE, ATTR_RUST_REPR,
+    ATTR_RUST_CUSTOM_CLAUSE, ATTR_RUST_DERIVE, ATTR_RUST_DERIVE_ONLY, ATTR_RUST_NEW_PUB_CRATE,
+    ATTR_RUST_REPR,
 };
 
 use super::{
@@ -281,12 +281,11 @@ fn quote_struct(
 ) -> TokenStream {
     assert!(obj.is_struct());
 
-    // Certain eager archetypes might require the generation of an associated native archetype, as
+    // Certain archetypes might require the generation of an associated native archetype, as
     // the internal viewer code heavily relies on it.
     let obj_native = obj.requires_native_rust_archetype().then(|| {
         let mut obj_native = obj.clone();
         obj_native.name = format!("Native{}", obj_native.name);
-        obj_native.attrs.remove(ATTR_RUST_ARCHETYPE_EAGER);
         obj_native
     });
 
@@ -310,14 +309,13 @@ fn quote_struct(
     let quoted_repr_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_REPR, "repr");
     let quoted_custom_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_CUSTOM_CLAUSE, "");
 
-    // Eager archetypes must always derive Default.
-    let quoted_eager_derive_default_clause = (obj.is_eager_rust_archetype()
-        && !quoted_derive_clause.to_string().contains("Default"))
-    .then(|| {
-        quote! {
-            #[derive(Default)]
-        }
-    });
+    // Archetypes must always derive Default.
+    let quoted_derive_default_clause =
+        (obj.is_archetype() && !quoted_derive_clause.to_string().contains("Default")).then(|| {
+            quote! {
+                #[derive(Default)]
+            }
+        });
 
     let quoted_fields = fields
         .iter()
@@ -367,7 +365,7 @@ fn quote_struct(
             quote!(#(#quoted_is_pods)&&*)
         };
 
-        let quoted_is_pod = (!obj.is_eager_rust_archetype()).then_some(quote! {
+        let quoted_is_pod = (!obj.is_archetype()).then_some(quote! {
             #[inline]
             fn is_pod() -> bool {
                 #is_pod_impl
@@ -390,7 +388,7 @@ fn quote_struct(
         #quoted_doc
         #quoted_derive_clone_debug
         #quoted_derive_clause
-        #quoted_eager_derive_default_clause
+        #quoted_derive_default_clause
         #quoted_repr_clause
         #quoted_custom_clause
         #quoted_deprecation_notice
@@ -422,7 +420,6 @@ fn quote_struct_native(
     let obj_native = obj.requires_native_rust_archetype().then(|| {
         let mut obj_native = obj.clone();
         obj_native.name = format!("Native{}", obj_native.name);
-        obj_native.attrs.remove(ATTR_RUST_ARCHETYPE_EAGER);
         obj_native
     });
 
@@ -862,7 +859,7 @@ fn quote_field_type_from_typ(typ: &Type, unwrap: bool) -> (TokenStream, bool) {
 }
 
 fn quote_field_type_from_object_field(obj: &Object, obj_field: &ObjectField) -> TokenStream {
-    if obj.is_eager_rust_archetype() {
+    if obj.is_archetype() {
         quote!(Option<SerializedComponentBatch>)
     } else {
         let (quoted_type, _) = quote_field_type_from_typ(&obj_field.typ, false);
@@ -1296,45 +1293,7 @@ fn quote_trait_impls_for_archetype(obj: &Object, obj_native: Option<&Object>) ->
         .map(|field| format_ident!("{}", field.name))
         .collect::<Vec<_>>();
 
-    // TODO(#7245): This goes away once all archetypes have been made eager.
-    let all_native_component_batches = {
-        std::iter::once(quote! {
-            Some(Self::indicator())
-        }).chain(obj.fields.iter().map(|obj_field| {
-            let field_name = format_ident!("{}", obj_field.name);
-            let is_plural = obj_field.typ.is_plural();
-            let is_nullable = obj_field.is_nullable;
-
-            // NOTE: The nullability we're dealing with here is the nullability of an entire array of components,
-            // not the nullability of individual elements (i.e. instances)!
-            let batch = if is_nullable {
-                if is_plural {
-                    // Maybe logging an Option<Vec<C>>
-                    quote!{ self.#field_name.as_ref().map(|comp_batch| (comp_batch as &dyn ComponentBatch)) }
-                } else {
-                    // Maybe logging an Option<C>
-                    quote!{ self.#field_name.as_ref().map(|comp| (comp as &dyn ComponentBatch)) }
-                }
-            } else {
-                // Always logging a Vec<C> or C
-                quote!{ Some(&self.#field_name as &dyn ComponentBatch) }
-            };
-
-            let descr_fn_name = format_ident!("descriptor_{field_name}");
-
-            quote! {
-                (#batch).map(|batch| {
-                    ::re_types_core::ComponentBatchCowWithDescriptor {
-                        batch: batch.into(),
-                        descriptor_override: Some(Self::#descr_fn_name()),
-                    }
-                })
-
-            }
-        }))
-    };
-
-    let all_eager_component_batches = {
+    let all_component_batches = {
         std::iter::once(quote! {
             Self::indicator().serialized()
         })
@@ -1344,104 +1303,15 @@ fn quote_trait_impls_for_archetype(obj: &Object, obj_native: Option<&Object>) ->
         }))
     };
 
-    let as_components_impl = if obj.is_eager_rust_archetype() {
-        quote! {
-            #[inline]
-            fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
-                use ::re_types_core::Archetype as _;
-                [#(#all_eager_component_batches,)*].into_iter().flatten().collect()
-            }
-        }
-    } else {
-        quote! {
-            fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
-                re_tracing::profile_function!();
-
-                use ::re_types_core::Archetype as _;
-                [#(#all_native_component_batches,)*].into_iter().flatten().collect()
-            }
+    let as_components_impl = quote! {
+        #[inline]
+        fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
+            use ::re_types_core::Archetype as _;
+            [#(#all_component_batches,)*].into_iter().flatten().collect()
         }
     };
 
-    // TODO(#7245): This goes away once all archetypes have been made eager.
-    let all_native_deserializers = |origin: TokenStream| {
-        obj.fields.iter().map(|obj_field| {
-            let obj_field_fqname = obj_field.fqname.as_str();
-            let field_name = format_ident!("{}", obj_field.name);
-            let descr_fn_name = format_ident!("descriptor_{field_name}");
-
-            let is_plural = obj_field.typ.is_plural();
-            let is_nullable = obj_field.is_nullable;
-
-            // NOTE: unwrapping is safe since the field must point to a component.
-            let component = quote_fqname_as_type_path(obj_field.typ.fqname().unwrap());
-
-            let quoted_collection = if is_plural {
-                quote! {
-                    .into_iter()
-                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                    .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context(#obj_field_fqname)?
-                }
-            } else {
-                quote! {
-                    .into_iter()
-                    .next()
-                    .flatten()
-                    .ok_or_else(DeserializationError::missing_data)
-                    .with_context(#obj_field_fqname)?
-                }
-            };
-
-            // NOTE: An archetype cannot have overlapped component types by definition, so use the
-            // component's fqname to do the mapping.
-            let quoted_deser = if is_nullable && !is_plural {
-                // For a nullable mono-component, it's valid for data to be missing
-                // after a clear.
-                let quoted_collection =
-                    quote! {
-                        .into_iter()
-                        .next()
-                        .flatten()
-                    };
-
-                quote! {
-                    if let Some(array) = arrays_by_descr.get(&#origin::#descr_fn_name()) {
-                        <#component>::from_arrow_opt(&**array)
-                            .with_context(#obj_field_fqname)?
-                            #quoted_collection
-                    } else {
-                        None
-                    }
-                }
-            } else if is_nullable {
-                quote! {
-                    if let Some(array) = arrays_by_descr.get(&#origin::#descr_fn_name()) {
-                        Some({
-                            <#component>::from_arrow_opt(&**array)
-                                .with_context(#obj_field_fqname)?
-                                #quoted_collection
-                        })
-                    } else {
-                        None
-                    }
-                }
-            } else {
-                quote! {{
-                    let array = arrays_by_descr
-                        .get(&#origin::#descr_fn_name())
-                        .ok_or_else(DeserializationError::missing_data)
-                        .with_context(#obj_field_fqname)?;
-
-                    <#component>::from_arrow_opt(&**array).with_context(#obj_field_fqname)? #quoted_collection
-                }}
-            };
-
-            quote!(let #field_name = #quoted_deser;)
-        }).collect_vec()
-    };
-
-    let all_eager_deserializers = {
+    let all_deserializers = {
         obj.fields.iter().map(|obj_field| {
             let field_name = format_ident!("{}", obj_field.name);
             let descr_fn_name = format_ident!("descriptor_{field_name}");
@@ -1454,19 +1324,11 @@ fn quote_trait_impls_for_archetype(obj: &Object, obj_native: Option<&Object>) ->
 
             quote!(let #field_name = #quoted_deser;)
         })
-    };
-
-    let all_deserializers = if obj.is_eager_rust_archetype() {
-        quote!(#(#all_eager_deserializers;)*)
-    } else {
-        let all_native_deserializers = all_native_deserializers(quote!(Self));
-        quote!(#(#all_native_deserializers;)*)
-    };
+    }.collect::<Vec<_>>();
 
     let from_arrow_components_native = obj_native.map(|obj_native| {
         let native_name = format_ident!("{}", obj_native.name);
 
-        let all_native_deserializers = all_native_deserializers(quote!(#name));
         quote! {
             impl #native_name {
                 fn from_arrow_components(
@@ -1476,7 +1338,7 @@ fn quote_trait_impls_for_archetype(obj: &Object, obj_native: Option<&Object>) ->
                     use ::re_types_core::{Loggable as _, ResultExt as _};
 
                     let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
-                    #(#all_native_deserializers;)*
+                    #(#all_deserializers;)*
 
                     Ok(Self {
                         #(#quoted_field_names,)*
@@ -1563,7 +1425,7 @@ fn quote_trait_impls_for_archetype(obj: &Object, obj_native: Option<&Object>) ->
                 use ::re_types_core::{Loggable as _, ResultExt as _};
 
                 let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
-                #all_deserializers
+                #(#all_deserializers;)*
 
                 Ok(Self {
                     #(#quoted_field_names,)*
@@ -1770,18 +1632,7 @@ fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) 
             }
         });
 
-        // TODO(#7245): This goes away once all archetypes have been made eager.
-        let quoted_native_required = required.iter().map(|field| {
-            let field_name = format_ident!("{}", field.name);
-            let (_, is_many_component) = quote_field_type_from_typ(&field.typ, true);
-            if is_many_component {
-                quote!(#field_name: #field_name.into_iter().map(Into::into).collect())
-            } else {
-                quote!(#field_name: #field_name.into())
-            }
-        });
-
-        let quoted_eager_required = required.iter().map(|field| {
+        let quoted_required = required.iter().map(|field| {
             let field_name = format_ident!("{}", field.name);
             let descr_fn_name = format_ident!("descriptor_{field_name}");
 
@@ -1792,12 +1643,6 @@ fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) 
                 quote!(#field_name: try_serialize_field(Self::#descr_fn_name(), [#field_name]))
             }
         });
-
-        let quoted_required = if obj.is_eager_rust_archetype() {
-            quote!(#(#quoted_eager_required,)*)
-        } else {
-            quote!(#(#quoted_native_required,)*)
-        };
 
         let quoted_optional = optional.iter().map(|field| {
             let field_name = format_ident!("{}", field.name);
@@ -1821,7 +1666,7 @@ fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) 
                 #[inline]
                 #fn_new_pub fn new(#(#quoted_params,)*) -> Self {
                     Self {
-                        #quoted_required
+                        #(#quoted_required,)*
                         #(#quoted_optional,)*
                     }
                 }
@@ -1829,36 +1674,7 @@ fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) 
         }
     };
 
-    // TODO(#7245): This goes away once all archetypes have been made eager.
-    let native_with_methods = optional.iter().map(|field| {
-        // fn with_*()
-        let field_name = format_ident!("{}", field.name);
-        let method_name = format_ident!("with_{field_name}");
-        let (typ, is_many_component) = quote_field_type_from_typ(&field.typ, true);
-        let docstring = quote_field_docs(reporter, objects, field);
-
-        if is_many_component {
-            quote! {
-                #docstring
-                #[inline]
-                pub fn #method_name(mut self, #field_name: impl IntoIterator<Item = impl Into<#typ>>) -> Self {
-                    self.#field_name = Some(#field_name.into_iter().map(Into::into).collect());
-                    self
-                }
-            }
-        } else {
-            quote! {
-                #docstring
-                #[inline]
-                pub fn #method_name(mut self, #field_name: impl Into<#typ>) -> Self {
-                    self.#field_name = Some(#field_name.into());
-                    self
-                }
-            }
-        }
-    });
-
-    let eager_with_methods = required.iter().chain(optional.iter()).map(|field| {
+    let with_methods = required.iter().chain(optional.iter()).map(|field| {
         // fn with_*()
         let field_name = format_ident!("{}", field.name);
         let descr_fn_name = format_ident!("descriptor_{field_name}");
@@ -1909,7 +1725,7 @@ fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) 
         }
     });
 
-    let partial_update_methods = obj.is_eager_rust_archetype().then(|| {
+    let partial_update_methods = {
         let update_fields_doc =
             quote_doc_line(&format!("Update only some specific fields of a `{name}`."));
         let clear_fields_doc = quote_doc_line(&format!("Clear all the fields of a `{name}`."));
@@ -1942,9 +1758,9 @@ fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) 
                 }
             }
         }
-    });
+    };
 
-    let columnar_methods = (obj.is_eager_rust_archetype() && obj.scope().is_none()).then(|| {
+    let columnar_methods = obj.scope().is_none().then(|| {
         let columns_doc = unindent::unindent("\
         Partitions the component data into multiple sub-batches.
 
@@ -2026,21 +1842,13 @@ fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) 
         }
     });
 
-    let with_methods = if obj.is_eager_rust_archetype() {
-        quote! {
-            #partial_update_methods
-            #columnar_methods
-            #(#eager_with_methods)*
-        }
-    } else {
-        quote!(#(#native_with_methods)*)
-    };
-
     quote! {
         impl #name {
             #fn_new
 
-            #with_methods
+            #partial_update_methods
+            #columnar_methods
+            #(#with_methods)*
         }
     }
 }

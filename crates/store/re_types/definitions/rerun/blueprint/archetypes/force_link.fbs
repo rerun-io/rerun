@@ -2,7 +2,6 @@ namespace rerun.blueprint.archetypes;
 
 /// Aims to achieve a target distance between two nodes that are connected by an edge.
 struct ForceLink (
-      "attr.rust.archetype_eager",
     "attr.rerun.scope": "blueprint"
 ) {
     /// Whether the link force is enabled.

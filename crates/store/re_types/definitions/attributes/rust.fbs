@@ -49,9 +49,3 @@ attribute "attr.rust.override_crate";
 ///
 /// Applies only to *eager* archetypes. No-op otherwise.
 attribute "attr.rust.archetype_native";
-
-/// The generated Rust object should be eagerly serialized, i.e. only comprised of Arrow arrays.
-///
-/// Applies only to archetypes. No-op otherwise.
-// TODO(#7245): This should be always enabled.
-attribute "attr.rust.archetype_eager";

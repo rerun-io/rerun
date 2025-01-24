@@ -66,44 +66,44 @@ pub struct ContainerBlueprint {
 #[derive(Clone, Debug)]
 pub struct NativeContainerBlueprint {
     /// The class of the view.
-    pub container_kind: crate::blueprint::components::ContainerKind,
+    pub container_kind: Option<SerializedComponentBatch>,
 
     /// The name of the container.
-    pub display_name: Option<crate::components::Name>,
+    pub display_name: Option<SerializedComponentBatch>,
 
     /// `ContainerId`s or `ViewId`s that are children of this container.
-    pub contents: Option<Vec<crate::blueprint::components::IncludedContent>>,
+    pub contents: Option<SerializedComponentBatch>,
 
     /// The layout shares of each column in the container.
     ///
     /// For [`components::ContainerKind::Horizontal`][crate::blueprint::components::ContainerKind::Horizontal] containers, the length of this list should always match the number of contents.
     ///
     /// Ignored for [`components::ContainerKind::Vertical`][crate::blueprint::components::ContainerKind::Vertical] containers.
-    pub col_shares: Option<Vec<crate::blueprint::components::ColumnShare>>,
+    pub col_shares: Option<SerializedComponentBatch>,
 
     /// The layout shares of each row of the container.
     ///
     /// For [`components::ContainerKind::Vertical`][crate::blueprint::components::ContainerKind::Vertical] containers, the length of this list should always match the number of contents.
     ///
     /// Ignored for [`components::ContainerKind::Horizontal`][crate::blueprint::components::ContainerKind::Horizontal] containers.
-    pub row_shares: Option<Vec<crate::blueprint::components::RowShare>>,
+    pub row_shares: Option<SerializedComponentBatch>,
 
     /// Which tab is active.
     ///
     /// Only applies to `Tabs` containers.
-    pub active_tab: Option<crate::blueprint::components::ActiveTab>,
+    pub active_tab: Option<SerializedComponentBatch>,
 
     /// Whether this container is visible.
     ///
     /// Defaults to true if not specified.
-    pub visible: Option<crate::blueprint::components::Visible>,
+    pub visible: Option<SerializedComponentBatch>,
 
     /// How many columns this grid should have.
     ///
     /// If unset, the grid layout will be auto.
     ///
     /// Ignored for [`components::ContainerKind::Horizontal`][crate::blueprint::components::ContainerKind::Horizontal]/[`components::ContainerKind::Vertical`][crate::blueprint::components::ContainerKind::Vertical] containers.
-    pub grid_columns: Option<crate::blueprint::components::GridColumns>,
+    pub grid_columns: Option<SerializedComponentBatch>,
 }
 
 impl TryFrom<&ContainerBlueprint> for NativeContainerBlueprint {
@@ -386,103 +386,42 @@ impl NativeContainerBlueprint {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
         let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
-        let container_kind = {
-            let array = arrays_by_descr
-                .get(&ContainerBlueprint::descriptor_container_kind())
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.blueprint.archetypes.ContainerBlueprint#container_kind")?;
-            <crate::blueprint::components::ContainerKind>::from_arrow_opt(&**array)
-                .with_context("rerun.blueprint.archetypes.ContainerBlueprint#container_kind")?
-                .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.blueprint.archetypes.ContainerBlueprint#container_kind")?
-        };
-        let display_name = if let Some(array) =
-            arrays_by_descr.get(&ContainerBlueprint::descriptor_display_name())
-        {
-            <crate::components::Name>::from_arrow_opt(&**array)
-                .with_context("rerun.blueprint.archetypes.ContainerBlueprint#display_name")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
-        let contents =
-            if let Some(array) = arrays_by_descr.get(&ContainerBlueprint::descriptor_contents()) {
-                Some({
-                    <crate::blueprint::components::IncludedContent>::from_arrow_opt(&**array)
-                        .with_context("rerun.blueprint.archetypes.ContainerBlueprint#contents")?
-                        .into_iter()
-                        .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                        .collect::<DeserializationResult<Vec<_>>>()
-                        .with_context("rerun.blueprint.archetypes.ContainerBlueprint#contents")?
-                })
-            } else {
-                None
-            };
-        let col_shares = if let Some(array) =
-            arrays_by_descr.get(&ContainerBlueprint::descriptor_col_shares())
-        {
-            Some({
-                <crate::blueprint::components::ColumnShare>::from_arrow_opt(&**array)
-                    .with_context("rerun.blueprint.archetypes.ContainerBlueprint#col_shares")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                    .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.blueprint.archetypes.ContainerBlueprint#col_shares")?
-            })
-        } else {
-            None
-        };
-        let row_shares = if let Some(array) =
-            arrays_by_descr.get(&ContainerBlueprint::descriptor_row_shares())
-        {
-            Some({
-                <crate::blueprint::components::RowShare>::from_arrow_opt(&**array)
-                    .with_context("rerun.blueprint.archetypes.ContainerBlueprint#row_shares")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                    .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.blueprint.archetypes.ContainerBlueprint#row_shares")?
-            })
-        } else {
-            None
-        };
-        let active_tab = if let Some(array) =
-            arrays_by_descr.get(&ContainerBlueprint::descriptor_active_tab())
-        {
-            <crate::blueprint::components::ActiveTab>::from_arrow_opt(&**array)
-                .with_context("rerun.blueprint.archetypes.ContainerBlueprint#active_tab")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
-        let visible =
-            if let Some(array) = arrays_by_descr.get(&ContainerBlueprint::descriptor_visible()) {
-                <crate::blueprint::components::Visible>::from_arrow_opt(&**array)
-                    .with_context("rerun.blueprint.archetypes.ContainerBlueprint#visible")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-            } else {
-                None
-            };
-        let grid_columns = if let Some(array) =
-            arrays_by_descr.get(&ContainerBlueprint::descriptor_grid_columns())
-        {
-            <crate::blueprint::components::GridColumns>::from_arrow_opt(&**array)
-                .with_context("rerun.blueprint.archetypes.ContainerBlueprint#grid_columns")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
+        let container_kind = arrays_by_descr
+            .get(&Self::descriptor_container_kind())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_container_kind())
+            });
+        let display_name = arrays_by_descr
+            .get(&Self::descriptor_display_name())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_display_name())
+            });
+        let contents = arrays_by_descr
+            .get(&Self::descriptor_contents())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_contents()));
+        let col_shares = arrays_by_descr
+            .get(&Self::descriptor_col_shares())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_col_shares())
+            });
+        let row_shares = arrays_by_descr
+            .get(&Self::descriptor_row_shares())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_row_shares())
+            });
+        let active_tab = arrays_by_descr
+            .get(&Self::descriptor_active_tab())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_active_tab())
+            });
+        let visible = arrays_by_descr
+            .get(&Self::descriptor_visible())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_visible()));
+        let grid_columns = arrays_by_descr
+            .get(&Self::descriptor_grid_columns())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_grid_columns())
+            });
         Ok(Self {
             container_kind,
             display_name,

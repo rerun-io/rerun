@@ -160,7 +160,7 @@ fn test_rects(rec: &RecordingStream) -> anyhow::Result<()> {
 
     use rerun::{
         archetypes::{Boxes2D, Tensor},
-        components::{Color, HalfSize2D},
+        components::Color,
     };
 
     // Add an image

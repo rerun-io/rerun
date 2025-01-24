@@ -2,7 +2,6 @@ namespace rerun.blueprint.archetypes;
 
 /// Similar to gravity, this force pulls nodes towards a specific position.
 struct ForcePosition (
-      "attr.rust.archetype_eager",
     "attr.rerun.scope": "blueprint"
 ) {
     /// Whether the position force is enabled.
