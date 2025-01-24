@@ -86,10 +86,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/pinhole_perspective/317e2de6d212b238dcdad5b67037e9e2a2afafa0/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub struct Pinhole {
     /// Camera projection, from image coordinates to view coordinates.
-    pub image_from_camera: crate::components::PinholeProjection,
+    pub image_from_camera: Option<SerializedComponentBatch>,
 
     /// Pixel resolution (usually integers) of child image space. Width and height.
     ///
@@ -99,7 +99,7 @@ pub struct Pinhole {
     /// ```
     ///
     /// `image_from_camera` project onto the space spanned by `(0,0)` and `resolution - 1`.
-    pub resolution: Option<crate::components::Resolution>,
+    pub resolution: Option<SerializedComponentBatch>,
 
     /// Sets the view coordinates for the camera.
     ///
@@ -128,12 +128,12 @@ pub struct Pinhole {
     ///
     /// The pinhole matrix (the `image_from_camera` argument) always project along the third (Z) axis,
     /// but will be re-oriented to project along the forward axis of the `camera_xyz` argument.
-    pub camera_xyz: Option<crate::components::ViewCoordinates>,
+    pub camera_xyz: Option<SerializedComponentBatch>,
 
     /// The distance from the camera origin to the image plane when the projection is shown in a 3D viewer.
     ///
     /// This is only used for visualization purposes, and does not affect the projection itself.
-    pub image_plane_distance: Option<crate::components::ImagePlaneDistance>,
+    pub image_plane_distance: Option<SerializedComponentBatch>,
 }
 
 impl Pinhole {
@@ -272,47 +272,29 @@ impl ::re_types_core::Archetype for Pinhole {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
         let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
-        let image_from_camera = {
-            let array = arrays_by_descr
-                .get(&Self::descriptor_image_from_camera())
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.Pinhole#image_from_camera")?;
-            <crate::components::PinholeProjection>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Pinhole#image_from_camera")?
-                .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.Pinhole#image_from_camera")?
-        };
-        let resolution = if let Some(array) = arrays_by_descr.get(&Self::descriptor_resolution()) {
-            <crate::components::Resolution>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Pinhole#resolution")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
-        let camera_xyz = if let Some(array) = arrays_by_descr.get(&Self::descriptor_camera_xyz()) {
-            <crate::components::ViewCoordinates>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Pinhole#camera_xyz")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
-        let image_plane_distance =
-            if let Some(array) = arrays_by_descr.get(&Self::descriptor_image_plane_distance()) {
-                <crate::components::ImagePlaneDistance>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Pinhole#image_plane_distance")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-            } else {
-                None
-            };
+        let image_from_camera = arrays_by_descr
+            .get(&Self::descriptor_image_from_camera())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_image_from_camera())
+            });
+        let resolution = arrays_by_descr
+            .get(&Self::descriptor_resolution())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_resolution())
+            });
+        let camera_xyz = arrays_by_descr
+            .get(&Self::descriptor_camera_xyz())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_camera_xyz())
+            });
+        let image_plane_distance = arrays_by_descr
+            .get(&Self::descriptor_image_plane_distance())
+            .map(|array| {
+                SerializedComponentBatch::new(
+                    array.clone(),
+                    Self::descriptor_image_plane_distance(),
+                )
+            });
         Ok(Self {
             image_from_camera,
             resolution,
@@ -323,41 +305,15 @@ impl ::re_types_core::Archetype for Pinhole {
 }
 
 impl ::re_types_core::AsComponents for Pinhole {
-    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
-        re_tracing::profile_function!();
+    #[inline]
+    fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
-            (Some(&self.image_from_camera as &dyn ComponentBatch)).map(|batch| {
-                ::re_types_core::ComponentBatchCowWithDescriptor {
-                    batch: batch.into(),
-                    descriptor_override: Some(Self::descriptor_image_from_camera()),
-                }
-            }),
-            (self
-                .resolution
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_resolution()),
-            }),
-            (self
-                .camera_xyz
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_camera_xyz()),
-            }),
-            (self
-                .image_plane_distance
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch)))
-            .map(|batch| ::re_types_core::ComponentBatchCowWithDescriptor {
-                batch: batch.into(),
-                descriptor_override: Some(Self::descriptor_image_plane_distance()),
-            }),
+            Self::indicator().serialized(),
+            self.image_from_camera.clone(),
+            self.resolution.clone(),
+            self.camera_xyz.clone(),
+            self.image_plane_distance.clone(),
         ]
         .into_iter()
         .flatten()
@@ -372,11 +328,127 @@ impl Pinhole {
     #[inline]
     pub fn new(image_from_camera: impl Into<crate::components::PinholeProjection>) -> Self {
         Self {
-            image_from_camera: image_from_camera.into(),
+            image_from_camera: try_serialize_field(
+                Self::descriptor_image_from_camera(),
+                [image_from_camera],
+            ),
             resolution: None,
             camera_xyz: None,
             image_plane_distance: None,
         }
+    }
+
+    /// Update only some specific fields of a `Pinhole`.
+    #[inline]
+    pub fn update_fields() -> Self {
+        Self::default()
+    }
+
+    /// Clear all the fields of a `Pinhole`.
+    #[inline]
+    pub fn clear_fields() -> Self {
+        use ::re_types_core::Loggable as _;
+        Self {
+            image_from_camera: Some(SerializedComponentBatch::new(
+                crate::components::PinholeProjection::arrow_empty(),
+                Self::descriptor_image_from_camera(),
+            )),
+            resolution: Some(SerializedComponentBatch::new(
+                crate::components::Resolution::arrow_empty(),
+                Self::descriptor_resolution(),
+            )),
+            camera_xyz: Some(SerializedComponentBatch::new(
+                crate::components::ViewCoordinates::arrow_empty(),
+                Self::descriptor_camera_xyz(),
+            )),
+            image_plane_distance: Some(SerializedComponentBatch::new(
+                crate::components::ImagePlaneDistance::arrow_empty(),
+                Self::descriptor_image_plane_distance(),
+            )),
+        }
+    }
+
+    /// Partitions the component data into multiple sub-batches.
+    ///
+    /// Specifically, this transforms the existing [`SerializedComponentBatch`]es data into [`SerializedComponentColumn`]s
+    /// instead, via [`SerializedComponentBatch::partitioned`].
+    ///
+    /// This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
+    ///
+    /// The specified `lengths` must sum to the total length of the component batch.
+    ///
+    /// [`SerializedComponentColumn`]: [::re_types_core::SerializedComponentColumn]
+    #[inline]
+    pub fn columns<I>(
+        self,
+        _lengths: I,
+    ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>>
+    where
+        I: IntoIterator<Item = usize> + Clone,
+    {
+        let columns = [
+            self.image_from_camera
+                .map(|image_from_camera| image_from_camera.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.resolution
+                .map(|resolution| resolution.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.camera_xyz
+                .map(|camera_xyz| camera_xyz.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.image_plane_distance
+                .map(|image_plane_distance| image_plane_distance.partitioned(_lengths.clone()))
+                .transpose()?,
+        ];
+        let indicator_column =
+            ::re_types_core::indicator_column::<Self>(_lengths.into_iter().count())?;
+        Ok(columns.into_iter().chain([indicator_column]).flatten())
+    }
+
+    /// Helper to partition the component data into unit-length sub-batches.
+    ///
+    /// This is semantically similar to calling [`Self::columns`] with `std::iter::take(1).repeat(n)`,
+    /// where `n` is automatically guessed.
+    #[inline]
+    pub fn columns_of_unit_batches(
+        self,
+    ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
+        let len_image_from_camera = self.image_from_camera.as_ref().map(|b| b.array.len());
+        let len_resolution = self.resolution.as_ref().map(|b| b.array.len());
+        let len_camera_xyz = self.camera_xyz.as_ref().map(|b| b.array.len());
+        let len_image_plane_distance = self.image_plane_distance.as_ref().map(|b| b.array.len());
+        let len = None
+            .or(len_image_from_camera)
+            .or(len_resolution)
+            .or(len_camera_xyz)
+            .or(len_image_plane_distance)
+            .unwrap_or(0);
+        self.columns(std::iter::repeat(1).take(len))
+    }
+
+    /// Camera projection, from image coordinates to view coordinates.
+    #[inline]
+    pub fn with_image_from_camera(
+        mut self,
+        image_from_camera: impl Into<crate::components::PinholeProjection>,
+    ) -> Self {
+        self.image_from_camera =
+            try_serialize_field(Self::descriptor_image_from_camera(), [image_from_camera]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::PinholeProjection`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_image_from_camera`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_image_from_camera(
+        mut self,
+        image_from_camera: impl IntoIterator<Item = impl Into<crate::components::PinholeProjection>>,
+    ) -> Self {
+        self.image_from_camera =
+            try_serialize_field(Self::descriptor_image_from_camera(), image_from_camera);
+        self
     }
 
     /// Pixel resolution (usually integers) of child image space. Width and height.
@@ -389,7 +461,20 @@ impl Pinhole {
     /// `image_from_camera` project onto the space spanned by `(0,0)` and `resolution - 1`.
     #[inline]
     pub fn with_resolution(mut self, resolution: impl Into<crate::components::Resolution>) -> Self {
-        self.resolution = Some(resolution.into());
+        self.resolution = try_serialize_field(Self::descriptor_resolution(), [resolution]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::Resolution`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_resolution`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_resolution(
+        mut self,
+        resolution: impl IntoIterator<Item = impl Into<crate::components::Resolution>>,
+    ) -> Self {
+        self.resolution = try_serialize_field(Self::descriptor_resolution(), resolution);
         self
     }
 
@@ -425,7 +510,20 @@ impl Pinhole {
         mut self,
         camera_xyz: impl Into<crate::components::ViewCoordinates>,
     ) -> Self {
-        self.camera_xyz = Some(camera_xyz.into());
+        self.camera_xyz = try_serialize_field(Self::descriptor_camera_xyz(), [camera_xyz]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::ViewCoordinates`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_camera_xyz`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_camera_xyz(
+        mut self,
+        camera_xyz: impl IntoIterator<Item = impl Into<crate::components::ViewCoordinates>>,
+    ) -> Self {
+        self.camera_xyz = try_serialize_field(Self::descriptor_camera_xyz(), camera_xyz);
         self
     }
 
@@ -437,7 +535,26 @@ impl Pinhole {
         mut self,
         image_plane_distance: impl Into<crate::components::ImagePlaneDistance>,
     ) -> Self {
-        self.image_plane_distance = Some(image_plane_distance.into());
+        self.image_plane_distance = try_serialize_field(
+            Self::descriptor_image_plane_distance(),
+            [image_plane_distance],
+        );
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::ImagePlaneDistance`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_image_plane_distance`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_image_plane_distance(
+        mut self,
+        image_plane_distance: impl IntoIterator<Item = impl Into<crate::components::ImagePlaneDistance>>,
+    ) -> Self {
+        self.image_plane_distance = try_serialize_field(
+            Self::descriptor_image_plane_distance(),
+            image_plane_distance,
+        );
         self
     }
 }
@@ -449,13 +566,5 @@ impl ::re_byte_size::SizeBytes for Pinhole {
             + self.resolution.heap_size_bytes()
             + self.camera_xyz.heap_size_bytes()
             + self.image_plane_distance.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::components::PinholeProjection>::is_pod()
-            && <Option<crate::components::Resolution>>::is_pod()
-            && <Option<crate::components::ViewCoordinates>>::is_pod()
-            && <Option<crate::components::ImagePlaneDistance>>::is_pod()
     }
 }

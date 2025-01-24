@@ -1,13 +1,21 @@
-use re_types::{archetypes::Pinhole, components, Archetype as _, AsComponents as _};
+use re_types::{
+    archetypes::Pinhole, components, Archetype as _, AsComponents as _, ComponentBatch,
+};
 
 #[test]
 fn roundtrip() {
     let expected = Pinhole {
         image_from_camera: components::PinholeProjection(
             [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]].into(),
-        ),
-        resolution: Some(components::Resolution([1.0, 2.0].into())),
-        camera_xyz: Some(components::ViewCoordinates::RDF),
+        )
+        .serialized()
+        .map(|batch| batch.with_descriptor_override(Pinhole::descriptor_image_from_camera())),
+        resolution: components::Resolution([1.0, 2.0].into())
+            .serialized()
+            .map(|batch| batch.with_descriptor_override(Pinhole::descriptor_resolution())),
+        camera_xyz: components::ViewCoordinates::RDF
+            .serialized()
+            .map(|batch| batch.with_descriptor_override(Pinhole::descriptor_camera_xyz())),
         image_plane_distance: None,
     };
 

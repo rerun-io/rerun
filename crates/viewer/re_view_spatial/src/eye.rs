@@ -30,8 +30,7 @@ impl Eye {
         let fov_y = space_cameras
             .pinhole
             .as_ref()
-            .and_then(|pinhole| pinhole.fov_y())
-            .unwrap_or(Self::DEFAULT_FOV_Y);
+            .map_or(Self::DEFAULT_FOV_Y, |pinhole| pinhole.fov_y());
 
         Some(Self {
             world_from_rub_view: space_cameras.world_from_rub_view()?,

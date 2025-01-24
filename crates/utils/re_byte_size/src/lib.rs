@@ -27,7 +27,13 @@ pub trait SizeBytes {
         std::mem::size_of_val(self) as _
     }
 
-    /// Returns the total size of `self` on the heap, in bytes.
+    /// Returns how many bytes `self` uses on the heap.
+    ///
+    /// In some cases `self` may be just a slice of a larger buffer.
+    /// This will in that case only return the memory used by that smaller slice.
+    ///
+    /// If we however are the sole owner of the memory (e.g. a `Vec`), then we return
+    /// the heap size of all children plus the capacity of the buffer.
     fn heap_size_bytes(&self) -> u64;
 
     /// Is `Self` just plain old data?
