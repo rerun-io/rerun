@@ -10,6 +10,9 @@ pub(super) const WELCOME_SCREEN_BULLET_TEXT: &[&str] = &[
     "Configure the viewer interactively or through code",
 ];
 
+const DOC_BTN_TEXT: &str = "Go to documentation →";
+const DOC_BTN_COLOR: &str = "#60A0FF";
+
 /// Show the welcome section.
 pub(super) fn welcome_section_ui(ui: &mut egui::Ui) {
     ui.vertical(|ui| {
@@ -55,8 +58,11 @@ pub(super) fn welcome_section_ui(ui: &mut egui::Ui) {
         ui.add_space(9.0);
         if ui
             .button(
-                egui::RichText::new("Go to documentation →")
-                    .color(egui::Color32::from_hex("#60A0FF").expect("this color is valid"))
+                egui::RichText::new(DOC_BTN_TEXT)
+                    .color(
+                        egui::Color32::from_hex(DOC_BTN_COLOR)
+                            .expect("color failure (internal error)"),
+                    )
                     .text_style(re_ui::DesignTokens::welcome_screen_body()),
             )
             .on_hover_cursor(egui::CursorIcon::PointingHand)
