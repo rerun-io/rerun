@@ -435,7 +435,7 @@ impl BlueprintTree {
         );
 
         let item_content = match data_result_data.kind {
-            DataResultKind::EmptyOriginPlaceholder | DataResultKind::DataResult => {
+            DataResultKind::EmptyOriginPlaceholder | DataResultKind::EntityPart => {
                 let is_empty_origin_placeholder = matches!(
                     data_result_data.kind,
                     DataResultKind::EmptyOriginPlaceholder

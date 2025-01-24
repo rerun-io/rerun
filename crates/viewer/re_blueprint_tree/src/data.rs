@@ -1,11 +1,12 @@
 //! Data structure describing the contents of the blueprint tree
 //!
-//! Notes:
-//! - Design goal: single tree walking pass over the entire data.
+//! The design goal of these structures is to cover the entire underlying tree (container hierarchy
+//! and data result hierarchies) by walking it once entirely, applying filtering on the way.
 //!
-//! Missing:
-//! - deferred tree walking (collapsed, non-filtered path)
-//! - caching
+//! This is done regardless of whether the data is actually used by the UI (e.g. if everything is
+//! collapsed). Benchmarks have indicated that this approach incurs a negligible overhead compared
+//! to the overall cost of having large blueprint trees (a.k.a the many-entities performance
+//! issues).
 
 use std::ops::Range;
 
@@ -24,6 +25,7 @@ use re_viewport_blueprint::{ContainerBlueprint, ViewBlueprint, ViewportBlueprint
 
 use crate::data_result_node_or_path::DataResultNodeOrPath;
 
+/// Top-level blueprint tree structure.
 #[derive(Debug, Default)]
 #[cfg_attr(feature = "testing", derive(serde::Serialize, serde::Deserialize))]
 pub struct BlueprintTreeData {
@@ -55,6 +57,7 @@ impl BlueprintTreeData {
 
 // ---
 
+/// Data for either a container or a view (both of which possible child of a container).
 #[derive(Debug)]
 #[cfg_attr(feature = "testing", derive(serde::Serialize, serde::Deserialize))]
 pub enum ContentsData {
@@ -62,6 +65,7 @@ pub enum ContentsData {
     View(ViewData),
 }
 
+/// Data related to a single container and its children.
 #[derive(Debug)]
 #[cfg_attr(feature = "testing", derive(serde::Serialize, serde::Deserialize))]
 pub struct ContainerData {
@@ -131,6 +135,7 @@ impl ContainerData {
 
 // ---
 
+/// Data related to a single view and its content.
 #[derive(Debug)]
 #[cfg_attr(feature = "testing", derive(serde::Serialize, serde::Deserialize))]
 pub struct ViewData {
@@ -142,7 +147,15 @@ pub struct ViewData {
     pub visible: bool,
     pub default_open: bool,
 
+    /// The origin tree contains the data results contained in the subtree defined by the view
+    /// origin. They are presented first in the blueprint tree.
     pub origin_tree: Option<DataResultData>,
+
+    /// Projection trees are the various trees contained data results which are outside the view
+    /// origin subtrees. They are presented after a "Projections:" label in the blueprint tree.
+    ///
+    /// These trees may be super-trees of the view origin trees. In that case, the view origin
+    /// subtree is represented by a stub item, see [`DataResultKind::OriginProjectionPlaceholder`].
     pub projection_trees: Vec<DataResultData>,
 }
 
@@ -252,14 +265,19 @@ impl ViewData {
 
 // ---
 
-/// The kind of thing we may be displaying in the tree
+/// The various kind of things that may be represented in a data result tree.
 #[derive(Debug)]
 #[cfg_attr(feature = "testing", derive(serde::Serialize, serde::Deserialize))]
 pub enum DataResultKind {
+    /// This is a regular entity part of a data result (or the tree that contains it).
+    EntityPart,
+
+    /// When the view has no data result contained in the view origin subtree, we still display the
+    /// origin with a warning styling to highlight what is likely an undesired view configuration.
     EmptyOriginPlaceholder,
 
-    DataResult,
-
+    /// Since the view origin tree is displayed on its own, we don't repeat it within projections
+    /// and instead replace it with this placeholder.
     OriginProjectionPlaceholder,
 }
 
@@ -272,11 +290,16 @@ pub struct DataResultData {
 
     pub view_id: ViewId,
 
+    /// Label that should be used for display.
+    ///
+    /// This typically corresponds to `entity_path.last().ui_string()` but covers corner cases.
     pub label: String,
+
+    /// The sections within the label that correspond to a filter match and should thus be
+    /// highlighted.
     pub highlight_sections: SmallVec<[Range<usize>; 2]>,
 
     pub default_open: bool,
-
     pub children: Vec<DataResultData>,
 }
 
@@ -375,7 +398,7 @@ impl DataResultData {
             children.sort_by(|a, b| a.entity_path.cmp(&b.entity_path));
 
             (is_already_a_match || !children.is_empty()).then(|| Self {
-                kind: DataResultKind::DataResult,
+                kind: DataResultKind::EntityPart,
                 entity_path,
                 visible,
                 view_id,
