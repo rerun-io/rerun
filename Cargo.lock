@@ -6946,6 +6946,7 @@ dependencies = [
  "anyhow",
  "bytemuck",
  "cfg-if",
+ "color-hex",
  "eframe",
  "egui",
  "egui-wgpu",

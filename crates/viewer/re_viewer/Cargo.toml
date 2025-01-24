@@ -45,6 +45,8 @@ grpc = ["re_data_source/grpc", "dep:re_grpc_client"]
 
 
 [dependencies]
+# XXX TODO FIX THIS IMPORT:
+color-hex = { version = "*", default-features = false }
 # Internal:
 re_blueprint_tree.workspace = true
 re_build_info.workspace = true

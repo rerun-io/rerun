@@ -1,4 +1,4 @@
-use egui::{hex_color, Color32, Ui};
+use egui::{Color32, Ui};
 
 use re_ui::UiExt as _;
 
@@ -11,7 +11,11 @@ pub(super) const WELCOME_SCREEN_BULLET_TEXT: &[&str] = &[
 ];
 
 const DOC_BTN_TEXT: &str = "Go to documentation →";
-const DOC_BTN_COLOR: Color32 = hex_color!("#60A0FF");
+// XXX TODO MAKE & USE WRAPPER MACRO FOR THIS:
+const DOC_BTN_COLOR: Color32 = match color_hex::color_from_hex!("#60A0FF").as_slice() {
+    [a, b, c] => Color32::from_rgb(*a, *b, *c),
+    _ => panic!("XXX"),
+};
 
 /// Show the welcome section.
 pub(super) fn welcome_section_ui(ui: &mut egui::Ui) {
