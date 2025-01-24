@@ -194,8 +194,8 @@ impl ContainerBlueprint {
             arch = arch.with_grid_columns(*cols);
         } else {
             arch.grid_columns = Some(re_types::SerializedComponentBatch::new(
-                re_types::blueprint::components::ContainerKind::arrow_empty(),
-                re_types::blueprint::archetypes::ContainerBlueprint::descriptor_container_kind(),
+                re_types::blueprint::components::GridColumns::arrow_empty(),
+                re_types::blueprint::archetypes::ContainerBlueprint::descriptor_grid_columns(),
             ));
         }
 
