@@ -94,7 +94,6 @@ enum EndpointCategory {
     /// An eventListener for rrd posted from containing html
     WebEventListener(String),
 
-    #[cfg(feature = "grpc")]
     /// A stream of messages over gRPC, relayed from the SDK.
     MessageProxy(String),
 }
@@ -111,14 +110,7 @@ impl EndpointCategory {
             Self::WebEventListener(uri)
         } else if uri.starts_with("temp:") {
             // TODO(#8761): URL prefix
-            #[cfg(feature = "grpc")]
-            {
-                Self::MessageProxy(uri)
-            }
-            #[cfg(not(feature = "grpc"))]
-            {
-                panic!("Required the 'grpc' feature flag to be enabled");
-            }
+            Self::MessageProxy(uri)
         } else {
             // If this is something like `foo.com` we can't know what it is until we connect to it.
             // We could/should connect and see what it is, but for now we just take a wild guess instead:
@@ -154,7 +146,7 @@ pub fn url_to_receiver(
 
         #[cfg(feature = "grpc")]
         EndpointCategory::RerunGrpc(url) => {
-            re_grpc_client::stream_from_redap(url, Some(ui_waker)).map_err(|err| err.into())
+            re_grpc_client::redap::stream_from_redap(url, Some(ui_waker)).map_err(|err| err.into())
         }
         #[cfg(not(feature = "grpc"))]
         EndpointCategory::RerunGrpc(_url) => {
@@ -196,7 +188,6 @@ pub fn url_to_receiver(
         EndpointCategory::WebSocket(url) => re_data_source::connect_to_ws_url(&url, Some(ui_waker))
             .with_context(|| format!("Failed to connect to WebSocket server at {url}.")),
 
-        #[cfg(feature = "grpc")]
         EndpointCategory::MessageProxy(url) => {
             re_grpc_client::message_proxy::read::stream(url, Some(ui_waker))
                 .map_err(|err| err.into())

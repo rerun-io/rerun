@@ -41,7 +41,7 @@ analytics = ["dep:re_analytics"]
 map_view = ["dep:re_view_map"]
 
 ## Enable the gRPC Rerun Data Platform data source.
-grpc = ["re_data_source/grpc", "dep:re_grpc_client"]
+grpc = ["re_data_source/grpc", "re_grpc_client/redap"]
 
 
 [dependencies]
@@ -59,6 +59,7 @@ re_chunk_store_ui.workspace = true
 re_entity_db.workspace = true
 re_error.workspace = true
 re_format.workspace = true
+re_grpc_client.workspace = true
 re_log = { workspace = true, features = ["setup"] }
 re_log_encoding = { workspace = true, features = [
   "decoder",
@@ -93,7 +94,6 @@ re_ws_comms = { workspace = true, features = ["client"] }
 
 # Internal (optional):
 re_analytics = { workspace = true, optional = true }
-re_grpc_client = { workspace = true, optional = true }
 re_view_map = { workspace = true, optional = true }
 
 

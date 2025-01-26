@@ -47,13 +47,14 @@ web_viewer = [
   "re_ws_comms?/server",
 ]
 
-grpc = ["dep:re_grpc_client"]
+grpc = ["re_grpc_client/redap"]
 
 
 [dependencies]
 re_build_info.workspace = true
 re_byte_size.workspace = true
 re_chunk.workspace = true
+re_grpc_client.workspace = true
 re_log_encoding = { workspace = true, features = ["encoder"] }
 re_log_types.workspace = true
 re_log.workspace = true
@@ -73,7 +74,6 @@ thiserror.workspace = true
 # Optional dependencies
 
 re_data_loader = { workspace = true, optional = true }
-re_grpc_client = { workspace = true, optional = true }
 re_smart_channel = { workspace = true, optional = true }
 re_ws_comms = { workspace = true, optional = true }
 re_web_viewer_server = { workspace = true, optional = true }
