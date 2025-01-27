@@ -8,8 +8,8 @@ use crate::{SerializationResult, SerializedComponentBatch};
 /// it is possible to manually extend existing bundles, or even implement fully custom ones.
 ///
 /// All [`AsComponents`] methods are optional to implement, with the exception of
-/// [`AsComponents::as_component_batches`], which describes how the bundle can be interpreted
-/// as a set of [`ComponentBatch`]es: arrays of components that are ready to be serialized.
+/// [`AsComponents::as_serialized_batches`], which describes how the bundle can be interpreted
+/// as a set of [`SerializedComponentBatch`]es: serialized component data.
 ///
 /// Have a look at our [Custom Data Loader] example to learn more about handwritten bundles.
 ///
@@ -37,7 +37,7 @@ pub trait AsComponents {
 
     /// Serializes all non-null [`Component`]s of this bundle into Arrow arrays.
     ///
-    /// The default implementation will simply serialize the result of [`Self::as_component_batches`]
+    /// The default implementation will simply serialize the result of [`Self::as_serialized_batches`]
     /// as-is, which is what you want in 99.9% of cases.
     ///
     /// [`Component`]: [crate::Component]
@@ -124,7 +124,7 @@ impl AsComponents for Vec<Box<dyn AsComponents>> {
 
 /// ```compile_fail
 /// let comp = re_types_core::components::ClearIsRecursive::default();
-/// let _ = (&comp as &dyn re_types_core::AsComponents).as_component_batches();
+/// let _ = (&comp as &dyn re_types_core::AsComponents).as_serialized_batches();
 /// ```
 #[allow(dead_code)]
 #[allow(rustdoc::private_doc_tests)] // doc-tests are the only way to assert failed compilation
@@ -132,7 +132,7 @@ fn single_ascomponents() {}
 
 /// ```compile_fail
 /// let comp = re_types_core::components::ClearIsRecursive::default();
-/// let _ = (&[comp] as &dyn re_types_core::AsComponents).as_component_batches();
+/// let _ = (&[comp] as &dyn re_types_core::AsComponents).as_serialized_batches();
 /// ```
 #[allow(dead_code)]
 #[allow(rustdoc::private_doc_tests)] // doc-tests are the only way to assert failed compilation
@@ -143,7 +143,7 @@ fn single_ascomponents_wrapped() {
 
 /// ```compile_fail
 /// let comp = re_types_core::components::ClearIsRecursive::default();
-/// let _ = (&[comp, comp, comp] as &dyn re_types_core::AsComponents).as_component_batches();
+/// let _ = (&[comp, comp, comp] as &dyn re_types_core::AsComponents).as_serialized_batches();
 /// ```
 #[allow(dead_code)]
 #[allow(rustdoc::private_doc_tests)] // doc-tests are the only way to assert failed compilation
@@ -155,7 +155,7 @@ fn single_ascomponents_wrapped_many() {
 /// ```compile_fail
 /// let comp = re_types_core::components::ClearIsRecursive::default();
 /// let comps = vec![comp, comp, comp];
-/// let _ = (&comps as &dyn re_types_core::AsComponents).as_component_batches();
+/// let _ = (&comps as &dyn re_types_core::AsComponents).as_serialized_batches();
 /// ```
 #[allow(dead_code)]
 #[allow(rustdoc::private_doc_tests)] // doc-tests are the only way to assert failed compilation
@@ -164,7 +164,7 @@ fn many_ascomponents() {}
 /// ```compile_fail
 /// let comp = re_types_core::components::ClearIsRecursive::default();
 /// let comps = vec![comp, comp, comp];
-/// let _ = (&[comps] as &dyn re_types_core::AsComponents).as_component_batches();
+/// let _ = (&[comps] as &dyn re_types_core::AsComponents).as_serialized_batches();
 /// ```
 #[allow(dead_code)]
 #[allow(rustdoc::private_doc_tests)] // doc-tests are the only way to assert failed compilation
@@ -182,7 +182,7 @@ fn many_componentbatch_wrapped() {}
 /// ```compile_fail
 /// let comp = re_types_core::components::ClearIsRecursive::default();
 /// let comps = vec![comp, comp, comp];
-/// let _ = (&[comps.clone(), comps.clone(), comps.clone()] as &dyn re_types_core::AsComponents).as_component_batches();
+/// let _ = (&[comps.clone(), comps.clone(), comps.clone()] as &dyn re_types_core::AsComponents).as_serialized_batches();
 /// ```
 #[allow(dead_code)]
 #[allow(rustdoc::private_doc_tests)] // doc-tests are the only way to assert failed compilation
