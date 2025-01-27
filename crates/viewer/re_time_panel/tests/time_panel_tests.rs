@@ -1,12 +1,14 @@
 use egui::Vec2;
 
 use re_chunk_store::{LatestAtQuery, RowId};
-use re_log_types::build_frame_nr;
-use re_log_types::example_components::MyPoint;
-use re_log_types::external::re_types_core::Component;
+use re_entity_db::InstancePath;
+use re_log_types::{
+    build_frame_nr, example_components::MyPoint, external::re_types_core::Component, EntityPath,
+    TimeInt, TimePoint, TimeType, Timeline,
+};
 use re_time_panel::TimePanel;
-use re_viewer_context::blueprint_timeline;
-use re_viewer_context::test_context::TestContext;
+use re_types::archetypes::Points2D;
+use re_viewer_context::{blueprint_timeline, test_context::TestContext, CollapseScope, TimeView};
 use re_viewport_blueprint::ViewportBlueprint;
 
 #[test]
@@ -158,4 +160,152 @@ pub fn run_time_panel_filter_tests(filter_active: bool, query: &str, snapshot_na
     }
 
     run_time_panel_and_save_snapshot(test_context, time_panel, snapshot_name);
+}
+
+// --
+
+/// This test focuses on various kinds of entities and ensures their representation in the tree is
+/// correct regardless of the selected timeline and current time.
+//TODO(ab): we should also test what happens when GC kicks in.
+#[test]
+pub fn test_various_entity_kinds_in_time_panel() {
+    TimePanel::ensure_registered_subscribers();
+
+    for timeline in ["timeline_a", "timeline_b"] {
+        for time in [0, 5, i64::MAX] {
+            let mut test_context = TestContext::default();
+
+            log_all_data(&mut test_context);
+
+            test_context
+                .recording_config
+                .time_ctrl
+                .write()
+                .set_timeline_and_time(Timeline::new(timeline, TimeType::Sequence), time);
+
+            test_context
+                .recording_config
+                .time_ctrl
+                .write()
+                .set_time_view(TimeView {
+                    min: 0.into(),
+                    time_spanned: 10.0,
+                });
+
+            let time_panel = TimePanel::default();
+
+            run_expanded_time_panel_and_save_snapshot(
+                test_context,
+                time_panel,
+                &format!("various_entity_kinds_{timeline}_{time}"),
+            );
+        }
+    }
+}
+
+pub fn log_all_data(test_context: &mut TestContext) {
+    let timeline_a = "timeline_a";
+    let timeline_b = "timeline_b";
+
+    // just your average static entity
+    log_static_data(test_context, "static_entity");
+
+    // static data is over-logged multiple times
+    for _ in 0..3 {
+        log_static_data(test_context, "static_entity_multiple");
+    }
+
+    // static data overrides data logged on timeline a
+    log_data(test_context, "static_overrides_temporal", timeline_a, 3);
+    log_static_data(test_context, "static_overrides_temporal");
+
+    // data in single timeline
+    log_data(test_context, "timeline_a_only", timeline_a, 3);
+    log_data(test_context, "timeline_b_only", timeline_b, 3);
+
+    // data in both timelines
+    log_data(test_context, "timeline_a_and_b", timeline_a, 2);
+    log_data(test_context, "timeline_a_and_b", timeline_b, 5);
+
+    // nested entity with parent empty
+    log_data(test_context, "/empty/parent/of/entity", timeline_a, 3);
+
+    // nested entity with data in a parent
+    log_data(test_context, "/parent_with_data/of/entity", timeline_a, 3);
+    log_data(test_context, "/parent_with_data", timeline_a, 1);
+
+    // some entity with data logged "late" on the timeline
+    log_data(test_context, "/late_data", timeline_a, 9);
+    log_data(test_context, "/late_data", timeline_a, 10);
+}
+
+pub fn log_data(
+    test_context: &mut TestContext,
+    entity_path: impl Into<EntityPath>,
+    timeline: &str,
+    time: i64,
+) {
+    test_context.log_entity(entity_path.into(), |builder| {
+        builder.with_archetype(
+            RowId::new(),
+            [(
+                Timeline::new(timeline, TimeType::Sequence),
+                TimeInt::try_from(time).expect("time must be valid"),
+            )],
+            &Points2D::new([[0.0, 0.0]]),
+        )
+    });
+}
+
+pub fn log_static_data(test_context: &mut TestContext, entity_path: impl Into<EntityPath>) {
+    test_context.log_entity(entity_path.into(), |builder| {
+        builder.with_archetype(
+            RowId::new(),
+            TimePoint::from(std::collections::BTreeMap::default()),
+            &Points2D::new([[0.0, 0.0]]),
+        )
+    });
+}
+
+fn run_expanded_time_panel_and_save_snapshot(
+    mut test_context: TestContext,
+    mut time_panel: TimePanel,
+    snapshot_name: &str,
+) {
+    let mut harness = test_context
+        .setup_kittest_for_rendering()
+        .with_size(Vec2::new(700.0, 1200.0))
+        .build_ui(|ui| {
+            test_context.run(&ui.ctx().clone(), |viewer_ctx| {
+                re_context_menu::collapse_expand::collapse_expand_instance_path(
+                    viewer_ctx,
+                    viewer_ctx.recording(),
+                    &InstancePath::entity_all("/".into()),
+                    CollapseScope::StreamsTree,
+                    true,
+                );
+
+                let blueprint = ViewportBlueprint::try_from_db(
+                    viewer_ctx.store_context.blueprint,
+                    &LatestAtQuery::latest(blueprint_timeline()),
+                );
+
+                let mut time_ctrl = viewer_ctx.rec_cfg.time_ctrl.read().clone();
+
+                time_panel.show_expanded_with_header(
+                    viewer_ctx,
+                    &blueprint,
+                    viewer_ctx.recording(),
+                    &mut time_ctrl,
+                    ui,
+                );
+
+                *viewer_ctx.rec_cfg.time_ctrl.write() = time_ctrl;
+            });
+
+            test_context.handle_system_commands();
+        });
+
+    harness.run();
+    harness.snapshot(snapshot_name);
 }
