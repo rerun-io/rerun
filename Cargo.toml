@@ -55,6 +55,7 @@ re_dataframe = { path = "crates/store/re_dataframe", version = "=0.22.0-alpha.1"
 re_entity_db = { path = "crates/store/re_entity_db", version = "=0.22.0-alpha.1", default-features = false }
 re_format_arrow = { path = "crates/store/re_format_arrow", version = "=0.22.0-alpha.1", default-features = false }
 re_grpc_client = { path = "crates/store/re_grpc_client", version = "=0.22.0-alpha.1", default-features = false }
+re_grpc_server = { path = "crates/store/re_grpc_server", version = "=0.22.0-alpha.1", default-features = false }
 re_protos = { path = "crates/store/re_protos", version = "=0.22.0-alpha.1", default-features = false }
 re_log_encoding = { path = "crates/store/re_log_encoding", version = "=0.22.0-alpha.1", default-features = false }
 re_log_types = { path = "crates/store/re_log_types", version = "=0.22.0-alpha.1", default-features = false }

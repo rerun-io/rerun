@@ -112,6 +112,8 @@ pub mod web_viewer;
 
 /// Re-exports of other crates.
 pub mod external {
+    pub use re_grpc_client;
+    pub use re_grpc_server;
     pub use re_log;
     pub use re_log_encoding;
     pub use re_log_types;

@@ -1,6 +1,9 @@
 //! Server implementation of an in-memory Storage Node.
 
 use std::collections::VecDeque;
+use std::net::IpAddr;
+use std::net::Ipv4Addr;
+use std::net::SocketAddr;
 use std::pin::Pin;
 
 use re_byte_size::SizeBytes;
@@ -9,12 +12,62 @@ use re_protos::{
     log_msg::v0::LogMsg as LogMsgProto,
     sdk_comms::v0::{message_proxy_server, Empty},
 };
+use tokio::net::TcpListener;
 use tokio::sync::broadcast;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
 use tokio_stream::wrappers::BroadcastStream;
 use tokio_stream::Stream;
 use tokio_stream::StreamExt as _;
+use tonic::transport::server::TcpIncoming;
+use tonic::transport::Server;
+
+pub const DEFAULT_GRPC_PORT: u16 = 1852;
+pub const DEFAULT_GRPC_ADDR: SocketAddr =
+    SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), DEFAULT_GRPC_PORT);
+pub const DEFAULT_MEMORY_LIMIT: MemoryLimit = MemoryLimit::UNLIMITED;
+
+/// Listen for incoming clients on `addr`.
+///
+/// The server runs on the current task.
+pub async fn serve(
+    addr: SocketAddr,
+    memory_limit: MemoryLimit,
+) -> Result<(), tonic::transport::Error> {
+    let tcp_listener = TcpListener::bind(addr)
+        .await
+        .unwrap_or_else(|err| panic!("failed to bind listener on {addr}: {err}"));
+    let incoming =
+        TcpIncoming::from_listener(tcp_listener, true, None).expect("failed to init listener");
+
+    re_log::info!("Listening for gRPC connections on {addr}");
+
+    use tower_http::cors::{Any, CorsLayer};
+    let cors = CorsLayer::new()
+        .allow_origin(Any)
+        .allow_methods(Any)
+        .allow_headers(Any);
+
+    let grpc_web = tonic_web::GrpcWebLayer::new();
+
+    let routes = {
+        let mut routes_builder = tonic::service::Routes::builder();
+        routes_builder.add_service(
+            re_protos::sdk_comms::v0::message_proxy_server::MessageProxyServer::new(
+                MessageProxy::new(memory_limit),
+            ),
+        );
+        routes_builder.routes()
+    };
+
+    Server::builder()
+        .accept_http1(true) // Support `grpc-web` clients
+        .layer(cors) // Allow CORS requests from web clients
+        .layer(grpc_web) // Support `grpc-web` clients
+        .add_routes(routes)
+        .serve_with_incoming(incoming)
+        .await
+}
 
 enum Event {
     /// New client connected, requesting full history and subscribing to new messages.
