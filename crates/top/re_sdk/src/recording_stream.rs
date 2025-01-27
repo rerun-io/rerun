@@ -2658,7 +2658,8 @@ mod tests {
             .unwrap();
 
         // This call used to *not* compile due to a lack of `?Sized` bounds.
-        rec.log("labels", &labels as &dyn crate::ComponentBatch)
+        use re_types_core::ComponentBatch as _;
+        rec.log("labels", &labels.try_serialized().unwrap())
             .unwrap();
     }
 }

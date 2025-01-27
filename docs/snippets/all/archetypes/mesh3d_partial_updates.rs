@@ -21,12 +21,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         rec.set_time_sequence("frame", i);
 
         let factor = (i as f32 * 0.04).sin().abs();
-        let vertex_positions: [rerun::Position3D; 3] = [
-            (glam::Vec3::from(vertex_positions[0]) * factor).into(),
-            (glam::Vec3::from(vertex_positions[1]) * factor).into(),
-            (glam::Vec3::from(vertex_positions[2]) * factor).into(),
+        let vertex_positions = [
+            (glam::Vec3::from(vertex_positions[0]) * factor),
+            (glam::Vec3::from(vertex_positions[1]) * factor),
+            (glam::Vec3::from(vertex_positions[2]) * factor),
         ];
-        rec.log("triangle", &vertex_positions as &dyn rerun::ComponentBatch)?;
+        rec.log(
+            "triangle",
+            &rerun::Mesh3D::update_fields().with_vertex_positions(vertex_positions),
+        )?;
     }
 
     Ok(())

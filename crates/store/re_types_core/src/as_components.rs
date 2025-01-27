@@ -305,11 +305,7 @@ mod tests {
 
         let got = {
             let red = &red as &dyn crate::ComponentBatch;
-            (&[red] as &dyn crate::AsComponents)
-                .as_serialized_batches()
-                .into_iter()
-                .map(|batch| batch.array)
-                .collect_vec()
+            vec![red.try_serialized().unwrap().array]
         };
         let expected = vec![
             Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![red.0])) as Arc<dyn ArrowArray>,
@@ -336,11 +332,7 @@ mod tests {
 
         let got = {
             let red = &red as &dyn crate::ComponentBatch;
-            (&[red] as &dyn crate::AsComponents)
-                .as_serialized_batches()
-                .into_iter()
-                .map(|batch| batch.array)
-                .collect_vec()
+            vec![red.try_serialized().unwrap().array]
         };
         let expected = vec![
             Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![red.0])) as Arc<dyn ArrowArray>,
@@ -369,11 +361,14 @@ mod tests {
             let red = &red as &dyn crate::ComponentBatch;
             let green = &green as &dyn crate::ComponentBatch;
             let blue = &blue as &dyn crate::ComponentBatch;
-            (&[red, green, blue] as &dyn crate::AsComponents)
-                .as_serialized_batches()
-                .into_iter()
-                .map(|batch| batch.array)
-                .collect_vec()
+            [
+                red.try_serialized().unwrap(),
+                green.try_serialized().unwrap(),
+                blue.try_serialized().unwrap(),
+            ]
+            .into_iter()
+            .map(|batch| batch.array)
+            .collect_vec()
         };
         let expected = vec![
             Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![red.0])) as Arc<dyn ArrowArray>,
@@ -417,11 +412,7 @@ mod tests {
 
         let got = {
             let colors = &colors as &dyn crate::ComponentBatch;
-            (&[colors] as &dyn crate::AsComponents)
-                .as_serialized_batches()
-                .into_iter()
-                .map(|batch| batch.array)
-                .collect_vec()
+            vec![colors.try_serialized().unwrap().array]
         };
         let expected = vec![Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![
             red.0, green.0, blue.0,
@@ -436,11 +427,11 @@ mod tests {
         // Nothing out of the ordinary here, a collection of batches is indeed a collection of batches.
         let got = {
             let colors = &colors as &dyn crate::ComponentBatch;
-            (&[colors, colors, colors] as &dyn crate::AsComponents)
-                .as_serialized_batches()
-                .into_iter()
-                .map(|batch| batch.array)
-                .collect_vec()
+            vec![
+                colors.try_serialized().unwrap().array,
+                colors.try_serialized().unwrap().array,
+                colors.try_serialized().unwrap().array,
+            ]
         };
         let expected = vec![
             Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![
