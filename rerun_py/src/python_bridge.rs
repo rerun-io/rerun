@@ -139,8 +139,8 @@ fn rerun_bindings(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(binary_stream, m)?)?;
     m.add_function(wrap_pyfunction!(connect_tcp, m)?)?;
     m.add_function(wrap_pyfunction!(connect_tcp_blueprint, m)?)?;
-    #[cfg(feature = "remote")]
     m.add_function(wrap_pyfunction!(connect_grpc, m)?)?;
+    m.add_function(wrap_pyfunction!(connect_grpc_blueprint, m)?)?;
     m.add_function(wrap_pyfunction!(save, m)?)?;
     m.add_function(wrap_pyfunction!(save_blueprint, m)?)?;
     m.add_function(wrap_pyfunction!(stdout, m)?)?;
@@ -675,21 +675,76 @@ fn connect_tcp_blueprint(
     }
 }
 
-#[cfg(feature = "remote")]
 #[pyfunction]
-#[pyo3(signature = (addr, recording = None))]
-fn connect_grpc(addr: String, recording: Option<&PyRecordingStream>, py: Python<'_>) {
+#[pyo3(signature = (url, default_blueprint = None, recording = None))]
+fn connect_grpc(
+    url: Option<String>,
+    default_blueprint: Option<&PyMemorySinkStorage>,
+    recording: Option<&PyRecordingStream>,
+    py: Python<'_>,
+) {
     let Some(recording) = get_data_recording(recording) else {
         return;
     };
 
+    use re_sdk::external::re_grpc_server::DEFAULT_SERVER_PORT;
+    let url = url.unwrap_or_else(|| format!("http://127.0.0.1:{DEFAULT_SERVER_PORT}"));
+
+    if re_sdk::forced_sink_path().is_some() {
+        re_log::debug!("Ignored call to `connect()` since _RERUN_TEST_FORCE_SAVE is set");
+        return;
+    }
+
     py.allow_threads(|| {
-        let sink = re_sdk::sink::GrpcSink::new(addr);
+        let sink = re_sdk::sink::GrpcSink::new(url);
+
+        if let Some(default_blueprint) = default_blueprint {
+            send_mem_sink_as_default_blueprint(&sink, default_blueprint);
+        }
 
         recording.set_sink(Box::new(sink));
 
         flush_garbage_queue();
     });
+}
+
+#[pyfunction]
+#[pyo3(signature = (url, make_active, make_default, blueprint_stream))]
+/// Special binding for directly sending a blueprint stream to a connection.
+fn connect_grpc_blueprint(
+    url: Option<String>,
+    make_active: bool,
+    make_default: bool,
+    blueprint_stream: &PyRecordingStream,
+    py: Python<'_>,
+) -> PyResult<()> {
+    use re_sdk::external::re_grpc_server::DEFAULT_SERVER_PORT;
+    let url = url.unwrap_or_else(|| format!("http://127.0.0.1:{DEFAULT_SERVER_PORT}"));
+
+    if let Some(blueprint_id) = (*blueprint_stream).store_info().map(|info| info.store_id) {
+        // The call to save, needs to flush.
+        // Release the GIL in case any flushing behavior needs to cleanup a python object.
+        py.allow_threads(|| {
+            // Flush all the pending blueprint messages before we include the Ready message
+            blueprint_stream.flush_blocking();
+
+            let activation_cmd = BlueprintActivationCommand {
+                blueprint_id,
+                make_active,
+                make_default,
+            };
+
+            blueprint_stream.record_msg(activation_cmd.into());
+
+            blueprint_stream.connect_grpc_opts(url);
+            flush_garbage_queue();
+        });
+        Ok(())
+    } else {
+        Err(PyRuntimeError::new_err(
+            "Blueprint stream has no store info".to_owned(),
+        ))
+    }
 }
 
 #[pyfunction]

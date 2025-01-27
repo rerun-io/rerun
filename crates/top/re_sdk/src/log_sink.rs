@@ -383,9 +383,9 @@ impl GrpcSink {
     /// GrpcSink::new("http://127.0.0.1:9434");
     /// ```
     #[inline]
-    pub fn new(addr: impl Into<String>) -> Self {
+    pub fn new(url: impl Into<String>) -> Self {
         Self {
-            client: MessageProxyClient::new(addr, Default::default()),
+            client: MessageProxyClient::new(url, Default::default()),
         }
     }
 }

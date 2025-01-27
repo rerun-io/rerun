@@ -140,7 +140,7 @@ impl std::fmt::Debug for SpawnError {
     }
 }
 
-/// Spawns a new Rerun Viewer process ready to listen for TCP connections.
+/// Spawns a new Rerun Viewer process ready to listen for connections.
 ///
 /// If there is already a process listening on this port (Rerun or not), this function returns `Ok`
 /// WITHOUT spawning a `rerun` process (!).

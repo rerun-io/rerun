@@ -1838,6 +1838,38 @@ impl RecordingStream {
         self.set_sink(Box::new(sink));
     }
 
+    /// Swaps the underlying sink for a [`crate::log_sink::GrpcSink`] sink pre-configured to use
+    /// the specified address.
+    ///
+    /// See also [`Self::connect_opts`] if you wish to configure the connection.
+    ///
+    /// This is a convenience wrapper for [`Self::set_sink`] that upholds the same guarantees in
+    /// terms of data durability and ordering.
+    /// See [`Self::set_sink`] for more information.
+    pub fn connect_grpc(&self) {
+        self.connect_grpc_opts(format!(
+            "http://127.0.0.1:{}",
+            re_grpc_server::DEFAULT_SERVER_PORT
+        ));
+    }
+
+    /// Swaps the underlying sink for a [`crate::log_sink::GrpcSink`] sink pre-configured to use
+    /// the specified address.
+    ///
+    /// This is a convenience wrapper for [`Self::set_sink`] that upholds the same guarantees in
+    /// terms of data durability and ordering.
+    /// See [`Self::set_sink`] for more information.
+    pub fn connect_grpc_opts(&self, url: impl Into<String>) {
+        if forced_sink_path().is_some() {
+            re_log::debug!("Ignored setting new GrpcSink since {ENV_FORCE_SAVE} is set");
+            return;
+        }
+
+        let sink = crate::log_sink::GrpcSink::new(url);
+
+        self.set_sink(Box::new(sink));
+    }
+
     /// Spawns a new Rerun Viewer process from an executable available in PATH, then swaps the
     /// underlying sink for a [`crate::log_sink::TcpSink`] sink pre-configured to send data to that
     /// new process.
@@ -1889,6 +1921,53 @@ impl RecordingStream {
         crate::spawn(opts)?;
 
         self.connect_opts(opts.connect_addr(), flush_timeout);
+
+        Ok(())
+    }
+
+    /// Spawns a new Rerun Viewer process from an executable available in PATH, then swaps the
+    /// underlying sink for a [`crate::log_sink::GrpcSink`] sink pre-configured to send data to that
+    /// new process.
+    ///
+    /// If a Rerun Viewer is already listening on this port, the stream will be redirected to
+    /// that viewer instead of starting a new one.
+    ///
+    /// See also [`Self::spawn_grpc_opts`] if you wish to configure the behavior of thew Rerun process
+    /// as well as the underlying connection.
+    ///
+    /// This is a convenience wrapper for [`Self::set_sink`] that upholds the same guarantees in
+    /// terms of data durability and ordering.
+    /// See [`Self::set_sink`] for more information.
+    pub fn spawn_grpc(&self) -> RecordingStreamResult<()> {
+        self.spawn_grpc_opts(&Default::default())
+    }
+
+    /// Spawns a new Rerun Viewer process from an executable available in PATH, then swaps the
+    /// underlying sink for a [`crate::log_sink::GrpcSink`] sink pre-configured to send data to that
+    /// new process.
+    ///
+    /// If a Rerun Viewer is already listening on this port, the stream will be redirected to
+    /// that viewer instead of starting a new one.
+    ///
+    /// The behavior of the spawned Viewer can be configured via `opts`.
+    /// If you're fine with the default behavior, refer to the simpler [`Self::spawn`].
+    ///
+    /// This is a convenience wrapper for [`Self::set_sink`] that upholds the same guarantees in
+    /// terms of data durability and ordering.
+    /// See [`Self::set_sink`] for more information.
+    pub fn spawn_grpc_opts(&self, opts: &crate::SpawnOptions) -> RecordingStreamResult<()> {
+        if !self.is_enabled() {
+            re_log::debug!("Rerun disabled - call to spawn() ignored");
+            return Ok(());
+        }
+        if forced_sink_path().is_some() {
+            re_log::debug!("Ignored setting new TcpSink since {ENV_FORCE_SAVE} is set");
+            return Ok(());
+        }
+
+        crate::spawn(opts)?;
+
+        self.connect_grpc_opts(format!("http://127.0.0.1:{}", opts.connect_addr()));
 
         Ok(())
     }
