@@ -125,7 +125,7 @@ class AnyBatchValue(ComponentBatchLike):
         if supported by numpy and arrow. Any components that can't be converted
         will be dropped, and a warning will be sent to the log.
 
-        If you are want to inspect how your component will be converted to the
+        If you want to inspect how your component will be converted to the
         underlying arrow code, the following snippet is what is happening
         internally:
 

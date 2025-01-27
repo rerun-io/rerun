@@ -269,7 +269,7 @@ def send_columns_v2(
 
     Unlike the regular `log` API, which is row-oriented, this API lets you submit the data
     in a columnar form. Each `TimeColumnLike` and `ComponentColumn` object represents a column
-    of data that will be sent to Rerun. The lengths of all of these columns must match, and all
+    of data that will be sent to Rerun. The lengths of all these columns must match, and all
     data that shares the same index across the different columns will act as a single logical row,
     equivalent to a single call to `rr.log()`.
 
@@ -298,7 +298,7 @@ def send_columns_v2(
     strict:
         If True, raise exceptions on non-loggable data.
         If False, warn on non-loggable data.
-        if None, use the global default from `rerun.strict_mode()`
+        If None, use the global default from `rerun.strict_mode()`
 
     """
     expected_length = None
