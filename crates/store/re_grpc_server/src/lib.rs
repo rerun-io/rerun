@@ -1,9 +1,9 @@
 //! Server implementation of an in-memory Storage Node.
 
 use std::collections::VecDeque;
-use std::net::IpAddr;
 use std::net::Ipv4Addr;
 use std::net::SocketAddr;
+use std::net::SocketAddrV4;
 use std::pin::Pin;
 
 use re_byte_size::SizeBytes;
@@ -22,25 +22,28 @@ use tokio_stream::StreamExt as _;
 use tonic::transport::server::TcpIncoming;
 use tonic::transport::Server;
 
-pub const DEFAULT_GRPC_PORT: u16 = 1852;
-pub const DEFAULT_GRPC_ADDR: SocketAddr =
-    SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), DEFAULT_GRPC_PORT);
+pub const DEFAULT_SERVER_PORT: u16 = 1852;
 pub const DEFAULT_MEMORY_LIMIT: MemoryLimit = MemoryLimit::UNLIMITED;
 
 /// Listen for incoming clients on `addr`.
 ///
 /// The server runs on the current task.
-pub async fn serve(
-    addr: SocketAddr,
-    memory_limit: MemoryLimit,
-) -> Result<(), tonic::transport::Error> {
-    let tcp_listener = TcpListener::bind(addr)
-        .await
-        .unwrap_or_else(|err| panic!("failed to bind listener on {addr}: {err}"));
+pub async fn serve(port: u16, memory_limit: MemoryLimit) -> Result<(), tonic::transport::Error> {
+    serve_impl(port, MessageProxy::new(memory_limit)).await
+}
+
+async fn serve_impl(port: u16, message_proxy: MessageProxy) -> Result<(), tonic::transport::Error> {
+    let tcp_listener = TcpListener::bind(SocketAddr::V4(SocketAddrV4::new(
+        Ipv4Addr::new(0, 0, 0, 0),
+        port,
+    )))
+    .await
+    .unwrap_or_else(|err| panic!("failed to bind listener on port {port}: {err}"));
+
     let incoming =
         TcpIncoming::from_listener(tcp_listener, true, None).expect("failed to init listener");
 
-    re_log::info!("Listening for gRPC connections on {addr}");
+    re_log::info!("Listening for gRPC connections on http://0.0.0.0:{port}");
 
     use tower_http::cors::{Any, CorsLayer};
     let cors = CorsLayer::new()
@@ -53,9 +56,7 @@ pub async fn serve(
     let routes = {
         let mut routes_builder = tonic::service::Routes::builder();
         routes_builder.add_service(
-            re_protos::sdk_comms::v0::message_proxy_server::MessageProxyServer::new(
-                MessageProxy::new(memory_limit),
-            ),
+            re_protos::sdk_comms::v0::message_proxy_server::MessageProxyServer::new(message_proxy),
         );
         routes_builder.routes()
     };
@@ -67,6 +68,55 @@ pub async fn serve(
         .add_routes(routes)
         .serve_with_incoming(incoming)
         .await
+}
+
+pub fn spawn_with_recv(
+    port: u16,
+    memory_limit: MemoryLimit,
+) -> re_smart_channel::Receiver<re_log_types::LogMsg> {
+    let (channel_tx, channel_rx) = re_smart_channel::smart_channel(
+        re_smart_channel::SmartMessageSource::MessageProxy {
+            url: format!("http://localhost:{port}"),
+        },
+        re_smart_channel::SmartChannelSource::MessageProxy {
+            url: format!("http://localhost:{port}"),
+        },
+    );
+    let (message_proxy, mut broadcast_rx) = MessageProxy::new_with_recv(memory_limit);
+    tokio::spawn(serve_impl(port, message_proxy));
+    tokio::spawn(async move {
+        loop {
+            let msg = match broadcast_rx.recv().await {
+                Ok(msg) => re_log_encoding::protobuf_conversions::log_msg_from_proto(msg),
+                Err(broadcast::error::RecvError::Closed) => {
+                    re_log::debug!("message proxy server shut down, closing receiver");
+                    channel_tx.quit(None).ok();
+                    break;
+                }
+                Err(broadcast::error::RecvError::Lagged(n)) => {
+                    re_log::debug!(
+                        "message proxy receiver dropped {n} messages due to backpressure"
+                    );
+                    continue;
+                }
+            };
+            match msg {
+                Ok(msg) => {
+                    if channel_tx.send(msg).is_err() {
+                        re_log::debug!(
+                            "message proxy smart channel receiver closed, closing sender"
+                        );
+                        break;
+                    }
+                }
+                Err(err) => {
+                    re_log::error!("dropping LogMsg due to failed decode: {err}");
+                    continue;
+                }
+            }
+        }
+    });
+    channel_rx
 }
 
 enum Event {
@@ -100,12 +150,14 @@ struct EventLoop {
 }
 
 impl EventLoop {
-    fn new(server_memory_limit: MemoryLimit, event_rx: mpsc::Receiver<Event>) -> Self {
+    fn new(
+        server_memory_limit: MemoryLimit,
+        event_rx: mpsc::Receiver<Event>,
+        broadcast_tx: broadcast::Sender<LogMsgProto>,
+    ) -> Self {
         Self {
             server_memory_limit,
-            // Channel capacity is completely arbitrary.
-            // We just want enough capacity to handle bursts of messages.
-            broadcast_tx: broadcast::channel(1024).0,
+            broadcast_tx,
             event_rx,
             ordered_message_queue: Default::default(),
             ordered_message_bytes: 0,
@@ -228,20 +280,30 @@ pub struct MessageProxy {
 
 impl MessageProxy {
     pub fn new(server_memory_limit: MemoryLimit) -> Self {
+        Self::new_with_recv(server_memory_limit).0
+    }
+
+    pub fn new_with_recv(
+        server_memory_limit: MemoryLimit,
+    ) -> (Self, broadcast::Receiver<LogMsgProto>) {
         // Channel capacity is completely arbitrary.
         // We just want something large enough to handle bursts of messages.
         let (event_tx, event_rx) = mpsc::channel(1024);
+        let (broadcast_tx, broadcast_rx) = broadcast::channel(1024);
 
         let task_handle = tokio::spawn(async move {
-            EventLoop::new(server_memory_limit, event_rx)
+            EventLoop::new(server_memory_limit, event_rx, broadcast_tx)
                 .run_in_place()
                 .await;
         });
 
-        Self {
-            _queue_task_handle: task_handle,
-            event_tx,
-        }
+        (
+            Self {
+                _queue_task_handle: task_handle,
+                event_tx,
+            },
+            broadcast_rx,
+        )
     }
 
     async fn push(&self, msg: LogMsgProto) {
@@ -270,7 +332,7 @@ impl MessageProxy {
             })
         });
 
-        Box::pin(history.merge(channel))
+        Box::pin(history.chain(channel))
     }
 }
 
