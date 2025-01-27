@@ -70,12 +70,12 @@ namespace rerun::archetypes {
     ///     std::vector<int64_t> times(64);
     ///     std::iota(times.begin(), times.end(), 0);
     ///
-    ///     // Convert to rerun time / scalars
-    ///     auto time_column = rerun::TimeColumn::from_sequence_points("step", std::move(times));
-    ///     auto scalar_data_collection =
-    ///         rerun::Collection<rerun::components::Scalar>(std::move(scalar_data));
-    ///
-    ///     rec.send_columns("scalars", time_column, scalar_data_collection);
+    ///     // Serialize to columns and send.
+    ///     rec.send_columns2(
+    ///         "scalars",
+    ///         rerun::TimeColumn::from_sequence_points("step", std::move(times)),
+    ///         rerun::Scalar().with_many_scalar(std::move(scalar_data)).columns()
+    ///     );
     /// }
     /// ```
     struct Scalar {
