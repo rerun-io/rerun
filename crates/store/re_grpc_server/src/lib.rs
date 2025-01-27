@@ -1,9 +1,8 @@
 //! Server implementation of an in-memory Storage Node.
 
 use std::collections::VecDeque;
+use std::net::IpAddr;
 use std::net::Ipv4Addr;
-use std::net::SocketAddr;
-use std::net::SocketAddrV4;
 use std::pin::Pin;
 
 use re_byte_size::SizeBytes;
@@ -23,22 +22,28 @@ use tonic::transport::server::TcpIncoming;
 use tonic::transport::Server;
 
 pub const DEFAULT_SERVER_PORT: u16 = 1852;
+pub const DEFAULT_SERVER_IP: IpAddr = IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0));
 pub const DEFAULT_MEMORY_LIMIT: MemoryLimit = MemoryLimit::UNLIMITED;
 
 /// Listen for incoming clients on `addr`.
 ///
 /// The server runs on the current task.
-pub async fn serve(port: u16, memory_limit: MemoryLimit) -> Result<(), tonic::transport::Error> {
-    serve_impl(port, MessageProxy::new(memory_limit)).await
+pub async fn serve(
+    ip: IpAddr,
+    port: u16,
+    memory_limit: MemoryLimit,
+) -> Result<(), tonic::transport::Error> {
+    serve_impl(ip, port, MessageProxy::new(memory_limit)).await
 }
 
-async fn serve_impl(port: u16, message_proxy: MessageProxy) -> Result<(), tonic::transport::Error> {
-    let tcp_listener = TcpListener::bind(SocketAddr::V4(SocketAddrV4::new(
-        Ipv4Addr::new(0, 0, 0, 0),
-        port,
-    )))
-    .await
-    .unwrap_or_else(|err| panic!("failed to bind listener on port {port}: {err}"));
+async fn serve_impl(
+    ip: IpAddr,
+    port: u16,
+    message_proxy: MessageProxy,
+) -> Result<(), tonic::transport::Error> {
+    let tcp_listener = TcpListener::bind((ip, port))
+        .await
+        .unwrap_or_else(|err| panic!("failed to bind listener on port {port}: {err}"));
 
     let incoming =
         TcpIncoming::from_listener(tcp_listener, true, None).expect("failed to init listener");
@@ -71,19 +76,20 @@ async fn serve_impl(port: u16, message_proxy: MessageProxy) -> Result<(), tonic:
 }
 
 pub fn spawn_with_recv(
+    ip: IpAddr,
     port: u16,
     memory_limit: MemoryLimit,
 ) -> re_smart_channel::Receiver<re_log_types::LogMsg> {
     let (channel_tx, channel_rx) = re_smart_channel::smart_channel(
         re_smart_channel::SmartMessageSource::MessageProxy {
-            url: format!("http://localhost:{port}"),
+            url: format!("http://127.0.0.1:{port}"),
         },
         re_smart_channel::SmartChannelSource::MessageProxy {
-            url: format!("http://localhost:{port}"),
+            url: format!("http://127.0.0.1:{port}"),
         },
     );
     let (message_proxy, mut broadcast_rx) = MessageProxy::new_with_recv(memory_limit);
-    tokio::spawn(serve_impl(port, message_proxy));
+    tokio::spawn(serve_impl(ip, port, message_proxy));
     tokio::spawn(async move {
         loop {
             let msg = match broadcast_rx.recv().await {
