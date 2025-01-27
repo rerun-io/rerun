@@ -191,7 +191,7 @@ class GeoPoints(GeoPointsExt, Archetype):
         columns = [batch.partition(lengths) for batch in batches]
 
         indicator_batch = DescribedComponentBatch(cls.indicator(), cls.indicator().component_descriptor())
-        indicator_column = indicator_batch.partition(np.zeros(len(lengths)))  # type: ignore[arg-type]
+        indicator_column = indicator_batch.partition(np.zeros(len(lengths)))
 
         return ComponentColumnList([indicator_column] + columns)
 

@@ -2648,7 +2648,7 @@ fn quote_columnar_methods(reporter: &Reporter, obj: &Object, objects: &Objects) 
     let pack_and_return = if has_indicator {
         indent::indent_by(12, unindent("\
         indicator_batch = DescribedComponentBatch(cls.indicator(), cls.indicator().component_descriptor())
-        indicator_column = indicator_batch.partition(np.zeros(len(lengths)))  # type: ignore[arg-type]
+        indicator_column = indicator_batch.partition(np.zeros(len(lengths)))
 
         return ComponentColumnList([indicator_column] + columns)
         "))
