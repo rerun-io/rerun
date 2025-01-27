@@ -105,7 +105,7 @@ impl TryFrom<&ArrowField> for ColumnDescriptor {
 
 #[test]
 fn test_schema_over_ipc() {
-    #![expect(clippy::disallowed_types)] // Schema::new
+    #![expect(clippy::disallowed_methods)] // Schema::new
 
     let original_columns = [
         ColumnDescriptor::Time(TimeColumnDescriptor {
