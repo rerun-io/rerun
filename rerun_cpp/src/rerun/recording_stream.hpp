@@ -717,6 +717,39 @@ namespace rerun {
             return try_send_columns(entity_path, time_columns, std::move(serialized_columns));
         }
 
+        template <typename... Ts>
+        void send_columns2(
+            std::string_view entity_path, Collection<TimeColumn> time_columns,
+            Ts... component_columns // NOLINT
+        ) const {
+            try_send_columns2(entity_path, time_columns, component_columns...).handle();
+        }
+
+        template <typename... Ts>
+        Error try_send_columns2(
+            std::string_view entity_path, Collection<TimeColumn> time_columns,
+            Ts... component_columns // NOLINT
+        ) const {
+            std::vector<ComponentColumn> flat_column_list;
+            (
+                [&] {
+                    static_assert(
+                        std::is_same_v<std::remove_cv_t<Ts>, ComponentColumn> ||
+                            std::is_constructible_v<Collection<ComponentColumn>, Ts>,
+                        "Ts must be ComponentColumn or a collection thereof"
+                    );
+
+                    push_back_columns(flat_column_list, std::move(component_columns));
+                }(),
+                ...
+            );
+            return try_send_columns(
+                entity_path,
+                std::move(time_columns),
+                std::move(flat_column_list)
+            );
+        }
+
         /// Directly log a columns of data to Rerun.
         ///
         /// Unlike the regular `log` API, which is row-oriented, this API lets you submit the data
@@ -764,6 +797,21 @@ namespace rerun {
         /// @}
 
       private:
+        // Utility function to implement `try_send_columns` variadic template.
+        static void push_back_columns(
+            std::vector<ComponentColumn>& component_columns, Collection<ComponentColumn> new_columns
+        ) {
+            for (const auto& new_column : new_columns) {
+                component_columns.emplace_back(std::move(new_column));
+            }
+        }
+
+        static void push_back_columns(
+            std::vector<ComponentColumn>& component_columns, ComponentColumn new_column
+        ) {
+            component_columns.emplace_back(std::move(new_column));
+        }
+
         RecordingStream(uint32_t id, StoreKind store_kind);
 
         uint32_t _id;
