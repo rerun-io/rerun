@@ -762,6 +762,10 @@ impl TimePanel {
         let response_rect = response.rect;
         self.next_col_right = self.next_col_right.max(response_rect.right());
 
+        //
+        // Display the data density graph only if it is visible.
+        //
+
         // From the left of the label, all the way to the right-most of the time panel
         let full_width_rect = Rect::from_x_y_ranges(
             response_rect.left()..=ui.max_rect().right(),
@@ -769,35 +773,35 @@ impl TimePanel {
         );
 
         let is_visible = ui.is_rect_visible(full_width_rect);
-
-        // ----------------------------------------------
-
-        // show the data in the time area:
-        let tree_has_data_in_current_timeline = entity_db.subtree_has_data_on_timeline(
-            &entity_db.storage_engine(),
-            time_ctrl.timeline(),
-            entity_path,
-        );
-        if is_visible && tree_has_data_in_current_timeline {
-            let row_rect =
-                Rect::from_x_y_ranges(time_area_response.rect.x_range(), response_rect.y_range());
-
-            highlight_timeline_row(ui, ctx, time_area_painter, &item.to_item(), &row_rect);
-
-            // show the density graph only if that item is closed
-            if is_closed {
-                data_density_graph::data_density_graph_ui(
-                    &mut self.data_density_graph_painter,
-                    ctx,
-                    time_ctrl,
-                    entity_db,
-                    time_area_painter,
-                    ui,
-                    &self.time_ranges_ui,
-                    row_rect,
-                    &item,
-                    true,
+        if is_visible {
+            let tree_has_data_in_current_timeline = entity_db.subtree_has_data_on_timeline(
+                &entity_db.storage_engine(),
+                time_ctrl.timeline(),
+                entity_path,
+            );
+            if tree_has_data_in_current_timeline {
+                let row_rect = Rect::from_x_y_ranges(
+                    time_area_response.rect.x_range(),
+                    response_rect.y_range(),
                 );
+
+                highlight_timeline_row(ui, ctx, time_area_painter, &item.to_item(), &row_rect);
+
+                // show the density graph only if that item is closed
+                if is_closed {
+                    data_density_graph::data_density_graph_ui(
+                        &mut self.data_density_graph_painter,
+                        ctx,
+                        time_ctrl,
+                        entity_db,
+                        time_area_painter,
+                        ui,
+                        &self.time_ranges_ui,
+                        row_rect,
+                        &item,
+                        true,
+                    );
+                }
             }
         }
     }
