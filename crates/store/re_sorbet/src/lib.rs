@@ -1,4 +1,4 @@
-//! Rerun arrow metadata definitions.
+//! Rerun arrow metadata and record batch definitions.
 //!
 //! Handles the structure of arrow record batches and their meta data for different use cases for Rerun.
 
