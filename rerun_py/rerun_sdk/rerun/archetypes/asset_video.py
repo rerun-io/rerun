@@ -36,8 +36,6 @@ class AssetVideo(AssetVideoExt, Archetype):
     --------
     ### Video with automatically determined frames:
     ```python
-    # TODO(#7298): ⚠️ Video is currently only supported in the Rerun web viewer.
-
     import sys
 
     import rerun as rr
@@ -59,8 +57,7 @@ class AssetVideo(AssetVideoExt, Archetype):
         "video",
         # Note timeline values don't have to be the same as the video timestamps.
         indexes=[rr.TimeNanosColumn("video_time", frame_timestamps_ns)],
-        # TODO: some archetype extension shenanigans
-        columns=rr.VideoFrameReference.columns(timestamp=frame_timestamps_ns),
+        columns=rr.VideoFrameReference.nanoseconds(frame_timestamps_ns),
     )
     ```
     <center>

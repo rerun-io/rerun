@@ -51,7 +51,7 @@ def log_image(image: np.ndarray, num_log_calls: int) -> None:
     # create a new, empty memory sink for the current recording
     rr.memory_recording()
 
-    for i in range(num_log_calls):
+    for _ in range(num_log_calls):
         rr.log("test_image", rr.Tensor(image))
 
 
