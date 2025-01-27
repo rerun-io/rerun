@@ -91,41 +91,6 @@ fn assert_object_safe() {
     let _: &dyn AsComponents;
 }
 
-impl AsComponents for dyn ComponentBatch {
-    #[inline]
-    fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
-        self.serialized().into_iter().collect()
-    }
-}
-
-impl<const N: usize> AsComponents for [&dyn ComponentBatch; N] {
-    #[inline]
-    fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
-        self.iter().filter_map(|batch| batch.serialized()).collect()
-    }
-}
-
-impl<const N: usize> AsComponents for [Box<dyn ComponentBatch>; N] {
-    #[inline]
-    fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
-        self.iter().filter_map(|batch| batch.serialized()).collect()
-    }
-}
-
-impl AsComponents for Vec<&dyn ComponentBatch> {
-    #[inline]
-    fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
-        self.iter().filter_map(|batch| batch.serialized()).collect()
-    }
-}
-
-impl AsComponents for Vec<Box<dyn ComponentBatch>> {
-    #[inline]
-    fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
-        self.iter().filter_map(|batch| batch.serialized()).collect()
-    }
-}
-
 impl AsComponents for SerializedComponentBatch {
     #[inline]
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
