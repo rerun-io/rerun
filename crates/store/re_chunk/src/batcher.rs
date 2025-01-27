@@ -991,7 +991,7 @@ impl PendingTimeColumn {
 mod tests {
     use crossbeam::channel::TryRecvError;
 
-    use re_log_types::example_components::{MyPoint, MyPoint64};
+    use re_log_types::example_components::{MyIndex, MyLabel, MyPoint, MyPoint64};
     use re_types_core::{Component as _, Loggable as _};
 
     use super::*;
@@ -1011,9 +1011,29 @@ mod tests {
         let points2 = MyPoint::to_arrow([MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)])?;
         let points3 = MyPoint::to_arrow([MyPoint::new(100.0, 200.0), MyPoint::new(300.0, 400.0)])?;
 
-        let components1 = [(MyPoint::descriptor(), points1.clone())];
-        let components2 = [(MyPoint::descriptor(), points2.clone())];
-        let components3 = [(MyPoint::descriptor(), points3.clone())];
+        let labels1 = MyLabel::to_arrow([MyLabel("a".into()), MyLabel("b".into())])?;
+        let labels2 = MyLabel::to_arrow([MyLabel("c".into()), MyLabel("d".into())])?;
+        let labels3 = MyLabel::to_arrow([MyLabel("e".into()), MyLabel("d".into())])?;
+
+        let indices1 = MyIndex::to_arrow([MyIndex(0), MyIndex(1)])?;
+        let indices2 = MyIndex::to_arrow([MyIndex(2), MyIndex(3)])?;
+        let indices3 = MyIndex::to_arrow([MyIndex(4), MyIndex(5)])?;
+
+        let components1 = [
+            (MyPoint::descriptor(), points1.clone()),
+            (MyLabel::descriptor(), labels1.clone()),
+            (MyIndex::descriptor(), indices1.clone()),
+        ];
+        let components2 = [
+            (MyPoint::descriptor(), points2.clone()),
+            (MyLabel::descriptor(), labels2.clone()),
+            (MyIndex::descriptor(), indices2.clone()),
+        ];
+        let components3 = [
+            (MyPoint::descriptor(), points3.clone()),
+            (MyLabel::descriptor(), labels3.clone()),
+            (MyIndex::descriptor(), indices3.clone()),
+        ];
 
         let row1 = PendingRow::new(timepoint1.clone(), components1.into_iter().collect());
         let row2 = PendingRow::new(timepoint2.clone(), components2.into_iter().collect());
@@ -1053,11 +1073,29 @@ mod tests {
                 timeline1,
                 TimeColumn::new(Some(true), timeline1, vec![42, 43, 44].into()),
             )];
-            let expected_components = [(
-                MyPoint::descriptor(),
-                arrow_util::arrays_to_list_array_opt(&[&*points1, &*points2, &*points3].map(Some))
+            let expected_components = [
+                (
+                    MyPoint::descriptor(),
+                    arrow_util::arrays_to_list_array_opt(
+                        &[&*points1, &*points2, &*points3].map(Some),
+                    )
                     .unwrap(),
-            )];
+                ), //
+                (
+                    MyLabel::descriptor(),
+                    arrow_util::arrays_to_list_array_opt(
+                        &[&*labels1, &*labels2, &*labels3].map(Some),
+                    )
+                    .unwrap(),
+                ), //
+                (
+                    MyIndex::descriptor(),
+                    arrow_util::arrays_to_list_array_opt(
+                        &[&*indices1, &*indices2, &*indices3].map(Some),
+                    )
+                    .unwrap(),
+                ), //
+            ];
             let expected_chunk = Chunk::from_native_row_ids(
                 chunks[0].id,
                 entity_path1.clone(),
