@@ -73,7 +73,7 @@ native_viewer = ["rerun/native_viewer"]
 map_view = ["rerun/map_view"]
 
 ## Enable the gRPC Rerun Data Platform data source.
-grpc = ["rerun/grpc", "dep:tokio"]
+grpc = ["rerun/grpc"]
 
 ## Support serving a web viewer over HTTP.
 ##
@@ -99,8 +99,7 @@ rerun = { workspace = true, features = [
 
 document-features.workspace = true
 mimalloc = "0.1.43"
-
-tokio = { workspace = true, optional = true, features = [
+tokio = { workspace = true, features = [
   "macros",
   "rt-multi-thread",
 ] }

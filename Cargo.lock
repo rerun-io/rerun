@@ -6072,6 +6072,7 @@ dependencies = [
  "re_log_types",
  "re_memory",
  "re_protos",
+ "re_smart_channel",
  "re_tracing",
  "re_types",
  "tokio",
@@ -7361,6 +7362,7 @@ dependencies = [
  "re_error",
  "re_format",
  "re_format_arrow",
+ "re_grpc_server",
  "re_log",
  "re_log_encoding",
  "re_log_types",
@@ -7375,6 +7377,7 @@ dependencies = [
  "re_web_viewer_server",
  "re_ws_comms",
  "similar-asserts",
+ "tokio",
  "unindent",
 ]
 

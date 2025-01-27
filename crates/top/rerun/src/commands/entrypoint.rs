@@ -596,7 +596,7 @@ where
             }
         }
     } else {
-        run_impl(main_thread_token, build_info, call_source, args)
+        run_in_tokio(main_thread_token, build_info, call_source, args)
     };
 
     match res {
@@ -615,6 +615,29 @@ where
 
         // Unclean failure -- re-raise exception
         Err(err) => Err(err),
+    }
+}
+
+/// Ensures that we are running in the context of a tokio runtime.
+fn run_in_tokio(
+    main_thread_token: crate::MainThreadToken,
+    build_info: re_build_info::BuildInfo,
+    call_source: CallSource,
+    args: Args,
+) -> anyhow::Result<()> {
+    // tokio is a hard dependency as of our gRPC migration,
+    // so we must ensure it is always available:
+    if let Ok(handle) = tokio::runtime::Handle::try_current() {
+        // This thread already has a tokio runtime.
+        let _guard = handle.enter();
+        run_impl(main_thread_token, build_info, call_source, args)
+    } else {
+        // We don't have a runtime yet, create one now.
+        let mut builder = tokio::runtime::Builder::new_multi_thread();
+        builder.enable_all();
+        let rt = builder.build()?;
+        let _guard = rt.enter();
+        run_impl(main_thread_token, build_info, call_source, args)
     }
 }
 
