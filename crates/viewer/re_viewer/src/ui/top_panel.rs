@@ -201,13 +201,12 @@ fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::LogMsg>
             | SmartChannelSource::Stdin
             | SmartChannelSource::RrdHttpStream { .. }
             | SmartChannelSource::RerunGrpcStream { .. }
-            | SmartChannelSource::MessageProxy { .. }
             | SmartChannelSource::RrdWebEventListener
             | SmartChannelSource::JsChannel { .. }
             | SmartChannelSource::Sdk
             | SmartChannelSource::WsClient { .. } => None,
 
-            SmartChannelSource::TcpServer { .. } => {
+            SmartChannelSource::TcpServer { .. } | SmartChannelSource::MessageProxy { .. } => {
                 Some("Waiting for an SDK to connect".to_owned())
             }
         };
@@ -228,7 +227,7 @@ fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::LogMsg>
             re_smart_channel::SmartChannelSource::RrdHttpStream { url, .. }
             | re_smart_channel::SmartChannelSource::RerunGrpcStream { url }
             | re_smart_channel::SmartChannelSource::MessageProxy { url } => {
-                format!("Loading {url}…")
+                format!("Waiting for data on {url}…")
             }
             re_smart_channel::SmartChannelSource::RrdWebEventListener
             | re_smart_channel::SmartChannelSource::JsChannel { .. } => {

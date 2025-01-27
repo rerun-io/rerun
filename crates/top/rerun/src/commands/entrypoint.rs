@@ -738,13 +738,14 @@ fn run_impl(
                 );
                 is_another_viewer_running = true;
             } else {
-                let server_options = re_sdk_comms::ServerOptions {
-                    max_latency_sec: parse_max_latency(args.drop_at_latency.as_ref()),
-                    quiet: false,
-                };
-                let tcp_listener: Receiver<LogMsg> =
-                    re_sdk_comms::serve(&args.bind, args.port, server_options)?;
-                rxs.push(tcp_listener);
+                let server_memory_limit = re_memory::MemoryLimit::parse(&args.server_memory_limit)
+                    .map_err(|err| anyhow::format_err!("Bad --server-memory-limit: {err}"))?;
+                let server: Receiver<LogMsg> = re_grpc_server::spawn_with_recv(
+                    args.bind.parse()?,
+                    args.port,
+                    server_memory_limit,
+                );
+                rxs.push(server);
             }
         }
 
@@ -1005,14 +1006,6 @@ fn parse_size(size: &str) -> anyhow::Result<[f32; 2]> {
 
     parse_size_inner(size)
         .ok_or_else(|| anyhow::anyhow!("Invalid size {:?}, expected e.g. 800x600", size))
-}
-
-#[cfg(feature = "server")]
-fn parse_max_latency(max_latency: Option<&String>) -> f32 {
-    max_latency.as_ref().map_or(f32::INFINITY, |time| {
-        re_format::parse_duration(time)
-            .unwrap_or_else(|err| panic!("Failed to parse max_latency ({max_latency:?}): {err}"))
-    })
 }
 
 // --- io ---

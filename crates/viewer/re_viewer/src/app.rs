@@ -539,13 +539,13 @@ impl App {
                 self.rx.retain(|r| match r.source() {
                     SmartChannelSource::File(_)
                     | SmartChannelSource::RrdHttpStream { .. }
-                    | SmartChannelSource::RerunGrpcStream { .. }
-                    | SmartChannelSource::MessageProxy { .. } => false,
+                    | SmartChannelSource::RerunGrpcStream { .. } => false,
 
                     SmartChannelSource::WsClient { .. }
                     | SmartChannelSource::JsChannel { .. }
                     | SmartChannelSource::RrdWebEventListener
                     | SmartChannelSource::Sdk
+                    | SmartChannelSource::MessageProxy { .. }
                     | SmartChannelSource::TcpServer { .. }
                     | SmartChannelSource::Stdin => true,
                 });
@@ -1575,7 +1575,6 @@ impl App {
                 SmartChannelSource::File(_)
                 | SmartChannelSource::RrdHttpStream { .. }
                 | SmartChannelSource::RerunGrpcStream { .. }
-                | SmartChannelSource::MessageProxy { .. }
                 | SmartChannelSource::Stdin
                 | SmartChannelSource::RrdWebEventListener
                 | SmartChannelSource::Sdk
@@ -1584,7 +1583,7 @@ impl App {
                     return true; // We expect data soon, so fade-in
                 }
 
-                SmartChannelSource::TcpServer { .. } => {
+                SmartChannelSource::TcpServer { .. } | SmartChannelSource::MessageProxy { .. } => {
                     // We start a TCP server by default in native rerun, i.e. when just running `rerun`,
                     // and in that case fading in the welcome screen would be slightly annoying.
                     // However, we also use the TCP server for sending data from the logging SDKs

@@ -81,14 +81,13 @@ impl std::fmt::Display for SmartChannelSource {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::File(path) => path.display().fmt(f),
-            Self::RrdHttpStream { url, follow: _ }
-            | Self::RerunGrpcStream { url }
-            | Self::MessageProxy { url } => url.fmt(f),
+            Self::RrdHttpStream { url, follow: _ } | Self::RerunGrpcStream { url } => url.fmt(f),
             Self::RrdWebEventListener => "Web event listener".fmt(f),
             Self::JsChannel { channel_name } => write!(f, "Javascript channel: {channel_name}"),
             Self::Sdk => "SDK".fmt(f),
             Self::WsClient { ws_server_url } => ws_server_url.fmt(f),
             Self::TcpServer { port } => write!(f, "TCP server, port {port}"),
+            Self::MessageProxy { url } => write!(f, "gRPC server: {url}"),
             Self::Stdin => "Standard input".fmt(f),
         }
     }
