@@ -10,7 +10,14 @@ service StorageNode {
     rpc FetchRecording(FetchRecordingRequest) returns (stream rerun.common.v0.RerunChunk) {}
 
     rpc IndexCollection(IndexCollectionRequest) returns (IndexCollectionResponse) {}
-    rpc QueryCollectionIndex(QueryCollectionIndexRequest) returns (QueryCollectionIndexResponse) {}
+    // Collection index query response is a RecordBatch with 2 columns:
+    // - 'resource_id' column with the id of the resource
+    // - timepoint column with the values reprensenting the points in time
+    // where index query matches. What time points are matched depends on the type of
+    // index that is queried. For example for vector search it might be timepoints where
+    // top-K matches are found within *each* resource in the collection. For inverted index
+    // it might be timepoints where the query string is found in the indexed column
+    rpc QueryCollectionIndex(QueryCollectionIndexRequest) returns (stream DataframePart) {}
 
     // metadata API calls
     rpc QueryCatalog(QueryCatalogRequest) returns (stream DataframePart) {}
@@ -39,29 +46,46 @@ message DataframePart {
 
 message IndexCollectionRequest {
     // which collection do we want to create index for
-    string collection_name = 1;
-    // what kind of index do we want to create
+    Collection collection = 1;
+    // what kind of index do we want to create and what are
+    // its index specific properties
     IndexType index_type = 2;
     // Component / column we want to index
     rerun.common.v0.ComponentColumnDescriptor column = 3;
+    // What is the filter index i.e. timeline for which we
+    // will query the timepoints
+    rerun.common.v0.IndexColumnSelector time_index = 4;
 }
 
-enum IndexType {
-    // unused
-    _UNUSED_TYP = 0;
+message IndexType {
+    oneof typ {
+        InvertedIndex inverted = 1;
+        VectorIvfPqIndex vector = 2;
+        BTreeIndex btree = 3;
+    }
+}
 
-    // index type for full text search
-    INVERTED = 1;
+message InvertedIndex {
+    bool store_position = 1;
+    string base_tokenizer  = 2;
+    // TODO(zehiko) add properties as needed
+}
 
-    // index type for vector search
-    // TODO(zehiko) we can expose others when needed
-    VECTOR_IVF_PF = 2;
+message VectorIvfPqIndex {
+    uint32 num_partitions = 1;
+    uint32 num_sub_vectors = 2;
+    VectorDistanceMetric distance_metrics = 3;
+}
 
-    // B-tree index suitable for range and sorted access queries
-    // on numerical, string and binary data
-    BTREE = 3;
+enum VectorDistanceMetric {
+    L2 = 0;
+    COSINE = 1;
+    DOT = 2;
+    HAMMING = 3;
+}
 
-    // TODO(zehiko) add others as needed
+message BTreeIndex {
+
 }
 
 message IndexCollectionResponse {}
@@ -70,13 +94,55 @@ message IndexCollectionResponse {}
 // ---------------- QueryCollectionIndex ------------------
 
 message QueryCollectionIndexRequest {
-
+    // Collection we want to run the query against on
+    // If not specified, the default collection is queried
+    Collection collection = 1;
+    // Index type specific query properties
+    IndexQueryData index = 2;
 }
 
-message QueryCollectionIndexResponse {
-    // TODO(zehiko) we need to define the response format
+message IndexQueryData {
+    // specific index properties based on the index type
+    oneof index_query {
+        InvertedIndexQuery inverted = 1;
+        VectorIndexQuery vector = 2;
+        BTreeIndexQuery btree = 3;
+    }
 }
 
+message InvertedIndexQuery {
+    // Query to execute represented as the arrow data
+    // Query should be a unit RecordBatch with 2 columns:
+    // - 'index' column with the name of the column we want to query
+    // - 'query' column with the value we want to query. It must be
+    // of utf8 type
+    DataframePart query = 1;
+    // TODO(zehiko) add properties as needed
+}
+
+message VectorIndexQuery {
+    // Query to execute represented as the arrow data
+    // Query should be a unit RecordBatch with 2 columns:
+    // - 'index' column with the name of the column we want to query
+    // - 'query' column with the value we want to query. It must be of
+    // type of float32 array
+    DataframePart query = 1;
+    uint32 top_k = 2;
+}
+
+message BTreeIndexQuery {
+    // Query to execute represented as the arrow data
+    // Query should be a unit RecordBatch with 2 columns:
+    // - 'index' column with the name of the column we want to query
+    // - 'query' column with the value we want to query. The type should
+    // be of the same type as the indexed column
+    DataframePart query = 1;
+    // TODO(zehiko) add properties as needed
+}
+
+message Collection {
+    string name = 1;
+}
 
 // ---------------- GetRecordingSchema ------------------
 

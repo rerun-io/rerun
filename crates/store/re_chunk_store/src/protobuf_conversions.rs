@@ -258,6 +258,27 @@ impl From<crate::QueryExpression> for re_protos::common::v0::Query {
     }
 }
 
+impl TryFrom<crate::ComponentColumnDescriptor>
+    for re_protos::common::v0::ComponentColumnDescriptor
+{
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::ComponentColumnDescriptor) -> Result<Self, Self::Error> {
+        Ok(Self {
+            entity_path: Some(value.entity_path.into()),
+            archetype_name: value.archetype_name.map(|an| an.to_string()),
+            archetype_field_name: value.archetype_field_name.map(|afn| afn.to_string()),
+            component_name: value.component_name.to_string(),
+            datatype: serde_json::to_string(&value.store_datatype)
+                .map_err(|err| invalid_field!(Self, "component column descriptor", err))?,
+            is_static: value.is_static,
+            is_tombstone: value.is_tombstone,
+            is_semantically_empty: value.is_semantically_empty,
+            is_indicator: value.is_indicator,
+        })
+    }
+}
+
 impl TryFrom<crate::ColumnDescriptor> for re_protos::common::v0::ColumnDescriptor {
     type Error = TypeConversionError;
 
@@ -280,28 +301,45 @@ impl TryFrom<crate::ColumnDescriptor> for re_protos::common::v0::ColumnDescripto
             crate::ColumnDescriptor::Component(component_descriptor) => Ok(Self {
                 descriptor_type: Some(
                     re_protos::common::v0::column_descriptor::DescriptorType::ComponentColumn(
-                        re_protos::common::v0::ComponentColumnDescriptor {
-                            entity_path: Some(component_descriptor.entity_path.into()),
-                            archetype_name: component_descriptor
-                                .archetype_name
-                                .map(|an| an.to_string()),
-                            archetype_field_name: component_descriptor
-                                .archetype_field_name
-                                .map(|afn| afn.to_string()),
-                            component_name: component_descriptor.component_name.to_string(),
-                            datatype: serde_json::to_string(&component_descriptor.store_datatype)
-                                .map_err(|err| {
-                                invalid_field!(Self, "component column descriptor", err)
-                            })?,
-                            is_static: component_descriptor.is_static,
-                            is_tombstone: component_descriptor.is_tombstone,
-                            is_semantically_empty: component_descriptor.is_semantically_empty,
-                            is_indicator: component_descriptor.is_indicator,
-                        },
+                        component_descriptor.try_into()?,
                     ),
                 ),
             }),
         }
+    }
+}
+
+impl TryFrom<re_protos::common::v0::ComponentColumnDescriptor>
+    for crate::ComponentColumnDescriptor
+{
+    type Error = TypeConversionError;
+
+    fn try_from(
+        value: re_protos::common::v0::ComponentColumnDescriptor,
+    ) -> Result<Self, Self::Error> {
+        Ok(Self {
+            entity_path: value
+                .entity_path
+                .ok_or(missing_field!(
+                    re_protos::common::v0::ComponentColumnDescriptor,
+                    "entity_path",
+                ))?
+                .try_into()?,
+            archetype_name: value.archetype_name.map(Into::into),
+            archetype_field_name: value.archetype_field_name.map(Into::into),
+            component_name: value.component_name.into(),
+            store_datatype: serde_json::from_str(&value.datatype).map_err(|err| {
+                invalid_field!(
+                    re_protos::common::v0::ColumnDescriptor,
+                    "component column descriptor",
+                    err
+                )
+            })?,
+            is_static: value.is_static,
+            is_tombstone: value.is_tombstone,
+            is_semantically_empty: value.is_semantically_empty,
+            is_indicator: value.is_indicator,
+        })
     }
 }
 
@@ -335,31 +373,7 @@ impl TryFrom<re_protos::common::v0::ColumnDescriptor> for crate::ColumnDescripto
             })),
             re_protos::common::v0::column_descriptor::DescriptorType::ComponentColumn(
                 component_descriptor,
-            ) => Ok(Self::Component(crate::ComponentColumnDescriptor {
-                entity_path: component_descriptor
-                    .entity_path
-                    .ok_or(missing_field!(
-                        re_protos::common::v0::ComponentColumnDescriptor,
-                        "entity_path",
-                    ))?
-                    .try_into()?,
-                archetype_name: component_descriptor.archetype_name.map(Into::into),
-                archetype_field_name: component_descriptor.archetype_field_name.map(Into::into),
-                component_name: component_descriptor.component_name.into(),
-                store_datatype: serde_json::from_str(&component_descriptor.datatype).map_err(
-                    |err| {
-                        invalid_field!(
-                            re_protos::common::v0::ColumnDescriptor,
-                            "component column descriptor",
-                            err
-                        )
-                    },
-                )?,
-                is_static: component_descriptor.is_static,
-                is_tombstone: component_descriptor.is_tombstone,
-                is_semantically_empty: component_descriptor.is_semantically_empty,
-                is_indicator: component_descriptor.is_indicator,
-            })),
+            ) => Ok(Self::Component(component_descriptor.try_into()?)),
         }
     }
 }

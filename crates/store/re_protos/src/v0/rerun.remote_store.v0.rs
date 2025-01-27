@@ -22,14 +22,19 @@ impl ::prost::Name for DataframePart {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct IndexCollectionRequest {
     /// which collection do we want to create index for
-    #[prost(string, tag = "1")]
-    pub collection_name: ::prost::alloc::string::String,
-    /// what kind of index do we want to create
-    #[prost(enumeration = "IndexType", tag = "2")]
-    pub index_type: i32,
+    #[prost(message, optional, tag = "1")]
+    pub collection: ::core::option::Option<Collection>,
+    /// what kind of index do we want to create and what are
+    /// its index specific properties
+    #[prost(message, optional, tag = "2")]
+    pub index_type: ::core::option::Option<IndexType>,
     /// Component / column we want to index
     #[prost(message, optional, tag = "3")]
     pub column: ::core::option::Option<super::super::common::v0::ComponentColumnDescriptor>,
+    /// What is the filter index i.e. timeline for which we
+    /// will query the timepoints
+    #[prost(message, optional, tag = "4")]
+    pub time_index: ::core::option::Option<super::super::common::v0::IndexColumnSelector>,
 }
 impl ::prost::Name for IndexCollectionRequest {
     const NAME: &'static str = "IndexCollectionRequest";
@@ -39,6 +44,82 @@ impl ::prost::Name for IndexCollectionRequest {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.remote_store.v0.IndexCollectionRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct IndexType {
+    #[prost(oneof = "index_type::Typ", tags = "1, 2, 3")]
+    pub typ: ::core::option::Option<index_type::Typ>,
+}
+/// Nested message and enum types in `IndexType`.
+pub mod index_type {
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum Typ {
+        #[prost(message, tag = "1")]
+        Inverted(super::InvertedIndex),
+        #[prost(message, tag = "2")]
+        Vector(super::VectorIvfPqIndex),
+        #[prost(message, tag = "3")]
+        Btree(super::BTreeIndex),
+    }
+}
+impl ::prost::Name for IndexType {
+    const NAME: &'static str = "IndexType";
+    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.remote_store.v0.IndexType".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.remote_store.v0.IndexType".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct InvertedIndex {
+    #[prost(bool, tag = "1")]
+    pub store_position: bool,
+    /// TODO(zehiko) add properties as needed
+    #[prost(string, tag = "2")]
+    pub base_tokenizer: ::prost::alloc::string::String,
+}
+impl ::prost::Name for InvertedIndex {
+    const NAME: &'static str = "InvertedIndex";
+    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.remote_store.v0.InvertedIndex".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.remote_store.v0.InvertedIndex".into()
+    }
+}
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct VectorIvfPqIndex {
+    #[prost(uint32, tag = "1")]
+    pub num_partitions: u32,
+    #[prost(uint32, tag = "2")]
+    pub num_sub_vectors: u32,
+    #[prost(enumeration = "VectorDistanceMetric", tag = "3")]
+    pub distance_metrics: i32,
+}
+impl ::prost::Name for VectorIvfPqIndex {
+    const NAME: &'static str = "VectorIvfPqIndex";
+    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.remote_store.v0.VectorIvfPqIndex".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.remote_store.v0.VectorIvfPqIndex".into()
+    }
+}
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct BTreeIndex {}
+impl ::prost::Name for BTreeIndex {
+    const NAME: &'static str = "BTreeIndex";
+    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.remote_store.v0.BTreeIndex".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.remote_store.v0.BTreeIndex".into()
     }
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
@@ -53,8 +134,16 @@ impl ::prost::Name for IndexCollectionResponse {
         "/rerun.remote_store.v0.IndexCollectionResponse".into()
     }
 }
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct QueryCollectionIndexRequest {}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct QueryCollectionIndexRequest {
+    /// Collection we want to run the query against on
+    /// If not specified, the default collection is queried
+    #[prost(message, optional, tag = "1")]
+    pub collection: ::core::option::Option<Collection>,
+    /// Index type specific query properties
+    #[prost(message, optional, tag = "2")]
+    pub index: ::core::option::Option<IndexQueryData>,
+}
 impl ::prost::Name for QueryCollectionIndexRequest {
     const NAME: &'static str = "QueryCollectionIndexRequest";
     const PACKAGE: &'static str = "rerun.remote_store.v0";
@@ -65,17 +154,114 @@ impl ::prost::Name for QueryCollectionIndexRequest {
         "/rerun.remote_store.v0.QueryCollectionIndexRequest".into()
     }
 }
-/// TODO(zehiko) we need to define the response format
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct QueryCollectionIndexResponse {}
-impl ::prost::Name for QueryCollectionIndexResponse {
-    const NAME: &'static str = "QueryCollectionIndexResponse";
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct IndexQueryData {
+    /// specific index properties based on the index type
+    #[prost(oneof = "index_query_data::IndexQuery", tags = "1, 2, 3")]
+    pub index_query: ::core::option::Option<index_query_data::IndexQuery>,
+}
+/// Nested message and enum types in `IndexQueryData`.
+pub mod index_query_data {
+    /// specific index properties based on the index type
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum IndexQuery {
+        #[prost(message, tag = "1")]
+        Inverted(super::InvertedIndexQuery),
+        #[prost(message, tag = "2")]
+        Vector(super::VectorIndexQuery),
+        #[prost(message, tag = "3")]
+        Btree(super::BTreeIndexQuery),
+    }
+}
+impl ::prost::Name for IndexQueryData {
+    const NAME: &'static str = "IndexQueryData";
     const PACKAGE: &'static str = "rerun.remote_store.v0";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.remote_store.v0.QueryCollectionIndexResponse".into()
+        "rerun.remote_store.v0.IndexQueryData".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.remote_store.v0.QueryCollectionIndexResponse".into()
+        "/rerun.remote_store.v0.IndexQueryData".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct InvertedIndexQuery {
+    /// Query to execute represented as the arrow data
+    /// Query should be a unit RecordBatch with 2 columns:
+    /// - 'index' column with the name of the column we want to query
+    /// - 'query' column with the value we want to query. It must be
+    /// of utf8 type
+    ///
+    /// TODO(zehiko) add properties as needed
+    #[prost(message, optional, tag = "1")]
+    pub query: ::core::option::Option<DataframePart>,
+}
+impl ::prost::Name for InvertedIndexQuery {
+    const NAME: &'static str = "InvertedIndexQuery";
+    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.remote_store.v0.InvertedIndexQuery".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.remote_store.v0.InvertedIndexQuery".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct VectorIndexQuery {
+    /// Query to execute represented as the arrow data
+    /// Query should be a unit RecordBatch with 2 columns:
+    /// - 'index' column with the name of the column we want to query
+    /// - 'query' column with the value we want to query. It must be of
+    /// type of float32 array
+    #[prost(message, optional, tag = "1")]
+    pub query: ::core::option::Option<DataframePart>,
+    #[prost(uint32, tag = "2")]
+    pub top_k: u32,
+}
+impl ::prost::Name for VectorIndexQuery {
+    const NAME: &'static str = "VectorIndexQuery";
+    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.remote_store.v0.VectorIndexQuery".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.remote_store.v0.VectorIndexQuery".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct BTreeIndexQuery {
+    /// Query to execute represented as the arrow data
+    /// Query should be a unit RecordBatch with 2 columns:
+    /// - 'index' column with the name of the column we want to query
+    /// - 'query' column with the value we want to query. The type should
+    /// be of the same type as the indexed column
+    ///
+    /// TODO(zehiko) add properties as needed
+    #[prost(message, optional, tag = "1")]
+    pub query: ::core::option::Option<DataframePart>,
+}
+impl ::prost::Name for BTreeIndexQuery {
+    const NAME: &'static str = "BTreeIndexQuery";
+    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.remote_store.v0.BTreeIndexQuery".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.remote_store.v0.BTreeIndexQuery".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct Collection {
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
+}
+impl ::prost::Name for Collection {
+    const NAME: &'static str = "Collection";
+    const PACKAGE: &'static str = "rerun.remote_store.v0";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.remote_store.v0.Collection".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.remote_store.v0.Collection".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -365,38 +551,32 @@ impl ::prost::Name for RemoteStoreError {
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
-pub enum IndexType {
-    /// unused
-    UnusedTyp = 0,
-    /// index type for full text search
-    Inverted = 1,
-    /// index type for vector search
-    /// TODO(zehiko) we can expose others when needed
-    VectorIvfPf = 2,
-    /// B-tree index suitable for range and sorted access queries
-    /// on numerical, string and binary data
-    Btree = 3,
+pub enum VectorDistanceMetric {
+    L2 = 0,
+    Cosine = 1,
+    Dot = 2,
+    Hamming = 3,
 }
-impl IndexType {
+impl VectorDistanceMetric {
     /// String value of the enum field names used in the ProtoBuf definition.
     ///
     /// The values are not transformed in any way and thus are considered stable
     /// (if the ProtoBuf definition does not change) and safe for programmatic use.
     pub fn as_str_name(&self) -> &'static str {
         match self {
-            Self::UnusedTyp => "_UNUSED_TYP",
-            Self::Inverted => "INVERTED",
-            Self::VectorIvfPf => "VECTOR_IVF_PF",
-            Self::Btree => "BTREE",
+            Self::L2 => "L2",
+            Self::Cosine => "COSINE",
+            Self::Dot => "DOT",
+            Self::Hamming => "HAMMING",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
     pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
         match value {
-            "_UNUSED_TYP" => Some(Self::UnusedTyp),
-            "INVERTED" => Some(Self::Inverted),
-            "VECTOR_IVF_PF" => Some(Self::VectorIvfPf),
-            "BTREE" => Some(Self::Btree),
+            "L2" => Some(Self::L2),
+            "COSINE" => Some(Self::Cosine),
+            "DOT" => Some(Self::Dot),
+            "HAMMING" => Some(Self::Hamming),
             _ => None,
         }
     }
@@ -601,11 +781,20 @@ pub mod storage_node_client {
             ));
             self.inner.unary(req, path, codec).await
         }
+        /// Collection index query response is a RecordBatch with 2 columns:
+        /// - 'resource_id' column with the id of the resource
+        /// - timepoint column with the values reprensenting the points in time
+        /// where index query matches. What time points are matched depends on the type of
+        /// index that is queried. For example for vector search it might be timepoints where
+        /// top-K matches are found within *each* resource in the collection. For inverted index
+        /// it might be timepoints where the query string is found in the indexed column
         pub async fn query_collection_index(
             &mut self,
             request: impl tonic::IntoRequest<super::QueryCollectionIndexRequest>,
-        ) -> std::result::Result<tonic::Response<super::QueryCollectionIndexResponse>, tonic::Status>
-        {
+        ) -> std::result::Result<
+            tonic::Response<tonic::codec::Streaming<super::DataframePart>>,
+            tonic::Status,
+        > {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
@@ -618,7 +807,7 @@ pub mod storage_node_client {
                 "rerun.remote_store.v0.StorageNode",
                 "QueryCollectionIndex",
             ));
-            self.inner.unary(req, path, codec).await
+            self.inner.server_streaming(req, path, codec).await
         }
         /// metadata API calls
         pub async fn query_catalog(
@@ -780,10 +969,22 @@ pub mod storage_node_server {
             &self,
             request: tonic::Request<super::IndexCollectionRequest>,
         ) -> std::result::Result<tonic::Response<super::IndexCollectionResponse>, tonic::Status>;
+        /// Server streaming response type for the QueryCollectionIndex method.
+        type QueryCollectionIndexStream: tonic::codegen::tokio_stream::Stream<
+                Item = std::result::Result<super::DataframePart, tonic::Status>,
+            > + std::marker::Send
+            + 'static;
+        /// Collection index query response is a RecordBatch with 2 columns:
+        /// - 'resource_id' column with the id of the resource
+        /// - timepoint column with the values reprensenting the points in time
+        /// where index query matches. What time points are matched depends on the type of
+        /// index that is queried. For example for vector search it might be timepoints where
+        /// top-K matches are found within *each* resource in the collection. For inverted index
+        /// it might be timepoints where the query string is found in the indexed column
         async fn query_collection_index(
             &self,
             request: tonic::Request<super::QueryCollectionIndexRequest>,
-        ) -> std::result::Result<tonic::Response<super::QueryCollectionIndexResponse>, tonic::Status>;
+        ) -> std::result::Result<tonic::Response<Self::QueryCollectionIndexStream>, tonic::Status>;
         /// Server streaming response type for the QueryCatalog method.
         type QueryCatalogStream: tonic::codegen::tokio_stream::Stream<
                 Item = std::result::Result<super::DataframePart, tonic::Status>,
@@ -1021,11 +1222,13 @@ pub mod storage_node_server {
                     #[allow(non_camel_case_types)]
                     struct QueryCollectionIndexSvc<T: StorageNode>(pub Arc<T>);
                     impl<T: StorageNode>
-                        tonic::server::UnaryService<super::QueryCollectionIndexRequest>
+                        tonic::server::ServerStreamingService<super::QueryCollectionIndexRequest>
                         for QueryCollectionIndexSvc<T>
                     {
-                        type Response = super::QueryCollectionIndexResponse;
-                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        type Response = super::DataframePart;
+                        type ResponseStream = T::QueryCollectionIndexStream;
+                        type Future =
+                            BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
                         fn call(
                             &mut self,
                             request: tonic::Request<super::QueryCollectionIndexRequest>,
@@ -1054,7 +1257,7 @@ pub mod storage_node_server {
                                 max_decoding_message_size,
                                 max_encoding_message_size,
                             );
-                        let res = grpc.unary(method, req).await;
+                        let res = grpc.server_streaming(method, req).await;
                         Ok(res)
                     };
                     Box::pin(fut)
