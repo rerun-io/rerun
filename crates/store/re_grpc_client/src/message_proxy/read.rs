@@ -11,24 +11,22 @@ use crate::StreamError;
 use crate::TonicStatusError;
 
 pub fn stream(
-    url: String,
+    url: &str,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
 ) -> Result<re_smart_channel::Receiver<LogMsg>, InvalidMessageProxyAddress> {
     re_log::debug!("Loading {url} via gRPC…");
 
-    let parsed_url = MessageProxyAddress::parse(&url)?;
+    let parsed_url = MessageProxyAddress::parse(url)?;
 
+    let url = url.to_owned();
     let (tx, rx) = re_smart_channel::smart_channel(
         re_smart_channel::SmartMessageSource::MessageProxy { url: url.clone() },
-        re_smart_channel::SmartChannelSource::MessageProxy { url: url.clone() },
+        re_smart_channel::SmartChannelSource::MessageProxy { url },
     );
 
     crate::spawn_future(async move {
-        if let Err(err) = stream_async(parsed_url, tx, on_msg).await {
-            re_log::error!(
-                "Error while streaming from {url}: {}",
-                re_error::format_ref(&err)
-            );
+        if let Err(err) = stream_async(parsed_url, &tx, on_msg).await {
+            tx.quit(Some(Box::new(err))).ok();
         }
     });
 
@@ -80,7 +78,7 @@ pub struct InvalidMessageProxyAddress {
 
 async fn stream_async(
     url: MessageProxyAddress,
-    tx: re_smart_channel::Sender<LogMsg>,
+    tx: &re_smart_channel::Sender<LogMsg>,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
 ) -> Result<(), StreamError> {
     let mut client = {

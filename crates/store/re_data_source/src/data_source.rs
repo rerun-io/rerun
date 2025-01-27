@@ -260,7 +260,7 @@ impl DataSource {
             }
 
             Self::MessageProxy { url } => {
-                re_grpc_client::message_proxy::stream(url, on_msg).map_err(|err| err.into())
+                re_grpc_client::message_proxy::stream(&url, on_msg).map_err(|err| err.into())
             }
         }
     }
