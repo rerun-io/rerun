@@ -19,7 +19,7 @@ namespace rerun::blueprint::archetypes {
 
     Collection<ComponentColumn> ForceCenter::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(2);
+        columns.reserve(3);
         if (enabled.has_value()) {
             columns.push_back(
                 ComponentColumn::from_batch_with_lengths(enabled.value(), lengths_).value_or_throw()
@@ -29,6 +29,10 @@ namespace rerun::blueprint::archetypes {
             columns.push_back(ComponentColumn::from_batch_with_lengths(strength.value(), lengths_)
                                   .value_or_throw());
         }
+        columns.push_back(
+            ComponentColumn::from_indicators<ForceCenter>(static_cast<uint32_t>(lengths_.size()))
+                .value_or_throw()
+        );
         return columns;
     }
 

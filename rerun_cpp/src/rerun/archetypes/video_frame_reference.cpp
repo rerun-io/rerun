@@ -19,7 +19,7 @@ namespace rerun::archetypes {
 
     Collection<ComponentColumn> VideoFrameReference::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(2);
+        columns.reserve(3);
         if (timestamp.has_value()) {
             columns.push_back(ComponentColumn::from_batch_with_lengths(timestamp.value(), lengths_)
                                   .value_or_throw());
@@ -30,6 +30,10 @@ namespace rerun::archetypes {
                     .value_or_throw()
             );
         }
+        columns.push_back(ComponentColumn::from_indicators<VideoFrameReference>(
+                              static_cast<uint32_t>(lengths_.size())
+        )
+                              .value_or_throw());
         return columns;
     }
 

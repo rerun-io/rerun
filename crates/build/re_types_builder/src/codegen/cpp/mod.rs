@@ -624,7 +624,8 @@ impl QuotedObject {
                 name_and_parameters: quote! { columns(const Collection<uint32_t>& lengths_) },
             },
             definition_body: {
-                let num_fields = quote_integer(obj.fields.len());
+                // Plus 1 for the indicator column.
+                let num_fields = quote_integer(obj.fields.len() + 1);
                 let push_back_columns = obj.fields.iter().map(|field| {
                     let field_ident = field_name_ident(field);
                     quote! {
@@ -640,6 +641,10 @@ impl QuotedObject {
                     std::vector<ComponentColumn> columns;
                     columns.reserve(#num_fields);
                     #(#push_back_columns)*
+                    columns.push_back(
+                        ComponentColumn::from_indicators<#archetype_type_ident>(static_cast<uint32_t>(lengths_.size()))
+                            .value_or_throw()
+                    );
                     return columns;
                 }
             },

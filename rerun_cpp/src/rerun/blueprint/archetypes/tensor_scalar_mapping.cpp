@@ -21,7 +21,7 @@ namespace rerun::blueprint::archetypes {
 
     Collection<ComponentColumn> TensorScalarMapping::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(3);
+        columns.reserve(4);
         if (mag_filter.has_value()) {
             columns.push_back(ComponentColumn::from_batch_with_lengths(mag_filter.value(), lengths_)
                                   .value_or_throw());
@@ -35,6 +35,10 @@ namespace rerun::blueprint::archetypes {
                 ComponentColumn::from_batch_with_lengths(gamma.value(), lengths_).value_or_throw()
             );
         }
+        columns.push_back(ComponentColumn::from_indicators<TensorScalarMapping>(
+                              static_cast<uint32_t>(lengths_.size())
+        )
+                              .value_or_throw());
         return columns;
     }
 

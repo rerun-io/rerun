@@ -19,7 +19,7 @@ namespace rerun::blueprint::archetypes {
 
     Collection<ComponentColumn> PlotLegend::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(2);
+        columns.reserve(3);
         if (corner.has_value()) {
             columns.push_back(
                 ComponentColumn::from_batch_with_lengths(corner.value(), lengths_).value_or_throw()
@@ -30,6 +30,10 @@ namespace rerun::blueprint::archetypes {
                 ComponentColumn::from_batch_with_lengths(visible.value(), lengths_).value_or_throw()
             );
         }
+        columns.push_back(
+            ComponentColumn::from_indicators<PlotLegend>(static_cast<uint32_t>(lengths_.size()))
+                .value_or_throw()
+        );
         return columns;
     }
 

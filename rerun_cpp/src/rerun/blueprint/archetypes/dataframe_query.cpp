@@ -34,7 +34,7 @@ namespace rerun::blueprint::archetypes {
 
     Collection<ComponentColumn> DataframeQuery::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(5);
+        columns.reserve(6);
         if (timeline.has_value()) {
             columns.push_back(ComponentColumn::from_batch_with_lengths(timeline.value(), lengths_)
                                   .value_or_throw());
@@ -62,6 +62,10 @@ namespace rerun::blueprint::archetypes {
                 ComponentColumn::from_batch_with_lengths(select.value(), lengths_).value_or_throw()
             );
         }
+        columns.push_back(
+            ComponentColumn::from_indicators<DataframeQuery>(static_cast<uint32_t>(lengths_.size()))
+                .value_or_throw()
+        );
         return columns;
     }
 

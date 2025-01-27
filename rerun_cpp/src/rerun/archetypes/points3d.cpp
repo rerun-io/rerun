@@ -31,7 +31,7 @@ namespace rerun::archetypes {
 
     Collection<ComponentColumn> Points3D::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(7);
+        columns.reserve(8);
         if (positions.has_value()) {
             columns.push_back(ComponentColumn::from_batch_with_lengths(positions.value(), lengths_)
                                   .value_or_throw());
@@ -67,6 +67,10 @@ namespace rerun::archetypes {
                     .value_or_throw()
             );
         }
+        columns.push_back(
+            ComponentColumn::from_indicators<Points3D>(static_cast<uint32_t>(lengths_.size()))
+                .value_or_throw()
+        );
         return columns;
     }
 

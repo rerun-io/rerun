@@ -16,12 +16,16 @@ namespace rerun::blueprint::archetypes {
 
     Collection<ComponentColumn> PanelBlueprint::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(1);
+        columns.reserve(2);
         if (state.has_value()) {
             columns.push_back(
                 ComponentColumn::from_batch_with_lengths(state.value(), lengths_).value_or_throw()
             );
         }
+        columns.push_back(
+            ComponentColumn::from_indicators<PanelBlueprint>(static_cast<uint32_t>(lengths_.size()))
+                .value_or_throw()
+        );
         return columns;
     }
 

@@ -42,7 +42,7 @@ namespace rerun::archetypes {
 
     Collection<ComponentColumn> Boxes3D::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(10);
+        columns.reserve(11);
         if (half_sizes.has_value()) {
             columns.push_back(ComponentColumn::from_batch_with_lengths(half_sizes.value(), lengths_)
                                   .value_or_throw());
@@ -93,6 +93,10 @@ namespace rerun::archetypes {
             columns.push_back(ComponentColumn::from_batch_with_lengths(class_ids.value(), lengths_)
                                   .value_or_throw());
         }
+        columns.push_back(
+            ComponentColumn::from_indicators<Boxes3D>(static_cast<uint32_t>(lengths_.size()))
+                .value_or_throw()
+        );
         return columns;
     }
 

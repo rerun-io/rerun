@@ -40,7 +40,7 @@ namespace rerun::archetypes {
 
     Collection<ComponentColumn> Mesh3D::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(9);
+        columns.reserve(10);
         if (vertex_positions.has_value()) {
             columns.push_back(
                 ComponentColumn::from_batch_with_lengths(vertex_positions.value(), lengths_)
@@ -93,6 +93,10 @@ namespace rerun::archetypes {
             columns.push_back(ComponentColumn::from_batch_with_lengths(class_ids.value(), lengths_)
                                   .value_or_throw());
         }
+        columns.push_back(
+            ComponentColumn::from_indicators<Mesh3D>(static_cast<uint32_t>(lengths_.size()))
+                .value_or_throw()
+        );
         return columns;
     }
 

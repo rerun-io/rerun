@@ -22,7 +22,7 @@ namespace rerun::archetypes {
 
     Collection<ComponentColumn> SeriesPoint::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(4);
+        columns.reserve(5);
         if (color.has_value()) {
             columns.push_back(
                 ComponentColumn::from_batch_with_lengths(color.value(), lengths_).value_or_throw()
@@ -44,6 +44,10 @@ namespace rerun::archetypes {
                     .value_or_throw()
             );
         }
+        columns.push_back(
+            ComponentColumn::from_indicators<SeriesPoint>(static_cast<uint32_t>(lengths_.size()))
+                .value_or_throw()
+        );
         return columns;
     }
 

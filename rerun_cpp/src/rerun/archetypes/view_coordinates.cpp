@@ -15,12 +15,16 @@ namespace rerun::archetypes {
 
     Collection<ComponentColumn> ViewCoordinates::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(1);
+        columns.reserve(2);
         if (xyz.has_value()) {
             columns.push_back(
                 ComponentColumn::from_batch_with_lengths(xyz.value(), lengths_).value_or_throw()
             );
         }
+        columns.push_back(ComponentColumn::from_indicators<ViewCoordinates>(
+                              static_cast<uint32_t>(lengths_.size())
+        )
+                              .value_or_throw());
         return columns;
     }
 

@@ -20,7 +20,7 @@ namespace rerun::archetypes {
 
     Collection<ComponentColumn> GeoLineStrings::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(3);
+        columns.reserve(4);
         if (line_strings.has_value()) {
             columns.push_back(
                 ComponentColumn::from_batch_with_lengths(line_strings.value(), lengths_)
@@ -37,6 +37,10 @@ namespace rerun::archetypes {
                 ComponentColumn::from_batch_with_lengths(colors.value(), lengths_).value_or_throw()
             );
         }
+        columns.push_back(
+            ComponentColumn::from_indicators<GeoLineStrings>(static_cast<uint32_t>(lengths_.size()))
+                .value_or_throw()
+        );
         return columns;
     }
 

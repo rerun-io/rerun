@@ -28,7 +28,7 @@ namespace rerun::archetypes {
 
     Collection<ComponentColumn> Pinhole::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(4);
+        columns.reserve(5);
         if (image_from_camera.has_value()) {
             columns.push_back(
                 ComponentColumn::from_batch_with_lengths(image_from_camera.value(), lengths_)
@@ -49,6 +49,10 @@ namespace rerun::archetypes {
                     .value_or_throw()
             );
         }
+        columns.push_back(
+            ComponentColumn::from_indicators<Pinhole>(static_cast<uint32_t>(lengths_.size()))
+                .value_or_throw()
+        );
         return columns;
     }
 

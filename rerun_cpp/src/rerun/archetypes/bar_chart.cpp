@@ -17,7 +17,7 @@ namespace rerun::archetypes {
 
     Collection<ComponentColumn> BarChart::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(2);
+        columns.reserve(3);
         if (values.has_value()) {
             columns.push_back(
                 ComponentColumn::from_batch_with_lengths(values.value(), lengths_).value_or_throw()
@@ -28,6 +28,10 @@ namespace rerun::archetypes {
                 ComponentColumn::from_batch_with_lengths(color.value(), lengths_).value_or_throw()
             );
         }
+        columns.push_back(
+            ComponentColumn::from_indicators<BarChart>(static_cast<uint32_t>(lengths_.size()))
+                .value_or_throw()
+        );
         return columns;
     }
 

@@ -23,7 +23,7 @@ namespace rerun::archetypes {
 
     Collection<ComponentColumn> EncodedImage::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(4);
+        columns.reserve(5);
         if (blob.has_value()) {
             columns.push_back(
                 ComponentColumn::from_batch_with_lengths(blob.value(), lengths_).value_or_throw()
@@ -42,6 +42,10 @@ namespace rerun::archetypes {
             columns.push_back(ComponentColumn::from_batch_with_lengths(draw_order.value(), lengths_)
                                   .value_or_throw());
         }
+        columns.push_back(
+            ComponentColumn::from_indicators<EncodedImage>(static_cast<uint32_t>(lengths_.size()))
+                .value_or_throw()
+        );
         return columns;
     }
 

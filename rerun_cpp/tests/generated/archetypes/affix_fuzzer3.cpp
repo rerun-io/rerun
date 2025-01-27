@@ -67,7 +67,7 @@ namespace rerun::archetypes {
 
     Collection<ComponentColumn> AffixFuzzer3::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(18);
+        columns.reserve(19);
         if (fuzz2001.has_value()) {
             columns.push_back(ComponentColumn::from_batch_with_lengths(fuzz2001.value(), lengths_)
                                   .value_or_throw());
@@ -140,6 +140,10 @@ namespace rerun::archetypes {
             columns.push_back(ComponentColumn::from_batch_with_lengths(fuzz2018.value(), lengths_)
                                   .value_or_throw());
         }
+        columns.push_back(
+            ComponentColumn::from_indicators<AffixFuzzer3>(static_cast<uint32_t>(lengths_.size()))
+                .value_or_throw()
+        );
         return columns;
     }
 

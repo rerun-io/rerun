@@ -38,7 +38,7 @@ namespace rerun::archetypes {
 
     Collection<ComponentColumn> Capsules3D::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(9);
+        columns.reserve(10);
         if (lengths.has_value()) {
             columns.push_back(
                 ComponentColumn::from_batch_with_lengths(lengths.value(), lengths_).value_or_throw()
@@ -87,6 +87,10 @@ namespace rerun::archetypes {
             columns.push_back(ComponentColumn::from_batch_with_lengths(class_ids.value(), lengths_)
                                   .value_or_throw());
         }
+        columns.push_back(
+            ComponentColumn::from_indicators<Capsules3D>(static_cast<uint32_t>(lengths_.size()))
+                .value_or_throw()
+        );
         return columns;
     }
 

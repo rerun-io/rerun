@@ -29,7 +29,7 @@ namespace rerun::archetypes {
 
     Collection<ComponentColumn> InstancePoses3D::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(5);
+        columns.reserve(6);
         if (translations.has_value()) {
             columns.push_back(
                 ComponentColumn::from_batch_with_lengths(translations.value(), lengths_)
@@ -58,6 +58,10 @@ namespace rerun::archetypes {
                 ComponentColumn::from_batch_with_lengths(mat3x3.value(), lengths_).value_or_throw()
             );
         }
+        columns.push_back(ComponentColumn::from_indicators<InstancePoses3D>(
+                              static_cast<uint32_t>(lengths_.size())
+        )
+                              .value_or_throw());
         return columns;
     }
 

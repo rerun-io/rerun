@@ -26,7 +26,7 @@ namespace rerun::blueprint::archetypes {
 
     Collection<ComponentColumn> LineGrid3D::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(5);
+        columns.reserve(6);
         if (visible.has_value()) {
             columns.push_back(
                 ComponentColumn::from_batch_with_lengths(visible.value(), lengths_).value_or_throw()
@@ -53,6 +53,10 @@ namespace rerun::blueprint::archetypes {
                 ComponentColumn::from_batch_with_lengths(color.value(), lengths_).value_or_throw()
             );
         }
+        columns.push_back(
+            ComponentColumn::from_indicators<LineGrid3D>(static_cast<uint32_t>(lengths_.size()))
+                .value_or_throw()
+        );
         return columns;
     }
 

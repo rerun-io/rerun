@@ -26,7 +26,7 @@ namespace rerun::blueprint::archetypes {
 
     Collection<ComponentColumn> ViewBlueprint::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(4);
+        columns.reserve(5);
         if (class_identifier.has_value()) {
             columns.push_back(
                 ComponentColumn::from_batch_with_lengths(class_identifier.value(), lengths_)
@@ -50,6 +50,10 @@ namespace rerun::blueprint::archetypes {
                 ComponentColumn::from_batch_with_lengths(visible.value(), lengths_).value_or_throw()
             );
         }
+        columns.push_back(
+            ComponentColumn::from_indicators<ViewBlueprint>(static_cast<uint32_t>(lengths_.size()))
+                .value_or_throw()
+        );
         return columns;
     }
 

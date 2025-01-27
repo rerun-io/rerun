@@ -34,7 +34,7 @@ namespace rerun::archetypes {
 
     Collection<ComponentColumn> Points2D::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(8);
+        columns.reserve(9);
         if (positions.has_value()) {
             columns.push_back(ComponentColumn::from_batch_with_lengths(positions.value(), lengths_)
                                   .value_or_throw());
@@ -74,6 +74,10 @@ namespace rerun::archetypes {
                     .value_or_throw()
             );
         }
+        columns.push_back(
+            ComponentColumn::from_indicators<Points2D>(static_cast<uint32_t>(lengths_.size()))
+                .value_or_throw()
+        );
         return columns;
     }
 
