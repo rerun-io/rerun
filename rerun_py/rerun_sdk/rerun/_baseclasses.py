@@ -388,14 +388,14 @@ class ComponentColumn:
                 self.lengths = np.zeros(len(component_batch.as_arrow_array()))
             else:
                 # Normal component, lengths specified -> respect outer length, but enforce zero-sized batches still
-                self.lengths = np.zeros(len(lengths))  # type: ignore[arg-type]
+                self.lengths = np.zeros(len(np.array(lengths)))
         else:
             if lengths is None:
                 # Normal component, no lengths -> unit-sized batches by default
                 self.lengths = np.ones(len(component_batch.as_arrow_array()))
             else:
                 # Normal component, lengths specified -> follow instructions
-                self.lengths = lengths  # type: ignore[assignment]
+                self.lengths = np.array(lengths)
 
     def component_descriptor(self) -> ComponentDescriptor:
         """
