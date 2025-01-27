@@ -1,6 +1,4 @@
-use crate::{
-    ComponentBatch, ComponentBatchCowWithDescriptor, SerializationResult, SerializedComponentBatch,
-};
+use crate::{SerializationResult, SerializedComponentBatch};
 
 /// Describes the interface for interpreting an object as a bundle of [`Component`]s.
 ///
@@ -19,32 +17,6 @@ use crate::{
 /// [Custom Data Loader]: https://github.com/rerun-io/rerun/blob/latest/examples/rust/custom_data_loader
 /// [`Component`]: [crate::Component]
 pub trait AsComponents {
-    /// Deprecated. Do not use. See [`AsComponents::as_serialized_batches`] instead.
-    ///
-    /// Exposes the object's contents as a set of [`ComponentBatch`]s.
-    ///
-    /// This is the main mechanism for easily extending builtin archetypes or even writing
-    /// fully custom ones.
-    /// Have a look at our [Custom Data Loader] example to learn more about extending archetypes.
-    ///
-    /// Implementers of [`AsComponents`] get one last chance to override the tags in the
-    /// [`ComponentDescriptor`], see [`ComponentBatchCowWithDescriptor::descriptor_override`].
-    ///
-    /// [Custom Data Loader]: https://github.com/rerun-io/rerun/tree/latest/examples/rust/custom_data_loader
-    /// [`ComponentDescriptor`]: [crate::ComponentDescriptor]
-    //
-    // NOTE: Don't bother returning a CoW here: we need to dynamically discard optional components
-    // depending on their presence (or lack thereof) at runtime anyway.
-    #[deprecated(since = "0.22.0", note = "use as_serialized_batches instead")]
-    #[allow(clippy::unimplemented)] // temporary, this method is about to be replaced
-    fn as_component_batches(&self) -> Vec<ComponentBatchCowWithDescriptor<'_>> {
-        // Eagerly serialized archetypes simply cannot implement this.
-        //
-        // This method only exist while we are in the process of making all existing archetypes
-        // eagerly serialized, at which point it'll be removed.
-        unimplemented!()
-    }
-
     /// Exposes the object's contents as a set of [`SerializedComponentBatch`]es.
     ///
     /// This is the main mechanism for easily extending builtin archetypes or even writing
@@ -59,13 +31,7 @@ pub trait AsComponents {
     //
     // NOTE: Don't bother returning a CoW here: we need to dynamically discard optional components
     // depending on their presence (or lack thereof) at runtime anyway.
-    fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
-        #[allow(deprecated)] // that's the whole point
-        self.as_component_batches()
-            .into_iter()
-            .filter_map(|batch| batch.serialized())
-            .collect()
-    }
+    fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch>;
 
     // ---
 

@@ -26,16 +26,16 @@ impl CustomPoints3D {
 }
 
 impl rerun::AsComponents for CustomPoints3D {
-    fn as_component_batches(&self) -> Vec<rerun::ComponentBatchCowWithDescriptor<'_>> {
+    fn as_serialized_batches(&self) -> Vec<rerun::SerializedComponentBatch> {
         [
-            Some(Self::indicator().to_batch()),
-            Some(
-                self.positions
-                    .with_descriptor(Self::overridden_position_descriptor()),
-            ),
+            Self::indicator().serialized(),
+            self.positions.serialized().map(|positions| {
+                positions.with_descriptor_override(Self::overridden_position_descriptor())
+            }),
             self.colors
                 .as_ref()
-                .map(|colors| colors.with_descriptor(Self::overridden_color_descriptor())),
+                .and_then(|colors| colors.serialized())
+                .map(|colors| colors.with_descriptor_override(Self::overridden_color_descriptor())),
         ]
         .into_iter()
         .flatten()
