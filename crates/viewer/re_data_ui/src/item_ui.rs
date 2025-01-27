@@ -185,8 +185,7 @@ pub fn instance_path_icon(
         if db
             .storage_engine()
             .store()
-            .all_components_on_timeline(timeline, &instance_path.entity_path)
-            .is_some()
+            .entity_has_data_on_timeline(timeline, &instance_path.entity_path)
         {
             &icons::ENTITY
         } else {
