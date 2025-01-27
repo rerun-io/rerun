@@ -68,9 +68,9 @@ def run_cargo(cargo_cmd: str, cargo_args: str, clippy_conf: str | None = None) -
     success = result.returncode == 0
 
     if success:
-        print("✅".encode("utf-8"))
+        print("✅")
     else:
-        print("❌".encode("utf-8"))
+        print("❌")
         # Print output right away, so the user can start fixing it while waiting for the rest of the checks to run:
         env_var_string = " ".join([f'{env_var}="{value}"' for env_var, value in additional_env_vars.items()])
         print(
@@ -92,6 +92,9 @@ def package_name_from_cargo_toml(cargo_toml_path: str) -> str:
 
 
 def main() -> None:
+    # Ensure we can print unicode characters. Has been historically an issue on Windows CI.
+    sys.stdout.reconfigure(encoding='utf-8')
+
     checks = [
         ("base_checks", base_checks),
         ("sdk_variations", sdk_variations),
