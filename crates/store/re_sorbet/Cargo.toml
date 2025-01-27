@@ -20,7 +20,6 @@ all-features = true
 
 
 [dependencies]
-re_format_arrow.workspace = true
 re_log_types.workspace = true
 re_log.workspace = true
 re_types_core.workspace = true
