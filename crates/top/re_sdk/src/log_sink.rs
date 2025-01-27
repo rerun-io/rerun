@@ -2,6 +2,7 @@ use std::fmt;
 use std::sync::Arc;
 
 use parking_lot::Mutex;
+use re_grpc_client::message_proxy::write::Client as MessageProxyClient;
 use re_log_encoding::encoder::encode_as_bytes_local;
 use re_log_encoding::encoder::{local_raw_encoder, EncodeError};
 use re_log_types::{BlueprintActivationCommand, LogMsg, StoreId};
@@ -368,40 +369,33 @@ impl LogSink for TcpSink {
     }
 }
 
-#[cfg(feature = "grpc")]
-pub mod grpc {
-    use super::LogSink;
-    use re_grpc_client::message_proxy::write::Client;
-    use re_log_types::LogMsg;
+/// Stream log messages to an in-memory storage node.
+pub struct GrpcSink {
+    client: MessageProxyClient,
+}
 
-    /// Stream log messages to an in-memory storage node.
-    pub struct GrpcSink {
-        client: Client,
-    }
-
-    impl GrpcSink {
-        /// Connect to the in-memory storage node over HTTP.
-        ///
-        /// ### Example
-        ///
-        /// ```ignore
-        /// GrpcSink::new("http://127.0.0.1:9434");
-        /// ```
-        #[inline]
-        pub fn new(addr: impl Into<String>) -> Self {
-            Self {
-                client: Client::new(addr, Default::default()),
-            }
+impl GrpcSink {
+    /// Connect to the in-memory storage node over HTTP.
+    ///
+    /// ### Example
+    ///
+    /// ```ignore
+    /// GrpcSink::new("http://127.0.0.1:9434");
+    /// ```
+    #[inline]
+    pub fn new(addr: impl Into<String>) -> Self {
+        Self {
+            client: MessageProxyClient::new(addr, Default::default()),
         }
     }
+}
 
-    impl LogSink for GrpcSink {
-        fn send(&self, msg: LogMsg) {
-            self.client.send(msg);
-        }
+impl LogSink for GrpcSink {
+    fn send(&self, msg: LogMsg) {
+        self.client.send(msg);
+    }
 
-        fn flush_blocking(&self) {
-            self.client.flush();
-        }
+    fn flush_blocking(&self) {
+        self.client.flush();
     }
 }

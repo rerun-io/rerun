@@ -38,6 +38,7 @@ pub struct Client {
 }
 
 impl Client {
+    /// `url` should be the `http://` or `https://` URL of the server.
     #[expect(clippy::needless_pass_by_value)]
     pub fn new(url: impl Into<String>, options: Options) -> Self {
         let url: String = url.into();
