@@ -719,7 +719,7 @@ namespace rerun {
             return try_send_columns(
                 entity_path,
                 std::move(time_columns),
-                // Need to create collection explicitely, otherwise this becomes a recursive call.
+                // Need to create collection explicitly, otherwise this becomes a recursive call.
                 Collection<ComponentColumn>(std::move(flat_column_list))
             );
         }
