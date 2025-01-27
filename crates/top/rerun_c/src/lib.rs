@@ -597,6 +597,32 @@ pub extern "C" fn rr_recording_stream_connect(
 }
 
 #[allow(clippy::result_large_err)]
+fn rr_recording_stream_connect_grpc_impl(
+    stream: CRecordingStream,
+    url: CStringView,
+) -> Result<(), CError> {
+    let stream = recording_stream(stream)?;
+
+    let url = url.as_str("url")?;
+
+    stream.connect_grpc_opts(url);
+
+    Ok(())
+}
+
+#[allow(unsafe_code)]
+#[no_mangle]
+pub extern "C" fn rr_recording_stream_connect_grpc(
+    id: CRecordingStream,
+    url: CStringView,
+    error: *mut CError,
+) {
+    if let Err(err) = rr_recording_stream_connect_grpc_impl(id, url) {
+        err.write_error(error);
+    }
+}
+
+#[allow(clippy::result_large_err)]
 fn rr_recording_stream_spawn_impl(
     stream: CRecordingStream,
     spawn_opts: *const CSpawnOptions,
@@ -632,6 +658,39 @@ pub extern "C" fn rr_recording_stream_spawn(
     error: *mut CError,
 ) {
     if let Err(err) = rr_recording_stream_spawn_impl(id, spawn_opts, flush_timeout_sec) {
+        err.write_error(error);
+    }
+}
+
+#[allow(clippy::result_large_err)]
+fn rr_recording_stream_spawn_grpc_impl(
+    stream: CRecordingStream,
+    spawn_opts: *const CSpawnOptions,
+) -> Result<(), CError> {
+    let stream = recording_stream(stream)?;
+
+    let spawn_opts = if spawn_opts.is_null() {
+        re_sdk::SpawnOptions::default()
+    } else {
+        let spawn_opts = ptr::try_ptr_as_ref(spawn_opts, "spawn_opts")?;
+        spawn_opts.as_rust()?
+    };
+
+    stream
+        .spawn_grpc_opts(&spawn_opts)
+        .map_err(|err| CError::new(CErrorCode::RecordingStreamSpawnFailure, &err.to_string()))?;
+
+    Ok(())
+}
+
+#[allow(unsafe_code)]
+#[no_mangle]
+pub extern "C" fn rr_recording_stream_spawn_grpc(
+    id: CRecordingStream,
+    spawn_opts: *const CSpawnOptions,
+    error: *mut CError,
+) {
+    if let Err(err) = rr_recording_stream_spawn_grpc_impl(id, spawn_opts) {
         err.write_error(error);
     }
 }
