@@ -23,10 +23,10 @@ rr.send_columns("images", indexes=[], columns=rr.Image.columns(format=format_sta
 rr.send_columns(
     "images",
     indexes=[rr.TimeSequenceColumn("step", times)],
-    # Reshape the images so `ImageBufferBatch` can tell that this is several blobs.
+    # Reshape the images so `Image` can tell that this is several blobs.
     #
-    # Note that the `ImageBufferBatch` consumes arrays of bytes,
-    # so if you have a different channel datatype than `U8`, you need to make sure
-    # that the data is converted to arrays of bytes before passing it to `ImageBufferBatch`.
+    # Note that the `Image` consumes arrays of bytes, so if you have a different channel
+    # datatype than `U8`, you need to make sure that the data is converted to arrays of bytes
+    # before passing it to `Image`.
     columns=rr.Image.columns(buffer=images.reshape(len(times), -1)),
 )
