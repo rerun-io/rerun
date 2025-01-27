@@ -19,7 +19,7 @@ int main() {
     std::iota(times.begin(), times.end(), 0);
 
     // Serialize to columns and send.
-    rec.send_columns2(
+    rec.send_columns(
         "scalars",
         rerun::TimeColumn::from_sequence_points("step", std::move(times)),
         rerun::Scalar().with_many_scalar(std::move(scalar_data)).columns()

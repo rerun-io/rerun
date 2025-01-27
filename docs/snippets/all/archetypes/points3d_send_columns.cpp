@@ -35,5 +35,5 @@ int main() {
     auto color_and_radius =
         rerun::Points3D::update_fields().with_colors(colors).with_radii(radii).columns();
 
-    rec.send_columns2("points", time_column, position, color_and_radius);
+    rec.send_columns("points", time_column, position, color_and_radius);
 }
