@@ -68,9 +68,9 @@ def run_cargo(cargo_cmd: str, cargo_args: str, clippy_conf: str | None = None) -
     success = result.returncode == 0
 
     if success:
-        print("✅")
+        print("✅".encode("utf-8"))
     else:
-        print("❌")
+        print("❌".encode("utf-8"))
         # Print output right away, so the user can start fixing it while waiting for the rest of the checks to run:
         env_var_string = " ".join([f'{env_var}="{value}"' for env_var, value in additional_env_vars.items()])
         print(
