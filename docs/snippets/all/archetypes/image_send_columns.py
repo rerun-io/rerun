@@ -17,10 +17,10 @@ for t in times:
 
 # Log the ImageFormat and indicator once, as static.
 format_static = rr.components.ImageFormat(width=width, height=height, color_model="RGB", channel_datatype="U8")
-rr.send_columns_v2("images", indexes=[], columns=rr.Image.columns(format=format_static))
+rr.send_columns("images", indexes=[], columns=rr.Image.columns(format=format_static))
 
 # Send all images at once.
-rr.send_columns_v2(
+rr.send_columns(
     "images",
     indexes=[rr.TimeSequenceColumn("step", times)],
     # Reshape the images so `ImageBufferBatch` can tell that this is several blobs.

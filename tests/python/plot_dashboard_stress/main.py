@@ -182,7 +182,7 @@ def main() -> None:
                     rr.log(f"{plot_path}/{series_path}", rr.Scalar(value))
                 else:
                     value_index = slice(index, index + args.temporal_batch_size)
-                    rr.send_columns_v2(
+                    rr.send_columns(
                         f"{plot_path}/{series_path}",
                         indexes=[time_column],
                         columns=rr.Scalar.columns(scalar=values[value_index, plot_idx, series_idx]),

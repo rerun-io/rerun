@@ -44,7 +44,7 @@ We will send our jaw open state data in two forms:
 Here is how to send the data as a scalar:
 
 ```python
-rr.send_columns_v2(
+rr.send_columns(
     "/jaw_open_state",
     indexes=[rr.TimeSequenceColumn("frame_nr", df["frame_nr"])],
     columns=rr.Scalar.columns(scalar=df["jawOpenState"]),
@@ -58,7 +58,7 @@ Next, let's send the same data as `Text` component:
 ```python
 target_entity = "/video/detector/faces/0/bbox"
 rr.log(target_entity, rr.Boxes2D.update_fields(show_labels=True), static=True)
-rr.send_columns_v2(
+rr.send_columns(
     target_entity,
     indexes=[rr.TimeSequenceColumn("frame_nr", df["frame_nr"])],
     columns=rr.Boxes2D.columns(labels=np.where(df["jawOpenState"], "OPEN", "CLOSE")),

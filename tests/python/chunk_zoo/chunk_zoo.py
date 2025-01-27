@@ -33,22 +33,22 @@ def set_frame_time(t: int) -> None:
 def specimen_two_rows_span_two_chunks():
     """Two rows spanning two chunks."""
 
-    rr.send_columns_v2("/rows_span_two_chunks", frame_times(0, 2), rr.Points2D.columns(positions=[(0, 1), (2, 3)]))
-    rr.send_columns_v2("/rows_span_two_chunks", frame_times(0, 2), rr.Points2D.columns(radii=[10, 11]))
+    rr.send_columns("/rows_span_two_chunks", frame_times(0, 2), rr.Points2D.columns(positions=[(0, 1), (2, 3)]))
+    rr.send_columns("/rows_span_two_chunks", frame_times(0, 2), rr.Points2D.columns(radii=[10, 11]))
 
 
 def specimen_two_rows_span_two_chunks_sparse():
     """Two rows spanning two chunks with partially matching timestamps (so sparse results)."""
 
-    rr.send_columns_v2(
+    rr.send_columns(
         "/rows_span_two_chunks_sparse", frame_times(0, 2, 3), rr.Points2D.columns(positions=[(0, 1), (2, 3), (4, 5)])
     )
-    rr.send_columns_v2("/rows_span_two_chunks_sparse", frame_times(0, 2, 4), rr.Points2D.columns(radii=[10, 11, 12]))
+    rr.send_columns("/rows_span_two_chunks_sparse", frame_times(0, 2, 4), rr.Points2D.columns(radii=[10, 11, 12]))
 
 
 def specimen_archetype_with_clamp_join_semantics():
     """Single row of an archetype with clamp join semantics (Points2D)."""
-    rr.send_columns_v2(
+    rr.send_columns(
         "/archetype_with_clamp_join_semantics",
         frame_times(0),
         [
@@ -60,7 +60,7 @@ def specimen_archetype_with_clamp_join_semantics():
 
 def specimen_archetype_with_latest_at_semantics():
     """Archetype spread over a multi-row chunk and two single-row chunks, with latest-at semantics."""
-    rr.send_columns_v2(
+    rr.send_columns(
         "/archetype_chunk_with_latest_at_semantics",
         frame_times(range(10)),
         rr.Points2D.columns(positions=[(i, i) for i in range(10)], class_ids=range(10)),
@@ -75,13 +75,13 @@ def specimen_archetype_with_latest_at_semantics():
 
 def specimen_archetype_with_clamp_join_semantics_two_chunks():
     """Single row of an archetype with clamp join semantics (Points2D), across two chunks."""
-    rr.send_columns_v2(
+    rr.send_columns(
         "/archetype_with_clamp_join_semantics_two_batches",
         frame_times(0),
         rr.Points2D.columns(positions=[(i, i) for i in range(10)], _lengths=[10]),
     )
 
-    rr.send_columns_v2(
+    rr.send_columns(
         "/archetype_with_clamp_join_semantics_two_batches",
         frame_times(0),
         rr.Points2D.columns(radii=2),
@@ -90,7 +90,7 @@ def specimen_archetype_with_clamp_join_semantics_two_chunks():
 
 def specimen_archetype_without_clamp_join_semantics():
     """Single row of an archetype without clamp join semantics (Mesh3D)."""
-    rr.send_columns_v2(
+    rr.send_columns(
         "/archetype_without_clamp_join_semantics",
         frame_times(0),
         [
@@ -124,7 +124,7 @@ def specimen_many_rows_with_mismatched_instance_count():
     positions = np.random.rand(batch_size, 2)
     colors = np.random.randint(0, 255, size=(batch_size, 4))
 
-    rr.send_columns_v2(
+    rr.send_columns(
         "/many_rows_with_mismatched_instance_count",
         frame_times(range(len(positions_partitions))),
         [
@@ -138,12 +138,12 @@ def specimen_many_rows_with_mismatched_instance_count():
 # TODO(ab): add variants (unordered, overlapping timestamps, etc.)
 def specimen_scalars_interlaced_in_two_chunks():
     """Scalar column stored in two chunks, with interlaced timestamps."""
-    rr.send_columns_v2(
+    rr.send_columns(
         "/scalars_interlaced_in_two_chunks",
         frame_times(0, 2, 5, 6, 8),
         rr.Scalar.columns(scalar=[0, 2, 5, 6, 8]),
     )
-    rr.send_columns_v2(
+    rr.send_columns(
         "/scalars_interlaced_in_two_chunks",
         frame_times(1, 3, 7),
         rr.Scalar.columns(scalar=[1, 3, 7]),
@@ -152,7 +152,7 @@ def specimen_scalars_interlaced_in_two_chunks():
 
 def specimen_archetype_chunk_with_clear():
     """Archetype spread on multi-row and single-row chunks, with a `Clear` in the middle."""
-    rr.send_columns_v2(
+    rr.send_columns(
         "/archetype_chunk_with_clear",
         frame_times(range(10)),
         rr.Points2D.columns(positions=[(i, i) for i in range(10)], class_ids=range(10)),

@@ -25,7 +25,7 @@ from rerun_bindings.types import (
 
 from ._baseclasses import ComponentColumn, ComponentDescriptor
 from ._log import IndicatorComponentBatch
-from ._send_columns import TimeColumnLike, send_columns_v2
+from ._send_columns import TimeColumnLike, send_columns
 from .recording_stream import RecordingStream
 
 SORBET_INDEX_NAME = b"sorbet.index_name"
@@ -108,7 +108,7 @@ def send_record_batch(batch: pa.RecordBatch, rec: Optional[RecordingStream] = No
             data[entity_path].append(IndicatorComponentBatch("rerun.archetypes." + archetype))
 
     for entity_path, columns in data.items():
-        send_columns_v2(
+        send_columns(
             entity_path,
             indexes,
             columns,

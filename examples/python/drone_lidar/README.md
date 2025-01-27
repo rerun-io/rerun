@@ -15,7 +15,7 @@ description = "Display drone-based LiDAR data"
 
 ## Background
 
-This example displays drone-based indoor LiDAR data loaded from a [`.las`](https://en.wikipedia.org/wiki/LAS_file_format) file. This dataset contains 18.7M points, acquired at 4013 distinct time points (~4650 points per time point). The point data is loaded using the [laspy](https://laspy.readthedocs.io/en/latest/) Python package, and then sent in one go to the viewer thanks to the [`rr.send_columns_v2()`](https://ref.rerun.io/docs/python/0.18.2/common/columnar_api/#rerun.send_columns) API and its `.partition()` helper. Together, these APIs enable associating subgroups of points with each of their corresponding, non-repeating timestamps.
+This example displays drone-based indoor LiDAR data loaded from a [`.las`](https://en.wikipedia.org/wiki/LAS_file_format) file. This dataset contains 18.7M points, acquired at 4013 distinct time points (~4650 points per time point). The point data is loaded using the [laspy](https://laspy.readthedocs.io/en/latest/) Python package, and then sent in one go to the viewer thanks to the [`rr.send_columns()`](https://ref.rerun.io/docs/python/0.18.2/common/columnar_api/#rerun.send_columns) API and its `.partition()` helper. Together, these APIs enable associating subgroups of points with each of their corresponding, non-repeating timestamps.
 
 
 [Flyability](https://www.flyability.com) kindly provided the data for this example.

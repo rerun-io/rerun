@@ -116,7 +116,7 @@ TArchetype = TypeVar("TArchetype", bound=Archetype)
 
 
 @catch_and_log_exceptions()
-def send_columns_v2(
+def send_columns(
     entity_path: str,
     indexes: Iterable[TimeColumnLike],
     columns: Iterable[ComponentColumn],

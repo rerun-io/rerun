@@ -95,7 +95,7 @@ def test_bench_transforms_over_time_batched(
         times = np.arange(start, end)
 
         # TODO: that is an issue then
-        rr.send_columns_v2(
+        rr.send_columns(
             "test_transform",
             indexes=[rr.TimeSequenceColumn("frame", times)],
             columns=rr.Transform3D.columns(

@@ -48,7 +48,7 @@ def main() -> None:
         rr.log("video", video_asset)
 
         frame_timestamps_ns = video_asset.read_frame_timestamps_ns()
-        rr.send_columns_v2(
+        rr.send_columns(
             "video",
             # Note timeline values don't have to be the same as the video timestamps.
             indexes=[rr.TimeNanosColumn("video_time", frame_timestamps_ns + last_time_ns)],

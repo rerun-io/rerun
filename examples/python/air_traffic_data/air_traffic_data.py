@@ -335,7 +335,7 @@ class MeasurementBatchLogger:
             barometric_altitude=df["barometric_altitude"].to_numpy(),
         )
 
-        rr.send_columns_v2(
+        rr.send_columns(
             entity_path,
             [timestamps],
             [
@@ -345,7 +345,7 @@ class MeasurementBatchLogger:
             ],
         )
 
-        rr.send_columns_v2(
+        rr.send_columns(
             entity_path + "/barometric_altitude",
             [timestamps],
             rr.Scalar.columns(scalar=df["barometric_altitude"].to_numpy()),
@@ -358,7 +358,7 @@ class MeasurementBatchLogger:
         timestamps = rr.TimeSecondsColumn("unix_time", df["timestamp"].to_numpy())
         columns = rr.AnyValues.columns(ground_status=df["ground_status"].to_numpy())
 
-        rr.send_columns_v2(entity_path, [timestamps], columns)
+        rr.send_columns(entity_path, [timestamps], columns)
 
     def log_metadata(self, df: polars.DataFrame, icao_id: str) -> None:
         entity_path = f"aircraft/{icao_id}"
@@ -370,7 +370,7 @@ class MeasurementBatchLogger:
             vertical_speed=df["vertical_speed"].to_numpy(),
         )
 
-        rr.send_columns_v2(
+        rr.send_columns(
             entity_path,
             [rr.TimeSecondsColumn("unix_time", df["timestamp"].to_numpy())],
             metadata,

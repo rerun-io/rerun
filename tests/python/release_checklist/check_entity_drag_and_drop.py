@@ -75,7 +75,7 @@ def log_some_scalar_entities() -> None:
     time_column = rr.TimeSequenceColumn("frame", times)
 
     for path, curve in curves:
-        rr.send_columns_v2(path, indexes=[time_column], columns=rr.Scalar.columns(scalar=curve))
+        rr.send_columns(path, indexes=[time_column], columns=rr.Scalar.columns(scalar=curve))
 
 
 def run(args: Namespace) -> None:
