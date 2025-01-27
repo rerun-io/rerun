@@ -10,8 +10,8 @@ rr.init("rerun_example_scalar_send_columns", spawn=True)
 times = np.arange(0, 64)
 scalars = np.sin(times / 10.0)
 
-rr.send_columns(
+rr.send_columns_v2(
     "scalars",
-    times=[rr.TimeSequenceColumn("step", times)],
-    components=[rr.components.ScalarBatch(scalars)],
+    indexes=[rr.TimeSequenceColumn("step", times)],
+    columns=rr.Scalar.columns(scalar=scalars),
 )

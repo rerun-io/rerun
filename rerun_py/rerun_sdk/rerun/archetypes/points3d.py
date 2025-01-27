@@ -5,11 +5,14 @@
 
 from __future__ import annotations
 
+import numpy as np
 from attrs import define, field
 
 from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
+    ComponentColumnList,
+    DescribedComponentBatch,
 )
 from ..error_utils import catch_and_log_exceptions
 from .points3d_ext import Points3DExt
@@ -108,21 +111,17 @@ class Points3D(Points3DExt, Archetype):
         [1.0, -1.0, 1.0], [2.0, -2.0, 2.0], [3.0, -1.0, 3.0], [2.0, 0.0, 4.0],
     ]
     # fmt: on
-    positions_arr = np.concatenate(positions)
 
     # At each timestep, all points in the cloud share the same but changing color and radius.
     colors = [0xFF0000FF, 0x00FF00FF, 0x0000FFFF, 0xFFFF00FF, 0x00FFFFFF]
     radii = [0.05, 0.01, 0.2, 0.1, 0.3]
 
-    # TODO(#8752): use tagged columnar APIs
-    rr.send_columns(
+    rr.send_columns_v2(
         "points",
-        times=[rr.TimeSecondsColumn("time", times)],
-        components=[
-            rr.Points3D.indicator(),
-            rr.components.Position3DBatch(positions_arr).partition([2, 4, 4, 3, 4]),
-            rr.components.ColorBatch(colors),
-            rr.components.RadiusBatch(radii),
+        indexes=[rr.TimeSecondsColumn("time", times)],
+        columns=[
+            *rr.Points3D.columns(positions=positions).partition(lengths=[2, 4, 4, 3, 4]),
+            *rr.Points3D.columns(colors=colors, radii=radii),
         ],
     )
     ```
@@ -246,6 +245,84 @@ class Points3D(Points3DExt, Archetype):
             keypoint_ids=[],
         )
         return inst
+
+    @classmethod
+    def columns(
+        cls,
+        *,
+        positions: datatypes.Vec3DArrayLike | None = None,
+        radii: datatypes.Float32ArrayLike | None = None,
+        colors: datatypes.Rgba32ArrayLike | None = None,
+        labels: datatypes.Utf8ArrayLike | None = None,
+        show_labels: datatypes.BoolArrayLike | None = None,
+        class_ids: datatypes.ClassIdArrayLike | None = None,
+        keypoint_ids: datatypes.KeypointIdArrayLike | None = None,
+    ) -> ComponentColumnList:
+        """
+        Construct a new column-oriented component bundle.
+
+        This makes it possible to use `rr.send_columns` to send columnar data directly into Rerun.
+
+        The returned columns will be partitioned into unit-length sub-batches by default.
+        Use `ComponentColumnList.partition` to repartition the data as needed.
+
+        Parameters
+        ----------
+        positions:
+            All the 3D positions at which the point cloud shows points.
+        radii:
+            Optional radii for the points, effectively turning them into circles.
+        colors:
+            Optional colors for the points.
+
+            The colors are interpreted as RGB or RGBA in sRGB gamma-space,
+            As either 0-1 floats or 0-255 integers, with separate alpha.
+        labels:
+            Optional text labels for the points.
+
+            If there's a single label present, it will be placed at the center of the entity.
+            Otherwise, each instance will have its own label.
+        show_labels:
+            Optional choice of whether the text labels should be shown by default.
+        class_ids:
+            Optional class Ids for the points.
+
+            The [`components.ClassId`][rerun.components.ClassId] provides colors and labels if not specified explicitly.
+        keypoint_ids:
+            Optional keypoint IDs for the points, identifying them within a class.
+
+            If keypoint IDs are passed in but no [`components.ClassId`][rerun.components.ClassId]s were specified, the [`components.ClassId`][rerun.components.ClassId] will
+            default to 0.
+            This is useful to identify points within a single classification (which is identified
+            with `class_id`).
+            E.g. the classification might be 'Person' and the keypoints refer to joints on a
+            detected skeleton.
+
+        """
+
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            inst.__attrs_init__(
+                positions=positions,
+                radii=radii,
+                colors=colors,
+                labels=labels,
+                show_labels=show_labels,
+                class_ids=class_ids,
+                keypoint_ids=keypoint_ids,
+            )
+
+        batches = [batch for batch in inst.as_component_batches() if isinstance(batch, DescribedComponentBatch)]
+        if len(batches) == 0:
+            return ComponentColumnList([])
+
+        lengths = np.ones(len(batches[0]._batch.as_arrow_array()))
+        columns = [batch.partition(lengths) for batch in batches]
+
+        indicator_batch = DescribedComponentBatch(cls.indicator(), cls.indicator().component_descriptor())
+        indicator_column = indicator_batch.partition(np.zeros(len(lengths)))
+
+        return ComponentColumnList([indicator_column] + columns)
 
     positions: components.Position3DBatch | None = field(
         metadata={"component": True},

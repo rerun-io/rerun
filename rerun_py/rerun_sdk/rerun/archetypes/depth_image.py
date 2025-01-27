@@ -5,11 +5,14 @@
 
 from __future__ import annotations
 
+import numpy as np
 from attrs import define, field
 
 from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
+    ComponentColumnList,
+    DescribedComponentBatch,
 )
 from ..error_utils import catch_and_log_exceptions
 from .depth_image_ext import DepthImageExt
@@ -181,6 +184,95 @@ class DepthImage(DepthImageExt, Archetype):
             draw_order=[],
         )
         return inst
+
+    @classmethod
+    def columns(
+        cls,
+        *,
+        buffer: datatypes.BlobArrayLike | None = None,
+        format: datatypes.ImageFormatArrayLike | None = None,
+        meter: datatypes.Float32ArrayLike | None = None,
+        colormap: components.ColormapArrayLike | None = None,
+        depth_range: datatypes.Range1DArrayLike | None = None,
+        point_fill_ratio: datatypes.Float32ArrayLike | None = None,
+        draw_order: datatypes.Float32ArrayLike | None = None,
+    ) -> ComponentColumnList:
+        """
+        Construct a new column-oriented component bundle.
+
+        This makes it possible to use `rr.send_columns` to send columnar data directly into Rerun.
+
+        The returned columns will be partitioned into unit-length sub-batches by default.
+        Use `ComponentColumnList.partition` to repartition the data as needed.
+
+        Parameters
+        ----------
+        buffer:
+            The raw depth image data.
+        format:
+            The format of the image.
+        meter:
+            An optional floating point value that specifies how long a meter is in the native depth units.
+
+            For instance: with uint16, perhaps meter=1000 which would mean you have millimeter precision
+            and a range of up to ~65 meters (2^16 / 1000).
+
+            Note that the only effect on 2D views is the physical depth values shown when hovering the image.
+            In 3D views on the other hand, this affects where the points of the point cloud are placed.
+        colormap:
+            Colormap to use for rendering the depth image.
+
+            If not set, the depth image will be rendered using the Turbo colormap.
+        depth_range:
+            The expected range of depth values.
+
+            This is typically the expected range of valid values.
+            Everything outside of the range is clamped to the range for the purpose of colormpaping.
+            Note that point clouds generated from this image will still display all points, regardless of this range.
+
+            If not specified, the range will be automatically estimated from the data.
+            Note that the Viewer may try to guess a wider range than the minimum/maximum of values
+            in the contents of the depth image.
+            E.g. if all values are positive, some bigger than 1.0 and all smaller than 255.0,
+            the Viewer will guess that the data likely came from an 8bit image, thus assuming a range of 0-255.
+        point_fill_ratio:
+            Scale the radii of the points in the point cloud generated from this image.
+
+            A fill ratio of 1.0 (the default) means that each point is as big as to touch the center of its neighbor
+            if it is at the same depth, leaving no gaps.
+            A fill ratio of 0.5 means that each point touches the edge of its neighbor if it has the same depth.
+
+            TODO(#6744): This applies only to 3D views!
+        draw_order:
+            An optional floating point value that specifies the 2D drawing order, used only if the depth image is shown as a 2D image.
+
+            Objects with higher values are drawn on top of those with lower values.
+
+        """
+
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            inst.__attrs_init__(
+                buffer=buffer,
+                format=format,
+                meter=meter,
+                colormap=colormap,
+                depth_range=depth_range,
+                point_fill_ratio=point_fill_ratio,
+                draw_order=draw_order,
+            )
+
+        batches = [batch for batch in inst.as_component_batches() if isinstance(batch, DescribedComponentBatch)]
+        if len(batches) == 0:
+            return ComponentColumnList([])
+
+        lengths = np.ones(len(batches[0]._batch.as_arrow_array()))
+        columns = [batch.partition(lengths) for batch in batches]
+
+        indicator_batch = DescribedComponentBatch(cls.indicator(), cls.indicator().component_descriptor())
+        indicator_column = indicator_batch.partition(np.zeros(len(lengths)))
+
+        return ComponentColumnList([indicator_column] + columns)
 
     buffer: components.ImageBufferBatch | None = field(
         metadata={"component": True},

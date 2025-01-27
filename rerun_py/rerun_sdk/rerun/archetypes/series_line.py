@@ -7,11 +7,14 @@ from __future__ import annotations
 
 from typing import Any
 
+import numpy as np
 from attrs import define, field
 
 from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
+    ComponentColumnList,
+    DescribedComponentBatch,
 )
 from ..error_utils import catch_and_log_exceptions
 
@@ -177,6 +180,63 @@ class SeriesLine(Archetype):
             aggregation_policy=[],
         )
         return inst
+
+    @classmethod
+    def columns(
+        cls,
+        *,
+        color: datatypes.Rgba32ArrayLike | None = None,
+        width: datatypes.Float32ArrayLike | None = None,
+        name: datatypes.Utf8ArrayLike | None = None,
+        aggregation_policy: components.AggregationPolicyArrayLike | None = None,
+    ) -> ComponentColumnList:
+        """
+        Construct a new column-oriented component bundle.
+
+        This makes it possible to use `rr.send_columns` to send columnar data directly into Rerun.
+
+        The returned columns will be partitioned into unit-length sub-batches by default.
+        Use `ComponentColumnList.partition` to repartition the data as needed.
+
+        Parameters
+        ----------
+        color:
+            Color for the corresponding series.
+        width:
+            Stroke width for the corresponding series.
+        name:
+            Display name of the series.
+
+            Used in the legend.
+        aggregation_policy:
+            Configures the zoom-dependent scalar aggregation.
+
+            This is done only if steps on the X axis go below a single pixel,
+            i.e. a single pixel covers more than one tick worth of data. It can greatly improve performance
+            (and readability) in such situations as it prevents overdraw.
+
+        """
+
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            inst.__attrs_init__(
+                color=color,
+                width=width,
+                name=name,
+                aggregation_policy=aggregation_policy,
+            )
+
+        batches = [batch for batch in inst.as_component_batches() if isinstance(batch, DescribedComponentBatch)]
+        if len(batches) == 0:
+            return ComponentColumnList([])
+
+        lengths = np.ones(len(batches[0]._batch.as_arrow_array()))
+        columns = [batch.partition(lengths) for batch in batches]
+
+        indicator_batch = DescribedComponentBatch(cls.indicator(), cls.indicator().component_descriptor())
+        indicator_column = indicator_batch.partition(np.zeros(len(lengths)))
+
+        return ComponentColumnList([indicator_column] + columns)
 
     color: components.ColorBatch | None = field(
         metadata={"component": True},
