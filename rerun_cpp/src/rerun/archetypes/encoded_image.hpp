@@ -142,6 +142,15 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
+        /// This method makes it possible to pack multiple `rerun:: components:: Blob in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_blob` should
+        /// be used when logging a single row's worth of data.
+        EncodedImage with_many_blob(const Collection<rerun::components::Blob>& _blob) && {
+            blob = ComponentBatch::from_loggable(_blob, Descriptor_blob).value_or_throw();
+            return std::move(*this);
+        }
+
         /// The Media Type of the asset.
         ///
         /// Supported values:
@@ -156,6 +165,18 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
+        /// This method makes it possible to pack multiple `rerun:: components:: MediaType in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_media_type` should
+        /// be used when logging a single row's worth of data.
+        EncodedImage with_many_media_type(
+            const Collection<rerun::components::MediaType>& _media_type
+        ) && {
+            media_type =
+                ComponentBatch::from_loggable(_media_type, Descriptor_media_type).value_or_throw();
+            return std::move(*this);
+        }
+
         /// Opacity of the image, useful for layering several images.
         ///
         /// Defaults to 1.0 (fully opaque).
@@ -164,10 +185,31 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
+        /// This method makes it possible to pack multiple `rerun:: components:: Opacity in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_opacity` should
+        /// be used when logging a single row's worth of data.
+        EncodedImage with_many_opacity(const Collection<rerun::components::Opacity>& _opacity) && {
+            opacity = ComponentBatch::from_loggable(_opacity, Descriptor_opacity).value_or_throw();
+            return std::move(*this);
+        }
+
         /// An optional floating point value that specifies the 2D drawing order.
         ///
         /// Objects with higher values are drawn on top of those with lower values.
         EncodedImage with_draw_order(const rerun::components::DrawOrder& _draw_order) && {
+            draw_order =
+                ComponentBatch::from_loggable(_draw_order, Descriptor_draw_order).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `rerun:: components:: DrawOrder in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_draw_order` should
+        /// be used when logging a single row's worth of data.
+        EncodedImage with_many_draw_order(
+            const Collection<rerun::components::DrawOrder>& _draw_order
+        ) && {
             draw_order =
                 ComponentBatch::from_loggable(_draw_order, Descriptor_draw_order).value_or_throw();
             return std::move(*this);

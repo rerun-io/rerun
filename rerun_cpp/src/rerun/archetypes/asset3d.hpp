@@ -148,6 +148,15 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
+        /// This method makes it possible to pack multiple `rerun:: components:: Blob in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_blob` should
+        /// be used when logging a single row's worth of data.
+        Asset3D with_many_blob(const Collection<rerun::components::Blob>& _blob) && {
+            blob = ComponentBatch::from_loggable(_blob, Descriptor_blob).value_or_throw();
+            return std::move(*this);
+        }
+
         /// The Media Type of the asset.
         ///
         /// Supported values:
@@ -164,11 +173,34 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
+        /// This method makes it possible to pack multiple `rerun:: components:: MediaType in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_media_type` should
+        /// be used when logging a single row's worth of data.
+        Asset3D with_many_media_type(const Collection<rerun::components::MediaType>& _media_type
+        ) && {
+            media_type =
+                ComponentBatch::from_loggable(_media_type, Descriptor_media_type).value_or_throw();
+            return std::move(*this);
+        }
+
         /// A color multiplier applied to the whole asset.
         ///
         /// For mesh who already have `albedo_factor` in materials,
         /// it will be overwritten by actual `albedo_factor` of `archetypes::Asset3D` (if specified).
         Asset3D with_albedo_factor(const rerun::components::AlbedoFactor& _albedo_factor) && {
+            albedo_factor = ComponentBatch::from_loggable(_albedo_factor, Descriptor_albedo_factor)
+                                .value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `rerun:: components:: AlbedoFactor in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_albedo_factor` should
+        /// be used when logging a single row's worth of data.
+        Asset3D with_many_albedo_factor(
+            const Collection<rerun::components::AlbedoFactor>& _albedo_factor
+        ) && {
             albedo_factor = ComponentBatch::from_loggable(_albedo_factor, Descriptor_albedo_factor)
                                 .value_or_throw();
             return std::move(*this);

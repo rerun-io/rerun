@@ -603,6 +603,35 @@ impl QuotedObject {
                     },
                     inline: true,
                 });
+
+            // Add a `with_many_` variant if this is a mono field.
+            // Make an exception for blueprint types since it practically never makes sense there.
+            if !obj_field.typ.is_plural() && !is_blueprint_type(obj) {
+                let method_ident_many = format_ident!("with_many_{}", obj_field.name);
+                let docstring_many = unindent::unindent(&format!("\
+                This method makes it possible to pack multiple `{field_type} in a single component batch.
+
+                This only makes sense when used in conjunction with `columns`. `{method_ident}` should
+                be used when logging a single row's worth of data.
+                "));
+
+                methods.push(Method {
+                    docs: docstring_many.into(),
+                    declaration: MethodDeclaration {
+                        is_static: false,
+                        return_type: quote!(#archetype_type_ident),
+                        name_and_parameters: quote! {
+                            #method_ident_many(const Collection<#field_type>& #parameter_ident) &&
+                        },
+                    },
+                    definition_body: quote! {
+                        #field_ident = ComponentBatch::from_loggable(#parameter_ident, #descriptor).value_or_throw();
+                        #NEWLINE_TOKEN
+                        return std::move(*this);
+                    },
+                    inline: true,
+                });
+            }
         }
 
         // columns method that allows partitioning into columns
@@ -2798,4 +2827,8 @@ fn quote_deprecation_ignore_start_and_end(
 
 fn archetype_component_descriptor_constant_ident(obj_field: &ObjectField) -> Ident {
     format_ident!("Descriptor_{}", obj_field.name)
+}
+
+fn is_blueprint_type(obj: &Object) -> bool {
+    obj.pkg_name.contains("blueprint")
 }

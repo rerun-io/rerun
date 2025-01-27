@@ -134,8 +134,26 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
+        /// This method makes it possible to pack multiple `rerun:: components:: Color in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_color` should
+        /// be used when logging a single row's worth of data.
+        SeriesPoint with_many_color(const Collection<rerun::components::Color>& _color) && {
+            color = ComponentBatch::from_loggable(_color, Descriptor_color).value_or_throw();
+            return std::move(*this);
+        }
+
         /// What shape to use to represent the point
         SeriesPoint with_marker(const rerun::components::MarkerShape& _marker) && {
+            marker = ComponentBatch::from_loggable(_marker, Descriptor_marker).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `rerun:: components:: MarkerShape in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_marker` should
+        /// be used when logging a single row's worth of data.
+        SeriesPoint with_many_marker(const Collection<rerun::components::MarkerShape>& _marker) && {
             marker = ComponentBatch::from_loggable(_marker, Descriptor_marker).value_or_throw();
             return std::move(*this);
         }
@@ -148,8 +166,29 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
+        /// This method makes it possible to pack multiple `rerun:: components:: Name in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_name` should
+        /// be used when logging a single row's worth of data.
+        SeriesPoint with_many_name(const Collection<rerun::components::Name>& _name) && {
+            name = ComponentBatch::from_loggable(_name, Descriptor_name).value_or_throw();
+            return std::move(*this);
+        }
+
         /// Size of the marker.
         SeriesPoint with_marker_size(const rerun::components::MarkerSize& _marker_size) && {
+            marker_size = ComponentBatch::from_loggable(_marker_size, Descriptor_marker_size)
+                              .value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `rerun:: components:: MarkerSize in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_marker_size` should
+        /// be used when logging a single row's worth of data.
+        SeriesPoint with_many_marker_size(
+            const Collection<rerun::components::MarkerSize>& _marker_size
+        ) && {
             marker_size = ComponentBatch::from_loggable(_marker_size, Descriptor_marker_size)
                               .value_or_throw();
             return std::move(*this);

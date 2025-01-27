@@ -131,6 +131,15 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
+        /// This method makes it possible to pack multiple `rerun:: components:: Text in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_text` should
+        /// be used when logging a single row's worth of data.
+        TextDocument with_many_text(const Collection<rerun::components::Text>& _text) && {
+            text = ComponentBatch::from_loggable(_text, Descriptor_text).value_or_throw();
+            return std::move(*this);
+        }
+
         /// The Media Type of the text.
         ///
         /// For instance:
@@ -139,6 +148,18 @@ namespace rerun::archetypes {
         ///
         /// If omitted, `text/plain` is assumed.
         TextDocument with_media_type(const rerun::components::MediaType& _media_type) && {
+            media_type =
+                ComponentBatch::from_loggable(_media_type, Descriptor_media_type).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `rerun:: components:: MediaType in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_media_type` should
+        /// be used when logging a single row's worth of data.
+        TextDocument with_many_media_type(
+            const Collection<rerun::components::MediaType>& _media_type
+        ) && {
             media_type =
                 ComponentBatch::from_loggable(_media_type, Descriptor_media_type).value_or_throw();
             return std::move(*this);

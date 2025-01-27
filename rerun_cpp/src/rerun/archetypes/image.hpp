@@ -339,8 +339,26 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
+        /// This method makes it possible to pack multiple `rerun:: components:: ImageBuffer in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_buffer` should
+        /// be used when logging a single row's worth of data.
+        Image with_many_buffer(const Collection<rerun::components::ImageBuffer>& _buffer) && {
+            buffer = ComponentBatch::from_loggable(_buffer, Descriptor_buffer).value_or_throw();
+            return std::move(*this);
+        }
+
         /// The format of the image.
         Image with_format(const rerun::components::ImageFormat& _format) && {
+            format = ComponentBatch::from_loggable(_format, Descriptor_format).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `rerun:: components:: ImageFormat in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_format` should
+        /// be used when logging a single row's worth of data.
+        Image with_many_format(const Collection<rerun::components::ImageFormat>& _format) && {
             format = ComponentBatch::from_loggable(_format, Descriptor_format).value_or_throw();
             return std::move(*this);
         }
@@ -353,10 +371,29 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
+        /// This method makes it possible to pack multiple `rerun:: components:: Opacity in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_opacity` should
+        /// be used when logging a single row's worth of data.
+        Image with_many_opacity(const Collection<rerun::components::Opacity>& _opacity) && {
+            opacity = ComponentBatch::from_loggable(_opacity, Descriptor_opacity).value_or_throw();
+            return std::move(*this);
+        }
+
         /// An optional floating point value that specifies the 2D drawing order.
         ///
         /// Objects with higher values are drawn on top of those with lower values.
         Image with_draw_order(const rerun::components::DrawOrder& _draw_order) && {
+            draw_order =
+                ComponentBatch::from_loggable(_draw_order, Descriptor_draw_order).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `rerun:: components:: DrawOrder in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_draw_order` should
+        /// be used when logging a single row's worth of data.
+        Image with_many_draw_order(const Collection<rerun::components::DrawOrder>& _draw_order) && {
             draw_order =
                 ComponentBatch::from_loggable(_draw_order, Descriptor_draw_order).value_or_throw();
             return std::move(*this);

@@ -135,6 +135,18 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
+        /// This method makes it possible to pack multiple `rerun:: components:: ClearIsRecursive in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_is_recursive` should
+        /// be used when logging a single row's worth of data.
+        Clear with_many_is_recursive(
+            const Collection<rerun::components::ClearIsRecursive>& _is_recursive
+        ) && {
+            is_recursive = ComponentBatch::from_loggable(_is_recursive, Descriptor_is_recursive)
+                               .value_or_throw();
+            return std::move(*this);
+        }
+
         /// Partitions the component data into multiple sub-batches.
         ///
         /// Specifically, this transforms the existing `ComponentBatch` data into `ComponentColumn`s

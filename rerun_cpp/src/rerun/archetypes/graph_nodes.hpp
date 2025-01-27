@@ -154,6 +154,18 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
+        /// This method makes it possible to pack multiple `rerun:: components:: ShowLabels in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_show_labels` should
+        /// be used when logging a single row's worth of data.
+        GraphNodes with_many_show_labels(
+            const Collection<rerun::components::ShowLabels>& _show_labels
+        ) && {
+            show_labels = ComponentBatch::from_loggable(_show_labels, Descriptor_show_labels)
+                              .value_or_throw();
+            return std::move(*this);
+        }
+
         /// Optional radii for nodes.
         GraphNodes with_radii(const Collection<rerun::components::Radius>& _radii) && {
             radii = ComponentBatch::from_loggable(_radii, Descriptor_radii).value_or_throw();

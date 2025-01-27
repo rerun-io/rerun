@@ -204,8 +204,26 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
+        /// This method makes it possible to pack multiple `rerun:: components:: TensorData in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_values` should
+        /// be used when logging a single row's worth of data.
+        BarChart with_many_values(const Collection<rerun::components::TensorData>& _values) && {
+            values = ComponentBatch::from_loggable(_values, Descriptor_values).value_or_throw();
+            return std::move(*this);
+        }
+
         /// The color of the bar chart
         BarChart with_color(const rerun::components::Color& _color) && {
+            color = ComponentBatch::from_loggable(_color, Descriptor_color).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `rerun:: components:: Color in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_color` should
+        /// be used when logging a single row's worth of data.
+        BarChart with_many_color(const Collection<rerun::components::Color>& _color) && {
             color = ComponentBatch::from_loggable(_color, Descriptor_color).value_or_throw();
             return std::move(*this);
         }

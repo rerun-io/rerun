@@ -290,6 +290,16 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
+        /// This method makes it possible to pack multiple `rerun:: components:: FillMode in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_fill_mode` should
+        /// be used when logging a single row's worth of data.
+        Boxes3D with_many_fill_mode(const Collection<rerun::components::FillMode>& _fill_mode) && {
+            fill_mode =
+                ComponentBatch::from_loggable(_fill_mode, Descriptor_fill_mode).value_or_throw();
+            return std::move(*this);
+        }
+
         /// Optional text labels for the boxes.
         ///
         /// If there's a single label present, it will be placed at the center of the entity.
@@ -301,6 +311,17 @@ namespace rerun::archetypes {
 
         /// Optional choice of whether the text labels should be shown by default.
         Boxes3D with_show_labels(const rerun::components::ShowLabels& _show_labels) && {
+            show_labels = ComponentBatch::from_loggable(_show_labels, Descriptor_show_labels)
+                              .value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `rerun:: components:: ShowLabels in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_show_labels` should
+        /// be used when logging a single row's worth of data.
+        Boxes3D with_many_show_labels(const Collection<rerun::components::ShowLabels>& _show_labels
+        ) && {
             show_labels = ComponentBatch::from_loggable(_show_labels, Descriptor_show_labels)
                               .value_or_throw();
             return std::move(*this);

@@ -237,6 +237,19 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
+        /// This method makes it possible to pack multiple `rerun:: components:: PinholeProjection in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_image_from_camera` should
+        /// be used when logging a single row's worth of data.
+        Pinhole with_many_image_from_camera(
+            const Collection<rerun::components::PinholeProjection>& _image_from_camera
+        ) && {
+            image_from_camera =
+                ComponentBatch::from_loggable(_image_from_camera, Descriptor_image_from_camera)
+                    .value_or_throw();
+            return std::move(*this);
+        }
+
         /// Pixel resolution (usually integers) of child image space. Width and height.
         ///
         /// Example:
@@ -246,6 +259,17 @@ namespace rerun::archetypes {
         ///
         /// `image_from_camera` project onto the space spanned by `(0,0)` and `resolution - 1`.
         Pinhole with_resolution(const rerun::components::Resolution& _resolution) && {
+            resolution =
+                ComponentBatch::from_loggable(_resolution, Descriptor_resolution).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `rerun:: components:: Resolution in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_resolution` should
+        /// be used when logging a single row's worth of data.
+        Pinhole with_many_resolution(const Collection<rerun::components::Resolution>& _resolution
+        ) && {
             resolution =
                 ComponentBatch::from_loggable(_resolution, Descriptor_resolution).value_or_throw();
             return std::move(*this);
@@ -284,11 +308,38 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
+        /// This method makes it possible to pack multiple `rerun:: components:: ViewCoordinates in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_camera_xyz` should
+        /// be used when logging a single row's worth of data.
+        Pinhole with_many_camera_xyz(
+            const Collection<rerun::components::ViewCoordinates>& _camera_xyz
+        ) && {
+            camera_xyz =
+                ComponentBatch::from_loggable(_camera_xyz, Descriptor_camera_xyz).value_or_throw();
+            return std::move(*this);
+        }
+
         /// The distance from the camera origin to the image plane when the projection is shown in a 3D viewer.
         ///
         /// This is only used for visualization purposes, and does not affect the projection itself.
         Pinhole with_image_plane_distance(
             const rerun::components::ImagePlaneDistance& _image_plane_distance
+        ) && {
+            image_plane_distance = ComponentBatch::from_loggable(
+                                       _image_plane_distance,
+                                       Descriptor_image_plane_distance
+            )
+                                       .value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `rerun:: components:: ImagePlaneDistance in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_image_plane_distance` should
+        /// be used when logging a single row's worth of data.
+        Pinhole with_many_image_plane_distance(
+            const Collection<rerun::components::ImagePlaneDistance>& _image_plane_distance
         ) && {
             image_plane_distance = ComponentBatch::from_loggable(
                                        _image_plane_distance,

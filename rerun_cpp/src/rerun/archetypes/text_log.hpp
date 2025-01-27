@@ -137,6 +137,15 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
+        /// This method makes it possible to pack multiple `rerun:: components:: Text in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_text` should
+        /// be used when logging a single row's worth of data.
+        TextLog with_many_text(const Collection<rerun::components::Text>& _text) && {
+            text = ComponentBatch::from_loggable(_text, Descriptor_text).value_or_throw();
+            return std::move(*this);
+        }
+
         /// The verbosity level of the message.
         ///
         /// This can be used to filter the log messages in the Rerun Viewer.
@@ -145,8 +154,26 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
+        /// This method makes it possible to pack multiple `rerun:: components:: TextLogLevel in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_level` should
+        /// be used when logging a single row's worth of data.
+        TextLog with_many_level(const Collection<rerun::components::TextLogLevel>& _level) && {
+            level = ComponentBatch::from_loggable(_level, Descriptor_level).value_or_throw();
+            return std::move(*this);
+        }
+
         /// Optional color to use for the log line in the Rerun Viewer.
         TextLog with_color(const rerun::components::Color& _color) && {
+            color = ComponentBatch::from_loggable(_color, Descriptor_color).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `rerun:: components:: Color in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_color` should
+        /// be used when logging a single row's worth of data.
+        TextLog with_many_color(const Collection<rerun::components::Color>& _color) && {
             color = ComponentBatch::from_loggable(_color, Descriptor_color).value_or_throw();
             return std::move(*this);
         }
