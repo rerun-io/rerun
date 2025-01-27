@@ -134,10 +134,8 @@ namespace rerun::archetypes {
     ///     auto time_column = rerun::TimeColumn::from_times("time", std::move(times));
     ///
     ///     // Partition our data as expected across the 5 timesteps.
-    ///     auto position =
-    ///         rerun::Points3D::update_fields().with_positions(positions).columns({2, 4, 4, 3, 4});
-    ///     auto color_and_radius =
-    ///         rerun::Points3D::update_fields().with_colors(colors).with_radii(radii).columns();
+    ///     auto position = rerun::Points3D().with_positions(positions).columns({2, 4, 4, 3, 4});
+    ///     auto color_and_radius = rerun::Points3D().with_colors(colors).with_radii(radii).columns();
     ///
     ///     rec.send_columns("points", time_column, position, color_and_radius);
     /// }

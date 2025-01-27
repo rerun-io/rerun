@@ -75,10 +75,7 @@ namespace rerun::archetypes {
     ///     rec.send_columns(
     ///         "video",
     ///         time_column,
-    ///         {
-    ///             video_frame_reference_indicators.value_or_throw(),
-    ///             rerun::ComponentColumn::from_loggable(rerun::borrow(video_timestamps)).value_or_throw(),
-    ///         }
+    ///         rerun::VideoFrameReference().with_many_timestamp(rerun::borrow(video_timestamps)).columns()
     ///     );
     /// }
     /// ```
