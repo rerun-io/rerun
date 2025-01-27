@@ -4,7 +4,7 @@
 
 use arrow::datatypes::{
     DataType as ArrowDatatype, Field as ArrowField, FieldRef as ArrowFieldRef,
-    Schema as ArrowSchema,
+    Fields as ArrowFields,
 };
 
 use re_log_types::EntityPath;
@@ -75,7 +75,23 @@ impl ColumnDescriptor {
         }
     }
 
-    pub fn from_arrow_field(field: &ArrowField) -> Result<Self, ColumnError> {
+    #[inline]
+    pub fn to_arrow_fields(columns: &[Self]) -> ArrowFields {
+        columns.iter().map(|c| c.to_arrow_field()).collect()
+    }
+
+    pub fn from_arrow_fields(fields: &[ArrowFieldRef]) -> Result<Vec<Self>, ColumnError> {
+        fields
+            .iter()
+            .map(|field| Self::try_from(field.as_ref()))
+            .collect()
+    }
+}
+
+impl TryFrom<&ArrowField> for ColumnDescriptor {
+    type Error = ColumnError;
+
+    fn try_from(field: &ArrowField) -> Result<Self, Self::Error> {
         let kind = field.get_or_err("rerun.kind")?;
         match kind {
             "index" | "time" => Ok(Self::Time(TimeColumnDescriptor::try_from(field)?)),
@@ -85,15 +101,40 @@ impl ColumnDescriptor {
             }),
         }
     }
+}
 
-    pub fn from_arrow_fields(fields: &[ArrowFieldRef]) -> Result<Vec<Self>, ColumnError> {
-        fields
-            .iter()
-            .map(|field| Self::from_arrow_field(field))
-            .collect()
-    }
+#[test]
+fn test_schema_over_ipc() {
+    #![expect(clippy::disallowed_types)] // Schema::new
 
-    pub fn from_arrow_schema(schema: &ArrowSchema) -> Result<Vec<Self>, ColumnError> {
-        Self::from_arrow_fields(&schema.fields)
-    }
+    let original_columns = [
+        ColumnDescriptor::Time(TimeColumnDescriptor {
+            timeline: re_log_types::Timeline::log_time(),
+            datatype: arrow::datatypes::DataType::Timestamp(
+                arrow::datatypes::TimeUnit::Nanosecond,
+                None,
+            ),
+        }),
+        ColumnDescriptor::Component(ComponentColumnDescriptor {
+            entity_path: re_log_types::EntityPath::from("/some/path"),
+            archetype_name: Some("archetype".to_owned().into()),
+            archetype_field_name: Some("field".to_owned().into()),
+            component_name: re_types_core::ComponentName::new("component"),
+            store_datatype: arrow::datatypes::DataType::Int64,
+            is_static: true,
+            is_tombstone: false,
+            is_semantically_empty: false,
+            is_indicator: true,
+        }),
+    ];
+
+    let original_schema =
+        arrow::datatypes::Schema::new(ColumnDescriptor::to_arrow_fields(&original_columns));
+    let ipc_bytes = crate::ipc_from_schema(&original_schema).unwrap();
+
+    let recovered_schema = crate::schema_from_ipc(&ipc_bytes).unwrap();
+    assert_eq!(recovered_schema.as_ref(), &original_schema);
+
+    let recovered_columns = ColumnDescriptor::from_arrow_fields(&recovered_schema.fields).unwrap();
+    assert_eq!(recovered_columns, original_columns);
 }

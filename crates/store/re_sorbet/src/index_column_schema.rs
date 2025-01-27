@@ -73,10 +73,11 @@ impl TimeColumnDescriptor {
 
         let nullable = true; // Time column must be nullable since static data doesn't have a time.
 
-        let metadata = std::iter::once(Some((
-            "sorbet.index_name".to_owned(),
-            timeline.name().to_string(),
-        )))
+        let metadata = [
+            Some(("rerun.kind".to_owned(), "index".to_owned())),
+            Some(("sorbet.index_name".to_owned(), timeline.name().to_string())),
+        ]
+        .into_iter()
         .flatten()
         .collect();
 

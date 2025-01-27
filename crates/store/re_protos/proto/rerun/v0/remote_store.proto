@@ -39,7 +39,7 @@ message GetRecordingSchemaRequest {
 }
 
 message GetRecordingSchemaResponse {
-    repeated rerun.common.v0.ColumnDescriptor column_descriptors = 1;
+    bytes arrow_schema_as_ipc = 2;
 }
 
 // ---------------- RegisterRecording ------------------

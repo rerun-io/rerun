@@ -36,8 +36,8 @@ impl ::prost::Name for GetRecordingSchemaRequest {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetRecordingSchemaResponse {
-    #[prost(message, repeated, tag = "1")]
-    pub column_descriptors: ::prost::alloc::vec::Vec<super::super::common::v0::ColumnDescriptor>,
+    #[prost(bytes = "vec", tag = "2")]
+    pub arrow_schema_as_ipc: ::prost::alloc::vec::Vec<u8>,
 }
 impl ::prost::Name for GetRecordingSchemaResponse {
     const NAME: &'static str = "GetRecordingSchemaResponse";

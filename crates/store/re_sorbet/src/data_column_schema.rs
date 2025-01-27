@@ -170,6 +170,7 @@ impl ComponentColumnDescriptor {
 
         // TODO(#6889): This needs some proper sorbetization -- I just threw these names randomly.
         [
+            Some(("rerun.kind".to_owned(), "data".to_owned())),
             (*is_static).then_some(("sorbet.is_static".to_owned(), "yes".to_owned())),
             (*is_indicator).then_some(("sorbet.is_indicator".to_owned(), "yes".to_owned())),
             (*is_tombstone).then_some(("sorbet.is_tombstone".to_owned(), "yes".to_owned())),

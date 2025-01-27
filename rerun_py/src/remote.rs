@@ -30,7 +30,6 @@ use re_protos::{
         FetchRecordingRequest, GetRecordingSchemaRequest, QueryCatalogRequest, QueryRequest,
         RecordingType, RegisterRecordingRequest, UpdateCatalogRequest,
     },
-    TypeConversionError,
 };
 use re_sdk::{ApplicationId, ComponentName, StoreId, StoreKind, Time, Timeline};
 
@@ -272,17 +271,19 @@ impl PyStorageNodeClient {
                 recording_id: Some(RecordingId { id }),
             };
 
-            let column_descriptors = self
+            let arrow_schema_as_ipc = self
                 .client
                 .get_recording_schema(request)
                 .await
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
                 .into_inner()
-                .column_descriptors
-                .into_iter()
-                .map(|cd| cd.try_into())
-                .collect::<Result<Vec<_>, _>>()
-                .map_err(|err: TypeConversionError| PyRuntimeError::new_err(err.to_string()))?;
+                .arrow_schema_as_ipc;
+
+            let schema = re_sorbet::schema_from_ipc(&arrow_schema_as_ipc)
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+
+            let column_descriptors = re_sorbet::ColumnDescriptor::from_arrow_fields(&schema.fields)
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
             Ok(PySchema {
                 schema: column_descriptors,
