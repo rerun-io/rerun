@@ -68,8 +68,14 @@ namespace rerun {
         /// Creates a new component column with a given number of archetype indicators for a given archetype type.
         template <typename Archetype>
         static Result<ComponentColumn> from_indicators(uint32_t num_indicators) {
-            return ComponentColumn::from_loggable<typename Archetype::IndicatorComponent>(
-                std::vector<typename Archetype::IndicatorComponent>(num_indicators)
+            auto component_batch_result =
+                ComponentBatch::from_loggable(typename Archetype::IndicatorComponent());
+            if (component_batch_result.is_err()) {
+                return component_batch_result.error;
+            }
+            return ComponentColumn::from_batch_with_lengths(
+                component_batch_result.value,
+                Collection<uint32_t>::take_ownership(std::vector<uint32_t>(num_indicators, 0))
             );
         }
 
