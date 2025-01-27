@@ -131,10 +131,10 @@ class AssetVideo(AssetVideoExt, Archetype):
         return inst
 
     @classmethod
-    def update_fields(
+    def from_fields(
         cls,
         *,
-        clear: bool = False,
+        clear_unset: bool = False,
         blob: datatypes.BlobLike | None = None,
         media_type: datatypes.Utf8Like | None = None,
     ) -> AssetVideo:
@@ -143,7 +143,7 @@ class AssetVideo(AssetVideoExt, Archetype):
 
         Parameters
         ----------
-        clear:
+        clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         blob:
             The asset's bytes.
@@ -165,7 +165,7 @@ class AssetVideo(AssetVideoExt, Archetype):
                 "media_type": media_type,
             }
 
-            if clear:
+            if clear_unset:
                 kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
             inst.__attrs_init__(**kwargs)
@@ -175,14 +175,9 @@ class AssetVideo(AssetVideoExt, Archetype):
         return inst
 
     @classmethod
-    def clear_fields(cls) -> AssetVideo:
+    def cleared(cls) -> AssetVideo:
         """Clear all the fields of a `AssetVideo`."""
-        inst = cls.__new__(cls)
-        inst.__attrs_init__(
-            blob=[],
-            media_type=[],
-        )
-        return inst
+        return cls.from_fields(clear_unset=True)
 
     @classmethod
     def columns(

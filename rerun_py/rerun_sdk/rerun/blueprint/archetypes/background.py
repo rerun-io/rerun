@@ -39,10 +39,10 @@ class Background(BackgroundExt, Archetype):
         return inst
 
     @classmethod
-    def update_fields(
+    def from_fields(
         cls,
         *,
-        clear: bool = False,
+        clear_unset: bool = False,
         kind: blueprint_components.BackgroundKindLike | None = None,
         color: datatypes.Rgba32Like | None = None,
     ) -> Background:
@@ -51,7 +51,7 @@ class Background(BackgroundExt, Archetype):
 
         Parameters
         ----------
-        clear:
+        clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         kind:
             The type of the background.
@@ -67,7 +67,7 @@ class Background(BackgroundExt, Archetype):
                 "color": color,
             }
 
-            if clear:
+            if clear_unset:
                 kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
             inst.__attrs_init__(**kwargs)
@@ -77,14 +77,9 @@ class Background(BackgroundExt, Archetype):
         return inst
 
     @classmethod
-    def clear_fields(cls) -> Background:
+    def cleared(cls) -> Background:
         """Clear all the fields of a `Background`."""
-        inst = cls.__new__(cls)
-        inst.__attrs_init__(
-            kind=[],
-            color=[],
-        )
-        return inst
+        return cls.from_fields(clear_unset=True)
 
     kind: blueprint_components.BackgroundKindBatch | None = field(
         metadata={"component": True},

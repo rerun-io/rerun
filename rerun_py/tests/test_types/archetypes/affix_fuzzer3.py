@@ -103,10 +103,10 @@ class AffixFuzzer3(Archetype):
         return inst
 
     @classmethod
-    def update_fields(
+    def from_fields(
         cls,
         *,
-        clear: bool = False,
+        clear_unset: bool = False,
         fuzz2001: datatypes.AffixFuzzer1Like | None = None,
         fuzz2002: datatypes.AffixFuzzer1Like | None = None,
         fuzz2003: datatypes.AffixFuzzer1Like | None = None,
@@ -151,7 +151,7 @@ class AffixFuzzer3(Archetype):
                 "fuzz2018": fuzz2018,
             }
 
-            if clear:
+            if clear_unset:
                 kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
             inst.__attrs_init__(**kwargs)
@@ -161,30 +161,9 @@ class AffixFuzzer3(Archetype):
         return inst
 
     @classmethod
-    def clear_fields(cls) -> AffixFuzzer3:
+    def cleared(cls) -> AffixFuzzer3:
         """Clear all the fields of a `AffixFuzzer3`."""
-        inst = cls.__new__(cls)
-        inst.__attrs_init__(
-            fuzz2001=[],
-            fuzz2002=[],
-            fuzz2003=[],
-            fuzz2004=[],
-            fuzz2005=[],
-            fuzz2006=[],
-            fuzz2007=[],
-            fuzz2008=[],
-            fuzz2009=[],
-            fuzz2010=[],
-            fuzz2011=[],
-            fuzz2012=[],
-            fuzz2013=[],
-            fuzz2014=[],
-            fuzz2015=[],
-            fuzz2016=[],
-            fuzz2017=[],
-            fuzz2018=[],
-        )
-        return inst
+        return cls.from_fields(clear_unset=True)
 
     @classmethod
     def columns(

@@ -120,10 +120,10 @@ class Scalar(Archetype):
         return inst
 
     @classmethod
-    def update_fields(
+    def from_fields(
         cls,
         *,
-        clear: bool = False,
+        clear_unset: bool = False,
         scalar: datatypes.Float64Like | None = None,
     ) -> Scalar:
         """
@@ -131,7 +131,7 @@ class Scalar(Archetype):
 
         Parameters
         ----------
-        clear:
+        clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         scalar:
             The scalar value to log.
@@ -144,7 +144,7 @@ class Scalar(Archetype):
                 "scalar": scalar,
             }
 
-            if clear:
+            if clear_unset:
                 kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
             inst.__attrs_init__(**kwargs)
@@ -154,13 +154,9 @@ class Scalar(Archetype):
         return inst
 
     @classmethod
-    def clear_fields(cls) -> Scalar:
+    def cleared(cls) -> Scalar:
         """Clear all the fields of a `Scalar`."""
-        inst = cls.__new__(cls)
-        inst.__attrs_init__(
-            scalar=[],
-        )
-        return inst
+        return cls.from_fields(clear_unset=True)
 
     @classmethod
     def columns(

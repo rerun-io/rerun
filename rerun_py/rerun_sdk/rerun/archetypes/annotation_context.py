@@ -96,10 +96,10 @@ class AnnotationContext(Archetype):
         return inst
 
     @classmethod
-    def update_fields(
+    def from_fields(
         cls,
         *,
-        clear: bool = False,
+        clear_unset: bool = False,
         context: components.AnnotationContextLike | None = None,
     ) -> AnnotationContext:
         """
@@ -107,7 +107,7 @@ class AnnotationContext(Archetype):
 
         Parameters
         ----------
-        clear:
+        clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         context:
             List of class descriptions, mapping class indices to class names, colors etc.
@@ -120,7 +120,7 @@ class AnnotationContext(Archetype):
                 "context": context,
             }
 
-            if clear:
+            if clear_unset:
                 kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
             inst.__attrs_init__(**kwargs)
@@ -130,13 +130,9 @@ class AnnotationContext(Archetype):
         return inst
 
     @classmethod
-    def clear_fields(cls) -> AnnotationContext:
+    def cleared(cls) -> AnnotationContext:
         """Clear all the fields of a `AnnotationContext`."""
-        inst = cls.__new__(cls)
-        inst.__attrs_init__(
-            context=[],
-        )
-        return inst
+        return cls.from_fields(clear_unset=True)
 
     @classmethod
     def columns(

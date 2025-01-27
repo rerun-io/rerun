@@ -132,10 +132,10 @@ class InstancePoses3D(Archetype):
         return inst
 
     @classmethod
-    def update_fields(
+    def from_fields(
         cls,
         *,
-        clear: bool = False,
+        clear_unset: bool = False,
         translations: datatypes.Vec3DArrayLike | None = None,
         rotation_axis_angles: datatypes.RotationAxisAngleArrayLike | None = None,
         quaternions: datatypes.QuaternionArrayLike | None = None,
@@ -147,7 +147,7 @@ class InstancePoses3D(Archetype):
 
         Parameters
         ----------
-        clear:
+        clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         translations:
             Translation vectors.
@@ -172,7 +172,7 @@ class InstancePoses3D(Archetype):
                 "mat3x3": mat3x3,
             }
 
-            if clear:
+            if clear_unset:
                 kwargs = {k: v if v is not None else [] for k, v in kwargs.items()}  # type: ignore[misc]
 
             inst.__attrs_init__(**kwargs)
@@ -182,17 +182,9 @@ class InstancePoses3D(Archetype):
         return inst
 
     @classmethod
-    def clear_fields(cls) -> InstancePoses3D:
+    def cleared(cls) -> InstancePoses3D:
         """Clear all the fields of a `InstancePoses3D`."""
-        inst = cls.__new__(cls)
-        inst.__attrs_init__(
-            translations=[],
-            rotation_axis_angles=[],
-            quaternions=[],
-            scales=[],
-            mat3x3=[],
-        )
-        return inst
+        return cls.from_fields(clear_unset=True)
 
     @classmethod
     def columns(
