@@ -9,6 +9,7 @@
 mod data_density_graph;
 mod paint_ticks;
 mod recursive_chunks_per_timeline_subscriber;
+mod streams_tree_data;
 mod time_axis;
 mod time_control_ui;
 mod time_ranges_ui;
@@ -88,7 +89,7 @@ impl TimePanelItem {
     }
 }
 
-#[derive(Clone, Copy, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 enum TimePanelSource {
     #[default]
     Recording,
@@ -606,6 +607,14 @@ impl TimePanel {
         ui: &mut egui::Ui,
     ) {
         re_tracing::profile_function!();
+
+        let entity_tree_data = crate::streams_tree_data::StreamsTreeData::from_source_and_filter(
+            ctx,
+            self.source,
+            &self.filter_state.filter(),
+        );
+
+        dbg!(entity_tree_data);
 
         egui::ScrollArea::vertical()
             .auto_shrink([false; 2])

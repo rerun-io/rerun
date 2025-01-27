@@ -38,6 +38,7 @@ itertools.workspace = true
 nohash-hasher.workspace = true
 once_cell.workspace = true
 serde.workspace = true
+smallvec.workspace = true
 vec1.workspace = true
 
 [dev-dependencies]
