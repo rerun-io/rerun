@@ -28,8 +28,8 @@ mod protobuf_conversions;
 
 pub use self::{
     dataframe::{
-        ColumnDescriptor, ColumnSelector, ComponentColumnSelector, Index, IndexRange, IndexValue,
-        QueryExpression, SparseFillStrategy, TimeColumnSelector, ViewContentsSelector,
+        ColumnSelector, ComponentColumnSelector, Index, IndexRange, IndexValue, QueryExpression,
+        SparseFillStrategy, TimeColumnSelector, ViewContentsSelector,
     },
     events::{ChunkCompactionReport, ChunkStoreDiff, ChunkStoreDiffKind, ChunkStoreEvent},
     gc::{GarbageCollectionOptions, GarbageCollectionTarget},
@@ -37,7 +37,7 @@ pub use self::{
     store::{ChunkStore, ChunkStoreConfig, ChunkStoreGeneration, ChunkStoreHandle, ColumnMetadata},
     subscribers::{ChunkStoreSubscriber, ChunkStoreSubscriberHandle, PerStoreChunkSubscriber},
 };
-pub use re_sorbet::{ComponentColumnDescriptor, TimeColumnDescriptor};
+pub use re_sorbet::{ColumnDescriptor, ComponentColumnDescriptor, TimeColumnDescriptor};
 
 pub(crate) use self::store::ColumnMetadataState;
 
