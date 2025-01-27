@@ -119,7 +119,7 @@ def log_lidar_data() -> None:
     rr.log(
         "/lidar",
         # negative radii are interpreted in UI units (instead of scene units)
-        rr.Points3D.update_fields(colors=(128, 128, 255), radii=-0.1),
+        rr.Points3D.from_fields(colors=(128, 128, 255), radii=-0.1),
         static=True,
     )
 
@@ -137,7 +137,7 @@ def log_drone_trajectory() -> None:
 
     rr.log(
         "/drone",
-        rr.Points3D.update_fields(colors=(255, 0, 0), radii=0.5),
+        rr.Points3D.from_fields(colors=(255, 0, 0), radii=0.5),
         static=True,
     )
 

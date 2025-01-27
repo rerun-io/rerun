@@ -318,12 +318,12 @@ class MeasurementBatchLogger:
             color = rr.components.Color.from_string(entity_path)
             rr.log(
                 entity_path,
-                rr.Points3D.update_fields(colors=color),
+                rr.Points3D.from_fields(colors=color),
                 # TODO(cmc): That would be UB right now (and doesn't matter as long as we are on the untagged index).
-                # rr.GeoPoints.update_fields(colors=color),
+                # rr.GeoPoints.from_fields(colors=color),
                 static=True,
             )
-            rr.log(entity_path + "/barometric_altitude", rr.SeriesLine.update_fields(color=color), static=True)
+            rr.log(entity_path + "/barometric_altitude", rr.SeriesLine.from_fields(color=color), static=True)
             self._position_indicators.add(icao_id)
 
         timestamps = rr.TimeSecondsColumn("unix_time", df["timestamp"].to_numpy())

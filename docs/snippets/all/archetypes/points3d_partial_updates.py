@@ -14,7 +14,7 @@ for i in range(0, 10):
     radii = [0.6 if n < i else 0.2 for n in range(0, 10)]
 
     rr.set_time_sequence("frame", i)
-    rr.log("points", rr.Points3D.update_fields(radii=radii, colors=colors))
+    rr.log("points", rr.Points3D.from_fields(radii=radii, colors=colors))
 
 rr.set_time_sequence("frame", 20)
-rr.log("points", rr.Points3D.update_fields(clear=True, positions=positions, radii=0.3))
+rr.log("points", rr.Points3D.from_fields(clear_unset=True, positions=positions, radii=0.3))

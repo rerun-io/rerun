@@ -38,7 +38,7 @@ rr.send_columns(
 
 # log a `Label` component to the face bounding box entity
 target_entity = "/video/detector/faces/0/bbox"
-rr.log(target_entity, rr.Boxes2D.update_fields(show_labels=True), static=True)
+rr.log(target_entity, rr.Boxes2D.from_fields(show_labels=True), static=True)
 rr.send_columns(
     target_entity,
     indexes=[rr.TimeSequenceColumn("frame_nr", df["frame_nr"])],
