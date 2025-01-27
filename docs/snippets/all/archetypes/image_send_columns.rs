@@ -1,5 +1,4 @@
 use ndarray::{s, Array, ShapeBuilder};
-use rerun::Archetype as _;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let rec = rerun::RecordingStreamBuilder::new("rerun_example_image_send_columns").spawn()?;
@@ -21,33 +20,27 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .fill(255);
     }
 
-    // Log the ImageFormat and indicator once, as static.
+    // Send the ImageFormat and indicator once, as static.
     let format = rerun::components::ImageFormat::rgb8([width as _, height as _]);
-    rec.log_static(
+    rec.send_columns(
         "images",
-        &[
-            &format as &dyn rerun::ComponentBatch,
-            &rerun::Image::indicator(),
-        ],
+        [],
+        rerun::Image::update_fields()
+            .with_format(format)
+            .columns_of_unit_batches()?,
     )?;
 
     // Split up the image data into several components referencing the underlying data.
     let image_size_in_bytes = width * height * 3;
-    let blob = rerun::datatypes::Blob::from(images.into_raw_vec_and_offset().0);
-    let image_column = times
-        .iter()
-        .map(|&t| {
-            let byte_offset = image_size_in_bytes * (t as usize);
-            rerun::components::ImageBuffer::from(
-                blob.clone() // Clone is only a reference count increase, not a full copy.
-                    .sliced(byte_offset..(byte_offset + image_size_in_bytes)),
-            )
-        })
-        .collect::<Vec<_>>();
-
-    // Send all images at once.
-    let timeline_values = rerun::TimeColumn::new_sequence("step", times);
-    rec.send_columns("images", [timeline_values], [&image_column as _])?;
+    let timeline_values = rerun::TimeColumn::new_sequence("step", times.clone());
+    let buffer = images.into_raw_vec_and_offset().0;
+    rec.send_columns(
+        "images",
+        [timeline_values],
+        rerun::Image::update_fields()
+            .with_many_buffer(buffer.chunks(image_size_in_bytes))
+            .columns_of_unit_batches()?,
+    )?;
 
     Ok(())
 }

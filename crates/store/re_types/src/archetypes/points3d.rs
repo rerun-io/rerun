@@ -127,7 +127,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///         .with_radii(radii)
 ///         .columns_of_unit_batches()?;
 ///
-///     rec.send_columns_v2("points", [times], position.chain(color_and_radius))?;
+///     rec.send_columns("points", [times], position.chain(color_and_radius))?;
 ///
 ///     Ok(())
 /// }
