@@ -1,13 +1,12 @@
 ---
 source: crates/store/re_dataframe/src/query.rs
-assertion_line: 1763
-expression: dataframe
-snapshot_kind: text
+expression: "TransportChunk::from(dataframe)"
 ---
-┌───────────────────────────────┬───────────────────────────────┐
-│ frame_nr                      ┆ log_time                      │
-│ ---                           ┆ ---                           │
-│ type: "i64"                   ┆ type: "Timestamp(ns)"         │
-│ sorbet.index_name: "frame_nr" ┆ sorbet.index_name: "log_time" │
-╞═══════════════════════════════╪═══════════════════════════════╡
-└───────────────────────────────┴───────────────────────────────┘
+┌────────────────────────┬────────────────────────┐
+│ frame_nr               ┆ log_time               │
+│ ---                    ┆ ---                    │
+│ type: "i64"            ┆ type: "Timestamp(ns)"  │
+│ index_name: "frame_nr" ┆ index_name: "log_time" │
+│ kind: "index"          ┆ kind: "index"          │
+╞════════════════════════╪════════════════════════╡
+└────────────────────────┴────────────────────────┘
