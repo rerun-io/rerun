@@ -385,6 +385,51 @@ impl RecordingStreamBuilder {
         }
     }
 
+    /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
+    /// remote Rerun instance.
+    ///
+    /// See also [`Self::connect_opts`] if you wish to configure the connection.
+    ///
+    /// ## Example
+    ///
+    /// ```no_run
+    /// let rec = re_sdk::RecordingStreamBuilder::new("rerun_example_app").connect_grpc()?;
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// ```
+    pub fn connect_grpc(self) -> RecordingStreamResult<RecordingStream> {
+        self.connect_grpc_opts(format!(
+            "http://127.0.0.1:{}",
+            re_grpc_server::DEFAULT_SERVER_PORT
+        ))
+    }
+
+    /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
+    /// remote Rerun instance.
+    ///
+    /// ## Example
+    ///
+    /// ```no_run
+    /// let rec = re_sdk::RecordingStreamBuilder::new("rerun_example_app")
+    ///     .connect_grpc_opts("http://127.0.0.1:1852")?;
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// ```
+    pub fn connect_grpc_opts(
+        self,
+        url: impl Into<String>,
+    ) -> RecordingStreamResult<RecordingStream> {
+        let (enabled, store_info, batcher_config) = self.into_args();
+        if enabled {
+            RecordingStream::new(
+                store_info,
+                batcher_config,
+                Box::new(crate::log_sink::GrpcSink::new(url)),
+            )
+        } else {
+            re_log::debug!("Rerun disabled - call to connect() ignored");
+            Ok(RecordingStream::disabled())
+        }
+    }
+
     /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to an
     /// RRD file on disk.
     ///
@@ -509,6 +554,63 @@ impl RecordingStreamBuilder {
         crate::spawn(opts)?;
 
         self.connect_tcp_opts(connect_addr, flush_timeout)
+    }
+
+    /// Spawns a new Rerun Viewer process from an executable available in PATH, then creates a new
+    /// [`RecordingStream`] that is pre-configured to stream the data through to that viewer over TCP.
+    ///
+    /// If a Rerun Viewer is already listening on this port, the stream will be redirected to
+    /// that viewer instead of starting a new one.
+    ///
+    /// See also [`Self::spawn_grpc_opts`] if you wish to configure the behavior of thew Rerun process
+    /// as well as the underlying connection.
+    ///
+    /// ## Example
+    ///
+    /// ```no_run
+    /// let rec = re_sdk::RecordingStreamBuilder::new("rerun_example_app").spawn_grpc()?;
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// ```
+    pub fn spawn_grpc(self) -> RecordingStreamResult<RecordingStream> {
+        self.spawn_grpc_opts(&Default::default())
+    }
+
+    /// Spawns a new Rerun Viewer process from an executable available in PATH, then creates a new
+    /// [`RecordingStream`] that is pre-configured to stream the data through to that viewer over TCP.
+    ///
+    /// If a Rerun Viewer is already listening on this port, the stream will be redirected to
+    /// that viewer instead of starting a new one.
+    ///
+    /// The behavior of the spawned Viewer can be configured via `opts`.
+    /// If you're fine with the default behavior, refer to the simpler [`Self::spawn_grpc`].
+    ///
+    /// ## Example
+    ///
+    /// ```no_run
+    /// let rec = re_sdk::RecordingStreamBuilder::new("rerun_example_app")
+    ///     .spawn_grpc_opts(&re_sdk::SpawnOptions::default())?;
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// ```
+    pub fn spawn_grpc_opts(
+        self,
+        opts: &crate::SpawnOptions,
+    ) -> RecordingStreamResult<RecordingStream> {
+        if !self.is_enabled() {
+            re_log::debug!("Rerun disabled - call to spawn() ignored");
+            return Ok(RecordingStream::disabled());
+        }
+
+        let url = format!("http://{}", opts.connect_addr());
+
+        // NOTE: If `_RERUN_TEST_FORCE_SAVE` is set, all recording streams will write to disk no matter
+        // what, thus spawning a viewer is pointless (and probably not intended).
+        if forced_sink_path().is_some() {
+            return self.connect_grpc_opts(url);
+        }
+
+        crate::spawn(opts)?;
+
+        self.connect_grpc_opts(url)
     }
 
     /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
@@ -1967,7 +2069,7 @@ impl RecordingStream {
 
         crate::spawn(opts)?;
 
-        self.connect_grpc_opts(format!("http://127.0.0.1:{}", opts.connect_addr()));
+        self.connect_grpc_opts(format!("http://{}", opts.connect_addr()));
 
         Ok(())
     }
