@@ -5,8 +5,7 @@ use re_chunk::RowId;
 use re_chunk_store::ChunkStoreEvent;
 use re_log_types::hash::Hash64;
 use re_types::{
-    archetypes::Image,
-    components::MediaType,
+    components::{ImageBuffer, MediaType},
     image::{ImageKind, ImageLoadError},
     Component as _,
 };
@@ -96,9 +95,7 @@ fn decode_image(
 
     let dynamic_image = reader.decode()?;
 
-    let image_arch = Image::from_dynamic_image(dynamic_image)?;
-
-    let Image { buffer, format, .. } = image_arch;
+    let (buffer, format) = ImageBuffer::from_dynamic_image(dynamic_image)?;
 
     Ok(ImageInfo {
         buffer_row_id: blob_row_id,

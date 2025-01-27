@@ -5,8 +5,11 @@ use re_chunk::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
 use re_types::blueprint::archetypes as blueprint_archetypes;
-use re_types::blueprint::components::{ContainerKind, GridColumns};
+use re_types::blueprint::components::{
+    ActiveTab, ColumnShare, ContainerKind, GridColumns, IncludedContent, RowShare,
+};
 use re_types::components::Name;
+use re_types::Loggable as _;
 use re_types::{blueprint::components::Visible, Archetype as _};
 use re_viewer_context::{ContainerId, Contents, ContentsName, ViewId, ViewerContext};
 
@@ -76,25 +79,13 @@ impl ContainerBlueprint {
         // is the marker that the have been cleared and not an error.
         let container_kind = results.component_instance::<ContainerKind>(0)?;
 
-        let blueprint_archetypes::NativeContainerBlueprint {
-            container_kind,
-            display_name,
-            contents,
-            col_shares,
-            row_shares,
-            active_tab,
-            visible,
-            grid_columns,
-        } = blueprint_archetypes::NativeContainerBlueprint {
-            container_kind,
-            display_name: results.component_instance(0),
-            contents: results.component_batch(),
-            col_shares: results.component_batch(),
-            row_shares: results.component_batch(),
-            active_tab: results.component_instance(0),
-            visible: results.component_instance(0),
-            grid_columns: results.component_instance(0),
-        };
+        let display_name = results.component_instance::<Name>(0);
+        let contents = results.component_batch::<IncludedContent>();
+        let col_shares = results.component_batch::<ColumnShare>();
+        let row_shares = results.component_batch::<RowShare>();
+        let active_tab = results.component_instance::<ActiveTab>(0);
+        let visible = results.component_instance::<Visible>(0);
+        let grid_columns = results.component_instance::<GridColumns>(0);
 
         // ----
 
@@ -202,8 +193,10 @@ impl ContainerBlueprint {
         if let Some(cols) = grid_columns {
             arch = arch.with_grid_columns(*cols);
         } else {
-            // TODO(#3381): Archetypes should provide a convenience API for this
-            ctx.save_empty_blueprint_component::<GridColumns>(&id.as_entity_path());
+            arch.grid_columns = Some(re_types::SerializedComponentBatch::new(
+                re_types::blueprint::components::GridColumns::arrow_empty(),
+                re_types::blueprint::archetypes::ContainerBlueprint::descriptor_grid_columns(),
+            ));
         }
 
         ctx.save_blueprint_archetype(&id.as_entity_path(), &arch);

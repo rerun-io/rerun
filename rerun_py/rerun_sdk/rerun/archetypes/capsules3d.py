@@ -5,11 +5,14 @@
 
 from __future__ import annotations
 
+import numpy as np
 from attrs import define, field
 
 from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
+    ComponentColumnList,
+    DescribedComponentBatch,
 )
 from ..error_utils import catch_and_log_exceptions
 from .capsules3d_ext import Capsules3DExt
@@ -192,6 +195,88 @@ class Capsules3D(Capsules3DExt, Archetype):
             class_ids=[],
         )
         return inst
+
+    @classmethod
+    def columns(
+        cls,
+        *,
+        lengths: datatypes.Float32ArrayLike | None = None,
+        radii: datatypes.Float32ArrayLike | None = None,
+        translations: datatypes.Vec3DArrayLike | None = None,
+        rotation_axis_angles: datatypes.RotationAxisAngleArrayLike | None = None,
+        quaternions: datatypes.QuaternionArrayLike | None = None,
+        colors: datatypes.Rgba32ArrayLike | None = None,
+        labels: datatypes.Utf8ArrayLike | None = None,
+        show_labels: datatypes.BoolArrayLike | None = None,
+        class_ids: datatypes.ClassIdArrayLike | None = None,
+    ) -> ComponentColumnList:
+        """
+        Construct a new column-oriented component bundle.
+
+        This makes it possible to use `rr.send_columns` to send columnar data directly into Rerun.
+
+        The returned columns will be partitioned into unit-length sub-batches by default.
+        Use `ComponentColumnList.partition` to repartition the data as needed.
+
+        Parameters
+        ----------
+        lengths:
+            Lengths of the capsules, defined as the distance between the centers of the endcaps.
+        radii:
+            Radii of the capsules.
+        translations:
+            Optional translations of the capsules.
+
+            If not specified, one end of each capsule will be at (0, 0, 0).
+            Note that this uses a [`components.PoseTranslation3D`][rerun.components.PoseTranslation3D] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
+        rotation_axis_angles:
+            Rotations via axis + angle.
+
+            If no rotation is specified, the capsules align with the +Z axis of the local coordinate system.
+            Note that this uses a [`components.PoseRotationAxisAngle`][rerun.components.PoseRotationAxisAngle] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
+        quaternions:
+            Rotations via quaternion.
+
+            If no rotation is specified, the capsules align with the +Z axis of the local coordinate system.
+            Note that this uses a [`components.PoseRotationQuat`][rerun.components.PoseRotationQuat] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
+        colors:
+            Optional colors for the capsules.
+        labels:
+            Optional text labels for the capsules, which will be located at their centers.
+        show_labels:
+            Optional choice of whether the text labels should be shown by default.
+        class_ids:
+            Optional class ID for the ellipsoids.
+
+            The class ID provides colors and labels if not specified explicitly.
+
+        """
+
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            inst.__attrs_init__(
+                lengths=lengths,
+                radii=radii,
+                translations=translations,
+                rotation_axis_angles=rotation_axis_angles,
+                quaternions=quaternions,
+                colors=colors,
+                labels=labels,
+                show_labels=show_labels,
+                class_ids=class_ids,
+            )
+
+        batches = [batch for batch in inst.as_component_batches() if isinstance(batch, DescribedComponentBatch)]
+        if len(batches) == 0:
+            return ComponentColumnList([])
+
+        lengths = np.ones(len(batches[0]._batch.as_arrow_array()))
+        columns = [batch.partition(lengths) for batch in batches]
+
+        indicator_batch = DescribedComponentBatch(cls.indicator(), cls.indicator().component_descriptor())
+        indicator_column = indicator_batch.partition(np.zeros(len(lengths)))
+
+        return ComponentColumnList([indicator_column] + columns)
 
     lengths: components.LengthBatch | None = field(
         metadata={"component": True},

@@ -4,7 +4,6 @@ namespace rerun.blueprint.archetypes;
 
 /// The description of a single view.
 table ViewBlueprint (
-      "attr.rust.archetype_eager",
     "attr.rerun.scope": "blueprint"
 ) {
     // --- Required ---

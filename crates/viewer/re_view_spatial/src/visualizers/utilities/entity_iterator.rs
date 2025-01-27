@@ -21,7 +21,7 @@ pub fn clamped_or<'a, T>(values: &'a [T], if_empty: &'a T) -> impl Iterator<Item
 
 /// Clamp the last value in `values` in order to reach a length of `clamped_len`.
 ///
-/// Returns an empty vctor if values is empty.
+/// Returns an empty vector if values is empty.
 #[inline]
 pub fn clamped_vec_or_empty<T: Clone>(values: &[T], clamped_len: usize) -> Vec<T> {
     if values.len() == clamped_len {
@@ -44,6 +44,19 @@ pub fn clamped_vec_or_empty<T: Clone>(values: &[T], clamped_len: usize) -> Vec<T
     } else {
         // Empty input
         Vec::new()
+    }
+}
+
+/// Clamp the last value in `values` in order to reach a length of `clamped_len`.
+///
+/// If the input slice is empty, the second argument is repeated `clamped_len` times.
+#[inline]
+pub fn clamped_vec_or<T: Clone>(values: &[T], clamped_len: usize, if_empty: &T) -> Vec<T> {
+    let clamped = clamped_vec_or_empty(values, clamped_len);
+    if clamped.is_empty() {
+        vec![if_empty.clone(); clamped_len]
+    } else {
+        clamped
     }
 }
 

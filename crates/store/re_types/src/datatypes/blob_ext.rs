@@ -20,6 +20,12 @@ impl From<Vec<u8>> for Blob {
     }
 }
 
+impl From<&[u8]> for Blob {
+    fn from(bytes: &[u8]) -> Self {
+        Self(bytes.into())
+    }
+}
+
 impl std::ops::Deref for Blob {
     type Target = re_types_core::ArrowBuffer<u8>;
 

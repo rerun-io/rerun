@@ -8,7 +8,6 @@ namespace rerun.blueprint.archetypes;
 /// If no visual bounds are set, it will be determined automatically,
 /// based on the bounding-box of the data or other camera information present in the view.
 table VisualBounds2D (
-      "attr.rust.archetype_eager",
     "attr.rerun.scope": "blueprint"
 ) {
     /// Controls the visible range of a 2D view.

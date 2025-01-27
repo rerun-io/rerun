@@ -181,9 +181,10 @@ Update instructions:
 | --------------- | --------------------------------------------------------------------------------------------- |
 | re_chunk        | A chunk of Rerun data, encoded using Arrow. Used for logging, transport, storage and compute. |
 | re_chunk_store  | An in-memory time series database for Rerun log data, based on Apache Arrow.                  |
-| re_log_types    | The basic building blocks of the Rerun data types and tables.                                 |
-| re_types_core   | The core traits and types that power Rerun's data model.                                      |
 | re_format_arrow | Formatting of Apache Arrow tables.                                                            |
+| re_log_types    | The basic building blocks of the Rerun data types and tables.                                 |
+| re_sorbet       | Rerun arrow metadata and record batch definitions.                                            |
+| re_types_core   | The core traits and types that power Rerun's data model.                                      |
 
 ### Data flow
 

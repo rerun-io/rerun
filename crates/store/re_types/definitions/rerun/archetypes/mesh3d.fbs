@@ -13,7 +13,6 @@ namespace rerun.archetypes;
 /// \example archetypes/mesh3d_partial_updates !api title="3D mesh with partial updates" image="https://static.rerun.io/mesh3d_partial_updates/7de33d26220585691a403098c953cd46f94c3262/1200w.png"
 /// \example archetypes/mesh3d_instancing title="3D mesh with instancing" image="https://static.rerun.io/mesh3d_leaf_transforms3d/c2d0ee033129da53168f5705625a9b033f3a3d61/1200w.png"
 table Mesh3D (
-  // TODO(#7245): "attr.rust.archetype_eager",
   "attr.rust.derive": "PartialEq",
   "attr.docs.category": "Spatial 3D",
   "attr.docs.view_types": "Spatial3DView, Spatial2DView: if logged above active projection"

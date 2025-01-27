@@ -1,8 +1,8 @@
 use re_types::{
     archetypes::Mesh3D,
-    components::{ClassId, Position3D, Texcoord2D, TriangleIndices, Vector3D},
+    components::{AlbedoFactor, ClassId, Color, Position3D, Texcoord2D, TriangleIndices, Vector3D},
     datatypes::{Rgba32, UVec3D, Vec2D, Vec3D},
-    Archetype as _, AsComponents as _,
+    Archetype as _, AsComponents as _, ComponentBatch,
 };
 
 #[test]
@@ -14,30 +14,48 @@ fn roundtrip() {
         vertex_positions: vec![
             Position3D(Vec3D([1.0, 2.0, 3.0])),
             Position3D(Vec3D([10.0, 20.0, 30.0])),
-        ],
-        triangle_indices: Some(vec![
+        ]
+        .serialized()
+        .map(|batch| batch.with_descriptor_override(Mesh3D::descriptor_vertex_positions())),
+        triangle_indices: vec![
             TriangleIndices(UVec3D([1, 2, 3])), //
             TriangleIndices(UVec3D([4, 5, 6])), //
-        ]),
-        vertex_normals: Some(vec![
+        ]
+        .serialized()
+        .map(|batch| batch.with_descriptor_override(Mesh3D::descriptor_triangle_indices())),
+        vertex_normals: vec![
             Vector3D(Vec3D([4.0, 5.0, 6.0])),    //
             Vector3D(Vec3D([40.0, 50.0, 60.0])), //
-        ]),
-        vertex_colors: Some(vec![
-            Rgba32::from_unmultiplied_rgba(0xAA, 0x00, 0x00, 0xCC).into(), //
-            Rgba32::from_unmultiplied_rgba(0x00, 0xBB, 0x00, 0xDD).into(),
-        ]),
-        vertex_texcoords: Some(vec![
+        ]
+        .serialized()
+        .map(|batch| batch.with_descriptor_override(Mesh3D::descriptor_vertex_normals())),
+        vertex_colors: vec![
+            Color::from_unmultiplied_rgba(0xAA, 0x00, 0x00, 0xCC),
+            Color::from_unmultiplied_rgba(0x00, 0xBB, 0x00, 0xDD),
+        ]
+        .serialized()
+        .map(|batch| batch.with_descriptor_override(Mesh3D::descriptor_vertex_colors())),
+        vertex_texcoords: vec![
             Texcoord2D(Vec2D([0.0, 1.0])), //
             Texcoord2D(Vec2D([2.0, 3.0])), //
-        ]),
-        albedo_factor: Some(Rgba32::from_unmultiplied_rgba(0xEE, 0x11, 0x22, 0x33).into()),
-        albedo_texture_format: Some(texture_format),
-        albedo_texture_buffer: Some(texture_buffer.clone()),
-        class_ids: Some(vec![
+        ]
+        .serialized()
+        .map(|batch| batch.with_descriptor_override(Mesh3D::descriptor_vertex_texcoords())),
+        albedo_factor: AlbedoFactor(Rgba32::from_unmultiplied_rgba(0xEE, 0x11, 0x22, 0x33))
+            .serialized()
+            .map(|batch| batch.with_descriptor_override(Mesh3D::descriptor_albedo_factor())),
+        albedo_texture_format: texture_format.serialized().map(|batch| {
+            batch.with_descriptor_override(Mesh3D::descriptor_albedo_texture_format())
+        }),
+        albedo_texture_buffer: texture_buffer.serialized().map(|batch| {
+            batch.with_descriptor_override(Mesh3D::descriptor_albedo_texture_buffer())
+        }),
+        class_ids: vec![
             ClassId::from(126), //
             ClassId::from(127), //
-        ]),
+        ]
+        .serialized()
+        .map(|batch| batch.with_descriptor_override(Mesh3D::descriptor_class_ids())),
     };
 
     let arch = Mesh3D::new([[1.0, 2.0, 3.0], [10.0, 20.0, 30.0]])

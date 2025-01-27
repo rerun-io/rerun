@@ -32,3 +32,9 @@ For logging custom components, use [`rr.AnyValue`](https://ref.rerun.io/docs/pyt
 As part of the switch to "eager archetype serialization" (serialization of archetype components now occurs at time of archetype instantiation rather than logging), we can no longer offer constants for the `ViewCoordinates` archetype like `ViewCoordinates::RUB`.
 
 Instead, there's now methods with the same name, i.e. `ViewCoordinates::RUB()`.
+
+### Rust's `Tensor` archetype can no longer access tensor data as `ndarray` view directly
+
+As part of the switch to "eager archetype serialization" (serialization of archetype components now occurs at time of archetype instantiation rather than logging), we can no longer offer exposing the `Tensor` **archetype** as `ndarray::ArrayView` directly.
+
+However, it is still possible to do so with the `TensorData` component.

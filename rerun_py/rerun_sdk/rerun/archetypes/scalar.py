@@ -7,11 +7,14 @@ from __future__ import annotations
 
 from typing import Any
 
+import numpy as np
 from attrs import define, field
 
 from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
+    ComponentColumnList,
+    DescribedComponentBatch,
 )
 from ..error_utils import catch_and_log_exceptions
 
@@ -68,10 +71,10 @@ class Scalar(Archetype):
     times = np.arange(0, 64)
     scalars = np.sin(times / 10.0)
 
-    rr.send_columns(
+    rr.send_columns_v2(
         "scalars",
-        times=[rr.TimeSequenceColumn("step", times)],
-        components=[rr.components.ScalarBatch(scalars)],
+        indexes=[rr.TimeSequenceColumn("step", times)],
+        columns=rr.Scalar.columns(scalar=scalars),
     )
     ```
     <center>
@@ -158,6 +161,42 @@ class Scalar(Archetype):
             scalar=[],
         )
         return inst
+
+    @classmethod
+    def columns(
+        cls,
+        *,
+        scalar: datatypes.Float64ArrayLike | None = None,
+    ) -> ComponentColumnList:
+        """
+        Construct a new column-oriented component bundle.
+
+        This makes it possible to use `rr.send_columns` to send columnar data directly into Rerun.
+
+        The returned columns will be partitioned into unit-length sub-batches by default.
+        Use `ComponentColumnList.partition` to repartition the data as needed.
+
+        Parameters
+        ----------
+        scalar:
+            The scalar value to log.
+
+        """
+
+        inst = cls.__new__(cls)
+        with catch_and_log_exceptions(context=cls.__name__):
+            inst.__attrs_init__(
+                scalar=scalar,
+            )
+
+        batches = [batch for batch in inst.as_component_batches() if isinstance(batch, DescribedComponentBatch)]
+        if len(batches) == 0:
+            return ComponentColumnList([])
+
+        lengths = np.ones(len(batches[0]._batch.as_arrow_array()))
+        columns = [batch.partition(lengths) for batch in batches]
+
+        return ComponentColumnList(columns)
 
     scalar: components.ScalarBatch | None = field(
         metadata={"component": True},

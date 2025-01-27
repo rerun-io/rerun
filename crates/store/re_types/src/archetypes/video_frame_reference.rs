@@ -57,14 +57,13 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///         // Note timeline values don't have to be the same as the video timestamps.
 ///         frame_timestamps_ns,
 ///     );
-///     let frame_reference_indicators =
-///         <rerun::VideoFrameReference as rerun::Archetype>::Indicator::new_array(
-///             time_column.num_rows(),
-///         );
+///
 ///     rec.send_columns(
 ///         "video",
 ///         [time_column],
-///         [&frame_reference_indicators as _, &video_timestamps_ns as _],
+///         rerun::VideoFrameReference::update_fields()
+///             .with_many_timestamp(video_timestamps_ns)
+///             .columns_of_unit_batches()?,
 ///     )?;
 ///
 ///     Ok(())

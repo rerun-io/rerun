@@ -26,22 +26,18 @@ mod writes;
 
 mod protobuf_conversions;
 
-pub use self::dataframe::{
-    ColumnDescriptor, ColumnSelector, ComponentColumnDescriptor, ComponentColumnSelector, Index,
-    IndexRange, IndexValue, QueryExpression, SparseFillStrategy, TimeColumnDescriptor,
-    TimeColumnSelector, ViewContentsSelector,
+pub use self::{
+    dataframe::{
+        ColumnDescriptor, ColumnSelector, ComponentColumnSelector, Index, IndexRange, IndexValue,
+        QueryExpression, SparseFillStrategy, TimeColumnSelector, ViewContentsSelector,
+    },
+    events::{ChunkCompactionReport, ChunkStoreDiff, ChunkStoreDiffKind, ChunkStoreEvent},
+    gc::{GarbageCollectionOptions, GarbageCollectionTarget},
+    stats::{ChunkStoreChunkStats, ChunkStoreStats},
+    store::{ChunkStore, ChunkStoreConfig, ChunkStoreGeneration, ChunkStoreHandle, ColumnMetadata},
+    subscribers::{ChunkStoreSubscriber, ChunkStoreSubscriberHandle, PerStoreChunkSubscriber},
 };
-pub use self::events::{
-    ChunkCompactionReport, ChunkStoreDiff, ChunkStoreDiffKind, ChunkStoreEvent,
-};
-pub use self::gc::{GarbageCollectionOptions, GarbageCollectionTarget};
-pub use self::stats::{ChunkStoreChunkStats, ChunkStoreStats};
-pub use self::store::{
-    ChunkStore, ChunkStoreConfig, ChunkStoreGeneration, ChunkStoreHandle, ColumnMetadata,
-};
-pub use self::subscribers::{
-    ChunkStoreSubscriber, ChunkStoreSubscriberHandle, PerStoreChunkSubscriber,
-};
+pub use re_sorbet::{ComponentColumnDescriptor, TimeColumnDescriptor};
 
 pub(crate) use self::store::ColumnMetadataState;
 

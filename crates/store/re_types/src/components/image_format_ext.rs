@@ -32,6 +32,15 @@ impl ImageFormat {
         datatypes::ImageFormat::from_pixel_format([width, height], pixel_format).into()
     }
 
+    /// Create a new image format from a color model and datatype.
+    pub fn from_color_model(
+        [width, height]: [u32; 2],
+        color_model: ColorModel,
+        datatype: ChannelDatatype,
+    ) -> Self {
+        datatypes::ImageFormat::from_color_model([width, height], color_model, datatype).into()
+    }
+
     /// Determine if the image format has an alpha channel.
     #[inline]
     pub fn has_alpha(&self) -> bool {

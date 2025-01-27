@@ -68,10 +68,16 @@ RR_DISABLE_MAYBE_UNINITIALIZED_POP
         if (!data_struct_array) {
             return Error(ErrorCode::InvalidArchetypeField, "Tensor data is not a struct array");
         }
-        if (data_struct_array->length() != 1) {
+        if (data_struct_array->length() == 0) {
             return Error(
                 ErrorCode::InvalidArchetypeField,
-                "Can't set dimnesion names on a tensor archetype with multiple fields."
+                "Can't set names on a tensor that doesn't have any data"
+            );
+        }
+        if (data_struct_array->length() > 1) {
+            return Error(
+                ErrorCode::InvalidArchetypeField,
+                "Can't set dimension names on a tensor archetype with multiple tensor data instances."
             );
         }
 
