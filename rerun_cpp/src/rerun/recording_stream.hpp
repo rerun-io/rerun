@@ -717,6 +717,25 @@ namespace rerun {
             return try_send_columns(entity_path, time_columns, std::move(serialized_columns));
         }
 
+        /// Directly log a columns of data to Rerun.
+        ///
+        /// This variant takes in arbitrary amount of `ComponentColumn`s and `ComponentColumn` collections.
+        ///
+        /// Unlike the regular `log` API, which is row-oriented, this API lets you submit the data
+        /// in a columnar form. Each `TimeColumn` and `ComponentColumn` represents a column of data that will be sent to Rerun.
+        /// The lengths of all of these columns must match, and all
+        /// data that shares the same index across the different columns will act as a single logical row,
+        /// equivalent to a single call to `RecordingStream::log`.
+        ///
+        /// Note that this API ignores any stateful time set on the log stream via the `RecordingStream::set_time_*` APIs.
+        /// Furthermore, this will _not_ inject the default timelines `log_tick` and `log_time` timeline columns.
+        ///
+        /// Any failures that may occur during serialization are handled with `Error::handle`.
+        ///
+        /// \param entity_path Path to the entity in the space hierarchy.
+        /// \param time_columns The time columns to send.
+        /// \param component_columns The columns of components to send. Both individual `ComponentColumn`s and `Collection<ComponentColumn>`s are accepted.
+        /// \see `try_send_columns`
         template <typename... Ts>
         void send_columns2(
             std::string_view entity_path, Collection<TimeColumn> time_columns,
@@ -725,6 +744,25 @@ namespace rerun {
             try_send_columns2(entity_path, time_columns, component_columns...).handle();
         }
 
+        /// Directly log a columns of data to Rerun.
+        ///
+        /// This variant takes in arbitrary amount of `ComponentColumn`s and `ComponentColumn` collections.
+        ///
+        /// Unlike the regular `log` API, which is row-oriented, this API lets you submit the data
+        /// in a columnar form. Each `TimeColumn` and `ComponentColumn` represents a column of data that will be sent to Rerun.
+        /// The lengths of all of these columns must match, and all
+        /// data that shares the same index across the different columns will act as a single logical row,
+        /// equivalent to a single call to `RecordingStream::log`.
+        ///
+        /// Note that this API ignores any stateful time set on the log stream via the `RecordingStream::set_time_*` APIs.
+        /// Furthermore, this will _not_ inject the default timelines `log_tick` and `log_time` timeline columns.
+        ///
+        /// Any failures that may occur during serialization are handled with `Error::handle`.
+        ///
+        /// \param entity_path Path to the entity in the space hierarchy.
+        /// \param time_columns The time columns to send.
+        /// \param component_columns The columns of components to send. Both individual `ComponentColumn`s and `Collection<ComponentColumn>`s are accepted.
+        /// \see `send_columns`
         template <typename... Ts>
         Error try_send_columns2(
             std::string_view entity_path, Collection<TimeColumn> time_columns,
