@@ -33,6 +33,7 @@ namespace rerun {
         /// \param lengths The number of components in each run. for `rerun::RecordingStream::send_columns`,
         /// this specifies the number of components at each time point.
         /// The sum of the lengths must be equal to the number of components in the batch.
+        /// \param descriptor Descriptor of the component type for this column.
         template <typename T>
         static Result<ComponentColumn> from_loggable_with_lengths(
             const Collection<T>& components, const Collection<uint32_t>& lengths,
@@ -53,6 +54,7 @@ namespace rerun {
         /// Automatically registers the component type the first time this type is encountered.
         ///
         /// \param components Continuous collection of components which is about to be partitioned into runs of length one.
+        /// \param descriptor Descriptor of the component type for this column.
         template <typename T>
         static Result<ComponentColumn> from_loggable(
             const Collection<T>& components,
