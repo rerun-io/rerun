@@ -1219,11 +1219,18 @@ mod tests {
         let expected: Vec<_> = expected.into_keys().collect();
 
         for _ in 0..1_000 {
-            let got: IntMap<ComponentDescriptor, ()> =
+            let got_collect: IntMap<ComponentDescriptor, ()> =
                 descriptors.clone().into_iter().map(|d| (d, ())).collect();
-            let got: Vec<_> = got.into_keys().collect();
+            let got_collect: Vec<_> = got_collect.into_keys().collect();
 
-            assert_eq!(expected, got);
+            let mut got_insert: IntMap<ComponentDescriptor, ()> = Default::default();
+            for d in descriptors.clone() {
+                got_insert.insert(d, ());
+            }
+            let got_insert: Vec<_> = got_insert.into_keys().collect();
+
+            assert_eq!(expected, got_collect);
+            assert_eq!(expected, got_insert);
         }
     }
 
