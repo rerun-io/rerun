@@ -3,15 +3,19 @@ title: Send user-defined data
 order: 200
 description: How to use Rerun with custom data
 ---
+
 Rerun comes with many pre-built [Types](../../reference/types.md) that you can use out of the box. As long as your own data can be decomposed into Rerun [components](../../reference/types/components.md) or can be serialized with [Apache Arrow](https://arrow.apache.org/), you can log it directly without needing to recompile Rerun.
 
 For Python we have a helper for this, called [`AnyValues`](https://ref.rerun.io/docs/python/main/common/custom_data/), allowing you to easily attach custom values to any entity instance:
 
-```
+```python
 rr.log(
     "my_entity", rr.AnyValues(
         confidence=[1.2, 3.4, 5.6],
         description="Bla bla bla…",
+        # URIs will become clickable links
+        homepage="https://www.rerun.io",
+        repository="https://github.com/rerun-io/rerun",
     ),
 )
 ```
@@ -19,7 +23,9 @@ rr.log(
 You can also create your own component by implementing the `AsComponents` [Python protocol](https://ref.rerun.io/docs/python/0.9.0/common/interfaces/#rerun.AsComponents) or [Rust trait](https://docs.rs/rerun/latest/rerun/trait.AsComponents.html), which means implementing the function, `as_component_batches()`.
 
 ## Remapping to a Rerun archetype
+
 Let's start with a simple example where you have your own point cloud class that is perfectly representable as a Rerun archetype.
+
 ```python
 @dataclass
 class LabeledPoints:
@@ -47,6 +53,7 @@ rr.log("points/classified", classified)
 ```
 
 ## Custom archetypes and components
+
 You can also define and log your own custom archetypes and components completely from user code, without rebuilding Rerun.
 
 In this example we extend the Rerun Points3D archetype with custom confidence and indicator components.
