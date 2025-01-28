@@ -13,69 +13,10 @@ use itertools::Itertools;
 
 use re_chunk::TimelineName;
 use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt, Timeline};
-use re_sorbet::{ComponentColumnDescriptor, TimeColumnDescriptor};
+use re_sorbet::{ColumnDescriptor, ComponentColumnDescriptor, TimeColumnDescriptor};
 use re_types_core::ComponentName;
 
 use crate::{ChunkStore, ColumnMetadata};
-
-// --- Descriptors ---
-
-// TODO(#6889): At some point all these descriptors needs to be interned and have handles or
-// something. And of course they need to be codegen. But we'll get there once we're back to
-// natively tagged components.
-
-// Describes any kind of column.
-//
-// See:
-// * [`TimeColumnDescriptor`]
-// * [`ComponentColumnDescriptor`]
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub enum ColumnDescriptor {
-    Time(TimeColumnDescriptor),
-    Component(ComponentColumnDescriptor),
-}
-
-impl ColumnDescriptor {
-    #[inline]
-    pub fn entity_path(&self) -> Option<&EntityPath> {
-        match self {
-            Self::Time(_) => None,
-            Self::Component(descr) => Some(&descr.entity_path),
-        }
-    }
-
-    #[inline]
-    pub fn arrow_datatype(&self) -> ArrowDatatype {
-        match self {
-            Self::Time(descr) => descr.datatype.clone(),
-            Self::Component(descr) => descr.returned_datatype(),
-        }
-    }
-
-    #[inline]
-    pub fn to_arrow_field(&self) -> ArrowField {
-        match self {
-            Self::Time(descr) => descr.to_arrow_field(),
-            Self::Component(descr) => descr.to_arrow_field(),
-        }
-    }
-
-    #[inline]
-    pub fn short_name(&self) -> String {
-        match self {
-            Self::Time(descr) => descr.timeline.name().to_string(),
-            Self::Component(descr) => descr.component_name.short_name().to_owned(),
-        }
-    }
-
-    #[inline]
-    pub fn is_static(&self) -> bool {
-        match self {
-            Self::Time(_) => false,
-            Self::Component(descr) => descr.is_static,
-        }
-    }
-}
 
 // --- Selectors ---
 

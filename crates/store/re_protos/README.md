@@ -12,3 +12,5 @@ Rerun remote store node gRPC API service types (client and server).
 This crate includes both the language-agnostic definitions (protobuf) as well as the generated code.
 
 The code is generated with `pixi run codegen-protos`.
+
+It also includes helpers for converting between the generated protobuf types and native Rust types.

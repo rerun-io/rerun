@@ -70,10 +70,10 @@ re_log_encoding = { workspace = true }
 re_log_types.workspace = true
 re_memory.workspace = true
 re_sdk = { workspace = true, features = ["data_loaders"] }
+re_sorbet.workspace = true
 re_video.workspace = true
 re_web_viewer_server = { workspace = true, optional = true }
 re_ws_comms = { workspace = true, optional = true }
-
 
 arrow = { workspace = true, features = ["pyarrow"] }
 crossbeam.workspace = true
