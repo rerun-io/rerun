@@ -6,7 +6,7 @@
 //! This is done regardless of whether the data is actually used by the UI (e.g. if everything is
 //! collapsed). Benchmarks have indicated that this approach incurs a negligible overhead compared
 //! to the overall cost of having large blueprint trees (a.k.a the many-entities performance
-//! issues).
+//! issues: https://github.com/rerun-io/rerun/issues/8233).
 
 use std::ops::Range;
 

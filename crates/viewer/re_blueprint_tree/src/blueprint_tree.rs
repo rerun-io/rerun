@@ -118,12 +118,11 @@ impl BlueprintTree {
         self.candidate_drop_parent_container_id = self.next_candidate_drop_parent_container_id;
         self.next_candidate_drop_parent_container_id = None;
 
-        let blueprint_tree_data =
-            std::hint::black_box(BlueprintTreeData::from_blueprint_and_filter(
-                ctx,
-                viewport_blueprint,
-                &self.filter_state.filter(),
-            ));
+        let blueprint_tree_data = BlueprintTreeData::from_blueprint_and_filter(
+            ctx,
+            viewport_blueprint,
+            &self.filter_state.filter(),
+        );
 
         egui::ScrollArea::both()
             .id_salt("blueprint_tree_scroll_area")
