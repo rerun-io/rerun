@@ -74,7 +74,7 @@ class GeoLineStringExt:
                         else:
                             if isinstance(strip, np.ndarray) and (strip.ndim != 2 or strip.shape[1] != 2):
                                 raise ValueError(
-                                    "Expected a sequence of 2D vectors, instead got array with shape {strip.shape}."
+                                    f"Expected a sequence of 2D vectors, instead got array with shape {strip.shape}."
                                 )
                             return DVec2DBatch(strip)
 
