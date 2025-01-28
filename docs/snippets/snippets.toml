@@ -214,11 +214,9 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "py",
   "rust",
 ]
-"archetypes/mesh3d_partial_updates" = [ # TODO(andreas): use new partial update api
-  "cpp",
+"archetypes/mesh3d_partial_updates" = [ # Python uses doubles
   "py",
-  "rust",
-] # float precision issues
+]
 "archetypes/pinhole_simple" = [ # TODO(#3206): examples use different RNGs
   "cpp",
   "py",
