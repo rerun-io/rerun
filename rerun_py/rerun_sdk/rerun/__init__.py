@@ -352,7 +352,7 @@ def init(
         )
 
     if spawn:
-        from rerun.sinks import spawn as _spawn
+        from rerun.sinks import spawn_grpc as _spawn
 
         _spawn(default_blueprint=default_blueprint)
 

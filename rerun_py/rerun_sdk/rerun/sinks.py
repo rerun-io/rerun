@@ -139,10 +139,32 @@ _is_connect_grpc_available = hasattr(bindings, "connect_grpc")
 
 
 def connect_grpc(
-    addr: str | None = None,
+    url: str | None = None,
     *,
+    default_blueprint: BlueprintLike | None = None,
     recording: RecordingStream | None = None,
 ) -> None:
+    """
+    Connect to a remote Rerun Viewer on the given HTTP(S) URL.
+
+    This function returns immediately.
+
+    Parameters
+    ----------
+    url:
+        The HTTP(S) URL to connect to
+    default_blueprint
+        Optionally set a default blueprint to use for this application. If the application
+        already has an active blueprint, the new blueprint won't become active until the user
+        clicks the "reset blueprint" button. If you want to activate the new blueprint
+        immediately, instead use the [`rerun.send_blueprint`][] API.
+    recording:
+        Specifies the [`rerun.RecordingStream`][] to use.
+        If left unspecified, defaults to the current active data recording, if there is one.
+        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
+
+    """
+
     if not _is_connect_grpc_available:
         raise NotImplementedError("`rerun_sdk` was compiled without `remote` feature, connect_grpc is not available")
 
@@ -156,8 +178,16 @@ def connect_grpc(
             "No application id found. You must call rerun.init before connecting to a viewer, or provide a recording."
         )
 
+    # If a blueprint is provided, we need to create a blueprint storage object
+    blueprint_storage = None
+    if default_blueprint is not None:
+        blueprint_storage = create_in_memory_blueprint(
+            application_id=application_id, blueprint=default_blueprint
+        ).storage
+
     bindings.connect_grpc(
-        addr=addr,
+        url=url,
+        default_blueprint=blueprint_storage,
         recording=recording.to_native() if recording is not None else None,
     )
 
@@ -517,6 +547,61 @@ def spawn(
     if connect:
         connect_tcp(
             f"127.0.0.1:{port}",
+            recording=recording,  # NOLINT
+            default_blueprint=default_blueprint,
+        )
+
+
+def spawn_grpc(
+    *,
+    port: int = 1852,
+    connect: bool = True,
+    memory_limit: str = "75%",
+    hide_welcome_screen: bool = False,
+    default_blueprint: BlueprintLike | None = None,
+    recording: RecordingStream | None = None,
+) -> None:
+    """
+    Spawn a Rerun Viewer, listening on the given port.
+
+    This is often the easiest and best way to use Rerun.
+    Just call this once at the start of your program.
+
+    You can also call [rerun.init][] with a `spawn=True` argument.
+
+    Parameters
+    ----------
+    port:
+        The port to listen on.
+    connect:
+        also connect to the viewer and stream logging data to it.
+    memory_limit:
+        An upper limit on how much memory the Rerun Viewer should use.
+        When this limit is reached, Rerun will drop the oldest data.
+        Example: `16GB` or `50%` (of system total).
+    hide_welcome_screen:
+        Hide the normal Rerun welcome screen.
+    recording:
+        Specifies the [`rerun.RecordingStream`][] to use if `connect = True`.
+        If left unspecified, defaults to the current active data recording, if there is one.
+        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
+    default_blueprint
+        Optionally set a default blueprint to use for this application. If the application
+        already has an active blueprint, the new blueprint won't become active until the user
+        clicks the "reset blueprint" button. If you want to activate the new blueprint
+        immediately, instead use the [`rerun.send_blueprint`][] API.
+
+    """
+
+    if not is_recording_enabled(recording):
+        logging.warning("Rerun is disabled - spawn() call ignored.")
+        return
+
+    _spawn_viewer(port=port, memory_limit=memory_limit, hide_welcome_screen=hide_welcome_screen)
+
+    if connect:
+        connect_grpc(
+            f"http://127.0.0.1:{port}",
             recording=recording,  # NOLINT
             default_blueprint=default_blueprint,
         )
