@@ -853,15 +853,6 @@ impl TimePanel {
                         &component_name,
                     );
 
-                let num_static_messages =
-                    store.num_static_events_for_component(entity_path, component_name);
-                let num_temporal_messages = store.num_temporal_events_for_component_on_timeline(
-                    time_ctrl.timeline(),
-                    entity_path,
-                    component_name,
-                );
-                let total_num_messages = num_static_messages + num_temporal_messages;
-
                 let response = ui
                     .list_item()
                     .render_offscreen(false)
@@ -894,6 +885,16 @@ impl TimePanel {
                 let response_rect = response.rect;
 
                 response.on_hover_ui(|ui| {
+                    let num_static_messages =
+                        store.num_static_events_for_component(entity_path, component_name);
+                    let num_temporal_messages = store
+                        .num_temporal_events_for_component_on_timeline(
+                            time_ctrl.timeline(),
+                            entity_path,
+                            component_name,
+                        );
+                    let total_num_messages = num_static_messages + num_temporal_messages;
+
                     if total_num_messages == 0 {
                         ui.label(ui.ctx().warning_text(format!(
                             "No event logged on timeline {:?}",
