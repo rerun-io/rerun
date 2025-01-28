@@ -240,11 +240,6 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "py",
   "rust",
 ]
-"archetypes/series_line_style" = [ # TODO(#5116):trigonometric functions have slightly different outcomes
-  "cpp",
-  "py",
-  "rust",
-]
 "archetypes/text_log_integration" = [ # The entity path will differ because the Rust code is part of a library
   "cpp",
   "py",
