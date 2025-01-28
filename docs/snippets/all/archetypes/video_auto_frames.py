@@ -1,5 +1,4 @@
 """Log a video asset using automatically determined frame references."""
-# TODO(#7298): ⚠️ Video is currently only supported in the Rerun web viewer.
 
 import sys
 
@@ -21,6 +20,6 @@ frame_timestamps_ns = video_asset.read_frame_timestamps_ns()
 rr.send_columns(
     "video",
     # Note timeline values don't have to be the same as the video timestamps.
-    times=[rr.TimeNanosColumn("video_time", frame_timestamps_ns)],
-    components=[rr.VideoFrameReference.indicator(), rr.components.VideoTimestamp.nanoseconds(frame_timestamps_ns)],
+    indexes=[rr.TimeNanosColumn("video_time", frame_timestamps_ns)],
+    columns=rr.VideoFrameReference.columns_nanoseconds(frame_timestamps_ns),
 )

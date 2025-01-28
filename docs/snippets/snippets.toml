@@ -279,7 +279,6 @@ quick_start = [ # These examples don't have exactly the same implementation.
 ]
 "archetypes/image_send_columns" = [ # This mixes `log` and `send_columns`. Since `log` is suspect to delays by the batcher, this test gets flaky.
   "cpp",
-  "py",
   "rust",
 ]
 "archetypes/mesh3d_instancing" = [ # TODO(#3235): Slight floating point differences in deg to rad conversion.

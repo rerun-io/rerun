@@ -34,8 +34,6 @@ class VideoFrameReference(VideoFrameReferenceExt, Archetype):
     --------
     ### Video with automatically determined frames:
     ```python
-    # TODO(#7298): ⚠️ Video is currently only supported in the Rerun web viewer.
-
     import sys
 
     import rerun as rr
@@ -56,8 +54,8 @@ class VideoFrameReference(VideoFrameReferenceExt, Archetype):
     rr.send_columns(
         "video",
         # Note timeline values don't have to be the same as the video timestamps.
-        times=[rr.TimeNanosColumn("video_time", frame_timestamps_ns)],
-        components=[rr.VideoFrameReference.indicator(), rr.components.VideoTimestamp.nanoseconds(frame_timestamps_ns)],
+        indexes=[rr.TimeNanosColumn("video_time", frame_timestamps_ns)],
+        columns=rr.VideoFrameReference.columns_nanoseconds(frame_timestamps_ns),
     )
     ```
     <center>

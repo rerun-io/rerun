@@ -63,10 +63,7 @@ if TYPE_CHECKING:
 else:
     VideoTimestampLike = Any
 
-VideoTimestampArrayLike = Union[
-    VideoTimestamp,
-    Sequence[VideoTimestampLike],
-]
+VideoTimestampArrayLike = Union[VideoTimestamp, Sequence[VideoTimestampLike], npt.NDArray[np.int64]]
 
 
 class VideoTimestampBatch(BaseBatch[VideoTimestampArrayLike]):

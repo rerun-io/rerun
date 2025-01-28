@@ -450,6 +450,9 @@ class ComponentColumnList(Iterable[ComponentColumn]):
     def __iter__(self) -> Iterator[ComponentColumn]:
         return iter(self._columns)
 
+    def __len__(self) -> int:
+        return len(self._columns)
+
     def partition(self, lengths: npt.ArrayLike) -> ComponentColumnList:
         """
         (Re)Partitions the columns.
