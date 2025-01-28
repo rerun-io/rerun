@@ -45,7 +45,7 @@ impl std::ops::Deref for IndicatedEntities {
 ///
 /// It gets invalidated whenever any properties of the respective view instance
 /// change, e.g. its origin.
-/// TODO(andreas): Unclear if any of the view's configuring blueprint entities are included in this!
+/// TODO(andreas): Unclear if any of the view's configuring blueprint entities are included in this.
 ///
 /// This is a subset of [`MaybeVisualizableEntities`] and may differs on a per view instance base!
 #[derive(Default, Clone, Debug)]
