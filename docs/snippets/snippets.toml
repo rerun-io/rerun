@@ -198,10 +198,8 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "py",
   "rust",
 ]
-"archetypes/arrows3d_simple" = [ # TODO(#3206): examples use different RNGs
-  "cpp",
+"archetypes/arrows3d_simple" = [ # Python uses doubles
   "py",
-  "rust",
 ]
 "archetypes/asset3d_out_of_tree" = [ # float issues since calculation is done slightly differently (also, Python uses doubles)
   "cpp",
