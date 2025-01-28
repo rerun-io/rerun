@@ -1128,7 +1128,8 @@ mod tests {
     }
 
     #[test]
-    fn simple_but_hashes_wont_match() -> anyhow::Result<()> {
+    #[allow(clippy::len_zero)]
+    fn simple_but_hashes_might_not_match() -> anyhow::Result<()> {
         let batcher = ChunkBatcher::new(ChunkBatcherConfig::NEVER)?;
 
         let timeline1 = Timeline::new_temporal("log_time");
@@ -1156,8 +1157,8 @@ mod tests {
         ];
         let components2 = [
             (MyPoint::descriptor(), points2.clone()),
-            (MyIndex::descriptor(), indices2.clone()),
             (MyLabel::descriptor(), labels2.clone()),
+            (MyIndex::descriptor(), indices2.clone()),
         ];
         let components3 = [
             (MyLabel::descriptor(), labels3.clone()),
@@ -1196,9 +1197,13 @@ mod tests {
         }
 
         // The rows's components were inserted in different orders, and therefore the resulting
-        // `IntMap`s will have different traversal orders, which ultimately means that the datatype
-        // hashes we end up with will be different: no batching.
-        assert!(chunks.len() > 1);
+        // `IntMap`s *may* have different traversal orders, which ultimately means that the datatype
+        // hashes *may* end up being different: i.e., possibly no batching.
+        //
+        // In practice, it's still possible to get lucky and end up with two maps that just happen
+        // to share the same iteration order regardless, which is why this assertion is overly broad.
+        // Try running this test with `--show-output`.
+        assert!(chunks.len() >= 1);
 
         Ok(())
     }
