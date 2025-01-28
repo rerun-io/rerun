@@ -133,7 +133,7 @@ fn test_all_components_on_timeline() -> anyhow::Result<()> {
     let entity_path2 = EntityPath::from("only/timeline1");
 
     let timeline1 = Timeline::new("timeline1", TimeType::Sequence);
-    let timeline2 = Timeline::new("timeline1", TimeType::Sequence);
+    let timeline2 = Timeline::new("timeline2", TimeType::Sequence);
 
     let time = TimeInt::new_temporal(1);
 
