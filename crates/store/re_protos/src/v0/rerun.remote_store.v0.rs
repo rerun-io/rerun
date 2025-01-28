@@ -36,8 +36,8 @@ impl ::prost::Name for GetRecordingSchemaRequest {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetRecordingSchemaResponse {
-    #[prost(bytes = "vec", tag = "2")]
-    pub arrow_schema_as_ipc: ::prost::alloc::vec::Vec<u8>,
+    #[prost(message, optional, tag = "2")]
+    pub schema: ::core::option::Option<super::super::common::v0::Schema>,
 }
 impl ::prost::Name for GetRecordingSchemaResponse {
     const NAME: &'static str = "GetRecordingSchemaResponse";

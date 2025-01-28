@@ -271,19 +271,21 @@ impl PyStorageNodeClient {
                 recording_id: Some(RecordingId { id }),
             };
 
-            let arrow_schema_as_ipc = self
+            let schema = self
                 .client
                 .get_recording_schema(request)
                 .await
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
                 .into_inner()
-                .arrow_schema_as_ipc;
+                .schema
+                .ok_or_else(|| PyRuntimeError::new_err("Missing shcema"))?;
 
-            let schema = re_sorbet::schema_from_ipc(&arrow_schema_as_ipc)
+            let arrow_schema = ArrowSchema::try_from(schema)
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
-            let column_descriptors = re_sorbet::ColumnDescriptor::from_arrow_fields(&schema.fields)
-                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+            let column_descriptors =
+                re_sorbet::ColumnDescriptor::from_arrow_fields(&arrow_schema.fields)
+                    .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
             Ok(PySchema {
                 schema: column_descriptors,
