@@ -27,11 +27,10 @@ mod visual_bounds2d;
 mod zoom_level;
 
 use datatype_uis::{
-    display_name_ui, display_text_ui, edit_bool, edit_f32_min_to_max_float, edit_f32_zero_to_max,
-    edit_f32_zero_to_one, edit_f64_min_to_max_float, edit_f64_zero_to_max, edit_multiline_string,
-    edit_or_view_vec2d, edit_or_view_vec3d, edit_singleline_string, edit_u64_range, edit_ui_points,
-    edit_view_enum, edit_view_enum_with_variant_available, edit_view_range1d, view_uuid,
-    view_view_id,
+    edit_bool, edit_f32_min_to_max_float, edit_f32_zero_to_max, edit_f32_zero_to_one,
+    edit_f64_min_to_max_float, edit_f64_zero_to_max, edit_multiline_string, edit_or_view_vec2d,
+    edit_or_view_vec3d, edit_singleline_string, edit_u64_range, edit_ui_points, edit_view_enum,
+    edit_view_enum_with_variant_available, edit_view_range1d, view_uuid, view_view_id,
 };
 
 use re_types::blueprint::components::{RootContainer, ViewMaximized};
@@ -46,7 +45,6 @@ use re_types::{
         Name, Opacity, Position2D, Range1D, Scale3D, ShowLabels, StrokeWidth, Text,
         TransformRelation, Translation3D, ValueRange,
     },
-    Component as _,
 };
 use re_viewer_context::gpu_bridge::colormap_edit_or_view_ui;
 
