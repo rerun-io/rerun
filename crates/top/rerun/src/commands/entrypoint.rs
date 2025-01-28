@@ -691,6 +691,10 @@ fn run_impl(
         }
     };
 
+    #[cfg(feature = "server")]
+    let server_memory_limit = re_memory::MemoryLimit::parse(&args.server_memory_limit)
+        .map_err(|err| anyhow::format_err!("Bad --server-memory-limit: {err}"))?;
+
     // Where do we get the data from?
     let rxs: Vec<Receiver<LogMsg>> = {
         let data_sources = args
@@ -738,8 +742,6 @@ fn run_impl(
                 );
                 is_another_viewer_running = true;
             } else {
-                let server_memory_limit = re_memory::MemoryLimit::parse(&args.server_memory_limit)
-                    .map_err(|err| anyhow::format_err!("Bad --server-memory-limit: {err}"))?;
                 let server: Receiver<LogMsg> = re_grpc_server::spawn_with_recv(
                     args.bind.parse()?,
                     args.port,
@@ -788,9 +790,6 @@ fn run_impl(
 
         #[cfg(feature = "server")]
         {
-            let server_memory_limit = re_memory::MemoryLimit::parse(&args.server_memory_limit)
-                .map_err(|err| anyhow::format_err!("Bad --server-memory-limit: {err}"))?;
-
             // This is the server which the web viewer will talk to:
             let _ws_server = re_ws_comms::RerunServer::new(
                 ReceiveSet::new(rxs),
