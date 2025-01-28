@@ -125,6 +125,74 @@ fn all_components() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[test]
+fn test_all_components_on_timeline() -> anyhow::Result<()> {
+    re_log::setup_logging();
+
+    let entity_path1 = EntityPath::from("both/timeline");
+    let entity_path2 = EntityPath::from("only/timeline1");
+
+    let timeline1 = Timeline::new("timeline1", TimeType::Sequence);
+    let timeline2 = Timeline::new("timeline1", TimeType::Sequence);
+
+    let time = TimeInt::new_temporal(1);
+
+    let mut store = ChunkStore::new(
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        ChunkStoreConfig::COMPACTION_DISABLED,
+    );
+
+    let chunk = Chunk::builder(entity_path1.clone())
+        .with_component_batch(
+            RowId::new(),
+            [(timeline1, time), (timeline2, time)],
+            &build_some_large_structs(2),
+        )
+        .build()?;
+    store.insert_chunk(&Arc::new(chunk))?;
+
+    let chunk = Chunk::builder(entity_path2.clone())
+        .with_component_batches(
+            RowId::new(),
+            [(timeline1, time)],
+            [&build_some_large_structs(2) as _],
+        )
+        .build()?;
+    store.insert_chunk(&Arc::new(chunk))?;
+
+    // entity1 is on both timelines
+    assert!(!store
+        .all_components_on_timeline(&timeline1, &entity_path1)
+        .unwrap()
+        .is_empty());
+    assert!(!store
+        .all_components_on_timeline(&timeline2, &entity_path1)
+        .unwrap()
+        .is_empty());
+
+    // entity2 is only on timeline1
+    assert!(!store
+        .all_components_on_timeline(&timeline1, &entity_path2)
+        .unwrap()
+        .is_empty());
+
+    // According to the docstring, it should "returns `None` if the entity doesn't exist at all on
+    // this `timeline`". So far it's not the case, which is why this line is commented out.
+
+    // assert!(store
+    //     .all_components_on_timeline(&timeline2, &entity_path2)
+    //     .is_none());
+
+    // Regardless of the previous remark, there is no component on timeline2 for entity2. So this
+    // should be empty. Yet it is not…
+    assert!(store
+        .all_components_on_timeline(&timeline2, &entity_path2)
+        .unwrap()
+        .is_empty());
+
+    Ok(())
+}
+
 // ---
 
 #[test]
