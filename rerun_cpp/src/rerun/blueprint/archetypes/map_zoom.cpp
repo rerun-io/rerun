@@ -13,6 +13,28 @@ namespace rerun::blueprint::archetypes {
                 .value_or_throw();
         return archetype;
     }
+
+    Collection<ComponentColumn> MapZoom::columns(const Collection<uint32_t>& lengths_) {
+        std::vector<ComponentColumn> columns;
+        columns.reserve(2);
+        if (zoom.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(zoom.value(), lengths_).value_or_throw()
+            );
+        }
+        columns.push_back(
+            ComponentColumn::from_indicators<MapZoom>(static_cast<uint32_t>(lengths_.size()))
+                .value_or_throw()
+        );
+        return columns;
+    }
+
+    Collection<ComponentColumn> MapZoom::columns() {
+        if (zoom.has_value()) {
+            return columns(std::vector<uint32_t>(zoom.value().length(), 1));
+        }
+        return Collection<ComponentColumn>();
+    }
 } // namespace rerun::blueprint::archetypes
 
 namespace rerun {

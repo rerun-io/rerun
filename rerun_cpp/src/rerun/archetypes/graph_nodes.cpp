@@ -25,6 +25,67 @@ namespace rerun::archetypes {
             ComponentBatch::empty<rerun::components::Radius>(Descriptor_radii).value_or_throw();
         return archetype;
     }
+
+    Collection<ComponentColumn> GraphNodes::columns(const Collection<uint32_t>& lengths_) {
+        std::vector<ComponentColumn> columns;
+        columns.reserve(7);
+        if (node_ids.has_value()) {
+            columns.push_back(ComponentColumn::from_batch_with_lengths(node_ids.value(), lengths_)
+                                  .value_or_throw());
+        }
+        if (positions.has_value()) {
+            columns.push_back(ComponentColumn::from_batch_with_lengths(positions.value(), lengths_)
+                                  .value_or_throw());
+        }
+        if (colors.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(colors.value(), lengths_).value_or_throw()
+            );
+        }
+        if (labels.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(labels.value(), lengths_).value_or_throw()
+            );
+        }
+        if (show_labels.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(show_labels.value(), lengths_)
+                    .value_or_throw()
+            );
+        }
+        if (radii.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(radii.value(), lengths_).value_or_throw()
+            );
+        }
+        columns.push_back(
+            ComponentColumn::from_indicators<GraphNodes>(static_cast<uint32_t>(lengths_.size()))
+                .value_or_throw()
+        );
+        return columns;
+    }
+
+    Collection<ComponentColumn> GraphNodes::columns() {
+        if (node_ids.has_value()) {
+            return columns(std::vector<uint32_t>(node_ids.value().length(), 1));
+        }
+        if (positions.has_value()) {
+            return columns(std::vector<uint32_t>(positions.value().length(), 1));
+        }
+        if (colors.has_value()) {
+            return columns(std::vector<uint32_t>(colors.value().length(), 1));
+        }
+        if (labels.has_value()) {
+            return columns(std::vector<uint32_t>(labels.value().length(), 1));
+        }
+        if (show_labels.has_value()) {
+            return columns(std::vector<uint32_t>(show_labels.value().length(), 1));
+        }
+        if (radii.has_value()) {
+            return columns(std::vector<uint32_t>(radii.value().length(), 1));
+        }
+        return Collection<ComponentColumn>();
+    }
 } // namespace rerun::archetypes
 
 namespace rerun {

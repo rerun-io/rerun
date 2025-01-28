@@ -1,3 +1,5 @@
+#![cfg(feature = "testing")]
+
 use egui::Vec2;
 
 use re_blueprint_tree::BlueprintTree;
@@ -5,7 +7,9 @@ use re_chunk_store::external::re_chunk::ChunkBuilder;
 use re_chunk_store::RowId;
 use re_log_types::build_frame_nr;
 use re_types::archetypes::Points3D;
-use re_viewer_context::{test_context::TestContext, CollapseScope, RecommendedView, ViewClass};
+use re_viewer_context::{
+    test_context::TestContext, CollapseScope, RecommendedView, ViewClass, ViewId,
+};
 use re_viewport_blueprint::{
     test_context_ext::TestContextExt as _, ViewBlueprint, ViewportBlueprint,
 };
@@ -51,19 +55,19 @@ fn collapse_expand_all_blueprint_panel_should_match_snapshot() {
         test_context.log_entity("/path/to/entity1".into(), add_point_to_chunk_builder);
         test_context.log_entity("/another/way/to/entity2".into(), add_point_to_chunk_builder);
 
-        let view_id = test_context.setup_viewport_blueprint(|_ctx, blueprint| {
-            let view = ViewBlueprint::new(
+        let view_id = ViewId::hashed_from_str("some-view-id-hash");
+
+        test_context.setup_viewport_blueprint(|_ctx, blueprint| {
+            let view = ViewBlueprint::new_with_id(
                 re_view_spatial::SpatialView3D::identifier(),
                 RecommendedView::root(),
+                view_id,
             );
 
-            let view_id = view.id;
             blueprint.add_views(std::iter::once(view), None, None);
 
             // TODO(ab): add containers in the hierarchy (requires work on the container API,
             // currently very cumbersome to use for testing purposes).
-
-            view_id
         });
 
         let mut blueprint_tree = BlueprintTree::default();

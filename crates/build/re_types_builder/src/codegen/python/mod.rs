@@ -2643,19 +2643,6 @@ fn quote_columnar_methods(reporter: &Reporter, obj: &Object, objects: &Objects) 
     };
     let doc_block = indent::indent_by(12, quote_doc_lines(doc_string_lines));
 
-    // NOTE(#8768): Scalar indicators are extremely wasteful, and not actually used for anything.
-    let has_indicator = obj.fqname.as_str() != "rerun.archetypes.Scalar";
-    let pack_and_return = if has_indicator {
-        indent::indent_by(12, unindent("\
-        indicator_batch = DescribedComponentBatch(cls.indicator(), cls.indicator().component_descriptor())
-        indicator_column = indicator_batch.partition(np.zeros(len(lengths)))
-
-        return ComponentColumnList([indicator_column] + columns)
-        "))
-    } else {
-        "return ComponentColumnList(columns)".to_owned()
-    };
-
     // NOTE: Calling `update_fields` is not an option: we need to be able to pass
     // plural data, even to singular fields (mono-components).
     unindent(&format!(
@@ -2680,7 +2667,10 @@ fn quote_columnar_methods(reporter: &Reporter, obj: &Object, objects: &Objects) 
             lengths = np.ones(len(batches[0]._batch.as_arrow_array()))
             columns = [batch.partition(lengths) for batch in batches]
 
-            {pack_and_return}
+            indicator_batch = DescribedComponentBatch(cls.indicator(), cls.indicator().component_descriptor())
+            indicator_column = indicator_batch.partition(np.zeros(len(lengths)))
+
+            return ComponentColumnList([indicator_column] + columns)
         "#
     ))
 }

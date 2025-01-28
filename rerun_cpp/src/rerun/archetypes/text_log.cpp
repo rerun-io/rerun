@@ -16,6 +16,44 @@ namespace rerun::archetypes {
             ComponentBatch::empty<rerun::components::Color>(Descriptor_color).value_or_throw();
         return archetype;
     }
+
+    Collection<ComponentColumn> TextLog::columns(const Collection<uint32_t>& lengths_) {
+        std::vector<ComponentColumn> columns;
+        columns.reserve(4);
+        if (text.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(text.value(), lengths_).value_or_throw()
+            );
+        }
+        if (level.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(level.value(), lengths_).value_or_throw()
+            );
+        }
+        if (color.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(color.value(), lengths_).value_or_throw()
+            );
+        }
+        columns.push_back(
+            ComponentColumn::from_indicators<TextLog>(static_cast<uint32_t>(lengths_.size()))
+                .value_or_throw()
+        );
+        return columns;
+    }
+
+    Collection<ComponentColumn> TextLog::columns() {
+        if (text.has_value()) {
+            return columns(std::vector<uint32_t>(text.value().length(), 1));
+        }
+        if (level.has_value()) {
+            return columns(std::vector<uint32_t>(level.value().length(), 1));
+        }
+        if (color.has_value()) {
+            return columns(std::vector<uint32_t>(color.value().length(), 1));
+        }
+        return Collection<ComponentColumn>();
+    }
 } // namespace rerun::archetypes
 
 namespace rerun {

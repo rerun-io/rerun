@@ -37,6 +37,99 @@ namespace rerun::archetypes {
                 .value_or_throw();
         return archetype;
     }
+
+    Collection<ComponentColumn> Mesh3D::columns(const Collection<uint32_t>& lengths_) {
+        std::vector<ComponentColumn> columns;
+        columns.reserve(10);
+        if (vertex_positions.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(vertex_positions.value(), lengths_)
+                    .value_or_throw()
+            );
+        }
+        if (triangle_indices.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(triangle_indices.value(), lengths_)
+                    .value_or_throw()
+            );
+        }
+        if (vertex_normals.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(vertex_normals.value(), lengths_)
+                    .value_or_throw()
+            );
+        }
+        if (vertex_colors.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(vertex_colors.value(), lengths_)
+                    .value_or_throw()
+            );
+        }
+        if (vertex_texcoords.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(vertex_texcoords.value(), lengths_)
+                    .value_or_throw()
+            );
+        }
+        if (albedo_factor.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(albedo_factor.value(), lengths_)
+                    .value_or_throw()
+            );
+        }
+        if (albedo_texture_buffer.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(albedo_texture_buffer.value(), lengths_)
+                    .value_or_throw()
+            );
+        }
+        if (albedo_texture_format.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(albedo_texture_format.value(), lengths_)
+                    .value_or_throw()
+            );
+        }
+        if (class_ids.has_value()) {
+            columns.push_back(ComponentColumn::from_batch_with_lengths(class_ids.value(), lengths_)
+                                  .value_or_throw());
+        }
+        columns.push_back(
+            ComponentColumn::from_indicators<Mesh3D>(static_cast<uint32_t>(lengths_.size()))
+                .value_or_throw()
+        );
+        return columns;
+    }
+
+    Collection<ComponentColumn> Mesh3D::columns() {
+        if (vertex_positions.has_value()) {
+            return columns(std::vector<uint32_t>(vertex_positions.value().length(), 1));
+        }
+        if (triangle_indices.has_value()) {
+            return columns(std::vector<uint32_t>(triangle_indices.value().length(), 1));
+        }
+        if (vertex_normals.has_value()) {
+            return columns(std::vector<uint32_t>(vertex_normals.value().length(), 1));
+        }
+        if (vertex_colors.has_value()) {
+            return columns(std::vector<uint32_t>(vertex_colors.value().length(), 1));
+        }
+        if (vertex_texcoords.has_value()) {
+            return columns(std::vector<uint32_t>(vertex_texcoords.value().length(), 1));
+        }
+        if (albedo_factor.has_value()) {
+            return columns(std::vector<uint32_t>(albedo_factor.value().length(), 1));
+        }
+        if (albedo_texture_buffer.has_value()) {
+            return columns(std::vector<uint32_t>(albedo_texture_buffer.value().length(), 1));
+        }
+        if (albedo_texture_format.has_value()) {
+            return columns(std::vector<uint32_t>(albedo_texture_format.value().length(), 1));
+        }
+        if (class_ids.has_value()) {
+            return columns(std::vector<uint32_t>(class_ids.value().length(), 1));
+        }
+        return Collection<ComponentColumn>();
+    }
 } // namespace rerun::archetypes
 
 namespace rerun {

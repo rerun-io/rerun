@@ -18,6 +18,42 @@ namespace rerun::blueprint::archetypes {
                 .value_or_throw();
         return archetype;
     }
+
+    Collection<ComponentColumn> TensorScalarMapping::columns(const Collection<uint32_t>& lengths_) {
+        std::vector<ComponentColumn> columns;
+        columns.reserve(4);
+        if (mag_filter.has_value()) {
+            columns.push_back(ComponentColumn::from_batch_with_lengths(mag_filter.value(), lengths_)
+                                  .value_or_throw());
+        }
+        if (colormap.has_value()) {
+            columns.push_back(ComponentColumn::from_batch_with_lengths(colormap.value(), lengths_)
+                                  .value_or_throw());
+        }
+        if (gamma.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(gamma.value(), lengths_).value_or_throw()
+            );
+        }
+        columns.push_back(ComponentColumn::from_indicators<TensorScalarMapping>(
+                              static_cast<uint32_t>(lengths_.size())
+        )
+                              .value_or_throw());
+        return columns;
+    }
+
+    Collection<ComponentColumn> TensorScalarMapping::columns() {
+        if (mag_filter.has_value()) {
+            return columns(std::vector<uint32_t>(mag_filter.value().length(), 1));
+        }
+        if (colormap.has_value()) {
+            return columns(std::vector<uint32_t>(colormap.value().length(), 1));
+        }
+        if (gamma.has_value()) {
+            return columns(std::vector<uint32_t>(gamma.value().length(), 1));
+        }
+        return Collection<ComponentColumn>();
+    }
 } // namespace rerun::blueprint::archetypes
 
 namespace rerun {

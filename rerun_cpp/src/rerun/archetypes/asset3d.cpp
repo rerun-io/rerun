@@ -18,6 +18,44 @@ namespace rerun::archetypes {
                 .value_or_throw();
         return archetype;
     }
+
+    Collection<ComponentColumn> Asset3D::columns(const Collection<uint32_t>& lengths_) {
+        std::vector<ComponentColumn> columns;
+        columns.reserve(4);
+        if (blob.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(blob.value(), lengths_).value_or_throw()
+            );
+        }
+        if (media_type.has_value()) {
+            columns.push_back(ComponentColumn::from_batch_with_lengths(media_type.value(), lengths_)
+                                  .value_or_throw());
+        }
+        if (albedo_factor.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(albedo_factor.value(), lengths_)
+                    .value_or_throw()
+            );
+        }
+        columns.push_back(
+            ComponentColumn::from_indicators<Asset3D>(static_cast<uint32_t>(lengths_.size()))
+                .value_or_throw()
+        );
+        return columns;
+    }
+
+    Collection<ComponentColumn> Asset3D::columns() {
+        if (blob.has_value()) {
+            return columns(std::vector<uint32_t>(blob.value().length(), 1));
+        }
+        if (media_type.has_value()) {
+            return columns(std::vector<uint32_t>(media_type.value().length(), 1));
+        }
+        if (albedo_factor.has_value()) {
+            return columns(std::vector<uint32_t>(albedo_factor.value().length(), 1));
+        }
+        return Collection<ComponentColumn>();
+    }
 } // namespace rerun::archetypes
 
 namespace rerun {

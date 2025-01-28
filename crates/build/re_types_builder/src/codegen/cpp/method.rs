@@ -83,7 +83,12 @@ impl MethodDocumentation {
             Self::None => {
                 quote!()
             }
-            Self::String(s) => quote_doc_comment(s),
+            Self::String(s) => {
+                let lines = s.lines().map(quote_doc_comment);
+                quote! {
+                    #(#lines)*
+                }
+            }
             Self::Docs(docs) => {
                 let lines = lines_from_docs(reporter, objects, docs);
                 quote_doc_lines(&lines)

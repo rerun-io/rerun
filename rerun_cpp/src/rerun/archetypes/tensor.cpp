@@ -15,6 +15,37 @@ namespace rerun::archetypes {
                 .value_or_throw();
         return archetype;
     }
+
+    Collection<ComponentColumn> Tensor::columns(const Collection<uint32_t>& lengths_) {
+        std::vector<ComponentColumn> columns;
+        columns.reserve(3);
+        if (data.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(data.value(), lengths_).value_or_throw()
+            );
+        }
+        if (value_range.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(value_range.value(), lengths_)
+                    .value_or_throw()
+            );
+        }
+        columns.push_back(
+            ComponentColumn::from_indicators<Tensor>(static_cast<uint32_t>(lengths_.size()))
+                .value_or_throw()
+        );
+        return columns;
+    }
+
+    Collection<ComponentColumn> Tensor::columns() {
+        if (data.has_value()) {
+            return columns(std::vector<uint32_t>(data.value().length(), 1));
+        }
+        if (value_range.has_value()) {
+            return columns(std::vector<uint32_t>(value_range.value().length(), 1));
+        }
+        return Collection<ComponentColumn>();
+    }
 } // namespace rerun::archetypes
 
 namespace rerun {

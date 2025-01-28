@@ -16,6 +16,36 @@ namespace rerun::blueprint::archetypes {
                 .value_or_throw();
         return archetype;
     }
+
+    Collection<ComponentColumn> PlotLegend::columns(const Collection<uint32_t>& lengths_) {
+        std::vector<ComponentColumn> columns;
+        columns.reserve(3);
+        if (corner.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(corner.value(), lengths_).value_or_throw()
+            );
+        }
+        if (visible.has_value()) {
+            columns.push_back(
+                ComponentColumn::from_batch_with_lengths(visible.value(), lengths_).value_or_throw()
+            );
+        }
+        columns.push_back(
+            ComponentColumn::from_indicators<PlotLegend>(static_cast<uint32_t>(lengths_.size()))
+                .value_or_throw()
+        );
+        return columns;
+    }
+
+    Collection<ComponentColumn> PlotLegend::columns() {
+        if (corner.has_value()) {
+            return columns(std::vector<uint32_t>(corner.value().length(), 1));
+        }
+        if (visible.has_value()) {
+            return columns(std::vector<uint32_t>(visible.value().length(), 1));
+        }
+        return Collection<ComponentColumn>();
+    }
 } // namespace rerun::blueprint::archetypes
 
 namespace rerun {
