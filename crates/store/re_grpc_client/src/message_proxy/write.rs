@@ -113,7 +113,7 @@ async fn message_proxy_client(
     let endpoint = match Endpoint::from_shared(url) {
         Ok(endpoint) => endpoint,
         Err(err) => {
-            re_log::error!("Failed to connect to message proxy server: {err}");
+            re_log::error!("Invalid message proxy server endpoint: {err}");
             return;
         }
     };
