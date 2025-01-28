@@ -127,11 +127,13 @@ impl DataSource {
         } else {
             // If this is sometyhing like `foo.com` we can't know what it is until we connect to it.
             // We could/should connect and see what it is, but for now we just take a wild guess instead:
-            re_log::debug!("Assuming WebSocket endpoint");
+            re_log::debug!("Assuming gRPC endpoint");
             if !uri.contains("://") {
-                uri = format!("{}://{uri}", re_ws_comms::PROTOCOL);
+                // TODO(jan): this should be `https` if it's not localhost, anything hosted over public network
+                //            should be going through https, anyway...
+                uri = format!("http://{uri}");
             }
-            Self::WebSocketAddr(uri)
+            Self::MessageProxy { url: uri }
         }
     }
 

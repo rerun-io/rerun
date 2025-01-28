@@ -114,11 +114,12 @@ impl EndpointCategory {
         } else {
             // If this is something like `foo.com` we can't know what it is until we connect to it.
             // We could/should connect and see what it is, but for now we just take a wild guess instead:
-            re_log::info!("Assuming WebSocket endpoint");
+            re_log::info!("Assuming gRPC endpoint");
             if uri.contains("://") {
-                Self::WebSocket(uri)
+                Self::MessageProxy(uri)
             } else {
-                Self::WebSocket(format!("{}://{uri}", re_ws_comms::PROTOCOL))
+                // TODO(jan): this should be `https` if it's not localhost or same-origin
+                Self::MessageProxy(format!("http://{uri}"))
             }
         }
     }
@@ -189,7 +190,7 @@ pub fn url_to_receiver(
             .with_context(|| format!("Failed to connect to WebSocket server at {url}.")),
 
         EndpointCategory::MessageProxy(url) => {
-            re_grpc_client::message_proxy::read::stream(url, Some(ui_waker))
+            re_grpc_client::message_proxy::read::stream(&url, Some(ui_waker))
                 .map_err(|err| err.into())
         }
     }

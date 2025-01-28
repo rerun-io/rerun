@@ -131,7 +131,7 @@ When persisted, the state will be stored at the following locations:
 
     /// What TCP port do we listen to for SDKs to connect to.
     #[cfg(feature = "server")]
-    #[clap(long, default_value_t = re_sdk_comms::DEFAULT_SERVER_PORT)]
+    #[clap(long, default_value_t = re_grpc_server::DEFAULT_SERVER_PORT)]
     port: u16,
 
     /// Start with the puffin profiler running.
@@ -693,6 +693,7 @@ fn run_impl(
         }
     };
 
+    #[cfg(feature = "server")]
     let server_addr = std::net::SocketAddr::new(args.bind, args.port);
     #[cfg(feature = "server")]
     let server_memory_limit = re_memory::MemoryLimit::parse(&args.server_memory_limit)
@@ -744,8 +745,11 @@ fn run_impl(
                 );
                 is_another_viewer_running = true;
             } else {
-                let server: Receiver<LogMsg> =
-                    re_grpc_server::spawn_with_recv(server_addr, server_memory_limit);
+                let server: Receiver<LogMsg> = re_grpc_server::spawn_with_recv(
+                    server_addr,
+                    server_memory_limit,
+                    re_grpc_server::shutdown::never(),
+                );
                 rxs.push(server);
             }
         }
@@ -775,8 +779,7 @@ fn run_impl(
             );
         }
 
-        #[cfg(feature = "server")]
-        #[cfg(feature = "web_viewer")]
+        #[cfg(all(feature = "server", feature = "web_viewer"))]
         if args.url_or_paths.is_empty()
             && (args.port == args.web_viewer_port.0 || args.port == args.ws_server_port.0)
         {
@@ -787,44 +790,32 @@ fn run_impl(
             );
         }
 
-        #[cfg(feature = "server")]
+        #[cfg(all(feature = "server", feature = "web_viewer"))]
         {
-            // This is the server which the web viewer will talk to:
-            let _ws_server = re_ws_comms::RerunServer::new(
-                ReceiveSet::new(rxs),
-                &args.bind.to_string(),
-                args.ws_server_port,
-                server_memory_limit,
-            )?;
+            // We always host the web-viewer in case the users wants it,
+            // but we only open a browser automatically with the `--web-viewer` flag.
+            let open_browser = args.web_viewer;
 
-            #[cfg(feature = "web_viewer")]
-            {
-                // We always host the web-viewer in case the users wants it,
-                // but we only open a browser automatically with the `--web-viewer` flag.
+            let url = if server_addr.ip().is_unspecified() || server_addr.ip().is_loopback() {
+                format!("temp://localhost:{}", server_addr.port())
+            } else {
+                format!("temp://{server_addr}")
+            };
 
-                let open_browser = args.web_viewer;
-
-                // This is the server that serves the Wasm+HTML:
-                WebViewerConfig {
-                    bind_ip: args.bind.to_string(),
-                    web_port: args.web_viewer_port,
-                    source_url: Some(_ws_server.server_url()),
-                    force_wgpu_backend: args.renderer,
-                    video_decoder: args.video_decoder,
-                    open_browser,
-                }
-                .host_web_viewer()?
-                .block(); // dropping should stop the server
+            // This is the server that serves the Wasm+HTML:
+            WebViewerConfig {
+                bind_ip: args.bind.to_string(),
+                web_port: args.web_viewer_port,
+                source_url: Some(url),
+                force_wgpu_backend: args.renderer,
+                video_decoder: args.video_decoder,
+                open_browser,
             }
-
-            #[cfg(not(feature = "web_viewer"))]
-            {
-                // Returning from this function so soon would drop and therefore stop the server.
-                _ws_server.block();
-            }
-
-            return Ok(());
+            .host_web_viewer()?
+            .block();
         }
+
+        Ok(())
     } else if is_another_viewer_running {
         // Another viewer is already running on the specified address
         let url = format!("http://{server_addr}");

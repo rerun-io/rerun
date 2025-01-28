@@ -1,5 +1,7 @@
 //! Server implementation of an in-memory Storage Node.
 
+pub mod shutdown;
+
 use std::collections::VecDeque;
 use std::net::SocketAddr;
 use std::pin::Pin;
@@ -19,6 +21,7 @@ use tokio_stream::Stream;
 use tokio_stream::StreamExt as _;
 use tonic::transport::server::TcpIncoming;
 use tonic::transport::Server;
+use tower_http::cors::CorsLayer;
 
 pub const DEFAULT_SERVER_PORT: u16 = 1852;
 pub const DEFAULT_MEMORY_LIMIT: MemoryLimit = MemoryLimit::UNLIMITED;
@@ -29,13 +32,15 @@ pub const DEFAULT_MEMORY_LIMIT: MemoryLimit = MemoryLimit::UNLIMITED;
 pub async fn serve(
     addr: SocketAddr,
     memory_limit: MemoryLimit,
+    shutdown: shutdown::Shutdown,
 ) -> Result<(), tonic::transport::Error> {
-    serve_impl(addr, MessageProxy::new(memory_limit)).await
+    serve_impl(addr, MessageProxy::new(memory_limit), shutdown).await
 }
 
 async fn serve_impl(
     addr: SocketAddr,
     message_proxy: MessageProxy,
+    shutdown: shutdown::Shutdown,
 ) -> Result<(), tonic::transport::Error> {
     let tcp_listener = TcpListener::bind(addr)
         .await
@@ -46,12 +51,7 @@ async fn serve_impl(
 
     re_log::info!("Listening for gRPC connections on http://{addr}");
 
-    use tower_http::cors::{Any, CorsLayer};
-    let cors = CorsLayer::new()
-        .allow_origin(Any)
-        .allow_methods(Any)
-        .allow_headers(Any);
-
+    let cors = CorsLayer::very_permissive();
     let grpc_web = tonic_web::GrpcWebLayer::new();
 
     let routes = {
@@ -67,13 +67,14 @@ async fn serve_impl(
         .layer(cors) // Allow CORS requests from web clients
         .layer(grpc_web) // Support `grpc-web` clients
         .add_routes(routes)
-        .serve_with_incoming(incoming)
+        .serve_with_incoming_shutdown(incoming, shutdown.wait())
         .await
 }
 
 pub fn spawn_with_recv(
     addr: SocketAddr,
     memory_limit: MemoryLimit,
+    shutdown: shutdown::Shutdown,
 ) -> re_smart_channel::Receiver<re_log_types::LogMsg> {
     let (channel_tx, channel_rx) = re_smart_channel::smart_channel(
         re_smart_channel::SmartMessageSource::MessageProxy {
@@ -84,7 +85,11 @@ pub fn spawn_with_recv(
         },
     );
     let (message_proxy, mut broadcast_rx) = MessageProxy::new_with_recv(memory_limit);
-    tokio::spawn(serve_impl(addr, message_proxy));
+    tokio::spawn(async move {
+        if let Err(err) = serve_impl(addr, message_proxy, shutdown).await {
+            re_log::error!("message proxy server crashed: {err}");
+        }
+    });
     tokio::spawn(async move {
         loop {
             let msg = match broadcast_rx.recv().await {
